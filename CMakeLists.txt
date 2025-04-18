@@ -602,7 +602,8 @@ elseif (APPLE)
 
 #  target_link_libraries(${CURL_LIBRARIES})
   target_link_libraries(${PROJECT_NAME} "-framework ApplicationServices") ## needed for imgui + clipboard (IMGUI_ENABLE_OSX_DEFAULT_CLIPBOARD_FUNCTIONS)
-  target_link_libraries(${PROJECT_NAME} "-framework Security") ## needed for imgui + clipboard (IMGUI_ENABLE_OSX_DEFAULT_CLIPBOARD_FUNCTIONS)
+  target_link_libraries(${PROJECT_NAME} "-framework Foundation") ##  Needed for OpenSSL in cURL
+  target_link_libraries(${PROJECT_NAME} "-framework Security") ## Needed for cURL
 
   target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
   target_link_libraries(${PROJECT_NAME} ${FMOD_LIBRARY})
