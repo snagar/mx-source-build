@@ -97,6 +97,26 @@ if (LINUX)
   include_directories("/usr/include/x86_64-linux-gnu/")
   include_directories("/usr/include/x86_64-linux-gnu/curl")
   include_directories("/usr/include/x86_64-linux-gnu/openssl")
+#  include_directories("/usr/lib/x86_64-linux-gnu")
+
+#  # CURL include
+#  if (OS_NAME STREQUAL "Ubuntu" OR OS_NAME STREQUAL "Linuxmint")
+#    if (OS_VERSION_ID MATCHES "^22\\." OR OS_VERSION_ID MATCHES "^21\\.")
+#      message("INCLUDE: Ubuntu/Linuxmint version: ${OS_VERSION_ID}. Using curl 22.04 search path.")
+#      include_directories("${CMAKE_SOURCE_DIR}/libs/curl-v22.04/include")
+#    elseif (OS_VERSION_ID MATCHES "^24\\." OR OS_VERSION_ID MATCHES "^22\\.")
+#      message("INCLUDE: Ubuntu/Linuxmint version: ${OS_VERSION_ID}. Using default curl search path.")
+#      include_directories("${CMAKE_SOURCE_DIR}/libs/curl/include")
+#    else ()
+#      message(WARNING "INCLUDE: Unsupported Ubuntu version: ${OS_VERSION_ID}. Using default curl search path.")
+#      include_directories("${CMAKE_SOURCE_DIR}/libs/curl/include") # Default path
+#    endif ()
+#  else ()
+#    message(WARNING "INCLUDE: Unsupported OS: ${OS_NAME}. Using default curl search path.")
+#    include_directories("${CMAKE_SOURCE_DIR}/libs/curl/include") # Default path for other OSes
+#  endif ()
+
+
 elseif (WIN32)
   include_directories("${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/include")
 endif()
@@ -209,7 +229,7 @@ set(BASE_SRC src/core/coordinate/NavAidInfo.hpp
     src/mission.h
     src/plugin.cpp
     src/plugin.h
-    src/core/mxconst.h
+#    src/core/mxconst.h
 )
 
 set(IMGUI_SQLITE_STB_POLY_LIB_SRC
@@ -468,7 +488,6 @@ elseif (APPLE)
   message("Apple Libraries Path")
   list(APPEND CMAKE_FRAMEWORK_PATH "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Mac")
   list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/fmod/lib/x64")
-
 elseif (UNIX)
   message("\nLinux Libraries Path")
   message("\tFor error in finding libraries, make sure that there are no missing symbolic links to the actual library name.")
@@ -476,6 +495,7 @@ elseif (UNIX)
   message("\tapt install freeglut3-dev")
   message("\tln -s libcurl.so.4 libcurl.so")
   message("\tln -s libssl.so.3 libssl.so\n")
+
 
   list(APPEND CMAKE_LIBRARY_PATH "/lib/x86_64-linux-gnu") ## v24.06.1  Mint/Ubuntu ub 22.04, mint 21.x
   list(APPEND CMAKE_LIBRARY_PATH "/usr/lib/x86_64-linux-gnu") ## v24.06.1  Mint/Ubuntu ub 22.04, mint 21.x
@@ -517,56 +537,44 @@ endif()
 #endfunction()
 
 
-#if (NOT APPLE)
-if (APPLE)
-  find_package(CURL REQUIRED) # Will find a default configuration
-  if(CURL_FOUND)
-    include_directories(${CURL_INCLUDE_DIRS})
-    message(STATUS "Found CURL: ${CURL_LIBRARIES}")
-    if(CURL_FOUND_WITH_SSL)
-      message(STATUS "CURL was found with SSL support.")
-    else()
-      message(WARNING "CURL was found without SSL support.")
-    endif()
+if (NOT APPLE)
+  if (WIN32)
+    message ("Windows - search for cURL libs")
+    ## find_package needs "package.cmake" file to be present, this is why we use the "find_library" function instead
+    find_library(OPENSSL_LIBRARY NAMES ssl crypto libssl.lib libcrypto.lib REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
+    find_library(CURL_LIBRARY NAMES curl libcurl.lib)  # cURL
   else()
-    message(FATAL_ERROR "CURL library not found!")
+    message ("Linux - search for cURL + OpenSSL libs")
+    ## find_package needs "package.cmake" file to be present, this is why we use the "find_library" function instead
+    find_library(OPENSSL_LIBRARY NAMES ssl crypto ) # HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
+    find_library(CURL_LIBRARY    NAMES curl    ) # cURL
+
+    #    find_library(OPENSSL_LIBRARY NAMES ssl    validator fn_filter_out_specific_folders ) # HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
+    #    find_library(OPENSSL_LIBRARY NAMES crypto validator fn_filter_out_specific_folders )
+    #    find_library(CURL_LIBRARY    NAMES curl   validator fn_filter_out_specific_folders ) # cURL
+
+    #    if(OS_NAME STREQUAL "Ubuntu" OR OS_NAME STREQUAL "Linuxmint")
+    #      if(OS_VERSION_ID MATCHES "^22\\." OR OS_VERSION_ID MATCHES "^21\\." )
+    #        message( "find_library: Ubuntu/Linuxmint version: ${OS_VERSION_ID}. Using older libs from v22.04 search path.")
+    #        find_library(OPENSSL_LIBRARY NAMES ssl crypto REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL-v22.04/openssl-3xx/lib)  #
+    #        find_library(CURL_LIBRARY NAMES curl REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/curl-v22.04/libs/x64/lin)  #
+    #      elseif(OS_VERSION_ID MATCHES "^24\\." OR OS_VERSION_ID MATCHES "^22\\.")
+    #        message(WARNING "find_library: Unsupported Ubuntu version: ${OS_VERSION_ID}. Using default curl search path.")
+    #        find_library(OPENSSL_LIBRARY NAMES ssl crypto REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
+    #        find_library(CURL_LIBRARY NAMES curl REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/lin)  #
+    #      else()
+    #        message(WARNING "find_library: Unsupported Ubuntu version: ${OS_VERSION_ID}. Using default curl search path.")
+    #        find_library(OPENSSL_LIBRARY NAMES ssl crypto REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
+    #        find_library(CURL_LIBRARY NAMES curl REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/lin)  #
+    #      endif()
+    #    else()
+    #      message(WARNING "find_library: Unsupported OS: ${OS_NAME}. Using default curl search path.")
+    #      find_library(OPENSSL_LIBRARY NAMES ssl crypto REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
+    #      find_library(CURL_LIBRARY NAMES curl REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/lin)  #
+    #    endif()
+
+
   endif()
-
-elseif (WIN32)
-  message ("Windows - search for cURL libs")
-  ## find_package needs "package.cmake" file to be present, this is why we use the "find_library" function instead
-  find_library(OPENSSL_LIBRARY NAMES ssl crypto libssl.lib libcrypto.lib REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-  find_library(CURL_LIBRARY NAMES curl libcurl.lib)  # cURL
-else ()
-  message ("Linux - search for cURL + OpenSSL libs")
-  ## find_package needs "package.cmake" file to be present, this is why we use the "find_library" function instead
-  find_library(OPENSSL_LIBRARY NAMES ssl crypto ) # HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-  find_library(CURL_LIBRARY    NAMES curl    ) # cURL
-
-  #    find_library(OPENSSL_LIBRARY NAMES ssl    validator fn_filter_out_specific_folders ) # HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-  #    find_library(OPENSSL_LIBRARY NAMES crypto validator fn_filter_out_specific_folders )
-  #    find_library(CURL_LIBRARY    NAMES curl   validator fn_filter_out_specific_folders ) # cURL
-
-  #    if(OS_NAME STREQUAL "Ubuntu" OR OS_NAME STREQUAL "Linuxmint")
-  #      if(OS_VERSION_ID MATCHES "^22\\." OR OS_VERSION_ID MATCHES "^21\\." )
-  #        message( "find_library: Ubuntu/Linuxmint version: ${OS_VERSION_ID}. Using older libs from v22.04 search path.")
-  #        find_library(OPENSSL_LIBRARY NAMES ssl crypto REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL-v22.04/openssl-3xx/lib)  #
-  #        find_library(CURL_LIBRARY NAMES curl REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/curl-v22.04/libs/x64/lin)  #
-  #      elseif(OS_VERSION_ID MATCHES "^24\\." OR OS_VERSION_ID MATCHES "^22\\.")
-  #        message(WARNING "find_library: Unsupported Ubuntu version: ${OS_VERSION_ID}. Using default curl search path.")
-  #        find_library(OPENSSL_LIBRARY NAMES ssl crypto REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-  #        find_library(CURL_LIBRARY NAMES curl REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/lin)  #
-  #      else()
-  #        message(WARNING "find_library: Unsupported Ubuntu version: ${OS_VERSION_ID}. Using default curl search path.")
-  #        find_library(OPENSSL_LIBRARY NAMES ssl crypto REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-  #        find_library(CURL_LIBRARY NAMES curl REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/lin)  #
-  #      endif()
-  #    else()
-  #      message(WARNING "find_library: Unsupported OS: ${OS_NAME}. Using default curl search path.")
-  #      find_library(OPENSSL_LIBRARY NAMES ssl crypto REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-  #      find_library(CURL_LIBRARY NAMES curl REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/lin)  #
-  #    endif()
-
 endif()
 
 ### Link X-Plane plugin system libraries. They are only provided for OS X and Windows.
@@ -575,7 +583,11 @@ if (WIN32 OR APPLE)
   target_link_libraries(${PROJECT_NAME} ${XPLM_LIBRARY})
 endif ()
 
-
+# Link library for dynamic loading of shared objects on UNIX systems.
+#if (UNIX)
+#    find_library(DL_LIBRARY dl)
+#    target_link_libraries(${PROJECT_NAME} ${DL_LIBRARY})
+#endif ()
 
 if (WIN32)
   # Unlike OS X and Linux we build standard libraries statically since X-Plane does not provide them.
@@ -597,14 +609,11 @@ elseif (APPLE)
   # conflict with other plugins, in particular ones with Lua interpreter
   # embedded.
   target_link_libraries(${PROJECT_NAME} "-v -exported_symbols_list ${CMAKE_SOURCE_DIR}/cmake_build/${PROJECT_NAME}.sym_mac")
-#  target_link_libraries(${PROJECT_NAME} -Wl,-rpath,./Resources/plugins/missionx/libs/64 -lcurl)
-  target_link_libraries(${PROJECT_NAME} -Wl,-rpath,./Resources/plugins/missionx/libs/64)
+  target_link_libraries(${PROJECT_NAME} -Wl,-rpath,./Resources/plugins/missionx/libs/64 -lcurl)  ## -lcurl MANDATORY for linking MacOS
   target_link_libraries(${PROJECT_NAME} "-Wno-c++11-narrowing")
-
-#  target_link_libraries(${CURL_LIBRARIES})
   target_link_libraries(${PROJECT_NAME} "-framework ApplicationServices") ## needed for imgui + clipboard (IMGUI_ENABLE_OSX_DEFAULT_CLIPBOARD_FUNCTIONS)
-  target_link_libraries(${PROJECT_NAME} "-framework Foundation") ##  Needed for OpenSSL in cURL
-  target_link_libraries(${PROJECT_NAME} "-framework Security") ## Needed for cURL
+  target_link_libraries(${PROJECT_NAME} "-framework Foundation") ##
+  target_link_libraries(${PROJECT_NAME} "-framework Security") ##
 
   target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
   target_link_libraries(${PROJECT_NAME} ${FMOD_LIBRARY})
@@ -648,10 +657,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES SUFFIX ".xpl")
 
 ############# DEBUG ##############
 message("PROJECT_NAME: " ${PROJECT_NAME})
-#if (UNIX)
+if (UNIX)
   message("OS_NAME:" ${OS_NAME})
   message("OS_VERSION_ID:" ${OS_VERSION_ID})
-#endif ()
+endif ()
 #message("CMAKE_COMMAND: " ${CMAKE_COMMAND})
 #message("CMAKE_BUILD_TYPE: " ${CMAKE_BUILD_TYPE}, "Local BUILD_TYPE_LOWERCASE: " ${BUILD_TYPE_LOWERCASE})
 message("CMAKE_LIBRARY_PATH: " ${CMAKE_LIBRARY_PATH} )
@@ -659,14 +668,9 @@ message("CMAKE_LIBRARY_PATH: " ${CMAKE_LIBRARY_PATH} )
 #message("CMAKE_CXX_STANDARD: " ${CMAKE_CXX_STANDARD})
 #message("CMAKE_SOURCE_DIR: " ${CMAKE_SOURCE_DIR})
 #message("OPENGL_LIBRARY:" ${OPENGL_LIBRARY})
-
 message("FMOD_LIBRARY:" ${FMOD_LIBRARY})
 message("CURL_LIBRARY:" ${CURL_LIBRARY})
 message("OPENSSL_LIBRARY:" ${OPENSSL_LIBRARY})
-if (APPLE)
-  message("MacOS CURL_LIBRARIES:" ${CURL_LIBRARIES})
-endif()
-
 #message("CMAKE_OSX_ARCHITECTURES:" ${CMAKE_OSX_ARCHITECTURES})
 #message("CMAKE_OSX_DEPLOYMENT_TARGET: " ${CMAKE_OSX_DEPLOYMENT_TARGET})
 #message("CMAKE_CXX_FLAGS_DEBUG: " ${CMAKE_CXX_FLAGS_DEBUG})
@@ -745,3 +749,4 @@ else () ## Win32
   #    )
 
 endif()
+
