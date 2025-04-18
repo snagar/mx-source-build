@@ -117,8 +117,6 @@ jobs:
           sysctl -n hw.physicalcpu
           echo -e "\nhw.logicalcpu:"
           sysctl -n hw.logicalcpu
-          echo -e "\nsysctl:"
-          sysctl
 
 
       - name: Configure CMake
