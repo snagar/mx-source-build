@@ -26,9 +26,9 @@ jobs:
           - os: ubuntu-22.04
             c_compiler: gcc
             cpp_compiler: g++
-            # - os: ubuntu-22.04
-            # c_compiler: clang
-            # cpp_compiler: clang++
+          - os: macos-13
+            c_compiler: clang
+            cpp_compiler: clang++
         exclude:
           - os: macos-13
             c_compiler: gcc
@@ -66,7 +66,7 @@ jobs:
           -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -S ${{ github.workspace }}
+          -S ${{ github.workspace }} -- -j2
 
 
       - name: Build
@@ -114,7 +114,7 @@ jobs:
           -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -S ${{ github.workspace }}
+          -S ${{ github.workspace }} 
 
 
       - name: Build
