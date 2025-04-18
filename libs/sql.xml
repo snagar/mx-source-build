@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- revison 1.1: Modified some NAV related queries. -->
+<!-- version 1.0: Base -->
+
+<!-- The "{}" or "{n}" are part of a c++ library string format. Similar to Python. We will replace it with values, instead of using bind variables, please do not replace them. -->
+<osm_sqls>
+  <query name="create_bounds"><![CDATA[create table if not exists bounds as select min (t1.lat) as min_lat, max(t1.lat) as max_lat, min(t1.lon) as min_lon, max(t1.lon) as max_lon from way_street_node_data t1 ]]></query>
+  <query name="get_way_ids_in_area"><![CDATA[select id, distance_nm from ( select distinct t2.id, mx_calc_distance( ?1, ?2, t1.lat, t1.lon, 3440) as distance_nm
+from way_street_node_data t1, way_tag_data t2 where t2.key_attrib = 'highway'
+and t2.val_attrib in('primary', 'secondary', 'tertiary', 'residential', 'service', 'living_street', 'track')
+and t1.id = t2.id and t1.lat between ?3 and ?4
+and t1.lon between ?5 and ?6 )
+where distance_nm between ?7 and ?8 ]]>
+											 </query>
+  <query name="get_way_tag_data_by_id"><![CDATA[select t2.id, t2.key_attrib, t2.val_attrib from way_tag_data t2 where t2.id = ?1 ]]></query>
+  <query name="get_segments_in_way_id"><![CDATA[select t1.lat, t1.lon from way_street_node_data t1 where t1.id = ?1 order by t1.node_id]]></query>
+  <query name="get_tested_bounds"><![CDATA[select min_lat, max_lat, min_lon, max_lon,
+case when min_lat <= ?1 then 1 else 0 end as min_lat_test,
+case when max_lat >= ?2 then 1 else 0 end as max_lat_test,
+case when min_lon <= ?3 then 1 else 0 end as min_lon_test,
+case when max_lon >= ?4 then 1 else 0 end as max_lon_test from bounds limit 1]]>
+  </query>
+  <query name="get_designer_way_ids_part1"><![CDATA[
+select id, distance_nm from
+(
+  select distinct wtd.id, mx_calc_distance( ?1, ?2, wsnd.lat, wsnd.lon, 3440) as distance_nm
+  from way_street_node_data wsnd, way_tag_data wtd
+  where 1 = 1
+  and wsnd.id = wtd.id
+  and wsnd.lat between ?3 and ?4
+  and wsnd.lon between ?5 and ?6
+  ]]></query>
+  <query name="get_designer_way_ids_part2"><![CDATA[  ) where distance_nm between ?7 and ?8 ]]></query>
+</osm_sqls>
+
+<oilrig_sqls>
+  <query name="find_oilrig"><![CDATA[with oilrigs_vu as (
+select oilRigVu.icao_id, oilRigVu.icao, oilRigVu.ap_name, oilRigVu.ap_lat, oilRigVu.ap_lon, trunc(oilRigVu.ap_lat) as ap_lat_trunc, trunc(oilRigVu.ap_lon) as ap_lon_trunc
+from airports_vu oilRigVu
+where oilRigVu.is_oilrig > 0
+),
+airports_with_helipads_vu as (
+select av.icao_id, av.icao, av.ap_name, av.ap_lat, av.ap_lon, trunc(av.ap_lat) as ap_lat_trunc, trunc(av.ap_lon) as ap_lon_trunc
+from airports_vu av
+where av.is_oilrig = 0
+-- and av.ramp_helos + av.helipads > 0
+)
+select  mx_calc_distance(ov.ap_lat, ov.ap_lon, awh.ap_lat , awh.ap_lon, 3440) as distance
+        , ov.icao_id as oilrig_icao_id, ov.icao as oilrig_icao, ov.ap_name as oilrig_name, ov.ap_lat as oilrig_lat, ov.ap_lon as oilrig_lon
+        , awh.icao_id as start_icao_id, awh.icao as start_icao, awh.ap_name as start_ap_name, awh.ap_lat as start_lat, awh.ap_lon as start_lon
+from oilrigs_vu ov, airports_with_helipads_vu awh
+where 1 = 1
+and ov.icao_id != awh.icao_id
+and ( awh.ap_lat_trunc between ov.ap_lat_trunc - 2 and ov.ap_lat_trunc + 2
+      and awh.ap_lon_trunc between ov.ap_lon_trunc - 2 and ov.ap_lon_trunc + 2 )
+order by RANDOM() limit 1
+]]></query>
+
+</oilrig_sqls>
+
+<navdata_sqls>
+<!-- The "{}" is part of a c++ library string format. Similar to Python. We will replace it with values, instead of using bind variables, please do not replace them. -->
+  <query name="fetch_nav_data_step1"><![CDATA[select t1.icao_id
+, FORMAT("%s (%s), coord: %3.4f/%3.4f (%ift) ", t1.ap_name, t1.icao, ap_lat, ap_lon, ap_elev) as data
+, mx_calc_distance(t1.ap_lat, t1.ap_lon, {},  {}, 3440) as distance, t1.ap_lat, t1.ap_lon
+from xp_airports t1
+where 1 = 1
+and icao = '{}' order by distance
+]]></query>
+
+  <query name="fetch_rw_info_step2"><![CDATA[select t2.rw_no_1 || '/' || t2.rw_no_2 as rw_key
+, FORMAT ("%-*s Length: %d meters", 10, t2.rw_no_1 || '/' || t2.rw_no_2, t2.rw_length_mt) as rw_data
+, mx_calc_distance(t2.rw_no_1_lat, t2.rw_no_1_lon, {}, {}, 3440) as distance
+from xp_rw t2
+where 1 = 1
+and icao_id = '{}'
+]]></query>
+
+  <query name="fetch_vor_ndb_dme_info_step3"><![CDATA[WITH vor_dme AS (
+  SELECT v1.ident, v1.loc_data, distance, 'VOR/DME' AS loc_type, v1.frq_mhz, identNameFrq, prevIdentNameFrq
+    FROM (
+           SELECT t3.ident,
+                  FORMAT("%.2f (%i,%s) %s", CASE WHEN length(t3.frq_mhz) = 5 THEN t3.frq_mhz / 100.0 ELSE t3.frq_mhz END
+                                          , mx_bearing({1}, {2}, t3.lat, t3.lon)
+                                          , 'VOR/DME'/* constant */
+                                          , t3.name) AS loc_data,
+                  mx_calc_distance(t3.lat, t3.lon, {3}, {4}, 3440) AS distance,
+                  t3.loc_type,
+                  t3.frq_mhz,
+                  IFNULL( (t3.ident || t3.name || t3.frq_mhz), t3.ident) AS identNameFrq,
+                  lag(IFNULL( (t3.ident || t3.name || t3.frq_mhz), t3.ident)) OVER (ORDER BY t3.ident, t3.frq_mhz, t3.loc_type) AS prevIdentNameFrq,
+                  lag(t3.loc_type) OVER (ORDER BY ident, frq_mhz, loc_type) AS prev_type
+             FROM xp_loc t3
+            WHERE distance <= 20
+            and t3.loc_type in ('VOR', 'DME')
+            ORDER BY distance, ident, frq_mhz, name
+         )
+         v1
+   WHERE 1 = 1
+     AND v1.identNameFrq = v1.prevIdentNameFrq
+     AND ( (v1.loc_type = 'VOR' AND v1.prev_type = 'DME') OR
+           (v1.loc_type = 'DME' AND v1.prev_type = 'VOR') )
+)
+SELECT v1.ident, v1.loc_data, v1.distance
+  FROM vor_dme v1
+UNION ALL
+SELECT *
+FROM (
+    SELECT t1.ident
+           , FORMAT("%.2f (%i,%s) %s", CASE WHEN length(t1.frq_mhz) = 5 THEN t1.frq_mhz / 100.0 ELSE t1.frq_mhz END, mx_bearing({5}, {6}, t1.lat, t1.lon), t1.loc_type, t1.name) AS loc_data
+           , mx_calc_distance(t1.lat, t1.lon, {7}, {8}, 3440) as distance
+      FROM xp_loc t1
+     WHERE mx_calc_distance (t1.lat, t1.lon, {9}, {10}, 3440) <= 20
+       AND t1.loc_type IN ('VOR', 'DME')
+       AND IFNULL( (t1.ident || t1.name || t1.frq_mhz), t1.ident) not in (select identNameFrq
+                                                                            from vor_dme)
+    UNION ALL
+    SELECT t1.ident,
+          FORMAT("%i (%i,%s) %s", t1.frq_mhz
+                                , mx_bearing({11}, {12}, t1.lat, t1.lon)
+                                , t1.loc_type
+                                , t1.name) AS loc_data
+          , mx_calc_distance(t1.lat, t1.lon, {13}, {14}, 3440) as distance
+     FROM xp_loc t1
+    WHERE mx_calc_distance(t1.lat, t1.lon, {15}, {16}, 3440) <= 20
+      AND t1.loc_type = 'NDB'
+ORDER BY distance
+)
+]]></query>
+
+  <query name="fetch_loc_info_step4"><![CDATA[select loc_data, distance, loc_type_code, loc_rw
+from (
+select FORMAT ("%-*s , freq: %5.3f, Type: %s, Region: %-*s, lat/lon: %3.0f/%3.0f ", 4, t3.loc_rw, t3.frq_mhz*0.01, t3.loc_type, 3, icao_region_code, t3.lat, t3.lon ) as loc_data
+,  mx_calc_distance(t3.lat, t3.lon, {1}, {2}, 3440) as distance
+, t3.loc_rw
+, 1 as loc_type_code
+from xp_loc t3
+where icao = '{3}'
+and ( t3.loc_type like ('ILS%' ) or t3.loc_type like ('LOC%' ) )
+) v1
+UNION ALL
+select loc_data, distance, loc_type_code, loc_rw
+from (
+select FORMAT ("%-*s , freq: %i, Type: %s, Region: %-*s, lat/lon: %3.0f/%3.0f ", 4, t3.loc_rw, t3.frq_mhz, t3.loc_type, 3, icao_region_code, t3.lat, t3.lon ) as loc_data
+,  mx_calc_distance(t3.lat, t3.lon, {4}, {5}, 3440) as distance
+, t3.loc_rw
+, 2 as loc_type_code
+from xp_loc t3
+where icao = '{6}'
+and t3.loc_type not like ('ILS%' )
+and t3.loc_type not like ('LOC%' )
+and t3.loc_type not in ('DME', 'VOR', 'NDB' )
+)
+order by loc_type_code, loc_rw
+]]></query>
+
+  <query name="fetch_ap_frq_step5"><![CDATA[select FORMAT ("%-*.3f %s", 10, xaf.frq/1000.0, xaf.frq_desc ) as frq_data
+from xp_ap_frq xaf
+where icao_id = {}
+]]></query>
+
+</navdata_sqls>
+
+<ils_sqls>
+  <!-- This is the first part of the ILS search query, we add the filter inside the plugin to this statement -->
+  <!-- The "{}" is part of a c++ library string format. Similar to Python. We will replace it with values, instead of using bind variables, please do not replace them. -->
+  <query name="base_ils_search_query"><![CDATA[select icao, round(distance_nm) as distance_nm, loc_rw, loc_type, frq_mhz, loc_bearing, rw_length_mt, rw_width, ap_elev, ap_name, surf_type_text, bearing_from_to_icao
+from (
+select xp_loc.icao
+      , mx_calc_distance ({1}, {2}, xp_loc.lat, xp_loc.lon, 3440) as distance_nm
+      , xp_loc.loc_rw, xp_loc.loc_type, xp_loc.frq_mhz, xp_loc.loc_bearing, xp_rw.rw_length_mt, xp_rw.rw_width, xa.ap_elev, xa.ap_name
+      , case xp_rw.rw_surf when 1 then 'Asphalt' when 2 then 'Concrete' when 3 then 'Turf or grass' when 4 then 'Dirt' when 5 then 'Gravel' when 12 then 'Dry lakebed' when 13 then 'Water runways' when 14 then 'Snow or ice' when 15 then 'Transparent' else 'other' end as surf_type_text
+      , mx_bearing({3}, {4}, xp_loc.lat, xp_loc.lon) as bearing_from_to_icao
+from xp_loc, xp_rw, xp_airports xa
+where xp_rw.icao = xp_loc.icao
+and (xp_rw.rw_no_1 = xp_loc.loc_rw or xp_rw.rw_no_2 = xp_loc.loc_rw)
+and xa.icao = xp_rw.icao
+)
+where 1 = 1
+]]></query>
+
+</ils_sqls>

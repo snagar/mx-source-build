@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="ASCII"?>
+<cargo>
+  <!-- The categories is a reference, for now, and it is not used by the plugin, yet. -->
+  <cargo_categories>Generic Cargo,Private Jets Cargo,GA Cargo,Farming Cargo,Isolated Areas</cargo_categories>
+
+
+  <item_blueprints type="Generic Cargo">
+    <item name="Small Bag"      barcode="small_bag1"       quantity="10"   weight_kg="6"   image_file_name="img/small_bagpack_icon.jpg"  />
+    <item name="Large Bag"      barcode="large_bag1"       quantity="8"    weight_kg="16"  image_file_name="img/large_luggage_1.jpg"  />
+    <item name="Small Luggage"  barcode="small_luggage1"   quantity="10"   weight_kg="7"   image_file_name="img/small_luggage_1.jpg"  />
+    <item name="Small Luggage"  barcode="small_luggage2"   quantity="10"   weight_kg="7"   image_file_name="img/small_luggage_2.jpg"  />
+    <item name="Small Luggage"  barcode="small_luggage3"   quantity="10"   weight_kg="7"   image_file_name="img/small_luggage_3.jpg"  />
+    <item name="Medium Luggage" barcode="med_luggage1"     quantity="12"   weight_kg="14"  image_file_name="img/medium_luggage_1.jpg"  />
+    <item name="Medium Luggage" barcode="med_luggage2"     quantity="12"   weight_kg="13"  image_file_name="img/medium_luggage_2.jpg"  />
+    <item name="Medium Luggage" barcode="med_luggage3"     quantity="12"   weight_kg="14"  image_file_name="img/medium_luggage_3.jpg"  />
+    <item name="Medium Luggage" barcode="med_luggage4"     quantity="12"   weight_kg="15"  image_file_name="img/medium_luggage_4.jpg"  />
+    <item name="Water Bottles"  barcode="water_bottles3"   quantity="8"    weight_kg="8"   image_file_name="img/pack_of_water_bottles_green_2.jpg"  />
+    <item name="Water Bottles"  barcode="water_bottles4"   quantity="3"    weight_kg="12"  image_file_name="img/pack_of_water_bottles_green_3.jpg"  />
+    <item name="Passenger"      barcode="passenger01"      quantity="3"    weight_kg="55"  image_file_name="img/passengers_03.jpg"  />
+    <item name="Passenger"      barcode="passenger02"      quantity="3"    weight_kg="70"  image_file_name="img/passengers_02.jpg"  />
+    <item name="Passenger"      barcode="passenger03"      quantity="2"    weight_kg="95"  image_file_name="img/passengers_01.jpg"  />
+  </item_blueprints>
+
+  <item_blueprints type="Private Jets Cargo">
+    <item name="Small Luggage"                barcode="small_luggage1"                 quantity="10"   weight_kg="7"    image_file_name="img/small_luggage_1.jpg"  />
+    <item name="Small Bag"                    barcode="small_bag1"                     quantity="10"   weight_kg="6"    image_file_name="img/small_bagpack_icon.jpg"  />
+    <item name="Passenger"                    barcode="passenger01"                    quantity="3"    weight_kg="55"   image_file_name="img/passengers_03.jpg"  />
+    <item name="Passenger"                    barcode="passenger02"                    quantity="3"    weight_kg="70"   image_file_name="img/passengers_02.jpg"  />
+    <item name="Passenger"                    barcode="passenger03"                    quantity="2"    weight_kg="95"   image_file_name="img/passengers_01.jpg"  />
+    <item name="Medium Luggage"               barcode="med_luggage3"                   quantity="12"   weight_kg="14"   image_file_name="img/medium_luggage_3.jpg"  />
+    <item name="Medium Luggage"               barcode="med_luggage4"                   quantity="12"   weight_kg="15"   image_file_name="img/medium_luggage_4.jpg"  />
+    <item name="drink cans pv"                barcode="drink_cans_pv_01"               quantity="4"    weight_kg="3"    image_file_name="img/drink_cans_pv_01.jpg" />
+    <item name="drink cans pv"                barcode="drink_cans_pv_02"               quantity="3"    weight_kg="2"    image_file_name="img/drink_cans_pv_02.jpg" />
+    <item name="drink cans pv"                barcode="drink_cans_pv_03"               quantity="5"    weight_kg="2"    image_file_name="img/drink_cans_pv_03.jpg" />
+    <item name="drink cans pv"                barcode="drink_cans_pv_04"               quantity="4"    weight_kg="6"    image_file_name="img/drink_cans_pv_04.jpg" />
+    <item name="drink cans pv"                barcode="drink_cans_pv_05.1"             quantity="4"    weight_kg="6"    image_file_name="img/drink_cans_pv_05.1.jpg" />
+    <item name="drink cans pv"                barcode="drink_cans_pv_05.2"             quantity="4"    weight_kg="6"    image_file_name="img/drink_cans_pv_05.2.jpg" />
+    <item name="drink cans pv"                barcode="drink_cans_pv_06"               quantity="4"    weight_kg="8"    image_file_name="img/drink_cans_pv_06.jpg" />
+    <item name="drink cans pv"                barcode="drink_cans_pv_07"               quantity="10"   weight_kg="6"    image_file_name="img/drink_cans_pv_07.jpg" />
+    <item name="flight attendant woman"       barcode="flight_attendant_woman_01"      quantity="3"    weight_kg="56"   image_file_name="img/flight_attendant_woman_01.jpg" />
+    <item name="flight attendant woman"       barcode="flight_attendant_woman_02"      quantity="3"    weight_kg="50"   image_file_name="img/flight_attendant_woman_02.jpg" />
+    <item name="flight attendant woman"       barcode="flight_attendant_woman_03"      quantity="3"    weight_kg="54"   image_file_name="img/flight_attendant_woman_03.jpg" />
+    <item name="flight attendant woman man"   barcode="flight_attendant_woman_man_01"  quantity="1"    weight_kg="140"  image_file_name="img/flight_attendant_woman_man_01.jpg" />
+    <item name="flight attendant woman man"   barcode="flight_attendant_woman_man_02"  quantity="1"    weight_kg="140"  image_file_name="img/flight_attendant_woman_man_02.jpg" />
+    <item name="Large Bag"                    barcode="large_bag1"                     quantity="8"    weight_kg="16"   image_file_name="img/large_luggage_1.jpg"  />
+    <item name="private jet catering"         barcode="private_jet_catering_01"        quantity="3"    weight_kg="16"   image_file_name="img/private_jet_catering_01.jpg" />
+    <item name="private jet catering"         barcode="private_jet_catering_02"        quantity="3"    weight_kg="26"   image_file_name="img/private_jet_catering_02.jpg" />
+    <item name="private jet catering"         barcode="private_jet_catering_03"        quantity="3"    weight_kg="16"   image_file_name="img/private_jet_catering_03.jpg" />
+    <item name="Private Jet Catering"         barcode="Private_Jet_Catering_04"        quantity="3"    weight_kg="20"   image_file_name="img/Private_Jet_Catering_04.jpg" />
+    <item name="Private Jet Catering"         barcode="Private_Jet_Catering_05"        quantity="2"    weight_kg="26"   image_file_name="img/Private_Jet_Catering_05.jpg" />
+    <item name="private jet snacks"           barcode="private_jet_snacks_01"          quantity="10"   weight_kg="5"    image_file_name="img/private_jet_snacks_01.jpg" />
+    <item name="Medium Luggage"               barcode="med_luggage1"                   quantity="12"   weight_kg="14"   image_file_name="img/medium_luggage_1.jpg"  />
+    <item name="Medium Luggage"               barcode="med_luggage2"                   quantity="12"   weight_kg="13"   image_file_name="img/medium_luggage_2.jpg"  />
+  </item_blueprints>
+
+
+  <item_blueprints type="GA Cargo">
+    <item name="Small Bag"      barcode="small_bag1"       quantity="10"   weight_kg="6"   image_file_name="img/small_bagpack_icon.jpg"  />
+    <item name="Large Bag"      barcode="large_bag1"       quantity="8"    weight_kg="16"  image_file_name="img/large_luggage_1.jpg"  />
+    <item name="Small Luggage"  barcode="small_luggage1"   quantity="10"   weight_kg="7"   image_file_name="img/small_luggage_1.jpg"  />
+    <item name="Small Luggage"  barcode="small_luggage2"   quantity="10"   weight_kg="7"   image_file_name="img/small_luggage_2.jpg"  />
+    <item name="Small Luggage"  barcode="small_luggage3"   quantity="10"   weight_kg="7"   image_file_name="img/small_luggage_3.jpg"  />
+    <item name="Medium Luggage" barcode="med_luggage1"     quantity="12"   weight_kg="14"  image_file_name="img/medium_luggage_1.jpg"  />
+    <item name="Medium Luggage" barcode="med_luggage2"     quantity="12"   weight_kg="13"  image_file_name="img/medium_luggage_2.jpg"  />
+    <item name="Medium Luggage" barcode="med_luggage3"     quantity="12"   weight_kg="14"  image_file_name="img/medium_luggage_3.jpg"  />
+    <item name="Medium Luggage" barcode="med_luggage4"     quantity="12"   weight_kg="15"  image_file_name="img/medium_luggage_4.jpg"  />
+    <item name="Large Luggage"  barcode="large_luggage1"   quantity="6"    weight_kg="22"  image_file_name="img/large_luggage_3.jpg"  />
+    <item name="Camping Tent"   barcode="camp_tent1"       quantity="3"    weight_kg="25"  image_file_name="img/camping_tent_1.jpg"  />
+    <item name="Camping Tent"   barcode="camp_tent2"       quantity="3"    weight_kg="25"  image_file_name="img/camping_tent_2.jpg"  />
+    <item name="Camping Tent"   barcode="camp_tent3"       quantity="3"    weight_kg="25"  image_file_name="img/camping_tent_3.jpg"  />
+    <item name="Camping Tent"   barcode="camp_tent4"       quantity="3"    weight_kg="25"  image_file_name="img/camping_tent_4.jpg"  />
+    <item name="Camping Tent"   barcode="camp_tent5"       quantity="3"    weight_kg="25"  image_file_name="img/camping_tent_5.jpg"  />
+    <item name="Camping Tent"   barcode="camp_tent6"       quantity="3"    weight_kg="25"  image_file_name="img/camping_tent_6.jpg"  />
+    <item name="Camping Tent"   barcode="camp_tent7"       quantity="3"    weight_kg="25"  image_file_name="img/camping_tent_7.jpg"  />
+    <item name="Bicycle"        barcode="bike1"            quantity="4"    weight_kg="14"  image_file_name="img/mountain_bikes01.jpg"  />
+    <item name="Water Bottles"  barcode="water_bottles1"   quantity="5"    weight_kg="6"   image_file_name="img/pack_of_water_bottles_01.jpg"  />
+    <item name="Water Bottles"  barcode="water_bottles2"   quantity="7"    weight_kg="9"   image_file_name="img/pack_of_water_bottles_green_1.jpg"  />
+    <item name="Water Bottles"  barcode="water_bottles3"   quantity="8"    weight_kg="8"   image_file_name="img/pack_of_water_bottles_green_2.jpg"  />
+    <item name="Water Bottles"  barcode="water_bottles4"   quantity="3"    weight_kg="12"  image_file_name="img/pack_of_water_bottles_green_3.jpg"  />
+    <item name="Beverage"       barcode="beverage1"        quantity="15"   weight_kg="0.3" image_file_name="img/beverage01.jpg"  />
+    <item name="Beverage"       barcode="beverage2"        quantity="15"   weight_kg="0.3" image_file_name="img/beverage02.jpg"  />
+    <item name="Passenger"      barcode="passenger01"      quantity="12"   weight_kg="45"  image_file_name="img/passengers_03.jpg"  />
+    <item name="Passenger"      barcode="passenger02"      quantity="25"   weight_kg="57"  image_file_name="img/passengers_02.jpg"  />
+    <item name="Passenger"      barcode="passenger03"      quantity="10"   weight_kg="75"  image_file_name="img/passengers_01.jpg"  />
+  </item_blueprints>
+
+  <item_blueprints type="Farming Cargo" >
+    <item name="Small Bag"  				      barcode="small_bag1"  		    quantity="10"	  weight_kg="6"		  image_file_name="img/small_bagpack_icon.jpg" />
+    <item name="Large Bag"                barcode="large_bag1"          quantity="8"    weight_kg="16"  	image_file_name="img/large_luggage_1.jpg"  />
+    <item name="Water Bottles"            barcode="water_bottles1"      quantity="5"    weight_kg="6"   	image_file_name="img/pack_of_water_bottles_01.jpg"  />
+    <item name="Water Bottles"            barcode="water_bottles2"      quantity="7"    weight_kg="9"   	image_file_name="img/pack_of_water_bottles_green_1.jpg"  />
+    <item name="Water Bottles"            barcode="water_bottles3"      quantity="8"    weight_kg="8"   	image_file_name="img/pack_of_water_bottles_green_2.jpg"  />
+    <item name="Water Bottles"            barcode="water_bottles4"      quantity="3"    weight_kg="12"  	image_file_name="img/pack_of_water_bottles_green_3.jpg"  />
+    <item name="Fertilizer Sack"  		    barcode="fert_sack1"    	    quantity="20"   weight_kg="15"  	image_file_name="img/fertiliser_sack01.jpg" />
+    <item name="Manure Sack"  			      barcode="manure_sack1"        quantity="20"   weight_kg="15"  	image_file_name="img/manure_sack_01.jpg" />
+    <item name="Manure Sack"  			      barcode="manure_sack2"        quantity="20"   weight_kg="15"  	image_file_name="img/manure_sack_02.jpg" />
+    <item name="Manure Sack"  			      barcode="manure_sack3"        quantity="20"   weight_kg="15"  	image_file_name="img/manure_sack_03.jpg" />
+    <item name="Dog Food"  				        barcode="dog_food1"    		    quantity="8"    weight_kg="10"  	image_file_name="img/dog_food_01.jpg" />
+    <item name="Propane Tank Refill"  	  barcode="propane1"    		    quantity="4"    weight_kg="20"  	image_file_name="img/propane_tank_refill_1.jpg" />
+    <item name="Propane Tank Refill"  	  barcode="propane2"    		    quantity="4"    weight_kg="20"  	image_file_name="img/propane_tank_refill_3.jpg" />
+    <item name="Propane Tank Refill"  	  barcode="propane3"    		    quantity="4"    weight_kg="20"  	image_file_name="img/propane_tank_refill_2.jpg" />
+    <item name="Air Compressor"  			    barcode="air_comp1"    		    quantity="5"    weight_kg="10"  	image_file_name="img/air_compressor_01.jpg" />
+    <item name="Air Compressor"  			    barcode="air_comp1"    		    quantity="5"    weight_kg="10"  	image_file_name="img/air_compressor_02.jpg" />
+    <item name="Weld"  					          barcode="weld1"    			      quantity="14"   weight_kg="25"  	image_file_name="img/hand_weld.jpg" />
+    <item name="Weld Tools"  				      barcode="weld_tools1"    	    quantity="14"   weight_kg="5"  	  image_file_name="img/weld_tools_01.jpg" />
+    <item name="Weld Tools"  				      barcode="weld_tools2"    	    quantity="14"   weight_kg="5"  	  image_file_name="img/weld_tools_02.jpg" />
+    <item name="Soldering Tools"  		    barcode="sold_tools1"    	    quantity="25"   weight_kg="4"  	  image_file_name="img/soldering_tools_01.jpg" />
+    <item name="Fence Wire"  				      barcode="fence_wire1"    	    quantity="10"   weight_kg="25"  	image_file_name="img/fence_wire_01.jpg" />
+    <item name="Fence Wire"  				      barcode="fence_wire2"    	    quantity="10"   weight_kg="25"  	image_file_name="img/fence_wire_02.jpg" />
+    <item name="Fence Wire"  				      barcode="fence_wire3"    	    quantity="10"   weight_kg="25"  	image_file_name="img/fence_wire_03.jpg" />
+    <item name="Fence Wire"  				      barcode="fence_wire4"    	    quantity="10"   weight_kg="25"  	image_file_name="img/fence_wire_04_pvc_green.jpg" />
+    <item name="Fence Wire"  				      barcode="fence_wire5"    	    quantity="10"   weight_kg="25"  	image_file_name="img/fence_wire_04_electric.jpg" />
+    <item name="Fence Wire"  				      barcode="fence_wire6"    	    quantity="10"   weight_kg="25"  	image_file_name="img/fence_wire_05.jpg" />
+    <item name="Fence Wire"  				      barcode="fence_wire7"    	    quantity="10"   weight_kg="25"  	image_file_name="img/fence_wire_11_concertina_razor_wire.jpg" />
+    <item name="Fence Wire"  				      barcode="fence_wire8"    	    quantity="10"   weight_kg="25"  	image_file_name="img/fence_wire_heavy_galv_murray.jpg" />
+    <item name="Horse and Field Fencing"  barcode="horse_field_fence1"  quantity="12"   weight_kg="35"  	image_file_name="img/horse_cattle_fencing_01.jpg" />
+    <item name="Horse and Field Fencing"  barcode="horse_field_fence2"  quantity="12"   weight_kg="35"  	image_file_name="img/horse_cattle_fencing_04.jpg" />
+    <item name="Horse and Field Fencing"  barcode="horse_field_fence3"  quantity="12"   weight_kg="35"  	image_file_name="img/horse_cattle_fencing_05.jpg" />
+    <item name="Horse and Field Fencing"  barcode="horse_field_fence4"  quantity="12"   weight_kg="35"  	image_file_name="img/horse_cattle_fencing_06.jpg" />
+    <item name="Horse and Field Fencing"  barcode="horse_field_fence5"  quantity="12"   weight_kg="35"  	image_file_name="img/horse_cattle_fencing_07.jpg" />
+    <item name="Chicken Wire and Netting" barcode="chicken_net_wire1"   quantity="25"   weight_kg="15"  	image_file_name="img/chicken_wire_and_netting_01.jpg" />
+    <item name="Chicken Wire and Netting" barcode="chicken_net_wire2"   quantity="25"   weight_kg="15"  	image_file_name="img/chicken_wire_and_netting_02.jpg" />
+    <item name="Chicken Wire and Netting" barcode="chicken_net_wire3"   quantity="25"   weight_kg="15"  	image_file_name="img/chicken_wire_and_netting_03.jpg" />
+    <item name="Chicken Wire and Netting" barcode="chicken_net_wire4"   quantity="25"   weight_kg="15"  	image_file_name="img/chicken_wire_and_netting_04.jpg" />
+    <item name="Hardware Cloth"  			    barcode="hw_cloth1"    		    quantity="40"   weight_kg="8"  	  image_file_name="img/fence_wire_06_hardware_cloth.jpg" />
+    <item name="Barbed Wire"  			      barcode="barbed_wire1"    	  quantity="23"   weight_kg="15"  	image_file_name="img/fence_wire_07_barbed_wire.jpg" />
+    <item name="Barbed Wire"  			      barcode="barbed_wire2"    	  quantity="23"   weight_kg="15"  	image_file_name="img/fence_wire_08_barbed_wire.jpg" />
+    <item name="Barbed Wire"  			      barcode="barbed_wire3"    	  quantity="23"   weight_kg="15"  	image_file_name="img/fence_wire_09_barbed_wire.jpg" />
+    <item name="Barbed Wire"  			      barcode="barbed_wire4"    	  quantity="23"   weight_kg="15"  	image_file_name="img/fence_wire_10_barbed_wire.jpg" />
+    <item name="Garden Fencing"  			    barcode="garden_fence1"    	  quantity="17"   weight_kg="20"  	image_file_name="img/garden_fencing_01.jpg" />
+    <item name="Garden Fencing"  			    barcode="garden_fence2"    	  quantity="17"   weight_kg="20"  	image_file_name="img/garden_fencing_02.jpg" />
+    <item name="Garden Fencing"  			    barcode="garden_fence3"    	  quantity="17"   weight_kg="20"  	image_file_name="img/garden_fencing_09.jpg" />
+    <item name="Garden Fencing"  			    barcode="garden_fence4"    	  quantity="17"   weight_kg="20"  	image_file_name="img/garden_fencing_04.jpg" />
+    <item name="Garden Fencing"  			    barcode="garden_fence5"    	  quantity="17"   weight_kg="20"  	image_file_name="img/garden_fencing_10.jpg" />
+    <item name="Garden Fencing"  			    barcode="garden_fence6"    	  quantity="17"   weight_kg="20"  	image_file_name="img/garden_fencing_06.jpg" />
+    <item name="Garden Fencing"  			    barcode="garden_fence7"    	  quantity="17"   weight_kg="20"  	image_file_name="img/garden_fencing_07.jpg" />
+    <item name="Garden Fencing"  			    barcode="garden_fence8"    	  quantity="17"   weight_kg="20"  	image_file_name="img/garden_fencing_08.jpg" />
+    <item name="Horse Feed"  				      barcode="horse_feed1"    	    quantity="35"   weight_kg="5"  	  image_file_name="img/horse_feed_01.jpg" />
+    <item name="Horse Feed"  				      barcode="horse_feed2"    	    quantity="35"   weight_kg="5"  	  image_file_name="img/horse_feed_02.jpg" />
+    <item name="Horse Feed"  				      barcode="horse_feed3"    	    quantity="35"   weight_kg="5"  	  image_file_name="img/horse_feed_03.jpg" />
+    <item name="Horse Feed"  				      barcode="horse_feed4"    	    quantity="35"   weight_kg="5"  	  image_file_name="img/horse_feed_04.jpg" />
+    <item name="Horse Treat"  			      barcode="horse_treat1"    	  quantity="11"   weight_kg="6"  	  image_file_name="img/horse_treats_01.jpg" />
+    <item name="Horse Treat"  			      barcode="horse_treat2"    	  quantity="11"   weight_kg="6"  	  image_file_name="img/horse_treats_02.jpg" />
+    <item name="Horse Treat"  			      barcode="horse_treat3"    	  quantity="11"   weight_kg="6"  	  image_file_name="img/horse_treats_03.jpg" />
+    <item name="Horse Treat"  			      barcode="horse_treat4"    	  quantity="11"   weight_kg="6"  	  image_file_name="img/horse_treats_04.jpg" />
+    <item name="Forage"  					        barcode="forage1"    		      quantity="44"   weight_kg="5"  	  image_file_name="img/forage_02_horses.jpg" />
+    <item name="Forage"  					        barcode="forage2"    		      quantity="44"   weight_kg="5"  	  image_file_name="img/forage_03_horses.jpg" />
+    <item name="Forage"  					        barcode="forage3"    		      quantity="44"   weight_kg="5"  	  image_file_name="img/forage_04_horses.jpg" />
+    <item name="Saddle"  					        barcode="saddle1"    		      quantity="4"    weight_kg="8"  	  image_file_name="img/saddle_01.jpg" />
+    <item name="Saddle"  					        barcode="saddle2"    		      quantity="4"    weight_kg="8"  	  image_file_name="img/saddle_02.jpg" />
+    <item name="Saddle"  					        barcode="saddle3"    		      quantity="4"    weight_kg="8"  	  image_file_name="img/saddle_03.jpg" />
+    <item name="Saddle"  					        barcode="saddle4"    		      quantity="4"    weight_kg="8"  	  image_file_name="img/saddle_04.jpg" />
+    <item name="Paint"  					        barcode="paint1"    		      quantity="23"   weight_kg="15"  	image_file_name="img/paint_01.jpg" />
+    <item name="Paint"  					        barcode="paint2"    		      quantity="11"   weight_kg="35"  	image_file_name="img/paint_02.jpg" />
+    <item name="Paint"  					        barcode="paint3"    		      quantity="5"    weight_kg="120" 	image_file_name="img/paint_03.jpg" />
+    <item name="Paint"  					        barcode="paint4"    		      quantity="10"   weight_kg="25"  	image_file_name="img/paint_04.jpg" />
+    <item name="Paint"  					        barcode="paint6"    		      quantity="40"   weight_kg="10"  	image_file_name="img/paint_06.jpg" />
+    <item name="Paint"  					        barcode="paint7"    		      quantity="15"   weight_kg="20"  	image_file_name="img/paint_07.jpg" />
+    <item name="Paint"  					        barcode="paint8"    		      quantity="9"    weight_kg="45"  	image_file_name="img/paint_08.jpg" />
+    <item name="Paint"  					        barcode="paint9"    		      quantity="14"   weight_kg="25"  	image_file_name="img/paint_09.jpg" />
+    <item name="Paint"  					        barcode="paint10"    		      quantity="8"    weight_kg="45"  	image_file_name="img/paint_10.jpg" />
+    <item name="Paint"  					        barcode="paint11"    		      quantity="2"    weight_kg="150" 	image_file_name="img/paint_11.jpg" />
+    <item name="Clothes"  				        barcode="clothes_01"          quantity="48"   weight_kg="0.1" 	image_file_name="img/clothes_01.jpg" />
+    <item name="Clothes"  				        barcode="clothes_02"          quantity="48"   weight_kg="0.1" 	image_file_name="img/clothes_02.jpg" />
+    <item name="Clothes"  				        barcode="clothes_03"          quantity="48"   weight_kg="0.1" 	image_file_name="img/clothes_03.jpg" />
+    <item name="Clothes"  				        barcode="clothes_04"          quantity="48"   weight_kg="0.1" 	image_file_name="img/clothes_04.jpg" />
+    <item name="Passenger"      			    barcode="passenger01"         quantity="12"   weight_kg="45"  	image_file_name="img/passengers_03.jpg"  />
+    <item name="Passenger"      			    barcode="passenger02"         quantity="25"   weight_kg="57"  	image_file_name="img/passengers_02.jpg"  />
+    <item name="Passenger"      			    barcode="passenger03"         quantity="10"   weight_kg="75"  	image_file_name="img/passengers_01.jpg"  />
+  </item_blueprints>
+
+  <item_blueprints type="Isolated Areas">
+    <item name="Tire" 				        barcode="tire1"				      quantity="10"   weight_kg="10"  image_file_name="img/passengers_01.jpg" />
+    <item name="Water Bottles"        barcode="water_bottles1"    quantity="5"    weight_kg="6"   image_file_name="img/pack_of_water_bottles_01.jpg"  />
+    <item name="Water Bottles"        barcode="water_bottles2"    quantity="7"    weight_kg="9"   image_file_name="img/pack_of_water_bottles_green_1.jpg"  />
+    <item name="Water Bottles"        barcode="water_bottles3"    quantity="8"    weight_kg="8"   image_file_name="img/pack_of_water_bottles_green_2.jpg"  />
+    <item name="Water Bottles"        barcode="water_bottles4"    quantity="3"    weight_kg="12"  image_file_name="img/pack_of_water_bottles_green_3.jpg"  />
+    <item name="Fertilizer Sack"  	  barcode="fert_sack1"    	  quantity="20"   weight_kg="15"  image_file_name="img/fertiliser_sack01.jpg" />
+    <item name="Manure Sack"  		    barcode="manure_sack1"    	quantity="20"   weight_kg="15"  image_file_name="img/manure_sack_01.jpg" />
+    <item name="Manure Sack"  		    barcode="manure_sack2"    	quantity="20"   weight_kg="15"  image_file_name="img/manure_sack_02.jpg" />
+    <item name="Manure Sack"  		    barcode="manure_sack3"    	quantity="20"   weight_kg="15"  image_file_name="img/manure_sack_03.jpg" />
+    <item name="Propane Tank Refill"  barcode="propane1"    		  quantity="4"    weight_kg="20"  image_file_name="img/propane_tank_refill_1.jpg" />
+    <item name="Propane Tank Refill"  barcode="propane2"    		  quantity="4"    weight_kg="20"  image_file_name="img/propane_tank_refill_3.jpg" />
+    <item name="Propane Tank Refill"  barcode="propane3"    		  quantity="4"    weight_kg="20"  image_file_name="img/propane_tank_refill_2.jpg" />
+    <item name="Fence Wire"  			    barcode="fence_wire1"    	  quantity="10"   weight_kg="25"  image_file_name="img/fence_wire_01.jpg" />
+    <item name="Fence Wire"  			    barcode="fence_wire2"    	  quantity="10"   weight_kg="25"  image_file_name="img/fence_wire_02.jpg" />
+    <item name="Fence Wire"  			    barcode="fence_wire3"    	  quantity="10"   weight_kg="25"  image_file_name="img/fence_wire_03.jpg" />
+    <item name="Fence Wire"  			    barcode="fence_wire4"    	  quantity="10"   weight_kg="25"  image_file_name="img/fence_wire_04_pvc_green.jpg" />
+    <item name="Fence Wire"  			    barcode="fence_wire5"    	  quantity="10"   weight_kg="25"  image_file_name="img/fence_wire_04_electric.jpg" />
+    <item name="Fence Wire"  			    barcode="fence_wire6"    	  quantity="10"   weight_kg="25"  image_file_name="img/fence_wire_05.jpg" />
+    <item name="Fence Wire"  			    barcode="fence_wire7"    	  quantity="10"   weight_kg="25"  image_file_name="img/fence_wire_11_concertina_razor_wire.jpg" />
+    <item name="Fence Wire"  			    barcode="fence_wire8"    	  quantity="10"   weight_kg="25"  image_file_name="img/fence_wire_heavy_galv_murray.jpg" />
+    <item name="Paint"  				      barcode="paint1"    		    quantity="23"   weight_kg="15"  image_file_name="img/paint_01.jpg" />
+    <item name="Paint"  				      barcode="paint2"    		    quantity="11"   weight_kg="35"  image_file_name="img/paint_02.jpg" />
+    <item name="Paint"  				      barcode="paint3"    		    quantity="5"    weight_kg="120" image_file_name="img/paint_03.jpg" />
+    <item name="Paint"  				      barcode="paint4"    		    quantity="10"   weight_kg="25"  image_file_name="img/paint_04.jpg" />
+    <item name="Paint"  				      barcode="paint6"    		    quantity="40"   weight_kg="10"  image_file_name="img/paint_06.jpg" />
+    <item name="Paint"  				      barcode="paint7"    		    quantity="15"   weight_kg="20"  image_file_name="img/paint_07.jpg" />
+    <item name="Paint"  				      barcode="paint8"    		    quantity="9"    weight_kg="45"  image_file_name="img/paint_08.jpg" />
+    <item name="Paint"  				      barcode="paint9"    		    quantity="14"   weight_kg="25"  image_file_name="img/paint_09.jpg" />
+    <item name="Paint"  				      barcode="paint10"    		    quantity="8"    weight_kg="45"  image_file_name="img/paint_10.jpg" />
+    <item name="Paint"  				      barcode="paint11"    		    quantity="2"    weight_kg="150" image_file_name="img/paint_11.jpg" />
+    <item name="Barrel"  				      barcode="barrel01"    		  quantity="20"   weight_kg="30"  image_file_name="img/barrel01.jpg" />
+    <item name="Barrel"  				      barcode="barrel02"    		  quantity="10"   weight_kg="30"  image_file_name="img/barrel02.jpg" />
+    <item name="Barrel"  				      barcode="barrel03"    		  quantity="8"    weight_kg="40"  image_file_name="img/barrel03.jpg" />
+    <item name="Barrel"  				      barcode="barrel04"    		  quantity="15"   weight_kg="35"  image_file_name="img/barrel04.jpg" />
+    <item name="Barrel"  				      barcode="barrel05"    		  quantity="12"   weight_kg="58"  image_file_name="img/barrel05.jpg" />
+    <item name="Barrel"  				      barcode="barrel06"    		  quantity="5"    weight_kg="250" image_file_name="img/barrel06.jpg" />
+    <item name="Barrel"  				      barcode="barrel07"    		  quantity="10"   weight_kg="80"  image_file_name="img/barrel07.jpg" />
+    <item name="Chicken"  			      barcode="chicken1"    		  quantity="10"   weight_kg="5"   image_file_name="img/domestic_animals_chickens01.jpg" />
+    <item name="Young Goat"  		      barcode="goat2"   			    quantity="15"   weight_kg="20"  image_file_name="img/domestic_animals_goat01.jpg" />
+    <item name="Goat"  				        barcode="goat3"   			    quantity="10"   weight_kg="30"  image_file_name="img/domestic_animals_goat01.jpg" />
+    <item name="Small Goat"  		      barcode="goat1"   			    quantity="5"    weight_kg="10"  image_file_name="img/domestic_animals_goat01.jpg" />
+    <item name="Farm Animals"  	      barcode="farm animals1" 	  quantity="3"  	weight_kg="20"  image_file_name="img/domestic_animals_04.jpg" />
+    <item name="Domestic Animals"  	  barcode="farm animals2"  	  quantity="3"  	weight_kg="20"  image_file_name="img/domestic_animals_05.jpg" />
+    <item name="Grain"  				      barcode="grain01"    		    quantity="16"   weight_kg="30"  image_file_name="img/grain01.jpg" />
+    <item name="Grain"  				      barcode="grain02"    		    quantity="16"   weight_kg="30"  image_file_name="img/grain02.jpg" />
+    <item name="Grain"  				      barcode="grain03"    		    quantity="16"   weight_kg="30"  image_file_name="img/grain03.jpg" />
+    <item name="Grain"  				      barcode="grain04"    		    quantity="16"   weight_kg="30"  image_file_name="img/grain04.jpg" />
+    <item name="Rice"  				        barcode="rice01"    		    quantity="10"   weight_kg="25"  image_file_name="img/rice01.jpg" />
+    <item name="Rice"  				        barcode="rice02"    		    quantity="15"   weight_kg="40"  image_file_name="img/rice02.jpg" />
+    <item name="Rice"  				        barcode="rice03"    		    quantity="10"   weight_kg="20"  image_file_name="img/rice03.jpg" />
+    <item name="Rice"  				        barcode="rice04"    		    quantity="20"   weight_kg="15"  image_file_name="img/rice04.jpg" />
+    <item name="Flour Sack"  			    barcode="flour01"    		    quantity="50"   weight_kg="10"  image_file_name="img/flour_sacks01.jpg" />
+    <item name="Flour Sack"  			    barcode="flour02"    		    quantity="20"   weight_kg="15"  image_file_name="img/flour_sacks02.jpg" />
+    <item name="Flour Sack"  			    barcode="flour03"    		    quantity="12"   weight_kg="20"  image_file_name="img/flour_sacks03.jpg" />
+    <item name="Flour Sack"  			    barcode="flour04"    		    quantity="13"   weight_kg="30"  image_file_name="img/flour_sacks04.jpg" />
+    <item name="Flour Sack"  			    barcode="flour05"    		    quantity="10"   weight_kg="40"  image_file_name="img/flour_sacks05.jpg" />
+    <item name="Passenger"      		  barcode="passenger01"     	quantity="12"   weight_kg="45"  image_file_name="img/passengers_03.jpg"  />
+    <item name="Passenger"      		  barcode="passenger02"     	quantity="25"   weight_kg="57"  image_file_name="img/passengers_02.jpg"  />
+    <item name="Passenger"      		  barcode="passenger03"     	quantity="10"   weight_kg="75"  image_file_name="img/passengers_01.jpg"  />
+    <item name="Wood Planks"  		    barcode="planks01"    	    quantity="50"   weight_kg="10"  image_file_name="img/wood_planks01.jpg" />
+    <item name="Wood Planks"  		    barcode="planks02"    	    quantity="35"   weight_kg="25"  image_file_name="img/wood_planks02.jpg" />
+    <item name="Hardwood Flooring"    barcode="planks03"    	    quantity="20"   weight_kg="10"  image_file_name="img/wood_planks06" />
+    <item name="Hardwood Flooring"    barcode="planks04"    	    quantity="15"   weight_kg="15"  image_file_name="img/wood_planks07" />
+    <item name="Hardwood Flooring"    barcode="planks05"    	    quantity="8"    weight_kg="35"  image_file_name="img/wood_planks08" />
+    <item name="Pipes"  				      barcode="pipes01"    	      quantity="15"   weight_kg="10"  image_file_name="img/pipes01.jpg" />
+    <item name="Pipes"  				      barcode="pipes02"    	      quantity="20"   weight_kg="10"  image_file_name="img/pipes02.jpg" />
+    <item name="Pipes"  				      barcode="pipes03"    	      quantity="25"   weight_kg="8"   image_file_name="img/pipes04.jpg" />
+    <item name="Pipes"  				      barcode="pipes04"    	      quantity="20"   weight_kg="5"   image_file_name="img/pipes05.jpg" />
+    <item name="Pipes"  				      barcode="pipes05"    	      quantity="10"   weight_kg="20"  image_file_name="img/pipes06.jpg" />
+    <item name="Pipe"  				        barcode="pipes06"    	      quantity="30"   weight_kg="2"   image_file_name="img/pipes06.jpg" />
+    <item name="Pipe"  				        barcode="pipes07"    	      quantity="30"   weight_kg="1"   image_file_name="img/pipes07.jpg" />
+    <item name="Pipes"  				      barcode="pipes08"    	      quantity="10"   weight_kg="10"  image_file_name="img/pipes07.jpg" />
+  </item_blueprints>
+
+  <item_blueprints type="Oil Rig Cargo">
+    <item name="Water Bottles"  barcode="water_bottles2"  quantity="7"    weight_kg="9"   image_file_name="img/pack_of_water_bottles_green_1.jpg"  />
+    <item name="Water Bottles"  barcode="water_bottles3"  quantity="8"    weight_kg="8"   image_file_name="img/pack_of_water_bottles_green_2.jpg"  />
+    <item name="Water Bottles"  barcode="water_bottles4"  quantity="3"    weight_kg="12"  image_file_name="img/pack_of_water_bottles_green_3.jpg"  />
+    <item name="Paint"  				barcode="paint1"    		  quantity="23"   weight_kg="15"  image_file_name="img/paint_01.jpg" />
+    <item name="Paint"  				barcode="paint2"    		  quantity="11"   weight_kg="35"  image_file_name="img/paint_02.jpg" />
+    <item name="Paint"  				barcode="paint3"    		  quantity="5"    weight_kg="120" image_file_name="img/paint_03.jpg" />
+    <item name="Paint"  				barcode="paint4"    		  quantity="10"   weight_kg="25"  image_file_name="img/paint_04.jpg" />
+    <item name="Barrel"  				barcode="barrel01"    		quantity="20"   weight_kg="30"  image_file_name="img/barrel01.jpg" />
+    <item name="Barrel"  				barcode="barrel02"    		quantity="10"   weight_kg="30"  image_file_name="img/barrel02.jpg" />
+    <item name="Barrel"  				barcode="barrel03"    		quantity="8"    weight_kg="40"  image_file_name="img/barrel03.jpg" />
+    <item name="Barrel"  				barcode="barrel04"    		quantity="15"   weight_kg="35"  image_file_name="img/barrel04.jpg" />
+    <item name="Barrel"  				barcode="barrel05"    		quantity="12"   weight_kg="58"  image_file_name="img/barrel05.jpg" />
+    <item name="Barrel"  				barcode="barrel06"    		quantity="5"    weight_kg="250" image_file_name="img/barrel06.jpg" />
+    <item name="Barrel"  				barcode="barrel07"    		quantity="10"   weight_kg="80"  image_file_name="img/barrel07.jpg" />
+    <item name="Rice"  				  barcode="rice01"    		  quantity="10"   weight_kg="25"  image_file_name="img/rice01.jpg" />
+    <item name="Rice"  				  barcode="rice02"    		  quantity="15"   weight_kg="40"  image_file_name="img/rice02.jpg" />
+    <item name="Rice"  				  barcode="rice03"    		  quantity="10"   weight_kg="20"  image_file_name="img/rice03.jpg" />
+    <item name="Rice"  				  barcode="rice04"    		  quantity="20"   weight_kg="15"  image_file_name="img/rice04.jpg" />
+    <item name="Flour Sack"  		barcode="flour01"    		  quantity="50"   weight_kg="10"  image_file_name="img/flour_sacks01.jpg" />
+    <item name="Flour Sack"  		barcode="flour02"    		  quantity="20"   weight_kg="15"  image_file_name="img/flour_sacks02.jpg" />
+    <item name="Flour Sack"  		barcode="flour03"    		  quantity="12"   weight_kg="20"  image_file_name="img/flour_sacks03.jpg" />
+    <item name="Flour Sack"  		barcode="flour04"    		  quantity="13"   weight_kg="30"  image_file_name="img/flour_sacks04.jpg" />
+    <item name="Flour Sack"  		barcode="flour05"    		  quantity="10"   weight_kg="40"  image_file_name="img/flour_sacks05.jpg" />
+    <item name="Passenger"      barcode="passenger01"     quantity="12"   weight_kg="45"  image_file_name="img/passengers_03.jpg"  />
+    <item name="Passenger"      barcode="passenger02"     quantity="25"   weight_kg="57"  image_file_name="img/passengers_02.jpg"  />
+    <item name="Passenger"      barcode="passenger03"     quantity="10"   weight_kg="75"  image_file_name="img/passengers_01.jpg"  />
+    <item name="Pipes"  				barcode="pipes01"    	    quantity="15"   weight_kg="10"  image_file_name="img/pipes01.jpg" />
+    <item name="Pipes"  				barcode="pipes02"    	    quantity="20"   weight_kg="10"  image_file_name="img/pipes02.jpg" />
+    <item name="Pipes"  				barcode="pipes03"    	    quantity="25"   weight_kg="8"   image_file_name="img/pipes04.jpg" />
+    <item name="Pipes"  				barcode="pipes04"    	    quantity="20"   weight_kg="5"   image_file_name="img/pipes05.jpg" />
+    <item name="Pipes"  				barcode="pipes05"    	    quantity="10"   weight_kg="20"  image_file_name="img/pipes06.jpg" />
+    <item name="Pipe"  				  barcode="pipes06"         quantity="30"   weight_kg="2"   image_file_name="img/pipes06.jpg" />
+    <item name="Pipe"  				  barcode="pipes07"         quantity="30"   weight_kg="1"   image_file_name="img/pipes07.jpg" />
+    <item name="Pipes"  				barcode="pipes08"    	    quantity="10"   weight_kg="10"  image_file_name="img/pipes07.jpg" />
+  </item_blueprints>
+
+  <item_blueprints type="Medevec" type="Any Location - Rescue" type="Accident (OSM)" >
+    <item name="Water Bottles"                barcode="water_bottles2"                quantity="7"    weight_kg="9"   image_file_name="img/pack_of_water_bottles_green_1.jpg"  />
+    <item name="Water Bottles"                barcode="water_bottles3"                quantity="8"    weight_kg="8"   image_file_name="img/pack_of_water_bottles_green_2.jpg"  />
+    <item name="Water Bottles"                barcode="water_bottles4"                quantity="3"    weight_kg="12"  image_file_name="img/pack_of_water_bottles_green_3.jpg"  />
+    <item name="Medical Tools"                barcode="medical_tools01"               quantity="5"    weight_kg="10"  image_file_name="img/medical_tools01.jpg" />
+    <item name="Medical Tools"                barcode="medical_tools02"               quantity="3"    weight_kg="10"  image_file_name="img/medical_tools02.jpg" />
+    <item name="Medical Tools"                barcode="medical_tools03"               quantity="2"    weight_kg="10"  image_file_name="img/medical_tools03.jpg" />
+    <item name="Medical Tools"                barcode="medical_tools04"               quantity="8"    weight_kg="10"  image_file_name="img/medical_tools04.jpg" />
+    <item name="Medical Tools"                barcode="medical_tools05"               quantity="5"    weight_kg="10"  image_file_name="img/medical_tools05.jpg" />
+    <item name="Medical Tools"                barcode="medical_tools06"               quantity="5"    weight_kg="10"  image_file_name="img/medical_tools06.jpg" />
+    <item name="Medical Tools"                barcode="medical_tools07"               quantity="4"    weight_kg="10"  image_file_name="img/medical_tools07.jpg" />
+    <item name="Ventilator"                   barcode="ventilator01"                  quantity="2"    weight_kg="6"   image_file_name="img/ventilator_01.jpg" />
+    <item name="Ventilator"                   barcode="ventilator02"                  quantity="2"    weight_kg="10"  image_file_name="img/ventilator_02.jpg" />
+    <item name="Ventilator"                   barcode="ventilator03"                  quantity="2"    weight_kg="6"   image_file_name="img/ventilator_03.jpg" />
+    <item name="Ventilator"                   barcode="ventilator04"                  quantity="2"    weight_kg="5"   image_file_name="img/ventilator_04.jpg" />
+    <item name="Ventilator"                   barcode="ventilator05"                  quantity="2"    weight_kg="8"   image_file_name="img/ventilator_05.jpg" />
+    <item name="Portable O2 Concentrator"     barcode="PortableO2Concentrator01"      quantity="3"    weight_kg="8"   image_file_name="img/portable_o2_concentrator_01.jpg" />
+    <item name="Portable O2 Concentrator"     barcode="PortableO2Concentrator02"      quantity="3"    weight_kg="6"   image_file_name="img/portable_o2_concentrator_02.jpg" />
+    <item name="Portable O2 Concentrator"     barcode="PortableO2Concentrator03"      quantity="2"    weight_kg="7"   image_file_name="img/portable_o2_concentrator_03.jpg" />
+    <item name="Basic Rescue System"          barcode="rescue system 01"              quantity="5"    weight_kg="12"  image_file_name="img/basic_rescue_system_01.jpg" />
+    <item name="Basic Rescue System"          barcode="rescue system 02"              quantity="3"    weight_kg="14"  image_file_name="img/basic_rescue_system_03.jpg" />
+    <item name="Basic Rescue System"          barcode="rescue system 03"              quantity="2"    weight_kg="17"  image_file_name="img/basic_rescue_system_04.jpg" />
+    <item name="Complete Rescue System"       barcode="CompleteRescueSystem01"        quantity="1"    weight_kg="12"  image_file_name="img/complete_rescue_system_01.jpg" />
+    <item name="Complete Rescue System"       barcode="CompleteRescueSystem02"        quantity="2"    weight_kg="22"  image_file_name="img/complete_rescue_system_02.jpg" />
+    <item name="Complete Rescue System"       barcode="CompleteRescueSystem03"        quantity="2"    weight_kg="8"   image_file_name="img/complete_rescue_system_03.jpg" />
+    <item name="Complete Rescue System"       barcode="CompleteRescueSystem04"        quantity="3"    weight_kg="25"  image_file_name="img/complete_rescue_system_04.jpg" />
+    <item name="Passenger"      		          barcode="passenger01"     	        quantity="12"   weight_kg="45"  image_file_name="img/passengers_03.jpg"  />
+    <item name="Passenger"      		          barcode="passenger02"     	        quantity="25"   weight_kg="57"  image_file_name="img/passengers_02.jpg"  />
+    <item name="Passenger"      		          barcode="passenger03"     	        quantity="10"   weight_kg="75"  image_file_name="img/passengers_01.jpg"  />
+    <item name="Rapid Extraction"             barcode="rapid_extraction01"            quantity="5"    weight_kg="8"   image_file_name="img/rapid_extraction_01.jpg" />
+    <item name="Rapid Extraction"             barcode="rapid_extraction02"            quantity="5"    weight_kg="8"   image_file_name="img/rapid_extraction_02.jpg" />
+    <item name="Rapid Extraction"             barcode="rapid_extraction03"            quantity="5"    weight_kg="9"   image_file_name="img/rapid_extraction_03.jpg" />
+    <item name="Helicopter Medical Bag Set"   barcode="helicopter medical bag set01"  quantity="4"    weight_kg="20"  image_file_name="img/heli_medical_bag_set_01.jpg" />
+    <item name="Helicopter Medical Bag Set"   barcode="helicopter medical bag set02"  quantity="3"    weight_kg="20"  image_file_name="img/heli_medical_bag_set_02.jpg" />
+    <item name="Helicopter Medical Bag Set"   barcode="helicopter medical bag set03"  quantity="7"    weight_kg="13"  image_file_name="img/heli_medical_bag_set_03.jpg" />
+    <item name="Helicopter Medical Bag Set"   barcode="helicopter medical bag set04"  quantity="3"    weight_kg="12"  image_file_name="img/heli_medical_bag_set_04.jpg" />
+    <item name="Casualty Blanket"             barcode="casualty_blanket01"            quantity="2"    weight_kg="0.2" image_file_name="img/casualty_blanket_01.jpg" />
+    <item name="Casualty Blanket"             barcode="casualty_blanket02"            quantity="3"    weight_kg="0.2" image_file_name="img/casualty_blanket_02.jpg" />
+    <item name="Casualty Blanket"             barcode="casualty_blanket03"            quantity="4"    weight_kg="0.4" image_file_name="img/casualty_blanket_03.jpg" />
+    <item name="Rapid Deployment System"      barcode="rapid_deployment_sys01"        quantity="4"    weight_kg="14"  image_file_name="img/rapid_deployment_sys_01.jpg" />
+    <item name="Rapid Deployment System"      barcode="rapid_deployment_sys02"        quantity="6"    weight_kg="15"  image_file_name="img/rapid_deployment_sys_02.jpg" />
+    <item name="Rapid Deployment System"      barcode="rapid_deployment_sys03"        quantity="2"    weight_kg="12"  image_file_name="img/rapid_deployment_sys_03.jpg" />
+    <item name="Water Rescue Throw Bag"       barcode="water_rescue_bag01"            quantity="8"    weight_kg="1.2" image_file_name="img/water_rescue_bag_01.jpg" />
+    <item name="Water Rescue Throw Bag"       barcode="water_rescue_bag02"            quantity="5"    weight_kg="1.2" image_file_name="img/water_rescue_bag_02.jpg" />
+    <item name="Water Rescue Throw Bag"       barcode="water_rescue_bag03"            quantity="6"    weight_kg="2.2" image_file_name="img/water_rescue_bag_03.jpg" />
+    <item name="Water Rescue Throw Bag"       barcode="water_rescue_bag04"            quantity="5"    weight_kg="1.2" image_file_name="img/water_rescue_bag_04.jpg" />
+    <item name="Water Rescue Throw Bag"       barcode="water_rescue_bag05"            quantity="4"    weight_kg="2.2" image_file_name="img/water_rescue_bag_05.jpg" />
+  </item_blueprints>
+
+</cargo>

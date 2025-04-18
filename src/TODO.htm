@@ -1,0 +1,24 @@
+Configuring OpenSSL Library in Linux
+=====================================
+./Configure --prefix=/home/xplane/programming/git/openssl_output --openssldir=/home/xplane/programming/git/openssl_output
+make
+make install
+
+Configure cURL in OSM
+=====================
+export SDKROOT=macosx10.14;./configure --with-darwinssl --enable-shared --enable-pthreads --enable-http-auth   --prefix=/Users/xplane/programming/git/curl-output/dynamic/64/release
+export SDKROOT=macosx10.14;./configure --with-darwinssl --enable-static --enable-pthreads --enable-http-auth 
+
+otool -L mac.xpl
+
+Unfortunately nothing really helped, but I need to check some more:
+notes: https://medium.com/@donblas/fun-with-rpath-otool-and-install-name-tool-e3e41ae86172
+https://www.unix.com/man-page/osx/1/install_name_tool/
+
+
+install_name_tool -add_rpath @rpath/Resources/plugins/missionx/libs/64 mac.xpl
+install_name_tool -add_rpath @rpath/Resources/plugins/missionx/libs/64 libcurl.4.dylib
+install_name_tool -add_rpath Resources/plugins/missionx/libs/64 libcurl.4.dylib
+
+-Xlinker
+https://software.intel.com/content/www/us/en/develop/documentation/cpp-compiler-developer-guide-and-reference/top/compiler-reference/compiler-options/compiler-option-details/linking-or-linker-options/xlinker.html

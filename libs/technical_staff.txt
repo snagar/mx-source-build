@@ -1,0 +1,499 @@
+﻿ Configuring OpenSSL on Windows: https://www.youtube.com/watch?v=PMHEoBkxYaQ&t=30s
+===============================
+https://wiki.openssl.org/index.php/Compilation_and_Installation
+
+1. Install Perl
+
+ 2. Install NASM
+
+ 3. Make sure both Perl and NASM are on your %PATH%
+
+4. Use Visual Studio Developer Command Prompt with administrative privileges,
+    choosing one of its variants depending on the intended architecture.
+    Or run "cmd" and execute "vcvarsall.bat" with one of the options x86,
+    x86_amd64, x86_arm, x86_arm64, amd64, amd64_x86, amd64_arm, or amd64_arm64.
+    This sets up the environment variables needed for nmake.exe, cl.exe, etc.
+    See also https://docs.microsoft.com/cpp/build/building-on-the-command-line
+
+ 4.1. from: https://www.youtube.com/watch?v=PMHEoBkxYaQ&t=30s
+    cpan -i Text::Template
+    cpan -i Test::More
+
+ 5. From the root of the OpenSSL source directory enter
+    perl Configure VC-WIN32    if you want 32-bit OpenSSL or
+    perl Configure VC-WIN64A   if you want 64-bit OpenSSL or
+    # perl Configure             to let Configure figure out the platform
+
+    nmake clean  ## between runs
+
+    perl Configure VC-WIN64A --openssldir=D:\programming\GIT\openssl-111 VC-WIN64A --prefix=D:\programming\GIT\openssl-111 
+    perl Configure VC-WIN64A --openssldir=D:\programming\GIT\openssl-111k VC-WIN64A --prefix=D:\programming\GIT\openssl-111k 
+
+    dll:
+    --------
+    perl Configure VC-WIN64A --release no-asm --prefix=d:\programming\GIT\openssl-111k\dll\x64\release --openssldir=d:\programming\GIT\openssl-111k\dll\x64\release 
+    perl Configure VC-WIN64A --debug no-asm --prefix=d:\programming\GIT\openssl-111k\dll\x64\debug --openssldir=d:\programming\GIT\openssl-111k\dll\x64\debug  
+
+    nmake clean  ## between runs
+
+    static:
+    ------
+    perl Configure VC-WIN64A no-shared no-asm no-dso no-hw no-engine no-dynamic-engine --release --prefix=D:\programming\GIT\openssl-111k\static\x64\release --openssldir=D:\programming\GIT\openssl-111k\static\x64\release    
+    perl Configure VC-WIN64A no-shared no-asm --debug --prefix=D:\programming\GIT\openssl-111\static\x64\debug --openssldir=D:\programming\GIT\openssl-111\static\x64\debug  
+
+ 6. nmake
+
+ 7. nmake test (optional step)
+
+ 8. nmake install, use: nmake install_sw
+
+
+ Configuring OpenSSL on Linux / OSX:
+ ===================================
+Linux packages:
+---------------
+
+   apt install gcc g++ make freeglut3-dev
+   apt install perl
+   apt install git
+   apt install cmake
+   apt install autoconf
+On Ubuntu 24.04:
+   apt install build-essential libtool
+Fedora:
+  dnf install perl-IPC-Cmd
+
+
+===> DEPRECATED since we are using internal OSX secure library <===
+ OSX pre-compile:
+ 1. make sure that the following folders are present and allow full read/write for all users
+ /usr/local/lib
+ /usr/local/include
+ /usr/local/bin
+ /usr/local/ssl
+ --- end OSX settings
+===> END DEPRECATED since we are using internal OSX secure library <===
+
+### ignore this line                   
+###./config  '-Wl,-rpath,./Resources/plugins/missionx/libs/64'
+### ./config 
+./Configure  '-Wl,-rpath,./','-Wl,-rpath,./Resources/plugins/missionx/libs/64'
+perl configdata.pm --dump
+make
+make test
+make install
+sudo make install
+
+
+
+ Build CURL + OpenSSL: 
+ =====================
+ OpenSSL: https://www.youtube.com/watch?v=PMHEoBkxYaQ&t=30s
+ cURL: https://curl.haxx.se/
+
+    somedirectory\
+    |_curl-src
+    | |_winbuild
+    |
+    |OpenSSL-111
+      |_ DLL
+      |   |_x64
+      |      |_ lib
+      |      |_ include
+      |      |_ bin
+      |_Libs (static)
+         |_x64
+            |_ lib
+            |_ include
+            |_ bin
+
+We can set only the RELEASE depenedencies open OpenSSL
+
+
+Build cURL without OpenSSL
+==========================
+Navigate to curl source folder: 
+> execute buildconf.bat in the root curl folder
+
+> cd windbuild
+> set RTLIBCFG=static / shared
+> nmake /f Makefile.vc mode=static vc=16 debug=yes
+> nmake /f Makefile.vc mode=static vc=16 debug=no
+
+https://www.youtube.com/watch?v=7pF8GjMBcmA (used also this video)
+With SSL - Static
+> nmake /f Makefile.vc mode=static WITH_SSL=static vc=16 debug=no MACHINE=x64 GEN_PDB=no SSL_PATH=D:\programming\GIT\openssl-111\Lib\x64\release
+> nmake /f Makefile.vc mode=static WITH_SSL=static vc=16 debug=no MACHINE=x64 GEN_PDB=no SSL_PATH=D:\programming\GIT\openssl-111k\Lib\x64\release
+> nmake /f Makefile.vc mode=static WITH_SSL=static vc=16 debug=yes MACHINE=x64 GEN_PDB=no SSL_PATH=D:\programming\GIT\openssl-111\Lib\x64\debug
+
+With SSL - Dynamic (dll/shared)
+> set RTLIBCFG=shared
+# release
+> nmake /f Makefile.vc mode=dll WITH_SSL=dll vc=16 debug=no MACHINE=x64 GEN_PDB=no SSL_PATH=D:\programming\GIT\openssl-111\DLL\x64\release
+> nmake /f Makefile.vc mode=dll WITH_SSL=dll vc=16 debug=no MACHINE=x64 GEN_PDB=no SSL_PATH=D:\programming\GIT\openssl-111k\DLL\x64\release
+# debug
+> nmake /f Makefile.vc mode=dll WITH_SSL=dll vc=16 debug=yes MACHINE=x64 GEN_PDB=yes SSL_PATH=D:\programming\GIT\openssl-111\DLL\x64\debug
+> nmake /f Makefile.vc mode=dll WITH_SSL=dll vc=16 debug=yes MACHINE=x64 GEN_PDB=yes SSL_PATH=D:\programming\GIT\openssl-111k\DLL\x64\debug
+
+
+IMPORTANT: if we are adding static curl to our project and not the DLLs then we must add "CURL_STATICLIB" to the C++ preprocessor Otherwise the linker will look for dynamic import symbols: 
+Example:
+#define CURL_STATICLIB    
+
+#include "curl/curl.h"
+Also add the following libraries:
+Normaliz.lib;Ws2_32.lib;Wldap32.lib;Crypt32.lib;advapi32.lib;
+OR
+#ifdef _DEBUG
+#pragma comment (lib, "curl/libcurl_a_debug.lib")
+#else
+#pragma comment (lib, "curl/libcurl_a.lib")
+#endif
+#pragma comment (lib, "Normaliz.lib")
+#pragma comment (lib, "Ws2_32.lib")
+#pragma comment (lib, "Wldap32.lib")
+#pragma comment (lib, "advapi32.lib")
+
+
+
+
+LINUX:
+======
+$ autoreconf -fi
+
+$ CPPFLAGS="-I/home/xplane/programming/git/openssl_111/include" LDFLAGS="-L/home/xplane/programming/git/openssl_111/lib" ./configure --with-ssl --prefix=/home/xplane/programming/git/curl/curl-7711-out/shared/x64/release
+$ CPPFLAGS="-I/home/xplane/programming/git/openssl_111k/include" LDFLAGS="-L/home/xplane/programming/git/openssl_111k" ./configure --with-ssl --prefix=/home/xplane/programming/git/missionx_v3_git/libs/curl/libs/x64/lin
+
+-- adding the "-Wl,-rpath,./...'"  did not change "ldd" outcome, at least I tried.
+$ CPPFLAGS="-I/home/xplane/programming/git/openssl_111k/include" LDFLAGS="-L/home/xplane/programming/git/openssl_111k,'-Wl,-rpath,./Resources/plugins/missionx/libs/64'" ./configure --with-ssl --prefix=/home/xplane/programming/git/missionx_v3_git/libs/curl/libs/x64/lin
+
+-- OpenSSL-3.0
+$ CPPFLAGS="-I/home/xplane/programming/git/openssl/include" LDFLAGS="-L/home/xplane/programming/git/openssl,'-Wl,-rpath,./Resources/plugins/missionx/libs/64'" LDFLAGS="-L/usr/local/lib64" LDFLAGS="-L/home/xplane/programming/git/openssl" ./configure --with-ssl 
+$ CPPFLAGS="-I/home/xplane/programming/git/openssl/include" LDFLAGS="-L/home/xplane/programming/git/openssl,-L/usr/local/lib64,'-Wl,-rpath,./Resources/plugins/missionx/libs/64'" ./configure --with-ssl 
+$ CPPFLAGS="-I/home/xplane/programming/git/openssl/include" LDFLAGS="-L/home/xplane/programming/git/openssl,-L/usr/local/lib64,'-Wl,-rpath,./Resources/plugins/missionx/libs/64' -lssl -lcrypto" ./configure --with-ssl
+$ CPPFLAGS="-I/home/xplane/programming/git/openssl/include" LDFLAGS="-L/home/xplane/programming/git/openssl,'-Wl,-rpath,.','-Wl,-rpath,./Resources/plugins/missionx/libs/64'" LIBS="-lssl -lcrypto" ./configure --with-ssl
+
+On Ubuntu 24.04:
+   apt install gcc g++ make freeglut3-dev
+   apt install perl
+   apt install git
+   apt install cmake
+   apt install autoconf
+   apt install build-essential libtool
+
+   $ autoreconf -fi
+   $ CPPFLAGS="-I/home/xplane/programming/git/openssl/include" LDFLAGS="-L/home/xplane/programming/git/openssl" LIBS="-lssl -lcrypto" ./configure --with-ssl
+
+# validate SSL is enabled
+
+$ make
+$ make test
+$ make install
+
+OSX cURL: https://curl.se/docs/install.html
+=========
+./configure --with-darwinssl --enable-shared --enable-pthreads --enable-http-auth --prefix=/Users/xplane/programming/git/curl-output-7711/dynamic/64/release
+./configure --with-darwinssl --enable-static --enable-pthreads --enable-http-auth --prefix=/Users/xplane/programming/git/curl-output-7711/static/64/release
+
+./configure --with-darwinssl --enable-shared --enable-pthreads --enable-http-auth --prefix=/Users/xplane/programming/git/curl-output-7761/dynamic/64/release
+./configure --with-darwinssl --enable-static --enable-pthreads --enable-http-auth --prefix=/Users/xplane/programming/git/curl-output-7761/static/64/release
+
+## this does not work:      CPPFLAGS="/usr/local/include" LDFLAGS="-L/usr/local/lib" ./configure --with-opennssl --enable-shared --enable-pthreads --enable-http-auth --prefix=/Users/xplane/programming/git/cURL/curl-output-7770/dynamic/64/release 
+./configure --with-opennssl --enable-shared --enable-pthreads --enable-http-auth --prefix=/Users/xplane/programming/git/cURL/curl-output-7770/dynamic/64/release 
+
+X86_64 + ARM64:
+export ARCH=x86_64
+export SDK=macosx
+export DEPLOYMENT_TARGET=11.0
+
+export CFLAGS="-arch x86_64 -arch arm64 -isysroot $(xcrun -sdk $SDK --show-sdk-path) -m$SDK-version-min=$DEPLOYMENT_TARGET"
+## ./configure --host=$ARCH-apple-darwin --prefix $(pwd)/artifacts --with-secure-transport
+./configure --host=$ARCH-apple-darwin --with-secure-transport
+make -j4
+make install
+Above will build curl for macOS platform with x86_64 + arm64 architecture and 11.0 as deployment target. Libs will be written to default folder "/usr/local/lib"
+
+
+ARM64:
+export ARCH=arm64
+export SDK=macosx
+export DEPLOYMENT_TARGET=11.0
+
+export CFLAGS="-arch $ARCH -isysroot $(xcrun -sdk $SDK --show-sdk-path) -m$SDK-version-min=$DEPLOYMENT_TARGET"
+./configure --host=$ARCH-apple-darwin --prefix $(pwd)/artifacts --with-secure-transport
+make -j8
+make install
+
+make
+make test
+make install-sw
+
+
+
+
+
+
+
+
+Sample Code: https://tcno.co/TroubleChute/info/curl-vs2019/
+============
+CURL SAMPLE CODE:
+
+#define CURL_STATICLIB
+#include <iostream>
+#include <string>
+
+#include "curl/curl.h"
+
+static size_t my_write(void* buffer, size_t size, size_t nmemb, void* param)
+{
+?std::string& text = *static_cast<std::string*>(param);
+?size_t totalsize = size * nmemb;
+?text.append(static_cast<char*>(buffer), totalsize);
+?return totalsize;
+}
+
+int main()
+{
+?std::string result;
+?CURL* curl;
+?CURLcode res;
+?curl_global_init(CURL_GLOBAL_DEFAULT);
+?curl = curl_easy_init();
+?if (curl) {
+??curl_easy_setopt(curl, CURLOPT_URL, "https://tcno.co/hello.txt");
+??curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_write);
+??curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result);
+??curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+??res = curl_easy_perform(curl);
+??curl_easy_cleanup(curl);
+??if (CURLE_OK != res) {
+???std::cerr << "CURL error: " << res << '\n';
+??}
+?}
+?curl_global_cleanup();
+?std::cout << result << "\n\n";
+}
+
+
+
+ std::async
+ ==========
+ std::vector<std::future<httplib::Response>> mFetchFutures;  // we use future<void> since our function returns void.
+
+
+ OVERPASS-API
+ ============
+ https://osmlab.github.io/learnoverpass/en/docs/
+
+ https://wiki.openstreetmap.org/wiki/Overpass_API
+ https://overpass-api.de/command_line.html
+
+ Bounding data whould be coordiantes off: (bottem left, top right )
+
+
+
+ *** Best ****
+ Provide filtering and then boundaries join with "node(w)" clause.
+ STEP 1: fetch all ways in certain area
+ > curl "https://overpass-api.de/api/interpreter?data=way\[\"highway\"=\"primary\"\]\[\"highway\"=\"secondary\"\]\[\"highway\"=\"tertiary\"\]\[\"highway\"=\"residential\"\]\[\"highway\"=\"service\"\]\[\"highway\"=\"living_street\"\]\[\"highway\"=\"track\"\](51.379137,-0.135082,51.629866,0.110228);out;"
+ > curl "https://overpass-api.de/api/interpreter?data=(way\[\"highway\"=\"primary\"\]\[\"highway\"=\"secondary\"\](51.379137,-0.135082,51.629866,0.110228);node(w););out;"
+
+  STEP 2: fetch the random node by its id. We don't really need the boundaries, but it seem to do no harm as long as the id is in it
+ > curl "https://overpass-api.de/api/interpreter?data=node(id:7782270619)(51.379137,-0.135082,51.629866,0.110228);out;"
+
+
+ ( way(51.379137,-0.135082,51.629866,0.110228)[highway=primary]
+[highway=secondary]
+[highway=tertiary]
+[highway=residential]
+[highway=service]
+[highway=living_street]
+[highway=track];
+  node(w);
+ );
+out;
+
+########################################
+
+ curl command that worked:
+ name = key and Gielgen = value (key/value)
+ > curl "https://overpass-api.de/api/interpreter?data=node\[name=\"Gielgen\"\];out;"  // output as XML
+ 
+ > curl "https://overpass-api.de/api/interpreter?data=node\[highway=primary\]\[bbox:47.409540109366,9.5322704315186,47.435054690725,9.5879230499268\];out;"
+ > curl -g http://www.overpass-api.de/api/xapi?*[highway=primary][bbox=bbox:47.409540109366,9.5322704315186,47.435054690725,9.5879230499268][@meta]
+
+
+
+
+ # fetch all ways and nodes in specific bounding area
+ > curl "https://overpass-api.de/api/interpreter?data=(way(47.4095401093659,9.532270431518555,47.43505469072496,9.587923049926758)\[highway=secondary\];node(47.4095401093659,9.532270431518555,47.43505469072496,9.587923049926758);relation(47.4095401093659,9.532270431518555,47.43505469072496,9.587923049926758));out;"
+ > curl "https://overpass-api.de/api/interpreter?data=(way(47.4095401093659,9.532270431518555,47.43505469072496,9.587923049926758)\[highway=secondary\];node(47.4095401093659,9.532270431518555,47.43505469072496,9.587923049926758);relation(47.4095401093659,9.532270431518555,47.43505469072496,9.587923049926758));out;"
+
+ Example for output for: curl "https://overpass-api.de/api/interpreter?data=node\[name=\"Gielgen\"\];out;"
+
+ <?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="Overpass API 0.7.56.6 474850e8">
+<note>The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.</note>
+<meta osm_base="2020-09-16T18:23:02Z"/>
+
+  <node id="371597317" lat="50.7412721" lon="7.1927120">
+    <tag k="is_in" v="Bonn,Regierungsbezirk Köln,Nordrhein-Westfalen,Bundesrepublik Deutschland,Europe"/>
+    <tag k="name" v="Gielgen"/>
+    <tag k="place" v="suburb"/>
+  </node>
+  <node id="507464865" lat="50.7399957" lon="7.1959245">
+    <tag k="VRS:gemeinde" v="BONN"/>
+    <tag k="VRS:ortsteil" v="Hoholz"/>
+    <tag k="VRS:ref" v="68566"/>
+    <tag k="bus" v="yes"/>
+    <tag k="highway" v="bus_stop"/>
+    <tag k="name" v="Gielgen"/>
+    <tag k="public_transport" v="platform"/>
+    <tag k="shelter" v="yes"/>
+    <tag k="wheelchair" v="yes"/>
+  </node>
+  <node id="1633594723" lat="50.7393948" lon="7.1960210">
+    <tag k="VRS:gemeinde" v="BONN"/>
+    <tag k="VRS:ortsteil" v="Hoholz"/>
+    <tag k="VRS:ref" v="68566"/>
+    <tag k="bus" v="yes"/>
+    <tag k="name" v="Gielgen"/>
+    <tag k="public_transport" v="stop_position"/>
+  </node>
+  <node id="5443957402" lat="50.7393910" lon="7.1959663">
+    <tag k="VRS:gemeinde" v="BONN"/>
+    <tag k="VRS:ortsteil" v="Hoholz"/>
+    <tag k="VRS:ref" v="68566"/>
+    <tag k="bus" v="yes"/>
+    <tag k="highway" v="bus_stop"/>
+    <tag k="name" v="Gielgen"/>
+    <tag k="public_transport" v="platform"/>
+    <tag k="wheelchair" v="yes"/>
+  </node>
+  <node id="5443957405" lat="50.7399659" lon="7.1959390">
+    <tag k="VRS:gemeinde" v="BONN"/>
+    <tag k="VRS:ortsteil" v="Hoholz"/>
+    <tag k="VRS:ref" v="68566"/>
+    <tag k="bus" v="yes"/>
+    <tag k="name" v="Gielgen"/>
+    <tag k="public_transport" v="stop_position"/>
+  </node>
+
+</osm>
+
+
+
+
+
+
+==================================
+==================================
+==================================
+==================================
+==================================
+BEARING: https://www.igismap.com/formula-to-find-bearing-or-heading-angle-between-two-points-latitude-longitude/
+
+Let ‘R’ be the radius of Earth,
+‘L’ be the longitude,
+‘θ’ be latitude,
+‘β‘ be Bearing.
+
+Bearing from point A to B, can be calculated as,
+
+β = atan2(X,Y),
+
+where, X and Y are two quantities and can be calculated as:
+
+X = cos θb * sin ∆L (∆L = Longitude1 - Longitude2)
+
+Y = cos θa * sin θb – sin θa * cos θb * cos ∆L
+
+Lets us take an example to calculate bearing between the two different points with the formula:
+
+Kansas City: 39.099912, -94.581213
+St Louis: 38.627089, -90.200203
+So X and Y can be calculated as,
+
+X =  cos(38.627089) * sin(4.38101)
+
+X  = 0.05967668696
+
+And
+
+Y = cos(39.099912) * sin(38.627089) – sin(39.099912) * cos(38.627089) * cos(4.38101)
+
+Y = 0.77604737571 * 0.62424902378 – 0.6306746155 * 0.78122541965 * 0.99707812506
+
+Y = -0.00681261948
+
+***Convert θ into radians***
+
+So as, β = atan2(X,Y) = atan2(0.05967668696, -0.00681261948) = 1.684463062558 radians
+
+convert it into degree
+
+           β = 96.51°
+
+
+
+
+==================================
+==================================
+==================================
+
+
+
+COMPILING extended functions for sqliteStudio
+=============================================
+https://www.sqlite.org/loadext.html
+
+Create a folder with the following files:
+-----------------------------------------
+extension-functions.c (renamed from extension-functions.h)
+sqlite3.h
+sqlite3ext.h
+
+Commands:
+==========
+Make sure that in your “sqlite3ext.h” the “SQLITE_EXTENSION_INIT1” is set.
+
+Linux:
+gcc -g -fPIC -shared {file}.c -o {lib name}.so
+gcc -g -fPIC -shared extension-functions.c -o mxext.so
+
+windows:
+Open MinGW command window (I used qt mingw prompt but you could use git mingw if you installed it with Git for windows)
+gcc -g -shared extension-functions.c -o mxext.dll
+
+
+-------------------------------------------------
+FIND REPLACE STRING in FILES
+-------------------------------------------------
+
+cd /path/to/your/folder
+sed -i 's/foo/bar/g' *
+
+or 
+
+find . -type f -name "*" -exec sed -i 's/foo/bar/g' {} \;
+
+find . -type f  -exec sed -i 's|missionx::color_|missionx::color::color_|g' {} \;
+
+
+
+-------------------------------------------------
+Enable DEBUG in Linux
+-------------------------------------------------
+
+echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
+
+Permanent solution:
+-------------------
+sudo nano /etc/sysctl.d/99-ptrace.conf
+* add:
+kernel.yama.ptrace_scope=0
+* Apply:
+sudo sysctl --system
+
+

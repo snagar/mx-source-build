@@ -1,0 +1,34 @@
+Linux Bash,
+Write a bash script that will do the following:
+. Define parameter: class_name="mxconst"
+. Reads the file "mxconst.template"
+. Reset file mxconst.h
+. Reset file mxconst.cpp
+. Each line that do not start with one of the words "const,static,constexpr,inline,>" will be appended to the file mxconst.h
+. If a line starts with one of the words "const,static,constexpr,inline,>":
+.. Split the line using the character "^" as delimiter, and store it in an array.
+.. you must have at least 4 fields: definition, datatype, name, param_value, comment
+   Field one: holds definition.
+   Field two: holds the data type.
+   Field three: holds the name.
+   Field four: holds the param_value.
+   Field five onward holds a comment
+
+. If a definition has "constexpr" string, make sure it also has "static" text after it in the definition. write the line into the mxconst.h file using the format:
+  definition datatype name = param_value; // comment
+  If trimmed param_value field has ";" at the end, there is no need to add one.
+  If the "definition" field has " const" string in it, remove it.
+
+. If definition has "static" text but no "constexpr", then:
+    - create a "typedef struct" with the same name as the "name", but in lowercase and trimmed. Prefix the name with "st_".
+    - The struct will hold one parameter by the name "value" in the following format:
+    datatype value = param_value field;
+
+    If trimmed param_value field has ";" at the end, there is no need to add one.
+
+    - Add a struct function by the name "get_value()" that will return the local "value" parameter. make sure the function return datatype is the same as the "datatype" field, which is Field Two.
+
+    - After each "struct" created, add a "getter" function for the "name" field. The getter function returns same "value" datatype, and it should have a static initialization of the "struct" and a call to the struct "get_value()" function.
+
+. At the end replace all occurrences of "%class_name%" text with the value of "$class_name" variable, in the header file.
+. Time the script.

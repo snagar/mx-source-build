@@ -1,0 +1,203 @@
+#ifndef MXUTILS_H_
+#define MXUTILS_H_
+#pragma once
+
+#include "XPLMUtilities.h"
+#include "base_c_includes.h"
+#include "xx_mission_constants.hpp"
+#include <list>
+
+#ifdef APL
+#include <cstdlib>
+#endif
+
+using namespace missionx;
+using namespace mxconst;
+using namespace std;
+
+namespace missionx
+{
+
+class mxUtils
+{
+public:
+  mxUtils();
+  ~mxUtils();
+
+
+
+  // Members
+  static string      stringToUpper(string strToConvert);
+  static string      StringToLower(string strToConvert);
+  static bool        is_alpha(const std::string& str);
+  static bool        is_digits(const std::string& str);
+  static bool        is_number(const std::string& s);
+  static std::string ltrim(string str, const std::string& chars = std::string("\t\n\v\f\r "));
+  static std::string rtrim(std::string& str, const std::string& chars = std::string("\t\n\v\f\r "));
+  static std::string trim(std::string& str, const std::string& chars = std::string("\t\n\v\f\r "));
+  static bool        isStringBool(std::string inTestValue, bool& outResult);
+
+  static std::string translateMxPadLabelPositionToValid(std::string inLabelPosition);
+
+  static std::string                  translateMessageChannelTypeToString(mx_message_channel_type_enum mType);
+  static mx_message_channel_type_enum translateMessageTypeToEnum(std::string& inType);
+
+  static std::string emptyReplace(std::string inValue, std::string inReplaceWith);
+
+  //// Templates //////// Templates //////// Templates ////
+
+  /* ********************************************** */
+
+  template<class Container>
+  static bool isElementExists(Container& inMap, const typename Container::key_type& key)
+  {
+
+    // assert(inMap != nullptr);
+
+    // if (inMap != nullptr && inMap.find(key) != inMap.end())
+    if (inMap.find(key) != inMap.end())
+      return true;
+
+    return false;
+  }
+
+
+
+  /* ********************************************** */
+  template<typename T>
+  static bool isElementExistsInList(list<T>& inContainer, T& key) // v3.0.205.2
+  {
+    auto it = std::find(inContainer.begin(), inContainer.end(), key);
+    if (it != inContainer.end())
+      return true;
+
+    return false;
+  }
+
+
+  /* ********************************************** */
+  /* ********************************************** */
+
+  template<typename T>
+  static bool isStringNumber(T& t, const std::string& s, std::ios_base& (*f)(std::ios_base&))
+  {
+    std::istringstream iss(s);
+
+    return !(iss >> f >> t).fail();
+  }
+  // isStringNumber
+
+  /* ********************************************** */
+
+  // Convert String into Number
+  template<typename N>
+  static N stringToNumber(std::string s)
+  {
+    std::istringstream is(s);
+    N                  n;
+    is >> n;
+
+    return n;
+  }
+  /* ********************************************** */
+
+  // Convert String into Number with precision
+  template<typename N>
+  static N stringToNumber(std::string s, int precision)
+  {
+    std::istringstream is(s);
+    N                  n;
+    std::string        num;
+    num.clear();
+    for (int i = 0; i < precision; i++)
+    {
+      char c = '\0';
+      is.get(c);
+      num += c;
+    }
+    std::istringstream isNum(num);
+    isNum >> n;
+
+    // is >> std::setprecision(precision) >> std::setiosflags(ios::fixed) >> n;
+
+
+    return n;
+  }
+
+
+  /* *************************************************************** */
+  template<typename N>
+  static int getPrecision(N n)
+  {
+    int count = 0;
+
+    if (std::is_floating_point<N>::value)
+    {
+<<<<<<< working copy
+// v3.0.311.2 Mint19 failed to use "abs" due to ambiguity. Use same function as OSX (fabs). Need to check if MS will work with it too.
+#ifdef IBM
+      n = abs(n);
+=======
+#if defined APL || defined LIN n = fabs(n);
+>>>>>>> merge rev
+#else
+<<<<<<< working copy
+        n      = fabs(n);
+=======
+        n                              = std::abs(n);
+>>>>>>> merge rev
+#endif n = n - int(n);              // remove left of decimal.
+      while (n >= 0.0000001 && count < 7) // limit precision to 8
+      {
+        n = n * 10;
+        count++;
+        n = n - int(n); // remove left of decimal
+      }
+    } // if floating point
+
+
+    return count;
+  }
+
+  /* *************************************************************** */
+
+  // Number To String Template - NO formating
+  template<typename N>
+  static std::string formatNumber(N inVal)
+  {
+    std::ostringstream o;
+    if (!(o << inVal))
+    {
+      // std::snprintf ( LOG_BUFF, LOG_BUFF_SIZE, " The number %f, could not be converted.", (N)inVal );
+      // log("The number could not be converted.");
+      return EMPTY_STRING;
+    }
+
+    return o.str();
+  }
+
+  /* *************************************************************** */
+
+  // Number to String Template - WITH precision formating
+  template<typename N>
+  static std::string formatNumber(N inVal, int precision)
+  {
+    std::ostringstream o;
+    if (!(o << std::setiosflags(ios::fixed) << std::setprecision(precision) << inVal))
+    {
+#ifdef MX_EXE
+      std::cout << "The number: " << (N)inVal << ", could not be converted." << std::endl;
+#else
+      std::snprintf(LOG_BUFF, 30, " The number %f, could not be converted.", (float)inVal);
+      XPLMDebugString(LOG_BUFF);
+      return EMPTY_STRING;
+#endif
+    }
+
+
+    return o.str();
+  }
+};
+}
+
+#endif // !MXUTILS_H_
