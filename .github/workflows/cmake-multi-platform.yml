@@ -55,7 +55,7 @@ jobs:
       shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}/cmake_build/${{ matrix.build_type }}" >> "$GITHUB_OUTPUT"
-        echo "OS Build: ${{ matrix.os }}
+        echo "OS Build: ${{ matrix.os }}"
 
     - name: setup Linux OS tool
       if: ( startsWith( matrix.os, 'ubuntu' ) )
