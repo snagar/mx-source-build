@@ -18,7 +18,7 @@ jobs:
       matrix:
         os: [ ubuntu-22.04 ]
         build_type: [ Debug ]
-        c_compiler: [ gcc, clang ]
+        c_compiler: [ gcc ]
         include:
           #- os: windows-latest
           #c_compiler: cl
@@ -26,16 +26,7 @@ jobs:
           - os: ubuntu-22.04
             c_compiler: gcc
             cpp_compiler: g++
-          - os: macos-13
-            c_compiler: clang
-            cpp_compiler: clang++
-        exclude:
-          - os: macos-13
-            c_compiler: gcc
-          - os: ubuntu-22.04
-            c_compiler: clang
-#          - os: ubuntu-latest
-#          c_compiler: cl
+
 
     steps:
       - uses: actions/checkout@v4
@@ -79,7 +70,7 @@ jobs:
 
       - name: Build
         # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-        run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} -- -j 2
+        run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} -- -j 4
 
       - name: Post Build
         # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
@@ -100,7 +91,13 @@ jobs:
 
   build-osx:
     runs-on: macos-13
-    #needs: [build-linux]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ macos-13 ]
+        build_type: [ Debug ]
+        c_compiler: [ clang ]
+        cpp_compiler: [ clang++ ]
 
     steps:
       - uses: actions/checkout@v4
