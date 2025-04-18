@@ -120,6 +120,7 @@ jobs:
           echo -e "\nSystem Profiler - Hardware:"
           system_profiler SPHardwareDataType
 
+          otool -L /Applications/Xcode_15.2.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.2.sdk/usr/lib/libcurl.tbd
 
       - name: Configure CMake
         # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
