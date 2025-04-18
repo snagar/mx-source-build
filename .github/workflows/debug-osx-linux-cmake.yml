@@ -52,7 +52,7 @@ jobs:
         shell: bash
         run: |
           set -x
-          sudo apt-get -y install libarchive-zip-perl freeglut3-dev g++ libopenal1 libssl-dev libcurl4-openssl-dev lscpu nproc
+          sudo apt-get -y install libarchive-zip-perl freeglut3-dev g++ libopenal1 libssl-dev libcurl4-openssl-dev
           TAG=${GITHUB_REF##*/}
           if [ ! -z "$TAG" ]; then
             echo "VERSION=$TAG" > version.mak
