@@ -117,6 +117,8 @@ jobs:
           sysctl -n hw.physicalcpu
           echo -e "\nhw.logicalcpu:"
           sysctl -n hw.logicalcpu
+          echo -e "\nSystem Profiler - Hardware:"
+          system_profiler SPHardwareDataType
 
 
       - name: Configure CMake
