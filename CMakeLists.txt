@@ -12,7 +12,7 @@ cmake_minimum_required(VERSION 3.14)
 ##  https://developer.apple.com/documentation/apple-silicon/porting-your-macos-apps-to-apple-silicon
 ## https://cmake.org/cmake/help/latest/prop_tgt/ENABLE_EXPORTS.html
 
-project(missionx LANGUAGES C CXX VERSION 25.04 DESCRIPTION "Mission-X X-Plane plugin v25.x")
+project(mx-source-build LANGUAGES C CXX VERSION 25.04 DESCRIPTION "Mission-X X-Plane plugin v25.x")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
