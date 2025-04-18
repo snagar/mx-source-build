@@ -172,6 +172,8 @@ jobs:
         shell: bash
         run: |
           systeminfo
+          wmic cpu get Name, NumberOfCores, MaxClockSpeed
+          
 
 
       - name: Configure CMake
