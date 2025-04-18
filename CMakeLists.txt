@@ -12,7 +12,7 @@ cmake_minimum_required(VERSION 3.14)
 ##  https://developer.apple.com/documentation/apple-silicon/porting-your-macos-apps-to-apple-silicon
 ## https://cmake.org/cmake/help/latest/prop_tgt/ENABLE_EXPORTS.html
 
-project(missionx LANGUAGES C CXX VERSION 25.03.3 DESCRIPTION "Mission-X X-Plane plugin v25.x")
+project(missionx LANGUAGES C CXX VERSION 25.04.2 DESCRIPTION "Mission-X X-Plane plugin v25.x")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -23,7 +23,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 # -DCMAKE_CXX_COMPILER:STRING=/usr/bin/x86_64-linux-gnu-g++-13
 # -DCMAKE_C_COMPILER:STRING=/usr/bin/gcc-13
 
-cmake_minimum_required(VERSION 3.5)
+#cmake_minimum_required(VERSION 3.5)
 
 if (UNIX)
   # Find the operating system name
