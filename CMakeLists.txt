@@ -574,11 +574,7 @@ if (WIN32 OR APPLE)
   target_link_libraries(${PROJECT_NAME} ${XPLM_LIBRARY})
 endif ()
 
-# Link library for dynamic loading of shared objects on UNIX systems.
-#if (UNIX)
-#    find_library(DL_LIBRARY dl)
-#    target_link_libraries(${PROJECT_NAME} ${DL_LIBRARY})
-#endif ()
+
 
 if (WIN32)
   # Unlike OS X and Linux we build standard libraries statically since X-Plane does not provide them.
@@ -604,7 +600,7 @@ elseif (APPLE)
   target_link_libraries(${PROJECT_NAME} -Wl,-rpath,./Resources/plugins/missionx/libs/64)
   target_link_libraries(${PROJECT_NAME} "-Wno-c++11-narrowing")
 
-  target_link_libraries(${CURL_LIBRARIES})
+#  target_link_libraries(${CURL_LIBRARIES})
   target_link_libraries(${PROJECT_NAME} "-framework ApplicationServices") ## needed for imgui + clipboard (IMGUI_ENABLE_OSX_DEFAULT_CLIPBOARD_FUNCTIONS)
   target_link_libraries(${PROJECT_NAME} "-framework Security") ## needed for imgui + clipboard (IMGUI_ENABLE_OSX_DEFAULT_CLIPBOARD_FUNCTIONS)
 
