@@ -12,27 +12,19 @@ cmake_minimum_required(VERSION 3.14)
 ##  https://developer.apple.com/documentation/apple-silicon/porting-your-macos-apps-to-apple-silicon
 ## https://cmake.org/cmake/help/latest/prop_tgt/ENABLE_EXPORTS.html
 
-project(missionx LANGUAGES C CXX VERSION 25.04.2 DESCRIPTION "Mission-X X-Plane plugin v25.x")
+project(missionx LANGUAGES C CXX VERSION 25.03.3 DESCRIPTION "Mission-X X-Plane plugin v25.x")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
+
 # Run CMake with configuration changes?
 # -DCMAKE_CXX_COMPILER:STRING=/usr/bin/x86_64-linux-gnu-g++-13
 # -DCMAKE_C_COMPILER:STRING=/usr/bin/gcc-13
 
-#cmake_minimum_required(VERSION 3.5)
-
-if (UNIX)
-  # Find the operating system name
-  execute_process(COMMAND lsb_release -si OUTPUT_VARIABLE OS_NAME OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-  # Find the operating system version ID
-  execute_process(COMMAND lsb_release -sr OUTPUT_VARIABLE OS_VERSION_ID OUTPUT_STRIP_TRAILING_WHITESPACE)
-endif ()
-
+#cmake_minimum_required(VERSION 2.8)
 
 # Return the date (yyyy-mm-dd)
 macro(DATE RESULT)
@@ -76,6 +68,7 @@ include_directories("${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/XPLM")
 include_directories("${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Widgets")
 include_directories("${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Wrappers")
 include_directories("${CMAKE_SOURCE_DIR}/libs/fmod/inc")
+include_directories("${CMAKE_SOURCE_DIR}/libs/curl/include")
 include_directories("${CMAKE_SOURCE_DIR}/libs/json/include") ## nlohmann json lib
 include_directories("${CMAKE_SOURCE_DIR}/libs/imgui4xp")
 include_directories("${CMAKE_SOURCE_DIR}/libs/imgui4xp/imgui")
@@ -92,242 +85,242 @@ include_directories("${CMAKE_SOURCE_DIR}/libs/brotil/include")
 include_directories("${CMAKE_SOURCE_DIR}/libs/glm")
 
 if (LINUX)
-  # ubuntu 22.04
-  include_directories("/usr/include/x86_64-linux-gnu/")
-  include_directories("/usr/include/x86_64-linux-gnu/curl")
-  include_directories("/usr/include/x86_64-linux-gnu/openssl")
-elseif (WIN32)
+  include_directories("/usr/lib/x86_64-linux-gnu")
+endif()
+
+
+## add OpenSSL include files for win and lin platforms. Apple uses its own internal library
+if (NOT APPLE)
   include_directories("${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/include")
 endif()
 
 set(BASE_SRC src/core/coordinate/NavAidInfo.hpp
-    src/core/coordinate/Point.hpp
-    src/core/coordinate/Points.hpp
-    src/core/coordinate/UtilsGraph.hpp
-    src/core/embeded_script/base_script.hpp
-    src/core/embeded_script/ext_script.cpp
-    src/core/embeded_script/ext_script.h
-    src/core/embeded_script/my_basic.c
-    src/core/embeded_script/my_basic.h
-    src/core/embeded_script/script_manager.cpp
-    src/core/embeded_script/script_manager.h
-    src/core/obj3d/obj3d.cpp
-    src/core/obj3d/obj3d.h
-    src/core/sound/Sound.cpp
-    src/core/sound/Sound.h
-    src/core/sound/SoundFragment.cpp
-    src/core/sound/SoundFragment.h
-    src/core/thread/base_thread.hpp
-    src/core/thread/gather_stats.cpp
-    src/core/thread/gather_stats.h
-    src/core/vr/mxvr.cpp
-    src/core/vr/mxvr.h
-    src/core/base_c_includes.h
-    src/core/base_xp_include.h
-    src/core/data_manager.cpp
-    src/core/data_manager.h
-    src/core/dataref_const.cpp
-    src/core/dataref_const.h
-    src/core/dataref_manager.cpp
-    src/core/dataref_manager.h
-    src/core/Message.cpp
-    src/core/Message.h
-    src/core/mx_base_node.cpp
-    src/core/mx_base_node.h
-    src/core/mxproperty.hpp
-    src/core/MxUtils.cpp
-    src/core/MxUtils.h
-    src/core/mx_return.hpp
-    src/core/QueueMessageManager.cpp
-    src/core/QueueMessageManager.h
-    src/core/TimeFragment.hpp
-    src/core/Timer.hpp
-    src/core/Utils.cpp
-    src/core/Utils.h
-    src/core/xx_mission_constants.hpp
-    src/data/Briefer.cpp
-    src/data/Briefer.hpp
-    src/data/Choice.cpp
-    src/data/Choice.h
-    src/data/EndMission.hpp
-    src/data/Waypoint.cpp
-    src/data/Waypoint.h
-    src/data/mxProperties.hpp
-    src/data/Objective.cpp
-    src/data/Objective.h
-    src/data/Task.cpp
-    src/data/Task.h
-    src/data/Trigger.cpp
-    src/data/Trigger.h
-    src/inv/Inventory.cpp
-    src/inv/Inventory.h
-    src/inv/station.h
-    src/inv/station.cpp
-    src/io/BrieferInfo.cpp
-    src/io/BrieferInfo.h
-    src/io/dbase.cpp
-    src/io/dbase.h
-    src/io/IXMLParser.cpp
-    src/io/IXMLParser.h
-    src/io/ListDir.cpp
-    src/io/ListDir.h
-    src/io/Log.cpp
-    src/io/Log.hpp
-    src/io/OptimizeAptDat.cpp
-    src/io/OptimizeAptDat.h
-    src/io/read_mission_file.cpp
-    src/io/read_mission_file.h
-    src/io/system_actions.cpp
-    src/io/system_actions.h
-    src/io/TemplateFileInfo.hpp
-    src/io/writeLogThread.cpp
-    src/io/writeLogThread.h
-    src/logic/BindCommand.cpp
-    src/logic/BindCommand.h
-    src/logic/dataref_param.cpp
-    src/logic/dataref_param.h
-    src/logic/MxParam.hpp
-    src/random/RandomEngine.cpp
-    src/random/RandomEngine.h
-    src/ui/core/BitmapReader.cpp
-    src/ui/core/BitmapReader.h
-    src/ui/core/MxShader.hpp
-    src/ui/core/TextureFile.h
-    src/ui/gl/CueInfo.cpp
-    src/ui/gl/CueInfo.h
-    src/ui/gl/WinImguiBriefer.h
-    src/ui/gl/WinImguiBriefer.cpp
-    src/ui/gl/WinImguiMxpad.h
-    src/ui/gl/WinImguiMxpad.cpp
-    src/ui/gl/WinImguiOptions.h
-    src/ui/gl/WinImguiOptions.cpp
-    src/ui/MxUICore.cpp
-    src/ui/MxUICore.hpp
-    src/lr_crash.h
-    src/mission.cpp
-    src/mission.h
-    src/plugin.cpp
-    src/plugin.h
-    src/core/mxconst.h
+        src/core/coordinate/Point.hpp
+        src/core/coordinate/Points.hpp
+        src/core/coordinate/UtilsGraph.hpp
+        src/core/embeded_script/base_script.hpp
+        src/core/embeded_script/ext_script.cpp
+        src/core/embeded_script/ext_script.h
+        src/core/embeded_script/my_basic.c
+        src/core/embeded_script/my_basic.h
+        src/core/embeded_script/script_manager.cpp
+        src/core/embeded_script/script_manager.h
+        src/core/obj3d/obj3d.cpp
+        src/core/obj3d/obj3d.h
+        src/core/sound/Sound.cpp
+        src/core/sound/Sound.h
+        src/core/sound/SoundFragment.cpp
+        src/core/sound/SoundFragment.h
+        src/core/thread/base_thread.hpp
+        src/core/thread/gather_stats.cpp
+        src/core/thread/gather_stats.h
+        src/core/vr/mxvr.cpp
+        src/core/vr/mxvr.h
+        src/core/base_c_includes.h
+        src/core/base_xp_include.h
+        src/core/data_manager.cpp
+        src/core/data_manager.h
+        src/core/dataref_const.cpp
+        src/core/dataref_const.h
+        src/core/dataref_manager.cpp
+        src/core/dataref_manager.h
+        src/core/Message.cpp
+        src/core/Message.h
+        src/core/mx_base_node.cpp
+        src/core/mx_base_node.h
+        src/core/mxproperty.hpp
+        src/core/MxUtils.cpp
+        src/core/MxUtils.h
+        src/core/mx_return.hpp
+        src/core/QueueMessageManager.cpp
+        src/core/QueueMessageManager.h
+        src/core/TimeFragment.hpp
+        src/core/Timer.hpp
+        src/core/Utils.cpp
+        src/core/Utils.h
+        src/core/xx_mission_constants.hpp
+        src/data/Briefer.cpp
+        src/data/Briefer.hpp
+        src/data/Choice.cpp
+        src/data/Choice.h
+        src/data/EndMission.hpp
+        src/data/Waypoint.cpp
+        src/data/Waypoint.h
+        src/data/mxProperties.hpp
+        src/data/Objective.cpp
+        src/data/Objective.h
+        src/data/Task.cpp
+        src/data/Task.h
+        src/data/Trigger.cpp
+        src/data/Trigger.h
+        src/inv/Inventory.cpp
+        src/inv/Inventory.h
+        src/inv/station.h
+        src/inv/station.cpp
+        src/io/BrieferInfo.cpp
+        src/io/BrieferInfo.h
+        src/io/dbase.cpp
+        src/io/dbase.h
+        src/io/IXMLParser.cpp
+        src/io/IXMLParser.h
+        src/io/ListDir.cpp
+        src/io/ListDir.h
+        src/io/Log.cpp
+        src/io/Log.hpp
+        src/io/OptimizeAptDat.cpp
+        src/io/OptimizeAptDat.h
+        src/io/read_mission_file.cpp
+        src/io/read_mission_file.h
+        src/io/system_actions.cpp
+        src/io/system_actions.h
+        src/io/TemplateFileInfo.hpp
+        src/io/writeLogThread.cpp
+        src/io/writeLogThread.h
+        src/logic/BindCommand.cpp
+        src/logic/BindCommand.h
+        src/logic/dataref_param.cpp
+        src/logic/dataref_param.h
+        src/logic/MxParam.hpp
+        src/random/RandomEngine.cpp
+        src/random/RandomEngine.h
+        src/ui/core/BitmapReader.cpp
+        src/ui/core/BitmapReader.h
+        src/ui/core/MxShader.hpp
+        src/ui/core/TextureFile.h
+        src/ui/gl/CueInfo.cpp
+        src/ui/gl/CueInfo.h
+        src/ui/gl/WinImguiBriefer.h
+        src/ui/gl/WinImguiBriefer.cpp
+        src/ui/gl/WinImguiMxpad.h
+        src/ui/gl/WinImguiMxpad.cpp
+        src/ui/gl/WinImguiOptions.h
+        src/ui/gl/WinImguiOptions.cpp
+        src/ui/MxUICore.cpp
+        src/ui/MxUICore.hpp
+        src/lr_crash.h
+        src/mission.cpp
+        src/mission.h
+        src/plugin.cpp
+        src/plugin.h
 )
 
 set(IMGUI_SQLITE_STB_POLY_LIB_SRC
-    libs/imgui4xp/colors/mx_colors.hpp
-    libs/imgui4xp/GL/glew.c
-    libs/imgui4xp/GL/glew.h
-    libs/imgui4xp/GL/glext.h
-    libs/imgui4xp/imgui/implot/implot.cpp
-    libs/imgui4xp/imgui/implot/implot.h
-    libs/imgui4xp/imgui/implot/implot_internal.h
-    libs/imgui4xp/imgui/implot/implot_items.cpp
-    libs/imgui4xp/imgui/misc/cpp/imgui_stdlib.cpp
-    libs/imgui4xp/imgui/misc/cpp/imgui_stdlib.h
-    libs/imgui4xp/imgui/misc/freetype/imgui_freetype.cpp
-    libs/imgui4xp/imgui/misc/freetype/imgui_freetype.h
-    libs/imgui4xp/imgui/imconfig.h
-    libs/imgui4xp/imgui/imgui.cpp ## modified to allow copy/paste to work in Windows and MacOS but not in Linux
-    libs/imgui4xp/imgui/imgui.h
-    libs/imgui4xp/imgui/imgui_draw.cpp
-    libs/imgui4xp/imgui/imgui_internal.h
-    libs/imgui4xp/imgui/imgui_tables.cpp
-    libs/imgui4xp/imgui/imgui_widgets.cpp
-    libs/imgui4xp/imgui/imstb_rectpack.h
-    libs/imgui4xp/imgui/imstb_textedit.h
-    libs/imgui4xp/imgui/imstb_truetype.h
-    libs/imgui4xp/ImgWindow/ImgFontAtlas.cpp
-    libs/imgui4xp/ImgWindow/ImgFontAtlas.h
-    libs/imgui4xp/ImgWindow/ImgFreeTypeFontAtlas.cpp
-    libs/imgui4xp/ImgWindow/ImgFreeTypeFontAtlas.h
-    libs/imgui4xp/ImgWindow/ImgWindow.cpp
-    libs/imgui4xp/ImgWindow/ImgWindow.h
-    libs/imgui4xp/KHR/khrplatform.h
-    libs/polyline-cpp/src/SimplePolyline.h
-    libs/polyline-cpp/src/SimplePolyline.cpp
-    libs/sqlite/sqlite/sqlite3.h
-    libs/sqlite/sqlite/sqlite3.c
-    libs/sqlite/sqlite/extension-functions.h
-    libs/stb/stb_image.h
-    libs/stb/stb_image.cpp
-    libs/fmt/include/fmt/core.h
-    libs/fmt/include/fmt/format.h
-    libs/fmt/include/fmt/format-inl.h
-    libs/fmt/src/format.cc
+        libs/imgui4xp/colors/mx_colors.hpp
+        libs/imgui4xp/GL/glew.c
+        libs/imgui4xp/GL/glew.h
+        libs/imgui4xp/GL/glext.h
+        libs/imgui4xp/imgui/implot/implot.cpp
+        libs/imgui4xp/imgui/implot/implot.h
+        libs/imgui4xp/imgui/implot/implot_internal.h
+        libs/imgui4xp/imgui/implot/implot_items.cpp
+        libs/imgui4xp/imgui/misc/cpp/imgui_stdlib.cpp
+        libs/imgui4xp/imgui/misc/cpp/imgui_stdlib.h
+        libs/imgui4xp/imgui/misc/freetype/imgui_freetype.cpp
+        libs/imgui4xp/imgui/misc/freetype/imgui_freetype.h
+        libs/imgui4xp/imgui/imconfig.h
+        libs/imgui4xp/imgui/imgui.cpp ## modified to allow copy/paste to work in Windows and MacOS but not in Linux
+        libs/imgui4xp/imgui/imgui.h
+        libs/imgui4xp/imgui/imgui_draw.cpp
+        libs/imgui4xp/imgui/imgui_internal.h
+        libs/imgui4xp/imgui/imgui_tables.cpp
+        libs/imgui4xp/imgui/imgui_widgets.cpp
+        libs/imgui4xp/imgui/imstb_rectpack.h
+        libs/imgui4xp/imgui/imstb_textedit.h
+        libs/imgui4xp/imgui/imstb_truetype.h
+        libs/imgui4xp/ImgWindow/ImgFontAtlas.cpp
+        libs/imgui4xp/ImgWindow/ImgFontAtlas.h
+        libs/imgui4xp/ImgWindow/ImgFreeTypeFontAtlas.cpp
+        libs/imgui4xp/ImgWindow/ImgFreeTypeFontAtlas.h
+        libs/imgui4xp/ImgWindow/ImgWindow.cpp
+        libs/imgui4xp/ImgWindow/ImgWindow.h
+        libs/imgui4xp/KHR/khrplatform.h
+        libs/polyline-cpp/src/SimplePolyline.h
+        libs/polyline-cpp/src/SimplePolyline.cpp
+        libs/sqlite/sqlite/sqlite3.h
+        libs/sqlite/sqlite/sqlite3.c
+        libs/sqlite/sqlite/extension-functions.h
+        libs/stb/stb_image.h
+        libs/stb/stb_image.cpp
+        libs/fmt/include/fmt/core.h
+        libs/fmt/include/fmt/format.h
+        libs/fmt/include/fmt/format-inl.h
+        libs/fmt/src/format.cc
 )
 
 set (GLM_LIB_SRC
-    libs/glm/glm/common.hpp
-    libs/glm/glm/exponential.hpp
-    libs/glm/glm/ext.hpp
-    libs/glm/glm/fwd.hpp
-    libs/glm/glm/geometric.hpp
-    libs/glm/glm/glm.hpp
-    libs/glm/glm/integer.hpp
-    libs/glm/glm/mat2x2.hpp
-    libs/glm/glm/mat2x3.hpp
-    libs/glm/glm/mat2x4.hpp
-    libs/glm/glm/mat3x2.hpp
-    libs/glm/glm/mat3x3.hpp
-    libs/glm/glm/mat3x4.hpp
-    libs/glm/glm/mat4x2.hpp
-    libs/glm/glm/mat4x3.hpp
-    libs/glm/glm/mat4x4.hpp
-    libs/glm/glm/matrix.hpp
-    libs/glm/glm/packing.hpp
-    libs/glm/glm/trigonometric.hpp
-    libs/glm/glm/vec2.hpp
-    libs/glm/glm/vec3.hpp
-    libs/glm/glm/vec4.hpp
-    libs/glm/glm/vector_relational.hpp
-    libs/glm/glm/detail/glm.cpp
+        libs/glm/glm/common.hpp
+        libs/glm/glm/exponential.hpp
+        libs/glm/glm/ext.hpp
+        libs/glm/glm/fwd.hpp
+        libs/glm/glm/geometric.hpp
+        libs/glm/glm/glm.hpp
+        libs/glm/glm/integer.hpp
+        libs/glm/glm/mat2x2.hpp
+        libs/glm/glm/mat2x3.hpp
+        libs/glm/glm/mat2x4.hpp
+        libs/glm/glm/mat3x2.hpp
+        libs/glm/glm/mat3x3.hpp
+        libs/glm/glm/mat3x4.hpp
+        libs/glm/glm/mat4x2.hpp
+        libs/glm/glm/mat4x3.hpp
+        libs/glm/glm/mat4x4.hpp
+        libs/glm/glm/matrix.hpp
+        libs/glm/glm/packing.hpp
+        libs/glm/glm/trigonometric.hpp
+        libs/glm/glm/vec2.hpp
+        libs/glm/glm/vec3.hpp
+        libs/glm/glm/vec4.hpp
+        libs/glm/glm/vector_relational.hpp
+        libs/glm/glm/detail/glm.cpp
 
 )
 
 set (FREETYPE_LIB_SRC
-    libs/freetype2/include/ft2build.h
-    libs/freetype2/include/freetype/config/ftoption.h
-    libs/freetype2/src/base/ftinit.c
-    libs/freetype2/src/base/ftdebug.c
-    libs/freetype2/src/base/ftbase.c
-    libs/freetype2/src/base/ftbbox.c
-    libs/freetype2/src/base/ftglyph.c
-    libs/freetype2/src/base/ftbdf.c
-    libs/freetype2/src/base/ftbitmap.c
-    libs/freetype2/src/base/ftcid.c
-    libs/freetype2/src/base/ftfstype.c
-    libs/freetype2/src/base/ftgasp.c
-    libs/freetype2/src/base/ftgxval.c
-    libs/freetype2/src/base/ftmm.c
-    libs/freetype2/src/base/ftotval.c
-    libs/freetype2/src/base/ftpatent.c
-    libs/freetype2/src/base/ftpfr.c
-    libs/freetype2/src/base/ftstroke.c
-    libs/freetype2/src/base/ftsynth.c
-    libs/freetype2/src/base/fttype1.c
-    libs/freetype2/src/base/ftwinfnt.c
-    libs/freetype2/src/bdf/bdf.c
-    libs/freetype2/src/cff/cff.c
-    libs/freetype2/src/cid/type1cid.c
-    libs/freetype2/src/pcf/pcf.c
-    libs/freetype2/src/pfr/pfr.c
-    libs/freetype2/src/sfnt/sfnt.c
-    libs/freetype2/src/svg/ftsvg.c
-    libs/freetype2/src/truetype/truetype.c
-    libs/freetype2/src/type1/type1.c
-    libs/freetype2/src/type42/type42.c
-    libs/freetype2/src/winfonts/winfnt.c
-    libs/freetype2/src/raster/raster.c
-    libs/freetype2/src/sdf/sdf.c
-    libs/freetype2/src/smooth/smooth.c
-    libs/freetype2/src/autofit/autofit.c
-    libs/freetype2/src/cache/ftcache.c
-    libs/freetype2/src/gzip/ftgzip.c
-    libs/freetype2/src/lzw/ftlzw.c
-    libs/freetype2/src/bzip2/ftbzip2.c
-    libs/freetype2/src/gxvalid/gxvalid.c
-    libs/freetype2/src/otvalid/otvalid.c
-    libs/freetype2/src/psaux/psaux.c
-    libs/freetype2/src/pshinter/pshinter.c
-    libs/freetype2/src/psnames/psnames.c
+        libs/freetype2/include/ft2build.h
+        libs/freetype2/include/freetype/config/ftoption.h
+        libs/freetype2/src/base/ftinit.c
+        libs/freetype2/src/base/ftdebug.c
+        libs/freetype2/src/base/ftbase.c
+        libs/freetype2/src/base/ftbbox.c
+        libs/freetype2/src/base/ftglyph.c
+        libs/freetype2/src/base/ftbdf.c
+        libs/freetype2/src/base/ftbitmap.c
+        libs/freetype2/src/base/ftcid.c
+        libs/freetype2/src/base/ftfstype.c
+        libs/freetype2/src/base/ftgasp.c
+        libs/freetype2/src/base/ftgxval.c
+        libs/freetype2/src/base/ftmm.c
+        libs/freetype2/src/base/ftotval.c
+        libs/freetype2/src/base/ftpatent.c
+        libs/freetype2/src/base/ftpfr.c
+        libs/freetype2/src/base/ftstroke.c
+        libs/freetype2/src/base/ftsynth.c
+        libs/freetype2/src/base/fttype1.c
+        libs/freetype2/src/base/ftwinfnt.c
+        libs/freetype2/src/bdf/bdf.c
+        libs/freetype2/src/cff/cff.c
+        libs/freetype2/src/cid/type1cid.c
+        libs/freetype2/src/pcf/pcf.c
+        libs/freetype2/src/pfr/pfr.c
+        libs/freetype2/src/sfnt/sfnt.c
+        libs/freetype2/src/svg/ftsvg.c
+        libs/freetype2/src/truetype/truetype.c
+        libs/freetype2/src/type1/type1.c
+        libs/freetype2/src/type42/type42.c
+        libs/freetype2/src/winfonts/winfnt.c
+        libs/freetype2/src/raster/raster.c
+        libs/freetype2/src/sdf/sdf.c
+        libs/freetype2/src/smooth/smooth.c
+        libs/freetype2/src/autofit/autofit.c
+        libs/freetype2/src/cache/ftcache.c
+        libs/freetype2/src/gzip/ftgzip.c
+        libs/freetype2/src/lzw/ftlzw.c
+        libs/freetype2/src/bzip2/ftbzip2.c
+        libs/freetype2/src/gxvalid/gxvalid.c
+        libs/freetype2/src/otvalid/otvalid.c
+        libs/freetype2/src/psaux/psaux.c
+        libs/freetype2/src/pshinter/pshinter.c
+        libs/freetype2/src/psnames/psnames.c
 )
 
 # Add freetype specific system file for native file handling
@@ -348,10 +341,10 @@ endif()
 
 ## Mission-X source files
 add_library(${PROJECT_NAME} SHARED
-    ${BASE_SRC}
-    ${IMGUI_SQLITE_STB_POLY_LIB_SRC}
-    ${GLM_LIB_SRC}
-    ${FREETYPE_LIB_SRC}
+        ${BASE_SRC}
+        ${IMGUI_SQLITE_STB_POLY_LIB_SRC}
+        ${GLM_LIB_SRC}
+        ${FREETYPE_LIB_SRC}
 )
 
 #################################
@@ -467,7 +460,6 @@ elseif (APPLE)
   message("Apple Libraries Path")
   list(APPEND CMAKE_FRAMEWORK_PATH "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Mac")
   list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/fmod/lib/x64")
-
 elseif (UNIX)
   message("\nLinux Libraries Path")
   message("\tFor error in finding libraries, make sure that there are no missing symbolic links to the actual library name.")
@@ -476,19 +468,16 @@ elseif (UNIX)
   message("\tln -s libcurl.so.4 libcurl.so")
   message("\tln -s libssl.so.3 libssl.so\n")
 
-  list(APPEND CMAKE_LIBRARY_PATH "/lib/x86_64-linux-gnu") ## v24.06.1  Mint/Ubuntu ub 22.04, mint 21.x
-  list(APPEND CMAKE_LIBRARY_PATH "/usr/lib/x86_64-linux-gnu") ## v24.06.1  Mint/Ubuntu ub 22.04, mint 21.x
   list(APPEND CMAKE_LIBRARY_PATH "/usr/local/lib64")
   list(APPEND CMAKE_LIBRARY_PATH "/usr/local/lib")
+  list(APPEND CMAKE_LIBRARY_PATH "/usr/lib/x86_64-linux-gnu") ## v24.06.1  Mint/Ubuntu
   list(APPEND CMAKE_LIBRARY_PATH "/usr/lib64")
   list(APPEND CMAKE_LIBRARY_PATH "/usr/lib")
   list(APPEND CMAKE_LIBRARY_PATH "/lib64") ## v24.06.1 Fedora
+  list(APPEND CMAKE_LIBRARY_PATH "/lib/x86_64-linux-gnu") ## v24.06.1  Mint/Ubuntu
   list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/fmod/lib/x64")
-
-  #  list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/lin")
-  #  list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib")
-
-
+  # list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/lin")
+  # list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib")
 endif ()
 
 
@@ -501,71 +490,34 @@ if (WIN32)
 endif()
 
 
-#function(fn_filter_out_specific_folders validator_result_var item)
-#  message("Validating: ${item} :" ${item} )
-#
-#  if(item MATCHES "git")
-#    message("Found git in ${item} skipping")
-#    set(${validator_result_var} FALSE PARENT_SCOPE)
-#  endif()
-#  if(item MATCHES "anaconda")
-#    message("Found anaconda in ${item} skipping")
-#    set(${validator_result_var} FALSE PARENT_SCOPE)
-#  endif()
-#  message("Did not Found anaconda nor git in ${item} skipping")
-#endfunction()
+function(fn_filter_out_specific_folders validator_result_var item)
+  message("Validating: ${item} :" ${item} )
 
-
-#if (NOT APPLE)
-if (APPLE)
-  find_package(CURL REQUIRED) # Will find a default configuration
-  if(CURL_FOUND)
-    include_directories(${CURL_INCLUDE_DIRS})
-    message(STATUS "Found CURL: ${CURL_LIBRARIES}")
-    if(CURL_FOUND_WITH_SSL)
-      message(STATUS "CURL was found with SSL support.")
-    else()
-      message(WARNING "CURL was found without SSL support.")
-    endif()
-  else()
-    message(FATAL_ERROR "CURL library not found!")
+  if(item MATCHES "git")
+    message("Found git in ${item} skipping")
+    set(${validator_result_var} FALSE PARENT_SCOPE)
   endif()
+  if(item MATCHES "anaconda")
+    message("Found anaconda in ${item} skipping")
+    set(${validator_result_var} FALSE PARENT_SCOPE)
+  endif()
+  message("Did not Found anaconda nor git in ${item} skipping")
+endfunction()
 
-elseif (WIN32)
-  message ("Windows - search for cURL libs")
-  ## find_package needs "package.cmake" file to be present, this is why we use the "find_library" function instead
-  find_library(OPENSSL_LIBRARY NAMES ssl crypto libssl.lib libcrypto.lib REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-  find_library(CURL_LIBRARY NAMES curl libcurl.lib)  # cURL
-else ()
-  message ("Linux - search for cURL + OpenSSL libs")
-  ## find_package needs "package.cmake" file to be present, this is why we use the "find_library" function instead
-  find_library(OPENSSL_LIBRARY NAMES ssl crypto ) # HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-  find_library(CURL_LIBRARY    NAMES curl    ) # cURL
 
-  #    find_library(OPENSSL_LIBRARY NAMES ssl    validator fn_filter_out_specific_folders ) # HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-  #    find_library(OPENSSL_LIBRARY NAMES crypto validator fn_filter_out_specific_folders )
-  #    find_library(CURL_LIBRARY    NAMES curl   validator fn_filter_out_specific_folders ) # cURL
-
-  #    if(OS_NAME STREQUAL "Ubuntu" OR OS_NAME STREQUAL "Linuxmint")
-  #      if(OS_VERSION_ID MATCHES "^22\\." OR OS_VERSION_ID MATCHES "^21\\." )
-  #        message( "find_library: Ubuntu/Linuxmint version: ${OS_VERSION_ID}. Using older libs from v22.04 search path.")
-  #        find_library(OPENSSL_LIBRARY NAMES ssl crypto REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL-v22.04/openssl-3xx/lib)  #
-  #        find_library(CURL_LIBRARY NAMES curl REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/curl-v22.04/libs/x64/lin)  #
-  #      elseif(OS_VERSION_ID MATCHES "^24\\." OR OS_VERSION_ID MATCHES "^22\\.")
-  #        message(WARNING "find_library: Unsupported Ubuntu version: ${OS_VERSION_ID}. Using default curl search path.")
-  #        find_library(OPENSSL_LIBRARY NAMES ssl crypto REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-  #        find_library(CURL_LIBRARY NAMES curl REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/lin)  #
-  #      else()
-  #        message(WARNING "find_library: Unsupported Ubuntu version: ${OS_VERSION_ID}. Using default curl search path.")
-  #        find_library(OPENSSL_LIBRARY NAMES ssl crypto REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-  #        find_library(CURL_LIBRARY NAMES curl REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/lin)  #
-  #      endif()
-  #    else()
-  #      message(WARNING "find_library: Unsupported OS: ${OS_NAME}. Using default curl search path.")
-  #      find_library(OPENSSL_LIBRARY NAMES ssl crypto REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-  #      find_library(CURL_LIBRARY NAMES curl REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/lin)  #
-  #    endif()
-
+if (NOT APPLE)
+  if (WIN32)
+    message ("Windows - search for cURL libs")
+    ## find_package needs "package.cmake" file to be present, this is why we use the "find_library" function instead
+    find_library(OPENSSL_LIBRARY NAMES ssl crypto libssl.lib libcrypto.lib REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
+    find_library(CURL_LIBRARY NAMES curl libcurl.lib)  # cURL
+  else()
+    message ("Linux - search for cURL libs")
+    ## find_package needs "package.cmake" file to be present, this is why we use the "find_library" function instead
+    find_library(OPENSSL_LIBRARY NAMES ssl    validator fn_filter_out_specific_folders ) # HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
+    find_library(OPENSSL_LIBRARY NAMES crypto validator fn_filter_out_specific_folders )
+    find_library(CURL_LIBRARY    NAMES curl   validator fn_filter_out_specific_folders ) # cURL
+  endif()
 endif()
 
 ### Link X-Plane plugin system libraries. They are only provided for OS X and Windows.
@@ -574,7 +526,11 @@ if (WIN32 OR APPLE)
   target_link_libraries(${PROJECT_NAME} ${XPLM_LIBRARY})
 endif ()
 
-
+# Link library for dynamic loading of shared objects on UNIX systems.
+#if (UNIX)
+#    find_library(DL_LIBRARY dl)
+#    target_link_libraries(${PROJECT_NAME} ${DL_LIBRARY})
+#endif ()
 
 if (WIN32)
   # Unlike OS X and Linux we build standard libraries statically since X-Plane does not provide them.
@@ -584,10 +540,11 @@ if (WIN32)
     target_link_libraries(${PROJECT_NAME} ${FMOD_LIBRARY})
     target_link_libraries(${PROJECT_NAME} ${CURL_LIBRARY})
     target_link_libraries(${PROJECT_NAME} ${OPENSSL_LIBRARY})
+    #        target_link_libraries(${PROJECT_NAME} ${FREETYPE2})
   else ()
     target_link_libraries(${PROJECT_NAME} -static-libgcc -static-libstdc++ opengl32)
     # MSYS2 for some reason always links against winpthread, so we have to work around it by statically linking the
-    # entire plugin. This allows building the plugin natively on Windows.
+    # entire plugin. This allows building the plugin nativaly on Windows.
     target_link_libraries(${PROJECT_NAME} -static)
   endif ()
 elseif (APPLE)
@@ -596,14 +553,9 @@ elseif (APPLE)
   # conflict with other plugins, in particular ones with Lua interpreter
   # embedded.
   target_link_libraries(${PROJECT_NAME} "-v -exported_symbols_list ${CMAKE_SOURCE_DIR}/cmake_build/${PROJECT_NAME}.sym_mac")
-#  target_link_libraries(${PROJECT_NAME} -Wl,-rpath,./Resources/plugins/missionx/libs/64 -lcurl)
-  target_link_libraries(${PROJECT_NAME} -Wl,-rpath,./Resources/plugins/missionx/libs/64)
+  target_link_libraries(${PROJECT_NAME} -Wl,-rpath,./Resources/plugins/missionx/libs/64 -lcurl)
   target_link_libraries(${PROJECT_NAME} "-Wno-c++11-narrowing")
-
-#  target_link_libraries(${CURL_LIBRARIES})
   target_link_libraries(${PROJECT_NAME} "-framework ApplicationServices") ## needed for imgui + clipboard (IMGUI_ENABLE_OSX_DEFAULT_CLIPBOARD_FUNCTIONS)
-  target_link_libraries(${PROJECT_NAME} "-framework Foundation") ##  Needed for OpenSSL in cURL
-  target_link_libraries(${PROJECT_NAME} "-framework Security") ## Needed for cURL
 
   target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
   target_link_libraries(${PROJECT_NAME} ${FMOD_LIBRARY})
@@ -629,7 +581,7 @@ elseif (UNIX)
   target_link_libraries(${PROJECT_NAME} -Wl,-rpath,/lib64) ## v24.06.1 Fedora
   target_link_libraries(${PROJECT_NAME} -Wl,-rpath,/lib/x86_64-linux-gnu) ## v24.06.1  Mint/Ubuntu
   target_link_libraries(${PROJECT_NAME} -Wl,-rpath,/usr/lib/x86_64-linux-gnu) ## v24.06.1  ubuntu 24.10
-  target_link_libraries(${PROJECT_NAME} -Wl,-rpath,./Resources/plugins/missionx/libs/64) # needed for XP11, no FMOD library
+  target_link_libraries(${PROJECT_NAME} -Wl,-rpath,./Resources/plugins/missionx/libs/64)
   # target_link_libraries(${PROJECT_NAME} -Wmultichar)  ## added to try and resolve IXMLParser library multichar warning, but it did not resolve it.
 
   target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
@@ -647,10 +599,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES SUFFIX ".xpl")
 
 ############# DEBUG ##############
 message("PROJECT_NAME: " ${PROJECT_NAME})
-#if (UNIX)
-  message("OS_NAME:" ${OS_NAME})
-  message("OS_VERSION_ID:" ${OS_VERSION_ID})
-#endif ()
 #message("CMAKE_COMMAND: " ${CMAKE_COMMAND})
 #message("CMAKE_BUILD_TYPE: " ${CMAKE_BUILD_TYPE}, "Local BUILD_TYPE_LOWERCASE: " ${BUILD_TYPE_LOWERCASE})
 message("CMAKE_LIBRARY_PATH: " ${CMAKE_LIBRARY_PATH} )
@@ -658,14 +606,9 @@ message("CMAKE_LIBRARY_PATH: " ${CMAKE_LIBRARY_PATH} )
 #message("CMAKE_CXX_STANDARD: " ${CMAKE_CXX_STANDARD})
 #message("CMAKE_SOURCE_DIR: " ${CMAKE_SOURCE_DIR})
 #message("OPENGL_LIBRARY:" ${OPENGL_LIBRARY})
-
-message("FMOD_LIBRARY:" ${FMOD_LIBRARY})
+#message("FMOD_LIBRARY:" ${FMOD_LIBRARY})
 message("CURL_LIBRARY:" ${CURL_LIBRARY})
 message("OPENSSL_LIBRARY:" ${OPENSSL_LIBRARY})
-if (APPLE)
-  message("MacOS CURL_LIBRARIES:" ${CURL_LIBRARIES})
-endif()
-
 #message("CMAKE_OSX_ARCHITECTURES:" ${CMAKE_OSX_ARCHITECTURES})
 #message("CMAKE_OSX_DEPLOYMENT_TARGET: " ${CMAKE_OSX_DEPLOYMENT_TARGET})
 #message("CMAKE_CXX_FLAGS_DEBUG: " ${CMAKE_CXX_FLAGS_DEBUG})
@@ -695,46 +638,46 @@ message("MissionX: CMAKE_CURRENT_BINARY_DIR: " ${CMAKE_CURRENT_BINARY_DIR})
 if (UNIX)
   if (APPLE)
     add_custom_command(
-        TARGET ${PROJECT_NAME}  POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
-        ~/xp11/Resources/plugins/missionx/mac_x64/${PROJECT_NAME}.xpl
+            TARGET ${PROJECT_NAME}  POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
+            ~/xp11/Resources/plugins/missionx/mac_x64/${PROJECT_NAME}.xpl
     )
   else() ## Linux
     message ("Linux post build commands read.") ## debug
 
     ## xp 12.x Beta
     add_custom_command(
-        TARGET ${PROJECT_NAME}  POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
-        ~/xp12b/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
+            TARGET ${PROJECT_NAME}  POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
+            ~/xp12b/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
     )
 
     ## xp 11
     add_custom_command(
-        TARGET ${PROJECT_NAME}  POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
-        ~/xp11/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
+            TARGET ${PROJECT_NAME}  POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
+            ~/xp11/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
     )
 
     ## xp 12 release
     add_custom_command(
-        TARGET ${PROJECT_NAME}  POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
-        ~/xp12/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
+            TARGET ${PROJECT_NAME}  POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
+            ~/xp12/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
     )
 
   endif()
 else () ## Win32
   ## xp 12 release
   add_custom_command(
-      TARGET ${PROJECT_NAME}  POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy
-      ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
-      C:/xp12/Resources/plugins/missionx/win_x64/${PROJECT_NAME}.xpl
+          TARGET ${PROJECT_NAME}  POST_BUILD
+          COMMAND ${CMAKE_COMMAND} -E copy
+          ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
+          C:/xp12/Resources/plugins/missionx/win_x64/${PROJECT_NAME}.xpl
   )
 
 
@@ -744,3 +687,5 @@ else () ## Win32
   #    )
 
 endif()
+
+
