@@ -33,7 +33,7 @@ jobs:
         id: strings
         shell: bash
         run: |
-          echo "build-output-dir=${{ github.workspace }}/cmake_build }}" >> "$GITHUB_OUTPUT"
+          echo "build-output-dir=${{ github.workspace }}/cmake_build" >> "$GITHUB_OUTPUT"
           echo "OS Build: ${{ matrix.os }}"
 
       - name: Prepare Linux libraries
