@@ -66,11 +66,11 @@ jobs:
           # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
           cmake --build ${{ steps.strings.outputs.build-output-dir }}/debug --config Debug -- -j 4
 
-      #- name: Release - Configure & Build Linux using CMake
-      #  run: |
-      #    cmake -B ${{ steps.strings.outputs.build-output-dir }}/release -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=Release -S ${{ github.workspace }}
-      #    # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-      #    cmake --build ${{ steps.strings.outputs.build-output-dir }}/release --config Release -- -j 4
+          #- name: Release - Configure & Build Linux using CMake
+          #  run: |
+          #    cmake -B ${{ steps.strings.outputs.build-output-dir }}/release -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=Release -S ${{ github.workspace }}
+          #    # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+          #    cmake --build ${{ steps.strings.outputs.build-output-dir }}/release --config Release -- -j 4
 
           ## Dummy for tests
           mkdir -p ${{ steps.strings.outputs.build-output-dir }}/release/
