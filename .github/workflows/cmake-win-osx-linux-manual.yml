@@ -226,14 +226,6 @@ jobs:
           echo "plugin_name=missionx" >> "$GITHUB_OUTPUT"
           echo "OS Build: ${{ matrix.os }}"
 
-      - name: Set up winget
-        uses: microsoft/winget-cli@v1.7.0 # Use the setup action
-
-      - name: Install Windows needed applications
-        shell: cmd
-        run: |
-          winget install --accept-source-agreements 7zip.7zip
-
 
       - name: Check Windows Stats
         shell: cmd
@@ -277,17 +269,15 @@ jobs:
           echo "make release folder"          
           md /p ${{ steps.strings.outputs.target_folder }}
 
-          echo "Compress debug binaries."
-          7z.exe a -t7z ${{ steps.strings.outputs.target_folder }}/${{ steps.strings.outputs.plugin_name }}.win.D.7z ${{ steps.strings.outputs.build-output-dir }}/debug/${{ steps.strings.outputs.plugin_name }}.xpl
+          echo "Copy and rename debug binaries. We will compress it later on"
+          copy /B ${{ steps.strings.outputs.build-output-dir }}/debug/${{ steps.strings.outputs.plugin_name }}.xpl ${{ steps.strings.outputs.target_folder }}/${{ steps.strings.outputs.plugin_name }}.xpl.D 
 
-          echo -e "Add Release binaries"
-          cp -p ${{ steps.strings.outputs.build-output-dir }}/release/${{ steps.strings.outputs.plugin_name }}.xpl ${{ steps.strings.outputs.target_folder }}/ 
+          echo "Add Release binaries"
+          copy /B ${{ steps.strings.outputs.build-output-dir }}/release/${{ steps.strings.outputs.plugin_name }}.xpl ${{ steps.strings.outputs.target_folder }}/ 
 
-          echo -e "Display Release Structure:"
-          ls -ltR ${{ github.workspace }}/release
+          echo "Display Release Structure:"
+          dir /S ${{ github.workspace }}/release
           
-          echo "Output dir structure"
-          dir /S cmake_build          
 
       - name: Upload Windows Build Artifact
         uses: actions/upload-artifact@v4
