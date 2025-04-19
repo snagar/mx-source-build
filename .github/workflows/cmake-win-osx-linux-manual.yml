@@ -219,10 +219,10 @@ jobs:
       - name: Set Windows reusable strings
         # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
         id: strings
-        shell: cmd
+        shell: bash
         run: |
-          echo "build-output-dir=${{ github.workspace }}\\cmake_build" >> "$GITHUB_OUTPUT"
-          echo "target_folder=${{ github.workspace }}\\release\\win_x64" >> "$GITHUB_OUTPUT"
+          echo "build-output-dir=${{ github.workspace }}\cmake_build" >> "$GITHUB_OUTPUT"
+          echo "target_folder=${{ github.workspace }}\release\win_x64" >> "$GITHUB_OUTPUT"
           echo "plugin_name=missionx" >> "$GITHUB_OUTPUT"
           echo "OS Build: ${{ matrix.os }}"
 
