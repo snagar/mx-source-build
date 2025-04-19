@@ -229,7 +229,7 @@ set(BASE_SRC src/core/coordinate/NavAidInfo.hpp
     src/mission.h
     src/plugin.cpp
     src/plugin.h
-#    src/core/mxconst.h
+    src/core/mxconst.h
 )
 
 set(IMGUI_SQLITE_STB_POLY_LIB_SRC
@@ -521,7 +521,7 @@ if (WIN32)
   find_library(FREETYPE2 NAMES freetype.lib)
 endif()
 
-
+# Filter out libraries that in "anaconda" or "git" repository. The idea is to force OS libraries.
 #function(fn_filter_out_specific_folders validator_result_var item)
 #  message("Validating: ${item} :" ${item} )
 #
@@ -541,37 +541,18 @@ if (NOT APPLE)
   if (WIN32)
     message ("Windows - search for cURL libs")
     ## find_package needs "package.cmake" file to be present, this is why we use the "find_library" function instead
-    find_library(OPENSSL_LIBRARY NAMES ssl crypto libssl.lib libcrypto.lib REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-    find_library(CURL_LIBRARY NAMES curl libcurl.lib)  # cURL
+    find_library(OPENSSL_LIBRARY NAMES libssl.lib libcrypto.lib REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
+    find_library(CURL_LIBRARY NAMES libcurl.lib)  # cURL
   else()
     message ("Linux - search for cURL + OpenSSL libs")
     ## find_package needs "package.cmake" file to be present, this is why we use the "find_library" function instead
     find_library(OPENSSL_LIBRARY NAMES ssl crypto ) # HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
     find_library(CURL_LIBRARY    NAMES curl    ) # cURL
 
+    # Deprecated, works well without the filter
     #    find_library(OPENSSL_LIBRARY NAMES ssl    validator fn_filter_out_specific_folders ) # HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
     #    find_library(OPENSSL_LIBRARY NAMES crypto validator fn_filter_out_specific_folders )
     #    find_library(CURL_LIBRARY    NAMES curl   validator fn_filter_out_specific_folders ) # cURL
-
-    #    if(OS_NAME STREQUAL "Ubuntu" OR OS_NAME STREQUAL "Linuxmint")
-    #      if(OS_VERSION_ID MATCHES "^22\\." OR OS_VERSION_ID MATCHES "^21\\." )
-    #        message( "find_library: Ubuntu/Linuxmint version: ${OS_VERSION_ID}. Using older libs from v22.04 search path.")
-    #        find_library(OPENSSL_LIBRARY NAMES ssl crypto REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL-v22.04/openssl-3xx/lib)  #
-    #        find_library(CURL_LIBRARY NAMES curl REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/curl-v22.04/libs/x64/lin)  #
-    #      elseif(OS_VERSION_ID MATCHES "^24\\." OR OS_VERSION_ID MATCHES "^22\\.")
-    #        message(WARNING "find_library: Unsupported Ubuntu version: ${OS_VERSION_ID}. Using default curl search path.")
-    #        find_library(OPENSSL_LIBRARY NAMES ssl crypto REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-    #        find_library(CURL_LIBRARY NAMES curl REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/lin)  #
-    #      else()
-    #        message(WARNING "find_library: Unsupported Ubuntu version: ${OS_VERSION_ID}. Using default curl search path.")
-    #        find_library(OPENSSL_LIBRARY NAMES ssl crypto REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-    #        find_library(CURL_LIBRARY NAMES curl REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/lin)  #
-    #      endif()
-    #    else()
-    #      message(WARNING "find_library: Unsupported OS: ${OS_NAME}. Using default curl search path.")
-    #      find_library(OPENSSL_LIBRARY NAMES ssl crypto REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-    #      find_library(CURL_LIBRARY NAMES curl REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/lin)  #
-    #    endif()
 
 
   endif()

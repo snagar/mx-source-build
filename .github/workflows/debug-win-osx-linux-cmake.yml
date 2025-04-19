@@ -168,7 +168,7 @@ jobs:
           echo "build-output-dir=${{ github.workspace }}/cmake_build/${{ matrix.build_type }}" >> "$GITHUB_OUTPUT"
           echo "OS Build: ${{ matrix.os }}"
 
-      - name: Check MacOS Stats
+      - name: Check Windows Stats
         shell: bash
         run: |
           systeminfo
