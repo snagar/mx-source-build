@@ -103,7 +103,7 @@ jobs:
           name: build-linux
           path: |
             # ${{ steps.strings.outputs.target_folder }}/${{ steps.strings.outputs.plugin_name }}*
-            ${{ steps.strings.outputs.target_folder }}/*
+            ${{ github.workspace }}/release/*
 
 
   build-osx:
