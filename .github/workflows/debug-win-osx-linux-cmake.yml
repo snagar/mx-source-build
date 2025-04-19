@@ -176,10 +176,8 @@ jobs:
           # wmic NumberOfCores
           # echo "core-count=$( wmic NumberOfCores )" >> "$GITHUB_OUTPUT"
           echo -e "Workspace: ${{ github.workspace }} "
-          DIR
-          DIR src
-          DIR /S
-          #ls -ltR ${{ github.workspace }}
+          DIR ${{ github.workspace }}
+
 
       - name: Configure CMake
         # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
@@ -200,8 +198,8 @@ jobs:
 
       - name: Post Build
         # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-        shell: bash
+        shell: cmd
         run: |
           echo -e "Output dir structure"
-          dir /S ${{ github.workspace }}
-          ls -ltR ${{ github.workspace }}/cmake_build
+          dir /S ${{ steps.strings.outputs.build-output-dir }}
+
