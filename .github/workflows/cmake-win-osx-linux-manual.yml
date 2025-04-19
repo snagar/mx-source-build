@@ -251,33 +251,33 @@ jobs:
           echo "Build Release"          
           cmake -B ${{ steps.strings.outputs.build-output-dir }}\release -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=Release -S ${{ github.workspace }}
           REM Build your program 
-          cmake --build ${{ steps.strings.outputs.build-output-dir }}/release --config Release -j 2
+          cmake --build ${{ steps.strings.outputs.build-output-dir }}\release --config Release -j 2
   
           REM Dummy for tests purposes
           REM echo "Use touch to create dummy files:"
-          REM mkdir ${{ steps.strings.outputs.build-output-dir }}\debug\
-          REM echo > ${{ steps.strings.outputs.build-output-dir }}\debug\${{ steps.strings.outputs.plugin_name }}.xpl
-          REM mkdir ${{ steps.strings.outputs.build-output-dir }}\release\
-          REM echo > ${{ steps.strings.outputs.build-output-dir }}\release\${{ steps.strings.outputs.plugin_name }}.xpl
+          REM mkdir ${{ steps.strings.outputs.build-output-dir }}\debug\Debug
+          REM echo > ${{ steps.strings.outputs.build-output-dir }}\debug\Debug\${{ steps.strings.outputs.plugin_name }}.xpl
+          REM mkdir ${{ steps.strings.outputs.build-output-dir }}\release\Release
+          REM echo > ${{ steps.strings.outputs.build-output-dir }}\release\Release\${{ steps.strings.outputs.plugin_name }}.xpl
 
       - name: Post Build - Prepare binaries folder for before loading into artifact
         shell: cmd
         run: |
-          echo "Output dir structure ${{ steps.strings.outputs.build-output-dir }}"          
-          dir /S ${{ steps.strings.outputs.build-output-dir }}
-          dir /S ${{ steps.strings.outputs.build-output-dir }} * | findstr -i "*.xpl"
-
+          echo "Output where the mission.xpl files in '${{ steps.strings.outputs.build-output-dir }}' folder:"          
+          REM dir /S ${{ steps.strings.outputs.build-output-dir }}          
+          for /R "${{ steps.strings.outputs.build-output-dir }}" %a IN (*.xpl) DO echo %a
+          
           echo "make release folder"          
           md ${{ steps.strings.outputs.target_folder }}
 
           echo "Copy and rename debug binaries. We will compress it later on"
-          copy /B ${{ steps.strings.outputs.build-output-dir }}\debug\${{ steps.strings.outputs.plugin_name }}.xpl ${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin_name }}.xpl.D 
+          copy /B ${{ steps.strings.outputs.build-output-dir }}\debug\Debug\${{ steps.strings.outputs.plugin_name }}.xpl ${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin_name }}.xpl.D 
 
           echo "Add Release binaries"
-          copy /B ${{ steps.strings.outputs.build-output-dir }}\release\${{ steps.strings.outputs.plugin_name }}.xpl ${{ steps.strings.outputs.target_folder }}\ 
+          copy /B ${{ steps.strings.outputs.build-output-dir }}\release\Release\${{ steps.strings.outputs.plugin_name }}.xpl ${{ steps.strings.outputs.target_folder }}\ 
 
           echo "Display Release Structure:"
-          dir /S ${{ github.workspace }}\\release
+          dir /S ${{ github.workspace }}\release
           
 
       - name: Upload Windows Build Artifact
