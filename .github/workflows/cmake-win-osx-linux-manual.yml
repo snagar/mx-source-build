@@ -225,11 +225,13 @@ jobs:
           echo "plugin_name=missionx" >> "$GITHUB_OUTPUT"
           echo "OS Build: ${{ matrix.os }}"
 
+      - name: Set up winget
+        uses: microsoft/winget-cli@v1.7.0 # Use the setup action
 
       - name: Install Windows needed applications
         shell: cmd
         run: |
-          winget --disable-interactivity install 7zip.7zip
+          winget install --accept-source-agreements 7zip.7zip
 
 
       - name: Check Windows Stats
