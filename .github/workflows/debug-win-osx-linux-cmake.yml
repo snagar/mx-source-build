@@ -176,7 +176,7 @@ jobs:
           # wmic NumberOfCores
           # echo "core-count=$( wmic NumberOfCores )" >> "$GITHUB_OUTPUT"
           echo -e "Workspace: ${{ github.workspace }} "
-          DIR /S /B .
+          DIR
           #ls -ltR ${{ github.workspace }}
 
       - name: Configure CMake
