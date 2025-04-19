@@ -1293,8 +1293,7 @@ missionx::QueueMessageManager::loadCheckpoint(ITCXMLNode& inParent, std::deque<m
 #endif
   if (!xMessages.isEmpty())
   {
-    const missionx::mxconst mx_const; // v25.04.2
-    int nChilds = xMessages.nChildNode(mxconst::get_ELEMENT_MESSAGE ().c_str());
+    const int nChilds = xMessages.nChildNode(mxconst::get_ELEMENT_MESSAGE ().c_str());
     for (int i = 0; i < nChilds; i++)
     {
       ITCXMLNode  xChild = xMessages.getChildNode(i);

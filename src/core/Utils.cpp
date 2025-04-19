@@ -2166,7 +2166,6 @@ IXMLNode missionx::Utils::xml_create_node_from_string (const std::string& inStri
 
 IXMLNode missionx::Utils::xml_create_message (const std::string& inMsgName, const std::string &inText)
 {
-  const missionx::mxconst mx_const; // v25.04.2
   IXMLNode xMsg = Utils::xml_get_node_from_XSD_map_as_acopy(mxconst::get_ELEMENT_MESSAGE ());
   xMsg.updateAttribute(inMsgName.c_str(), mxconst::get_ATTRIB_NAME().c_str(), mxconst::get_ATTRIB_NAME().c_str());
 
@@ -2185,7 +2184,6 @@ IXMLNode missionx::Utils::xml_create_message (const std::string& inMsgName, cons
 
 bool missionx::Utils::xml_update_message_text(IXMLNode& pNode, const std::string& inMsgName, const std::string &inText)
 {
-  const missionx::mxconst mx_const; // v25.04.2
   IXMLNode xMsg = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode(pNode, mxconst::get_ELEMENT_MESSAGE (), mxconst::get_ATTRIB_NAME(), inMsgName, false); // return pointer to message
   if (xMsg.isEmpty())
     return false;
