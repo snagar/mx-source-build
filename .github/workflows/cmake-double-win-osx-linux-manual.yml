@@ -265,16 +265,16 @@ jobs:
           echo "Copy all ".xpl" files to release folder:"
           IF "${{ matrix.build_type }}" == "Release" (
              echo "Coping the Release binaries"
-             echo copy /B /Y "${{ steps.strings.outputs.build-output-dir }}/Release/${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}/" 
-             copy /B /Y "${{ steps.strings.outputs.build-output-dir }}/Release/${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}/"
+             echo copy /B /Y "${{ steps.strings.outputs.build-output-dir }}\Release\${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}\" 
+             copy /B /Y "${{ steps.strings.outputs.build-output-dir }}\Release\${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}\"
           ) ELSE (
             echo "Coping the Debug binaries"
-          echo copy /B /Y "${{ steps.strings.outputs.build-output-dir }}/Debug/${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}/${{ steps.strings.outputs.plugin_name }}.xpl.D" 
-            copy /B /Y "${{ steps.strings.outputs.build-output-dir }}/Debug/${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}/${{ steps.strings.outputs.plugin_name }}.xpl.D"
-            copy /B /Y "${{ steps.strings.outputs.build-output-dir }}/Debug/*.xpl" "${{ steps.strings.outputs.target_folder }}/${{ steps.strings.outputs.plugin_name }}.xpl.D"
+          echo copy /B /Y "${{ steps.strings.outputs.build-output-dir }}\Debug\${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin_name }}.xpl.D" 
+            copy /B /Y "${{ steps.strings.outputs.build-output-dir }}\Debug\${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin_name }}.xpl.D"
+            copy /B /Y "${{ steps.strings.outputs.build-output-dir }}\Debug\*.xpl" "${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin_name }}.xpl.D"
           )
           echo "Display Release Structure:"
-          dir /S ${{ steps.strings.outputs.build-output-dir }}/${{ matrix.build_type }}
+          dir /S ${{ steps.strings.outputs.build-output-dir }}\${{ matrix.build_type }}
           dir /S ${{ steps.strings.outputs.target_folder }}
 
           REM for /R "${{ steps.strings.outputs.build-output-dir }}" "%a" IN (missionx.xpl) DO copy /B /Y "%a" "${{ steps.strings.outputs.target_folder }}/missionx.xpl.D"
