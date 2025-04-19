@@ -262,8 +262,8 @@ jobs:
       - name: Post Build - Prepare binaries folder for before loading into artifact
         shell: cmd
         run: |
-          echo "Output dir structure"
-          # dir /S ${{ steps.strings.outputs.build-output-dir }} * | findstr -i "*.xpl"
+          echo "Output dir structure"          
+          REM dir /S ${{ steps.strings.outputs.build-output-dir }} * | findstr -i "*.xpl"
           dir /S ${{ steps.strings.outputs.build-output-dir }}
 
           echo "make release folder"          
