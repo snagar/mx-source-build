@@ -156,10 +156,15 @@ jobs:
          #    cmake --build ${{ steps.strings.outputs.build-output-dir }}/release --config Release -- -j 4
 
          ## Dummy for tests
+         echo "Use touch to create dummy files:\n"
          mkdir -p ${{ steps.strings.outputs.build-output-dir }}/debug/
+         
          touch ${{ steps.strings.outputs.build-output-dir }}/debug/${{ steps.strings.outputs.plugin_name }}.xpl
+         
          mkdir -p ${{ steps.strings.outputs.build-output-dir }}/release/
+         
          touch ${{ steps.strings.outputs.build-output-dir }}/release/${{ steps.strings.outputs.plugin_name }}.xpl
+         
      
      
 
@@ -168,7 +173,8 @@ jobs:
        shell: bash
        run: |
          echo -e "Output dir structure"
-         find ${{ steps.strings.outputs.build-output-dir }} -maxdepth 4 -type f -name "*.xpl"
+         # find ${{ steps.strings.outputs.build-output-dir }} -maxdepth 4 -type f -name "*.xpl"
+         find ${{ steps.strings.outputs.build-output-dir }}
 
          echo "make release folder"          
          mkdir -p ${{ steps.strings.outputs.target_folder }}
