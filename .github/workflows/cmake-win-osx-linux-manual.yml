@@ -208,8 +208,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ windows-latest ]
-        build_type: [ Debug, Release ]
-        #build_type: [ Debug ]
+        #build_type: [ Debug, Release ]
+        build_type: [ Debug ]
         c_compiler: [ cl ]
         cpp_compiler: [ cl ]
 
@@ -243,19 +243,16 @@ jobs:
         # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
         # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
         run: |
-          cmake -B ${{ steps.strings.outputs.build-output-dir }}\debug -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=Debug -S ${{ github.workspace }}
-          
+          echo "Build DEBUG"
+          cmake -B ${{ steps.strings.outputs.build-output-dir }}\debug -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=Debug -S ${{ github.workspace }}          
           REM Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
           cmake --build ${{ steps.strings.outputs.build-output-dir }}\debug --config Debug -j 2
-          
 
-      - name: Release - Configure & Build Windows Binaries using CMake
-        run: |
+          echo "Build Release"          
           cmake -B ${{ steps.strings.outputs.build-output-dir }}\release -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=Release -S ${{ github.workspace }}
-          
           REM Build your program 
           cmake --build ${{ steps.strings.outputs.build-output-dir }}/release --config Release -j 2
-
+  
           REM Dummy for tests purposes
           REM echo "Use touch to create dummy files:"
           REM mkdir ${{ steps.strings.outputs.build-output-dir }}\debug\
