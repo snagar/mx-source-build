@@ -113,7 +113,8 @@ jobs:
      fail-fast: false
      matrix:
        os: [ macos-14 ]
-       build_type: [ Debug, Release ]
+       #build_type: [ Debug, Release ]
+       build_type: [ Debug ]
        c_compiler: [ clang ]
        cpp_compiler: [ clang++ ]
 
@@ -155,8 +156,10 @@ jobs:
          #    # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
          #    cmake --build ${{ steps.strings.outputs.build-output-dir }}/release --config Release -- -j 4
 
-         ## Dummy for tests
+         # Dummy for tests
+         
          echo "Use touch to create dummy files:\n"
+         
          mkdir -p ${{ steps.strings.outputs.build-output-dir }}/debug/
          
          touch ${{ steps.strings.outputs.build-output-dir }}/debug/${{ steps.strings.outputs.plugin_name }}.xpl
