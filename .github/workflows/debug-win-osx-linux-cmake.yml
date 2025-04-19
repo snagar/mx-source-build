@@ -172,8 +172,9 @@ jobs:
         shell: bash
         run: |
           systeminfo
-          wmic cpu get Name, NumberOfCores, MaxClockSpeed
-          echo "core-count=$( wmic NumberOfCores )" >> "$GITHUB_OUTPUT"
+          # wmic cpu get Name, NumberOfCores, MaxClockSpeed
+          wmic NumberOfCores
+          # echo "core-count=$( wmic NumberOfCores )" >> "$GITHUB_OUTPUT"
 
 
       - name: Configure CMake
