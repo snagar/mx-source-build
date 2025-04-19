@@ -208,8 +208,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ windows-latest ]
-        build_type: [ Debug, Release ]
-        #build_type: [ Debug ]
+        #build_type: [ Debug, Release ]
+        build_type: [ Debug ]
         c_compiler: [ cl ]
         cpp_compiler: [ cl ]
 
@@ -232,13 +232,13 @@ jobs:
         run: |
           systeminfo
           wmic cpu get Name, NumberOfCores, MaxClockSpeed
-          # wmic NumberOfCores
-          # echo "core-count=$( wmic NumberOfCores )" >> "$GITHUB_OUTPUT"
+          REM wmic NumberOfCores
+          REM echo "core-count=$( wmic NumberOfCores )" >> "$GITHUB_OUTPUT"
           echo "Workspace: ${{ github.workspace }} "
           DIR ${{ github.workspace }}
 
 
-      - name: Debug - Configure & Build Windows Binaries using CMake
+      - name: Configure & Build Windows Binaries using CMake
         shell: cmd
         # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
         # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
@@ -254,9 +254,9 @@ jobs:
       - name: Post Build - Prepare binaries folder prior to loading into artifact
         shell: cmd
         run: |
-          echo "Output where the mission.xpl files in '${{ steps.strings.outputs.build-output-dir }}' folder:"          
+          echo "Output Folder Tree and Files in '${{ steps.strings.outputs.build-output-dir }}' folder:"          
           dir /S ${{ steps.strings.outputs.build-output-dir }}          
-          for /R "${{ steps.strings.outputs.build-output-dir }}" %a IN (*.xpl) DO echo %a
+          REM for /R "${{ steps.strings.outputs.build-output-dir }}" "%a" IN (*.xpl) DO echo "%a"
 
                       
           echo "make release folder"          
@@ -264,12 +264,14 @@ jobs:
 
           echo "Copy all ".xpl" files to release folder:"
           IF "${{ matrix.build_type }}" == "Release" (
-          for /R "${{ steps.strings.outputs.build-output-dir }}" %a IN (missionx.xpl) DO copy /B /Y "%a" "${{ steps.strings.outputs.target_folder }}/"
+             copy /B /Y "${{ steps.strings.outputs.build-output-dir }}/Release/${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}/"
           ) ELSE (
-            for /R "${{ steps.strings.outputs.build-output-dir }}" %a IN (missionx.xpl) DO copy /B /Y "%a" "${{ steps.strings.outputs.target_folder }}/missionx.xpl.D"
+            copy /B /Y "${{ steps.strings.outputs.build-output-dir }}/Debug/${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}/${{ steps.strings.outputs.plugin_name }}.xpl.D"
           )
           echo "Display Release Structure:"
           dir /S ${{ steps.strings.outputs.target_folder }}
+
+          REM for /R "${{ steps.strings.outputs.build-output-dir }}" "%a" IN (missionx.xpl) DO copy /B /Y "%a" "${{ steps.strings.outputs.target_folder }}/missionx.xpl.D"
           
 
       - name: Upload Windows Build Artifact
