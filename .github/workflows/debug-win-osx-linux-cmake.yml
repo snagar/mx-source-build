@@ -201,4 +201,4 @@ jobs:
         shell: cmd
         run: |
           echo "Output dir structure"
-          dir /S ${{ steps.strings.outputs.build-output-dir }}          
+          dir /S cmake_build          
