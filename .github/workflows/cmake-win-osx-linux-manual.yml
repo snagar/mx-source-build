@@ -265,7 +265,6 @@ jobs:
           echo > ${{ steps.strings.outputs.build-output-dir }}/release/${{ steps.strings.outputs.plugin_name }}.xpl
 
       - name: Post Build - Prepare binaries folder for before loading into artifact
-        # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
         shell: cmd
         run: |
           echo "Output dir structure"
