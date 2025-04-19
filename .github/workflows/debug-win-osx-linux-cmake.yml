@@ -173,7 +173,7 @@ jobs:
         run: |
           systeminfo
           # wmic cpu get Name, NumberOfCores, MaxClockSpeed
-          wmic NumberOfCores
+          # wmic NumberOfCores
           # echo "core-count=$( wmic NumberOfCores )" >> "$GITHUB_OUTPUT"
 
 
