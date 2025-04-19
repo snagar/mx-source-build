@@ -175,8 +175,9 @@ jobs:
           wmic cpu get Name, NumberOfCores, MaxClockSpeed
           # wmic NumberOfCores
           # echo "core-count=$( wmic NumberOfCores )" >> "$GITHUB_OUTPUT"
-          echo -e "Workspace: ${{ github.workspace }} " 
-          ls -ltR ${{ github.workspace }}
+          echo -e "Workspace: ${{ github.workspace }} "
+          DIR /S /B .
+          #ls -ltR ${{ github.workspace }}
 
       - name: Configure CMake
         # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
