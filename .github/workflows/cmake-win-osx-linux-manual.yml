@@ -71,15 +71,19 @@ jobs:
           # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
           cmake --build ${{ steps.strings.outputs.build-output-dir }}/release --config Release -- -j 4
 
-      - name: Post Build
+      - name: Post Build - Prepare
         # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
         shell: bash
         run: |
           echo -e "Output dir structure"
-          ls -ltR ${{ steps.strings.outputs.build-output-dir }}
+          find ${{ steps.strings.outputs.build-output-dir }} -maxdepth 4 -type f -name "*.xpl"
           
-          echo -e "Compress debug binaries."
-          7z a -t7z ${{ steps.strings.outputs.build-output-dir }}/debug/missionx.xpl          
+          # echo "make release folder"
+          # mkdir -p release/${{ matrix.os }}
+          # cp -p ${{ steps.strings.outputs.build-output-dir }}/debug/
+          
+          #echo -e "Compress debug binaries."
+          #7z a -t7z ${{ steps.strings.outputs.build-output-dir }}/debug/missionx.xpl          
 
 
 
