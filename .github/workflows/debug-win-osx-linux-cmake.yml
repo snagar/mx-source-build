@@ -175,7 +175,7 @@ jobs:
           wmic cpu get Name, NumberOfCores, MaxClockSpeed
           # wmic NumberOfCores
           # echo "core-count=$( wmic NumberOfCores )" >> "$GITHUB_OUTPUT"
-          dir /S ${{ github.workspace }}
+          echo -e "Workspace: ${{ github.workspace }} " 
           ls -ltR ${{ github.workspace }}
 
       - name: Configure CMake
