@@ -169,7 +169,7 @@ jobs:
           echo "OS Build: ${{ matrix.os }}"
 
       - name: Check Windows Stats
-        shell: bash
+        shell: cmd
         run: |
           systeminfo
           wmic cpu get Name, NumberOfCores, MaxClockSpeed
@@ -177,6 +177,8 @@ jobs:
           # echo "core-count=$( wmic NumberOfCores )" >> "$GITHUB_OUTPUT"
           echo -e "Workspace: ${{ github.workspace }} "
           DIR
+          DIR src
+          DIR /S
           #ls -ltR ${{ github.workspace }}
 
       - name: Configure CMake
