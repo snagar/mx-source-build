@@ -1,0 +1,205 @@
+# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
+# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
+name: CMake on Win, Linux and MacOS platforms
+
+on:
+  push:
+    tags:
+      - '*'
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+jobs:
+
+  build-linux:
+    runs-on: ubuntu-22.04
+    strategy:
+      # Set fail-fast too false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-22.04 ]
+        # build_type: [ Debug, Release ]
+        c_compiler: [ gcc ]
+        include:
+          - os: ubuntu-22.04
+            c_compiler: gcc
+            cpp_compiler: g++
+
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Linux reusable strings
+        # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
+        id: strings
+        shell: bash
+        run: |
+          echo "build-output-dir=${{ github.workspace }}/cmake_build/${{ matrix.build_type }}" >> "$GITHUB_OUTPUT"
+          echo "OS Build: ${{ matrix.os }}"
+
+      - name: Prepare Linux libraries
+        shell: bash
+        run: |
+          set -x
+          sudo apt-get -y install libarchive-zip-perl freeglut3-dev g++ libopenal1 libssl-dev libcurl4-openssl-dev
+          TAG=${GITHUB_REF##*/}
+          if [ ! -z "$TAG" ]; then
+            echo "VERSION=$TAG" > version.mak
+          fi
+
+      - name: Check Linux Stats
+        shell: bash
+        run: |
+          echo -e "\n---->\nnproc:"
+          nproc
+          echo -e "\nlscpu:"
+          lscpu
+
+      - name: Debug - Configure & Build Linux using CMake
+        # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+        # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+        run: |
+          cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=Debug -S ${{ github.workspace }}
+
+          # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+          cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} -- -j 4
+
+      - name: Release - Configure & Build Linux using CMake
+        # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+        # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+        run: |
+          cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=Release -S ${{ github.workspace }}
+          # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+          cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} -- -j 4
+
+      - name: Post Build
+        # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+        shell: bash
+        run: |
+          echo -e "Output dir structure"
+          ls -ltR ${{ steps.strings.outputs.build-output-dir }}
+
+
+
+      #- name: Upload Build Artifact
+      #  uses: actions/upload-artifact@v4
+      #  with:
+      #    name: build-linux
+      #    path: |
+      #      build/lin.xpl
+
+
+  build-osx:
+   if: ( 1 == 2 )
+   runs-on: macos-14
+   strategy:
+     fail-fast: false
+     matrix:
+       os: [ macos-14 ]
+       build_type: [ Debug, Release ]
+       c_compiler: [ clang ]
+       cpp_compiler: [ clang++ ]
+
+   steps:
+     - uses: actions/checkout@v4
+
+     - name: Set MacOS reusable strings
+       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
+       id: strings
+       shell: bash
+       run: |
+         echo "build-output-dir=${{ github.workspace }}/cmake_build/${{ matrix.build_type }}" >> "$GITHUB_OUTPUT"
+         echo "OS Build: ${{ matrix.os }}"
+
+     - name: Check MacOS Stats
+       shell: bash
+       run: |
+         echo -e "\n---->\nhw.physicalcpu:"
+         sysctl -n hw.physicalcpu
+         echo -e "\nhw.logicalcpu:"
+         sysctl -n hw.logicalcpu
+         echo -e "\nSystem Profiler - Hardware:"
+         system_profiler SPHardwareDataType
+
+         otool -L /Applications/Xcode_15.2.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.2.sdk/usr/lib/libcurl.tbd
+
+     - name: Configure CMake
+       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+       run: >
+         cmake -B ${{ steps.strings.outputs.build-output-dir }}
+         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+         -S ${{ github.workspace }}
+
+
+     - name: Build
+       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} -- -j 4
+
+
+     - name: Post Build
+       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+       shell: bash
+       run: |
+         echo -e "Output dir structure"
+         ls -ltR ${{ steps.strings.outputs.build-output-dir }}
+
+
+
+  build-win:
+    if: ( 1 == 2 )
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest ]
+        build_type: [ Debug, Release ]
+        c_compiler: [ cl ]
+        cpp_compiler: [ cl ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Windows reusable strings
+        # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
+        id: strings
+        shell: bash
+        run: |
+          echo "build-output-dir=${{ github.workspace }}/cmake_build/${{ matrix.build_type }}" >> "$GITHUB_OUTPUT"
+          echo "OS Build: ${{ matrix.os }}"
+
+      - name: Check Windows Stats
+        shell: cmd
+        run: |
+          systeminfo
+          wmic cpu get Name, NumberOfCores, MaxClockSpeed
+          # wmic NumberOfCores
+          # echo "core-count=$( wmic NumberOfCores )" >> "$GITHUB_OUTPUT"
+          echo "Workspace: ${{ github.workspace }} "
+          DIR ${{ github.workspace }}
+
+
+      - name: Configure CMake
+        # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+        # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+        run: >
+          cmake -B ${{ steps.strings.outputs.build-output-dir }}
+          -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -S ${{ github.workspace }} 
+
+
+      - name: Build
+        # if: ( 1 == 2 )
+        # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+        run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} -j 2
+
+
+      - name: Post Build
+        # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+        shell: cmd
+        run: |
+          echo "Output dir structure"
+          dir /S cmake_build          
