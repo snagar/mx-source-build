@@ -255,9 +255,9 @@ jobs:
 
           REM Dummy for tests
           echo "Use touch to create dummy files:"
-          mkdir /p ${{ steps.strings.outputs.build-output-dir }}\debug\
+          mkdir ${{ steps.strings.outputs.build-output-dir }}\debug\
           echo > ${{ steps.strings.outputs.build-output-dir }}\debug\${{ steps.strings.outputs.plugin_name }}.xpl
-          mkdir /p ${{ steps.strings.outputs.build-output-dir }}\release\
+          mkdir ${{ steps.strings.outputs.build-output-dir }}\release\
           echo > ${{ steps.strings.outputs.build-output-dir }}\release\${{ steps.strings.outputs.plugin_name }}.xpl
 
       - name: Post Build - Prepare binaries folder for before loading into artifact
@@ -265,16 +265,16 @@ jobs:
         run: |
           echo "Output dir structure ${{ steps.strings.outputs.build-output-dir }}"          
           REM dir /S ${{ steps.strings.outputs.build-output-dir }} * | findstr -i "*.xpl"
-          dir /S cmake_build
+          dir /S ${{ steps.strings.outputs.build-output-dir }}
 
           echo "make release folder"          
-          md /p ${{ steps.strings.outputs.target_folder }}
+          md ${{ steps.strings.outputs.target_folder }}
 
           echo "Copy and rename debug binaries. We will compress it later on"
-          copy /B ${{ steps.strings.outputs.build-output-dir }}\\debug\\${{ steps.strings.outputs.plugin_name }}.xpl ${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin_name }}.xpl.D 
+          copy /B ${{ steps.strings.outputs.build-output-dir }}\debug\${{ steps.strings.outputs.plugin_name }}.xpl ${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin_name }}.xpl.D 
 
           echo "Add Release binaries"
-          copy /B ${{ steps.strings.outputs.build-output-dir }}\\release\\${{ steps.strings.outputs.plugin_name }}.xpl ${{ steps.strings.outputs.target_folder }}\ 
+          copy /B ${{ steps.strings.outputs.build-output-dir }}\release\${{ steps.strings.outputs.plugin_name }}.xpl ${{ steps.strings.outputs.target_folder }}\ 
 
           echo "Display Release Structure:"
           dir /S ${{ github.workspace }}\\release
