@@ -175,7 +175,7 @@ jobs:
           wmic cpu get Name, NumberOfCores, MaxClockSpeed
           # wmic NumberOfCores
           # echo "core-count=$( wmic NumberOfCores )" >> "$GITHUB_OUTPUT"
-          echo -e "Workspace: ${{ github.workspace }} "
+          echo "Workspace: ${{ github.workspace }} "
           DIR ${{ github.workspace }}
 
 
@@ -200,6 +200,5 @@ jobs:
         # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
         shell: cmd
         run: |
-          echo -e "Output dir structure"
-          dir /S ${{ steps.strings.outputs.build-output-dir }}
-
+          echo "Output dir structure"
+          dir /S ${{ steps.strings.outputs.build-output-dir }}          
