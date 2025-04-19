@@ -681,50 +681,50 @@ message("MissionX: CMAKE_CURRENT_BINARY_DIR: " ${CMAKE_CURRENT_BINARY_DIR})
 #)
 
 # Add a post-build command to log the end time
-if (UNIX)
-  if (APPLE)
-    add_custom_command(
-        TARGET ${PROJECT_NAME}  POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
-        ~/xp11/Resources/plugins/missionx/mac_x64/${PROJECT_NAME}.xpl
-    )
-  else() ## Linux
-    message ("Linux post build commands read.") ## debug
-
-    ## xp 12.x Beta
-    add_custom_command(
-        TARGET ${PROJECT_NAME}  POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
-        ~/xp12b/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
-    )
-
-    ## xp 11
-    add_custom_command(
-        TARGET ${PROJECT_NAME}  POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
-        ~/xp11/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
-    )
-
-    ## xp 12 release
-    add_custom_command(
-        TARGET ${PROJECT_NAME}  POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
-        ~/xp12/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
-    )
-
-  endif()
-else () ## Win32
-  ## xp 12 release
-  add_custom_command(
-      TARGET ${PROJECT_NAME}  POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy
-      ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
-      C:/xp12/Resources/plugins/missionx/win_x64/${PROJECT_NAME}.xpl
-  )
+#if (UNIX)
+#  if (APPLE)
+#    add_custom_command(
+#        TARGET ${PROJECT_NAME}  POST_BUILD
+#        COMMAND ${CMAKE_COMMAND} -E copy
+#        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
+#        ~/xp11/Resources/plugins/missionx/mac_x64/${PROJECT_NAME}.xpl
+#    )
+#  else() ## Linux
+#    message ("Linux post build commands read.") ## debug
+#
+#    ## xp 12.x Beta
+#    add_custom_command(
+#        TARGET ${PROJECT_NAME}  POST_BUILD
+#        COMMAND ${CMAKE_COMMAND} -E copy
+#        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
+#        ~/xp12b/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
+#    )
+#
+#    ## xp 11
+#    add_custom_command(
+#        TARGET ${PROJECT_NAME}  POST_BUILD
+#        COMMAND ${CMAKE_COMMAND} -E copy
+#        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
+#        ~/xp11/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
+#    )
+#
+#    ## xp 12 release
+#    add_custom_command(
+#        TARGET ${PROJECT_NAME}  POST_BUILD
+#        COMMAND ${CMAKE_COMMAND} -E copy
+#        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
+#        ~/xp12/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
+#    )
+#
+#  endif()
+#else () ## Win32
+#  ## xp 12 release
+#  add_custom_command(
+#      TARGET ${PROJECT_NAME}  POST_BUILD
+#      COMMAND ${CMAKE_COMMAND} -E copy
+#      ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
+#      C:/xp12/Resources/plugins/missionx/win_x64/${PROJECT_NAME}.xpl
+#  )
 
 
   #    add_custom_command(
@@ -732,5 +732,5 @@ else () ## Win32
   #            COMMAND ${CMAKE_COMMAND} -E echo Build finished at: %DATE% %TIME% >> "${CMAKE_CURRENT_BINARY_DIR}/build_time.txt"
   #    )
 
-endif()
+#endif()
 
