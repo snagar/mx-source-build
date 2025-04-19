@@ -476,6 +476,24 @@ endif ()
 ### Linker Directives
 #################################
 
+
+# Filter out libraries that in "anaconda" or "git" repository. The idea is to force OS libraries.
+#function(fn_filter_out_specific_folders validator_result_var item)
+#  message("Validating: ${item} :" ${item} )
+#
+#  if(item MATCHES "git")
+#    message("Found git in ${item} skipping")
+#    set(${validator_result_var} FALSE PARENT_SCOPE)
+#  endif()
+#  if(item MATCHES "anaconda")
+#    message("Found anaconda in ${item} skipping")
+#    set(${validator_result_var} FALSE PARENT_SCOPE)
+#  endif()
+#  message("Did not Found anaconda nor git in ${item} skipping")
+#endfunction()
+
+
+
 ## Link Third party libraries
 ### Specify library search locations.
 if (WIN32)
@@ -506,35 +524,24 @@ elseif (UNIX)
   list(APPEND CMAKE_LIBRARY_PATH "/lib64") ## v24.06.1 Fedora
   list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/fmod/lib/x64")
 
-  #  list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/lin")
-  #  list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib")
-
-
 endif ()
 
+## OpenGL libraries
+#find_library(OPENGL_LIBRARY NAMES OpenGL GL GLU OpenGL OpenGL32.lib GLUE32.lib ) # apt install freeglut3-dev
+find_package(OpenGL REQUIRED)
+if(OPENGL_FOUND)
+  include_directories(${OPENGL_INCLUDE_DIR})
+  target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES})
+else()
+  message(FATAL_ERROR "OpenGL libraries not found!")
+endif()
 
-find_library(OPENGL_LIBRARY NAMES OpenGL GL GLU OpenGL OpenGL32.lib GLUE32.lib ) # apt install freeglut3-dev
+
 find_library(FMOD_LIBRARY NAMES fmod fmod_vc.lib)
-
 
 if (WIN32)
   find_library(FREETYPE2 NAMES freetype.lib)
 endif()
-
-# Filter out libraries that in "anaconda" or "git" repository. The idea is to force OS libraries.
-#function(fn_filter_out_specific_folders validator_result_var item)
-#  message("Validating: ${item} :" ${item} )
-#
-#  if(item MATCHES "git")
-#    message("Found git in ${item} skipping")
-#    set(${validator_result_var} FALSE PARENT_SCOPE)
-#  endif()
-#  if(item MATCHES "anaconda")
-#    message("Found anaconda in ${item} skipping")
-#    set(${validator_result_var} FALSE PARENT_SCOPE)
-#  endif()
-#  message("Did not Found anaconda nor git in ${item} skipping")
-#endfunction()
 
 
 if (NOT APPLE)
@@ -543,6 +550,7 @@ if (NOT APPLE)
     ## find_package needs "package.cmake" file to be present, this is why we use the "find_library" function instead
     find_library(OPENSSL_LIBRARY NAMES libssl.lib libcrypto.lib REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
     find_library(CURL_LIBRARY NAMES libcurl.lib)  # cURL
+
   else()
     message ("Linux - search for cURL + OpenSSL libs")
     ## find_package needs "package.cmake" file to be present, this is why we use the "find_library" function instead
@@ -564,17 +572,12 @@ if (WIN32 OR APPLE)
   target_link_libraries(${PROJECT_NAME} ${XPLM_LIBRARY})
 endif ()
 
-# Link library for dynamic loading of shared objects on UNIX systems.
-#if (UNIX)
-#    find_library(DL_LIBRARY dl)
-#    target_link_libraries(${PROJECT_NAME} ${DL_LIBRARY})
-#endif ()
 
 if (WIN32)
   # Unlike OS X and Linux we build standard libraries statically since X-Plane does not provide them.
   if (MSVC)
     # Visual Studio includes many standard libraries already, just need to make sure OpenGL is linked
-    target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
+    #  target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
     target_link_libraries(${PROJECT_NAME} ${FMOD_LIBRARY})
     target_link_libraries(${PROJECT_NAME} ${CURL_LIBRARY})
     target_link_libraries(${PROJECT_NAME} ${OPENSSL_LIBRARY})
@@ -596,7 +599,7 @@ elseif (APPLE)
   target_link_libraries(${PROJECT_NAME} "-framework Foundation") ##
   target_link_libraries(${PROJECT_NAME} "-framework Security") ##
 
-  target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
+#  target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
   target_link_libraries(${PROJECT_NAME} ${FMOD_LIBRARY})
 
   ## Deprecated since we are using MacOS internal shared "cURL" library
@@ -623,7 +626,7 @@ elseif (UNIX)
   target_link_libraries(${PROJECT_NAME} -Wl,-rpath,./Resources/plugins/missionx/libs/64) # needed for XP11, no FMOD library
   # target_link_libraries(${PROJECT_NAME} -Wmultichar)  ## added to try and resolve IXMLParser library multichar warning, but it did not resolve it.
 
-  target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
+#  target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
   target_link_libraries(${PROJECT_NAME} ${FMOD_LIBRARY})
   target_link_libraries(${PROJECT_NAME} ${CURL_LIBRARY}) # depends on your distro, you might need to add "libcurl.so" symlink to the real library name.
   target_link_libraries(${PROJECT_NAME} ${OPENSSL_LIBRARY})
@@ -648,7 +651,7 @@ message("CMAKE_LIBRARY_PATH: " ${CMAKE_LIBRARY_PATH} )
 #message("CMAKE_PREFIX_PATH: " ${CMAKE_PREFIX_PATH})
 #message("CMAKE_CXX_STANDARD: " ${CMAKE_CXX_STANDARD})
 #message("CMAKE_SOURCE_DIR: " ${CMAKE_SOURCE_DIR})
-#message("OPENGL_LIBRARY:" ${OPENGL_LIBRARY})
+message("OPENGL_LIBRARIES:" ${OPENGL_LIBRARIES})
 message("FMOD_LIBRARY:" ${FMOD_LIBRARY})
 message("CURL_LIBRARY:" ${CURL_LIBRARY})
 message("OPENSSL_LIBRARY:" ${OPENSSL_LIBRARY})
