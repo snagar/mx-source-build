@@ -163,7 +163,8 @@ jobs:
           cd ${{ steps.strings.outputs.build-output-dir }}
           echo -e "--->"
           ls -l
-          echo "<--- List of the files in the output dir\n"
+          echo "<--- List of the files in the output folder\n"
+          
           if [[ "${{ matrix.build_type }}" == "Release" ]]; then
             echo -e "Coping the Release binaries"
             cp "${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}/"
@@ -192,13 +193,13 @@ jobs:
             
             
   build-win:
-    if: ( 1 == 2 )
+    # if: ( 1 == 2 )
     runs-on: windows-latest
     strategy:
       fail-fast: true
       matrix:
         os: [windows-latest]
-        #build_type: [ Debug, Release ]
+        # build_type: [ Debug, Release ]
         build_type: [Debug]
         c_compiler: [cl]
         cpp_compiler: [cl]
@@ -226,21 +227,50 @@ jobs:
           DIR ${{ github.workspace }}
 
           
-      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       - name: Configure & Build Windows Binaries using CMake
         shell: cmd
-        run: "echo \"Prepare CMake Build ${{ matrix.build_type }}\"\ncmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S ${{ github.workspace }}          \n\nREM Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).\necho \"Running CMake Build\"\ncmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} -j 2\n"
+        # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+        # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+        run: |
+          echo "Prepare CMake Build ${{ matrix.build_type }}"
+          cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S ${{ github.workspace }}
+          
+          REM Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+          echo "Running CMake Build"
+          cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} -j 2
         
       - name: Post Build - Prepare binaries folder prior to loading into artifact
         shell: cmd
-        run: "echo \"Output Folder Tree and Files in '${{ steps.strings.outputs.build-output-dir }}' folder:\"          \ndir /S ${{ steps.strings.outputs.build-output-dir }}          \nREM for /R \"${{ steps.strings.outputs.build-output-dir }}\" \"%a\" IN (*.xpl) DO echo \"%a\"\n\n\necho \"make release folder\"          \nmd ${{ steps.strings.outputs.target_folder }}\n\necho \"Copy all \".xpl\" files to release folder:\"\nIF \"${{ matrix.build_type }}\" == \"Release\" (\n   echo \"Coping the Release binaries\"\n   echo copy /B /Y \"${{ steps.strings.outputs.build-output-dir }}\\Release\\${{ steps.strings.outputs.plugin_name }}.xpl\" \"${{ steps.strings.outputs.target_folder }}\\\" \n   copy /B /Y \"${{ steps.strings.outputs.build-output-dir }}\\Release\\${{ steps.strings.outputs.plugin_name }}.xpl\" \"${{ steps.strings.outputs.target_folder }}\\\"\n) ELSE (\n  echo \"Coping the Debug binaries\"\necho copy /B /Y \"${{ steps.strings.outputs.build-output-dir }}\\Debug\\${{ steps.strings.outputs.plugin_name }}.xpl\" \"${{ steps.strings.outputs.target_folder }}\\${{ steps.strings.outputs.plugin_name }}.xpl.D\" \n  copy /B /Y \"${{ steps.strings.outputs.build-output-dir }}\\Debug\\${{ steps.strings.outputs.plugin_name }}.xpl\" \"${{ steps.strings.outputs.target_folder }}\\${{ steps.strings.outputs.plugin_name }}.xpl.D\"\n  copy /B /Y \"${{ steps.strings.outputs.build-output-dir }}\\Debug\\*.xpl\" \"${{ steps.strings.outputs.target_folder }}\\${{ steps.strings.outputs.plugin_name }}.xpl.D\"\n)\necho \"Display Release Structure:\"\ndir /S ${{ steps.strings.outputs.build-output-dir }}\\${{ matrix.build_type }}\ndir /S ${{ steps.strings.outputs.target_folder }}\n\nREM for /R \"${{ steps.strings.outputs.build-output-dir }}\" \"%a\" IN (missionx.xpl) DO copy /B /Y \"%a\" \"${{ steps.strings.outputs.target_folder }}/missionx.xpl.D\"\n"
-        
+        run: |
+          echo "Prepare release folder"
+          md ${{ steps.strings.outputs.target_folder }}
+          
+          echo "Change directory to build folder:"
+          cd "${{ steps.strings.outputs.build-output-dir }}\${{ matrix.build_type }}"
+          echo "--->"
+          dir
+          echo "<--- List of the files in the output folder"
+          
+          echo "Copy all ".xpl" files to release folder:"
+          IF "${{ matrix.build_type }}" == "Release" (
+             echo "Coping the Release binaries"
+             echo copy /B /Y "${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}\"
+             copy /B /Y "${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}\"
+          ) ELSE (
+            echo "Coping the Debug binaries"
+            echo copy /B /Y "${{ steps.strings.outputs.plugin_name }}.exe" "${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin_name }}.xpl.D"
+            copy /B /Y "${{ steps.strings.outputs.plugin_name }}.exe" "${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin_name }}.xpl.D"
+          )
+          
+          echo "Display Release Structure:"
+          dir /S ${{ steps.strings.outputs.target_folder }}
+          
+          
       - name: Upload Windows Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-win
-          path: |-
+          name: build-win-${{ matrix.build_type }}
+          path: |
             ${{ github.workspace }}/release/*
 
 
