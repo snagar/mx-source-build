@@ -16,8 +16,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04]
-        # build_type: [ Debug, Release ]
-        build_type: [ Debug ]
+        build_type: [ Debug, Release ]
+        #build_type: [ Debug ]
         c_compiler: [gcc]
         include:
           - os: ubuntu-22.04
