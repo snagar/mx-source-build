@@ -276,8 +276,8 @@ jobs:
 
   build:
     runs-on: ubuntu-22.04
-    needs: [ build-osx, build-lin ]
-    # needs: [ build-win, build-osx, build-lin ]
+    # needs: [ build-osx, build-lin ]
+    needs: [ build-win, build-osx, build-lin ]
     # Steps to download artifact and combine to final build
     steps:
       - uses: actions/checkout@v4
