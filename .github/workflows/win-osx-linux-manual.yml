@@ -258,8 +258,8 @@ jobs:
              copy /B /Y "${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}\"
           ) ELSE (
             echo "Coping the Debug binaries"
-            echo copy /B /Y "${{ steps.strings.outputs.plugin_name }}.exe" "${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin_name }}.xpl.D"
-            copy /B /Y "${{ steps.strings.outputs.plugin_name }}.exe" "${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin_name }}.xpl.D"
+            echo copy /B /Y "${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin_name }}.xpl.D"
+            copy /B /Y "${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin_name }}.xpl.D"
           )
           
           echo "Display Release Structure:"
