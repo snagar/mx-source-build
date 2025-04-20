@@ -95,9 +95,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-14]
-        #build_type: [ Debug, Release ]
-        
-        build_type: [Debug]
+        build_type: [ Debug, Release ]
+        #build_type: [Debug]
         c_compiler: [clang]
         cpp_compiler: [clang++]
     steps:
@@ -147,22 +146,21 @@ jobs:
           
           echo -e "\nChange directory to build folder:\n"
           cd ${{ steps.strings.outputs.build-output-dir }}
+          echo -e "--->"
           ls -l
-          echo "List of the files in the output dir\n"
-          #if [[ "${{ matrix.build_type }}" == "Release" ]]; then
-          #  echo -e "Coping the Release binaries"
-          #
-          #  cp "${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}/"
-          #  ls -l ${{ steps.strings.outputs.target_folder }}
-          #else
-          #  echo -e "Coping the Debug binaries"
-          #
-          #  ls -l
-          #  zip -6 ${{ steps.strings.outputs.plugin_name }}.xpl.mac.D.zip ${{ steps.strings.outputs.plugin_name }}.xpl
-          #
-          #  # cp ${{ steps.strings.outputs.plugin_name }}  "${{ steps.strings.outputs.target_folder }}/${{ steps.strings.outputs.plugin_name }}.D"
-          #  ls -l ${{ steps.strings.outputs.target_folder }}
-          #fi
+          echo "<--- List of the files in the output dir\n"
+          if [[ "${{ matrix.build_type }}" == "Release" ]]; then
+            echo -e "Coping the Release binaries"
+          
+            cp "${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}/"
+            ls -l ${{ steps.strings.outputs.target_folder }}
+          else
+            echo -e "Coping the Debug binaries"
+          
+            ls -l
+            zip -6 ${{ steps.strings.outputs.plugin_name }}.mac.D.zip ${{ steps.strings.outputs.plugin_name }}.xpl
+            ls -l ${{ steps.strings.outputs.target_folder }}
+          fi
           
           echo -e "Display Release Structure:"
           ls -ltR ${{ github.workspace }}/release
