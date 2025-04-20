@@ -10,7 +10,7 @@ on:
   
 jobs:
   build-linux:
-    if: ( 1 == 2 )
+    # if: ( 1 == 2 )
     runs-on: ubuntu-22.04
     strategy: # Set fail-fast too false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
       fail-fast: false
@@ -27,7 +27,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set Linux reusable strings
         # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
-        
         id: strings
         shell: bash
         run: |
@@ -46,6 +45,7 @@ jobs:
           if [ ! -z "$TAG" ]; then
             echo "VERSION=$TAG" > version.mak
           fi
+          
       - name: Check Linux Stats
         shell: bash
         run: |
@@ -53,10 +53,10 @@ jobs:
           nproc
           echo -e "\nlscpu:"
           lscpu
+          
+      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       - name: Debug - Configure & Build Linux using CMake
-        # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-        
-        # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
         run: >
           cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S ${{ github.workspace }}
 
@@ -87,7 +87,7 @@ jobs:
             echo -e "Coping the Debug binaries"
           
             ls -l
-            zip -6 ${{ steps.strings.outputs.plugin_name }}.mac.D.zip ${{ steps.strings.outputs.plugin_name }}.xpl
+            zip -6 "${{ steps.strings.outputs.target_folder }}/${{ steps.strings.outputs.plugin_name }}.lin.D.zip" ${{ steps.strings.outputs.plugin_name }}.xpl
             ls -l ${{ steps.strings.outputs.target_folder }}
           fi
           
@@ -97,11 +97,9 @@ jobs:
       - name: Upload Linux Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-linux
+          name: build-linux-${{ matrix.build_type }}
           path: |
-            # ${{ steps.strings.outputs.target_folder }}/${{ steps.strings.outputs.plugin_name }}*
             ${{ github.workspace }}/release/*
-            
             
             
             
@@ -168,14 +166,15 @@ jobs:
           echo "<--- List of the files in the output dir\n"
           if [[ "${{ matrix.build_type }}" == "Release" ]]; then
             echo -e "Coping the Release binaries"
-          
             cp "${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}/"
             ls -l ${{ steps.strings.outputs.target_folder }}
-          else
-            echo -e "Coping the Debug binaries"
           
+          else
+          
+            echo -e "Coping the Debug binaries"
             ls -l
-            zip -6 ${{ steps.strings.outputs.plugin_name }}.mac.D.zip ${{ steps.strings.outputs.plugin_name }}.xpl
+          
+            zip -6 "${{ steps.strings.outputs.target_folder }}/${{ steps.strings.outputs.plugin_name }}.mac.D.zip" ${{ steps.strings.outputs.plugin_name }}.xpl
             ls -l ${{ steps.strings.outputs.target_folder }}
           fi
           
