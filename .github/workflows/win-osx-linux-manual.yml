@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
   
 jobs:
-  build-linux:
+  build-lin:
     # if: ( 1 == 2 )
     runs-on: ubuntu-22.04
     strategy: # Set fail-fast too false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
@@ -97,7 +97,7 @@ jobs:
       - name: Upload Linux Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-linux-${{ matrix.build_type }}
+          name: build-lin-${{ matrix.build_type }}
           path: |
             ${{ github.workspace }}/release/*
             
@@ -239,3 +239,45 @@ jobs:
           name: build-win
           path: |-
             ${{ github.workspace }}/release/*
+
+
+  build:
+    runs-on: ubuntu-22.04
+    needs: [ build-win, build-osx, build-lin ]
+    # Steps to download artifact and combine to final build
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set build reusable strings
+        # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
+        id: strings
+        shell: bash
+        run: |
+          echo "build-output-dir=${{ github.workspace }}/build/missionx" >> "$GITHUB_OUTPUT"
+          echo "plugin_name=missionx" >> "$GITHUB_OUTPUT"
+          echo "OS Build: ${{ matrix.os }}"
+      
+      
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./download
+      
+      - name: Prepare release folder
+        shell: bash
+        run: |
+          echo -e "Display download folder content"
+          ls -ltR ./download
+          
+          echo -e "Create the build folder"
+          mkdir -p ${{ steps.strings.outputs.build-output-dir }}
+          echo -e "\n\nDisplay build folders before copy:\n\n"
+          ls -ltR ${{ steps.strings.outputs.build-output-dir }}
+          
+          echo "copy folders"
+          cp -rdp ./download/*/*_x64 ${{ steps.strings.outputs.build-output-dir }}
+          
+          echo -e "\n\nDisplay after folders before copy:\n\n"
+          ls -ltR ${{ steps.strings.outputs.build-output-dir }}
