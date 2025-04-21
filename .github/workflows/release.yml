@@ -347,7 +347,7 @@ jobs:
           echo -e "\nThe target branch is: '$TARGET_BRANCH', based on the version name: $VERSION\n"
           
           if [ -d "release" ]; then
-            cd "$TARGET_BRANCH"
+            cd "release"
           
             ## Create target branch
             echo -e "Create the new branch: $TARGET_BRANCH"
