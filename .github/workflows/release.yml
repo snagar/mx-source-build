@@ -264,6 +264,33 @@ jobs:
           
           echo "Display Release Structure:"
           dir /S ${{ steps.strings.outputs.target-folder }}
+
+      - name: Post Build - Compress debug binary using PowerShell
+        if: (  startsWith(matrix.build_type, 'Debug' ) )
+        shell: powershell
+        run: |
+          # Compress a single file
+          cd ${{ steps.strings.outputs.target-folder }}
+          
+          Write-Host "Before compressing."
+          dir
+          Write-Host " "
+          
+          Compress-Archive -Path "${{ steps.strings.outputs.plugin-name }}.xpl.D" -DestinationPath "${{ steps.strings.outputs.plugin-name }}.win.D.zip"
+          
+          if (Test-Path "${{ steps.strings.outputs.plugin-name }}.win.D.zip") {
+            Write-Host " "
+            Write-Host "The file '${{ steps.strings.outputs.plugin-name }}.win.D.zip' exists."
+            Remove-Item "${{ steps.strings.outputs.plugin-name }}.xpl.D" -Force
+          } else {
+            Write-Host "The file '${{ steps.strings.outputs.plugin-name }}.win.D.zip' does not exists."
+          }
+          
+          Write-Host " "
+          Write-Host "After Compression"
+          dir
+          Write-Host " "
+
           
           
       - name: Upload Windows Build Artifact
@@ -320,6 +347,8 @@ jobs:
           
       - name: Prepare Release Branch
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           
           TARGET_BRANCH="dry-run"
@@ -371,6 +400,10 @@ jobs:
           
             # Push the branch back.. or not
             if [[ "$TARGET_BRANCH" != "dry-run" ]]; then
+          
+              echo -e "Adding GH (Github Client) information."
+              gh ${TARGET_BRANCH} create "${{ github.ref_name }}" --title "$TARGET_BRANCH: ${{ github.ref_name }}" --notes-file ${{ github.workspace }}/notes.md
+          
               echo -e "\nCommit branch ${TARGET_BRANCH}\n---------------------"
               git commit -m "new ${TARGET_BRANCH} - ${{ github.ref_name }}"
               
@@ -419,9 +452,11 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         if: ( startsWith(github.ref_name, 'v') || startsWith(github.ref_name, 'b') || startsWith(github.ref_name, 't') || contains(github.ref_name, '-release') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-test') )
-        with:
-          files: |
-            ${{ github.workspace }}/${{ steps.strings.outputs.plugin-name }}*7z*
-          prerelease: ${{ contains(github.ref_name, '-beta') || startsWith(github.ref_name, 'b') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: |
+            ${{ github.workspace }}/notes.md
+            ${{ github.workspace }}/${{ steps.strings.outputs.plugin-name }}*7z*
+          prerelease: ${{ contains(github.ref_name, '-beta') || startsWith(github.ref_name, 'b') }}
+        
