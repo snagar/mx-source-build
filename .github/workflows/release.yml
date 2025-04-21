@@ -1,6 +1,6 @@
 # This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
 # See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
-name: V4 - CMake on Win, Linux and MacOS platforms
+name: release - multi platform
 on:
   push:
     tags:
@@ -16,8 +16,8 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-22.04]
-        build_type: [ Debug, Release ]
-        #build_type: [ Debug ]
+        # build_type: [ Debug, Release ]
+        build_type: [ Debug ]
         c_compiler: [gcc]
         include:
           - os: ubuntu-22.04
@@ -32,7 +32,7 @@ jobs:
         run: |
           echo "build-output-dir=${{ github.workspace }}/cmake_build" >> "$GITHUB_OUTPUT"
           echo "target_folder=${{ github.workspace }}/release/lin_x64" >> "$GITHUB_OUTPUT"
-          echo "plugin_name=missionx" >> "$GITHUB_OUTPUT"
+          echo "plugin-name=missionx" >> "$GITHUB_OUTPUT"
           
           echo "OS Build: ${{ matrix.os }}"
           
@@ -81,13 +81,13 @@ jobs:
           echo "<--- List of the files in the output dir\n"
           if [[ "${{ matrix.build_type }}" == "Release" ]]; then
             echo -e "Coping the Release binaries"
-            cp "${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}/"
+            cp "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target_folder }}/"
             ls -l ${{ steps.strings.outputs.target_folder }}
           else
             echo -e "Coping the Debug binaries"
           
             ls -l
-            zip -6 "${{ steps.strings.outputs.target_folder }}/${{ steps.strings.outputs.plugin_name }}.lin.D.zip" ${{ steps.strings.outputs.plugin_name }}.xpl
+            zip -6 "${{ steps.strings.outputs.target_folder }}/${{ steps.strings.outputs.plugin-name }}.lin.D.zip" ${{ steps.strings.outputs.plugin-name }}.xpl
             ls -l ${{ steps.strings.outputs.target_folder }}
           fi
           
@@ -104,7 +104,7 @@ jobs:
             
             
   build-osx:
-    # if: ( 1 == 2 )
+    if: ( 1 == 2 )
     runs-on: macos-14
     strategy:
       fail-fast: true
@@ -124,7 +124,7 @@ jobs:
         run: |
           echo "build-output-dir=${{ github.workspace }}/cmake_build" >> "$GITHUB_OUTPUT"
           echo "target_folder=${{ github.workspace }}/release/mac_x64" >> "$GITHUB_OUTPUT"
-          echo "plugin_name=missionx" >> "$GITHUB_OUTPUT"
+          echo "plugin-name=missionx" >> "$GITHUB_OUTPUT"
           
           echo "OS Build: ${{ matrix.os }}"
           
@@ -167,7 +167,7 @@ jobs:
           
           if [[ "${{ matrix.build_type }}" == "Release" ]]; then
             echo -e "Coping the Release binaries"
-            cp "${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}/"
+            cp "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target_folder }}/"
             ls -l ${{ steps.strings.outputs.target_folder }}
           
           else
@@ -175,7 +175,7 @@ jobs:
             echo -e "Coping the Debug binaries"
             ls -l
           
-            zip -6 "${{ steps.strings.outputs.target_folder }}/${{ steps.strings.outputs.plugin_name }}.mac.D.zip" ${{ steps.strings.outputs.plugin_name }}.xpl
+            zip -6 "${{ steps.strings.outputs.target_folder }}/${{ steps.strings.outputs.plugin-name }}.mac.D.zip" ${{ steps.strings.outputs.plugin-name }}.xpl
             ls -l ${{ steps.strings.outputs.target_folder }}
           fi
           
@@ -193,7 +193,7 @@ jobs:
             
             
   build-win:
-    # if: ( 1 == 2 )
+    if: ( 1 == 2 )
     runs-on: windows-latest
     strategy:
       fail-fast: true
@@ -213,7 +213,7 @@ jobs:
         run: |
           echo "build-output-dir=${{ github.workspace }}\cmake_build" >> "$GITHUB_OUTPUT"
           echo "target_folder=${{ github.workspace }}\release\win_x64" >> "$GITHUB_OUTPUT"
-          echo "plugin_name=missionx" >> "$GITHUB_OUTPUT"
+          echo "plugin-name=missionx" >> "$GITHUB_OUTPUT"
           echo "OS Build: ${{ matrix.os }}"
           
       - name: Check Windows Stats
@@ -254,12 +254,12 @@ jobs:
           echo "Copy all ".xpl" files to release folder:"
           IF "${{ matrix.build_type }}" == "Release" (
              echo "Coping the Release binaries"
-             echo copy /B /Y "${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}\"
-             copy /B /Y "${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}\"
+             echo copy /B /Y "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target_folder }}\"
+             copy /B /Y "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target_folder }}\"
           ) ELSE (
             echo "Coping the Debug binaries"
-            echo copy /B /Y "${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin_name }}.xpl.D"
-            copy /B /Y "${{ steps.strings.outputs.plugin_name }}.xpl" "${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin_name }}.xpl.D"
+            echo copy /B /Y "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin-name }}.xpl.D"
+            copy /B /Y "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin-name }}.xpl.D"
           )
           
           echo "Display Release Structure:"
@@ -289,8 +289,8 @@ jobs:
         id: strings
         shell: bash
         run: |
-          echo "build-output-dir=${{ github.workspace }}/build/missionx" >> "$GITHUB_OUTPUT"
-          echo "plugin_name=missionx" >> "$GITHUB_OUTPUT"
+          echo "build-output-dir=${{ github.workspace }}/release/missionx" >> "$GITHUB_OUTPUT"
+          echo "plugin-name=missionx" >> "$GITHUB_OUTPUT"
           echo "OS Build: ${{ matrix.os }}"
       
       
@@ -316,14 +316,112 @@ jobs:
           echo -e "\n\nDisplay after folders before copy:\n\n"
           ls -ltR ${{ steps.strings.outputs.build-output-dir }}
           
+          rm -rf ./download
           
+      - name: Prepare Release Branch
+        shell: bash
+        run: |
+          
+          TARGET_BRANCH="dry-run"
+          VERSION=${{ github.ref_name }}  # Could also used: ${GITHUB_REF##*/}
+          echo "\nCurrent TAG Version: ${VERSION}\n"
+          
+          if [[ $VERSION == *"-test"* || $VERSION == t* ]] # if TAG contains -test or starts with "t"
+          then
+            echo "This is a just a build test"
+            TARGET_BRANCH="build-test."
+          elif [[ $VERSION == *"-beta"* || $VERSION == b* ]] # if TAG contains -beta or starts with "b"
+          then
+            echo "This is a beta release"
+            TARGET_BRANCH="beta"
+          elif [[ $VERSION == v* || $VERSION == *"-release"*  ]] # if TAG starts with "v" or contains -release
+          then
+            echo "This is a 'release'."
+            TARGET_BRANCH="release"
+          else
+            # if TAG starts with any other text, like: "0" means that we only do a dry run without pushing to github
+            echo "This is a 'dry-run' test."
+            TARGET_BRANCH="dry-run"
+          fi
+          
+          echo -e "\nThe target branch is: '$TARGET_BRANCH', based on the version name: $VERSION\n"
+          
+          if [ -d "release" ]; then
+            cd "$TARGET_BRANCH"
+          
+            ## Create target branch
+            echo -e "Create the new branch: $TARGET_BRANCH"
+            git checkout -b ${TARGET_BRANCH}
+            
+            echo -e "Configuring git before pushing branch '${TARGET_BRANCH}' ."
+            git config --global user.email "snagar.dev@protonmail.com"
+            git config --global user.name "snagar"
+          
+            echo -e "--- Display Branches ---"
+            git branch -a
+          
+            echo "--- display folders ---"
+            ls -lR
+            echo "-----"
+            echo "Adding files to branch: ${TARGET_BRANCH}"
+            git add .
+            echo -e "\n---- git status ---->"
+            git status
+            echo -e "\n<---------"
+          
+            # Push the branch back.. or not
+            if [[ "$TARGET_BRANCH" != "dry-run" ]]; then
+              echo -e "\nCommit branch ${TARGET_BRANCH}\n---------------------"
+              git commit -m "new ${TARGET_BRANCH} - ${{ github.ref_name }}"
+              
+              echo -e "github.actor: ${{ github.actor }},  github.repository: ${{ github.repository }}"
+              echo -e "\ngithub.ref - ${{ github.ref }} - ${{ github.ref_name }} \n"
+              git remote add authenticated-origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
+          
+              echo -e "\nPushing ${TARGET_BRANCH}\n---------------------"
+              git push authenticated-origin ${TARGET_BRANCH} --force
+          
+              echo -e "TARGET_BRANCH - ${TARGET_BRANCH}"
+              echo -e "\ngithub.ref - ${{ github.ref }}, name: ${{ github.ref_name }} \n"
+              git branch -a
+            else
+              echo "Will not push back the '$TARGET_BRANCH'. It is only a dry-run."
+            fi
+          else
+            echo -e "Could not find [release] directory."
+            ls -l
+          fi
+          
+          
+      - name: Prepare Compressed Binary Files
+        if: ( startsWith(github.ref_name, 'v') || startsWith(github.ref_name, 'b') || startsWith(github.ref_name, 't') || contains(github.ref_name, '-release') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-test') )
+        shell: bash
+        run: |
+          # Prepare the release compressed file
+          VERSION=${{ github.ref_name }}  # Could also used: ${GITHUB_REF##*/}
+          echo -e "\nVERSION=${VERSION}\n"
+          
+          folder_to_compress="${{ github.workspace }}/release"
+          output_file="${{ github.workspace }}/${{ steps.strings.outputs.plugin-name }}-${VERSION}.7z"
+          split_size="90m"
+          
+          echo "Compressing '$folder_to_compress' to '$output_file'..."
+          (cd ./release && 7z a -t7z "${{ github.workspace }}/${{ steps.strings.outputs.plugin-name }}-${VERSION}.7z" *)
+          # (cd ./release && 7z a -t7z -v"$split_size" "${{ github.workspace }}/${{ steps.strings.outputs.plugin-name }}-${VERSION}.7z" *)
+          
+          echo -e "\n---------"
+          ls -l
+          echo -e "\n---------"
+      
+      
+      
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v2
-        # if:
+        if: ( startsWith(github.ref_name, 'v') || startsWith(github.ref_name, 'b') || startsWith(github.ref_name, 't') || contains(github.ref_name, '-release') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-test') )
         with:
           files: |
-            ${{ steps.strings.outputs.build-output-dir }}
+            ${{ github.workspace }}/${{ steps.strings.outputs.plugin-name }}*7z*
           prerelease: ${{ contains(github.ref_name, '-beta') || startsWith(github.ref_name, 'b') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
