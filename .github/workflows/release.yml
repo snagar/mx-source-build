@@ -31,7 +31,7 @@ jobs:
         shell: bash
         run: |
           echo "build-output-dir=${{ github.workspace }}/cmake_build" >> "$GITHUB_OUTPUT"
-          echo "target_folder=${{ github.workspace }}/release/lin_x64" >> "$GITHUB_OUTPUT"
+          echo "target-folder=${{ github.workspace }}/release/lin_x64" >> "$GITHUB_OUTPUT"
           echo "plugin-name=missionx" >> "$GITHUB_OUTPUT"
           
           echo "OS Build: ${{ matrix.os }}"
@@ -68,7 +68,7 @@ jobs:
         shell: bash
         run: |
           echo "prepare release folder"
-          mkdir -p ${{ steps.strings.outputs.target_folder }}
+          mkdir -p ${{ steps.strings.outputs.target-folder }}
           
           echo -e "Output directory structure"
           find ${{ steps.strings.outputs.build-output-dir }} -maxdepth 2 -type f -name "*.xpl"
@@ -81,14 +81,14 @@ jobs:
           echo "<--- List of the files in the output dir\n"
           if [[ "${{ matrix.build_type }}" == "Release" ]]; then
             echo -e "Coping the Release binaries"
-            cp "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target_folder }}/"
-            ls -l ${{ steps.strings.outputs.target_folder }}
+            cp "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target-folder }}/"
+            ls -l ${{ steps.strings.outputs.target-folder }}
           else
             echo -e "Coping the Debug binaries"
           
             ls -l
-            zip -6 "${{ steps.strings.outputs.target_folder }}/${{ steps.strings.outputs.plugin-name }}.lin.D.zip" ${{ steps.strings.outputs.plugin-name }}.xpl
-            ls -l ${{ steps.strings.outputs.target_folder }}
+            zip -6 "${{ steps.strings.outputs.target-folder }}/${{ steps.strings.outputs.plugin-name }}.lin.D.zip" ${{ steps.strings.outputs.plugin-name }}.xpl
+            ls -l ${{ steps.strings.outputs.target-folder }}
           fi
           
           echo -e "Display Release Structure:"
@@ -123,7 +123,7 @@ jobs:
         shell: bash
         run: |
           echo "build-output-dir=${{ github.workspace }}/cmake_build" >> "$GITHUB_OUTPUT"
-          echo "target_folder=${{ github.workspace }}/release/mac_x64" >> "$GITHUB_OUTPUT"
+          echo "target-folder=${{ github.workspace }}/release/mac_x64" >> "$GITHUB_OUTPUT"
           echo "plugin-name=missionx" >> "$GITHUB_OUTPUT"
           
           echo "OS Build: ${{ matrix.os }}"
@@ -153,7 +153,7 @@ jobs:
         shell: bash
         run: |
           echo "prepare release folder"
-          mkdir -p ${{ steps.strings.outputs.target_folder }}
+          mkdir -p ${{ steps.strings.outputs.target-folder }}
           
           echo -e "Output directory structure"
           find ${{ steps.strings.outputs.build-output-dir }} -maxdepth 2 -type f -name "*.xpl"
@@ -167,16 +167,16 @@ jobs:
           
           if [[ "${{ matrix.build_type }}" == "Release" ]]; then
             echo -e "Coping the Release binaries"
-            cp "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target_folder }}/"
-            ls -l ${{ steps.strings.outputs.target_folder }}
+            cp "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target-folder }}/"
+            ls -l ${{ steps.strings.outputs.target-folder }}
           
           else
           
             echo -e "Coping the Debug binaries"
             ls -l
           
-            zip -6 "${{ steps.strings.outputs.target_folder }}/${{ steps.strings.outputs.plugin-name }}.mac.D.zip" ${{ steps.strings.outputs.plugin-name }}.xpl
-            ls -l ${{ steps.strings.outputs.target_folder }}
+            zip -6 "${{ steps.strings.outputs.target-folder }}/${{ steps.strings.outputs.plugin-name }}.mac.D.zip" ${{ steps.strings.outputs.plugin-name }}.xpl
+            ls -l ${{ steps.strings.outputs.target-folder }}
           fi
           
           echo -e "Display Release Structure:"
@@ -212,7 +212,7 @@ jobs:
         shell: bash
         run: |
           echo "build-output-dir=${{ github.workspace }}\cmake_build" >> "$GITHUB_OUTPUT"
-          echo "target_folder=${{ github.workspace }}\release\win_x64" >> "$GITHUB_OUTPUT"
+          echo "target-folder=${{ github.workspace }}\release\win_x64" >> "$GITHUB_OUTPUT"
           echo "plugin-name=missionx" >> "$GITHUB_OUTPUT"
           echo "OS Build: ${{ matrix.os }}"
           
@@ -243,7 +243,7 @@ jobs:
         shell: cmd
         run: |
           echo "Prepare release folder"
-          md ${{ steps.strings.outputs.target_folder }}
+          md ${{ steps.strings.outputs.target-folder }}
           
           echo "Change directory to build folder:"
           cd "${{ steps.strings.outputs.build-output-dir }}\${{ matrix.build_type }}"
@@ -254,16 +254,16 @@ jobs:
           echo "Copy all ".xpl" files to release folder:"
           IF "${{ matrix.build_type }}" == "Release" (
              echo "Coping the Release binaries"
-             echo copy /B /Y "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target_folder }}\"
-             copy /B /Y "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target_folder }}\"
+             echo copy /B /Y "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target-folder }}\"
+             copy /B /Y "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target-folder }}\"
           ) ELSE (
             echo "Coping the Debug binaries"
-            echo copy /B /Y "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin-name }}.xpl.D"
-            copy /B /Y "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target_folder }}\${{ steps.strings.outputs.plugin-name }}.xpl.D"
+            echo copy /B /Y "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target-folder }}\${{ steps.strings.outputs.plugin-name }}.xpl.D"
+            copy /B /Y "${{ steps.strings.outputs.plugin-name }}.xpl" "${{ steps.strings.outputs.target-folder }}\${{ steps.strings.outputs.plugin-name }}.xpl.D"
           )
           
           echo "Display Release Structure:"
-          dir /S ${{ steps.strings.outputs.target_folder }}
+          dir /S ${{ steps.strings.outputs.target-folder }}
           
           
       - name: Upload Windows Build Artifact
@@ -276,8 +276,8 @@ jobs:
 
   build:
     runs-on: ubuntu-22.04
-    # needs: [ build-osx, build-lin ]
-    needs: [ build-win, build-osx, build-lin ]
+    needs: [ build-lin ]
+    # needs: [ build-win, build-osx, build-lin ]
     # Steps to download artifact and combine to final build
     steps:
       - uses: actions/checkout@v4
