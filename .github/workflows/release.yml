@@ -16,8 +16,8 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-22.04]
-        # build_type: [ Debug, Release ]
-        build_type: [ Debug ]
+        build_type: [ Debug, Release ]
+        # build_type: [ Debug ]
         c_compiler: [gcc]
         include:
           - os: ubuntu-22.04
@@ -110,8 +110,8 @@ jobs:
       fail-fast: true
       matrix:
         os: [macos-14]
-        # build_type: [ Debug, Release ]
-        build_type: [Debug]
+        build_type: [ Debug, Release ]
+        # build_type: [Debug]
         c_compiler: [clang]
         cpp_compiler: [clang++]
     steps:
@@ -199,8 +199,8 @@ jobs:
       fail-fast: true
       matrix:
         os: [windows-latest]
-        # build_type: [ Debug, Release ]
-        build_type: [Debug]
+        build_type: [ Debug, Release ]
+        # build_type: [Debug]
         c_compiler: [cl]
         cpp_compiler: [cl]
     steps:
