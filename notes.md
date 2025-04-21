@@ -1,4 +1,4 @@
-The following build only creates the Mission-X plugin using the main three supports OSes.
+The following build only creates the Mission-X plugin binaries using the main three supports OSes.
 For the full plugin, navigate to: 
 
 http://snagardev.weebly.com/plugins.html
