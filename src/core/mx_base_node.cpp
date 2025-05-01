@@ -29,12 +29,48 @@ missionx::mx_base_node::initBaseNode()
 // -----------------------------------
 
 IXMLNode
-missionx::mx_base_node::addChild(const std::string& inTagName, const std::string& inInitAttribName, const std::string& inInitAttribValue, const std::string& inTextValue)
+missionx::mx_base_node::addChild (const std::string &inTagName, const std::string &inInitAttribName, const std::string &inInitAttribValue, const std::string &inTextValue)
 {
   if (!inTagName.empty () && !inInitAttribName.empty ())
-    return Utils::xml_add_child(this->node, inTagName, inInitAttribName, inInitAttribValue, inTextValue);
+    return Utils::xml_add_child (this->node, inTagName, inInitAttribName, inInitAttribValue, inTextValue);
 
   return IXMLNode::emptyNode ();
+}
+
+// -----------------------------------
+
+IXMLNode
+mx_base_node::addChildText (const std::string &inTagName, const std::string &inTextValue)
+{
+  if (!inTagName.empty () && !inTextValue.empty ())
+    return Utils::xml_add_child (this->node, inTagName, inTextValue);
+
+  return IXMLNode::emptyNode ();
+}
+
+// -----------------------------------
+
+IXMLNode
+mx_base_node::getChild (const std::string &inTagName)
+{
+  if (!inTagName.empty ())
+    return this->node.getChildNode (inTagName.c_str ());
+
+  return IXMLNode::emptyNode ();
+}
+
+// -----------------------------------
+
+std::string
+mx_base_node::getChildTextValue (const std::string &inTagName, const std::string &inDefaultValue)
+{
+  if (!inTagName.empty ())
+  {
+    const auto child_node = this->node.getChildNode (inTagName.c_str ());
+    return Utils::xml_get_text (child_node);
+  }
+
+  return inDefaultValue;
 }
 
 // -----------------------------------

@@ -4492,22 +4492,13 @@ RandomEngine::writeTargetFile()
   xTargetTopNode.addChild(xEmbedScripts); // v3.0.221.10 can be empty element
   Utils::add_xml_comment(xTargetTopNode);
 
-  // v3.0.253.12 add <GPS> only if user asks for it
-  auto const lmbda_should_we_add_gps = [&]() {
-    if (data_manager::getGeneratedFromLayer() == missionx::uiLayer_enum::option_user_generates_a_mission_layer || data_manager::getGeneratedFromLayer() == missionx::uiLayer_enum::option_ils_layer ||
-        data_manager::getGeneratedFromLayer() == missionx::uiLayer_enum::option_external_fpln_layer)
-    {
-      return Utils::readBoolAttrib(missionx::data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_GENERATE_GPS_WAYPOINTS(), true);
-    }
+  // v25.04.2 added storing the GPS Display option we picked to the GPS element
+  const bool bGenerateGPS = Utils::readBoolAttrib (missionx::data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), false);
+  const bool bAutoLoadRoute = Utils::readBoolAttrib (missionx::data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), false);
+  Utils::xml_set_attribute_in_node<bool> (this->xGPS, mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), bGenerateGPS, mxconst::get_ELEMENT_GPS ());
+  Utils::xml_set_attribute_in_node<bool> (this->xGPS, mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), bAutoLoadRoute, mxconst::get_ELEMENT_GPS ());
+  xTargetTopNode.addChild (this->xGPS);
 
-    return true;
-  };
-
-  if (lmbda_should_we_add_gps())
-  {
-    xTargetTopNode.addChild(xGPS);
-    Utils::add_xml_comment(xTargetTopNode);
-  }
 
   //xTargetTopNode.addChild(xEnd);
   //  add end node from Template
@@ -5988,10 +5979,10 @@ RandomEngine::prepare_mission_based_on_ils_search (IXMLNode &pNode)
 {
   assert (!pNode.isEmpty () && !data_manager::prop_userDefinedMission_ui.node.isEmpty () && "Empty template or prop_userDefinedMission_ui are empty!");
 
-  const auto plane_type_i     = Utils::readNodeNumericAttrib<int> (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_PLANE_TYPE_I(), static_cast<int> (missionx::mx_plane_types::plane_type_props)); // plane type
-  const auto fpln_id_picked_i = Utils::readNodeNumericAttrib<int> (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_FPLN_ID_PICKED(), -1); // max slider
-  auto       fromICAO         = Utils::readAttrib (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_FROM_ICAO(), "");
-  auto       toICAO           = Utils::readAttrib (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_TO_ICAO(), "");
+  const auto plane_type_i     = Utils::readNodeNumericAttrib<int> (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_PLANE_TYPE_I (), static_cast<int> (missionx::mx_plane_types::plane_type_props)); // plane type
+  const auto fpln_id_picked_i = Utils::readNodeNumericAttrib<int> (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_FPLN_ID_PICKED (), -1); // max slider
+  auto       fromICAO         = Utils::readAttrib (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_FROM_ICAO (), "");
+  auto       toICAO           = Utils::readAttrib (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_TO_ICAO (), "");
 
   if (fpln_id_picked_i < 0 || Utils::isElementExists (missionx::data_manager::indexPointer_for_ILS_rows_tableVector, fpln_id_picked_i) == false)
   {
@@ -6052,14 +6043,14 @@ RandomEngine::prepare_mission_based_on_ils_search (IXMLNode &pNode)
 
     start_na.synchToPoint ();
     if (start_na.getName ().empty ())
-      start_na.setName (mxconst::get_ELEMENT_BRIEFER());
+      start_na.setName (mxconst::get_ELEMENT_BRIEFER ());
     // try to locate a ramp
     std::string err;
 
     // try to locate a ramp v2 - DEBUG
     if (!missionx::RandomEngine::get_user_wants_to_start_from_plane_position () && !filterAndPickRampBasedOnPlaneType (start_na, err, missionx::mxFilterRampType::start_ramp))
     {
-      Log::logMsgThread (fmt::format("[{}] {}", __func__, err) );
+      Log::logMsgThread (fmt::format ("[{}] {}", __func__, err));
     }
 
 
@@ -6070,7 +6061,7 @@ RandomEngine::prepare_mission_based_on_ils_search (IXMLNode &pNode)
     this->shared_navaid_info.navAid.setID (toICAO);
     if (!missionx::RandomEngine::waitForPluginCallbackJob (missionx::mx_flc_pre_command::get_nav_aid_info_mainThread))
     {
-      this->setError (fmt::format ("[{}] Target Navaid: {}, Failed to find Airport using original Navaid. Notify developer.", __func__, toICAO) );
+      this->setError (fmt::format ("[{}] Target Navaid: {}, Failed to find Airport using original Navaid. Notify developer.", __func__, toICAO));
       return false;
     }
     this->shared_navaid_info.navAid.synchToPoint ();
@@ -6080,7 +6071,7 @@ RandomEngine::prepare_mission_based_on_ils_search (IXMLNode &pNode)
 
     if (!filterAndPickRampBasedOnPlaneType (target_na, err, missionx::mxFilterRampType::end_ramp)) // v3.303.12_r2
     {
-      Log::logMsgThread (fmt::format("[{}, Target ILS] {}", __func__, err) );
+      Log::logMsgThread (fmt::format ("[{}, Target ILS] {}", __func__, err));
     }
     this->listNavInfo.emplace_back (target_na); // add NavInfo into a list
 
@@ -6089,67 +6080,66 @@ RandomEngine::prepare_mission_based_on_ils_search (IXMLNode &pNode)
     {
       xGPS.addChild (start_na.node.deepCopy ());
       xGPS.addChild (target_na.node.deepCopy ());
-      #ifndef RELEASE
+#ifndef RELEASE
       Utils::xml_print_node (xGPS, true);
-      #endif // !RELEASE
+#endif // !RELEASE
     }
 
     //////////////////////
     // Prepare Main Nodes
     /////////////////////
     std::string plane_type_s = this->translatePlaneTypeToString (conv_plane_type_i); // convert type to string and store it in mission node
-    missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_PLANE_TYPE_S(), plane_type_s);
-    pNode.updateAttribute (plane_type_s.c_str (), mxconst::get_ATTRIB_PLANE_TYPE().c_str (), mxconst::get_ATTRIB_PLANE_TYPE().c_str ());
+    missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_PLANE_TYPE_S (), plane_type_s);
+    pNode.updateAttribute (plane_type_s.c_str (), mxconst::get_ATTRIB_PLANE_TYPE ().c_str (), mxconst::get_ATTRIB_PLANE_TYPE ().c_str ());
 
-    IXMLNode xLegNode    = missionx::data_manager::xmlMappingNode.getChildNode (mxconst::get_ELEMENT_LEG().c_str ()).deepCopy ();
-    IXMLNode xMapTask    = missionx::data_manager::xmlMappingNode.getChildNode (mxconst::get_ELEMENT_TASK().c_str ()).deepCopy ();
-    IXMLNode xMapTrigger = missionx::data_manager::xmlMappingNode.getChildNode (mxconst::get_ELEMENT_TRIGGER().c_str ()).deepCopy ();
-    IXMLNode xMapMessage = Utils::xml_get_node_from_node_tree_IXMLNode (data_manager::xmlMappingNode, mxconst::get_ELEMENT_MESSAGE(), true); // holds message element from MAPPING
+    IXMLNode xLegNode    = missionx::data_manager::xmlMappingNode.getChildNode (mxconst::get_ELEMENT_LEG ().c_str ()).deepCopy ();
+    IXMLNode xMapTask    = missionx::data_manager::xmlMappingNode.getChildNode (mxconst::get_ELEMENT_TASK ().c_str ()).deepCopy ();
+    IXMLNode xMapTrigger = missionx::data_manager::xmlMappingNode.getChildNode (mxconst::get_ELEMENT_TRIGGER ().c_str ()).deepCopy ();
+    IXMLNode xMapMessage = Utils::xml_get_node_from_node_tree_IXMLNode (data_manager::xmlMappingNode, mxconst::get_ELEMENT_MESSAGE (), true); // holds message element from MAPPING
 
 
     // prepare briefer
     NavAidInfo naBriefer       = this->listNavInfo.front ();
-    IXMLNode   xLocationAdjust = this->xRootTemplate.getChildNode (mxconst::get_ELEMENT_BRIEFER_AND_START_LOCATION().c_str ()).deepCopy ();
+    IXMLNode   xLocationAdjust = this->xRootTemplate.getChildNode (mxconst::get_ELEMENT_BRIEFER_AND_START_LOCATION ().c_str ()).deepCopy ();
     if (xLocationAdjust.isEmpty ())
     {
-      this->setError ("[random ILS] No <" + mxconst::get_ELEMENT_BRIEFER_AND_START_LOCATION() + "> was found. Template melform, abort template generation !!!");
+      this->setError ("[random ILS] No <" + mxconst::get_ELEMENT_BRIEFER_AND_START_LOCATION () + "> was found. Template melform, abort template generation !!!");
 
       return false;
     }
-    xLocationAdjust.updateName (mxconst::get_ELEMENT_LOCATION_ADJUST().c_str ());
+    xLocationAdjust.updateName (mxconst::get_ELEMENT_LOCATION_ADJUST ().c_str ());
     // remove any clear data
     int               nClear      = xLocationAdjust.nClear (); // remove any CDATA or COMMENTS or any clear() type element
     const std::string from_to_s   = get_short_flight_description_from_to (start_na.getName (), start_na.getID (), target_na.getName (), target_na.getID ()); //"From: " + start_na.getName() + "(" + start_na.getID() + ") to " + target_na.getName() + "(" + target_na.getID() + ")";
     std::string       brieferDesc = from_to_s + "\n\n" + "Hello pilot.\nYou have assigned an ILS flight to " + target_na.getID () + " and runway: " + to_icao.loc_rw_s + ". Learn the route and fly it according to plan or modify it if you so wish.\n\nBlue skys.";
-    std::string       notes       = "\n\nDestination Notes:\n==============\nAirport: " + to_icao.toName_s + "(" + to_icao.toICAO_s + ")\tAirport Elev.: " + mxUtils::formatNumber<int> (to_icao.ap_elev_ft_i) + " ft." + "\nEstimate distance: " + mxUtils::formatNumber<double> (to_icao.distnace_d, 0) + "nm. \tRunway to Land: " + to_icao.loc_rw_s +
-                        ".\nLocalizer Type: " + to_icao.locType_s + ". \tLocalizer bearing: " + mxUtils::formatNumber<int> (to_icao.loc_bearing_i) + " \tlocalizer frq.: " + mxUtils::getFreqFormated (to_icao.loc_frq_mhz);
+    std::string       notes       = "\n\nDestination Notes:\n==============\nAirport: " + to_icao.toName_s + "(" + to_icao.toICAO_s + ")\tAirport Elev.: " + mxUtils::formatNumber<int> (to_icao.ap_elev_ft_i) + " ft." + "\nEstimate distance: " + mxUtils::formatNumber<double> (to_icao.distnace_d, 0) + "nm. \tRunway to Land: " + to_icao.loc_rw_s + ".\nLocalizer Type: " + to_icao.locType_s + ". \tLocalizer bearing: " + mxUtils::formatNumber<int> (to_icao.loc_bearing_i) + " \tlocalizer frq.: " + mxUtils::getFreqFormated (to_icao.loc_frq_mhz);
 
 
     for (int i = 0; i < nClear; ++i)
       xLocationAdjust.deleteClear (); // change from remove "i" to remove first
 
 
-    xLocationAdjust.updateAttribute (naBriefer.getLat ().c_str (), mxconst::get_ATTRIB_LAT().c_str (), mxconst::get_ATTRIB_LAT().c_str ());
-    xLocationAdjust.updateAttribute (naBriefer.getLon ().c_str (), mxconst::get_ATTRIB_LONG().c_str (), mxconst::get_ATTRIB_LONG().c_str ());
-    xLocationAdjust.updateAttribute (naBriefer.getHeading_s ().c_str (), mxconst::get_ATTRIB_HEADING_PSI().c_str (), mxconst::get_ATTRIB_HEADING_PSI().c_str ());
-    xLocationAdjust.updateAttribute (naBriefer.getRampInfo ().c_str (), mxconst::get_ATTRIB_RAMP_INFO().c_str (), mxconst::get_ATTRIB_RAMP_INFO().c_str ());
+    xLocationAdjust.updateAttribute (naBriefer.getLat ().c_str (), mxconst::get_ATTRIB_LAT ().c_str (), mxconst::get_ATTRIB_LAT ().c_str ());
+    xLocationAdjust.updateAttribute (naBriefer.getLon ().c_str (), mxconst::get_ATTRIB_LONG ().c_str (), mxconst::get_ATTRIB_LONG ().c_str ());
+    xLocationAdjust.updateAttribute (naBriefer.getHeading_s ().c_str (), mxconst::get_ATTRIB_HEADING_PSI ().c_str (), mxconst::get_ATTRIB_HEADING_PSI ().c_str ());
+    xLocationAdjust.updateAttribute (naBriefer.getRampInfo ().c_str (), mxconst::get_ATTRIB_RAMP_INFO ().c_str (), mxconst::get_ATTRIB_RAMP_INFO ().c_str ());
 
     this->lastFlightLegNavInfo = naBriefer;
     if (naBriefer.getNavAidName ().empty ()) // v3.303.10
-      this->lastFlightLegNavInfo.flightLegName = mxconst::get_ELEMENT_BRIEFER();
+      this->lastFlightLegNavInfo.flightLegName = mxconst::get_ELEMENT_BRIEFER ();
 
     this->lastFlightLegNavInfo.synchToPoint ();
 
-    this->xBriefer = this->xDummyTopNode.addChild (mxconst::get_ELEMENT_BRIEFER().c_str ());
-    this->xBriefer.addAttribute (mxconst::get_ATTRIB_STARTING_LEG().c_str (), "leg_1"); // leg_1 is default value, but it can be changed when using <content> elements with "element sets"
+    this->xBriefer = this->xDummyTopNode.addChild (mxconst::get_ELEMENT_BRIEFER ().c_str ());
+    this->xBriefer.addAttribute (mxconst::get_ATTRIB_STARTING_LEG ().c_str (), "leg_1"); // leg_1 is default value, but it can be changed when using <content> elements with "element sets"
     IXMLNode cNode = xBriefer.addChild (xLocationAdjust);
     Utils::xml_add_cdata (this->xBriefer, brieferDesc + notes); //
 
     // Add inventory if exists in mapping
-    if (data_manager::xmlMappingNode.nChildNode (mxconst::get_ELEMENT_INVENTORY().c_str ()) > 0)
+    if (data_manager::xmlMappingNode.nChildNode (mxconst::get_ELEMENT_INVENTORY ().c_str ()) > 0)
     {
       // this->injectInventory(mxconst::get_ELEMENT_BRIEFER(), naBriefer.p.node, mxInvSource::point); // name of store will start with briefer
-      this->addInventory (mxconst::get_ELEMENT_BRIEFER(), naBriefer.node, mxInvSource::point); // name of store will start with briefer
+      this->addInventory (mxconst::get_ELEMENT_BRIEFER (), naBriefer.node, mxInvSource::point); // name of store will start with briefer
     }
 
     //// Finished Briefer construction ////
@@ -6162,11 +6152,11 @@ RandomEngine::prepare_mission_based_on_ils_search (IXMLNode &pNode)
     }
     else
     {
-      const std::string legName       = std::string (mxconst::get_ELEMENT_LEG()) + "_" + Utils::formatNumber<int> (fpln_id_picked_i);
+      const std::string legName       = std::string (mxconst::get_ELEMENT_LEG ()) + "_" + Utils::formatNumber<int> (fpln_id_picked_i);
       const std::string objectiveName = legName + "_objective";
 
-      IXMLNode xObjective = this->xObjectives.addChild (mxconst::get_ELEMENT_OBJECTIVE().c_str ());
-      xObjective.updateAttribute (objectiveName.c_str (), mxconst::get_ATTRIB_NAME().c_str ());
+      IXMLNode xObjective = this->xObjectives.addChild (mxconst::get_ELEMENT_OBJECTIVE ().c_str ());
+      xObjective.updateAttribute (objectiveName.c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
 
       // create tasks based on waypoint list, excpe the firt one
       int counter = 0;
@@ -6179,28 +6169,28 @@ RandomEngine::prepare_mission_based_on_ils_search (IXMLNode &pNode)
         std::string task_name    = "task_" + Utils::formatNumber<int> (counter);
         std::string trigger_name = "trig_" + task_name;
 
-        IXMLNode xTask = xObjective.addChild (mxconst::get_ELEMENT_TASK().c_str ());
-        xTask.updateAttribute (task_name.c_str (), mxconst::get_ATTRIB_NAME().c_str (), mxconst::get_ATTRIB_NAME().c_str ());
-        xTask.updateAttribute (trigger_name.c_str (), mxconst::get_ATTRIB_BASE_ON_TRIGGER().c_str (), mxconst::get_ATTRIB_BASE_ON_TRIGGER().c_str ());
-        xTask.updateAttribute ("3", mxconst::get_ATTRIB_EVAL_SUCCESS_FOR_N_SEC().c_str (), mxconst::get_ATTRIB_EVAL_SUCCESS_FOR_N_SEC().c_str ()); // evaluate success for 3 seconds
-        xTask.updateAttribute (((counter == static_cast<int> (this->listNavInfo.size ())) ? "yes" : ""), mxconst::get_ATTRIB_MANDATORY().c_str (), mxconst::get_ATTRIB_MANDATORY().c_str ()); // evaluate success for 3 seconds
+        IXMLNode xTask = xObjective.addChild (mxconst::get_ELEMENT_TASK ().c_str ());
+        xTask.updateAttribute (task_name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
+        xTask.updateAttribute (trigger_name.c_str (), mxconst::get_ATTRIB_BASE_ON_TRIGGER ().c_str (), mxconst::get_ATTRIB_BASE_ON_TRIGGER ().c_str ());
+        xTask.updateAttribute ("3", mxconst::get_ATTRIB_EVAL_SUCCESS_FOR_N_SEC ().c_str (), mxconst::get_ATTRIB_EVAL_SUCCESS_FOR_N_SEC ().c_str ()); // evaluate success for 3 seconds
+        xTask.updateAttribute (((counter == static_cast<int> (this->listNavInfo.size ())) ? "yes" : ""), mxconst::get_ATTRIB_MANDATORY ().c_str (), mxconst::get_ATTRIB_MANDATORY ().c_str ()); // evaluate success for 3 seconds
 
         // add the trigger
         IXMLNode xTrigger = xMapTrigger.deepCopy ();
-        xTrigger.updateAttribute (trigger_name.c_str (), mxconst::get_ATTRIB_NAME().c_str (), mxconst::get_ATTRIB_NAME().c_str ());
-        xTrigger.updateAttribute ("rad", mxconst::get_ATTRIB_TYPE().c_str (), mxconst::get_ATTRIB_TYPE().c_str ()); // set type as radius based "rad".
-        Utils::xml_search_and_set_attribute_in_IXMLNode (xTrigger, mxconst::get_ATTRIB_LAT(), na.getLat (), mxconst::get_ELEMENT_POINT());
-        Utils::xml_search_and_set_attribute_in_IXMLNode (xTrigger, mxconst::get_ATTRIB_LONG(), na.getLon (), mxconst::get_ELEMENT_POINT());
+        xTrigger.updateAttribute (trigger_name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
+        xTrigger.updateAttribute ("rad", mxconst::get_ATTRIB_TYPE ().c_str (), mxconst::get_ATTRIB_TYPE ().c_str ()); // set type as radius based "rad".
+        Utils::xml_search_and_set_attribute_in_IXMLNode (xTrigger, mxconst::get_ATTRIB_LAT (), na.getLat (), mxconst::get_ELEMENT_POINT ());
+        Utils::xml_search_and_set_attribute_in_IXMLNode (xTrigger, mxconst::get_ATTRIB_LONG (), na.getLon (), mxconst::get_ELEMENT_POINT ());
 
         if (counter == static_cast<int> (this->listNavInfo.size ()))
         {
-          Utils::xml_search_and_set_attribute_in_IXMLNode (xTrigger, mxconst::get_ATTRIB_LENGTH_MT(), "100", mxconst::get_ELEMENT_RADIUS());
-          Utils::xml_search_and_set_attribute_in_IXMLNode (xTrigger, mxconst::get_ATTRIB_PLANE_ON_GROUND(), "true", mxconst::get_ELEMENT_CONDITIONS());
+          Utils::xml_search_and_set_attribute_in_IXMLNode (xTrigger, mxconst::get_ATTRIB_LENGTH_MT (), "100", mxconst::get_ELEMENT_RADIUS ());
+          Utils::xml_search_and_set_attribute_in_IXMLNode (xTrigger, mxconst::get_ATTRIB_PLANE_ON_GROUND (), "true", mxconst::get_ELEMENT_CONDITIONS ());
         }
         else
         {
-          Utils::xml_search_and_set_attribute_in_IXMLNode (xTrigger, mxconst::get_ATTRIB_LENGTH_MT(), "4000", mxconst::get_ELEMENT_RADIUS());
-          Utils::xml_search_and_set_attribute_in_IXMLNode (xTrigger, mxconst::get_ATTRIB_PLANE_ON_GROUND(), "", mxconst::get_ELEMENT_CONDITIONS());
+          Utils::xml_search_and_set_attribute_in_IXMLNode (xTrigger, mxconst::get_ATTRIB_LENGTH_MT (), "4000", mxconst::get_ELEMENT_RADIUS ());
+          Utils::xml_search_and_set_attribute_in_IXMLNode (xTrigger, mxconst::get_ATTRIB_PLANE_ON_GROUND (), "", mxconst::get_ELEMENT_CONDITIONS ());
         }
 
         this->xTriggers.addChild (xTrigger);
@@ -6211,19 +6201,19 @@ RandomEngine::prepare_mission_based_on_ils_search (IXMLNode &pNode)
       static const std::string STARTING_MESSAGE_NAME = "starting_message";
       const std::string        leg_message_name_s    = STARTING_MESSAGE_NAME + "_" + Utils::formatNumber<int> (counter);
 
-      xLegNode.updateAttribute (legName.c_str (), mxconst::get_ATTRIB_NAME().c_str (), mxconst::get_ATTRIB_NAME().c_str ());
-      xLegNode.updateAttribute (from_to_s.c_str (), mxconst::get_ATTRIB_TITLE().c_str (), mxconst::get_ATTRIB_TITLE().c_str ());
-      Utils::xml_search_and_set_attribute_in_IXMLNode (xLegNode, mxconst::get_ATTRIB_NAME(), objectiveName, mxconst::get_ELEMENT_LINK_TO_OBJECTIVE()); // link to objective
-      Utils::xml_search_and_set_attribute_in_IXMLNode (xLegNode, mxconst::get_ATTRIB_NAME(), leg_message_name_s, mxconst::get_ELEMENT_START_LEG_MESSAGE()); // link to objective
+      xLegNode.updateAttribute (legName.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
+      xLegNode.updateAttribute (from_to_s.c_str (), mxconst::get_ATTRIB_TITLE ().c_str (), mxconst::get_ATTRIB_TITLE ().c_str ());
+      Utils::xml_search_and_set_attribute_in_IXMLNode (xLegNode, mxconst::get_ATTRIB_NAME (), objectiveName, mxconst::get_ELEMENT_LINK_TO_OBJECTIVE ()); // link to objective
+      Utils::xml_search_and_set_attribute_in_IXMLNode (xLegNode, mxconst::get_ATTRIB_NAME (), leg_message_name_s, mxconst::get_ELEMENT_START_LEG_MESSAGE ()); // link to objective
 
 
       // Add message to flight leg
-      IXMLNode xMessage01 = missionx::data_manager::xmlMappingNode.getChildNode (mxconst::get_ELEMENT_MESSAGE().c_str ()).deepCopy ();
+      IXMLNode xMessage01 = missionx::data_manager::xmlMappingNode.getChildNode (mxconst::get_ELEMENT_MESSAGE ().c_str ()).deepCopy ();
       if (!xMessage01.isEmpty ())
       {
-        xMessage01.updateAttribute (leg_message_name_s.c_str (), mxconst::get_ATTRIB_NAME().c_str (), mxconst::get_ATTRIB_NAME().c_str ());
-        IXMLNode mixText = Utils::xml_get_or_create_node_ptr (xMessage01, mxconst::get_ELEMENT_MIX());
-        mixText.updateAttribute ("text", mxconst::get_ATTRIB_MESSAGE_MIX_TRACK_TYPE().c_str (), mxconst::get_ATTRIB_MESSAGE_MIX_TRACK_TYPE().c_str ());
+        xMessage01.updateAttribute (leg_message_name_s.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
+        IXMLNode mixText = Utils::xml_get_or_create_node_ptr (xMessage01, mxconst::get_ELEMENT_MIX ());
+        mixText.updateAttribute ("text", mxconst::get_ATTRIB_MESSAGE_MIX_TRACK_TYPE ().c_str (), mxconst::get_ATTRIB_MESSAGE_MIX_TRACK_TYPE ().c_str ());
         const std::string text = "Hello pilot\nYou will fly the route " + from_to_s + ". \n\nGood Luck";
         Utils::xml_add_cdata (mixText, text);
 
@@ -6232,23 +6222,23 @@ RandomEngine::prepare_mission_based_on_ils_search (IXMLNode &pNode)
 
 
       // Add Ending Marker
-      if (IXMLNode xDisplayEndLocation = xLegNode.addChild (mxconst::get_ELEMENT_DISPLAY_OBJECT().c_str ()); !xDisplayEndLocation.isEmpty ())
+      if (IXMLNode xDisplayEndLocation = xLegNode.addChild (mxconst::get_ELEMENT_DISPLAY_OBJECT ().c_str ()); !xDisplayEndLocation.isEmpty ())
       {
-        xDisplayEndLocation.addAttribute (mxconst::get_ATTRIB_INSTANCE_NAME().c_str (), std::string ("marker_" + legName).c_str ());
-        xDisplayEndLocation.addAttribute (mxconst::get_ATTRIB_NAME().c_str (), "marker"); // this is the name of the marker in the "template_blank_4_ui.xml" file
-        xDisplayEndLocation.addAttribute (mxconst::get_ATTRIB_TARGET_MARKER_B().c_str (), "true");
+        xDisplayEndLocation.addAttribute (mxconst::get_ATTRIB_INSTANCE_NAME ().c_str (), std::string ("marker_" + legName).c_str ());
+        xDisplayEndLocation.addAttribute (mxconst::get_ATTRIB_NAME ().c_str (), "marker"); // this is the name of the marker in the "template_blank_4_ui.xml" file
+        xDisplayEndLocation.addAttribute (mxconst::get_ATTRIB_TARGET_MARKER_B ().c_str (), "true");
 
 
         NavAidInfo naLast = this->listNavInfo.back ();
-        xDisplayEndLocation.addAttribute (mxconst::get_ATTRIB_REPLACE_LAT().c_str (), naLast.getLat ().c_str ());
-        xDisplayEndLocation.addAttribute (mxconst::get_ATTRIB_REPLACE_LONG().c_str (), naLast.getLon ().c_str ());
-        xDisplayEndLocation.addAttribute (mxconst::get_ATTRIB_REPLACE_ELEV_ABOVE_GROUND_FT().c_str (), "50"); // display marker 50ft above ground
+        xDisplayEndLocation.addAttribute (mxconst::get_ATTRIB_REPLACE_LAT ().c_str (), naLast.getLat ().c_str ());
+        xDisplayEndLocation.addAttribute (mxconst::get_ATTRIB_REPLACE_LONG ().c_str (), naLast.getLon ().c_str ());
+        xDisplayEndLocation.addAttribute (mxconst::get_ATTRIB_REPLACE_ELEV_ABOVE_GROUND_FT ().c_str (), "50"); // display marker 50ft above ground
       }
 
       // Add Flight Leg DESCRIPTION
-      IXMLNode xDesc = xLegNode.getChildNode (mxconst::get_ELEMENT_DESC().c_str ());
+      IXMLNode xDesc = xLegNode.getChildNode (mxconst::get_ELEMENT_DESC ().c_str ());
       if (xDesc.isEmpty ())
-        xDesc = xLegNode.addChild (mxconst::get_ELEMENT_DESC().c_str ());
+        xDesc = xLegNode.addChild (mxconst::get_ELEMENT_DESC ().c_str ());
 
       Utils::xml_add_cdata (xDesc, brieferDesc + notes);
 
@@ -6270,6 +6260,68 @@ RandomEngine::prepare_mission_based_on_ils_search (IXMLNode &pNode)
 // -----------------------------------
 
 
+void
+RandomEngine::add_waypoints_for_fpln_or_simbrief (IXMLNode &pNode)
+{
+  if (pNode.isEmpty ())
+    return;
+
+
+  if (const auto s_waypoints = data_manager::prop_userDefinedMission_ui.getChildTextValue (mxconst::get_PROP_ADD_ROUTE_WAYPOINTS ())
+    ;!s_waypoints.empty () && pNode.nChildNode() > 0)
+  {
+
+    const auto vecWaypoints = mxUtils::split_skipEmptyTokens (s_waypoints);
+    for (const auto &waypoint : vecWaypoints)
+    {
+      if (const auto way = mxUtils::trim(waypoint)
+          ; !way.empty ()
+          && !mxUtils::compare (way, mxconst::get_ROUTE_DCT (), false)
+         )
+      {
+        auto node = pNode.getChildNode (mxconst::get_ELEMENT_POINT ().c_str (), (pNode.nChildNode(mxconst::get_ELEMENT_POINT ().c_str ()) - 1 ));
+        if (!node.isEmpty ())
+        {
+
+          auto const lat = Utils::readNodeNumericAttrib <float>( node, mxconst::get_ATTRIB_LAT (), 0.0f );
+          auto const lon = Utils::readNodeNumericAttrib <float>( node, mxconst::get_ATTRIB_LONG (), 0.0f );
+
+          // the navaid information holds the "prev" lat/lon and the "Search navaid name ID"
+          // Therefore, DO NOT use the NAV Aid information as a valid NavAid, it is only a means to pass search information
+          this->shared_navaid_info.navAid.init ();
+          this->shared_navaid_info.navAid.setID ( way );
+          this->shared_navaid_info.navAid.lat = lat;
+          this->shared_navaid_info.navAid.lon = lon;
+
+          this->shared_navaid_info.navAid.synchToPoint (); // the internal Point will be used later
+
+          if (missionx::RandomEngine::waitForPluginCallbackJob (missionx::mx_flc_pre_command::get_and_guess_nav_aid_info_mainThread))
+          {
+            if (this->shared_navaid_info.navAid.navRef != XPLM_NAV_NOT_FOUND)
+            {
+              this->shared_navaid_info.navAid.synchToPoint ();
+              pNode.addChild (this->shared_navaid_info.navAid.node.deepCopy ());
+            }
+            else
+            {
+              Log::logMsgThread ( fmt::format ("[{}] Route Nav: {}, Failed to find its information. Will not add it to the GPS", __func__, way ) );
+            }
+          }
+          else
+          {
+            Log::logMsgThread ( fmt::format ("[{}] Route Nav: {}, Failed to find its information. Will not add it to the GPS", __func__, way ) );
+          }
+        }
+      }
+    } // end loop over route waypoints
+  }
+
+}
+
+
+// -----------------------------------
+
+
 bool
 RandomEngine::prepare_mission_based_on_user_fpln_or_simbrief (IXMLNode &pNode)
 {
@@ -6277,11 +6329,11 @@ RandomEngine::prepare_mission_based_on_user_fpln_or_simbrief (IXMLNode &pNode)
 
   missionx::mx_ext_internet_fpln_strct fpln;
 
-  auto plane_type_i     = Utils::readNodeNumericAttrib<int> (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_PLANE_TYPE_I(), static_cast<int> (missionx::mx_plane_types::plane_type_props)); // plane type
-  fpln.fpln_unique_id = Utils::readNodeNumericAttrib<int> (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_FPLN_ID_PICKED(), -1); // max slider
-  fpln.fromICAO_s         = Utils::readAttrib (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_FROM_ICAO(), "");
-  fpln.toICAO_s           = Utils::readAttrib (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_TO_ICAO(), "");
-  fpln.formated_nav_points_with_guessed_names_s = Utils::readAttrib (data_manager::prop_userDefinedMission_ui.node, mxconst::get_ATTRIB_FORMATED_NAV_POINTS(), "");
+  auto plane_type_i                             = Utils::readNodeNumericAttrib<int> (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_PLANE_TYPE_I (), static_cast<int> (missionx::mx_plane_types::plane_type_props)); // plane type
+  fpln.fpln_unique_id                           = Utils::readNodeNumericAttrib<int> (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_FPLN_ID_PICKED (), -1); // max slider
+  fpln.fromICAO_s                               = Utils::readAttrib (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_FROM_ICAO (), "");
+  fpln.toICAO_s                                 = Utils::readAttrib (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_TO_ICAO (), "");
+  fpln.formated_nav_points_with_guessed_names_s = data_manager::prop_userDefinedMission_ui.getChildTextValue (mxconst::get_PROP_ADD_ROUTE_WAYPOINTS ());
 
   if ((fpln.fpln_unique_id < 0) + (fpln.fromICAO_s.empty()) + (fpln.toICAO_s.empty()))
   {
@@ -6307,7 +6359,8 @@ RandomEngine::prepare_mission_based_on_user_fpln_or_simbrief (IXMLNode &pNode)
       }
       this->shared_navaid_info.navAid.synchToPoint ();
       // if we reached here then we should have startICAO NavAid information and the targetICAO
-      NavAidInfo start_na = this->shared_navaid_info.navAid;
+      // NavAidInfo start_na = this->shared_navaid_info.navAid;
+      NavAidInfo start_na ( this->shared_navaid_info.navAid ); // v25.04.2
 
       // force plane position as starting location, based on user preference
       if (missionx::RandomEngine::get_user_wants_to_start_from_plane_position ()) // TODO: do we need to check "from layer" in function ?
@@ -6340,8 +6393,10 @@ RandomEngine::prepare_mission_based_on_user_fpln_or_simbrief (IXMLNode &pNode)
         return false;
       }
       this->shared_navaid_info.navAid.synchToPoint ();
-      NavAidInfo target_na = this->shared_navaid_info.navAid;
-      target_na.synchToPoint ();
+      NavAidInfo target_na (this->shared_navaid_info.navAid); // v25.04.2
+      // target_na.clone (this->shared_navaid_info.navAid);
+      // target_na.synchToPoint ();
+
       // get ramp location
       if (!filterAndPickRampBasedOnPlaneType (target_na, err, missionx::mxFilterRampType::end_ramp)) // v3.303.12_r2
       {
@@ -6353,10 +6408,8 @@ RandomEngine::prepare_mission_based_on_user_fpln_or_simbrief (IXMLNode &pNode)
       if (!xGPS.isEmpty ())
       {
         xGPS.addChild (start_na.node.deepCopy ());
+        add_waypoints_for_fpln_or_simbrief(xGPS); // v25.04.2 add route waypoints
         xGPS.addChild (target_na.node.deepCopy ());
-        #ifndef RELEASE
-        Utils::xml_print_node (xGPS, true);
-        #endif // !RELEASE
       }
 
       //////////////////////

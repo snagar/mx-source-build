@@ -261,6 +261,8 @@ public:
   {
     bool flag_start_from_plane_position{ false };
     bool flag_generate_gps_waypoints{ true };
+    bool flag_add_route_waypoints{ false }; // v25.04.2
+    bool flag_auto_load_route_to_gps_or_fms{ false }; // v25.04.2
 
   } mx_cross_layer_property;
   mx_cross_layer_property strct_cross_layer_properties;
@@ -1418,6 +1420,7 @@ private:
   void add_ui_simbrief_pilot_id (); // v25.03.3
   void add_ui_flightplandb_key ( bool isPopup ); // v25.03.3
   void add_ui_pick_subcategories ( const std::vector<const char*> &vecToDisplay ); // v25.04.1
+  void add_ui_auto_load_checkbox ( ); // v25.04.2
 
   void callNavData(std::string_view inICAO, bool bNavigatingFromOtherLayer); //v24.03.1
   const dataref_const dc;

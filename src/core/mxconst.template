@@ -174,13 +174,13 @@ const static ^std::string ^MISSION_ROOT_SAVE_DOC                           ^ "SA
 const static ^std::string ^ATTRIB_VERSION                                  ^ "version"; ^// MISSION
 const static ^std::string ^ATTRIB_MISSION_FILE_FORMAT                      ^ "mission_file_format"; ^// v25.03.1 used with template. Will hold the target mission file format (301 or 312 as an example)
 const static ^std::string ^ATTRIB_MISSION_DESIGNER_MODE                    ^ "designer_mode"; ^// MISSION
-const static ^std::string ^MX_FILE_SAVE_EXTENTION                          ^ ".savepoint.sav"; ^// MISSION //
-const static ^std::string ^MX_FILE_SAVE_DREF_EXTENTION                     ^ ".dataref.txt"; ^// MISSION //
+const static ^std::string ^MX_FILE_SAVE_EXTENSION                          ^ ".savepoint.sav"; ^// MISSION //
+const static ^std::string ^MX_FILE_SAVE_DREF_EXTENSION                     ^ ".dataref.txt"; ^// MISSION //
 const static ^std::string ^ATTRIB_TYPE                                     ^ "type"; ^// trigger // refuel_zone
 const static ^std::string ^ATTRIB_ELEV_MIN_FT                              ^ "elev_min_ft"; ^// v3.0.303.4 trigger elevation
 const static ^std::string ^ATTRIB_ELEV_MAX_FT                              ^ "elev_max_ft"; ^// trigger elevation
 const static ^std::string ^ATTRIB_RE_ARM                                   ^ "rearm"; ^// v3.0.219.1 used in trigger. Will be set when leaving trigger
-const static ^std::string ^XML_EXTENTION                                   ^ ".xml"; ^// v3.0.241.10 b3 refine random osm
+const static ^std::string ^XML_EXTENSION                                   ^ ".xml"; ^// v3.0.241.10 b3 refine random osm
 const static ^std::string ^ELEMENT_DESIGNER                                ^ "designer";
 const static ^std::string ^ATTRIB_FORCE_LEG_NAME                           ^ "force_leg_name"; ^// v3.0.221.15rc5 add LEG support. global settings - designer
 const static ^std::string ^ELEMENT_DATAREF                                 ^ "dataref"; ^//
@@ -677,7 +677,7 @@ const static ^std::string^                ELEMENT_FIRE_COMMANDS_AT_GOAL_END     
 const static ^std::string^                ATTRIB_FIRE_COMMANDS_ON_SUCCESS                        ^ "fire_commands_on_success"; ^// can be used with triggers /// TBD not yet implemented
 const static ^std::string^                ATTRIB_FIRE_COMMANDS_ON_FAILURE                        ^ "fire_commands_on_failure"; ^// can be used with triggers
 const static ^std::string^                ATTRIB_FIRE_COMMANDS_AT_TASK_END                       ^ "fire_commands_at_task_end"; ^// TODO: not sure if we want this /// END TBD not yet implemented
-const static ^std::string^                ATTRIB_START_COLD_AND_DARK                             ^ "start_cold_and_dark"; ^// v3.0.221.10 briefers additional_location attribute
+const static ^std::string^                ATTRIB_START_COLD_AND_DARK                             ^ "start_cold_and_dark"; ^// v3.0.221.10 briefer additional_location attribute
 const static ^std::string^                ELEMENT_DATAREFS_START_COLD_AND_DARK                   ^ "datarefs_start_cold_and_dark"; ^//  v3.0.221.10 will be stored at briefer level
 const static ^std::string^                MX_TRUE                                                ^ "true"; ^// used when reading XML attributes
 const static ^std::string^                MX_FALSE                                               ^ "false"; ^// used when reading XML attributes
@@ -848,7 +848,7 @@ const static ^std::string^               NO_SETUP_TEXT                          
 const static ^std::string^               SETUP_NORMALIZED_VOLUME                                ^ "setup_normalized_volume"; ^// v3.0.303.6 Used with volume settings. Values between 1..100
 const static ^std::string^               SETUP_SIMBRIEF_PILOT_ID                                ^ "simbrief_pilot_id"; ^// Simbrief // v25.03.3 Stores Simbrief Pilot ID
 const static ^std::string^               SETUP_NORMALIZE_VOLUME_B                               ^ "setup_normalize_volume_b"; ^// v3.0.303.6 If the failure is true: then use the "setup_mission_volume" to override higher mixture values. Example, if the <mix> tag defines a volume of 0.5 and the setup volume is set to 40 (^0.4) then it will force the lower value
-const static ^std::string^               SETUP_AUTHORIZATIOJN_KEY                               ^ "setup_authorization_key_s"; ^// v3.303.8.3 authorization key from flightplandatabase.com
+const static ^std::string^               SETUP_AUTHORIZATION_KEY                                ^ "setup_authorization_key_s"; ^// v3.303.8.3 authorization key from flightplandatabase.com
 
 
 
@@ -875,19 +875,22 @@ const static ^std::string^               PROP_NARROW_HELOS_RAMP_SEARCH          
 const static ^std::string^               PROP_ADD_COUNTDOWN                             ^ "add_countdown"; ^// v3.0.253.9.1 add countdown to most flight legs except the last one
 const static ^std::string^               PROP_START_FROM_PLANE_POSITION                 ^ "start_from_plane_position"; ^// v3.0.253.11 User prefers not to move the plane when it searches for a starting location. Good for cold and dark cases since after moving the plane using the API, the plane is out of cold and dark state
 const static ^std::string^               PROP_GENERATE_GPS_WAYPOINTS                    ^ "generate_gps_waypoints"; ^// v3.0.253.12 Should Random Engine generate GPS waypoint or not. Will be used in "User creation", "ILS" and "external FPLN" screens.
+const static ^std::string^               PROP_ADD_ROUTE_WAYPOINTS                       ^ "add_route_waypoints"; ^// v25.04.2 will be used with the FPLN/Simbrief screen.
+const static ^std::string^               PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B           ^ "auto_load_route_to_gps_or_fms_b"; ^// v25.04.2 will be used with the FPLN/Simbrief screen.
 const static ^std::string^               PROP_FILTER_AIRPORTS_BY_RUNWAY_TYPE            ^ "filter_airports_by_runway_type"; ^// v3.0.255.2 Defined in "create user screen" and used in RandomEngine when needs to filter our airports that has only excluded runways types
 const static ^std::string^               PROP_REMOVE_DUPLICATE_ICAO_ROWS                ^ "remove_duplicate_icao_rows"; ^// v3.303.8.3 During data_manager::fetch_fpln_from_external_site() remove duplicate ICAO results. Used in FPLN from External site screen.
 const static ^std::string^               PROP_GROUP_DUPLICATES_BY_WAYPOINTS             ^ "group_duplicates_by_waypoints"; ^// v3.303.8.3 During data_manager::fetch_fpln_from_external_site() remove duplicate ICAO & Waypoint numbers. Used in FPLN from External site screen.
 const static ^std::string^               PROP_WEATHER_USER_PICKED                       ^ "weather_user_picked"; ^// v3.303.12
-const static ^std::string^               PROP_WEATHER_CHANGE_MODE_USER_PICKED           ^ "weather_change_mode_user_picked"; ^// v3.303.13  // TODO CONSIDER REPRECATING
-const static ^std::string^               VALUE_STORE_CURRENT_WEATHER_DATAREFS           ^ "store_current_weather_datarefs"; ^// v3.303.13
+const static ^std::string^               PROP_WEATHER_CHANGE_MODE_USER_PICKED           ^ "weather_change_mode_user_picked"; ^// v3.303.13  // TODO CONSIDER DEPRECATING
 const static ^std::string^               PROP_ADD_DEFAULT_WEIGHTS_TO_PLANE              ^ "add_default_weights_to_plane"; ^// v3.303.14
 const static ^std::string^               PROP_FROM_ICAO                                 ^ "fromICAO"; ^// used with external fpln
 const static ^std::string^               PROP_TO_ICAO                                   ^ "toICAO"; ^// v3.0.253.3 used with external fpln // add the option to define destination location
 const static ^std::string^               PROP_LIMIT                                     ^ "limit"; ^// used with external fpln
 const static ^std::string^               PROP_SORT_FPLN_BY                              ^ "sort"; ^// used with external fpln
+
 const static ^std::string^               RANDOM_TEMPLATE_BLANK_4_UI                     ^ "template_blank_4_ui.xml"; ^// template_blank_4_ui is the only template that is driven by UI so we should not load them.
 const static ^std::string^               COORDINATES_IN_THE_GPS_S                       ^ "Coordinates in GPS";
+const static ^std::string^               VALUE_STORE_CURRENT_WEATHER_DATAREFS           ^ "store_current_weather_datarefs"; ^// v3.303.13
 
 const static ^std::string^               ELEMENT_UI_PROPERTIES                          ^ "ui_properties"; ^//// SQLite DB
 const static ^std::string^               DB_AIRPORTS_XP                                 ^ "airports_xp.sqlite.db";
@@ -961,6 +964,7 @@ static const ^std::string^               ELEMENT_FPLN                           
 static const ^std::string^               ELEMENT_BUFFERS                                ^ "BUFFERS"; ^// v3.0.303.4
 static const ^std::string^               ELEMENT_BUFF                                   ^ "BUFF"; ^// v3.0.303.4
 const static ^std::string^               ATTRIB_INDEX                                   ^ "index"; ^// v3.0.303.4
+
 const static ^std::string^               CONV_ATTRIB_isLeg                              ^ "isLeg"; ^// v3.0.303.4
 const static ^std::string^               CONV_ATTRIB_isLast                             ^ "isLast"; ^// v3.0.303.4
 const static ^std::string^               CONV_ATTRIB_ignore_leg                         ^ "ignore_leg"; ^// v3.0.303.4
@@ -1037,7 +1041,8 @@ static const ^std::string^ ELEMENT_ICAO_CODE          ^ "icao_code"; ^// v25.03.
 static const ^std::string^ ELEMENT_DESTINATION        ^ "destination"; ^// v25.03.3 Simbrief
 static const ^std::string^ ELEMENT_PLAN_RWY           ^ "plan_rwy"; ^// v25.03.3 Simbrief
 static const ^std::string^ ELEMENT_TRANS_ALT          ^ "trans_alt"; ^// v25.03.3 Simbrief
-static const ^std::string^ ATTRIB_FORMATED_NAV_POINTS ^ "formated_nav_points"; ^// v25.03.3 mission creation using FPLN
+// static const ^std::string^ ATTRIB_FORMATED_NAV_POINTS ^ "formated_nav_points"; ^// v25.03.3 mission creation using FPLN
+static const ^std::string^ ROUTE_DCT                  ^ "DCT"; ^// v25.04.2 Holds the route DCT test which is short for Direct
 
 
 // OSM

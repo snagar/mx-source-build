@@ -137,6 +137,7 @@ typedef enum class _flc_commands
   generate_mission_from_littlenavmap_fpln,                      // v3.0.301 converts imported LNM flight plan to a missionx mission file.
   get_current_weather_state_and_store_in_RandomEngine,          // v3.303.13
   get_is_point_wet,                                             // v3.0.221.4
+  get_and_guess_nav_aid_info_mainThread,                        // v25.04.2 used in Random Engine, when we try to add the "simbrief/fpln" waypoint route.
   get_nav_aid_info_mainThread,                                  // v3.0.253.6
   get_nearest_nav_aid_to_custom_lat_lon_mainThread,             // v3.0.241.10 b2
   get_nearest_nav_aid_to_randomLastFlightLeg_mainThread,        // v3.0.221.4
@@ -1108,6 +1109,7 @@ public:
   // will fetch the closest ICAO to plane location. // v3.303.8.3 extended function by allowing snding custom position instead of getting the plane position. This is used with the stats table after the mission ended and not during flight.
   static missionx::NavAidInfo getPlaneAirportOrNearestICAO(const bool& inOnlySearchInDatabase = false, const double& inLat = 0.0, const double& inLon = 0.0, bool inIsThread = false);  // v3.303.14 added inIsThread
   static missionx::NavAidInfo getICAO_info(const std::string& inICAO); // will fetch the closest ICAO to plane location
+  static missionx::NavAidInfo get_and_guess_nav_info(const std::string& in_id_nav_name, const missionx::Point &prevPoint); // will fetch the closest guest navaid to a given coordinate
 
   // v3.0.255.2
   static missionx::mx_wp_guess_result get_nearest_guessed_navaid_based_on_coordinate(missionx::mxVec2f& inPos) noexcept;

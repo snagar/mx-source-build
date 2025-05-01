@@ -35,9 +35,9 @@ public:
       return *this;
     missionx::mxUtils::operator= (other);
     name     = other.name;
-    node     = other.node;
+    node     = other.node.deepCopy();
     mapText  = other.mapText;
-    mx_const = other.mx_const;
+    // mx_const = other.mx_const;
     return *this;
   }
   mx_base_node &operator= (mx_base_node &&other) noexcept
@@ -48,16 +48,18 @@ public:
     name     = std::move (other.name);
     node     = std::move (other.node);
     mapText  = std::move (other.mapText);
-    mx_const = std::move (other.mx_const);
+    // mx_const = std::move (other.mx_const);
     return *this;
   }
 
 private:
 
 public:
-  std::string name{ "" };
-  std::string getName() { return name; }
+  std::string name;
+  [[nodiscard]] std::string getName() const { return name; }
+  [[nodiscard]] std::string getBaseNodeName() const { return getName(); } // v25.04.2
   void        setName(const std::string& inVal) { name = inVal; } // v3.305.1 for better compatibility with mxProperties class
+  void        setBaseNodeName(const std::string &inVal) { setName( inVal ); } // v25.04.2 added a unique function to also set the local name
 
   IXMLNode                            node{IXMLNode::emptyIXMLNode}; // v24.06.1 initialize with emptyIXMLNode
   std::map <std::string, std::string> mapText; // store special text that might not feet in xml attribute
@@ -65,13 +67,16 @@ public:
 
   mx_base_node();
 
-  mx_base_node(const std::string& inTageName);
+  explicit mx_base_node(const std::string& inTageName);
 
   // -------------------------------------------
   void initBaseNode();
 
   // -------------------------------------------
   IXMLNode addChild(const std::string& inTagName, const std::string& inInitAttribName, const std::string& inInitAttribValue, const std::string& inTextValue); // v3.305.3 used in load formating
+  IXMLNode addChildText(const std::string& inTagName, const std::string& inTextValue); // v25.04.2 Add a sub node and set its TEXT value without attributes.
+  IXMLNode getChild(const std::string& inTagName); // v25.04.2 get the sub-node.
+  std::string getChildTextValue(const std::string& inTagName, const std::string &inDefaultValue = ""); // v25.04.2 get TEXT value of a sub-node. Do not confuse with attributes. <node>TEXT</node>
 
   // -------------------------------------------
   void searchAndSetStringProperty_inNodeTree(const std::string& inAttribName, const std::string& attribValue, const std::string &inElementName = "");

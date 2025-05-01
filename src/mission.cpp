@@ -408,8 +408,10 @@ missionx::Mission::add_GPS_data (const int optionalPointIndex)
       cNode_ptr = data_manager::xmlGPS.getChildNode(mxconst::get_ELEMENT_POINT().c_str(), this->flight_leg_progress_counter_i);
   }
 
-
-  if (!cNode_ptr.isEmpty())
+  // v25.04.2 use the instruction if to show the GPS.
+  const bool bAutoLoad = Utils::readBoolAttrib (data_manager::xmlGPS, mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), false);
+  if (const bool bGenerateGPS = Utils::readBoolAttrib (data_manager::xmlGPS, mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), false);
+      bGenerateGPS && bAutoLoad && !cNode_ptr.isEmpty () )
   {
     auto              lat_f              = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LAT(), 0.0f);
     auto              lon_f              = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LONG(), 0.0f);
@@ -435,15 +437,15 @@ missionx::Mission::add_GPS_data (const int optionalPointIndex)
         XPLMGetNavAidInfo(nav_ref, &navInfo.navType, &navInfo.lat, &navInfo.lon, &navInfo.height_mt, &navInfo.freq, &navInfo.heading, navInfo.ID, navInfo.name, navInfo.inRegion);
 
 
-        XPLMSetFMSEntryInfo(index, nav_ref, (int)navInfo.height_mt);
+        XPLMSetFMSEntryInfo(index, nav_ref, static_cast<int> (navInfo.height_mt));
       }
     }
 
     const auto lmbda_get_elevation = [&]() {
       if (flag_icao_is_valid)
-        return (int)navInfo.height_mt;
+        return static_cast<int> (navInfo.height_mt);
 
-      return (int)(elev_ft_f * missionx::feet2meter);
+      return static_cast<int> (elev_ft_f * missionx::feet2meter);
     };
 
     const auto elev_mt_i = lmbda_get_elevation();
@@ -694,7 +696,7 @@ missionx::Mission::init()
   // v3.0.253.4 overpass (osm) filter
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_FILTER()).isEmpty())
   {
-    Utils::xml_search_and_set_node_text(system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_FILTER(), mxconst::get_DEFAULT_OVERPASS_WAYS_FILTER(), mxUtils::formatNumber<int>((int) missionx::mx_property_type::MX_STRING), true); // "6" = string type
+    Utils::xml_search_and_set_node_text(system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_FILTER(), mxconst::get_DEFAULT_OVERPASS_WAYS_FILTER(), mxUtils::formatNumber<int>(static_cast<int> (missionx::mx_property_type::MX_STRING)), true); // "6" = string type
     missionx::system_actions::store_plugin_options();
   }
 
@@ -702,7 +704,7 @@ missionx::Mission::init()
   // v3.0.253.6 overpass (osm) url
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_URL()).isEmpty())
   {
-    Utils::xml_search_and_set_node_text(system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_URL(), "", mxUtils::formatNumber<int>((int)missionx::mx_property_type::MX_STRING), true); // "6" = string type
+    Utils::xml_search_and_set_node_text(system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_URL(), "", mxUtils::formatNumber<int>(static_cast<int> (missionx::mx_property_type::MX_STRING)), true); // "6" = string type
     missionx::system_actions::store_plugin_options();
   }
 
@@ -747,9 +749,9 @@ missionx::Mission::init()
 
 
   // v3.303.8.3 Authorization Key   
-  if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATIOJN_KEY()).isEmpty())
+  if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY()).isEmpty())
   {
-    Utils::xml_search_and_set_node_text(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATIOJN_KEY(), "", mxUtils::formatNumber<int>((int)missionx::mx_property_type::MX_STRING), true);
+    Utils::xml_search_and_set_node_text(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY(), "", mxUtils::formatNumber<int>(static_cast<int> (missionx::mx_property_type::MX_STRING)), true);
     missionx::system_actions::store_plugin_options();
   }
   
@@ -821,7 +823,7 @@ missionx::Mission::initImguiParametersAtPluginsStart()
     if (!Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE()).isEmpty())
     {
 
-      float fScale = (float)Utils::getNodeText_type_1_5<double>(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE(), (double)mxconst::DEFAULT_BASE_FONT_SCALE); // default scale size
+      float fScale = static_cast<float> (Utils::getNodeText_type_1_5<double> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE (), (double)mxconst::DEFAULT_BASE_FONT_SCALE)); // default scale size
       if (fScale < missionx::Mission::uiImGuiBriefer->strct_setup_layer.fFontMinScaleSize || fScale > missionx::Mission::uiImGuiBriefer->strct_setup_layer.fFontMaxScaleSize)
         fScale = mxconst::DEFAULT_BASE_FONT_SCALE; // default size = no change in pixel scale
 
@@ -834,7 +836,7 @@ missionx::Mission::initImguiParametersAtPluginsStart()
     Mission::uiImGuiBriefer->set_vecOverpassUrls_char(missionx::data_manager::vecOverpassUrls); // v3.0.255.4.1 initialize overpass url from conf file
 
     // v3.303.8.3 add authorization key to the Briefer screen  
-    std::string authKey_s = Utils::getNodeText_type_6(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATIOJN_KEY(), "");
+    std::string authKey_s = Utils::getNodeText_type_6(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY(), "");
     std::memcpy(this->uiImGuiBriefer->strct_ext_layer.buf_authorization, authKey_s.substr(0, 255).c_str(), 255); // copy no more than 255 characters because our buffer is 256 in size
     
 
@@ -901,7 +903,7 @@ missionx::Mission::MissionMenuHandler(void* inMenuRef, void* inItemRef)
   std::string err;
   err.clear();
 
-  switch ((Mission::mx_menuIdRefs)((intptr_t)inItemRef))
+  switch (static_cast<Mission::mx_menuIdRefs> ((intptr_t)inItemRef))
   {
 
     case Mission::mx_menuIdRefs::MENU_OPEN_LIST_OF_MISSIONS:
@@ -1113,10 +1115,17 @@ missionx::Mission::START_MISSION()
         mission_state_s.empty()) // if to reveal 1 by one then first check if there is GPS element in LEG if not then check global GPS
     {
       data_manager::clearFMSEntries(); // v3.0.253.7
-
-      if (((!data_manager::xmlGPS.isEmpty() && data_manager::xmlGPS.nChildNode(mxconst::get_ELEMENT_POINT().c_str()) > 1 && data_manager::mapFlightLegs[data_manager::currentLegName].xGPS.isEmpty()) ||
-           (!data_manager::mapFlightLegs[data_manager::currentLegName].xGPS.isEmpty() && data_manager::mapFlightLegs[data_manager::currentLegName].xGPS.nChildNode(mxconst::get_ELEMENT_POINT().c_str()) == 0)))
-      {
+     
+      if ( 
+          (!data_manager::xmlGPS.isEmpty () && data_manager::xmlGPS.nChildNode (mxconst::get_ELEMENT_POINT ().c_str ()) > 1 
+            && data_manager::mapFlightLegs[data_manager::currentLegName].xGPS.isEmpty ()
+          ) 
+          || 
+          (!data_manager::mapFlightLegs[data_manager::currentLegName].xGPS.isEmpty () 
+            && data_manager::mapFlightLegs[data_manager::currentLegName].xGPS.nChildNode (mxconst::get_ELEMENT_POINT ().c_str ()) == 0
+          )
+        )
+     {
         this->add_GPS_data(0);
         this->add_GPS_data(1); // add the two first GPS locations from global GPS
       }
@@ -1224,7 +1233,7 @@ missionx::Mission::START_MISSION()
         if (bResetTimer)
         {
           dref.strctInterData.timerToRun.reset();
-          missionx::Timer::start(dref.strctInterData.timerToRun, (float)dref.strctInterData.seconds_to_run_i);
+          missionx::Timer::start(dref.strctInterData.timerToRun, static_cast<float> (dref.strctInterData.seconds_to_run_i));
         }
 
 
@@ -1847,7 +1856,7 @@ missionx::Mission::flc_threads()
               {
 
                 //// set Mission Briefer Info for random
-                if (Mission::uiImGuiBriefer->selectedTemplateKey.find(mxconst::get_XML_EXTENTION()) !=
+                if (Mission::uiImGuiBriefer->selectedTemplateKey.find(mxconst::get_XML_EXTENSION()) !=
                     std::string::npos) // file ends with XML (means predefined template and not based on "template mission folder" file which ends with no extension.
                 {
                   if (Utils::isElementExists(data_manager::mapBrieferMissionList, mxconst::get_RANDOM_MISSION_DATA_FILE_NAME()))
@@ -1860,9 +1869,9 @@ missionx::Mission::flc_threads()
                     data_manager::mapBrieferMissionList[Mission::uiImGuiBriefer->selectedTemplateKey].setBrieferDescription(desc_s);
                   }
                 }
-                else if (Utils::isElementExists(data_manager::mapBrieferMissionList, (Mission::uiImGuiBriefer->selectedTemplateKey + mxconst::get_XML_EXTENTION())))
+                else if (Utils::isElementExists(data_manager::mapBrieferMissionList, (Mission::uiImGuiBriefer->selectedTemplateKey + mxconst::get_XML_EXTENSION())))
                 {
-                  data_manager::mapBrieferMissionList[(Mission::uiImGuiBriefer->selectedTemplateKey + mxconst::get_XML_EXTENTION())].setBrieferDescription(desc_s);
+                  data_manager::mapBrieferMissionList[(Mission::uiImGuiBriefer->selectedTemplateKey + mxconst::get_XML_EXTENSION())].setBrieferDescription(desc_s);
                 }
                 else
                   Log::logMsgWarn("Failed to write generated mission description into BrieferInfo !!!\n" + desc_s);
@@ -2637,7 +2646,7 @@ missionx::Mission::flc_task(const std::string& inTaskName, Objective& obj, mxPro
             {
               if (task.timer.getState() == mx_timer_state::timer_not_set) // start timer
               {
-                Timer::start(task.timer, (float)timeSec, task.name + "_timer");
+                Timer::start(task.timer, static_cast<float> (timeSec), task.name + "_timer");
               }
             }
             else if ((!task.bScriptCondMet && task.bForceEvaluationOfTask) || (!task.bScriptCondMet && !task.isComplete))
@@ -2724,7 +2733,7 @@ missionx::Mission::flc_task(const std::string& inTaskName, Objective& obj, mxPro
             {
               if (task.timer.getState() == mx_timer_state::timer_not_set) // start timer
               {
-                Timer::start(task.timer, (float)timeSec, task.name + "_timer");
+                Timer::start(task.timer, static_cast<float> (timeSec), task.name + "_timer");
               }
             }
             else if ((!task.bScriptCondMet && task.bForceEvaluationOfTask) || (!task.bScriptCondMet && !task.isComplete))
@@ -2908,7 +2917,7 @@ missionx::Mission::flc_task(const std::string& inTaskName, Objective& obj, mxPro
                   {
                     if (task.timer.getState() == mx_timer_state::timer_not_set) // start timer
                     {
-                      Timer::start(task.timer, (float)timeSec, task.name + "_timer");
+                      Timer::start(task.timer, static_cast<float> (timeSec), task.name + "_timer");
                       Log::logDebugBO("[Task]Started timer for task: " + task.name); // debug
                     }
                     else if (task.timer.getState() == mx_timer_state::timer_paused) // v3.0.221.11 continue timer if is cumulative
@@ -2943,7 +2952,7 @@ missionx::Mission::flc_task(const std::string& inTaskName, Objective& obj, mxPro
                 //////////////////////////////////////////////
                 // DECIDE if task is completed and successful
                 task.setIsTaskComplete(task.bAllConditionsAreMet);
-                task.setTaskState((missionx::mx_task_state)( static_cast<int> ( missionx::mx_task_state::success ) * task.bAllConditionsAreMet + (int)missionx::mx_task_state::need_evaluation * task.bAllConditionsAreMet));
+                task.setTaskState(static_cast<missionx::mx_task_state> (static_cast<int> (missionx::mx_task_state::success) * task.bAllConditionsAreMet + (int)missionx::mx_task_state::need_evaluation * task.bAllConditionsAreMet));
 
 
               } // end evaluate task success/failure based on cargo position
@@ -2958,7 +2967,7 @@ missionx::Mission::flc_task(const std::string& inTaskName, Objective& obj, mxPro
               if (missionx::data_manager::execScript(cond_script_s, inSmPropSeedValues, "Task based \"Sling Load\" has a cond_script with errors: " + cond_script_s + ". Please fix the errors: "))
               {
                 // When using cond_script for the sling cargo based task, we test against bScriptCondMet to determine task state
-                task.setTaskState((missionx::mx_task_state)((int)missionx::mx_task_state::success * task.bScriptCondMet + (int)missionx::mx_task_state::need_evaluation * task.bScriptCondMet));
+                task.setTaskState(static_cast<missionx::mx_task_state> ((int)missionx::mx_task_state::success * task.bScriptCondMet + (int)missionx::mx_task_state::need_evaluation * task.bScriptCondMet));
               }
 
               inSmPropSeedValues.removeProperty(mxconst::get_EXT_mxCargoPosLat()); // remove seeded cargo position attributes
@@ -3407,7 +3416,7 @@ missionx::Mission::flc_3d_objects(mxProperties& inSmPropSeedValues)
 
             std::string    bearing_expresion_s = vecRelativePos.at(0);
             missionx::calc c2(bearing_expresion_s);
-            float          bearing = (float)c2.calculateExpression();
+            float          bearing = static_cast<float> (c2.calculateExpression ());
 
             Utils::calcPointBasedOnDistanceAndBearing_2DPlane(newLat, newLon, planePos.lat, planePos.lon, bearing, distance_nm);
 
@@ -3835,11 +3844,11 @@ missionx::Mission::gatherStats_identify_takeoff_and_landings()
 
         float fSum = 0.0f; // calculate avg FPM in last 15 meters
         std::for_each(data_manager::strct_currentLegStats4UIDisplay.vecFpm15Meters.cbegin(), data_manager::strct_currentLegStats4UIDisplay.vecFpm15Meters.cend(), [&fSum](const float& n) { fSum += n; });
-        data_manager::strct_currentLegStats4UIDisplay.fLanding_vh_ind_fpm_avg_15_meters = fSum / (float)(data_manager::strct_currentLegStats4UIDisplay.vecFpm15Meters.size());
+        data_manager::strct_currentLegStats4UIDisplay.fLanding_vh_ind_fpm_avg_15_meters = fSum / static_cast<float> (data_manager::strct_currentLegStats4UIDisplay.vecFpm15Meters.size ());
 
         fSum = 0.0f; // Calculate avg gForce in last 15 meters
         std::for_each(data_manager::strct_currentLegStats4UIDisplay.vecgForce15Meters.cbegin(), data_manager::strct_currentLegStats4UIDisplay.vecgForce15Meters.cend(), [&fSum](const float& n) { fSum += n; });
-        data_manager::strct_currentLegStats4UIDisplay.fLanding_gforce_normal_avg_15_meters = fSum / (float)(data_manager::strct_currentLegStats4UIDisplay.vecgForce15Meters.size());
+        data_manager::strct_currentLegStats4UIDisplay.fLanding_gforce_normal_avg_15_meters = fSum / static_cast<float> (data_manager::strct_currentLegStats4UIDisplay.vecgForce15Meters.size ());
 
 
         data_manager::gather_stats.gather_and_store_stats(planePhase);
@@ -3975,8 +3984,8 @@ missionx::Mission::saveCheckpoint()
   missionx::script_manager::saveCheckpoint(xSaveNode);
 
   // v3.0.226.1 rc1 Fix bug where missionSavepointFilePath was not initialized after mission load
-  missionx::data_manager::missionSavepointFilePath     = missionx::data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONX_SAVE_PATH(), "", err) + std::string(XPLMGetDirectorySeparator()) + Utils::readAttrib(data_manager::xMainNode, mxconst::get_ATTRIB_NAME(), "") + mxconst::get_MX_FILE_SAVE_EXTENTION();
-  missionx::data_manager::missionSavepointDrefFilePath = missionx::data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONX_SAVE_PATH(), "", err) + std::string(XPLMGetDirectorySeparator()) + Utils::readAttrib(data_manager::xMainNode, mxconst::get_ATTRIB_NAME(), "") + mxconst::get_MX_FILE_SAVE_DREF_EXTENTION();
+  missionx::data_manager::missionSavepointFilePath     = missionx::data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONX_SAVE_PATH(), "", err) + std::string(XPLMGetDirectorySeparator()) + Utils::readAttrib(data_manager::xMainNode, mxconst::get_ATTRIB_NAME(), "") + mxconst::get_MX_FILE_SAVE_EXTENSION ();
+  missionx::data_manager::missionSavepointDrefFilePath = missionx::data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONX_SAVE_PATH(), "", err) + std::string(XPLMGetDirectorySeparator()) + Utils::readAttrib(data_manager::xMainNode, mxconst::get_ATTRIB_NAME(), "") + mxconst::get_MX_FILE_SAVE_DREF_EXTENSION();
                                                                                       
 
   // Prepare path and file names
@@ -4031,7 +4040,7 @@ missionx::Mission::saveCheckpoint()
     XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, outFileName, outPathAndFile); // we will only return the file name
 
 
-    std::string target_acf_dataref = std::string(missionx::data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONX_SAVE_PATH(), "", save_err)) + "/" + Utils::readAttrib(data_manager::xMainNode, mxconst::get_ATTRIB_NAME(), "") + "-" + std::string(outFileName) + mxconst::get_MX_FILE_SAVE_DREF_EXTENTION();
+    std::string target_acf_dataref = std::string(missionx::data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONX_SAVE_PATH(), "", save_err)) + "/" + Utils::readAttrib(data_manager::xMainNode, mxconst::get_ATTRIB_NAME(), "") + "-" + std::string(outFileName) + mxconst::get_MX_FILE_SAVE_DREF_EXTENSION ();
     system_actions::save_acf_datarefs_with_savepoint_v2(target_acf_dataref);
 
 
@@ -4060,9 +4069,9 @@ missionx::Mission::loadCheckpoint()
 
   // prepare folders if user will use load checkpoint // v3.0.152
   const std::string pathToSavepointFile = data_manager::missionSavepointFilePath =
-    missionx::data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONX_SAVE_PATH(), "", err) + std::string(XPLMGetDirectorySeparator()) + std::string(data_manager::mapBrieferMissionList[missionx::data_manager::selectedMissionKey].missionName) + mxconst::get_MX_FILE_SAVE_EXTENTION();
+    missionx::data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONX_SAVE_PATH(), "", err) + std::string(XPLMGetDirectorySeparator()) + std::string(data_manager::mapBrieferMissionList[missionx::data_manager::selectedMissionKey].missionName) + mxconst::get_MX_FILE_SAVE_EXTENSION ();
   const std::string pathToSavepointDatarefFile = data_manager::missionSavepointDrefFilePath =
-    missionx::data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONX_SAVE_PATH(), "", err) + std::string(XPLMGetDirectorySeparator()) + std::string(data_manager::mapBrieferMissionList[missionx::data_manager::selectedMissionKey].missionName) + mxconst::get_MX_FILE_SAVE_DREF_EXTENTION();
+    missionx::data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONX_SAVE_PATH(), "", err) + std::string(XPLMGetDirectorySeparator()) + std::string(data_manager::mapBrieferMissionList[missionx::data_manager::selectedMissionKey].missionName) + mxconst::get_MX_FILE_SAVE_DREF_EXTENSION ();
 
 
   // load mission savepoint dataref snapshot
@@ -4109,7 +4118,7 @@ missionx::Mission::loadCheckpoint()
     char outFileName[512]{ 0 };
     char outPathAndFile[2048]{ 0 };
     XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, outFileName, outPathAndFile); // we will only return the file name
-    std::string target_acf_dataref_s = std::string(missionx::data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONX_SAVE_PATH(), "", err)) + "/" + Utils::readAttrib(data_manager::xMainNode, mxconst::get_ATTRIB_NAME(), "") + "-" + std::string(outFileName) + mxconst::get_MX_FILE_SAVE_DREF_EXTENTION();
+    std::string target_acf_dataref_s = std::string(missionx::data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONX_SAVE_PATH(), "", err)) + "/" + Utils::readAttrib(data_manager::xMainNode, mxconst::get_ATTRIB_NAME(), "") + "-" + std::string(outFileName) + mxconst::get_MX_FILE_SAVE_DREF_EXTENSION ();
 
     system_actions::read_saved_mission_dataref_file(target_acf_dataref_s, err, true);
     if (!err.empty())
@@ -5010,28 +5019,47 @@ missionx::Mission::flcPRE()
       break;
       case missionx::mx_flc_pre_command::get_nav_aid_info_mainThread: // v3.0.241.10 b2 use this option to see if for example: osm location is correct, especially for helipads
       {
-#ifndef RELEASE
+        #ifndef RELEASE
         auto startClock = std::chrono::steady_clock::now();
-#endif
+        #endif
 
-#ifdef IBM
+        #ifdef IBM
         this->engine.shared_navaid_info.navAid = data_manager::getICAO_info(this->engine.shared_navaid_info.navAid.getID());
-#else
+        #else
         auto tempNav                           = data_manager::getICAO_info(this->engine.shared_navaid_info.navAid.getID());
         this->engine.shared_navaid_info.navAid = tempNav;
-#endif
+        #endif
 
 
         this->engine.threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
 
 
-#ifndef RELEASE
+        #ifndef RELEASE
         const auto   endThreadClock = std::chrono::steady_clock::now();
         const auto   diff           = endThreadClock - startClock;
         const double duration       = std::chrono::duration<double, std::milli>(diff).count();
 
         Log::logMsg("*** Finished get_nav_aid_info_mainThread. Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec)  ****");
-#endif
+        #endif
+      }
+      break;
+
+      case missionx::mx_flc_pre_command::get_and_guess_nav_aid_info_mainThread: // v25.04.2
+      {
+        #ifndef RELEASE
+        auto startClock = std::chrono::steady_clock::now();
+        #endif
+
+        this->engine.shared_navaid_info.navAid = data_manager::get_and_guess_nav_info (this->engine.shared_navaid_info.navAid.getID (), this->engine.shared_navaid_info.navAid.p);
+        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+
+        #ifndef RELEASE
+        const auto   endThreadClock = std::chrono::steady_clock::now();
+        const auto   diff           = endThreadClock - startClock;
+        const double duration       = std::chrono::duration<double, std::milli>(diff).count();
+
+        Log::logMsg("*** Finished get_and_guess_nav_aid_info_mainThread. Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec)  ****");
+        #endif
       }
       break;
 
@@ -5190,7 +5218,7 @@ missionx::Mission::flcPRE()
                 // top & bottom
                 top = top - 270; // top = mxPad top - height constant. This will be the position top of the options window
               }
-              bottom = top - (((int)missionx::data_manager::mxChoice.mapOptions.size() + _2_LINES) * missionx::WinImguiOptions::LINE_HEIGHT) + missionx::WinImguiOptions::OPTION_BOTTOM_PADDING;
+              bottom = top - ((static_cast<int> (missionx::data_manager::mxChoice.mapOptions.size ()) + _2_LINES) * missionx::WinImguiOptions::LINE_HEIGHT) + missionx::WinImguiOptions::OPTION_BOTTOM_PADDING;
 
               // Create OPTIONS/Choices screen in 2D
               Mission::uiImGuiOptions = std::make_shared<WinImguiOptions>(left, top, right, bottom, xplm_WindowDecorationSelfDecoratedResizable, xplm_WindowLayerFloatingWindows); // decoration and layer will use default values
@@ -5211,7 +5239,7 @@ missionx::Mission::flcPRE()
                 else
                   XPLMGetWindowGeometry(Mission::uiImGuiOptions->mWindow, &left, &top, &right, &bottom);
 
-                bottom = top - (((int)missionx::data_manager::mxChoice.mapOptions.size() + _2_LINES) * missionx::WinImguiOptions::LINE_HEIGHT) + missionx::WinImguiOptions::OPTION_BOTTOM_PADDING;
+                bottom = top - ((static_cast<int> (missionx::data_manager::mxChoice.mapOptions.size ()) + _2_LINES) * missionx::WinImguiOptions::LINE_HEIGHT) + missionx::WinImguiOptions::OPTION_BOTTOM_PADDING;
                 XPLMSetWindowGeometry(Mission::uiImGuiOptions->mWindow, left, top, right, bottom);
               }
             }
@@ -5273,7 +5301,7 @@ missionx::Mission::flcPRE()
             XPLMGetWindowGeometry(Mission::uiImGuiMxpad->mWindow, &left, &top, &right, &bottom);
             static constexpr int _2_LINES = 2;
             top                           = bottom - _2_LINES;
-            bottom                        = top - (((int)missionx::data_manager::mxChoice.mapOptions.size() + _2_LINES) * missionx::WinImguiOptions::LINE_HEIGHT) + missionx::WinImguiOptions::OPTION_BOTTOM_PADDING;
+            bottom                        = top - ((static_cast<int> (missionx::data_manager::mxChoice.mapOptions.size ()) + _2_LINES) * missionx::WinImguiOptions::LINE_HEIGHT) + missionx::WinImguiOptions::OPTION_BOTTOM_PADDING;
             XPLMSetWindowGeometry(Mission::uiImGuiOptions->mWindow, left, top, right, bottom);
           }
         }
@@ -6031,11 +6059,11 @@ missionx::Mission::loadMission()
       missionx::data_manager::missionSavepointFilePath = missionx::data_manager::mx_folders_properties.getNodeStringProperty(mxconst::get_FLD_MISSIONX_SAVE_PATH(), "")
         + std::string(XPLMGetDirectorySeparator())
         + Utils::readAttrib(data_manager::xMainNode, mxconst::get_ATTRIB_NAME(), "")
-        + mxconst::get_MX_FILE_SAVE_EXTENTION();
+        + mxconst::get_MX_FILE_SAVE_EXTENSION ();
       missionx::data_manager::missionSavepointDrefFilePath = missionx::data_manager::mx_folders_properties.getNodeStringProperty(mxconst::get_FLD_MISSIONX_SAVE_PATH(), "")
         + std::string(XPLMGetDirectorySeparator())
         + Utils::readAttrib(data_manager::xMainNode, mxconst::get_ATTRIB_NAME(), "")
-        + mxconst::get_MX_FILE_SAVE_DREF_EXTENTION();
+        + mxconst::get_MX_FILE_SAVE_DREF_EXTENSION ();
 
       if (missionx::data_manager::missionSavepointFilePath.empty () * missionx::data_manager::missionSavepointDrefFilePath.empty ())
         data_manager::missionState = missionx::mx_mission_state_enum::mission_undefined;
@@ -6258,8 +6286,8 @@ missionx::Mission::parseAndModifyChildPoints(IXMLNode& inParent, int inLevel)
     }
 
     NavAidInfo na;
-    na.lat = (float)lat_d;
-    na.lon = (float)lon_d;
+    na.lat = static_cast<float> (lat_d);
+    na.lon = static_cast<float> (lon_d);
     na.synchToPoint();
 
     const float slope_f = this->engine.calc_slope_at_point_mainThread(na);

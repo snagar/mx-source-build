@@ -1800,7 +1800,7 @@ data_manager::write_fpln_to_external_folder()
             const std::string fpln_folder = lmbda_get_target_fpln_folder();
 
             std::string fpln_custom_missionx_path = fpln_folder + mxconst::get_EXTERNAL_FPLN_TARGET_FILE_NAME();
-            const auto  lmbda_get_fpln_extention  = [&]() // get the file extension
+            const auto  lmbda_get_fpln_extension  = [&]() // get the file extension
             {
               if (fpln_type == GTNRXP)
               {
@@ -1822,7 +1822,7 @@ data_manager::write_fpln_to_external_folder()
               return "";
             };
 
-            const std::string extension_s = lmbda_get_fpln_extention();
+            const std::string extension_s = lmbda_get_fpln_extension();
             fpln_custom_missionx_path += extension_s;
 
 
@@ -1899,7 +1899,7 @@ data_manager::extractNavaidInfoFromPlanesFMS()
 {
   std::deque<NavAidInfo> deqNavAids;
 
-  int fms_entry = XPLMCountFMSEntries();
+  const int fms_entry = XPLMCountFMSEntries();
 
   for (int i = 0; i < fms_entry; ++i)
   {
@@ -3963,14 +3963,24 @@ void
 data_manager::setGPS()
 {
   bool           flag_found = false;
-  const IXMLNode xFMS_ptr   = (xmlLoadedFMS.isEmpty()) ? xmlGPS : xmlLoadedFMS; // pick the FMS element or GPS dependent on availability in the mission/checkpoint file.
+  const bool bUseGPS   = (xmlLoadedFMS.isEmpty()) ? true : false; // v25.04.2 decide if to use GPS or FMS, we will use the bool value to decide if to read the auto_load option or not.
+  const IXMLNode xFMS_ptr   = (bUseGPS) ? xmlGPS : xmlLoadedFMS; // pick the FMS element or GPS dependent on availability in the mission/checkpoint file.
 
   if (xFMS_ptr.isEmpty())
     return;
 
+  // v25.04.2
+  if (bUseGPS)
+  {
+    const bool bAutoLoad = Utils::readBoolAttrib (data_manager::xmlGPS, mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), false);
+    const bool bGenerateGPS = Utils::readBoolAttrib (data_manager::xmlGPS, mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), false);
+    if ( !(bGenerateGPS * bAutoLoad) )
+      return; // exit the code in this function.
+  }
+
   // v3.0.303.2
   auto       nodeLocationAdjust_ptr = xMainNode.getChildNodeByPath((mxconst::get_ELEMENT_BRIEFER() + "/" + mxconst::get_ELEMENT_LOCATION_ADJUST()).c_str());
-  const bool b_locationTypeIsPlane  = mxconst::get_ELEMENT_PLANE().compare(Utils::readAttrib(nodeLocationAdjust_ptr, mxconst::get_ATTRIB_LOCATION_TYPE(), "")) == 0;
+  const bool b_locationTypeIsPlane  = mxconst::get_ELEMENT_PLANE() == Utils::readAttrib(nodeLocationAdjust_ptr, mxconst::get_ATTRIB_LOCATION_TYPE(), "");
   // clear GPS
   clearFMSEntries(); // v3.0.253.7
 
@@ -3998,16 +4008,15 @@ data_manager::setGPS()
     if (!icao.empty())
     {
       // search XPLMNavRef
-      XPLMNavRef nav_ref = XPLM_NAV_NOT_FOUND;
-
       if (index == 0 && b_locationTypeIsPlane)
       {
         // don't do anything
       }
       else
       {
+        XPLMNavRef nav_ref = XPLM_NAV_NOT_FOUND;
 
-        if (navType_fromNode_i > xplm_Nav_Unknown)                                               // v3.0.255.4
+        if (navType_fromNode_i > xplm_Nav_Unknown)  // v3.0.255.4
           nav_ref = XPLMFindNavAid(nullptr, icao.data(), &lat_f, &lon_f, nullptr, navType_fromNode_i); // find ref based on point nav_type. We can add assert on navRef_fromNode_i
         else
           nav_ref = XPLMFindNavAid(nullptr, icao.data(), &lat_f, &lon_f, nullptr, xplm_Nav_Airport);
@@ -5915,7 +5924,7 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
   bool flag_http_success = false;
   bool bIsFirstTime      = true;
 
-  const std::string authKey_s = Utils::getNodeText_type_6(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATIOJN_KEY(), "");
+  const std::string authKey_s = Utils::getNodeText_type_6(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY(), "");
   std::string       result_s;
 
 
@@ -6226,7 +6235,7 @@ data_manager::fetch_fpln_from_external_site(base_thread::thread_state* inoutThre
   const bool bUserAskedToRemoveDuplicateICAO     = Utils::readBoolAttrib(inUserPref,   mxconst::get_PROP_REMOVE_DUPLICATE_ICAO_ROWS(), false);
   const bool bUserAskedToGroupByICAOAndWaypoints = Utils::readBoolAttrib(inUserPref,   mxconst::get_PROP_GROUP_DUPLICATES_BY_WAYPOINTS(), false);
 
-  const std::string authKey_s = Utils::getNodeText_type_6(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATIOJN_KEY(), "");
+  const std::string authKey_s = Utils::getNodeText_type_6(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY(), "");
   std::string       result_s;
 
   std::string q     = "/search/plans?";
@@ -6741,17 +6750,36 @@ where is_plane_in_boundary = 1
 // -------------------------------------
 
 NavAidInfo
-data_manager::getICAO_info(const std::string& inICAO)
+data_manager::getICAO_info (const std::string &inICAO)
 {
-  NavAidInfo           nNavAid;
-  const Point          planePosition = dataref_manager::getPlanePointLocationThreadSafe ();
-  ImVec2               posVec2( static_cast<float> ( planePosition.lat ), static_cast<float> ( planePosition.lon ) );
+  NavAidInfo  nNavAid;
+  const Point planePosition = dataref_manager::getPlanePointLocationThreadSafe ();
+  ImVec2      posVec2 (static_cast<float> (planePosition.lat), static_cast<float> (planePosition.lon));
 
-  nNavAid.navRef = XPLMFindNavAid (nullptr, inICAO.c_str(), &posVec2.x, &posVec2.y, nullptr, xplm_Nav_Airport); // find airport with the id: inICAO closest to plane
+  nNavAid.navRef = XPLMFindNavAid (nullptr, inICAO.c_str (), &posVec2.x, &posVec2.y, nullptr, xplm_Nav_Airport); // find airport with the id: inICAO closest to plane
   if (nNavAid.navRef == XPLM_NAV_NOT_FOUND)
-    nNavAid.init();
+    nNavAid.init ();
   else
-    XPLMGetNavAidInfo(nNavAid.navRef, &nNavAid.navType, &nNavAid.lat, &nNavAid.lon, &nNavAid.height_mt, &nNavAid.freq, &nNavAid.heading, nNavAid.ID, nNavAid.name, NULL);
+    XPLMGetNavAidInfo (nNavAid.navRef, &nNavAid.navType, &nNavAid.lat, &nNavAid.lon, &nNavAid.height_mt, &nNavAid.freq, &nNavAid.heading, nNavAid.ID, nNavAid.name, NULL);
+
+  return nNavAid;
+}
+
+// -----------------------------------
+
+
+missionx::NavAidInfo
+data_manager::get_and_guess_nav_info (const std::string &in_id_nav_name, const missionx::Point &prevPoint)
+{
+  NavAidInfo  nNavAid;
+  auto lat = static_cast<float>(prevPoint.lat);
+  auto lon = static_cast<float>(prevPoint.lon);
+  nNavAid.navRef = XPLMFindNavAid (nullptr, in_id_nav_name.c_str (), &lat, &lon, nullptr, xplm_Nav_Airport|xplm_Nav_NDB|xplm_Nav_VOR| xplm_Nav_Fix|xplm_Nav_DME); // find navaid
+
+  if (nNavAid.navRef == XPLM_NAV_NOT_FOUND)
+    nNavAid.init ();
+  else
+    XPLMGetNavAidInfo (nNavAid.navRef, &nNavAid.navType, &nNavAid.lat, &nNavAid.lon, &nNavAid.height_mt, &nNavAid.freq, &nNavAid.heading, nNavAid.ID, nNavAid.name, NULL);
 
   return nNavAid;
 }

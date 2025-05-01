@@ -63,11 +63,79 @@ public:
   float bearing_to_current_target{ 0.0f };   // holds the bearing to reach this target from previous target
   float bearing_back_to_prev_target{ 0.0f }; // holds the bearing to the previous target. If bearing_relative_from_prev_target=10 degrease then bearing_back_to_prev_target=10+180
 
+   missionx::NavAidInfo& operator= (const NavAidInfo &in_na)
+   {
+     if (this == &in_na)
+       return *this;
 
+     this->clone(in_na);
+
+     return *this;
+   }
+
+   void clone (const missionx::NavAidInfo &in_na)
+   {
+     this->node = in_na.node.deepCopy();
+     this->setID(in_na.ID);
+     this->setName(in_na.name);
+     this->setRegion (in_na.inRegion);
+
+     this->setBaseNodeName( in_na.getBaseNodeName () );
+
+
+     flag_is_skewed                           = in_na.flag_is_skewed;
+     flag_is_brieferOrStartLocation           = in_na.flag_is_brieferOrStartLocation;
+     flag_navDataFetchedFromDB                = in_na.flag_navDataFetchedFromDB;
+     flag_navDataFetchedFromXPLMGetNavAidInfo = in_na.flag_navDataFetchedFromXPLMGetNavAidInfo;
+
+     navRef  = in_na.navRef;
+     navType = in_na.navType;
+     freq    = in_na.freq;
+
+
+     degRelativeToSearchPoint = in_na.degRelativeToSearchPoint;
+     lat                      = in_na.lat;
+     lon                      = in_na.lon;
+     height_mt                = in_na.height_mt;
+     heading                  = in_na.heading;
+
+     p                    = in_na.p;
+     xml_skewdPointNode   = in_na.xml_skewdPointNode.deepCopy ();
+     xml_osm_around       = in_na.xml_osm_around.deepCopy ();
+     flag_nav_from_webosm = in_na.flag_nav_from_webosm;
+     ways_around          = in_na.ways_around;
+     icao_id              = in_na.icao_id;
+
+     loc_desc      = in_na.loc_desc;
+     template_type = in_na.template_type;
+     err.clear ();
+
+     flightLegName         = in_na.flightLegName;
+     radius_mt_suggested_s = in_na.radius_mt_suggested_s;
+
+
+     flag_picked_random_lat_long                                       = in_na.flag_picked_random_lat_long;
+     xLegFromTemplate                                                  = in_na.xLegFromTemplate;
+     flag_force_picked_same_point_template_as_flight_leg_tempalte_type = in_na.flag_force_picked_same_point_template_as_flight_leg_tempalte_type;
+
+     ramp_info.gate    = in_na.ramp_info.gate;
+     ramp_info.jets    = in_na.ramp_info.jets;
+     ramp_info.uq_name = in_na.ramp_info.uq_name;
+
+     bearing_next                = in_na.bearing_next;
+     bearing_to_current_target   = in_na.bearing_to_current_target;
+     bearing_back_to_prev_target = in_na.bearing_back_to_prev_target;
+
+     this->synchToPoint ();
+   }
 
   ~NavAidInfo() {}
 
   NavAidInfo() { init(); }
+  NavAidInfo(const missionx::NavAidInfo &in_na) : mx_base_node(in_na)
+   {
+     this->clone(in_na);
+   }
 
   void init()
   {
@@ -234,11 +302,20 @@ public:
 
   void setName(std::string inVal)
   {
-#ifdef IBM
+    #ifdef IBM
     strncpy_s(this->name, 250, inVal.c_str(), 250);
-#else
+    #else
     std::strncpy(this->name, inVal.c_str(), 250);
-#endif
+    #endif
+  }
+
+  void setRegion(std::string inVal)
+  {
+    #ifdef IBM
+    strncpy_s(this->inRegion, 1, inVal.c_str(), 1);
+    #else
+    std::strncpy(this->inRegion, inVal.c_str(), 1);
+    #endif
   }
 
   std::string getNavAsAptRampCode_1300() { return mxconst::get_APT_1300_RAMP_CODE_v11_SPACE() + mxUtils::formatNumber<double>(this->lat, 8) + mxconst::get_SPACE() + mxUtils::formatNumber<double>(this->lon, 8); }

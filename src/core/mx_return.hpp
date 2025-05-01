@@ -26,6 +26,7 @@ private:
 
 public:
   bool result{ false };
+  std::string string_value; // v25.04.2 added the option to initialize a text value to use later on.
 
   std::unordered_map<int, std::string> errMsges;
   std::unordered_map<int, std::string> infoMsges;

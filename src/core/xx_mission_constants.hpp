@@ -35,7 +35,7 @@ constexpr static const int MX_FEATURES_VERSION = 20241212; //20230917; // 330491
 
 inline constexpr static auto PLUGIN_VER_MAJOR  = "25"; // year
 inline constexpr static auto PLUGIN_VER_MINOR  = "04"; // month
-inline constexpr static auto PLUGIN_REVISION_S =  "2 (alpha)";
+inline constexpr static auto PLUGIN_REVISION_S =  "2";
 inline constexpr static auto PLUGIN_REVISION = PLUGIN_REVISION_S;
 
 #ifdef RELEASE
