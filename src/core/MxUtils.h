@@ -36,7 +36,7 @@ public:
   const char* expressionToParse;
 
   void setExpression(std::string inExprestion)
-  { 
+  {
     expressionToParse_s = inExprestion;
     expressionToParse   = expressionToParse_s.c_str();
   }
@@ -149,6 +149,9 @@ public:
   static int         countCharsInString(const std::string& inText, const char& inCharToCount); // v3.303.9.1
   static bool        compare (const std::string &inStr1, const std::string &inStr2, bool inCaseSensitive = true ); // v24.05.1
   static std::string format (const std::string & inText, std::map<int, std::string> & inArgs); // v24.05.2
+  static int         calc_minutes_from_seconds(const int &in_seconds_from_midnight); // v25.04.2
+
+
 
   /// <summary>
   ///

@@ -186,89 +186,105 @@ bool missionx::mxUtils::compare(const std::string &inStr1, const std::string &in
 
 // ----------------------------------------------
 
-std::string missionx::mxUtils::format(const std::string &inText, std::map<int, std::string> &inArgs)
+std::string
+missionx::mxUtils::format (const std::string &inText, std::map<int, std::string> &inArgs)
 {
-  bool flagFoundLeftCurlyBraces = false;
-  std::string pendingString;
+  bool              flagFoundLeftCurlyBraces = false;
+  std::string       pendingString;
   std::stringstream ss;
-  auto iter_inArgs = inArgs.cbegin();
-  int curly_braces_counter=0;
+  auto              iter_inArgs          = inArgs.cbegin ();
+  int               curly_braces_counter = 0;
 
-  for (const char c : inText )
+  for (const char c : inText)
   {
-    switch (c) {
-    case '{':
+    switch (c)
     {
-      if (flagFoundLeftCurlyBraces)
+      case '{':
       {
-        ss << pendingString;
-        pendingString.clear();
-      }
-      flagFoundLeftCurlyBraces = true;
-
-    } // end "{"
-    break;
-    case '}':
-    {
-      if (pendingString.empty() ) // if we found "{}" without a number
-      {
-        if (iter_inArgs != inArgs.end())
+        if (flagFoundLeftCurlyBraces)
         {
-          ss << iter_inArgs->second;
-          ++iter_inArgs; // v25.03.3
+          ss << pendingString;
+          pendingString.clear ();
+        }
+        flagFoundLeftCurlyBraces = true;
+
+      } // end "{"
+      break;
+      case '}':
+      {
+        if (pendingString.empty ()) // if we found "{}" without a number
+        {
+          if (iter_inArgs != inArgs.end ())
+          {
+            ss << iter_inArgs->second;
+            ++iter_inArgs; // v25.03.3
+          }
+          else
+          {
+            ss << "{" << curly_braces_counter << "}"; // v25.03.3
+          }
+        }
+        else if (std::ranges::all_of (pendingString, ::isdigit))
+        {
+          int key = std::stoi (pendingString);
+          if (mxUtils::isElementExists (inArgs, key))
+          {
+            ss << inArgs[key];
+          }
+          else
+          {
+            ss << "{" << pendingString << c;
+          }
+
+          if (iter_inArgs != inArgs.end ())
+            ++iter_inArgs; // v25.03.3
+        }
+        else // if {N} is not digit then concatenate as is
+        {
+          ss << "{" << pendingString << c;
+        }
+
+        flagFoundLeftCurlyBraces = false;
+        pendingString.clear ();
+        ++curly_braces_counter; // v25.03.3
+
+      } // end "}"
+      break;
+      default:
+      {
+        if (flagFoundLeftCurlyBraces)
+        {
+          pendingString += c;
         }
         else
         {
-          ss << "{" << curly_braces_counter << "}"; // v25.03.3
+          ss << c;
         }
       }
-      else if ( std::ranges::all_of (pendingString, ::isdigit) )
-      {
-        int key = std::stoi (pendingString);
-        if (mxUtils::isElementExists (inArgs, key) )
-        {
-          ss << inArgs[key];
-        }
-        else {
-          ss << "{" <<  pendingString << c;
-        }
-
-        if (iter_inArgs != inArgs.end ())
-          ++iter_inArgs; // v25.03.3
-      }
-      else // if {N} is not digit then concatenate as is
-      {
-        ss << "{" << pendingString << c;
-      }
-
-      flagFoundLeftCurlyBraces = false;
-      pendingString.clear ();
-      ++curly_braces_counter; // v25.03.3
-
-    } // end "}"
-    break;
-    default:
-    {
-      if (flagFoundLeftCurlyBraces)
-      {
-        pendingString += c;
-      }
-      else
-      {
-        ss << c;
-      }
-    }
-    break;
+      break;
     } // switch
 
   } // end loop
 
-  if ( ! pendingString.empty() )
+  if (!pendingString.empty ())
   {
     ss << pendingString;
   }
 
-  return ss.str();
+  return ss.str ();
+}
+
+// ----------------------------------------------
+
+int
+missionx::mxUtils::calc_minutes_from_seconds (const int &in_seconds_from_midnight)
+{
+  #ifndef RELEASE
+  const auto minutesInCurrentHour = (in_seconds_from_midnight % 3600) / 60;
+  #endif
+
+  return (in_seconds_from_midnight % 3600) / 60;
+
 }
 
 // ----------------------------------------------

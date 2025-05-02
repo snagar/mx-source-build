@@ -91,6 +91,7 @@ public:
 
   static int   getLocalDateDays();
   static float getLocalTimeSec();
+  static int   getLocalMinutes(); // v25.04.2
   static int   getLocalHour(); // v3.303.8
 
   static void flc(); // every loop back fetch information once to use in all shared.dref->xx code; example: read pause pointState.

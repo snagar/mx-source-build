@@ -16,95 +16,94 @@ Point          missionx::dataref_manager::planePoint;
 Point          missionx::dataref_manager::cameraPoint;
 XPLMDataTypeID missionx::dataref_manager::dataRefType;
 
-float
-dataref_manager::getAirspeed()
-{
-  return XPLMGetDataf(missionx::drefConst.indicated_airspeed_f);
-}
+  float
+  dataref_manager::getAirspeed()
+  {
+    return XPLMGetDataf(missionx::drefConst.indicated_airspeed_f);
+  }
 
-float
-dataref_manager::getGroundSpeed()
-{
-  return XPLMGetDataf(missionx::drefConst.dref_groundspeed_f);
-}
+  float
+  dataref_manager::getGroundSpeed()
+  {
+    return XPLMGetDataf(missionx::drefConst.dref_groundspeed_f);
+  }
 
-float
-dataref_manager::get_vh_ind()
-{
-  return XPLMGetDataf(missionx::drefConst.dref_vh_ind_f);
-}
+  float
+  dataref_manager::get_vh_ind()
+  {
+    return XPLMGetDataf(missionx::drefConst.dref_vh_ind_f);
+  }
 
-float
-dataref_manager::get_gforce_normal()
-{
-  return XPLMGetDataf(missionx::drefConst.dref_gforce_normal_f);
-}
+  float
+  dataref_manager::get_gforce_normal()
+  {
+    return XPLMGetDataf(missionx::drefConst.dref_gforce_normal_f);
+  }
 
-float
-dataref_manager::get_gforce_axil()
-{
-  return XPLMGetDataf(missionx::drefConst.dref_gforce_axil_f);
-}
+  float
+  dataref_manager::get_gforce_axil()
+  {
+    return XPLMGetDataf(missionx::drefConst.dref_gforce_axil_f);
+  }
 
-float
-dataref_manager::get_g_normal()
-{
-  return XPLMGetDataf(missionx::drefConst.dref_g_nrml_f);
-}
+  float
+  dataref_manager::get_g_normal()
+  {
+    return XPLMGetDataf(missionx::drefConst.dref_g_nrml_f);
+  }
 
-float
-dataref_manager::get_fnrml_total()
-{
-  return XPLMGetDataf(missionx::drefConst.dref_fnrml_total_f);
-}
+  float
+  dataref_manager::get_fnrml_total()
+  {
+    return XPLMGetDataf(missionx::drefConst.dref_fnrml_total_f);
+  }
 
-float
-dataref_manager::getAoA()
-{
-  return XPLMGetDataf(missionx::drefConst.AoA_f);
-}
+  float
+  dataref_manager::getAoA()
+  {
+    return XPLMGetDataf(missionx::drefConst.AoA_f);
+  }
 
-float
-dataref_manager::getPitch()
-{
-  return XPLMGetDataf(missionx::drefConst.dref_pitch_f);
-}
+  float
+  dataref_manager::getPitch()
+  {
+    return XPLMGetDataf(missionx::drefConst.dref_pitch_f);
+  }
 
-float
-dataref_manager::getRoll()
-{
-  return XPLMGetDataf(missionx::drefConst.dref_roll_f);
-}
+  float
+  dataref_manager::getRoll()
+  {
+    return XPLMGetDataf(missionx::drefConst.dref_roll_f);
+  }
 
-float
-dataref_manager::getFaxilGear()
-{
-  return XPLMGetDataf(missionx::drefConst.dref_faxil_gear_f);
-}
+  float
+  dataref_manager::getFaxilGear()
+  {
+    return XPLMGetDataf(missionx::drefConst.dref_faxil_gear_f);
+  }
 
-float
-dataref_manager::getBrakeLeftAdd()
-{
-  return XPLMGetDataf(missionx::drefConst.dref_brake_Left_add_f);
-}
+  float
+  dataref_manager::getBrakeLeftAdd()
+  {
+    return XPLMGetDataf(missionx::drefConst.dref_brake_Left_add_f);
+  }
 
-float
-dataref_manager::getBrakeRightAdd()
-{
-  return XPLMGetDataf(missionx::drefConst.dref_brake_Right_add_f);
-}
+  float
+  dataref_manager::getBrakeRightAdd()
+  {
+    return XPLMGetDataf(missionx::drefConst.dref_brake_Right_add_f);
+  }
 
-void
-dataref_manager::setPlaneInLocalCoordiantes(double x, double y, double z)
-{
-  missionx::dataref_const dm;
-  XPLMSetDatad(dm.dref_local_x_d, x);
-  XPLMSetDatad(dm.dref_local_y_d, y);
-  XPLMSetDatad(dm.dref_local_z_d, z);
-}
+  void
+  dataref_manager::setPlaneInLocalCoordiantes (const double x, const double y, const double z)
+  {
+    const missionx::dataref_const dm;
+    XPLMSetDatad(dm.dref_local_x_d, x);
+    XPLMSetDatad(dm.dref_local_y_d, y);
+    XPLMSetDatad(dm.dref_local_z_d, z);
+  }
 
-}
-
+} // namespace missionx
 
 
 missionx::dataref_manager::dataref_manager()
@@ -126,16 +125,16 @@ missionx::dataref_manager::~dataref_manager()
 void
 missionx::dataref_manager::flc()
 {
-#ifdef TIMER_FUNC
+  #ifdef TIMER_FUNC
   missionx::TimerFunc timerFunc(std::string(__FILE__), std::string(__func__), false);
-#endif // TIMER_FUNC
+  #endif // TIMER_FUNC
   dataref_manager::storePlanePoint();
   dataref_manager::storeCameraPoint(); // v3.0.223.7
 }
 
 
 void
-missionx::dataref_manager::set_xplane_dataref_value(std::string full_name, double inValue)
+missionx::dataref_manager::set_xplane_dataref_value (const std::string full_name, const double inValue)
 {
   static XPLMDataRef dataRefId; 
   dataRefId = XPLMFindDataRef(full_name.c_str());
@@ -147,12 +146,12 @@ missionx::dataref_manager::set_xplane_dataref_value(std::string full_name, doubl
     {
       case xplmType_Int:
       {
-        XPLMSetDatai(dataRefId, (int)inValue);
+        XPLMSetDatai(dataRefId, static_cast<int> (inValue));
       }
       break;
       case xplmType_Float:
       {
-        XPLMSetDataf(dataRefId, (float)inValue);
+        XPLMSetDataf(dataRefId, static_cast<float> (inValue));
       }
       break;
       case (xplmType_Double): // v3.0.255.4.3 added to solve user dataref creation cases.
@@ -181,7 +180,7 @@ missionx::dataref_manager::set_xplane_dataref_value(std::string full_name, doubl
 } // end set_xplane_dataref_value
 
 XPLMDataRef
-missionx::dataref_manager::getDataRef(std::string inDrefName) // v2.1.0
+missionx::dataref_manager::getDataRef (const std::string inDrefName) // v2.1.0
 {
   return XPLMFindDataRef(inDrefName.c_str());
 }
@@ -195,19 +194,20 @@ bool
 missionx::dataref_manager::isSimPause()
 {
   if (missionx::drefConst.dref_pause)
-    return (bool)XPLMGetDatai(missionx::drefConst.dref_pause); // this should always work
+    return static_cast<bool> (XPLMGetDatai (missionx::drefConst.dref_pause)); // this should always work
 
 
-  return (bool)getDataRefValue<int>(std::string("sim/time/paused")); // just in case
+  return static_cast<bool> (getDataRefValue<int> (std::string ("sim/time/paused"))); // just in case
 }
 
 bool
 missionx::dataref_manager::isSimRunning()
 {
-  bool bVal = !((bool)XPLMGetDatai(missionx::drefConst.dref_pause)); // return the oposite of what is returned. If return true then we convert to "false" = "sim is not running"
-  
-  return bVal;
-  
+  #ifndef RELEASE
+  const bool bVal = !static_cast<bool> (XPLMGetDatai (missionx::drefConst.dref_pause)); // return the opposite of what is returned. If return true then we convert to "false" = "sim is not running"
+  #endif
+
+  return !static_cast<bool> (XPLMGetDatai (missionx::drefConst.dref_pause));
 }
 
 
@@ -215,17 +215,17 @@ bool
 missionx::dataref_manager::isSimInReplayMode()
 {
   if (missionx::drefConst.dref_is_in_replay)
-    return (bool)XPLMGetDatai(missionx::drefConst.dref_is_in_replay); 
+    return static_cast<bool> (XPLMGetDatai (missionx::drefConst.dref_is_in_replay));
 
 
-  return (bool)getDataRefValue<int>(std::string("sim/time/is_in_replay")); 
+  return static_cast<bool> (getDataRefValue<int> (std::string ("sim/time/is_in_replay")));
 }
 
 
 bool
 missionx::dataref_manager::isPlaneOnGround()
 {
-  return (XPLMGetDataf(missionx::drefConst.dref_faxil_gear_f) == 0.0f ? false : true); // in air value == 0
+  return (XPLMGetDataf (missionx::drefConst.dref_faxil_gear_f) != 0.0f); // in air value == 0
 }
 
 double
@@ -289,6 +289,17 @@ missionx::dataref_manager::getLocalTimeSec()
 }
 
 int
+missionx::dataref_manager::getLocalMinutes ()
+{
+  const auto local_time_sec_f = static_cast<int> (XPLMGetDataf (missionx::drefConst.dref_local_time_sec_f));
+  #ifndef RELEASE
+  const auto minutesInCurrentHour = (local_time_sec_f % 3600) / 60;
+  #endif
+
+  return (local_time_sec_f % 3600) / 60;
+}
+
+int
 missionx::dataref_manager::getLocalHour()
 {
 
@@ -302,11 +313,11 @@ missionx::dataref_manager::getLocalHour()
 // ---------------------------------------
 
 void
-missionx::dataref_manager::setQuaternion(float w, float x, float y, float z)
+missionx::dataref_manager::setQuaternion (const float w, const float x, const float y, const float z)
 {
   float floatVals[4] = { w, x, y, z };
 
-  if (missionx::drefConst.dref_q != NULL)
+  if (missionx::drefConst.dref_q != nullptr)
     XPLMSetDatavf(missionx::drefConst.dref_q, floatVals, 0, 4);
   else
     Log::logMsgErr("Failed to find and set Quaternion values !!!");
@@ -325,7 +336,7 @@ missionx::dataref_manager::getCameraPointLocation()
 }
 
 missionx::Point
-missionx::dataref_manager::getCurrentPlanePointLocation(bool inStoreLocation)
+missionx::dataref_manager::getCurrentPlanePointLocation (const bool inStoreLocation)
 {
   missionx::Point p(dataref_manager::getLat(), dataref_manager::getLong());
   p.setElevationMt(dataref_manager::getElevation());

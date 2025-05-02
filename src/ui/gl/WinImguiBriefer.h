@@ -1228,7 +1228,8 @@ private:
 
 #endif // RELEASE
 
-  void add_ui_advance_settings_random_date_time_weather_and_weight_button(int& out_iClockDayOfYearPicked, int& out_iClockHourPicked, int &out_iClockMinutesPicked, const std::string& inTEXT_TYPE = mxconst::get_TEXT_TYPE_TITLE_REG() );
+  // void add_ui_advance_settings_random_date_time_weather_and_weight_button(int& out_iClockDayOfYearPicked, int& out_iClockHourPicked, int &out_iClockMinutesPicked, const std::string& inTEXT_TYPE = mxconst::get_TEXT_TYPE_TITLE_REG() );
+  void add_ui_advance_settings_random_date_time_weather_and_weight_button2(int& out_iClockDayOfYearPicked, int& out_iClockHourPicked, int &out_iClockMinutesPicked, const std::string& inTEXT_TYPE = mxconst::get_TEXT_TYPE_TITLE_REG() );
   bool add_ui_checkbox_rerun_random_date_and_time();
 
 
