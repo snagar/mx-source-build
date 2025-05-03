@@ -401,7 +401,7 @@ jobs:
             # Push the branch back.. or not
             if [[ "$TARGET_BRANCH" != "dry-run" ]]; then
           
-              if [[ "$TARGET_BRANCH" != "release" ]]; then
+              if [[ "$TARGET_BRANCH" == "release" ]]; then
                 echo -e "Adding GH (Github Client) information."
                 gh ${TARGET_BRANCH} create "${{ github.ref_name }}" --title "$TARGET_BRANCH: ${{ github.ref_name }}" --notes-file ${{ github.workspace }}/notes.md
               fi
