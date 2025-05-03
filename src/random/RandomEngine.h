@@ -214,6 +214,7 @@ public:
   missionx::TemplateFileInfo* working_tempFile_ptr;          // v3.0.241.9
   bool                        flag_rules_defined_by_user_ui; // v3.0.241.9
   std::string                 cumulative_location_desc_s;
+  std::string                 first_location_desc_s; // v25.04.2, used in conjunction with "Expose all GPS legs at mission start" = false
 
   // members exposing private parameters
   std::string getErrorMsg() { return this->errMsg; }

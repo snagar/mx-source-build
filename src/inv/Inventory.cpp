@@ -16,7 +16,7 @@ namespace fs = std::filesystem;
 namespace missionx
 {
 
-int  missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i {0}; // v24.12.2
+int  missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i {0}; // v24.12.2 "0" means no special compatibility, use the "station" layout
 
 // Inventory::~Inventory()
 //{
@@ -48,7 +48,7 @@ Inventory::Inventory(const ITCXMLNode& inNode)
 }
 
 
-Inventory::Inventory(const missionx::Inventory& inInventory) {    
+Inventory::Inventory(const missionx::Inventory& inInventory)  : Trigger(inInventory) {
   this->clone(inInventory);
 }
 
@@ -95,7 +95,7 @@ Inventory::read_xp11_style_inventory_items()
         this->setNodeStringProperty(mxconst::get_ATTRIB_NAME(), itemName, xItem);
       }
 
-      if (this->parse_item_node(xItem)) // if item is valid
+      if (missionx::Inventory::parse_item_node(xItem)) // if item is valid
       {
         ++itemCounter;
       }
@@ -378,9 +378,9 @@ Inventory::get_item_exists(const IXMLNode& pNode, const std::string& inBarcodeNa
 
   for (int iLoop = 0; (iLoop < nChilds) * (!bFound); ++iLoop)
   {
-    auto              cNode     = pNode.getChildNode(iLoop);
-    const std::string node_name = cNode.getName();
-    if ((missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY) * (node_name == mxconst::get_ELEMENT_STATION()) * (nLevel == 0) )
+    const auto cNode = pNode.getChildNode (iLoop);
+    if (const std::string node_name = cNode.getName ()
+      ; (missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY) * (node_name == mxconst::get_ELEMENT_STATION()) * (nLevel == 0) )
       bFound = this->get_item_exists(cNode, inBarcodeName, (nLevel + 1));
     else if (node_name == mxconst::get_ELEMENT_ITEM())
       bFound = (Utils::readNodeNumericAttrib<int>(cNode, mxconst::get_ATTRIB_QUANTITY(), 0) > 0);

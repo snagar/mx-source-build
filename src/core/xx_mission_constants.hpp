@@ -436,7 +436,7 @@ typedef enum class _mxWindowActions
   ACTION_TOGGLE_BRIEFER_MXPAD,                                // v3.0.221.7 in VR mode
   ACTION_TOGGLE_PLUGIN_SETUP,                                 // v3.0.241.7 plugin setup screen
   ACTION_TOGGLE_UI_USER_MISSION_GENERATOR,                    // v3.0.241.9 display user mission creation from UI and not template
-  POST_TEMPLATE_LOAD_DISPLAY_IMGUI_GENERATE_TEMPLATES_IMAGES, // v3.0.251.1 display the list of custom template images
+  ACTION_POST_TEMPLATE_LOAD_DISPLAY_IMGUI_GENERATE_TEMPLATES_IMAGES, // v3.0.251.1 display the list of custom template images
   ACTION_SHOW_END_SUMMARY_LAYER,                              // v3.0.251.1 display the IMGUI summary end window
   ACTION_FETCH_FPLN_FROM_EXTERNAL_SITE,                       // v3.0.253.1 start async fetch process
   ACTION_FETCH_FPLN_FROM_SIMBRIEF_SITE,                       // v25.03.3 start async fetch process from simbrief
@@ -793,7 +793,7 @@ typedef enum class _mission_subcategory_type
 typedef enum class _ui_random_date_time_type // v3.303.10
   : uint8_t
 {
-  current_day_and_time = 0, // use current time
+  xplane_day_and_time = 0, // use current time
   os_day_and_time = 1, // use OS day of year and time (hour)
   any_day_time   = 2, // any day and time, fully random
   exact_day_and_time = 3,
@@ -1143,6 +1143,7 @@ typedef struct _mx_clock_time
   int dayInMonth{ 0 };
   int dayInYear{ 0 }; // starts in 0..355
   int hour{ 0 };
+  int minutes{ 0 };
   int seconds_in_day{ 0 };
 
 } mx_clock_time_strct;

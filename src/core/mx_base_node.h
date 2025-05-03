@@ -244,6 +244,20 @@ public:
     
   }
   // -------------------------------------------
+
+  // wrappers to the "preference file node"
+  template<typename T>
+  T getNodeText_type_1_5(const std::string& tagToSearch, T defaultValueIfNotExists)
+  {
+    return Utils::getNodeText_type_1_5<T>(this->node, tagToSearch, defaultValueIfNotExists);
+  }
+  // -------------------------------------------
+  [[nodiscard]] std::string getNodeText_type_6 (const std::string& tagToSearch, const std::string &defaultValueIfNotExists) const
+  {
+    return Utils::getNodeText_type_6 (this->node, tagToSearch, defaultValueIfNotExists);
+  }
+
+  // -------------------------------------------
 };
 
 }

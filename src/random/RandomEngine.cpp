@@ -3776,6 +3776,7 @@ RandomEngine::injectMissionTypeFeatures()
   // 1. add first Leg starting message - "hello pilot, check your GPS, fly to the landing site and pick the injured person."
   // 2. Loop over each flight leg and check if it has next flight leg, if so, then add message to check gps and fly to next leg. If not then construct last location message.
   // 3. Allow custom flight leg description
+  constexpr static int FIRST_LEG_INDEX = 0;
   std::string err;
 
 
@@ -3854,9 +3855,11 @@ RandomEngine::injectMissionTypeFeatures()
     if (i1 == (nChilds - 1))                                                                                                                                            // our loop is from end to start
       cumulative_location_desc_s = loc_desc_short + ((distance_to_prev_navaid_d > -1) ? "(" + Utils::formatNumber<double>(distance_to_prev_navaid_d, 2) + " nm)" : ""); // v3.0.251.1 b2 add distances
     else
-      cumulative_location_desc_s = loc_desc_short + ((distance_to_prev_navaid_d > -1) ? "(" + Utils::formatNumber<double>(distance_to_prev_navaid_d, 2) + " nm)" : "") + ", " + cumulative_location_desc_s;
-
-
+    {
+      cumulative_location_desc_s = loc_desc_short + ((distance_to_prev_navaid_d > -1) ? "(" + Utils::formatNumber<double> (distance_to_prev_navaid_d, 2) + " nm)" : "") + ", " + cumulative_location_desc_s;
+      if (i1 == FIRST_LEG_INDEX) // first location. Used with the setup option "Expose all GPS legs at mission start = false"
+        first_location_desc_s = loc_desc_short + ((distance_to_prev_navaid_d > -1) ? "(" + Utils::formatNumber<double>(distance_to_prev_navaid_d, 2) + " nm)" : "");
+    }
 
     message_name = "leg_" + ((flight_leg_name.empty()) ? Utils::formatNumber<int>(i1) : flight_leg_name) + "_start_message";
 
@@ -3949,7 +3952,13 @@ RandomEngine::injectMissionTypeFeatures()
       else if( mxconst::get_FL_TEMPLATE_VAL_LAND_HOVER() == Utils::readAttrib ( missionx::data_manager::prop_userDefinedMission_ui.node, mxconst::get_ATTRIB_SHARED_TEMPLATE_TYPE(), "" ) )
         briefer_desc += "\nWe believe you could Land or Hover above one of the locations, due to the physical terrain limitations.\nMake sure you have the right plane for this mission.";
 
-      briefer_desc += "\nExpected Destinations: " + cumulative_location_desc_s + ".";
+
+      // v25.04.2 - fixed destination exposure, based on setup
+      if (missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5 <bool>(mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE(), true) )
+        briefer_desc += "\nExpected Destinations: " + cumulative_location_desc_s + ".";
+      else
+        briefer_desc += "\nFirst Destination: " + first_location_desc_s + ".";
+
       briefer_desc += "\n\nFly Safe !!!";
 
       Utils::xml_add_cdata(xBriefer, briefer_desc);
@@ -5653,7 +5662,7 @@ RandomEngine::prepare_blank_template_with_flight_legs_based_on_ui(IXMLNode& pNod
                                                                  "You have been assigned to a flight. "
                                                                  ;
 
-  briefer_skeleton_message_to_use_in_injectTypeMissionFeature += "Your expected transportation is a " + plane_type_s + ".\n";
+  briefer_skeleton_message_to_use_in_injectTypeMissionFeature += fmt::format("Your expected transportation is a {}.\n", (conv_plane_type_i == missionx::_mx_plane_type::plane_type_helos)? "helo" : plane_type_s );
 
   return true;
 }

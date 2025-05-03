@@ -50,7 +50,7 @@ public:
 
   bool parse_node();                       // v3.0.241.1
   bool parse_node(const IXMLNode& inNode); // v24.12.2
-  bool parse_item_node(IXMLNode& inNode);
+  static bool parse_item_node(IXMLNode& inNode);
 
   bool getIsPlane() const { return this->isPlane; } // v24.12.2
 

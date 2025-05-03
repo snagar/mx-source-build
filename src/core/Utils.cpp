@@ -2921,7 +2921,8 @@ missionx::Utils::get_os_time()
   osTime.dayInMonth     = local_tm.tm_mday;
   osTime.dayInYear      = local_tm.tm_yday; // starts in 0..355, same as in x-plane dataref
   osTime.hour           = local_tm.tm_hour;
-  osTime.seconds_in_day = local_tm.tm_min * 60 + local_tm.tm_hour * 60;
+  osTime.minutes        = local_tm.tm_min;
+  osTime.seconds_in_day = local_tm.tm_sec + (osTime.hour * 60 * 60);
 
   return osTime;
 }

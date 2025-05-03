@@ -100,6 +100,7 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
   // Initialize local day - always initialize to 90days and 23 o'clock. Will be re-initialized on first briefer open which provide better result.
   adv_settings_strct.iClockDayOfYearPicked = dataref_manager::getLocalDateDays();
   adv_settings_strct.iClockHourPicked      = dataref_manager::getLocalHour();
+  adv_settings_strct.iClockMinutesPicked   = dataref_manager::getLocalMinutes (); // v25.04.2
 
 
   // v25.04.1 reserve the original "cargo_arr" before reading from the external cargo.xml file
@@ -132,6 +133,9 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
 
   // v25.02.1
   this->strct_setup_layer.bSuppressDistanceMessages = Utils::getNodeText_type_1_5<bool> ( missionx::system_actions::pluginSetupOptions.node, mxconst::get_ATTRIB_SUPPRESS_DISTANCE_MESSAGES_B(), false );
+
+  // v25.04.2 Auto Load GPS waypoints into GPS on mission start
+  this->strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5 <bool>(mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), true);
 
 } // End Constructor
 
@@ -233,7 +237,7 @@ WinImguiBriefer::add_skewed_marker_checkbox()
 // ------------ Add start button --------------
 
 void
-WinImguiBriefer::add_start_mission_button(missionx::mx_window_actions inActionToExecute)
+WinImguiBriefer::add_ui_start_mission_button(missionx::mx_window_actions inActionToExecute)
 {
   int iStyle = 0;
   ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_black);
@@ -249,7 +253,7 @@ WinImguiBriefer::add_start_mission_button(missionx::mx_window_actions inActionTo
 // ------------ add abort thread button --------------
 
 void
-WinImguiBriefer::add_abort_mission_creation_button(missionx::mx_window_actions inActionToExecute)
+WinImguiBriefer::add_ui_abort_mission_creation_button(missionx::mx_window_actions inActionToExecute)
 {
   int iStyle = 0;
   ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_black);
@@ -264,7 +268,7 @@ WinImguiBriefer::add_abort_mission_creation_button(missionx::mx_window_actions i
 // --------------------------
 
 void
-WinImguiBriefer::add_expose_all_gps_waypoints(missionx::mx_window_actions inActionToExecute)
+WinImguiBriefer::add_ui_expose_all_gps_waypoints (const missionx::mx_window_actions inActionToExecute)
 {
   if (this->getCurrentLayer() == missionx::uiLayer_enum::option_user_generates_a_mission_layer)
   {
@@ -283,7 +287,7 @@ WinImguiBriefer::add_expose_all_gps_waypoints(missionx::mx_window_actions inActi
 // --------------------------
 
 void
-WinImguiBriefer::add_suppress_distance_messages_checkbox_ui ( missionx::mx_window_actions inActionToExecute )
+WinImguiBriefer::add_ui_suppress_distance_messages_checkbox_ui ( missionx::mx_window_actions inActionToExecute )
 {
   missionx::WinImguiBriefer::HelpMarker ( "When the Random engine is generating a mission, do you want to suppress the progress messages as you near the target ?\nWill be saved in the preference file." );
   ImGui::SameLine ();
@@ -299,7 +303,7 @@ WinImguiBriefer::add_suppress_distance_messages_checkbox_ui ( missionx::mx_windo
 // --------------------------
 
 void
-WinImguiBriefer::add_default_weight_ui ()
+WinImguiBriefer::add_ui_default_weights ()
 {
   // ------------------------
   // -- Default Weight
@@ -1050,7 +1054,7 @@ WinImguiBriefer::add_flight_planning()
         {
           // ImGui::SameLine((win_size_vec2.x * 0.75f) - (ImGui::CalcTextSize(this->LBL_START_MISSION.c_str()).x * 0.6f));
           ImGui::SameLine(0.0f, 60.0f);
-          this->add_start_mission_button(missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
+          this->add_ui_start_mission_button(missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
         }
 
       }
@@ -1063,7 +1067,7 @@ WinImguiBriefer::add_flight_planning()
         missionx::WinImguiBriefer::HelpMarker("Abort the background process.");
         ImGui::SameLine();
         // ImGui::SameLine(25.0f, 0.0f);
-        this->add_abort_mission_creation_button(); // Add Abort Random Engine
+        this->add_ui_abort_mission_creation_button(); // Add Abort Random Engine
       }
 
 
@@ -1474,17 +1478,19 @@ WinImguiBriefer::generate_mission_date_based_on_user_preference(int& out_iClockD
 {
   switch (this->adv_settings_strct.iRadioRandomDateTime_pick)
   {
-    case missionx::mx_ui_random_date_time_type::current_day_and_time:
+    case missionx::mx_ui_random_date_time_type::xplane_day_and_time:
     {
       out_iClockDayOfYearPicked = dataref_manager::getLocalDateDays();
       out_iClockHourPicked      = dataref_manager::getLocalHour();
+      out_iClockMinutesPicked   = dataref_manager::getLocalMinutes ();
     }
     break;
     case missionx::mx_ui_random_date_time_type::os_day_and_time:
     {
-      missionx::mx_clock_time_strct osClock = Utils::get_os_time();
-      out_iClockDayOfYearPicked             = osClock.dayInYear;
-      out_iClockHourPicked                  = osClock.hour;
+      const missionx::mx_clock_time_strct osClock = Utils::get_os_time ();
+      out_iClockDayOfYearPicked                   = osClock.dayInYear;
+      out_iClockHourPicked                        = osClock.hour;
+      out_iClockMinutesPicked                     = osClock.minutes;
     }
     break;
     case missionx::mx_ui_random_date_time_type::any_day_time:
@@ -1494,13 +1500,17 @@ WinImguiBriefer::generate_mission_date_based_on_user_preference(int& out_iClockD
 
       out_iClockDayOfYearPicked = Utils::getRandomIntNumber(0, 355);
       out_iClockHourPicked      = Utils::getRandomIntNumber(fromHour, toHour);
+      out_iClockMinutesPicked   = Utils::getRandomIntNumber(0, 59); // v25.04.3
     }
     break;
     case missionx::mx_ui_random_date_time_type::pick_months_and_part_of_preferred_day:
     {
       std::map<int, int>            mapMonthPicked;
       std::map<int, mx_part_of_day> mapTimeInDayPicked; // holds which part of day we picked
-      // pick which months were selected
+
+      out_iClockMinutesPicked = 0; // v25.04.2 TODO: should we add randomness to the minutes, or should we always reset to zero ?
+
+      // Which months were selected
       for (int y = 0; y < 3; y++)
         for (int x = 0; x < 4; x++)
         {
@@ -1590,7 +1600,8 @@ WinImguiBriefer::addAdvancedSettingsPropertiesBeforeGeneratingRandomMission()
   // v3.303.14 added advance weather/time settings
   missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty(mxconst::get_PROP_STARTING_DAY(), this->clockDayOfYear_arr[this->adv_settings_strct.iClockDayOfYearPicked]);
   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int>(mxconst::get_PROP_STARTING_HOUR(), mxUtils::stringToNumber<int>(this->clockHours_arr[this->adv_settings_strct.iClockHourPicked]));
-  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int>(mxconst::get_PROP_STARTING_MINUTE(), mxUtils::stringToNumber<int>(this->clockMinutes_arr[this->adv_settings_strct.iClockMinutesPicked]));
+  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_STARTING_MINUTE (), this->adv_settings_strct.iClockMinutesPicked );
+
   // Added weather information for RandomEngine
   switch (this->adv_settings_strct.iWeatherType_user_picked)
   {
@@ -2414,11 +2425,18 @@ WinImguiBriefer::add_ui_pick_subcategories (const std::vector<const char *> &vec
 // -------------------------------------------
 
 void
-WinImguiBriefer::add_ui_auto_load_checkbox ()
+WinImguiBriefer::add_ui_auto_load_checkbox (const missionx::mx_window_actions &inActionToExecute)
 {
   ImGui::Spacing ();
   ImGui::SameLine (0.0f, 10.0f);
-  ImGui::Checkbox ("Auto Load Route\n(not advisable for FMS)", &this->strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms); // v25.04.2
+  missionx::WinImguiBriefer::HelpMarker("On mission start, the GPS waypoints will be loaded.\nThe setting will be saved into the preference file.", missionx::color::color_vec4_aqua);
+  ImGui::SameLine();
+  if (ImGui::Checkbox ("Auto Load Route.\n(not advisable for FMS)", &this->strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms) ) // v25.04.2
+  {
+    // ADD set option value
+    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B(), this->strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms);
+    this->execAction(inActionToExecute);
+  }
 }
 
 // -------------------------------------------
@@ -2833,7 +2851,7 @@ WinImguiBriefer::popup_draw_quit_mission (std::string_view inPopupWindowName)
 void
 WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::string_view inPopupWindowName, const missionx::mx_ext_internet_fpln_strct &rowData, const int &picked_fpln_id_i)
 {
-  ImGui::SetNextWindowSize(ImVec2(640.0f, 400.0f));
+  ImGui::SetNextWindowSize(ImVec2(640.0f, 410.0f));
 
   ImGui::PushStyleColor(ImGuiCol_PopupBg, missionx::color::color_vec4_black);
   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG());
@@ -2845,7 +2863,7 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
       if (rowData.internal_id == picked_fpln_id_i)
       {
         static int             plane_type_i = static_cast<int> (missionx::mx_plane_types::plane_type_props);
-        static constexpr float child_h      = 330.0;
+        static constexpr float child_h      = 340.0;
         ImGui::BeginChild ("fpln_details_left_side", ImVec2 (modal_center.x - 5.0f, child_h), ImGuiChildFlags_Borders);
         {
           ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", "To:");
@@ -3409,7 +3427,7 @@ WinImguiBriefer::draw_setup_layer()
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
       }
 
-      this->add_expose_all_gps_waypoints();
+      this->add_ui_expose_all_gps_waypoints();
 
 
       if (data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running)
@@ -3428,7 +3446,7 @@ WinImguiBriefer::draw_setup_layer()
 
       ImGui::NewLine();
 
-      this->add_suppress_distance_messages_checkbox_ui (); // v25.02.1
+      this->add_ui_suppress_distance_messages_checkbox_ui (); // v25.02.1
 
       ImGui::NewLine ();
 
@@ -4459,8 +4477,8 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen()
 
   if (this->strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw)
   {
-    static constexpr float img_ps_f    = 0.5f;
-    float              pos_x       = data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_LAB_24X18()].sImageData.getW_f() * img_ps_f;
+    static constexpr float img_ps_f = 0.5f;
+    float                  pos_x    = data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_LAB_24X18 ()].sImageData.getW_f () * img_ps_f;
 
     this->mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_REG());
 
@@ -4521,7 +4539,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen()
         this->refresh_slider_data_based_on_plane_type(this->strct_user_create_layer.iRadioPlaneType); // v3.303.14
       }
       ImGui::SameLine();
-      missionx::WinImguiBriefer::HelpMarker("The plugin will place you randomly in a location near an Oil Rig.\nThe Oil Rig data is highly dependent on the Oil Rig information in the apt.dat files and not on what you see in your maps.");
+      missionx::WinImguiBriefer::HelpMarker("The plugin will place you randomly in a location near an Oil Rig.\nThe Oil Rig data is highly dependent on the Oil Rig information found in the apt.dat files, and not on what you see in your maps.");
 
 
       // sub categories
@@ -4921,7 +4939,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen()
         // ------------------------
         // -- Suppress Distance Messages
         // ------------------------
-        this->add_suppress_distance_messages_checkbox_ui (); // v25.02.1
+        this->add_ui_suppress_distance_messages_checkbox_ui (); // v25.02.1
         ImGui::Separator ();
 
         // ------------------------
@@ -4930,7 +4948,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen()
 
         ImGui::Checkbox("Generate GPS waypoints.", &this->strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12
         ImGui::SameLine(0.0f, 90.0f);
-        this->add_expose_all_gps_waypoints();
+        this->add_ui_expose_all_gps_waypoints();
 
         this->add_ui_auto_load_checkbox (); // v25.04.2
 
@@ -4939,7 +4957,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen()
         // ------------------------
         ImGui::NewLine();
         // ImGui::Checkbox("Add default base weights.\n(Not advisable for planes > GAs)", &this->adv_settings_strct.flag_add_default_weight_settings);
-        this->add_default_weight_ui();
+        this->add_ui_default_weights();
 
         ImGui::PopStyleColor(1); // pop-out internal text color settings
       }                          // end "Other Settings" Collapsing Header
@@ -5096,13 +5114,13 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen()
 
         missionx::WinImguiBriefer::HelpMarker("Abort the background process.");
         ImGui::SameLine(25.0f, 0.0f);
-        this->add_abort_mission_creation_button(); // Add Abort Random Engine
+        this->add_ui_abort_mission_creation_button(); // Add Abort Random Engine
       }
 
       if (!this->asyncSecondMessageLine.empty())
       {
         ImGui::SameLine((mxUiGetContentWidth() * 0.75f) - (ImGui::CalcTextSize(this->LBL_START_MISSION.c_str()).x * 0.5f));
-        this->add_start_mission_button(missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
+        this->add_ui_start_mission_button(missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
       }
 
       ImGui::SetWindowFontScale(mxconst::DEFAULT_BASE_FONT_SCALE);
@@ -5471,12 +5489,12 @@ WinImguiBriefer::draw_template_mission_generator_screen()
       else if (missionx::RandomEngine::threadState.flagIsActive)
       {
         ImGui::SameLine(region_width_arr[0] + 10.0f);
-        this->add_abort_mission_creation_button(); // Add Abort Random Engine
+        this->add_ui_abort_mission_creation_button(); // Add Abort Random Engine
       }
       else if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->flag_generatedRandomFile_success && this->selectedTemplateKey.empty() && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
       {
         ImGui::SameLine(region_width_arr[0] + 10.0f); // pad to the right so the button will better aligned with above frame.
-        this->add_start_mission_button(missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
+        this->add_ui_start_mission_button(missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
       }
       ImGui::EndGroup();
       // ImGui::NewLine(); // v3.305.1 deprecated
@@ -7367,7 +7385,7 @@ WinImguiBriefer::draw_load_existing_mission_screen()
       }
       else if (data_manager::missionState == missionx::mx_mission_state_enum::mission_loaded_from_the_original_file || data_manager::missionState == missionx::mx_mission_state_enum::mission_loaded_from_savepoint) // mission loaded state is decided in Mission class
       {
-        this->add_start_mission_button(missionx::mx_window_actions::ACTION_START_MISSION);
+        this->add_ui_start_mission_button(missionx::mx_window_actions::ACTION_START_MISSION);
       }
 
       this->mxUiReleaseLastFont();
@@ -7825,7 +7843,7 @@ this->mxUiReleaseLastFont(2); // v3.305.1 title and reg text
   if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->flag_generatedRandomFile_success && this->selectedTemplateKey.empty() && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
   {
     this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
-    this->add_start_mission_button(missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
+    this->add_ui_start_mission_button(missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
     this->mxUiReleaseLastFont();
   }
 
@@ -8283,7 +8301,7 @@ WinImguiBriefer::child_draw_ils_search ()
     {
       ImGui::SameLine (win_size_vec2.x * 0.5f);
       // this->mxUiSetFont (TEXT_TYPE_TITLE_REG);
-      this->add_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
+      this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
       // this->mxUiReleaseLastFont ();
     }
 
@@ -10962,8 +10980,9 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
 
   this->mx_add_tooltip(missionx::color::color_vec4_yellow, "Configure Preferred Weather, Default Weight and Date/Time");
 
+  // Display the Date + Time adjacent the button
   ImGui::SameLine(0.0f, 5.0f);
-  ImGui::TextColored(missionx::color::color_vec4_lightgoldenrodyellow, "Day: %i, hour: %i", out_iClockDayOfYearPicked, out_iClockHourPicked);
+  ImGui::TextColored(missionx::color::color_vec4_lightgoldenrodyellow, "Day: %i, %i:%i", out_iClockDayOfYearPicked, out_iClockHourPicked, out_iClockMinutesPicked);
 
 
   //// Randomize Date and Time popup
@@ -10976,8 +10995,8 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
   {
     static float fRadioPadding = 20.0f;
     // float        win_width     = mxUiGetContentWidth();
-    float  win_height = ImGui::GetWindowHeight();
-    ImVec2 modal_center(mxUiGetContentWidth() * 0.5f, ImGui::GetWindowHeight() * 0.5f);
+    const float  win_height = ImGui::GetWindowHeight();
+    const ImVec2 modal_center(mxUiGetContentWidth() * 0.5f, ImGui::GetWindowHeight() * 0.5f);
 
     /////////////////////////////////
     //// Start Tab Child/Group /////
@@ -11025,7 +11044,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
 
                 switch (this->adv_settings_strct.iRadioRandomDateTime_pick)
                 {
-                  case missionx::mx_ui_random_date_time_type::current_day_and_time:
+                  case missionx::mx_ui_random_date_time_type::xplane_day_and_time:
                   {
                     out_iClockDayOfYearPicked = dataref_manager::getLocalDateDays(); // strct_user_create_layer.iClockDayOfYearPicked
                     out_iClockHourPicked      = dataref_manager::getLocalHour();     // strct_user_create_layer.iClockHourPicked
@@ -11037,7 +11056,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                     missionx::mx_clock_time_strct osClock = Utils::get_os_time();
                     out_iClockDayOfYearPicked             = osClock.dayInYear;
                     out_iClockHourPicked                  = osClock.hour;
-                    out_iClockMinutesPicked               = mxUtils::calc_minutes_from_seconds (osClock.seconds_in_day); // v25.04.2 How many minutes passed since the start of the hour
+                    out_iClockMinutesPicked               = osClock.minutes; // v25.04.2 How many minutes passed since the start of the hour
                   }
                   break;
                   case missionx::mx_ui_random_date_time_type::any_day_time:
@@ -11089,6 +11108,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                 {
                   out_iClockDayOfYearPicked = dataref_manager::getLocalDateDays(); // strct_user_create_layer.iClockDayOfYearPicked
                   out_iClockHourPicked      = dataref_manager::getLocalHour();     // strct_user_create_layer.iClockHourPicked
+                  out_iClockMinutesPicked   = dataref_manager::getLocalMinutes (); // v25.04.2 How many minutes passed since the start of the hour
                 }
                 this->mxUiReleaseLastFont();
 
@@ -11109,7 +11129,10 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                 ImGui::TextColored(missionx::color::color_vec4_yellow, ":");
                 ImGui::SameLine();
                 ImGui::SetNextItemWidth(50.0f);
-                ImGui::Combo("##StartMinutes", &out_iClockMinutesPicked, this->clockMinutes_arr, IM_ARRAYSIZE(this->clockMinutes_arr));
+                static int st_minutes_picked = -1; // v25.04.2 added static variable
+                ImGui::Combo("##StartMinutes", &st_minutes_picked, this->clockMinutes_arr, IM_ARRAYSIZE(this->clockMinutes_arr));
+                if (st_minutes_picked >= 0)
+                  out_iClockMinutesPicked = st_minutes_picked * 5;
               }
               break;
               case missionx::mx_ui_random_date_time_type::pick_months_and_part_of_preferred_day:
@@ -11293,7 +11316,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
             this->add_ui_xp11_comp_checkbox ( false );
             ImGui::Separator ();
             ImGui::NewLine ();
-            this->add_default_weight_ui (); // v25.02.1
+            this->add_ui_default_weights (); // v25.02.1
             this->mxUiReleaseLastFont();
           }
           ImGui::EndChild();
@@ -12620,7 +12643,7 @@ WinImguiBriefer::execAction(mx_window_actions actionCommand)
         this->execAction(missionx::mx_window_actions::ACTION_HIDE_WINDOW);
     }
     break;
-    case missionx::mx_window_actions::POST_TEMPLATE_LOAD_DISPLAY_IMGUI_GENERATE_TEMPLATES_IMAGES:
+    case missionx::mx_window_actions::ACTION_POST_TEMPLATE_LOAD_DISPLAY_IMGUI_GENERATE_TEMPLATES_IMAGES:
     {
       this->strct_generate_template_layer.bFinished_loading_templates = true;
     }

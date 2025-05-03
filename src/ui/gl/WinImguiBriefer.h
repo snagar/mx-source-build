@@ -145,11 +145,11 @@ public:
   void        add_pause_in_2d_mode();
   void        add_font_size_scale_buttons();
   void        add_skewed_marker_checkbox(); // v3.0.253.6
-  void        add_start_mission_button(missionx::mx_window_actions inActionToExecute = mx_window_actions::ACTION_NONE);
-  void        add_abort_mission_creation_button(missionx::mx_window_actions inActionToExecute = mx_window_actions::ACTION_ABORT_RANDOM_ENGINE_RUN);
-  void        add_expose_all_gps_waypoints(missionx::mx_window_actions inActionToExecute = missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
-  void        add_suppress_distance_messages_checkbox_ui(missionx::mx_window_actions inActionToExecute = missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS); // v25.02.1
-  void        add_default_weight_ui(); // v25.02.1
+  void        add_ui_start_mission_button(missionx::mx_window_actions inActionToExecute = mx_window_actions::ACTION_NONE);
+  void        add_ui_abort_mission_creation_button(missionx::mx_window_actions inActionToExecute = mx_window_actions::ACTION_ABORT_RANDOM_ENGINE_RUN);
+  void        add_ui_expose_all_gps_waypoints(missionx::mx_window_actions inActionToExecute = missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
+  void        add_ui_suppress_distance_messages_checkbox_ui(missionx::mx_window_actions inActionToExecute = missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS); // v25.02.1
+  void        add_ui_default_weights(); // v25.02.1
   void        add_message_text();      // v3.305.1
   void        add_story_next_button(); // v3.305.1
   void        add_story_message_history_text(); // v3.305.2
@@ -1063,12 +1063,12 @@ private:
   ////// v3.303.10 random calendar
   typedef struct _radio_calendar_dateTime_type_strct
   {
-    missionx::mx_ui_random_date_time_type type{ missionx::mx_ui_random_date_time_type::current_day_and_time };
+    missionx::mx_ui_random_date_time_type type{ missionx::mx_ui_random_date_time_type::xplane_day_and_time };
     std::string                        label{ "" };
     std::string                        toolTip{ "" };
   } radio_calender_dateTime_type;
 
-  const std::list<radio_calender_dateTime_type> listRandomCalendarRadioLabel = { { missionx::mx_ui_random_date_time_type::current_day_and_time, "A", "Pick X-Plane day in year and the hour" },
+  const std::list<radio_calender_dateTime_type> listRandomCalendarRadioLabel = { { missionx::mx_ui_random_date_time_type::xplane_day_and_time, "A", "Pick X-Plane day in year and the hour" },
                                                                                  { missionx::mx_ui_random_date_time_type::os_day_and_time, "B", "Operating System day in year and the hour." },
                                                                                  { missionx::mx_ui_random_date_time_type::any_day_time, "C", "Pick any day in the year.\nPick any hour between 06:00 and 19:00.\nYou can extend it to include night hours." },
                                                                                  { missionx::mx_ui_random_date_time_type::exact_day_and_time, "D", "Pick the exact day of year and hour you would like to fly in." },
@@ -1295,7 +1295,7 @@ private:
     bool                                  flag_includeNightHours{ false }; // v3.303.10
     bool                                  flag_checkAnyMonth = false;
     bool                                  checkPartOfDay_b   = false;
-    missionx::mx_ui_random_date_time_type iRadioRandomDateTime_pick{ missionx::mx_ui_random_date_time_type::current_day_and_time };                                                 // v3.303.10
+    missionx::mx_ui_random_date_time_type iRadioRandomDateTime_pick{ missionx::mx_ui_random_date_time_type::xplane_day_and_time };                                                 // v3.303.10
     char                                  selected_dateTime_by_user_arr[3][4] = { { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } };                                                 // represent month selected
     const char                            selected_month_no[3][4]             = { { 1, 2, 3, 4 }, { 5, 6, 7, 8 }, { 9, 10, 11, 12 } };                                              // represent month numer
     const std::string                     selected_lbl[3][4]                  = { { "Jan", "Feb", "Mar", "Apr" }, { "May", "Jun", "Jul", "Aug" }, { "Sep", "Oct", "Nov", "Dec" } }; // represent month label
@@ -1421,7 +1421,7 @@ private:
   void add_ui_simbrief_pilot_id (); // v25.03.3
   void add_ui_flightplandb_key ( bool isPopup ); // v25.03.3
   void add_ui_pick_subcategories ( const std::vector<const char*> &vecToDisplay ); // v25.04.1
-  void add_ui_auto_load_checkbox ( ); // v25.04.2
+  void add_ui_auto_load_checkbox ( const missionx::mx_window_actions &inActionToExecute = missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS); // v25.04.2
 
   void callNavData(std::string_view inICAO, bool bNavigatingFromOtherLayer); //v24.03.1
   const dataref_const dc;

@@ -4296,7 +4296,7 @@ missionx::Mission::flcPRE()
         {
 
           Mission::uiImGuiBriefer->setMessage("Templates were loaded....");
-          Mission::uiImGuiBriefer->execAction(missionx::mx_window_actions::POST_TEMPLATE_LOAD_DISPLAY_IMGUI_GENERATE_TEMPLATES_IMAGES); // v3.0.255.4 missing action, was in "reload_templates_data_and_images". After some tests all seem to
+          Mission::uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_POST_TEMPLATE_LOAD_DISPLAY_IMGUI_GENERATE_TEMPLATES_IMAGES); // v3.0.255.4 missing action, was in "reload_templates_data_and_images". After some tests all seem to
                                                                                                                                         // function as expected so we deprecated: "reload_templates_data_and_images" case.
         }
       }
