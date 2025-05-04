@@ -50,7 +50,7 @@ public:
 
   bool parse_node();                       // v3.0.241.1
   bool parse_node(const IXMLNode& inNode); // v24.12.2
-  static bool parse_item_node(IXMLNode& inNode);
+  bool parse_item_node(IXMLNode& inNode);
 
   bool getIsPlane() const { return this->isPlane; } // v24.12.2
 
@@ -93,14 +93,14 @@ public:
 
 
   // merge two inventories based on the "acf" file. This is relevant only when using <station> based inventories
-  static missionx::Inventory mergeAcfAndPlaneInventories (missionx::Inventory inTargetInventory, missionx::Inventory &inSourceInventory); // This is a dedicated function
-  static IXMLNode mergeAcfAndPlaneInventories ( IXMLNode inTargetInventory, const IXMLNode &inSourceInventory); // This is a dedicated function
+  // static missionx::Inventory mergeAcfAndPlaneInventories (missionx::Inventory &inTargetInventory, missionx::Inventory &inSourceInventory); // v25.04.2 deprecated function
+  static IXMLNode mergeAcfAndPlaneInventories2 ( IXMLNode inTargetInventory, const IXMLNode &inSourceInventory); // This is a dedicated function
   // END v24.12.2
 
   // v25.03.1
   // v25.03.1 parse station weight and add <station> to the parent node
   static void parse_max_weight_line_and_station_name(const std::string& line, IXMLNode &pNode, const missionx::enums::mx_acf_line_type_enum in_line_type);
-  static void parse_station_name_line(const std::string& line, std::map<int, std::string>& mapStationNames);                         // v24.12.2
+  // static void parse_station_name_line(const std::string& line, std::map<int, std::string>& mapStationNames); // v24.12.2 Deprecated since it was not implemented
 
   static void gather_acf_cargo_data (Inventory &inout_current_plane_inventory, bool in_plane_was_changed_b = false); // v25.03.1 this function will run in the main flight callback.
 

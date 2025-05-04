@@ -12960,6 +12960,19 @@ WinImguiBriefer::execAction(mx_window_actions actionCommand)
         // loop and erase any item with 0 quantity
         //missionx::data_manager::erase_items_with_zero_quantity_after_manual_inventory_transaction(); // 24.12.2 deprecate, use data_manager::erase_empty_inventory_item_nodes() instead
 
+        if ( Inventory::opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY )
+        {
+          // delete all <station> elements from plane and add all station nodes from the Inventory station map
+          Utils::xml_delete_all_subnodes(data_manager::planeInventoryCopy.node, mxconst::get_ELEMENT_STATION(), false); // delete all stations
+          for (const auto &station_ptr : data_manager::planeInventoryCopy.mapStations | std::views::values)
+          {
+            data_manager::planeInventoryCopy.node.addChild (station_ptr.node);
+          }
+          data_manager::planeInventoryCopy.init ();
+          data_manager::planeInventoryCopy.parse_node();
+        }
+
+
         #ifndef RELEASE        
         Log::log_to_missionx_log(fmt::format("\n================> Before deleting items with zero quantity:\n{}\n\n{}", Utils::xml_get_node_content_as_text(data_manager::planeInventoryCopy.node), Utils::xml_get_node_content_as_text(data_manager::externalInventoryCopy.node)));
 
@@ -12970,8 +12983,6 @@ WinImguiBriefer::execAction(mx_window_actions actionCommand)
 
         #endif
 
-        // calculate weight
-
         // copy xml back
         missionx::Log::log_to_missionx_log("Copying external inventory transaction: " + this->strct_flight_leg_info.externalInventoryName); // debug
         missionx::data_manager::mapInventories[this->strct_flight_leg_info.externalInventoryName] = missionx::data_manager::externalInventoryCopy;
@@ -12981,6 +12992,7 @@ WinImguiBriefer::execAction(mx_window_actions actionCommand)
 
         #ifndef RELEASE
         Log::log_to_missionx_log(fmt::format("\n================> New PLANE Inventory: [\n{}\n]", Utils::xml_get_node_content_as_text(data_manager::planeInventoryCopy.node)) ); // DEBUG
+        Log::log_to_missionx_log(fmt::format("\n================> External Inventory: [\n{}\n]", Utils::xml_get_node_content_as_text(data_manager::externalInventoryCopy.node)) ); // DEBUG
         #endif
 
 

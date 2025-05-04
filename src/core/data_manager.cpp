@@ -3212,7 +3212,7 @@ data_manager::calculatePlaneWeight(const Inventory& inSourceInventory, const boo
       if (iLayoutVersion == XP11_COMPATIBILITY) // XP11 compatibility calculation
       {
         const auto invNode   = inInventory.node;
-        int        nChilds_i = invNode.nChildNode(mxconst::get_ELEMENT_ITEM().c_str());
+        const int  nChilds_i = invNode.nChildNode (mxconst::get_ELEMENT_ITEM ().c_str ());
         for (int i1 = 0; i1 < nChilds_i; ++i1)
         {
           const auto itemWeight   = Utils::readNumericAttrib(invNode.getChildNode(mxconst::get_ELEMENT_ITEM().c_str(), i1), mxconst::get_ATTRIB_WEIGHT_KG(), 0.0);

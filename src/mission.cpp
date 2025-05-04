@@ -1103,6 +1103,9 @@ missionx::Mission::START_MISSION()
       int iResult = data_manager::dref_m_stations_kgs_f_arr.setTargetArray<xplmType_FloatArray, float>(data_manager::dref_m_stations_kgs_f_arr.arraySize, resetStations_s, true, ",");
     }
 
+    #ifndef RELEASE
+    Log::logMsg (fmt::format ("Plane Inventory Node:\n{}", data_manager::mapInventories[mxconst::get_ELEMENT_PLANE()].get_node_as_text () ) );
+    #endif
     data_manager::internally_calculateAndStorePlaneWeight(data_manager::mapInventories[mxconst::get_ELEMENT_PLANE()], bStoreWeight, missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i); // v3.303.14.2 added store wait flag to solve weight injection even if there is no weight element in the mission file
 
     // v3.0.215.1

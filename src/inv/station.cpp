@@ -126,6 +126,11 @@ station::add_item(IXMLNode & inSourceItemNodePtr, const int& inQuantity)
 
   this->calc_total_item_groups_in_station();
   this->calc_total_weight();
+
+  #ifndef RELEASE
+  Log::logMsg (fmt::format("-- After Station add Item -->\n{}\n<------- Parent XML ----- >\n{}\n<- -------------- \n", this->get_node_as_text (), Utils::xml_get_node_content_as_text ( this->node.getParentNode (), "No parent element." ) ) );
+  #endif
+
   return (retInfo.result = true);
 }
 

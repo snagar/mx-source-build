@@ -3926,7 +3926,7 @@ RandomEngine::injectMissionTypeFeatures()
 
       // v25.04.2 - fixed destination exposure, based on setup
       if (missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5 <bool>(mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE(), true) )
-        briefer_desc += "\nExpected Destinations: " + cumulative_location_desc_s + ".";
+        briefer_desc += "\nExpected Destination: " + cumulative_location_desc_s + ".";
       else
         briefer_desc += "\nFirst Destination: " + first_location_desc_s + ".";
 
@@ -4474,7 +4474,7 @@ RandomEngine::writeTargetFile()
 
   // v25.04.2 added storing the GPS Display option we picked to the GPS element
   const bool bGenerateGPS = Utils::readBoolAttrib (missionx::data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), false);
-  const bool bAutoLoadRoute = Utils::readBoolAttrib (missionx::data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), false);
+  const bool bAutoLoadRoute = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5 <bool>( mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), false);
   Utils::xml_set_attribute_in_node<bool> (this->xGPS, mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), bGenerateGPS, mxconst::get_ELEMENT_GPS ());
   Utils::xml_set_attribute_in_node<bool> (this->xGPS, mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), bAutoLoadRoute, mxconst::get_ELEMENT_GPS ());
   xTargetTopNode.addChild (this->xGPS);

@@ -2956,7 +2956,7 @@ missionx::Utils::xml_print_node(const IXMLNode& inNode, const bool bThread)
 // -------------------------------------------
 
 std::string
-missionx::Utils::xml_get_node_content_as_text (const IXMLNode & inNode)
+missionx::Utils::xml_get_node_content_as_text (const IXMLNode & inNode, const std::string &inDefaultText)
 {
   if (!inNode.isEmpty())
   {
@@ -2967,7 +2967,7 @@ missionx::Utils::xml_get_node_content_as_text (const IXMLNode & inNode)
     return text;
   }
 
-  return "";
+  return inDefaultText;
 }
 
 // -------------------------------------------

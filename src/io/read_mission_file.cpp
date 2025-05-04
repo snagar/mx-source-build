@@ -796,6 +796,9 @@ missionx::read_mission_file::readInventories ( const ITCXMLNode & xParent)
   else
   {
     planeInventory.node = xPlaneInv; // .deepCopy(); v24.12.2 removed deepcopy since it was already "deep copied" at creation level.
+    #ifndef RELEASE
+    Log::logDebugBO(fmt::format("Mission File Plane Node:\n{}", Utils::xml_get_node_content_as_text (planeInventory.node))); // DEBUG
+    #endif
     if (!planeInventory.parse_node())
     {
       // planeInventory.mapItems.clear();
@@ -821,7 +824,12 @@ missionx::read_mission_file::readInventories ( const ITCXMLNode & xParent)
 
   // v24.12.2 merge the ACF inventory with the plane inventory. The ACF inventory is the target plane Inventory
   if ( missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY )
-    planeInventory = missionx::Inventory::mergeAcfAndPlaneInventories(acfInventory, planeInventory);
+  {
+    // we override the plane inventory with the ACF inventory node, after we "copied" the items to the ACF stations.
+    planeInventory.node = missionx::Inventory::mergeAcfAndPlaneInventories2(acfInventory.node, planeInventory.node);
+    planeInventory.parse_node();
+    // planeInventory = missionx::Inventory::mergeAcfAndPlaneInventories(acfInventory, planeInventory);
+  }
 
   Utils::addElementToMap(missionx::data_manager::mapInventories, mxconst::get_ELEMENT_PLANE(), planeInventory); // v3.0.241.1
 

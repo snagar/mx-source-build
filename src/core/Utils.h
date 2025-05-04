@@ -941,7 +941,7 @@ public:
   // -------------------------------------------
   static void xml_print_node(const IXMLNode& inNode, bool bThread = false); // v3.303.8 added thread support
   // -------------------------------------------
-  static std::string xml_get_node_content_as_text (const IXMLNode & inNode); // v3.303.9.1 Return the node as TEXT, mainly used for debug.
+  static std::string xml_get_node_content_as_text (const IXMLNode & inNode, const std::string &inDefaultText = ""); // v3.303.9.1 Return the node as TEXT, mainly used for debug.
   // -------------------------------------------
   static std::vector<IXMLNode> xml_get_all_nodes_pointer_with_tagName (const IXMLNode & inRootNode, std::string_view inTagName, std::string_view inTagNameToIgnore = ""); // this is the main function that will call xml_get_all_child_nodes_recurs_with_tagName
   // -------------------------------------------

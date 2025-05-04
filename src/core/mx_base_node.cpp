@@ -120,7 +120,7 @@ missionx::mx_base_node::getNodeStringProperty(const std::string& inAttribName, c
 }
 
 bool
-missionx::mx_base_node::getBoolValue(const std::string& inAttribName, const bool attribDefaultValue)
+missionx::mx_base_node::getBoolValue(const std::string& inAttribName, const bool attribDefaultValue) const
 {
   return Utils::readBoolAttrib(this->node, inAttribName, attribDefaultValue);
 }

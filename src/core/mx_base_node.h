@@ -88,7 +88,7 @@ public:
   // -------------------------------------------
   
   std::string getNodeStringProperty(const std::string& inAttribName,  const std::string & attribDefaultValue = "", bool in_getTextFromContainerAndThenFromNode = false); 
-  bool        getBoolValue(const std::string& inAttribName, bool attribDefaultValue = false);
+  bool        getBoolValue(const std::string& inAttribName, bool attribDefaultValue = false) const;
 
   // -------------------------------------------
   // functions that do not store text internaly
@@ -233,14 +233,14 @@ public:
   // -------------------------------------------
   [[nodiscard]] std::string get_node_as_text() const
   {
-    if (this->node.isEmpty())
-      return "";
-
-    IXMLRenderer      xmlWriter;
-    const std::string text = xmlWriter.getString(this->node);
-    xmlWriter.clear();
-
-    return text;
+    return Utils::xml_get_node_content_as_text (this->node);
+    // if (this->node.isEmpty())
+    //   return "";
+    //
+    // IXMLRenderer      xmlWriter;
+    // const std::string text = xmlWriter.getString(this->node);
+    // xmlWriter.clear();
+    // return text;
     
   }
   // -------------------------------------------

@@ -48,7 +48,7 @@ Inventory::Inventory(const ITCXMLNode& inNode)
 }
 
 
-Inventory::Inventory(const missionx::Inventory& inInventory)  : Trigger(inInventory) {
+Inventory::Inventory(const missionx::Inventory& inInventory) {
   this->clone(inInventory);
 }
 
@@ -60,11 +60,13 @@ Inventory::clone(const missionx::Inventory& inInventory)
   this->mapStations = inInventory.mapStations;
   this->map_acf_station_names = inInventory.map_acf_station_names;
 
+  this->node = inInventory.node.deepCopy();
+  this->parse_node();
+
   // #ifndef RELEASE
   // Utils::xml_print_node (inInventory.node);
   // #endif
 
-  this->parse_node(inInventory.node);
 }
 
 
@@ -111,14 +113,6 @@ Inventory::read_xp11_style_inventory_items()
 
 
 bool
-Inventory::parse_node(const IXMLNode& inNode)
-{
-  this->node = inNode.deepCopy();
-  return this->parse_node();
-}
-
-
-bool
 Inventory::parse_item_node(IXMLNode& inNode)
 {
   assert(!inNode.isEmpty()); // abort if node was not set
@@ -147,6 +141,13 @@ Inventory::parse_item_node(IXMLNode& inNode)
   return true;
 }
 
+
+bool
+Inventory::parse_node(const IXMLNode& inNode)
+{
+  this->node = inNode.deepCopy();
+  return this->parse_node();
+}
 
 
 bool
@@ -263,7 +264,7 @@ Inventory::parse_node()
     }
     else if (this->isPlane ) // v24.12.2 parse stations and initialize station containers
     {
-      Utils::xml_delete_all_subnodes(this->node, mxconst::get_ELEMENT_ITEM(), false); // delete <item>s
+      Utils::xml_delete_all_subnodes(this->node, mxconst::get_ELEMENT_ITEM(), false); // delete <item>s from the root <plan> node. Not from stations.
 
       const auto nStationNodes = this->node.nChildNode(mxconst::get_ELEMENT_STATION().c_str());
       for (int iStationLoop = 0; iStationLoop < nStationNodes; ++iStationLoop)
@@ -277,7 +278,8 @@ Inventory::parse_node()
           if (mxUtils::isElementExists(this->mapStations, acf_station.station_indx ))
           {
             // Force station name to be same as we read from the "acf" file, even if it is different in the mission file.
-            if (auto cargo_station = this->mapStations[acf_station.station_indx]; !cargo_station.getName().empty())
+            if (auto cargo_station = this->mapStations[acf_station.station_indx];
+                !cargo_station.getName().empty())
               acf_station.set_name(cargo_station.getName());
             else if (cargo_station.getName().empty() && acf_station.getName().empty())
               acf_station.set_name(fmt::format("{}", cargo_station.station_indx)); // use mission file station name
@@ -309,9 +311,12 @@ void
 Inventory::init ()
 {
   this->name.clear ();
-  this->node.updateName (mxconst::get_ELEMENT_INVENTORY ().c_str ()); // v24.12.2
-  setStringProperty (mxconst::get_ATTRIB_PLANE_ON_GROUND (), mxconst::get_MX_YES ()); // v3.0.217.7
-
+  // v25.04.2 fixed the "if logic"
+  if ( std::string(this->node.getName () ) == mxconst::get_ELEMENT_INVENTORY () )
+  {
+    // this->node.updateName (mxconst::get_ELEMENT_INVENTORY ().c_str ()); // v24.12.2
+    setStringProperty (mxconst::get_ATTRIB_PLANE_ON_GROUND (), mxconst::get_MX_YES ()); // v3.0.217.7
+  }
 
   this->getCueInfo_ptr ().cueType = missionx::mx_cue_types::cue_inventory; // v3.0.213.7 try to fix load checkpoint lack of information
 
@@ -638,68 +643,68 @@ Inventory::get_stations_number() const
 
 // -----------------------------------
 
-missionx::Inventory
-Inventory::mergeAcfAndPlaneInventories (missionx::Inventory inTargetInventory, missionx::Inventory &inSourceInventory)
-{
-  #ifndef RELEASE
-  Utils::xml_print_node (inTargetInventory.node);
-  Utils::xml_print_node (inSourceInventory.node);
-  #endif
-
-  if (missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i == missionx::XP11_COMPATIBILITY)
-    return inSourceInventory;
-
-  // loop over ".acf" <station>s and add the plane items into those stations
-  const auto nStations = inSourceInventory.node.nChildNode (mxconst::get_ELEMENT_STATION().c_str ());
-  for (const auto &station : inSourceInventory.mapStations | std::views::values)
-  {
-    // check acf has same station id
-    if (!mxUtils::isElementExists (inTargetInventory.mapStations, station.station_indx))
-    {
-      Log::log_to_missionx_log (fmt::format ("Station [{}], has an id: {} that is not in the 'acf' file. Will skip this station information.", station.name, station.station_indx));
-      continue;
-    }
-
-    // loop over all station <items> and move them to the acf inventory.
-    const auto nItems = station.node.nChildNode (mxconst::get_ELEMENT_ITEM().c_str ());
-    for (int i = 0; i < nItems; ++i)
-    {
-      if (auto itemNode = station.node.getChildNode (mxconst::get_ELEMENT_ITEM().c_str (), i); !itemNode.isEmpty ())
-      {
-        // check if acf has item with same barcode
-        const auto itemBarcode_s  = Utils::readAttrib (itemNode, mxconst::get_ATTRIB_BARCODE(), "");
-        const auto itemQuantity_i = Utils::readNodeNumericAttrib<int> (itemNode, mxconst::get_ATTRIB_QUANTITY(), 0);
-
-        // add if acf does not have <item>
-        if (auto target_node_ptr = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (inTargetInventory.mapStations[station.station_indx].node, mxconst::get_ELEMENT_ITEM(), mxconst::get_ATTRIB_BARCODE(), itemBarcode_s, false); target_node_ptr.isEmpty ())
-        {
-          inTargetInventory.mapStations[station.station_indx].node.addChild (itemNode.deepCopy ());
-          #ifndef RELEASE
-          Log::logMsg (">>>>>>>>>>>>>>>>");
-          Utils::xml_print_node (inTargetInventory.node);
-          Log::logMsg ("<><><><><><><>");
-          Utils::xml_print_node (inTargetInventory.mapStations[station.station_indx].node);
-          Log::logMsg ("<<<<<<<<<<<<<<<<");
-          #endif
-        }
-        else
-        { // add to an existing item
-          const auto targetQuantity_i = Utils::readNodeNumericAttrib<int> (target_node_ptr, mxconst::get_ATTRIB_QUANTITY(), 0);
-          target_node_ptr.updateAttribute (fmt::format ("{}", (targetQuantity_i + itemQuantity_i)).c_str (), mxconst::get_ATTRIB_QUANTITY().c_str (), mxconst::get_ATTRIB_QUANTITY().c_str ());
-        }
-
-      } // end check if plane <item> is valid
-    } // end loop over all "plane"s items
-  } // end loop over all "plane"s stations
-
-  return inTargetInventory;
-}
+// missionx::Inventory
+// Inventory::mergeAcfAndPlaneInventories (missionx::Inventory &inTargetInventory, missionx::Inventory &inSourceInventory)
+// {
+//   #ifndef RELEASE
+//   Utils::xml_print_node (inTargetInventory.node);
+//   Utils::xml_print_node (inSourceInventory.node);
+//   #endif
+//
+//   if (missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i == missionx::XP11_COMPATIBILITY)
+//     return inSourceInventory;
+//
+//   // loop over ".acf" <station>s and add the plane items into those stations
+//   const auto nStations = inSourceInventory.node.nChildNode (mxconst::get_ELEMENT_STATION().c_str ());
+//   for (const auto &station : inSourceInventory.mapStations | std::views::values)
+//   {
+//     // check acf has same station id
+//     if (!mxUtils::isElementExists (inTargetInventory.mapStations, station.station_indx))
+//     {
+//       Log::log_to_missionx_log (fmt::format ("Station [{}], has an id: {} that is not in the 'acf' file. Will skip this station information.", station.name, station.station_indx));
+//       continue;
+//     }
+//
+//     // loop over all station <items> and move them to the acf inventory.
+//     const auto nItems = station.node.nChildNode (mxconst::get_ELEMENT_ITEM().c_str ());
+//     for (int i = 0; i < nItems; ++i)
+//     {
+//       if (auto itemNode = station.node.getChildNode (mxconst::get_ELEMENT_ITEM().c_str (), i); !itemNode.isEmpty ())
+//       {
+//         // check if acf has item with same barcode
+//         const auto itemBarcode_s  = Utils::readAttrib (itemNode, mxconst::get_ATTRIB_BARCODE(), "");
+//         const auto itemQuantity_i = Utils::readNodeNumericAttrib<int> (itemNode, mxconst::get_ATTRIB_QUANTITY(), 0);
+//
+//         // add if acf does not have <item>
+//         if (auto target_node_ptr = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (inTargetInventory.mapStations[station.station_indx].node, mxconst::get_ELEMENT_ITEM(), mxconst::get_ATTRIB_BARCODE(), itemBarcode_s, false); target_node_ptr.isEmpty ())
+//         {
+//           inTargetInventory.mapStations[station.station_indx].node.addChild (itemNode.deepCopy ());
+//           #ifndef RELEASE
+//           Log::logMsg (">>>>>>>>>>>>>>>>");
+//           Utils::xml_print_node (inTargetInventory.node);
+//           Log::logMsg ("<><><><><><><>");
+//           Utils::xml_print_node (inTargetInventory.mapStations[station.station_indx].node);
+//           Log::logMsg ("<<<<<<<<<<<<<<<<");
+//           #endif
+//         }
+//         else
+//         { // add to an existing item
+//           const auto targetQuantity_i = Utils::readNodeNumericAttrib<int> (target_node_ptr, mxconst::get_ATTRIB_QUANTITY(), 0);
+//           target_node_ptr.updateAttribute (fmt::format ("{}", (targetQuantity_i + itemQuantity_i)).c_str (), mxconst::get_ATTRIB_QUANTITY().c_str (), mxconst::get_ATTRIB_QUANTITY().c_str ());
+//         }
+//
+//       } // end check if plane <item> is valid
+//     } // end loop over all "plane"s items
+//   } // end loop over all "plane"s stations
+//
+//   return inTargetInventory;
+// }
 
 // -----------------------------------
 
 
 IXMLNode
-Inventory::mergeAcfAndPlaneInventories (IXMLNode inTargetInventory, const IXMLNode &inSourceInventory)
+Inventory::mergeAcfAndPlaneInventories2 (IXMLNode inTargetInventory, const IXMLNode &inSourceInventory)
 {
 #ifndef RELEASE
   Utils::xml_print_node (inSourceInventory);
@@ -762,11 +767,11 @@ Inventory::mergeAcfAndPlaneInventories (IXMLNode inTargetInventory, const IXMLNo
     } // end loop over all "plane"s items
   } // end loop over all "plane"s stations
 
-#ifndef RELEASE
+  #ifndef RELEASE
   Log::logMsg (">>>>>> Final >>>>>>");
   Utils::xml_print_node (inTargetInventory);
   Log::logMsg ("<<<<<<<<<<<<<<<<<<<");
-#endif
+  #endif
 
   return inTargetInventory.deepCopy ();
 }
@@ -949,7 +954,7 @@ Inventory::gather_acf_cargo_data (Inventory &inout_current_plane_inventory, cons
     // if (in_plane_was_changed_b || (data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_being_loaded_from_the_original_file && data_manager::missionState <= missionx::mx_mission_state_enum::mission_loaded_from_the_original_file))
     if ( in_plane_was_changed_b || mxUtils::mx_between<missionx::mx_mission_state_enum>(data_manager::missionState, missionx::mx_mission_state_enum::mission_is_being_loaded_from_the_original_file, missionx::mx_mission_state_enum::mission_loaded_from_the_original_file) )
     {
-      IXMLNode new_node = Inventory::mergeAcfAndPlaneInventories (new_acf_inventory.node, inout_current_plane_inventory.node);
+      IXMLNode new_node = Inventory::mergeAcfAndPlaneInventories2 (new_acf_inventory.node, inout_current_plane_inventory.node);
       inout_current_plane_inventory.init_plane_inventory ();
       inout_current_plane_inventory.parse_node (new_node);
       Utils::xml_print_node (inout_current_plane_inventory.node);
