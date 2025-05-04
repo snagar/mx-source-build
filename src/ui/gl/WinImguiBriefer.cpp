@@ -308,7 +308,7 @@ WinImguiBriefer::add_ui_default_weights ()
   // ------------------------
   // -- Default Weight
   // ------------------------
-  ImGui::Checkbox("Add default base weights.\nThis will be added on top of any item you will pick from an external inventory.\n(Not advisable for planes > GAs)", &this->adv_settings_strct.flag_add_default_weight_settings);
+  ImGui::Checkbox("Add default base weights.\nThis will be added to the weight of any item you pick from an external inventory.\n(Not advisable for aircraft larger than General Aviation)", &this->adv_settings_strct.flag_add_default_weight_settings);
   if (this->adv_settings_strct.flag_add_default_weight_settings)
   {
     missionx::WinImguiBriefer::HelpMarker("Define Pilot Weight (0..200)");
@@ -323,10 +323,10 @@ WinImguiBriefer::add_ui_default_weights ()
     }
     if (missionx::data_manager::flag_setupUseXP11InventoryUI)
     {
-      missionx::WinImguiBriefer::HelpMarker("Define Passengers Weight (0..50000)");
+      missionx::WinImguiBriefer::HelpMarker("Define the total passenger weight (0..50000)");
       ImGui::SameLine ();
       ImGui::SetNextItemWidth ( 100.0f );
-      if (ImGui::InputInt ( "Passengers Weight", &this->adv_settings_strct.passengers_base_weight_i, 5, 100, ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal ))
+      if (ImGui::InputInt ( "Total Passengers Weight", &this->adv_settings_strct.passengers_base_weight_i, 5, 100, ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal ))
       {
         if (this->adv_settings_strct.passengers_base_weight_i < 0)
           this->adv_settings_strct.passengers_base_weight_i = 0;
@@ -334,10 +334,10 @@ WinImguiBriefer::add_ui_default_weights ()
           this->adv_settings_strct.passengers_base_weight_i = 50000;
       }
 
-      missionx::WinImguiBriefer::HelpMarker("Define Cargo Weight (0..80000)");
+      missionx::WinImguiBriefer::HelpMarker("Total Cargo Weight (0..80000)");
       ImGui::SameLine ();
       ImGui::SetNextItemWidth ( 100.0f );
-      if (ImGui::InputInt ( "Cargo Weight", &this->adv_settings_strct.cargo_base_weight, 5, 100, ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal ))
+      if (ImGui::InputInt ( "Total Cargo Weight", &this->adv_settings_strct.cargo_base_weight, 5, 100, ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal ))
         {
           if (this->adv_settings_strct.cargo_base_weight < 0)
             this->adv_settings_strct.cargo_base_weight = 0;
@@ -646,8 +646,6 @@ WinImguiBriefer::add_debug_info()
 
       ImGui::EndTabItem();
     }
-
-
 
     ImGui::EndTabBar();
   }
@@ -1035,7 +1033,6 @@ WinImguiBriefer::add_flight_planning()
 
             missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_FROM_ICAO(), this->strct_flight_leg_info.fpln.fromICAO_s);
             missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_TO_ICAO(), this->strct_flight_leg_info.fpln.toICAO_s);
-            // missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_ATTRIB_FORMATED_NAV_POINTS(), this->strct_flight_leg_info.fpln.formated_nav_points_with_guessed_names_s);
 
             ImGui::OpenPopup (GENERATE_QUESTION.c_str ());
           }
@@ -1044,7 +1041,6 @@ WinImguiBriefer::add_flight_planning()
 
         const ImVec2 center(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);
         ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-        // ImGui::SetNextWindowSize(ImVec2(620.0f, 380.0f));
         this->draw_popup_generate_mission_based_on_ext_fpln (GENERATE_QUESTION, this->strct_flight_leg_info.fpln, this->strct_flight_leg_info.fpln.internal_id);
 
         // -------------------
@@ -1083,9 +1079,9 @@ WinImguiBriefer::add_flight_planning()
 void
 WinImguiBriefer::flc()
 {
-//#ifdef TIMER_FUNC
-//  missionx::TimerFunc timerFunc(std::string(__FILE__), std::string(__func__), false);
-//#endif // TIMER_FUNC
+  #ifdef TIMER_FUNC
+  missionx::TimerFunc timerFunc(std::string(__FILE__), std::string(__func__), false);
+  #endif // TIMER_FUNC
 
   // v3.305.1
   if (this->GetVisible() && !this->flag_displayedOnce)

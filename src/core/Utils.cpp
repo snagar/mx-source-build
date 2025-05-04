@@ -2958,8 +2958,7 @@ missionx::Utils::xml_print_node(const IXMLNode& inNode, const bool bThread)
 std::string
 missionx::Utils::xml_get_node_content_as_text (const IXMLNode & inNode)
 {
-
-  if (inNode.isEmpty() == false)
+  if (!inNode.isEmpty())
   {
     IXMLRenderer xmlWriter;
     const std::string text =  xmlWriter.getString(inNode);

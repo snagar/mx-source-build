@@ -5717,7 +5717,7 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
   }
   else
   {
-    (*outStatusMessage) = "Could not work on stats database.\n" + db_stats.last_err;
+    (*outStatusMessage) = "Could not work on the stats database.\n" + db_stats.last_err;
   }
 
 
@@ -5975,9 +5975,9 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
 
       // https://curl.haxx.se/docs/sslcerts.html
       // curl_easy_setopt(curl, CURLOPT_CAINFO, cacert);
-      CURLcode res_curl = curl_easy_perform(curl); // execute the REQUEST
 
-      if (CURLE_OK != res_curl)
+      if (CURLcode res_curl = curl_easy_perform (curl);
+          CURLE_OK != res_curl)
       {
         Log::logMsgThread("cURL error code while fetching JSON METAR information: " + Utils::formatNumber<int>(res_curl) + "\n");
       }
@@ -6357,8 +6357,6 @@ data_manager::fetch_fpln_from_external_site(base_thread::thread_state* inoutThre
     std::map<size_t, bool> mapHashIcaoAndName;
     #endif // !RELEASE
 
-    #define USE_NATIVE_JSON
-    #ifdef USE_NATIVE_JSON
     nlohmann::json jSON = nlohmann::json::parse(result_s);
 
     for (auto& js : jSON)
@@ -6367,7 +6365,6 @@ data_manager::fetch_fpln_from_external_site(base_thread::thread_state* inoutThre
       Log::logMsgThread(fmt::format("JSON size: {}\nJSON Line:\n{}\n", js.size(), js.dump()));
       #endif
       mx_ext_internet_fpln_strct fpln;
-
 
       fpln.distnace_d        = Utils::getJsonValue<double>(js, mx_fplndb_json_keys.Z_KEY_distance, nlohmann::detail::value_t::number_float, 0.0);
       fpln.encode_polyline_s = Utils::getJsonValue(js, mx_fplndb_json_keys.Z_KEY_encodedPolyline, "");
@@ -6382,68 +6379,6 @@ data_manager::fetch_fpln_from_external_site(base_thread::thread_state* inoutThre
       fpln.fpln_unique_id    = Utils::getJsonValue<int>(js, mx_fplndb_json_keys.Z_KEY_id, nlohmann::detail::value_t::number_integer, 0);
       fpln.popularity_i      = Utils::getJsonValue<int>(js, mx_fplndb_json_keys.Z_KEY_popularity, nlohmann::detail::value_t::number_integer, 0);
 
-
-      //} // END ### USE_NATIVE_JSON
-#else
-    // Use IXMLParser to parse json and then we will work on XML node instead (safer)
-    IXMLReaderStringSZ iReaderSZ(result_s.c_str());
-    IJSONPullParser    pp(&iReaderSZ);
-    IXMLDomParser      iDom;
-    data_manager::jsonConvertedNode_xml = iDom.parse(&pp, "a").deepCopy();
-
-
-    int child_a = data_manager::jsonConvertedNode_xml.nChildNode("a"); // "a" is the name of the array element, no root
-
-    // Handle special case if child_a == 0. Might point to only one child node.
-    bool isJust_1_node = false;
-    auto testNode      = data_manager::jsonConvertedNode_xml.getChildNodeByPath(mxconst::get_ATTRIB_ID().c_str());
-    if (!testNode.isEmpty())
-    {
-      isJust_1_node = true;
-      child_a       = 1;
-    }
-
-    // loop over all child nodes and store their data
-    for (int i1 = 0; i1 < child_a; ++i1)
-    {
-      missionx::mx_ext_internet_fpln_strct fpln;                                                                                                                             // struct that holds all flight plan information
-      IXMLNode                             a_node = (isJust_1_node) ? data_manager::jsonConvertedNode_xml.deepCopy() : data_manager::jsonConvertedNode_xml.getChildNode(i1); // handle 1 chidl node vs many child nodes
-      if (a_node.isEmpty())
-        continue;
-
-      IXMLNode node   = a_node.getChildNode(mx_fplndb_json_keys.Z_KEY_distance.c_str());
-      fpln.distnace_d = Utils::read_tagTextAsNumericValue<double>(node, 0.0);
-
-      node                   = a_node.getChildNode(mx_fplndb_json_keys.Z_KEY_encodedPolyline.c_str());
-      fpln.encode_polyline_s = Utils::xml_get_text(node, "");
-
-      node                = a_node.getChildNode(mx_fplndb_json_keys.Z_KEY_flightNumber.c_str());
-      fpln.flightNumber_s = Utils::xml_get_text(node, "");
-
-      node            = a_node.getChildNode(mx_fplndb_json_keys.Z_KEY_fromICAO.c_str());
-      fpln.fromICAO_s = Utils::xml_get_text(node, "");
-
-      node            = a_node.getChildNode(mx_fplndb_json_keys.Z_KEY_fromName.c_str());
-      fpln.fromName_s = Utils::xml_get_text(node, "");
-
-      node          = a_node.getChildNode(mx_fplndb_json_keys.Z_KEY_toICAO.c_str());
-      fpln.toICAO_s = Utils::xml_get_text(node, "");
-
-      node          = a_node.getChildNode(mx_fplndb_json_keys.Z_KEY_toName.c_str());
-      fpln.toName_s = Utils::xml_get_text(node, "");
-
-      node         = a_node.getChildNode(mx_fplndb_json_keys.Z_KEY_notes.c_str());
-      fpln.notes_s = Utils::xml_get_text(node, "");
-
-      node              = a_node.getChildNode(mx_fplndb_json_keys.Z_KEY_popularity.c_str()); // v3.0.253.3
-      fpln.popularity_s = Utils::xml_get_text(node, "");                                     // v3.0.253.3
-
-      fpln.maxAltitude_i  = Utils::read_tagTextAsNumericValue<int>(a_node.getChildNode(mx_fplndb_json_keys.Z_KEY_maxAltitude.c_str()), 0);
-      fpln.waypoints_i    = Utils::read_tagTextAsNumericValue<int>(a_node.getChildNode(mx_fplndb_json_keys.Z_KEY_waypoints.c_str()), 0);
-      fpln.fpln_unique_id = Utils::read_tagTextAsNumericValue<int>(a_node.getChildNode(mx_fplndb_json_keys.Z_KEY_id.c_str()), -1);
-      fpln.popularity_i   = Utils::read_tagTextAsNumericValue<int>(a_node.getChildNode(mx_fplndb_json_keys.Z_KEY_popularity.c_str()), 0); // v3.0.253.3
-
-#endif // end parsing JSON using the XML library
 
       //// Post Parsing
       // Decode polylines
@@ -6614,7 +6549,7 @@ NavAidInfo
 data_manager::getPlaneAirportOrNearestICAO(const bool& inOnlySearchInDatabase, const double& inLat, const double& inLon, bool inIsThread)
 {
   // The following function will first try to figure out if the plane inside one of the airports boundary which is stored in the SQLITE database.
-  // If not then it will fallback to the original code, by using the XPSDK.
+  // If not then it will fall back to the original code, by using the XPSDK.
   bool flagFoundPlaneInAirportArea{ false }; // v3.303.8.3
 
 
@@ -6655,7 +6590,6 @@ where is_plane_in_boundary = 1
 )";
 
 
-  // query = fmt::format(query.data(), planePosition.getLat(), planePosition.getLon(), planePosition.getLat(), planePosition.getLon(), planePosition.getLat(), planePosition.getLat(), planePosition.getLon(), planePosition.getLon());
   std::map<int, std::string> mapArgs = { { 1, planePosition.getLat_s() }, { 2, planePosition.getLon_s() } }; // v24.05.2
   query                              = mxUtils::format(query, mapArgs);
 
@@ -6668,22 +6602,11 @@ where is_plane_in_boundary = 1
 
   if (db_xp_airports.db_is_open_and_ready)
   {
-    const std::string stmt_uq_name = "fetch_airport_where_plane_is_in_its_boundary";
     // prepare query statement
-    if (db_xp_airports.prepareNewStatement(stmt_uq_name, query))
+    if (const std::string stmt_uq_name = "fetch_airport_where_plane_is_in_its_boundary";
+        db_xp_airports.prepareNewStatement(stmt_uq_name, query))
     {
       assert(data_manager::db_xp_airports.mapStatements[stmt_uq_name] != nullptr);
-
-      // v24.03.1 Deprecated bindings
-      // sqlite3_bind_double(data_manager::db_xp_airports.mapStatements[stmt_uq_name], 1, planePosition.getLat()); // 1 Bindings start in 1. We bind plane position in two location in the script
-      // sqlite3_bind_double(data_manager::db_xp_airports.mapStatements[stmt_uq_name], 2, planePosition.getLon()); // 2
-      // sqlite3_bind_double(data_manager::db_xp_airports.mapStatements[stmt_uq_name], 3, planePosition.getLat()); // 3
-      // sqlite3_bind_double(data_manager::db_xp_airports.mapStatements[stmt_uq_name], 4, planePosition.getLon()); // 4
-      //// v3 .303.8.3 add filter airport location.Pick only 5 areas and not the whole table
-      // sqlite3_bind_double(data_manager::db_xp_airports.mapStatements[stmt_uq_name], 5, planePosition.getLat()); // 5 lat
-      // sqlite3_bind_double(data_manager::db_xp_airports.mapStatements[stmt_uq_name], 6, planePosition.getLat()); // 6 lat
-      // sqlite3_bind_double(data_manager::db_xp_airports.mapStatements[stmt_uq_name], 7, planePosition.getLon()); // 7 lon
-      // sqlite3_bind_double(data_manager::db_xp_airports.mapStatements[stmt_uq_name], 8, planePosition.getLon()); // 8 lon
 
       // fetch only first row if exists
       while (sqlite3_step(db_xp_airports.mapStatements[stmt_uq_name]) == SQLITE_ROW) // if SQLITE_ROW or SQLITE_DONE

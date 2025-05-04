@@ -149,7 +149,7 @@ private:
   bool     extract_flight_leg_set(IXMLNode& inNodeTemplate, const IXMLNode& inSetNode, int& inCounter); // v3.0.219.14 Will try to parse and pick a background content story
   bool     build_and_add_flight_leg_from_node(const IXMLNode& inNode, int& inCounter);        // v3.0.219.14 Will try to parse and pick a background content story
   bool     generateRandomMissionBasedOnContent(IXMLNode& xTemplateNode);                // v3.0.219.13
-  bool     get_isNavAidInValidDistance(const double& currentDistanceToTarget, const double& in_location_value_d, const double& in_location_minDistance_d, const double& in_location_maxDistance_d);
+  static bool     get_isNavAidInValidDistance(const double& currentDistanceToTarget, const double& in_location_value_d, const double& in_location_minDistance_d, const double& in_location_maxDistance_d);
 
 
   IXMLNode buildFlightLeg(int inFlightLegCounter, const IXMLNode& in_legNodeFromTemplate);
@@ -348,13 +348,13 @@ private:
                                               double                              location_minDistance_d,
                                               double                              location_maxDistance_d);
   // search for airports based on XY information for all planes and for helos it can also be based on OSM data (depends on the location_type value - inLocationType)
-  bool get_target_or_lastFlightLeg_based_on_XY_or_OSM(NavAidInfo&                         outNewNavInfo,
-                                                      mx_plane_types                      in_plane_type_enum,
-                                                      std::map<std::string, std::string>& inMapLocationSplitValues,
-                                                      missionx::mx_base_node&             inProperties, // v3.305.1
-                                                      double                              location_value_d,
-                                                      double                              location_minDistance_d,
-                                                      double                              location_maxDistance_d);
+  bool get_target_or_lastFlightLeg_based_on_XY_or_OSM (NavAidInfo                         &outNewNavInfo,
+                                                       std::map<std::string, std::string> &inMapLocationSplitValues,
+                                                       missionx::mx_base_node             &inProperties,
+                                                       // v3.305.1
+                                                       double location_value_d,
+                                                       double location_minDistance_d,
+                                                       double location_maxDistance_d);
   // Search and pick pre-defined location based on an XML tag name
   bool get_targetBasedOnTagName(NavAidInfo&             outNewNavInfo,
                                 mx_plane_types          in_plane_type_enum,
@@ -406,20 +406,20 @@ private:
                                         double                              max_lon,
                                         double                              maxDistance_d = mxconst::SLIDER_MAX_RND_DIST,
                                         double                              minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT); // if return empty string then no file was found valid for the search
-  void initQueries();
+  static void initQueries();
 
   // overpass mission_info custom urls
   std::vector<std::string> vecMissionInfoOverpassUrls;
   int                      current_url_indx_used_i = mxconst::INT_UNDEFINED;
 
   // // Test both NavAid ID and Name. Sometimes the ID can be empty but not the name.
-  bool check_if_new_target_is_same_as_prev(missionx::NavAidInfo &inCurrentTargetNav, missionx::NavAidInfo &inPrevNav);
+  static bool check_if_new_target_is_same_as_prev(missionx::NavAidInfo &inCurrentTargetNav, missionx::NavAidInfo &inPrevNav);
   bool check_last_2_legs_if_they_have_same_icao();
 
-  std::string get_short_flight_description_from_to(const std::string& inFromName,const std::string& inFromICAO,const std::string& inToName,const std::string& inToICAO );
+  static std::string get_short_flight_description_from_to(const std::string& inFromName,const std::string& inFromICAO,const std::string& inToName,const std::string& inToICAO );
 
   // v25.02.1
-  std::vector<IXMLNode> calc_land_hover_display_objects (const double &inLat, const double &inLon, const int &inRadiusMT, const int &inHowManyObjects, int &inout_seq, const std::string &inFileName = "land_hover01.obj");
+  static std::vector<IXMLNode> calc_land_hover_display_objects (const double &inLat, const double &inLon, const int &inRadiusMT, const int &inHowManyObjects, int &inout_seq, const std::string &inFileName = "land_hover01.obj");
 
 };
 

@@ -135,6 +135,7 @@ public:
   NavAidInfo(const missionx::NavAidInfo &in_na) : mx_base_node(in_na)
    {
      this->clone(in_na);
+     this->synchToPoint ();
    }
 
   void init()

@@ -32,6 +32,7 @@
 #include <queue>
 #include <set>
 #include <unordered_map>
+#include <format> // v25.04.2 added standard format library in the hope to replace "fmt/core.h" which is a 3rd library.
 #include <fmt/core.h>
 
 

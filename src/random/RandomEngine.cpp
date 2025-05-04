@@ -1522,11 +1522,6 @@ RandomEngine::parse_display_object_element(IXMLNode& inFlightLegNode, IXMLNode& 
         }
         else // found object with same file name in the object_template
         {
-          // v3.0.255.4 add the "isLibFile" value is it is not empty so plugin will know if this is a lib file or regular file
-          // v3.303.14 deprecated
-          //if (!isLibFile.empty())
-          //  xObj3d_with_same_filename_in_objectTemplate_ptr.updateAttribute(isLibFile.c_str(), mxconst::get_ATTRIB_IS_VIRTUAL_B().c_str(), mxconst::get_ATTRIB_IS_VIRTUAL_B().c_str());
-
           newName = xObj3d_with_same_filename_in_objectTemplate_ptr.getAttribute(mxconst::get_ATTRIB_NAME().c_str());
           Utils::xml_search_and_set_attribute_in_IXMLNode(inDisplayNode, mxconst::get_ATTRIB_NAME(), newName, TAG_NAME); //
         }
@@ -1608,10 +1603,6 @@ RandomEngine::parse_3D_object_template_element()
         std::string rNodeFileName = Utils::readAttrib(rNode, mxconst::get_ATTRIB_FILE_NAME(), "");
         if (!rNodeFileName.empty())
         {
-          // v3.0.255.4 Add isLibFile // v3.303.14 DEPRECATED ATTRIB_IS_VIRTUAL_B
-          //std::string isLibFile_s = Utils::readAttrib(rNode, mxconst::get_ATTRIB_IS_VIRTUAL_B(), "");
-          //xObj3d_node_ptr.updateAttribute(isLibFile_s.c_str(), mxconst::get_ATTRIB_IS_VIRTUAL_B().c_str(), mxconst::get_ATTRIB_IS_VIRTUAL_B().c_str());
-
           // set <display_object> name attribute with the random name
           Utils::xml_search_and_set_attribute_in_IXMLNode(xObj3d_node_ptr, mxconst::get_ATTRIB_FILE_NAME(), rNodeFileName, mxconst::get_ELEMENT_OBJ3D());
         }
@@ -1931,7 +1922,6 @@ RandomEngine::generateRandomMissionBasedOnContent(IXMLNode& xTemplateNode)
 
     listContent = Utils::splitStringToList(flightLegList, mxconst::get_COMMA_DELIMITER());
 
-    //      bool flag_isThisTheFirstFlightLegInList = true;
     auto countListElements = listContent.size();
     int  counter           = 0;
     for (std::string optional; auto tagName : listContent) // loop over list of "tag_names" that we received from splitting the "list=" attribute
@@ -2523,9 +2513,7 @@ RandomEngine::buildFlightLeg(int inFlightLegCounter, const IXMLNode& in_legNodeF
           attribName  = "tag";
         }
 
-
         Log::logMsgErr(std::string("[random buildLeg] Found location value without explicit formating. Original format: ").append ( location_value_nm_s ).append ( ". Should be: " ).append ( attribName ).append ( "=" ) + attribValue + ". Skipping this directive.", true);
-        // Utils::addElementToMap(mapLocationSplitValues, attribName, attribValue);
       }
       else if (size_i > 1)
       {
@@ -2768,7 +2756,6 @@ RandomEngine::buildFlightLeg(int inFlightLegCounter, const IXMLNode& in_legNodeF
     // v25.02.1
     // Gather information from UI layer
     const auto med_cargo_or_oilrig_i = Utils::readNodeNumericAttrib<int> ( data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_MED_CARGO_OR_OILRIG(), static_cast<int> ( missionx::mx_mission_type::not_defined ) ); // 0 = med, 1 = cargo
-    // const auto mission_subcategory_i = Utils::readNodeNumericAttrib<int> ( data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_MISSION_SUBCATEGORY(), static_cast<int> ( missionx::mx_mission_subcategory_type::not_defined ) );
 
     #ifndef RELEASE
     auto bIsMandatory_debug = Utils::readBoolAttrib ( xLegTask, mxconst::get_ATTRIB_MANDATORY(), false );
@@ -2888,20 +2875,12 @@ RandomEngine::buildFlightLeg(int inFlightLegCounter, const IXMLNode& in_legNodeF
 
 
   } // end if not START flight_leg_type not LAST leg and NAV aid does not have same flag as flight_leg_type.
-  //else
-  //{
-  //  // do specific "start" <leg> things
-  //}
 
   if (!radius_mt.empty() && Utils::is_number(radius_mt))
     Utils::xml_search_and_set_attribute_in_IXMLNode(xLegTargetTrigger, mxconst::get_ATTRIB_LENGTH_MT(), radius_mt, mxconst::get_ELEMENT_RADIUS());
 
   // delete points that are not valid
   Utils::xml_delete_empty_nodes(xLegTargetTrigger);
-
-  //// add point to target trigger, moved before evaluating HOVER and LAND_HOVER
-  //Utils::xml_add_node_to_element_IXMLNode(xLegTargetTrigger, xPoint, mxconst::get_ELEMENT_LOC_AND_ELEV_DATA()); // Target point shared between all flight_leg_type
-
 
   // add trigger to <triggers>
   xTriggers.addChild(xLegTargetTrigger, xTriggers.nChildNode());
@@ -2979,11 +2958,11 @@ RandomEngine::buildFlightLeg(int inFlightLegCounter, const IXMLNode& in_legNodeF
         else
           nChilds = xTag.nChildNode(set_name_to_pick.c_str());
 
-          /// Pick a child
         #ifndef RELEASE
         Log::logMsg("[random object_set]Search 3D set_name: " + set_name_to_pick, true);
         #endif
 
+        // Pick a child
         if (nChilds > 0)
         {
           IXMLNode cTagNode;
@@ -3234,7 +3213,6 @@ RandomEngine::buildFlightLeg(int inFlightLegCounter, const IXMLNode& in_legNodeF
 
   // Add leg_messages // v3.0.223.4
   // store disable auto leg messages in lastFlightLegNavInfo for later use in RandomEngine, like "injectMessagesWhileFlyingToDestination()"
-
   lastFlightLegNavInfo = newNavInfo; // v3.0.241.8 init lastFlightLegNavInfo before storing it
   lastFlightLegNavInfo.setBoolProperty(mxconst::get_ATTRIB_DISABLE_AUTO_MESSAGE_B(), flag_disable_auto_messages);
 
@@ -3365,11 +3343,6 @@ RandomEngine::filterAndPickRampBasedOnPlaneType(missionx::NavAidInfo& navAid, st
     int rc = 0;
     //// construct view query (inner query)
     // base on airports_vu
-    // const std::string sql_ap =  "select icao_id, icao, ap_elev_ft, ap_name, ap_type, ap_lat, ap_lon " \
-    //                             ", mx_calc_distance ( ap_lat, ap_lon," + mxUtils::formatNumber<double>(navAid.lat, 8) + ", " + mxUtils::formatNumber<double>(navAid.lon, 8) + ", 3440) as dist_nm, 0 as bearing " \
-    //                             ", helipads, ramp_helos, ramp_planes, ramp_props, ramp_turboprops, ramp_jet_heavy, rw_hard, rw_dirt_gravel, rw_grass " \
-    //                             ", rw_water, is_custom from airports_vu where 1 = 1 and icao = '" + navAid.getID() + "' order by dist_nm"; // we will pick the first result in the ordered result since it should reflect the closest airport based on its lat/lon
-
     // we will pick the first result in the ordered result since it should reflect the closest airport based on its lat/lon
     const std::string sql_ap = fmt::format( R"(select icao_id, icao, ap_elev_ft, ap_name, ap_type, ap_lat, ap_lon
                             , mx_calc_distance ( ap_lat, ap_lon, {}, {}, 3440) as dist_nm, 0 as bearing
@@ -3514,7 +3487,6 @@ RandomEngine::filterAndPickRampBasedOnPlaneType(missionx::NavAidInfo& navAid, st
 
       // If we reached this location than we failed finding a valid ramp position.
       // fetch longest runway and return its center
-
       auto const lmbda_get_query_for_fallback_position_based_on_filter_type = [](const missionx::mxFilterRampType& inFilterType, missionx::NavAidInfo & inNavAid )
       {
         static const std::string MOVE_PLANE_IN_METERS{ "20" };
@@ -3524,7 +3496,6 @@ RandomEngine::filterAndPickRampBasedOnPlaneType(missionx::NavAidInfo& navAid, st
           case missionx::mxFilterRampType::start_ramp:
           {
             // place plane 5 meters from beginning of the runway
-            //return "select t1.rw_no_1_lat || ',' || rw_no_1_lon as start_pos, t1.rw_no_1 as name, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading, t1.rw_length_mt from xp_rw t1 where t1.icao= '" + inNavAid.getID() + "' order by rw_length_mt desc limit 1";
             return "select mx_get_point_based_on_bearing_and_length_in_meters (t1.rw_no_1_lat, rw_no_1_lon, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon), " + MOVE_PLANE_IN_METERS +
                    ") as start_pos, t1.rw_no_1 as name, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading, t1.rw_length_mt from xp_rw t1 where t1.icao= '" + inNavAid.getID() + "' order by rw_length_mt desc limit 1";
           }
@@ -3569,7 +3540,7 @@ RandomEngine::filterAndPickRampBasedOnPlaneType(missionx::NavAidInfo& navAid, st
             auto                     ramp        = (*resultTable_gather_ramp_data.cbegin()).second;
             std::vector<std::string> vecPosition = mxUtils::split(ramp["start_pos"], ',');
 
-            if (vecPosition.size() > (size_t)1)
+            if (vecPosition.size() > static_cast<size_t> (1))
             {
               // Store location in Navaid
               navAid.lat               = mxUtils::stringToNumber<float>(vecPosition.at(0), vecPosition.at(0).length());
@@ -5259,12 +5230,7 @@ RandomEngine::get_target(NavAidInfo& outNewNavInfo, const IXMLNode & inLegFromTe
     }
   }
 
-  // v24.12.2 Deprecated - code never used
-  // if (this->listNavInfo.size() > static_cast<size_t>(0))
-  // {
-  //   NavAidInfo prevNavInfo = this->listNavInfo.back();
-  //   prevNavInfo.synchToPoint(); // not sure if we need this
-  // }
+
 
   //////////// end variables preparations ////////////
 
@@ -5392,7 +5358,7 @@ RandomEngine::get_target(NavAidInfo& outNewNavInfo, const IXMLNode & inLegFromTe
       }
       else
       {
-        return get_target_or_lastFlightLeg_based_on_XY_or_OSM(outNewNavInfo, in_plane_type_enum, inMapLocationSplitValues, inProperties, location_value_d, location_minDistance_d, location_maxDistance_d);
+        return get_target_or_lastFlightLeg_based_on_XY_or_OSM (outNewNavInfo, inMapLocationSplitValues, inProperties, location_value_d, location_minDistance_d, location_maxDistance_d);
       } // end handle random x/y or random navaid
 
 
@@ -5703,7 +5669,7 @@ RandomEngine::prepare_mission_based_on_external_fpln(IXMLNode& pNode)
   if ( auto fpln = lmbda_get_fpln ( fpln_id_picked_i, missionx::data_manager::tableExternalFPLN_vec )
       ; fpln.internal_id > -1)
   {
-    NavAidInfo prev_na;
+    // NavAidInfo prev_na; // v25.04.2 deprecated, not used
     // create navaids based on polyline. First is starting point + briefer and last is target (mandatory)
     int counter = 0;
     for (auto& wp : fpln.listNavPoints)
@@ -5726,7 +5692,7 @@ RandomEngine::prepare_mission_based_on_external_fpln(IXMLNode& pNode)
         if ( const auto distance = na.p.calcDistanceBetween2Points ( this->shared_navaid_info.navAid.p )
             ; distance <= 2.0) // if navaid within 2nm
         {
-          na = this->shared_navaid_info.navAid;
+          na.clone( this->shared_navaid_info.navAid ); // v25.04.2 changed code to clone
           na.synchToPoint();
         }
 
@@ -5791,8 +5757,7 @@ RandomEngine::prepare_mission_based_on_external_fpln(IXMLNode& pNode)
       if (!xGPS.isEmpty())
         xGPS.addChild(na.node.deepCopy());
 
-
-      prev_na = na;
+      // prev_na.clone ( na ); // v25.04.2 deprecated, not in use
       counter++;
 
     } // end loop over waypoints and gathering NavAid info
@@ -6089,9 +6054,9 @@ RandomEngine::prepare_mission_based_on_ils_search (IXMLNode &pNode)
     {
       xGPS.addChild (start_na.node.deepCopy ());
       xGPS.addChild (target_na.node.deepCopy ());
-#ifndef RELEASE
+      #ifndef RELEASE
       Utils::xml_print_node (xGPS, true);
-#endif // !RELEASE
+      #endif // !RELEASE
     }
 
     //////////////////////
@@ -6353,10 +6318,8 @@ RandomEngine::prepare_mission_based_on_user_fpln_or_simbrief (IXMLNode &pNode)
   // convert to native plane type from "int"
   auto conv_plane_type_i = static_cast<missionx::_mx_plane_type>(plane_type_i);
   this->setPlaneType(conv_plane_type_i); // set plane type in class level for other function too
-
-  // if (!missionx::data_manager::tableExternalFPLN_simbrief_vec.empty ())
+  
   {
-    // if ( !fpln.fromICAO_s.empty ())
     {
       this->shared_navaid_info.navAid.init ();
       this->shared_navaid_info.navAid.setID (fpln.fromICAO_s);
@@ -6368,7 +6331,6 @@ RandomEngine::prepare_mission_based_on_user_fpln_or_simbrief (IXMLNode &pNode)
       }
       this->shared_navaid_info.navAid.synchToPoint ();
       // if we reached here then we should have startICAO NavAid information and the targetICAO
-      // NavAidInfo start_na = this->shared_navaid_info.navAid;
       NavAidInfo start_na ( this->shared_navaid_info.navAid ); // v25.04.2
 
       // force plane position as starting location, based on user preference
@@ -6402,9 +6364,7 @@ RandomEngine::prepare_mission_based_on_user_fpln_or_simbrief (IXMLNode &pNode)
         return false;
       }
       this->shared_navaid_info.navAid.synchToPoint ();
-      NavAidInfo target_na (this->shared_navaid_info.navAid); // v25.04.2
-      // target_na.clone (this->shared_navaid_info.navAid);
-      // target_na.synchToPoint ();
+      NavAidInfo target_na (this->shared_navaid_info.navAid); // v25.04.2, it also calls "syncToPoint()"
 
       // get ramp location
       if (!filterAndPickRampBasedOnPlaneType (target_na, err, missionx::mxFilterRampType::end_ramp)) // v3.303.12_r2
@@ -6600,7 +6560,6 @@ RandomEngine::prepare_mission_based_on_oilrig ( const IXMLNode & inRootTemplate,
 {
   // 1. Fetch random oilrig from database with the starting location
 
-
   const std::string STMT_KEY_Q0 = "find_oilrig";
 
 
@@ -6664,7 +6623,7 @@ order by RANDOM() limit 1
     else
     {
       Log::logMsgThread("[" + std::string(__func__) + "] Oil Rig information was gathered.");
-#ifndef RELEASE
+      #ifndef RELEASE
       for (auto& [indx, row] : resultTable_gather_random_airports)
       {
         std::string debugOutput_s = "\tseq: " + mxUtils::formatNumber<int>(indx) + ": ";
@@ -6673,7 +6632,7 @@ order by RANDOM() limit 1
 
         Log::logMsgThread(debugOutput_s);
       }
-#endif // !RELEASE
+      #endif // !RELEASE
 
       row_oilrig_and_start_location.clear();
       if (mxUtils::isElementExists(RandomEngine::resultTable_gather_random_airports, 0))
@@ -6694,9 +6653,9 @@ order by RANDOM() limit 1
 
   ////////////////// Step 2 ///////////////
   // Fetch Navaid information from X-Plane - Double check what we fetched from the database
-  NavAidInfo start_na, target_na;
-  start_na.init();
-  target_na.init();
+  //NavAidInfo start_na, target_na;
+  //start_na.init();
+  //target_na.init();
 
 
   // Get data from X-Plane own Navdata database
@@ -6710,7 +6669,7 @@ order by RANDOM() limit 1
     return false;
   }
   this->shared_navaid_info.navAid.synchToPoint();
-  start_na = this->shared_navaid_info.navAid;
+  auto start_na = NavAidInfo( this->shared_navaid_info.navAid ); // v25.04.2 using the new constructor to initialize the NavAid
 
   this->shared_navaid_info.navAid.init();
   this->shared_navaid_info.navAid.setID(row_oilrig_and_start_location[q0_columns[2]]); // Oil Rig ICAO
@@ -6722,12 +6681,12 @@ order by RANDOM() limit 1
     return false;
   }
   this->shared_navaid_info.navAid.synchToPoint();
-  target_na = this->shared_navaid_info.navAid;
+  auto target_na = NavAidInfo( this->shared_navaid_info.navAid ); // v25.04.2 using the new constructor to initialize the NavAid
 
 
   ////////////////// Step 3 ///////////////
   // Reconstruct the template so it could create the mission using the generic code
-  start_na.synchToPoint();
+  //start_na.synchToPoint(); // v25.04.2 - done in the constructor
   if (start_na.getName().empty())
     start_na.setName(mxconst::get_ELEMENT_BRIEFER());
 
@@ -6817,13 +6776,6 @@ order by RANDOM() limit 1
 
 
 // -----------------------------------
-
-
-
-
-
-
-
 
 
 
@@ -6969,14 +6921,11 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
   // calculate how many boxed are we should create
   double box_length            = 1.0; // One nautical miles (1nm)
   double bounding_distance     = topLeft - topRight;
-  int    number_of_inner_boxes = (int)((box_length >= 1.0) ? (bounding_distance / box_length) : (bounding_distance * box_length)); // calculate the number of inner boxes
+  int    number_of_inner_boxes = static_cast<int> ((box_length >= 1.0) ? (bounding_distance / box_length) : (bounding_distance * box_length)); // calculate the number of inner boxes
 
   std::deque<missionx::strct_box> meshList; // will hold all mesh boxes that are inside the expected zone (min/max distance from center.
 
   // store all mesh boxes in 2D array
-  Point prev_topRight_point;             // stores the first area box so next line will pick its "bottomLeft" as the starting point for calculation
-  Point col0_prev_line_bottomLeft_point; // stores the last area box calculated so next box will pick its "bottomLeft" point for calculation
-
   // Example how we divide the area, each box has topLeft,topRight,bottomLeft and bottomRight.
   // each new line need to pick the topLeft of previous line.
   // each new box on the horizontal axes, needs to pick the previous topRight box.
@@ -6995,6 +6944,8 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
 
   if ( const bool b_osm_optimize = ( webosm_optimize == "y" ) ? true : false )
   {
+    Point col0_prev_line_bottomLeft_point;
+    Point prev_topRight_point;
     for (int i1 = 0; i1 < number_of_inner_boxes; ++i1)
     {
 
@@ -7047,15 +6998,13 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
   }
 
   ///// Pick randomly one of the boxes
-
-  int iTryCounter           = 0;
-  int meshSize              = static_cast<int> ( meshList.size () );
-  int divider_i             = static_cast<int> ( std::pow ( 10, mxUtils::formatNumber<int> ( meshSize ).length () ) );
-  int max_boxes_to_search_i = static_cast<int> ( ( meshSize * 0.1 ) * ( 1.0 - meshSize / ( divider_i ) ) );
-#ifndef RELEASE
-  Log::logMsgNone("\t === Will search no more than: " + mxUtils::formatNumber<int>((max_boxes_to_search_i == 0) ? 1 : max_boxes_to_search_i) + " [bbox] areas  ===",
-                  true); // v3.0.253.7 formated a little differently so max ways will be at least 1
-#endif                   // !RELEASE
+  int        iTryCounter           = 0;
+  const auto meshSize              = static_cast<float> (meshList.size ());
+  const auto divider_i             = static_cast<float> (std::pow (10, fmt::format("{}",meshList.size ()).length() ) );
+  int        max_boxes_to_search_i = static_cast<int> ((meshSize * 0.1f) * (1.0f - ( meshSize / divider_i)));
+  #ifndef RELEASE
+  Log::logMsgNone ("\t === Will search no more than: " + mxUtils::formatNumber<int> ((max_boxes_to_search_i == 0) ? 1 : max_boxes_to_search_i) + " [bbox] areas  ===", true); // v3.0.253.7 formated a little differently so max ways will be at least 1
+  #endif
 
 
   const std::string plugin_user_filter = Utils::getNodeText_type_6(
@@ -7130,7 +7079,6 @@ PICK_RANDOM_OSM_BBOX:
         }
       }
 
-
       return query_filter;
     };
     const std::string designer_filter_s = lmbda_get_designer_overpass_filter(inLocationType);
@@ -7159,8 +7107,9 @@ PICK_RANDOM_OSM_BBOX:
     };
 
     // v3.0.253.9
-    std::string overpass_filter_s, filter_err_s;
-    if (!lmbda_validate_osmweb_filter(((designer_filter_s.empty()) ? plugin_user_filter : designer_filter_s), overpass_filter_s, filter_err_s))
+    std::string overpass_filter_s;
+    if (std::string filter_err_s;
+        !lmbda_validate_osmweb_filter(((designer_filter_s.empty()) ? plugin_user_filter : designer_filter_s), overpass_filter_s, filter_err_s))
     {
       err = "[overpass] Filter is not valid: " + filter_err_s + "\n" + overpass_filter_s + "\n";
       Log::logMsgThread(err);
@@ -7214,17 +7163,13 @@ PICK_RANDOM_OSM_BBOX:
     else if (err.empty() && !result_s.empty())
     {
       IXMLDomParser iDom;
-      auto          xmlOSM             = iDom.parseString(result_s.c_str()).deepCopy();
+      auto          xmlOSM    = iDom.parseString (result_s.c_str ()).deepCopy ();
       int           count_nodes_pick_i = 0;
 
       if (xmlOSM.nChildNode() < 3) // osm always have note + meta, so minimum should be 3
       {
         #ifndef RELEASE
-        {
-          IXMLRenderer xmlWriter;
-          Log::logMsgThread("\n ===osm node ==>\n" + std::string(xmlWriter.getString(xmlOSM)) + "\n<=== end osm node ===\n");
-          xmlWriter.clear();
-        }
+        Log::logMsgThread("\n ===osm node ==>\n" + Utils::xml_get_node_content_as_text(xmlOSM) + "\n<=== end osm node ===\n");
         #endif // !RELEASE
 
         Log::logMsgThread("[overpass] Found no valid sub node elements, will try different way box."); // debug
@@ -7239,21 +7184,15 @@ PICK_RANDOM_OSM_BBOX:
       count_nodes_pick_i++;
 
       IXMLNode nodeOSM_XML = IXMLNode::emptyIXMLNode;
-      ;
-
       IXMLNode xCenterNode; // v3.0.253.9 holds the center node
 
 
-      // validate there are valid nodes in <osm>
-      const int nAllChildNodes = xmlOSM.nChildNode(); // v3.0.253.9 holds all <osm> subnodes. Can be <way> or <node> //xmlOSM.nChildNode(mxconst::get_ELEMENT_WAY_OSM().c_str());
-      if (count_nodes_pick_i > MAX_OSM_NODES_TO_SEARCH || nAllChildNodes < 1) // will exist after 10 of <sub nodes> tests or if there are no more valid sub nodes
+      // Validate: Check for valid nodes in <osm>
+      if (const int nAllChildNodes = xmlOSM.nChildNode ();
+          count_nodes_pick_i > MAX_OSM_NODES_TO_SEARCH || nAllChildNodes < 1) // will exist after 10 of <sub nodes> tests or if there are no more valid sub nodes
       {
         #ifndef RELEASE
-        {
-          IXMLRenderer xmlWriter;
-          Log::logMsgThread("\n ===osm node ==>\n" + std::string(xmlWriter.getString(xmlOSM)) + "\n<=== end osm node ===\n");
-          xmlWriter.clear();
-        }
+        Log::logMsgThread("\n ===osm node ==>\n" + Utils::xml_get_node_content_as_text(xmlOSM) + "\n<=== end osm node ===\n");
         #endif // !RELEASE
 
         Log::logMsgThread("[overpass] Found no valid sub node elements, will try different way box."); // debug
@@ -7401,7 +7340,7 @@ PICK_RANDOM_OSM_BBOX:
           if (lastFlightLegNavInfo.lat != 0 && lastFlightLegNavInfo.lon != 0)
           {
             const double distance_to_target = Utils::calcDistanceBetween2Points_nm(lastFlightLegNavInfo.lat, lastFlightLegNavInfo.lon, outNavAid.lat, outNavAid.lon);
-            double       nm_d               = (nm_s.empty()) ? (double)mxconst::INT_UNDEFINED : mxUtils::stringToNumber<double>(nm_s, 2);
+            double       nm_d               = (nm_s.empty()) ? static_cast<double> (mxconst::INT_UNDEFINED) : mxUtils::stringToNumber<double>(nm_s, 2);
 
             #ifndef RELEASE
             Log::logMsgThread(fmt::format("[overpass2] Test Distance. Target distance: {}, Allowed distances[nm/between] [nm: {}/ between: {} and {}]",distance_to_target, (nm_d > 0.0) ? mxUtils::formatNumber<double>(nm_d,2): "Not Defined", minDistance_d, maxDistance_d ) ); // debug
@@ -7480,11 +7419,6 @@ PICK_RANDOM_OSM_BBOX:
             {
               outNavAid.setID(value);
             }
-            // else if (key == "name_desc" && outNavAid.getName().empty())
-            // {
-            //   if (!value.empty())
-            //     outNavAid.setName(value);
-            // }
             else if (key == "loc_name")
             {
               if (outNavAid.getName().empty() && !value.empty())
@@ -7528,8 +7462,7 @@ PICK_RANDOM_OSM_BBOX:
             return false;
 
 
-          //// Fetch nodes around. Search intersections
-
+          //// Search intersections example:
           // Display all parents related to node N
           //(
           //  node(id:300209203);<;
@@ -7551,14 +7484,11 @@ PICK_RANDOM_OSM_BBOX:
           //)->.a;way.a[name];>
           //;out;
           //
-          //
-          //
           //(
           //  node(id:568296734);<;
           //  node(id:3557252874);<;
           //)->.a;way.a[name][highway][!building];
           // out;
-
 
 
           if (mxUtils::is_number(node_id_s) || (outNavAid.lat != 0.0f && outNavAid.lon != 0.0f))
@@ -7759,17 +7689,13 @@ RandomEngine::osm_get_navaid_from_osm_database(NavAidInfo&                      
             else
               flag_bounds_are_ok = false;
 
-
             lmbda_fix_order_of_min_max(); // just in case
-
 
           } // end if we have row from bounds
 
 
           // v3.0.241.10 b2 In this part of the code, we try to build a dynamic query based on the type of the expected location and the filtering values the designer provided.
           // If the designer did not provide filtering values, then we fall back to the original query.
-
-
           const auto lmbda_get_designer_query_filter = [&](const std::string& inLocType, const std::string &in_nm_s ) {
             std::list<std::string> list_designer_filter;
             std::string            query_filter;
@@ -7986,8 +7912,8 @@ RandomEngine::osm_get_navaid_from_osm_database(NavAidInfo&                      
           }
           else
           {
-            Log::logMsgThread("\n[osm getNavaid] osm file: '" + file + "' is not in the boundaries: {minLat/minLon: " + Utils::formatNumber<double>(min_lat, 8) + ", " + Utils::formatNumber<double>(min_lon, 8) +
-                              "} and {maxLat/maxLon: " + Utils::formatNumber<double>(max_lat, 8) + ", " + Utils::formatNumber<double>(max_lon, 8) + "}");
+            // Log::logMsgThread("\n[osm getNavaid] osm file: '" + file + "' is not in the boundaries: {minLat/minLon: " + Utils::formatNumber<double>(min_lat, 8) + ", " + Utils::formatNumber<double>(min_lon, 8) + "} and {maxLat/maxLon: " + Utils::formatNumber<double>(max_lat, 8) + ", " + Utils::formatNumber<double>(max_lon, 8) + "}");
+            Log::logMsgThread(fmt::format("\n[osm getNavaid] osm file: '{}' is not in the boundaries: [minLat/minLon: {}, {}] and [maxLat/maxLon: {}, {}]", file, Utils::formatNumber<double>(min_lat, 8), Utils::formatNumber<double>(min_lon, 8), Utils::formatNumber<double>(max_lat, 8), Utils::formatNumber<double>(max_lon, 8) ) );
           }
 
           osm_db.clear_and_reset(osm_db.mapStatements["get_tested_bounds"]);
@@ -8196,7 +8122,7 @@ RandomEngine::get_targetBasedOnTagName(NavAidInfo&             outNewNavInfo,
 
   this->shared_navaid_info.init();
   this->shared_navaid_info.parentNode_ptr = rNode;                                         // store pointer to XML node
-  this->waitForPluginCallbackJob(missionx::mx_flc_pre_command::convert_icao_to_xml_point); // will call missionx::flcPRE() and try to convert any <icao name="icao name" /> to <point targetLat="" targetLon="" />
+  missionx::RandomEngine::waitForPluginCallbackJob(missionx::mx_flc_pre_command::convert_icao_to_xml_point); // will call missionx::flcPRE() and try to convert any <icao name="icao name" /> to <point targetLat="" targetLon="" />
 
   // NEAR - do we need to find the nearest location ?
   if (inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_NEAR())
@@ -8224,7 +8150,7 @@ RandomEngine::get_targetBasedOnTagName(NavAidInfo&             outNewNavInfo,
 
         const double distance = Utils::calcDistanceBetween2Points_nm(lastFlightLegNavInfo.lat, lastFlightLegNavInfo.lon, ni.lat, ni.lon);
 
-        if (this->get_isNavAidInValidDistance(distance, location_value_d, location_minDistance_d, location_maxDistance_d)) // v3.0.255.4.1 add "nm" and "nm_between" rules
+        if (missionx::RandomEngine::get_isNavAidInValidDistance(distance, location_value_d, location_minDistance_d, location_maxDistance_d)) // v3.0.255.4.1 add "nm" and "nm_between" rules
         {
           #ifndef RELEASE
           Log::logMsgThread("[get target based tag] Target: " + ni.loc_desc + " is in a valid distance: " + mxUtils::formatNumber<double>(distance));
@@ -8239,8 +8165,9 @@ RandomEngine::get_targetBasedOnTagName(NavAidInfo&             outNewNavInfo,
         #ifndef RELEASE
         else
         {
-          Log::logMsgThread("[get target based tag] Target: " + ni.loc_desc + ", invalid distance: " + mxUtils::formatNumber<double>(distance) + ", Should be nm_between: " + mxUtils::formatNumber<double>(location_minDistance_d) + "-" +
-                            mxUtils::formatNumber<double>(location_maxDistance_d) + ((location_value_d) ? ", or nm: " + mxUtils::formatNumber<double>(location_value_d) : "")); // debug
+          // Log::logMsgThread("[get target based tag] Target: " + ni.loc_desc + ", invalid distance: " + mxUtils::formatNumber<double>(distance) + ", Should be nm_between: " + mxUtils::formatNumber<double>(location_minDistance_d) + "-" +
+          //                   mxUtils::formatNumber<double>(location_maxDistance_d) + ((location_value_d > 0.0) ? ", or nm: " + mxUtils::formatNumber<double>(location_value_d) : "")); // debug
+          Log::logMsgThread(fmt::format("[get target based tag] Target: {}, invalid distance: {}, Should be nm_between: {:.2f}-{:.2f} {}", ni.loc_desc, distance, location_minDistance_d, location_maxDistance_d, (location_value_d > 0.0)? fmt::format(", or nm: {:.2f}",location_value_d) : "") ); // debug
         }
         #endif // !RELEASE
       }
@@ -8400,9 +8327,7 @@ RandomEngine::get_targetBasedOnTagName(NavAidInfo&             outNewNavInfo,
     if (!xPoint.isEmpty())
     {
       #ifndef RELEASE
-      IXMLRenderer render;
-      Log::logMsgThread(">>>>>>>>> xPoint: " + std::string(render.getString(xPoint)));
-      render.clear();
+      Log::logMsgThread(">>>>>>>>> xPoint: " + Utils::xml_get_node_content_as_text(xPoint) );
       #endif
 
       // end handling all template and location_type
@@ -8437,7 +8362,6 @@ RandomEngine::get_targetForHelos_based_XY_OSM_OSMWEB(NavAidInfo&                
   // Pick random number between 0 and 355
   // Using Utils:: we will get the new location
   // v3.0.254.3 added support for WEBOSM
-
 
   const bool flag_override_random_target_min_dist = (this->flag_force_template_distances_b) ? false: missionx::system_actions::pluginSetupOptions.getBoolValue(mxconst::get_OPT_OVERRIDE_RANDOM_TARGET_MIN_DISTANCE() ); // this->flag_force_template_distances_b to let designer force their "narative" when it comes to distances.
   const std::string inLocationType = Utils::readAttrib(inProperties.node, mxconst::get_ATTRIB_LOCATION_TYPE(), "");
@@ -8524,8 +8448,8 @@ RandomEngine::get_targetForHelos_based_XY_OSM_OSMWEB(NavAidInfo&                
   ////// Information for Main Thread Job Request ///////////
   // v3.0.221.3 calculating slope in main callback and not RandomEngine Thread
   // TODO consider removing these lines since we might set them independently in the create flight leg main function
-  missionx::RandomEngine::threadState.pipeProperties.setNumberProperty(mxconst::get_ATTRIB_LAT(), outNewNavInfo.lat);
-  missionx::RandomEngine::threadState.pipeProperties.setNumberProperty(mxconst::get_ATTRIB_LONG(), outNewNavInfo.lon);
+  // missionx::RandomEngine::threadState.pipeProperties.setNumberProperty(mxconst::get_ATTRIB_LAT(), outNewNavInfo.lat);
+  // missionx::RandomEngine::threadState.pipeProperties.setNumberProperty(mxconst::get_ATTRIB_LONG(), outNewNavInfo.lon);
 
   #ifndef RELEASE
   Log::logDebugBO("[DEBUG get_target] location: " + inLocationType + ", After slope decision", true);
@@ -8539,13 +8463,13 @@ RandomEngine::get_targetForHelos_based_XY_OSM_OSMWEB(NavAidInfo&                
 
 
 bool
-RandomEngine::get_target_or_lastFlightLeg_based_on_XY_or_OSM(NavAidInfo&                         outNewNavInfo,
-                                                             mx_plane_types                      in_plane_type_enum,
-                                                             std::map<std::string, std::string>& inMapLocationSplitValues,
-                                                             missionx::mx_base_node&             inProperties, // v3.305.1
-                                                             const double                        location_value_d,
-                                                             const double                        location_minDistance_d,
-                                                             const double                        location_maxDistance_d)
+RandomEngine::get_target_or_lastFlightLeg_based_on_XY_or_OSM (NavAidInfo                         &outNewNavInfo,
+                                                              std::map<std::string, std::string> &inMapLocationSplitValues,
+                                                              missionx::mx_base_node             &inProperties,
+                                                              // v3.305.1
+                                                              const double location_value_d,
+                                                              const double location_minDistance_d,
+                                                              const double location_maxDistance_d)
 {
 
   const bool flag_override_random_target_min_dist = (this->flag_force_template_distances_b)? false: missionx::system_actions::pluginSetupOptions.getBoolValue(mxconst::get_OPT_OVERRIDE_RANDOM_TARGET_MIN_DISTANCE()); // added this->flag_force_template_distances_b to let designer force his "narative" when it comes to distances.
@@ -8573,7 +8497,7 @@ RandomEngine::get_target_or_lastFlightLeg_based_on_XY_or_OSM(NavAidInfo&        
   else
   {
     this->shared_navaid_info.inMinDistance_nm = static_cast<float> ( location_minDistance_d );
-    this->shared_navaid_info.inMaxDistance_nm = (location_maxDistance_d) ? static_cast<float>(location_maxDistance_d) : mxconst::MAX_RAD_4_OSM_MAX_DIST; // v24.12.2 default distance if not set
+    this->shared_navaid_info.inMaxDistance_nm = (location_maxDistance_d > 0.0) ? static_cast<float>(location_maxDistance_d) : mxconst::MAX_RAD_4_OSM_MAX_DIST; // v24.12.2 default distance if not set
   }
 
 
@@ -8581,7 +8505,7 @@ RandomEngine::get_target_or_lastFlightLeg_based_on_XY_or_OSM(NavAidInfo&        
   // OSM search first - this code will be used when there is a template or mission template with OSM information in it. It will probably won't be called from user creation screen
   if ((inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_OSM() || inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_WEBOSM()) && this->template_plane_type_enum == missionx::mx_plane_types::plane_type_helos)
   {
-    Point      E90, W270, S180, N0;
+    Point E90, W270, S180, N0;
 
     // get max radius and find the 4 points that create the rectangle area
     // this->shared_navaid_info.inMaxDistance_nm = max Radius
@@ -8638,26 +8562,26 @@ RandomEngine::get_target_or_lastFlightLeg_based_on_XY_or_OSM(NavAidInfo&        
   if (this->shared_navaid_info.inMinDistance_nm < this->shared_navaid_info.inStartFromDistance_nm)
     this->shared_navaid_info.inMinDistance_nm = this->shared_navaid_info.inStartFromDistance_nm;
 
-#ifdef IBM
+  #ifdef IBM
   outNewNavInfo = this->get_random_airport_from_db(this->shared_navaid_info.p, this->shared_navaid_info.inMinDistance_nm, this->shared_navaid_info.inMaxDistance_nm, this->shared_navaid_info.inExcludeAngle); // v3.0.255.3 test integration
 
-#else
+  #else
 
   NavAidInfo nav = this->get_random_airport_from_db(this->shared_navaid_info.p, this->shared_navaid_info.inMinDistance_nm, this->shared_navaid_info.inMaxDistance_nm, this->shared_navaid_info.inExcludeAngle); // v3.0.255.3 test integration
   outNewNavInfo  = nav;
-#endif
+  #endif
 
+  #if (ENABLE_GATHER_RANDOM_AIRPORTS_FROM_MAIN_THREAD_CALL == 1)
   if (outNewNavInfo.lat == 0.0f || outNewNavInfo.lon == 0.0f)
   {
-    #if (ENABLE_GATHER_RANDOM_AIRPORTS_FROM_MAIN_THREAD_CALL == 1)
+
     if (!this->waitForPluginCallbackJob(missionx::mx_flc_pre_command::gather_random_airport_mainThread, std::chrono::milliseconds(1000))) // pick random airport. Wait up to 10sec
     {
       this->setError("[random get_target_or_lastFlightLeg_based_on_XY_or_OSM first try] Failed to find an airport in expected time. Skipping flight leg: " + inFlightLegName + "Maybe share these findings with the developer... ");
       return false;
     }
-    #endif // ENABLE_GATHER_RANDOM_AIRPORTS_FROM_MAIN_THREAD_CALL
   }
-
+  #endif // ENABLE_GATHER_RANDOM_AIRPORTS_FROM_MAIN_THREAD_CALL
 
   // v3.0.241.8 handle: what if we failed to find a NavAid due to the user setup slider or the designer not enough given radius. We will try with the "designer" area but multiply by 4.
   if ((outNewNavInfo.lat == 0.0f || outNewNavInfo.lon == 0.0f) && this->mapNavAidsFromMainThread.empty() && location_value_d > 0.0)
