@@ -43,7 +43,7 @@ jobs:
           set -x
           sudo apt update
           sudo apt-get -y install libarchive-zip-perl freeglut3-dev g++ libopenal1 libssl-dev libcurl4-openssl-dev
-          sudo apt-get gcc-11 g++-11
+          sudo apt-get -y gcc-11 g++-11
           TAG=${GITHUB_REF##*/}
           if [ ! -z "$TAG" ]; then
             echo "VERSION=$TAG" > version.mak
