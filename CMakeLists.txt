@@ -383,9 +383,9 @@ add_library(${PROJECT_NAME} SHARED
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 #endif()
 
-if (UNIX)
-  target_compile_options(${PROJECT_NAME} PUBLIC "-std=c++20")
-endif()
+#if (UNIX)
+#  target_compile_options(${PROJECT_NAME} PUBLIC "-std=c++20")
+#endif()
 
 if (APPLE)
   # We will aim to MacOS version 11.0 and up
