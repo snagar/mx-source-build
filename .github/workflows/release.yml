@@ -19,6 +19,7 @@ jobs:
         build_type: [ Debug, Release ]
         # build_type: [ Debug ]
         c_compiler: [gcc]
+        gcc_version: [11]
         include:
           - os: ubuntu-22.04
             c_compiler: gcc
