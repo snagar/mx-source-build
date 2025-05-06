@@ -71,15 +71,15 @@ jobs:
           echo -e "\nGlobal Variable value for 'global-subversion-text' is: ${{ steps.strings.outputs.global-subversion-text }} "
   
   build-lin:
-    if: ( 1 == 2 )
+    # if: ( 1 == 2 )
     runs-on: ubuntu-22.04
     needs: [pre-build]
     strategy: # Set fail-fast too false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
       fail-fast: true
       matrix:
         os: [ubuntu-22.04]
-        #build_type: [ Debug, Release ]
-        build_type: [ Debug ]
+        build_type: [ Debug, Release ]
+        # build_type: [ Debug ]
         c_compiler: [gcc]
         #gcc_version: [11]
         include:
@@ -183,7 +183,7 @@ jobs:
             
             
   build-osx:
-    if: ( 1 == 2 )
+    # if: ( 1 == 2 )
     runs-on: macos-14
     needs: [pre-build]
     strategy:
@@ -280,8 +280,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest]
-        # build_type: [ Debug, Release ]
-        build_type: [Debug]
+        build_type: [ Debug, Release ]
+        # build_type: [Debug]
         c_compiler: [cl]
         cpp_compiler: [cl]
     steps:
@@ -396,7 +396,7 @@ jobs:
 
   build:
     runs-on: ubuntu-22.04
-    if: ( 1 == 2 )
+    # if: ( 1 == 2 )
     # needs: [ build-lin ]
     needs: [ pre-build, build-win, build-osx, build-lin ]
     # Steps to download artifact and combine to final build
@@ -450,28 +450,9 @@ jobs:
           
           TARGET_BRANCH=" ${{ needs.pre-build.outputs.global-tag-type }}"
           
-          #VERSION=${{ github.ref_name }}  # Could also used: ${GITHUB_REF##*/}
-          #echo "\nCurrent TAG Version: ${VERSION}\n"
-          #
-          #if [[ $VERSION == *"-test"* || $VERSION == t* ]] # if TAG contains -test or starts with "t"
-          #then
-          #  echo "This is a just a build test"
-          #  TARGET_BRANCH="build-test."
-          #elif [[ $VERSION == *"-beta"* || $VERSION == b* ]] # if TAG contains -beta or starts with "b"
-          #then
-          #  echo "This is a beta release"
-          #  TARGET_BRANCH="beta"
-          #elif [[ $VERSION == v* || $VERSION == *"-release"*  ]] # if TAG starts with "v" or contains -release
-          #then
-          #  echo "This is a 'release'."
-          #  TARGET_BRANCH="release"
-          #else
-          #  # if TAG starts with any other text, like: "0" means that we only do a dry run without pushing to github
-          #  echo "This is a 'dry-run' test."
-          #  TARGET_BRANCH="dry-run"
-          #fi
+
           
-          echo -e "\nThe target branch is: '$TARGET_BRANCH', based on the version name: $VERSION\n"
+          echo -e "\nThe target branch is: '$TARGET_BRANCH'\n"
           
           if [ -d "release" ]; then
             cd "release"
@@ -530,16 +511,15 @@ jobs:
         shell: bash
         run: |
           # Prepare the release compressed file
-          VERSION=${{ github.ref_name }}  # Could also used: ${GITHUB_REF##*/}
-          echo -e "\nVERSION=${VERSION}\n"
+          echo -e "\nVERSION=${{ github.ref_name }}\n"
           
           folder_to_compress="${{ github.workspace }}/release"
-          output_file="${{ github.workspace }}/${{ steps.strings.outputs.plugin-name }}-${VERSION}.7z"
+          output_file="${{ github.workspace }}/${{ steps.strings.outputs.plugin-name }}-${{ github.ref_name }}.7z"
           split_size="90m"
           
           echo "Compressing '$folder_to_compress' to '$output_file'..."
-          (cd ./release && 7z a -t7z "${{ github.workspace }}/${{ steps.strings.outputs.plugin-name }}-${VERSION}.7z" *)
-          # (cd ./release && 7z a -t7z -v"$split_size" "${{ github.workspace }}/${{ steps.strings.outputs.plugin-name }}-${VERSION}.7z" *)
+          (cd ./release && 7z a -t7z "${{ github.workspace }}/${{ steps.strings.outputs.plugin-name }}-${{ github.ref_name }}.7z" *)
+          # (cd ./release && 7z a -t7z -v"$split_size" "${{ github.workspace }}/${{ steps.strings.outputs.plugin-name }}-${{ github.ref_name }}.7z" *)
           
           echo -e "\n---------"
           ls -l
