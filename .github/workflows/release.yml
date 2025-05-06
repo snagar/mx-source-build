@@ -45,23 +45,23 @@ jobs:
             TARGET_BRANCH="release"
           fi
           
-          echo -e "github.ref_name = '${{ github.ref_name }}'\n"
+          echo -e "github.ref_name = ${{ github.ref_name }}"
           subversion_text=""
-          if [[ "${{ github.ref_name }}" =~ -beta(.*) ]]; then
+          if [[ ${{ github.ref_name }} =~ -beta(.*) ]]; then
             subversion_text="${BASH_REMATCH[1]}"
             echo "Found '-beta', extracted: '$subversion_text'"
-          elif [[ "${{ github.ref_name }}" =~ -test(.*) ]]; then
+          elif [[ ${{ github.ref_name }} =~ -test(.*) ]]; then
             subversion_text="${BASH_REMATCH[1]}"
             echo "Found '-test', extracted: '$subversion_text'"
           fi
   
   
           echo "global-tag-type=\"$TARGET_BRANCH\"" >> "$GITHUB_OUTPUT"
-          echo "global-subversion-text=\"subversion_text\"" >> "$GITHUB_OUTPUT"
+          echo "global-subversion-text=\"$subversion_text\"" >> "$GITHUB_OUTPUT"
           echo "global-special-build_text=\"#define SPECIAL_BUILD\" " >> "$GITHUB_OUTPUT"
           
           echo -e "VERSION_HPP: $VERSION_HPP"
-          echo -e "subversion_text: $subversion_text"
+          echo -e "subversion_text: '$subversion_text'"
       
       - name: Check Variable
         shell: bash
