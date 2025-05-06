@@ -317,8 +317,8 @@ jobs:
           echo "Version HPP file contains:"
           cat src/core/version.hpp
           
-      - name: Fail the script
-        run: exit 1
+      #- name: Fail the script
+      #  run: exit 1
           
       - name: Configure & Build Windows Binaries using CMake
         shell: cmd
