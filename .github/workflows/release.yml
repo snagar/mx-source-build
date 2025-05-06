@@ -44,7 +44,6 @@ jobs:
             TARGET_BRANCH="release"
           fi
           echo "global-tag-type=\"$TARGET_BRANCH\"" >> "$GITHUB_OUTPUT"
-          VERSION_HPP='$VERSION_HPP "$TARGET_BRANCH"'
           echo "global-build-type=\"$VERSION_HPP\"" >> "$GITHUB_OUTPUT"
           
           echo -e 'VERSION_HPP: $VERSION_HPP'
