@@ -9,9 +9,55 @@ on:
   workflow_dispatch:
   
 jobs:
+  pre-build:
+    #if: ( 1 == 2 )
+    runs-on: ubuntu-latest
+    outputs:
+      global-tag-type: ${{ steps.strings.outputs.global-tag-type }}
+      global-build-type: ${{ steps.strings.outputs.global-build-type }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set global reusable strings
+        # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
+        id: strings
+        shell: bash
+        run: |
+          TARGET_BRANCH="dry-run"
+          VERSION_HPP="#define SPECIAL_BUILD"
+          VERSION=${{ github.ref_name }}  # Could also used: ${GITHUB_REF##*/}
+          echo "\nCurrent TAG Version: ${VERSION}\n"
+          
+          if [[ $VERSION == *"-test"* || $VERSION == t* ]] # if TAG contains -test or starts with "t"
+          then
+            echo "This is a just a build test"
+            TARGET_BRANCH="build-test"
+          elif [[ $VERSION == *"-beta"* || $VERSION == b* ]] # if TAG contains -beta or starts with "b"
+          then
+            echo "This is a beta release"
+            TARGET_BRANCH="beta"
+          elif [[ $VERSION == v* || $VERSION == *"-release"*  ]] # if TAG starts with "v" or contains -release
+          then
+            echo "This is a 'release'."
+            TARGET_BRANCH="release"
+          fi
+          echo "global-tag-type=\"$TARGET_BRANCH\"" >> "$GITHUB_OUTPUT"
+          VERSION_HPP='$VERSION_HPP "$TARGET_BRANCH"'
+          echo "global-build-type=\"$VERSION_HPP\"" >> "$GITHUB_OUTPUT"
+          
+      
+      - name: Check Variable
+        shell: bash
+        run: |
+          echo -e "\nGlobal Variable value for 'global-tag-type' is: ${{ steps.strings.outputs.global-tag-type }} \n"
+          echo -e "\nGlobal Variable value for 'global-build-type' is: ${{ steps.strings.outputs.global-build-type }} \n"
+  
   build-lin:
     # if: ( 1 == 2 )
     runs-on: ubuntu-22.04
+    needs: [pre-build]
     strategy: # Set fail-fast too false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
       fail-fast: true
       matrix:
@@ -26,6 +72,7 @@ jobs:
             cpp_compiler: g++
     steps:
       - uses: actions/checkout@v4
+      
       - name: Set Linux reusable strings
         # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
         id: strings
@@ -36,6 +83,9 @@ jobs:
           echo "plugin-name=missionx" >> "$GITHUB_OUTPUT"
           
           echo "OS Build: ${{ matrix.os }}"
+          
+          echo "global-tag-type: ${{ needs.pre-build.outputs.global-tag-type }}
+          echo "global-build-type: ${{ needs.pre-build.outputs.global-build-type }}
           
       - name: Prepare Linux libraries
         shell: bash
@@ -109,6 +159,7 @@ jobs:
   build-osx:
     # if: ( 1 == 2 )
     runs-on: macos-14
+    needs: [pre-build]
     strategy:
       fail-fast: true
       matrix:
@@ -198,6 +249,7 @@ jobs:
   build-win:
     # if: ( 1 == 2 )
     runs-on: windows-latest
+    needs: [pre-build]
     strategy:
       fail-fast: true
       matrix:
@@ -306,8 +358,9 @@ jobs:
 
   build:
     runs-on: ubuntu-22.04
+    if: ( 1 == 2 )
     # needs: [ build-lin ]
-    needs: [ build-win, build-osx, build-lin ]
+    needs: [ pre-build, build-win, build-osx, build-lin ]
     # Steps to download artifact and combine to final build
     steps:
       - uses: actions/checkout@v4
@@ -322,6 +375,9 @@ jobs:
           echo "build-output-dir=${{ github.workspace }}/release/missionx" >> "$GITHUB_OUTPUT"
           echo "plugin-name=missionx" >> "$GITHUB_OUTPUT"
           echo "OS Build: ${{ matrix.os }}"
+          
+          echo "global-tag-type: ${{ needs.pre-build.outputs.global-tag-type }}
+          echo "global-build-type: ${{ needs.pre-build.outputs.global-build-type }}
       
       
       - name: Download Build Artifacts
@@ -354,27 +410,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           
-          TARGET_BRANCH="dry-run"
-          VERSION=${{ github.ref_name }}  # Could also used: ${GITHUB_REF##*/}
-          echo "\nCurrent TAG Version: ${VERSION}\n"
+          TARGET_BRANCH=" ${{ needs.pre-build.outputs.global-tag-type }}"
           
-          if [[ $VERSION == *"-test"* || $VERSION == t* ]] # if TAG contains -test or starts with "t"
-          then
-            echo "This is a just a build test"
-            TARGET_BRANCH="build-test."
-          elif [[ $VERSION == *"-beta"* || $VERSION == b* ]] # if TAG contains -beta or starts with "b"
-          then
-            echo "This is a beta release"
-            TARGET_BRANCH="beta"
-          elif [[ $VERSION == v* || $VERSION == *"-release"*  ]] # if TAG starts with "v" or contains -release
-          then
-            echo "This is a 'release'."
-            TARGET_BRANCH="release"
-          else
-            # if TAG starts with any other text, like: "0" means that we only do a dry run without pushing to github
-            echo "This is a 'dry-run' test."
-            TARGET_BRANCH="dry-run"
-          fi
+          #VERSION=${{ github.ref_name }}  # Could also used: ${GITHUB_REF##*/}
+          #echo "\nCurrent TAG Version: ${VERSION}\n"
+          #
+          #if [[ $VERSION == *"-test"* || $VERSION == t* ]] # if TAG contains -test or starts with "t"
+          #then
+          #  echo "This is a just a build test"
+          #  TARGET_BRANCH="build-test."
+          #elif [[ $VERSION == *"-beta"* || $VERSION == b* ]] # if TAG contains -beta or starts with "b"
+          #then
+          #  echo "This is a beta release"
+          #  TARGET_BRANCH="beta"
+          #elif [[ $VERSION == v* || $VERSION == *"-release"*  ]] # if TAG starts with "v" or contains -release
+          #then
+          #  echo "This is a 'release'."
+          #  TARGET_BRANCH="release"
+          #else
+          #  # if TAG starts with any other text, like: "0" means that we only do a dry run without pushing to github
+          #  echo "This is a 'dry-run' test."
+          #  TARGET_BRANCH="dry-run"
+          #fi
           
           echo -e "\nThe target branch is: '$TARGET_BRANCH', based on the version name: $VERSION\n"
           

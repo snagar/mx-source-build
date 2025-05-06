@@ -7,6 +7,4 @@ or
 
 https://forums.x-plane.org/files/file/41874-mission-x/
 
-You can find mission content on this forum page:
-
-https://forums.x-plane.org/files/category/110-mission-x/
+You can find mission content on the following forum page: https://forums.x-plane.org/files/category/110-mission-x/
