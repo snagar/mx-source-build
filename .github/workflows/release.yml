@@ -45,18 +45,15 @@ jobs:
             TARGET_BRANCH="release"
           fi
           
+          echo -e "github.ref_name = '${{ github.ref_name }}'\n"
           subversion_text=""
           if [[ "${{ github.ref_name }}" =~ -beta(.*) ]]; then
             subversion_text="${BASH_REMATCH[1]}"
-            echo "Found '-beta-', extracted: '$subversion_text'"
+            echo "Found '-beta', extracted: '$subversion_text'"
           elif [[ "${{ github.ref_name }}" =~ -test(.*) ]]; then
             subversion_text="${BASH_REMATCH[1]}"
             echo "Found '-test', extracted: '$subversion_text'"
-          else
-            echo "Neither '-beta' nor '-test' found in the tag."
-            subversion_text=""
           fi
-  
   
   
           echo "global-tag-type=\"$TARGET_BRANCH\"" >> "$GITHUB_OUTPUT"
@@ -70,7 +67,7 @@ jobs:
         run: |
           echo -e "\nGlobal Variable value for 'global-tag-type' is: ${{ steps.strings.outputs.global-tag-type }} \n"
           echo -e "\nGlobal Variable value for 'global-special-build_text' is: ${{ steps.strings.outputs.global-special-build_text }} \n"
-          echo -e "\nGlobal Variable value for 'global-subversion-text' is: ${{ steps.strings.outputs.global-subversion-text }} \n"
+          echo -e "\nGlobal Variable value for 'global-subversion-text' is: '${{ steps.strings.outputs.global-subversion-text }}' \n"
   
   build-lin:
     # if: ( 1 == 2 )
@@ -184,7 +181,7 @@ jobs:
             
             
   build-osx:
-    # if: ( 1 == 2 )
+    if: ( 1 == 2 )
     runs-on: macos-14
     needs: [pre-build]
     strategy:
