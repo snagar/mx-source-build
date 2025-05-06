@@ -107,6 +107,14 @@ jobs:
           echo -e "\nlscpu:"
           lscpu
           
+      - name: Inject version.hpp
+        shell: bash
+        run: |
+          echo -e '${{ needs.pre-build.outputs.global-build-type }} "${{ needs.pre-build.outputs.global-tag-type }}"' > src/core/version.hpp
+          echo -e "\nVersion HPP file contains:\n"
+          cat src/core/version.hpp
+          echo "\n<-- version.hpp --"\n
+          
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       - name: Debug - Configure & Build Linux using CMake
