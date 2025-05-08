@@ -450,7 +450,7 @@ jobs:
           
           echo "copy folders"
           cp -rdp ./download/*/*_x64 ${{ steps.strings.outputs.build-output-dir }}
-          
+                    
           echo -e "\n\nDisplay after folders before copy:\n\n"
           ls -ltR ${{ steps.strings.outputs.build-output-dir }}
           
@@ -463,9 +463,7 @@ jobs:
         run: |
           
           TARGET_BRANCH=" ${{ needs.pre-build.outputs.global-tag-type }}"
-          
-
-          
+                    
           echo -e "\nThe target branch is: '$TARGET_BRANCH'\n"
           
           if [ -d "release" ]; then
@@ -474,6 +472,12 @@ jobs:
             ## Create target branch
             echo -e "Create the new branch: $TARGET_BRANCH"
             git checkout -b ${TARGET_BRANCH}
+          
+            # Internal use, Adding version tag, so we know which binary version is it.
+            touch ${{ steps.strings.outputs.build-output-dir }}/missionx/${{ github.ref_name }}                    
+            echo "${{ github.ref_name }}" > ${{ steps.strings.outputs.build-output-dir }}/missionx/win_x64/build.log                    
+            echo "${{ github.ref_name }}" > ${{ steps.strings.outputs.build-output-dir }}/missionx/lin_x64/build.log                    
+            echo "${{ github.ref_name }}" > ${{ steps.strings.outputs.build-output-dir }}/missionx/mac_x64/build.log                    
             
             echo -e "Configuring git before pushing branch '${TARGET_BRANCH}' ."
             git config --global user.email "snagar.dev@protonmail.com"
