@@ -474,10 +474,10 @@ jobs:
             git checkout -b ${TARGET_BRANCH}
           
             # Internal use, Adding version tag, so we know which binary version is it.
-            touch ${{ steps.strings.outputs.build-output-dir }}/missionx/${{ github.ref_name }}                    
-            echo "${{ github.ref_name }}" > ${{ steps.strings.outputs.build-output-dir }}/missionx/win_x64/build.log                    
-            echo "${{ github.ref_name }}" > ${{ steps.strings.outputs.build-output-dir }}/missionx/lin_x64/build.log                    
-            echo "${{ github.ref_name }}" > ${{ steps.strings.outputs.build-output-dir }}/missionx/mac_x64/build.log                    
+            echo "${{ github.ref_name }}" > ${{ steps.strings.outputs.build-output-dir }}/build.log                    
+            echo "${{ github.ref_name }}" > ${{ steps.strings.outputs.build-output-dir }}/win_x64/build.log                    
+            echo "${{ github.ref_name }}" > ${{ steps.strings.outputs.build-output-dir }}/lin_x64/build.log                    
+            echo "${{ github.ref_name }}" > ${{ steps.strings.outputs.build-output-dir }}/mac_x64/build.log                    
             
             echo -e "Configuring git before pushing branch '${TARGET_BRANCH}' ."
             git config --global user.email "snagar.dev@protonmail.com"
