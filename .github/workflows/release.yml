@@ -475,9 +475,9 @@ jobs:
           
             # Internal use, Adding version tag, so we know which binary version is it.
             echo "${{ github.ref_name }}" > ${{ steps.strings.outputs.build-output-dir }}/build.log                    
-            echo "${{ github.ref_name }}" > ${{ steps.strings.outputs.build-output-dir }}/win_x64/build.log                    
-            echo "${{ github.ref_name }}" > ${{ steps.strings.outputs.build-output-dir }}/lin_x64/build.log                    
-            echo "${{ github.ref_name }}" > ${{ steps.strings.outputs.build-output-dir }}/mac_x64/build.log                    
+            [ -d ${{ steps.strings.outputs.build-output-dir }}/win_x64 ] && echo "${{ github.ref_name }}" > ${{ steps.strings.outputs.build-output-dir }}/win_x64/build.log                    
+            [ -d ${{ steps.strings.outputs.build-output-dir }}/lin_x64 ] && echo "${{ github.ref_name }}" > ${{ steps.strings.outputs.build-output-dir }}/lin_x64/build.log                    
+            [ -d ${{ steps.strings.outputs.build-output-dir }}/mac_x64 ] && echo "${{ github.ref_name }}" > ${{ steps.strings.outputs.build-output-dir }}/mac_x64/build.log                    
             
             echo -e "Configuring git before pushing branch '${TARGET_BRANCH}' ."
             git config --global user.email "snagar.dev@protonmail.com"
