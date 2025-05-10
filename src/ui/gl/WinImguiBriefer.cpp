@@ -10498,7 +10498,7 @@ WinImguiBriefer::draw_about_layer()
   {
     this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_SMALL());
     {
-      ImGui::TextColored ( missionx::color::color_vec4_aqua, "%s%s", "Mission-X v", missionx::FULL_VERSION.c_str () );
+      ImGui::TextColored ( missionx::color::color_vec4_aqua, "%s%s", "Mission-X v", missionx::FULL_VERSION_ABOUT.c_str () );
       ImGui::TextColored ( missionx::color::color_vec4_greenyellow, "%s", "Mission-X was written by Saar Nagar <snagar.dev@protonmail.com>" );
       ImGui::TextColored ( missionx::color::color_vec4_greenyellow, "%s", "Licensed under AFPL license, see license folder for more detail." );
       ImGui::TextColored ( missionx::color::color_vec4_yellow, "%s", "Library Used");

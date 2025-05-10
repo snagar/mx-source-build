@@ -112,9 +112,8 @@ XPluginStart(char* outName, char* outSig, char* outDesc)
 #define VERSION_DATE ""
 #endif
 
-  const std::string plugin_name = "Mission-X v" + std::string(PLUGIN_VER_MAJOR) + "." + std::string(PLUGIN_VER_MINOR) + "." + std::string(PLUGIN_REVISION) + " " + VERSION_DATE;
-  /*const std::string plugin_sig = "missionx_snagar.dev";*/
-  const std::string plugin_desc = "XML based mission with embedded scripting support (snagar.net)";
+  const std::string plugin_name = "Mission-X v" + std::string(PLUGIN_VER_MAJOR) + "." + std::string(PLUGIN_VER_MINOR) + "." + std::string(PLUGIN_VER_SUB) + " " + VERSION_DATE;
+  const std::string plugin_desc = "XML based mission with embedded scripting support";
 
 #ifdef IBM
   strncpy_s(outName, 255, plugin_name.c_str(), plugin_name.length());
@@ -129,13 +128,13 @@ XPluginStart(char* outName, char* outSig, char* outDesc)
 
 
   // v3.0.255.4.4 add crash handling based on https://developer.x-plane.com/code-sample/crash-handling/
-#ifndef LIN
+  #ifndef LIN
     register_crash_handler();
-#endif
+  #endif
 
-#if SUPPORT_BACKGROUND_THREADS
+  #if SUPPORT_BACKGROUND_THREADS
   s_background_thread = std::thread(&background_thread_func);
-#endif
+  #endif
 
   // register callbacks
   XPLMRegisterFlightLoopCallback(pluginCallback, -1, nullptr);
@@ -266,46 +265,46 @@ XPluginStart(char* outName, char* outSig, char* outDesc)
 
 
   ///// Create Menu //////
-  int missionSubMenuItem   = XPLMAppendMenuItem(XPLMFindPluginsMenu(), outName, (void*)Mission::mx_menuIdRefs::MISSIONX_MENU_ENTRY, 1);
+  int missionSubMenuItem   = XPLMAppendMenuItem(XPLMFindPluginsMenu(), outName, reinterpret_cast<void *> (Mission::mx_menuIdRefs::MISSIONX_MENU_ENTRY), 1);
   mission.missionMenuEntry = XPLMCreateMenu(outName, XPLMFindPluginsMenu(), missionSubMenuItem, &missionx::MissionMenuHandler, nullptr);
 
   //// Generic menu
-  mission.mx_menu.newBrieferMenu = XPLMAppendMenuItem(mission.missionMenuEntry, "Toggle Mission-X Window", (void*)Mission::mx_menuIdRefs::MENU_TOGGLE_MISSIONX_BRIEFER, 1); // 
-  mission.mx_menu.newBrieferMenu = XPLMAppendMenuItem(mission.missionMenuEntry, "Reset Mission-X Window Position", (void*)Mission::mx_menuIdRefs::MENU_RESET_BRIEFER_POSITION, 1); // v3.305.1
+  mission.mx_menu.newBrieferMenu = XPLMAppendMenuItem(mission.missionMenuEntry, "Toggle Mission-X Window", reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_TOGGLE_MISSIONX_BRIEFER), 1); //
+  mission.mx_menu.newBrieferMenu = XPLMAppendMenuItem(mission.missionMenuEntry, "Reset Mission-X Window Position", reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_RESET_BRIEFER_POSITION), 1); // v3.305.1
   XPLMAppendMenuSeparator(mission.missionMenuEntry);                                                                                                                      // v3.0.0
   mission.mx_menu.mxpadMenu = XPLMAppendMenuItemWithCommand(mission.missionMenuEntry, "Toggle MX-Pad", XPLMFindCommand("missionx/general/missionx-toggle_mxpad_window")); // v3.0.215.1 replaced sub menu with command menu
   XPLMAppendMenuSeparator(mission.missionMenuEntry);
 
 
   ///// Option Menu and its sub menus v3.0.215.15rc3.4 /////
-  mission.mx_menu.toolsMenu     = XPLMAppendMenuItem(mission.missionMenuEntry, "Tools Menu", (void*)Mission::mx_menuIdRefs::MENU_DUMMY_TOOLS_PLACE_HOLDER, 1);         // v3.0.215.15rc3.4
-  mission.missionMenuToolsEntry = XPLMCreateMenu("Tools", mission.missionMenuEntry, mission.mx_menu.toolsMenu, &missionx::toolsMenuHandler, (void*)Mission::mx_menuIdRefs::MENU_TOOLS); // v3.0.215.15rc3.4
+  mission.mx_menu.toolsMenu     = XPLMAppendMenuItem(mission.missionMenuEntry, "Tools Menu", reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_DUMMY_TOOLS_PLACE_HOLDER), 1);         // v3.0.215.15rc3.4
+  mission.missionMenuToolsEntry = XPLMCreateMenu("Tools", mission.missionMenuEntry, mission.mx_menu.toolsMenu, &missionx::toolsMenuHandler, reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_TOOLS)); // v3.0.215.15rc3.4
   // tools sub menus
-  mission.mx_menu.toolsCreateExternalFPLN_fromGPS        = XPLMAppendMenuItem(mission.missionMenuToolsEntry, "Create External FPLN based on GPS (fpln_folders.ini)", (void*)Mission::mx_menuIdRefs::MENU_TOOLS_CREATE_EXTERNAL_FPLN_BASED_ON_GPS, 1);          // v3.0.255.4.4
-  mission.mx_menu.toolsModifyPointFileBaseOnTerrainProbe = XPLMAppendMenuItem(mission.missionMenuToolsEntry, "Modify points.xml file (check designer guide)", (void*)Mission::mx_menuIdRefs::MENU_TOOLS_UPDATE_POINT_IN_FILE_WITH_TEMPLATE_BASED_ON_PROBE, 1); // v3.0.221.15rc3.4
+  mission.mx_menu.toolsCreateExternalFPLN_fromGPS        = XPLMAppendMenuItem(mission.missionMenuToolsEntry, "Create External FPLN based on GPS (fpln_folders.ini)", reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_TOOLS_CREATE_EXTERNAL_FPLN_BASED_ON_GPS), 1);          // v3.0.255.4.4
+  mission.mx_menu.toolsModifyPointFileBaseOnTerrainProbe = XPLMAppendMenuItem(mission.missionMenuToolsEntry, "Modify points.xml file (check designer guide)", reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_TOOLS_UPDATE_POINT_IN_FILE_WITH_TEMPLATE_BASED_ON_PROBE), 1); // v3.0.221.15rc3.4
 
   // Reload pluigins / internal
   XPLMAppendMenuSeparator(mission.missionMenuToolsEntry);
   mission.mx_menu.reloadPluginsMenu = XPLMAppendMenuItemWithCommand(mission.missionMenuToolsEntry, "Reload Plugins", XPLMFindCommand("missionx/internal/missionx-reload_plugins")); // v3.305.2
 
   XPLMAppendMenuSeparator(mission.missionMenuToolsEntry);
-  mission.mx_menu.toolsWritePlanePosToLog  = XPLMAppendMenuItem(mission.missionMenuToolsEntry, "Write Plane position to Log.txt file", (void*)Mission::mx_menuIdRefs::MENU_TOOLS_WRITE_PLANE_POSITION_TO_LOG, 1);   // v3.303.14
-  mission.mx_menu.toolsWriteCameraPosToLog = XPLMAppendMenuItem(mission.missionMenuToolsEntry, "Write Camera position to Log.txt file", (void*)Mission::mx_menuIdRefs::MENU_TOOLS_WRITE_CAMERA_POSITION_TO_LOG, 1); // v3.303.14
+  mission.mx_menu.toolsWritePlanePosToLog  = XPLMAppendMenuItem(mission.missionMenuToolsEntry, "Write Plane position to Log.txt file", reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_TOOLS_WRITE_PLANE_POSITION_TO_LOG), 1);   // v3.303.14
+  mission.mx_menu.toolsWriteCameraPosToLog = XPLMAppendMenuItem(mission.missionMenuToolsEntry, "Write Camera position to Log.txt file", reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_TOOLS_WRITE_CAMERA_POSITION_TO_LOG), 1); // v3.303.14
   XPLMAppendMenuSeparator(mission.missionMenuToolsEntry);
-  mission.mx_menu.toolsWriteWeatherToLog = XPLMAppendMenuItem(mission.missionMenuToolsEntry, "Write weather state to Log.txt file", (void*)Mission::mx_menuIdRefs::MENU_TOOLS_WRITE_WEATHER_STATE_TO_LOG, 1); // v3.303.13
+  mission.mx_menu.toolsWriteWeatherToLog = XPLMAppendMenuItem(mission.missionMenuToolsEntry, "Write weather state to Log.txt file", reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_TOOLS_WRITE_WEATHER_STATE_TO_LOG), 1); // v3.303.13
 
   XPLMAppendMenuSeparator(mission.missionMenuOptionsEntry);
 
 
   ///// Option Menu and its sub menus v3.0.215.1 /////
-  mission.mx_menu.optionsMenu     = XPLMAppendMenuItem(mission.missionMenuEntry, "Options Menu", (void*)Mission::mx_menuIdRefs::MENU_DUMMY_OPTIONS_PLACE_HOLDER, 1);             // v3.0.215.1
-  mission.missionMenuOptionsEntry = XPLMCreateMenu("Options", mission.missionMenuEntry, mission.mx_menu.optionsMenu, &missionx::OptionsMenuHandler, (void*)Mission::mx_menuIdRefs::MENU_OPTIONS); // v3.0.215.1
+  mission.mx_menu.optionsMenu     = XPLMAppendMenuItem(mission.missionMenuEntry, "Options Menu", reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_DUMMY_OPTIONS_PLACE_HOLDER), 1);             // v3.0.215.1
+  mission.missionMenuOptionsEntry = XPLMCreateMenu("Options", mission.missionMenuEntry, mission.mx_menu.optionsMenu, &missionx::OptionsMenuHandler, reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_OPTIONS)); // v3.0.215.1
   // options sub menus
   mission.mx_menu.optionAutoHideMxPad = XPLMAppendMenuItemWithCommand(mission.missionMenuOptionsEntry, "Auto Hide/Show MX-Pad", XPLMFindCommand("missionx/general/missionx_auto_hide_show_mxpad")); // v3.0.215.1
 
 
   XPLMAppendMenuSeparator(mission.missionMenuOptionsEntry);
-  mission.mx_menu.optionDisablePluginColdAndDark = XPLMAppendMenuItem(mission.missionMenuOptionsEntry, "Disable Plugin Cold and Dark at mission start", (void*)Mission::mx_menuIdRefs::MENU_OPTION_DISABLE_PLUGIN_COLD_AND_DARK, 1); // v3.0.221.6 Allow auto pause when in VR mode
+  mission.mx_menu.optionDisablePluginColdAndDark = XPLMAppendMenuItem(mission.missionMenuOptionsEntry, "Disable Plugin Cold and Dark at mission start", reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_OPTION_DISABLE_PLUGIN_COLD_AND_DARK), 1); // v3.0.221.6 Allow auto pause when in VR mode
 
   //if (missionx::data_manager::xplane_ver_i < missionx::XP12_VERSION_NO)
   {
@@ -316,9 +315,9 @@ XPluginStart(char* outName, char* outSig, char* outDesc)
   XPLMAppendMenuSeparator(mission.missionMenuEntry); // v3.0.219.12
 
 #ifdef IBM
-  mission.mx_menu.optimizeAptDatMenu = XPLMAppendMenuItem(mission.missionMenuEntry, "APT.DAT optimization (run in background: 1-2min)", (void*)Mission::mx_menuIdRefs::MENU_APT_DAT_OPTIMIZATION, 1); // v3.0.219.2 Apt.dat optimization
+  mission.mx_menu.optimizeAptDatMenu = XPLMAppendMenuItem(mission.missionMenuEntry, "APT.DAT optimization (run in the background: 1-2min)", (void*)Mission::mx_menuIdRefs::MENU_APT_DAT_OPTIMIZATION, 1); // v3.0.219.2 Apt.dat optimization
 #else
-  mission.mx_menu.optimizeAptDatMenu = XPLMAppendMenuItem(mission.missionMenuEntry, "APT.DAT optimization (run in background: 15-60 sec)", (void*)Mission::mx_menuIdRefs::MENU_APT_DAT_OPTIMIZATION, 1); // v3.0.231.1 Linux and MAC  are much faster
+  mission.mx_menu.optimizeAptDatMenu = XPLMAppendMenuItem(mission.missionMenuEntry, "APT.DAT optimization (run in the background: 15-60 sec)", reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_APT_DAT_OPTIMIZATION), 1); // v3.0.231.1 Linux and MAC  are much faster
 #endif
   XPLMAppendMenuSeparator(mission.missionMenuEntry); // v3.0.217.1
 
@@ -426,9 +425,9 @@ XPluginStop(void)
     {
       if (XPLMUnshareData(drefName.c_str(), drefObject.getDataRefType(), MyDataChangedCallback, nullptr))
       {
-#ifndef RELEASE
+        #ifndef RELEASE
         Log::logMsgNone("DataRef: " + drefName + " has been unshared.");
-#endif
+        #endif
       }
     }
 
@@ -481,17 +480,17 @@ XPluginStop(void)
     curl_global_cleanup();
 
     // v3.0.255.4.4 LR crash handling
-#if SUPPORT_BACKGROUND_THREADS
-    // Tell the background thread to shut down and then wait for it
-    s_background_thread_shutdown.store(true, std::memory_order_release);
-    s_background_thread.join();
-#endif
+    #if SUPPORT_BACKGROUND_THREADS
+        // Tell the background thread to shut down and then wait for it
+        s_background_thread_shutdown.store(true, std::memory_order_release);
+        s_background_thread.join();
+    #endif
 
     XPLMDebugString("\nmissionx: Plug-in stopped");
 
-#ifndef LIN
+    #ifndef LIN
     unregister_crash_handler();
-#endif
+    #endif
   }
 
   catch (const std::exception& e)
@@ -663,25 +662,25 @@ MissionMenuHandler(void* inMenuRef, void* inItemRef)
     break;
     case Mission::mx_menuIdRefs::MENU_TOGGLE_MAP:
     {
-#ifndef RELEASE
+      #ifndef RELEASE
       missionx::Log::logMsg("[Missionx] Menu toggle mission map.");
-#endif
+      #endif
       toggleMapCommandHandler(nullptr, xplm_CommandBegin, nullptr);
     }
     break;
     case Mission::mx_menuIdRefs::MENU_APT_DAT_OPTIMIZATION:
     {
-#ifndef RELEASE
-      missionx::Log::logMsg("[Missionx] Menu Optimize \"apt.dat\" files (should take 3-8min, depends on machine, runs in the background).");
-#endif
+      #ifndef RELEASE
+      missionx::Log::logMsg("[Missionx] Menu Optimize \"apt.dat\" files (should take 1-2min, depends on machine, runs in the background).");
+      #endif
       missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::exec_apt_dat_optimization); // v3.0.253.6
     }
     break;
     case Mission::mx_menuIdRefs::MENU_TOGGLE_CHOICE_WINDOW:
     {
-#ifndef RELEASE
+      #ifndef RELEASE
       missionx::Log::logMsg("[Missionx] Toggle Choice window.");
-#endif
+      #endif
       toggleCoiceWindow_CommandHandler(nullptr, xplm_CommandBegin, nullptr);
     }
     break;

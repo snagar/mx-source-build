@@ -46,8 +46,6 @@ typedef std::shared_ptr<WinImguiOptions> ImgOptionsSPtrTy;
 typedef std::shared_ptr<WinImguiMxpad>   ImgMxpadSPtrTy;
 typedef std::shared_ptr<WinImguiBriefer> ImguiBrieferSPtrTy;
 
-const static auto PLUGIN_VERSION_S = fmt::format("{} {} {}", missionx::PLUGIN_VER_MAJOR, missionx::PLUGIN_VER_MINOR, missionx::PLUGIN_REVISION_S);
-
 class Mission
 {
 private:
@@ -59,7 +57,7 @@ private:
   
   // v3.303.14 used in Draw loop back to determined landing/takeoff state and then use the bursting. But we call gather_stats.xxx to store the stats
   // We should not use the "gather_stats_drawLoopBack" to store into the stats DB.
-  //missionx::GatherStats gather_stats_drawLoopBack; // USLESS
+  //missionx::GatherStats gather_stats_drawLoopBack; // USELESS
   //std::vector<missionx::mx_stats_data> get_landing_stats_as_vec(); // v3.303.8.3
 
   void flc_threads();

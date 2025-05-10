@@ -75,15 +75,15 @@ WinImguiOptions::WinImguiOptions(int left, int top, int right, int bot, XPLMWind
     style.Colors[ImGuiCol_WindowBg] = ImColor(0, 0, 0, 150);
     // There's no window decoration, so to move the window we need to
     // activate a "drag area", here a small strip (roughly double text height)
-    // at the top of the window, ie. the window can be moved by
+    // at the top of the window, i.e. the window can be moved by
     // dragging a spot near the window's top
-    SetWindowDragArea(0, 5, INT_MAX, 5 + 2 * int(data_manager::FONT_SIZE));
+    SetWindowDragArea(0, 5, INT_MAX, 5 + 2 * static_cast<int> (data_manager::FONT_SIZE));
   }
 
   // Define our own window title
   SetWindowTitle(std::string("Mission-X v") + missionx::FULL_VERSION);
   SetWindowResizingLimits(150, 80, WinImguiOptions::MAX_WIDTH, 130); // minW. minH. maxW, maxH
-  SetVisible(false);
+  ImgWindow::SetVisible (false);
 
   this->mWindow = this->GetWindowId();
 }

@@ -20,8 +20,7 @@
 #include "mxconst.h" // v25.04.2
 
 #include <fmt/format.h>
-
-#include "version.hpp"
+#include "sha.hpp" // v25.04.2 created by cmake, stores the git commit sha string
 
 namespace missionx
 {
@@ -33,11 +32,14 @@ namespace missionx
 
 constexpr static const int MX_FEATURES_VERSION = 20241212; //20230917; // 330491; //302564;  // added SETUP_LOCK_OVERPASS_URL_TO_USER_PICK
 
+#define SPECIAL_BUILD ""
 
-inline constexpr static auto PLUGIN_VER_MAJOR  = "25"; // year
-inline constexpr static auto PLUGIN_VER_MINOR  = "04"; // month
-inline constexpr static auto PLUGIN_REVISION_S =  "2" SPECIAL_BUILD;
-inline constexpr static auto PLUGIN_REVISION = PLUGIN_REVISION_S;
+inline constexpr static auto PLUGIN_VER_MAJOR                  = "25"; // year
+inline constexpr static auto PLUGIN_VER_MINOR                  = "04"; // month
+inline constexpr static auto PLUGIN_VER_SUB                    = "2"; // sub-version
+inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
+inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
+
 
 #ifdef RELEASE
 constexpr static auto PLUGIN_DEV_BUILD = "";
@@ -51,13 +53,14 @@ constexpr static int XP12_COMPATIBILITY = 12;
 
 // const static auto PLUGIN_VERSION_S = fmt::format("{} {} {}", PLUGIN_VER_MAJOR, PLUGIN_VER_MINOR, PLUGIN_REVISION_S).c_str ();
 
-#ifndef RELEASE
-  const static auto FULL_VERSION = std::string(PLUGIN_VER_MAJOR).append(".").append(PLUGIN_VER_MINOR).append(".").append(PLUGIN_REVISION_S).append( PLUGIN_DEV_BUILD).append(", ").append( __DATE__ ).append(" ").append(__TIME__);
+  #ifndef RELEASE
+  const static auto FULL_VERSION = std::string(PLUGIN_VER_MAJOR).append(".").append(PLUGIN_VER_MINOR).append(".").append(PLUGIN_VER_SUB).append( PLUGIN_DEV_BUILD).append(" ").append(PLUGIN_VER_BUILD_DETAILS).append(" " __DATE__ ).append(" ").append(__TIME__);
   // static auto FULL_VERSION = std::string("{}.{}.{} {} {} {}", PLUGIN_VER_MAJOR, PLUGIN_VER_MINOR, PLUGIN_REVISION_S, PLUGIN_DEV_BUILD, __DATE__, __TIME__).c_str ();
-#else
-  const static auto FULL_VERSION = std::string(PLUGIN_VER_MAJOR).append(".").append(PLUGIN_VER_MINOR).append(".").append(PLUGIN_REVISION_S);
+  #else
+  const static auto FULL_VERSION = std::string(PLUGIN_VER_MAJOR).append(".").append(PLUGIN_VER_MINOR).append(".").append(PLUGIN_VER_SUB);
   // const static auto FULL_VERSION = fmt::format ("{}.{}.{} {}", PLUGIN_VER_MAJOR, PLUGIN_VER_MINOR, PLUGIN_DEV_BUILD, PLUGIN_REVISION_S).c_str ();
-#endif
+  #endif
+  const static auto FULL_VERSION_ABOUT = std::string(PLUGIN_VER_MAJOR).append(".").append(PLUGIN_VER_MINOR).append(".").append(PLUGIN_VER_SUB).append( PLUGIN_DEV_BUILD).append(" ").append(PLUGIN_VER_BUILD_DETAILS);
 
 
 inline constexpr static auto APP_NAME = "Mission-X Plugin";

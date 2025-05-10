@@ -468,7 +468,7 @@ missionx::Mission::Mission()
   const std::time_t end_time  = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   const std::string dAte      = mxUtils::rtrim(std::ctime(&end_time));
   const std::string header_s  = ">>>>>>>>>>>> Loading Mission-X (" + dAte + ") <<<<<<<<<<<<\n";
-  const std::string version_s = "Mission-X Version: v" + std::string(PLUGIN_VER_MAJOR) + "." + std::string(PLUGIN_VER_MINOR) + "." + std::string(PLUGIN_REVISION) + "!!!!!!\n";
+  const std::string version_s = "Mission-X Version: v" + std::string(missionx::PLUGIN_VER_MAJOR) + "." + std::string(missionx::PLUGIN_VER_MINOR) + "." + std::string(missionx::PLUGIN_VER_SUB) + " " + std::string(missionx::PLUGIN_VER_BUILD_DETAILS) + "  !!!!!!\n";
   data_manager::missionState = missionx::mx_mission_state_enum::mission_undefined;
 
   // v25.03.1 read preference file.
@@ -530,9 +530,10 @@ missionx::Mission::syncOptionsWithMenu() const
 void
 missionx::Mission::init()
 {
-  bool                                  flag_called_rebuild_apt_dat{ false };
-  std::string                           errMsg;
-  missionx::data_manager                dm;
+  const static auto      PLUGIN_VERSION_S = fmt::format ("{} {} {}", missionx::PLUGIN_VER_MAJOR, missionx::PLUGIN_VER_MINOR, missionx::PLUGIN_VER_SUB);
+  bool                   flag_called_rebuild_apt_dat{ false };
+  std::string            errMsg;
+  missionx::data_manager dm;
 
   // v25.03.1 moved to the Mission class constructor
   // missionx::data_manager::xMissionxPropertiesNode = missionx::system_actions::load_plugin_options(); // v3.309.1 switched to return the XML node
@@ -542,9 +543,9 @@ missionx::Mission::init()
   const auto propPluginVersion_s = Utils::readAttrib (missionx::data_manager::xMissionxPropertiesNode, mxconst::get_ATTRIB_PLUGIN_VERSION(), ""); // v24025
   const int  mxVer_i             = Utils::readNodeNumericAttrib<int> (missionx::data_manager::xMissionxPropertiesNode, mxconst::get_ATTRIB_MXFEATURE(), 0);
 
-  if ( missionx::PLUGIN_VERSION_S != propPluginVersion_s) // v24025
+  if ( PLUGIN_VERSION_S != propPluginVersion_s) // v24025
   {
-    missionx::data_manager::xMissionxPropertiesNode.updateAttribute(missionx::PLUGIN_VERSION_S.c_str (), mxconst::get_ATTRIB_PLUGIN_VERSION().c_str(), mxconst::get_ATTRIB_PLUGIN_VERSION().c_str());
+    missionx::data_manager::xMissionxPropertiesNode.updateAttribute(PLUGIN_VERSION_S.c_str (), mxconst::get_ATTRIB_PLUGIN_VERSION().c_str(), mxconst::get_ATTRIB_PLUGIN_VERSION().c_str());
     missionx::system_actions::store_plugin_options();
     missionx::data_manager::set_flag_rebuild_apt_dat(true);
     flag_called_rebuild_apt_dat = true;
@@ -4229,7 +4230,7 @@ missionx::Mission::flcPRE()
       case missionx::mx_flc_pre_command::exec_apt_dat_optimization:
       {
         #ifndef RELEASE
-        missionx::Log::logMsg("[Missionx] Menu Optimize \"apt.dat\" files (should take 3-8min, depends on machine, runs in the background).");
+        missionx::Log::logMsg("[Missionx] Menu Optimize \"apt.dat\" files (should take 1-2min, depends on machine, runs in the background).");
         #endif
         exec_apt_dat_optimization();
       }
@@ -4828,7 +4829,7 @@ missionx::Mission::flcPRE()
       break;
       case missionx::mx_flc_pre_command::enable_aptdat_optimize_menu:
       {
-        std::string msg = "apt.dat optimization (run in background: 3-8min)";
+        std::string msg = "apt.dat optimization (run in the background: 1-2min)";
         if (!OptimizeAptDat::aptState.duration_s.empty())
           msg += "(last run: " + OptimizeAptDat::aptState.duration_s + "s)";
 
