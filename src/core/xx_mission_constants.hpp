@@ -30,13 +30,13 @@ namespace missionx
 
 #define ENABLE_GATHER_RANDOM_AIRPORTS_FROM_MAIN_THREAD_CALL 0
 
-constexpr static const int MX_FEATURES_VERSION = 20241212; //20230917; // 330491; //302564;  // added SETUP_LOCK_OVERPASS_URL_TO_USER_PICK
+constexpr static const int MX_FEATURES_VERSION = 20250501; //20241212; //20230917; // 330491; //302564;  // added SETUP_LOCK_OVERPASS_URL_TO_USER_PICK
 
 #define SPECIAL_BUILD ""
 
 inline constexpr static auto PLUGIN_VER_MAJOR                  = "25"; // year
-inline constexpr static auto PLUGIN_VER_MINOR                  = "04"; // month
-inline constexpr static auto PLUGIN_VER_SUB                    = "2"; // sub-version
+inline constexpr static auto PLUGIN_VER_MINOR                  = "05"; // month
+inline constexpr static auto PLUGIN_VER_SUB                    = "1"; // sub-version
 inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 
@@ -158,6 +158,13 @@ namespace enums
 //   loaded_from_random = 2
 // } mx_from_where_mission_was_loaded;
 
+typedef enum class _mx_between_types : uint8_t
+{
+  gt_min_eqles_max = 0, // should be the norm
+  gt_min_less_max = 1, // no equality
+  both_can_be_equal = 2, // both can be equal
+  eqgt_min_less_max = 3 // greater or equal min but less than max
+} mx_between_types;
 
 typedef enum class _mx_timer_type
   : uint8_t
@@ -781,17 +788,17 @@ typedef enum class _mission_type
 typedef enum class _mission_subcategory_type
   : int8_t
 {
-  not_defined      = -1,
-  med_any_location = 0,
-  med_accident     = 1,
-  med_outdoors     = 2,
-  oilrig_cargo     = 10,
-  oilrig_med       = 11,
-  oilrig_personnel = 12,
-  cargo_ga         = 20,
-  cargo_farming    = 21,
-  cargo_isolated   = 22,
-  cargo_heavy
+  not_defined      = -1
+  //med_any_location = 0,
+  //med_accident     = 1,
+  //med_outdoors     = 2,
+  //oilrig_cargo     = 10,
+  //oilrig_med       = 11,
+  //oilrig_personnel = 12,
+  //cargo_ga         = 20,
+  //cargo_farming    = 21,
+  //cargo_isolated   = 22,
+  //cargo_heavy
 } mx_mission_subcategory_type;
 
 typedef enum class _ui_random_date_time_type // v3.303.10

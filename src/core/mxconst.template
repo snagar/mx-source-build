@@ -121,7 +121,8 @@ const static ^std::string ^ATTRIB_STARTING_ICAO ^ "starting_icao";
 
 
 
-static constexpr ^int   ^MAX_ITEM_IN_INVENTORY  ^ 15; ^// v3.0.213.4 // used in em_reset_inventory_item_table() function.
+static constexpr ^int   ^MAX_ITEMS_IN_PLANE_INVENTORY  ^30; ^// v25.05.1 resize to 30 and only for plane. External inventory should not have a limitation.// v3.0.213.4 // used in em_reset_inventory_item_table() function.
+static constexpr ^int   ^MAX_ITEMS_IN_EXTERNAL_INVENTORY  ^100; ^// v25.05.1 limit external inventory item number.
 static constexpr ^float ^AGL_TO_GATHER_FPM_DATA ^ 15.0f; ^// v3.0.213.4 // used in em_reset_inventory_item_table() function.
 
 static constexpr ^int ^INT_UNDEFINED ^ -1;
@@ -152,15 +153,17 @@ const static ^std::string ^ELEMENT_OVERPASS   ^ "overpass";     ^// v3.0.255.4.1
 const static ^std::string ^ELEMENT_URL        ^ "url";          ^// v3.0.255.4.1
 
 // const static std::string_view OVERPASS_XML_URLS ^ R"(<OVERPASS>
-//  <url>https://lz4.overpass-api.de/api/interpreter</url>
-//  <url>https://z.overpass-api.de/api/interpreter</url>
-//  <url>https://overpass.openstreetmap.ru/api/interpreter</url>
-//  <url>https://overpass.openstreetmap.fr/api/interpreter</url>
-//  <url>https://overpass.kumi.systems/api/interpreter</url>
+// <url>https://overpass.kumi.systems/api/interpreter</url>
+// <url>https://overpass-api.de/api/interpreter</url>
+// <url>https://lz4.overpass-api.de/api/interpreter</url>
+// <url>https://overpass.osm.jp/api/interpreter</url>
+// <url>https://maps.mail.ru/osm/tools/overpass/api/interpreter</url>
+// <url>https://z.overpass-api.de/api/interpreter</url>
+// <url>https://overpass.osm.ch/api/interpreter</url>
+// <url>https://overpass.private.coffee/api/interpreter</url>
 //</OVERPASS>)";
 
-const static ^std::string ^OVERPASS_XML_URLS ^ "<" + get_ELEMENT_OVERPASS() + ">" + "<url>https://lz4.overpass-api.de/api/interpreter</url>       " + "<url>https://z.overpass-api.de/api/interpreter</url> " + "<url>https://overpass.openstreetmap.ru/api/interpreter</url> " + "<url>https://overpass.openstreetmap.fr/api/interpreter</url> " + "<url>https://overpass.kumi.systems/api/interpreter</url> " + "</" + get_ELEMENT_OVERPASS() + ">";
-
+const static ^std::string ^OVERPASS_XML_URLS                               ^ "<" + get_ELEMENT_OVERPASS() + ">" + "<url>https://overpass.kumi.systems/api/interpreter</url>       " + "<url>https://overpass-api.de/api/interpreter</url> " + "<url>https://lz4.overpass-api.de/api/interpreter</url> " + "<url>https://overpass.osm.jp/api/interpreter</url> " + "<url>https://maps.mail.ru/osm/tools/overpass/api/interpreter</url> " + "<url>https://z.overpass-api.de/api/interpreter</url> " + "<url>https://overpass.osm.ch/api/interpreter</url> " + "<url>https://overpass.private.coffee/api/interpreter</url> " + "</" + get_ELEMENT_OVERPASS() + ">";
 
 const static ^std::string ^MISSION_ELEMENT                                 ^ "MISSION";
 const static ^std::string ^ELEMENT_METADATA                                ^ "metadata"; ^// v24.12.1 holds user generated type mission and subcategory.
@@ -659,8 +662,6 @@ constexpr const static ^char ^           *SETUP_FONT_PIXEL_SIZE                 
 constexpr const static ^char ^           *SETUP_FONT_LOCATION                                    ^ "setup_font_location"; ^// v3.0.251.1 holds preferred font pixel size
 
 
-
-
 const static ^std::string^                OPT_PILOT_BASE_WEIGHT                                  ^ "pilot_base_weight"; ^// the following optional attributes are read from General_Properties of the mission, they are not stored in option file. // v3.0.213.3 assist in calculating weight of plane ^ empty plane + pilot + passengers + lauggage
 const static ^std::string^                OPT_STORAGE_BASE_WEIGHT                                ^ "storage_base_weight"; ^// v3.0.213.3 other payload
 const static ^std::string^                OPT_PASSENGERS_BASE_WEIGHT                             ^ "passengers_base_weight"; ^// v3.0.213.3 passengers
@@ -1048,4 +1049,14 @@ static const ^std::string^ ROUTE_DCT                  ^ "DCT"; ^// v25.04.2 Hold
 // OSM
 const static ^std::string^               ATTRIB_WEBOSM_OPTIMIZE                         ^ "webosm_optimize"; ^// v3.0.253.4     <expected_location location_type~"webosm,near,xy" // location_value~"nm~25|tag~webosm_helipads|webosm_optimize~n|ramp~H|dbfile~osm-liechtenstein.db,nm~20,tag~start_location" force_template_distances_b~"yes" />
 const static ^std::string^               DEFAULT_OVERPASS_WAYS_FILTER                   ^ "[timeout:25];(way[highway~primary]({{bbox}});way[highway~secondary]({{bbox}});way[highway~tertiary]({{bbox}});way[highway~residential]({{bbox}});way[highway~service]({{bbox}});way[highway~living_street]({{bbox}});way[highway~track]({{bbox}}););out;"; ^// v3.0.253.9 added way and ";" since we changed the way designer provide filters. We do not fix their code. // v3.0.253.4 overpass ways filter
+
+// MEDEVAC Sub Categories
+constexpr static ^std::string_view ^          CAT_ANY_LOCATION   ^ "Any Location - Rescue"; ^// v25.05.1 Used in medevac categories
+constexpr static ^std::string_view ^          CAT_ACCIDENT_OSM   ^ "Accident (OSM)"; ^// v25.05.1 Used in medevac categories
+constexpr static ^std::string_view ^          CAT_SURPRISE_ME    ^ "(Coming soon) Surprise Me (OSM)"; ^// v25.05.1 Used in medevac categories
+
+static const ^std::string^      ATTRIB_SURPRISE_ME_SUB_CAT_B      ^ "surprise_me_sub_cat_b"; ^// v25.05.1 Used in medevac categories parsing and random engine
+constexpr static ^bool^         DEFAULT_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B      ^true; ^// v25.05.1 default value for PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B if it does not exists in the property file.
+constexpr static ^std::string_view ^        SEARCH_SURPRISE_ME_TEXT                      ^ "surprise me"^// v25.05.1
+
 

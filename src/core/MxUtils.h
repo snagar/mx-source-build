@@ -452,11 +452,39 @@ public:
   }
   // -------------------------------------------
 
+  // Test if value is "equal or greater" than Min and "equal or lower" than max
   template<typename T>
-  static bool mx_between(const T in_value_to_test, const T inLow, T inMax)
+  static bool mx_between(const T in_value_to_test, const T inLow, T inMax, const missionx::enums::mx_between_types inType)
   {
-    if ( in_value_to_test >= inLow && in_value_to_test <= inMax)
-      return true;
+    switch (inType)
+    {
+      case missionx::enums::mx_between_types::gt_min_eqles_max:
+      {
+        if ( in_value_to_test > inLow && in_value_to_test <= inMax)
+          return true;
+      }
+      break;
+      case missionx::enums::mx_between_types::gt_min_less_max:
+      {
+        if ( in_value_to_test > inLow && in_value_to_test < inMax)
+          return true;
+      }
+      break;
+      case missionx::enums::mx_between_types::both_can_be_equal:
+      {
+        if ( in_value_to_test >= inLow && in_value_to_test <= inMax)
+          return true;
+      }
+      break;
+      case missionx::enums::mx_between_types::eqgt_min_less_max:
+      {
+        if ( in_value_to_test >= inLow && in_value_to_test < inMax)
+          return true;
+      }
+      break;
+      default:
+        break;
+    }
 
     return false;
   }

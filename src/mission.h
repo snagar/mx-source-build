@@ -201,7 +201,7 @@ public:
 
   // core members
   static void init();
-  void initImguiParametersAtPluginsStart(); // v3.0.253.7.rc2 initialize some of the strct_xxx after plugin is enabled and breifer has been initialized
+  // void initImguiParametersAtPluginsStart(); // v25.05.1 deprecated // v3.0.253.7.rc2 initialize some of the strct_xxx after plugin is enabled and breifer has been initialized
 
   // "prepareMission" will check validity of loaded mission
   // will call "mission.preStartMission" external function.

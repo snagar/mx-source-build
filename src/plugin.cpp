@@ -204,7 +204,7 @@ XPluginStart(char* outName, char* outSig, char* outDesc)
     Mission::uiImGuiBriefer = std::make_shared<WinImguiBriefer>(left, top, right, bottom); // decoration and layer will use default values
     Mission::uiImGuiBriefer->SetWindowPositioningMode(xplm_WindowCenterOnMonitor);
 
-    missionx::mission.initImguiParametersAtPluginsStart(); // v3.0.253.7 rc2 initialize setup according to setup file
+    // missionx::mission.initImguiParametersAtPluginsStart(); // v3.0.253.7 rc2 initialize setup according to setup file
   }
 
 

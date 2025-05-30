@@ -132,6 +132,12 @@ public:
   ~NavAidInfo() {}
 
   NavAidInfo() { init(); }
+  NavAidInfo(const float &inLat, const float &inLon, const float inElevMt)
+  {
+    this->lat  = inLat;
+    this->lon       = inLon;
+    this->height_mt = inElevMt;
+  }
   NavAidInfo(const missionx::NavAidInfo &in_na) : mx_base_node(in_na)
    {
      this->clone(in_na);

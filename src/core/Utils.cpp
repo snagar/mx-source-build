@@ -3267,8 +3267,6 @@ missionx::Utils::read_external_categories(const std::string& inRootNodeName, con
   std::vector<std::string> vec_emptyCategories;
   IXMLDomParser            domSql;
 
-  vec_emptyCategories.clear ();
-
   const IXMLNode xCargo = domSql.openFileHelper(inFilePath.c_str(), inRootNodeName.c_str(), &err).deepCopy(); // parse xml into ITCXMLNode
   if (!err.empty())
   {

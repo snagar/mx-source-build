@@ -395,6 +395,7 @@ missionx::Mission::add_GPS_data (const int optionalPointIndex)
   const int        index     = entries;
   IXMLNode   cNode_ptr = IXMLNode::emptyIXMLNode;
   NavAidInfo navInfo;
+  std::map<int, missionx::NavAidInfo> map_fms_entries; // v25.05.1 for now a placeholder. TODO: implement the container
 
   // Get pointer to XML Node
   if (!data_manager::mapFlightLegs[data_manager::currentLegName].xGPS.isEmpty() &&
@@ -409,7 +410,7 @@ missionx::Mission::add_GPS_data (const int optionalPointIndex)
   }
 
   // v25.04.2 use the instruction if to show the GPS.
-  const bool bAutoLoad = Utils::readBoolAttrib (data_manager::xmlGPS, mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), false);
+  const bool bAutoLoad = Utils::readBoolAttrib (data_manager::xmlGPS, mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), mxconst::DEFAULT_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B);
   if (const bool bGenerateGPS = Utils::readBoolAttrib (data_manager::xmlGPS, mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), false);
       bGenerateGPS && bAutoLoad && !cNode_ptr.isEmpty () )
   {
@@ -420,13 +421,13 @@ missionx::Mission::add_GPS_data (const int optionalPointIndex)
     const int         navType_fromNode_i = Utils::readNodeNumericAttrib<int> (cNode_ptr, mxconst::get_ATTRIB_NAV_TYPE(), xplm_Nav_Unknown); // v3.0.255.4
 
     // add ICAO if available
-    bool flag_icao_is_valid = false; // will hold the icao string if it is valid one.
+    bool flag_icao_is_valid = false; // will hold the icao string if it is a valid one.
     if (!icao.empty())
     {
       // search XPLMNavRef
       XPLMNavRef nav_ref = XPLM_NAV_NOT_FOUND;
 
-      if (navType_fromNode_i > xplm_Nav_Unknown)                                                // v3.0.255.4
+      if (navType_fromNode_i > xplm_Nav_Unknown) // v3.0.255.4
         nav_ref = XPLMFindNavAid (nullptr, icao.c_str(), &lat_f, &lon_f, nullptr, navType_fromNode_i); // find ref based on point nav_type. We can add assert on navRef_fromNode_i
       else
         nav_ref = XPLMFindNavAid (nullptr, icao.c_str(), &lat_f, &lon_f, nullptr, xplm_Nav_Airport);
@@ -455,7 +456,7 @@ missionx::Mission::add_GPS_data (const int optionalPointIndex)
 
     XPLMSetDestinationFMSEntry(index); // set GPS/FMS active entry
 
-    missionx::data_manager::write_fpln_to_external_folder(); // v3.0.253.8 we need to update the FPLN to reflect the new location, we will have to read the FPLN from GNS/GTN for example
+    missionx::data_manager::write_fpln_to_external_folder(map_fms_entries); // v3.0.253.8 we need to update the FPLN to reflect the new location, we will have to read the FPLN from GNS/GTN for example
 
   } // end cNode_ptr is valid
 
@@ -469,11 +470,11 @@ missionx::Mission::Mission()
   const std::string dAte      = mxUtils::rtrim(std::ctime(&end_time));
   const std::string header_s  = ">>>>>>>>>>>> Loading Mission-X (" + dAte + ") <<<<<<<<<<<<\n";
   const std::string version_s = "Mission-X Version: v" + std::string(missionx::PLUGIN_VER_MAJOR) + "." + std::string(missionx::PLUGIN_VER_MINOR) + "." + std::string(missionx::PLUGIN_VER_SUB) + " " + std::string(missionx::PLUGIN_VER_BUILD_DETAILS) + "  !!!!!!\n";
-  data_manager::missionState = missionx::mx_mission_state_enum::mission_undefined;
+  data_manager::missionState  = missionx::mx_mission_state_enum::mission_undefined;
 
   // v25.03.1 read preference file.
-  missionx::data_manager::xMissionxPropertiesNode = missionx::system_actions::load_plugin_options(); // v3.309.1 switched to return the XML node
-  system_actions::pluginSetupOptions.node         = missionx::data_manager::xMissionxPropertiesNode.getChildNode(mxconst::get_ELEMENT_SETUP().c_str()).deepCopy();
+  missionx::data_manager::xMissionxProperties_node = missionx::system_actions::load_plugin_options(); // v3.309.1 switched to return the XML node
+  system_actions::pluginSetupOptions.node         = missionx::data_manager::xMissionxProperties_node.getChildNode(mxconst::get_ELEMENT_SETUP().c_str()).deepCopy();
 
   // initialize Mission-X Log file
   const bool bCycleLogFiles = Utils::getNodeText_type_1_5<bool>(system_actions::pluginSetupOptions.node, mxconst::get_OPT_CYCLE_LOG_FILES(), true); // v25.03.1
@@ -540,12 +541,12 @@ missionx::Mission::init()
   // system_actions::pluginSetupOptions.node         = missionx::data_manager::xMissionxPropertiesNode.getChildNode(mxconst::get_ELEMENT_SETUP().c_str()).deepCopy();
 
   // read setup options
-  const auto propPluginVersion_s = Utils::readAttrib (missionx::data_manager::xMissionxPropertiesNode, mxconst::get_ATTRIB_PLUGIN_VERSION(), ""); // v24025
-  const int  mxVer_i             = Utils::readNodeNumericAttrib<int> (missionx::data_manager::xMissionxPropertiesNode, mxconst::get_ATTRIB_MXFEATURE(), 0);
+  const auto propPluginVersion_s = Utils::readAttrib (missionx::data_manager::xMissionxProperties_node, mxconst::get_ATTRIB_PLUGIN_VERSION(), ""); // v24025
+  const int  mxVer_i             = Utils::readNodeNumericAttrib<int> (missionx::data_manager::xMissionxProperties_node, mxconst::get_ATTRIB_MXFEATURE(), 0);
 
   if ( PLUGIN_VERSION_S != propPluginVersion_s) // v24025
   {
-    missionx::data_manager::xMissionxPropertiesNode.updateAttribute(PLUGIN_VERSION_S.c_str (), mxconst::get_ATTRIB_PLUGIN_VERSION().c_str(), mxconst::get_ATTRIB_PLUGIN_VERSION().c_str());
+    missionx::data_manager::xMissionxProperties_node.updateAttribute(PLUGIN_VERSION_S.c_str (), mxconst::get_ATTRIB_PLUGIN_VERSION().c_str(), mxconst::get_ATTRIB_PLUGIN_VERSION().c_str());
     missionx::system_actions::store_plugin_options();
     missionx::data_manager::set_flag_rebuild_apt_dat(true);
     flag_called_rebuild_apt_dat = true;
@@ -555,10 +556,10 @@ missionx::Mission::init()
   {
     Log::logMsg(">>> Your feature version: " + mxUtils::formatNumber<int>(mxVer_i) + " is lower than expected - version: " + mxUtils::formatNumber<int>(missionx::MX_FEATURES_VERSION));
 
-    if (!missionx::system_actions::pluginSetupOptions.node.isEmpty() && !missionx::data_manager::xMissionxPropertiesNode.isEmpty())
+    if (!missionx::system_actions::pluginSetupOptions.node.isEmpty() && !missionx::data_manager::xMissionxProperties_node.isEmpty())
     {
       const std::string ver_s = mxUtils::formatNumber<int>(missionx::MX_FEATURES_VERSION);
-      missionx::data_manager::xMissionxPropertiesNode.updateAttribute(ver_s.c_str(), mxconst::get_ATTRIB_MXFEATURE().c_str(), mxconst::get_ATTRIB_MXFEATURE().c_str()); // v3.0.255.4.2
+      missionx::data_manager::xMissionxProperties_node.updateAttribute(ver_s.c_str(), mxconst::get_ATTRIB_MXFEATURE().c_str(), mxconst::get_ATTRIB_MXFEATURE().c_str()); // v3.0.255.4.2
 
       missionx::system_actions::pluginSetupOptions.node.updateAttribute(ver_s.c_str(), mxconst::get_ATTRIB_MXFEATURE().c_str(), mxconst::get_ATTRIB_MXFEATURE().c_str());
 
@@ -569,7 +570,14 @@ missionx::Mission::init()
         system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_FONT_PIXEL_SIZE).deleteNodeContent();
       if (!system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_WRITE_CACHE_TO_DB).isEmpty()) // if we have <setup_font_pixel_size> element
         system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_WRITE_CACHE_TO_DB).deleteNodeContent();
-      
+
+      // v25.05.1 replace overpass URLS
+      const auto overpass_node = missionx::data_manager::get_default_overpass_urls_node ();
+      auto setup_overpass_node = missionx::data_manager::xMissionxProperties_node.getChildNode (mxconst::get_ELEMENT_OVERPASS ().c_str ());
+      if (!setup_overpass_node.isEmpty ())
+        setup_overpass_node.deleteNodeContent();
+
+      missionx::data_manager::xMissionxProperties_node.addChild (overpass_node.deepCopy (), 0); // store new URLs
 
 
       missionx::system_actions::store_plugin_options();
@@ -584,12 +592,12 @@ missionx::Mission::init()
   }
 
   // v3.303.12 store last XP version to decide if to re-read the apt-dat
-  const int iProperty_xp_version = static_cast<int>(Utils::readNumericAttrib(missionx::data_manager::xMissionxPropertiesNode, mxconst::get_ATTRIB_XP_VERSION(), 0.0));
+  const int iProperty_xp_version = static_cast<int>(Utils::readNumericAttrib(missionx::data_manager::xMissionxProperties_node, mxconst::get_ATTRIB_XP_VERSION(), 0.0));
   if (data_manager::xplane_ver_i != iProperty_xp_version)
   {
     const std::string ver_s = mxUtils::formatNumber<int>(missionx::data_manager::xplane_ver_i);
 
-    missionx::data_manager::xMissionxPropertiesNode.updateAttribute(ver_s.c_str(), mxconst::get_ATTRIB_XP_VERSION().c_str(), mxconst::get_ATTRIB_XP_VERSION().c_str());
+    missionx::data_manager::xMissionxProperties_node.updateAttribute(ver_s.c_str(), mxconst::get_ATTRIB_XP_VERSION().c_str(), mxconst::get_ATTRIB_XP_VERSION().c_str());
     missionx::system_actions::pluginSetupOptions.node.updateAttribute(ver_s.c_str(), mxconst::get_ATTRIB_XP_VERSION().c_str(), mxconst::get_ATTRIB_XP_VERSION().c_str());
     missionx::system_actions::store_plugin_options();
 
@@ -611,22 +619,23 @@ missionx::Mission::init()
 
 
   // v3.0.255.4.1 store overpass url in data manager
-  if (!missionx::data_manager::xMissionxPropertiesNode.isEmpty() && !missionx::data_manager::xMissionxPropertiesNode.getChildNode(mxconst::get_ELEMENT_OVERPASS().c_str()).isEmpty())
+  if (!missionx::data_manager::xMissionxProperties_node.isEmpty() && !missionx::data_manager::xMissionxProperties_node.getChildNode(mxconst::get_ELEMENT_OVERPASS().c_str()).isEmpty())
   {
     missionx::data_manager::vecOverpassUrls.clear();
-    for (int i1 = 0; i1 < missionx::data_manager::xMissionxPropertiesNode.getChildNode(mxconst::get_ELEMENT_OVERPASS().c_str()).nChildNode(mxconst::get_ELEMENT_URL().c_str()); ++i1)
+    for (int i1 = 0; i1 < missionx::data_manager::xMissionxProperties_node.getChildNode(mxconst::get_ELEMENT_OVERPASS().c_str()).nChildNode(mxconst::get_ELEMENT_URL().c_str()); ++i1)
     {
-      IXMLNode          xUrl = missionx::data_manager::xMissionxPropertiesNode.getChildNode(mxconst::get_ELEMENT_OVERPASS().c_str()).getChildNode(mxconst::get_ELEMENT_URL().c_str(), i1);
-      const std::string text = xUrl.getText();
-      if (!text.empty())
-        data_manager::vecOverpassUrls.emplace_back(text);
+      IXMLNode xUrl = missionx::data_manager::xMissionxProperties_node.getChildNode (mxconst::get_ELEMENT_OVERPASS ().c_str ()).getChildNode (mxconst::get_ELEMENT_URL ().c_str (), i1);
+      if (const std::string text = xUrl.getText (); !text.empty ())
+        data_manager::vecOverpassUrls.emplace_back (text);
     }
   }
   if (data_manager::vecOverpassUrls.empty())
   {
-    missionx::data_manager::vecOverpassUrls = mxUtils::split_v2(
-      "https://lz4.overpass-api.de/api/interpreter,https://z.overpass-api.de/api/interpreter,https://overpass.openstreetmap.ru/api/interpreter,https://overpass.openstreetmap.fr/api/interpreter,https://overpass.kumi.systems/api/interpreter",
-      ",");
+    // v25.05.1
+    missionx::data_manager::vecOverpassUrls = data_manager::get_default_overpass_urls_as_vector ( data_manager::get_default_overpass_urls_node ());
+    // missionx::data_manager::vecOverpassUrls = mxUtils::split_v2(
+    //   "https://overpass.kumi.systems/api/interpreter,https://overpass-api.de/api/interpreter,https://lz4.overpass-api.de/api/interpreter,https://overpass.osm.jp/api/interpreter,https://maps.mail.ru/osm/tools/overpass/api/interpreter,https://z.overpass-api.de/api/interpreter,https://overpass.osm.ch/api/interpreter,https://overpass.private.coffee/api/interpreter",
+    //   ",");
   }
 
 
@@ -758,14 +767,14 @@ missionx::Mission::init()
   
 
   // v3.303.9.1 make sure <scoring> is part of properties
-  if (missionx::data_manager::xMissionxPropertiesNode.getChildNode(mxconst::get_ELEMENT_SCORING().c_str()).isEmpty()) // rebuild scoring too
+  if (missionx::data_manager::xMissionxProperties_node.getChildNode(mxconst::get_ELEMENT_SCORING().c_str()).isEmpty()) // rebuild scoring too
   {
-    if (auto node_ptr = missionx::data_manager::xMissionxPropertiesNode.getChildNode(mxconst::get_ELEMENT_SCORING().c_str()); node_ptr.isEmpty())
+    if (auto node_ptr = missionx::data_manager::xMissionxProperties_node.getChildNode(mxconst::get_ELEMENT_SCORING().c_str()); node_ptr.isEmpty())
     {
       const auto newNode = Utils::xml_get_node_from_XSD_map_as_acopy(mxconst::get_ELEMENT_SCORING());
       assert( (! newNode.isEmpty() ) && "There is no <scoring> element in Utils::XSD");
 
-      node_ptr = missionx::data_manager::xMissionxPropertiesNode.addChild(newNode.deepCopy());
+      node_ptr = missionx::data_manager::xMissionxProperties_node.addChild(newNode.deepCopy());
       missionx::system_actions::store_plugin_options();
     }
   }
@@ -781,6 +790,13 @@ missionx::Mission::init()
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_CYCLE_LOG_FILES()).isEmpty())
   {
     missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_CYCLE_LOG_FILES(), true );
+    missionx::system_actions::store_plugin_options();
+  }
+
+  // v25.05.1 Auto load waypoints to GPS
+  if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B()).isEmpty())
+  {
+    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B(), mxconst::DEFAULT_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B );
     missionx::system_actions::store_plugin_options();
   }
 
@@ -813,38 +829,35 @@ missionx::Mission::init()
 
 // -------------------------------------
 
-void
-missionx::Mission::initImguiParametersAtPluginsStart()
-{
-  // This function will be called after Mission::init() and at the end of plugin::START_MISSION()
-  // initialize first time IMGUI settings
-  if (Mission::uiImGuiBriefer != nullptr)
-  {
-    // init setup font scale = should be moved into a function inside Mission class
-    if (!Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE()).isEmpty())
-    {
-
-      float fScale = static_cast<float> (Utils::getNodeText_type_1_5<double> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE (), (double)mxconst::DEFAULT_BASE_FONT_SCALE)); // default scale size
-      if (fScale < missionx::Mission::uiImGuiBriefer->strct_setup_layer.fFontMinScaleSize || fScale > missionx::Mission::uiImGuiBriefer->strct_setup_layer.fFontMaxScaleSize)
-        fScale = mxconst::DEFAULT_BASE_FONT_SCALE; // default size = no change in pixel scale
-
-      Mission::uiImGuiBriefer->strct_setup_layer.fPreferredFontScale = fScale;
-    }
-
-    Mission::uiImGuiBriefer->strct_setup_layer.bPlaceMarkersAwayFromTarget =
-      Utils::getNodeText_type_1_5<bool>(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET(), false); // display target away from target
-
-    Mission::uiImGuiBriefer->set_vecOverpassUrls_char(missionx::data_manager::vecOverpassUrls); // v3.0.255.4.1 initialize overpass url from conf file
-
-    // v3.303.8.3 add authorization key to the Briefer screen  
-    std::string authKey_s = Utils::getNodeText_type_6(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY(), "");
-    std::memcpy(this->uiImGuiBriefer->strct_ext_layer.buf_authorization, authKey_s.substr(0, 255).c_str(), 255); // copy no more than 255 characters because our buffer is 256 in size
-    
-
-  } // end if uiImGuiBriefer was init
-
-
-} // initImguiParametersAtPluginsStart
+// void
+// missionx::Mission::initImguiParametersAtPluginsStart()
+// {
+//   // This function will be called after Mission::init() and at the end of plugin::START_MISSION()
+//   // initialize first time IMGUI settings
+//   if (Mission::uiImGuiBriefer != nullptr)
+//   {
+//     // // init setup font scale = should be moved into a function inside Mission class
+//     // if (!Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE()).isEmpty())
+//     // {
+//     //
+//     //   float fScale = static_cast<float> (Utils::getNodeText_type_1_5<double> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE (), (double)mxconst::DEFAULT_BASE_FONT_SCALE)); // default scale size
+//     //   if (fScale < missionx::Mission::uiImGuiBriefer->strct_setup_layer.fFontMinScaleSize || fScale > missionx::Mission::uiImGuiBriefer->strct_setup_layer.fFontMaxScaleSize)
+//     //     fScale = mxconst::DEFAULT_BASE_FONT_SCALE; // default size = no change in pixel scale
+//     //
+//     //   Mission::uiImGuiBriefer->strct_setup_layer.fPreferredFontScale = fScale;
+//     // }
+//     //
+//     // Mission::uiImGuiBriefer->strct_setup_layer.bPlaceMarkersAwayFromTarget =
+//     //   Utils::getNodeText_type_1_5<bool>(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET(), false); // display target away from target
+//     //
+//     // Mission::uiImGuiBriefer->set_vecOverpassUrls_char(missionx::data_manager::vecOverpassUrls); // v3.0.255.4.1 initialize overpass url from conf file
+//     //
+//     // // v3.303.8.3 add authorization key to the Briefer screen
+//     // const std::string authKey_s = Utils::getNodeText_type_6(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY(), "");
+//     // std::memcpy(missionx::Mission::uiImGuiBriefer->strct_ext_layer.buf_authorization, authKey_s.substr(0, 255).c_str(), 255); // copy no more than 255 characters because our buffer is 256 in size
+//   } // end if uiImGuiBriefer was init
+//
+// } // initImguiParametersAtPluginsStart
 
 // -------------------------------------
 
@@ -1115,6 +1128,7 @@ missionx::Mission::START_MISSION()
 
 
     // then check global GPS
+    std::map<int, missionx::NavAidInfo> map_fms_entries; // v25.05.1
     if (Utils::getNodeText_type_1_5<bool>(system_actions::pluginSetupOptions.node, mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE(), true) == false &&
         mission_state_s.empty()) // if to reveal 1 by one then first check if there is GPS element in LEG if not then check global GPS
     {
@@ -1138,10 +1152,10 @@ missionx::Mission::START_MISSION()
     }
     else
     {
-      missionx::data_manager::setGPS(); // set the whole GPS element into the FMS
+      map_fms_entries = missionx::data_manager::setGPS(); // set the whole GPS element into the FMS
     }
 
-    missionx::data_manager::write_fpln_to_external_folder(); // v3.0.241.2
+    missionx::data_manager::write_fpln_to_external_folder(map_fms_entries); // v3.0.241.2
 
     // v24.12.2 if-init-statement cLion
     if (const bool val_pause_in_2d = Utils::getNodeText_type_1_5<bool>(system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_PAUSE_IN_2D(), mxconst::DEFAULT_AUTO_PAUSE_IN_2D); missionx::mxvr::vr_display_missionx_in_vr_mode || Mission::uiImGuiBriefer->IsPoppedOut() || (missionx::mxvr::vr_display_missionx_in_vr_mode == false && val_pause_in_2d == false)) // v3.0.253.9.1 do not hide briefer in 2D mode always
@@ -2956,7 +2970,7 @@ missionx::Mission::flc_task(const std::string& inTaskName, Objective& obj, mxPro
                 //////////////////////////////////////////////
                 // DECIDE if task is completed and successful
                 task.setIsTaskComplete(task.bAllConditionsAreMet);
-                task.setTaskState(static_cast<missionx::mx_task_state> (static_cast<int> (missionx::mx_task_state::success) * task.bAllConditionsAreMet + (int)missionx::mx_task_state::need_evaluation * task.bAllConditionsAreMet));
+                task.setTaskState(static_cast<missionx::mx_task_state> (static_cast<int> (missionx::mx_task_state::success) * task.bAllConditionsAreMet + static_cast<int> (missionx::mx_task_state::need_evaluation) * task.bAllConditionsAreMet));
 
 
               } // end evaluate task success/failure based on cargo position
@@ -2971,7 +2985,7 @@ missionx::Mission::flc_task(const std::string& inTaskName, Objective& obj, mxPro
               if (missionx::data_manager::execScript(cond_script_s, inSmPropSeedValues, "Task based \"Sling Load\" has a cond_script with errors: " + cond_script_s + ". Please fix the errors: "))
               {
                 // When using cond_script for the sling cargo based task, we test against bScriptCondMet to determine task state
-                task.setTaskState(static_cast<missionx::mx_task_state> ((int)missionx::mx_task_state::success * task.bScriptCondMet + (int)missionx::mx_task_state::need_evaluation * task.bScriptCondMet));
+                task.setTaskState(static_cast<missionx::mx_task_state> (static_cast<int> (missionx::mx_task_state::success) * task.bScriptCondMet + static_cast<int> (missionx::mx_task_state::need_evaluation) * task.bScriptCondMet));
               }
 
               inSmPropSeedValues.removeProperty(mxconst::get_EXT_mxCargoPosLat()); // remove seeded cargo position attributes
@@ -4786,9 +4800,9 @@ missionx::Mission::flcPRE()
       break;
       case missionx::mx_flc_pre_command::open_story_layout: // v3.305.1
       {
-#ifndef RELEASE
+        #ifndef RELEASE
         Log::logMsg("Trying to open Story Layout"); // debug
-#endif
+        #endif
         Mission::uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_OPEN_STORY_LAYOUT);
       }
       break;
@@ -4863,7 +4877,7 @@ missionx::Mission::flcPRE()
           if (icaoNode.isEmpty())
             continue;
 
-          const std::string ID = Utils::readAttrib(icaoNode, mxconst::get_ATTRIB_NAME(), EMPTY_STRING);
+          const std::string ID = Utils::readAttrib(icaoNode, mxconst::get_ATTRIB_NAME(), "");
 
           if (ID.empty())
             continue;
@@ -4898,21 +4912,20 @@ missionx::Mission::flcPRE()
 
         nChilds = this->engine.shared_navaid_info.parentNode_ptr.nChildNode(mxconst::get_ELEMENT_ICAO().c_str());
 
-        this->engine.threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
       case missionx::mx_flc_pre_command::guess_waypoints_from_external_fpln_site:
       {
-        constexpr double REGECT_WP_DISTANCE_OF_GUESSED_NAME = 0.3;
+        constexpr double wp_distance_of_guessed_name = 0.3;
         // loop over all missionx::data_manager::tableExternalFPLN_vec, and try to find a nav aid for each listNavPoints
         for (auto& fpln : missionx::data_manager::tableExternalFPLN_vec)
         {
           // loop over all fpln points
           for (auto vec2d : fpln.listNavPoints)
           {
-
             missionx::mx_wp_guess_result result = data_manager::get_nearest_guessed_navaid_based_on_coordinate(vec2d);
-            if (result.distance_d > REGECT_WP_DISTANCE_OF_GUESSED_NAME)
+            if (result.distance_d > wp_distance_of_guessed_name)
               result.name.clear();
 
             fpln.listNavPointsGuessedName.emplace_back(result); // the number of variables in fpln.listNavPointsGuessedName must be same as fpln.listNavPoints
@@ -4929,22 +4942,22 @@ missionx::Mission::flcPRE()
         engine.shared_navaid_info.isWet = false;
         engine.shared_navaid_info.isWet = missionx::Point::probeIsWet(engine.shared_navaid_info.p, engine.shared_navaid_info.p.probe_result);
 
-        this->engine.threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
       case missionx::mx_flc_pre_command::calculate_slope_for_build_flight_leg_thread:
       {
         std::string err;
         NavAidInfo  navAidToCalcSlope;
-        navAidToCalcSlope.lat = this->engine.threadState.pipeProperties.getAttribNumericValue<float>(mxconst::get_ATTRIB_LAT(), 0.0f);
-        navAidToCalcSlope.lon = this->engine.threadState.pipeProperties.getAttribNumericValue<float>(mxconst::get_ATTRIB_LONG(), 0.0f);
+        navAidToCalcSlope.lat = missionx::RandomEngine::threadState.pipeProperties.getAttribNumericValue<float>(mxconst::get_ATTRIB_LAT(), 0.0f);
+        navAidToCalcSlope.lon = missionx::RandomEngine::threadState.pipeProperties.getAttribNumericValue<float>(mxconst::get_ATTRIB_LONG(), 0.0f);
         navAidToCalcSlope.p   = engine.shared_navaid_info.p; // v3.0.241.10 b3 replaced pipeProperties with Point p
         navAidToCalcSlope.syncPointToNav();
 
-        const double slope = (double)this->engine.calc_slope_at_point_mainThread(navAidToCalcSlope);
+        const auto slope = static_cast<double> (this->engine.calc_slope_at_point_mainThread (navAidToCalcSlope));
 
-        this->engine.threadState.pipeProperties.setNumberProperty(mxconst::get_ATTRIB_TERRAIN_SLOPE(), slope);
-        this->engine.threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::RandomEngine::threadState.pipeProperties.setNumberProperty(mxconst::get_ATTRIB_TERRAIN_SLOPE(), slope);
+        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
       case missionx::mx_flc_pre_command::gather_random_airport_mainThread:
@@ -4961,10 +4974,11 @@ missionx::Mission::flcPRE()
         auto startClock = std::chrono::steady_clock::now();
         #endif
 
-        XPLMNavRef nav_ref = XPLMFindNavAid (nullptr, nullptr, &this->engine.lastFlightLegNavInfo.lat, &this->engine.lastFlightLegNavInfo.lon, nullptr, xplm_Nav_Airport);
-        if (!(nav_ref == XPLM_NAV_NOT_FOUND))
+        // v25.05.1 use of shared_navaid_info.navAid.navRef instead of local variable
+        this->engine.shared_navaid_info.navAid.navRef = XPLMFindNavAid (nullptr, nullptr, &this->engine.lastFlightLegNavInfo.lat, &this->engine.lastFlightLegNavInfo.lon, nullptr, xplm_Nav_Airport);
+        if (this->engine.shared_navaid_info.navAid.navRef != XPLM_NAV_NOT_FOUND)
         {
-          XPLMGetNavAidInfo(nav_ref,
+          XPLMGetNavAidInfo(this->engine.shared_navaid_info.navAid.navRef,
                             &this->engine.shared_navaid_info.navAid.navType,
                             &this->engine.shared_navaid_info.navAid.lat,
                             &this->engine.shared_navaid_info.navAid.lon,
@@ -4976,7 +4990,7 @@ missionx::Mission::flcPRE()
                             this->engine.shared_navaid_info.navAid.inRegion);
         }
 
-        this->engine.threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
 
 
         #ifndef RELEASE
@@ -4984,7 +4998,7 @@ missionx::Mission::flcPRE()
         const auto   diff           = endThreadClock - startClock;
         const double duration       = std::chrono::duration<double, std::milli>(diff).count();
 
-        Log::logMsg("*** Finished get_nearest_nav_aid_to_coordiante_mainThread. Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec)  ****");
+        Log::logMsg("*** Finished get_nearest_nav_aid_to_coordinate_mainThread. Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec)  ****");
         #endif
       }
       break;
@@ -4994,10 +5008,11 @@ missionx::Mission::flcPRE()
         auto startClock = std::chrono::steady_clock::now();
         #endif
 
-        XPLMNavRef nav_ref = XPLMFindNavAid (nullptr, nullptr, &this->engine.shared_navaid_info.navAid.lat, &this->engine.shared_navaid_info.navAid.lon, nullptr, xplm_Nav_Airport);
-        if (nav_ref != XPLM_NAV_NOT_FOUND)
+        // v25.05.1 use of shared_navaid_info.navAid.navRef instead of local variable
+        this->engine.shared_navaid_info.navAid.navRef = XPLMFindNavAid (nullptr, nullptr, &this->engine.shared_navaid_info.navAid.lat, &this->engine.shared_navaid_info.navAid.lon, nullptr, xplm_Nav_Airport);
+        if (this->engine.shared_navaid_info.navAid.navRef != XPLM_NAV_NOT_FOUND)
         {
-          XPLMGetNavAidInfo(nav_ref,
+          XPLMGetNavAidInfo(this->engine.shared_navaid_info.navAid.navRef,
                             &this->engine.shared_navaid_info.navAid.navType,
                             &this->engine.shared_navaid_info.navAid.lat,
                             &this->engine.shared_navaid_info.navAid.lon,
@@ -5009,7 +5024,7 @@ missionx::Mission::flcPRE()
                             this->engine.shared_navaid_info.navAid.inRegion);
         }
 
-        this->engine.threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
 
 
         #ifndef RELEASE
@@ -5027,15 +5042,9 @@ missionx::Mission::flcPRE()
         auto startClock = std::chrono::steady_clock::now();
         #endif
 
-        #ifdef IBM
         this->engine.shared_navaid_info.navAid = data_manager::getICAO_info(this->engine.shared_navaid_info.navAid.getID());
-        #else
-        auto tempNav                           = data_manager::getICAO_info(this->engine.shared_navaid_info.navAid.getID());
-        this->engine.shared_navaid_info.navAid = tempNav;
-        #endif
 
-
-        this->engine.threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
 
 
         #ifndef RELEASE
@@ -5408,7 +5417,8 @@ missionx::Mission::flcPRE()
       break;
       case missionx::mx_flc_pre_command::write_fpln_to_external_folder:
       {
-        std::string errView = missionx::data_manager::write_fpln_to_external_folder();
+        std::map<int, missionx::NavAidInfo> map_fms_entries; // v25.05.1 for now a placeholder. TODO: implement the container
+        std::string errView = missionx::data_manager::write_fpln_to_external_folder(map_fms_entries);
         
 
         if (errView.empty())
@@ -5623,7 +5633,7 @@ missionx::Mission::flcPRE()
       break;
       case missionx::mx_flc_pre_command::save_notes_info:
       {
-        auto xNotes = Utils::xml_get_or_create_node_ptr( missionx::data_manager::xMissionxPropertiesNode, mxconst::get_ELEMENT_NOTES() );
+        auto xNotes = Utils::xml_get_or_create_node_ptr( missionx::data_manager::xMissionxProperties_node, mxconst::get_ELEMENT_NOTES() );
         if ( !xNotes.isEmpty() && this->uiImGuiBriefer != nullptr )
         {
           Utils::xml_delete_all_subnodes(xNotes); // delete all subnodes if exists.
@@ -5656,7 +5666,7 @@ missionx::Mission::flcPRE()
       break;
       case missionx::mx_flc_pre_command::load_notes_info:
       {
-        auto xNotes = Utils::xml_get_or_create_node_ptr( missionx::data_manager::xMissionxPropertiesNode, mxconst::get_ELEMENT_NOTES() );
+        auto xNotes = Utils::xml_get_or_create_node_ptr( missionx::data_manager::xMissionxProperties_node, mxconst::get_ELEMENT_NOTES() );
         if ( !xNotes.isEmpty() && this->uiImGuiBriefer != nullptr )
         {
           // this->uiImGuiBriefer->strct_flight_leg_info.mapNoteFieldShort.clear();

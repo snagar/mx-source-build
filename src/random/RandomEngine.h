@@ -141,7 +141,7 @@ private:
 
 
   bool readMissionInfoElement();
-  bool readBrieferAndStartLocation();         // assist in constructing briefer element. Mission description will be fetched from "elementBrieferInfoProperties" which was initialized in "readMissionInfoElement()"
+  bool prepareBrieferAndStartLocation();         // assist in constructing briefer element. Mission description will be fetched from "elementBrieferInfoProperties" which was initialized in "readMissionInfoElement()"
   bool readFlightLegs_directlyFromTemplate(); // assist in constructing Goals element.
   bool flag_isLastFlightLeg;                  // v3.0.219.11 specifically for slope test in location_type="xy" and template_type="medevac". In last goal we skip this test, since we expect to land
 
@@ -193,12 +193,14 @@ private:
   const int RADIUS_MT_MINIMUM_LENGTH = 50;
 
   bool        prepare_blank_template_with_flight_legs_based_on_ui(IXMLNode& pNode,IXMLNode& outMetaNode, std::string& outErr); // v3.0.241.9
-  std::string briefer_skeleton_message_to_use_in_injectTypeMissionFeature;           // v3.0.241.9
+  std::string briefer_skeleton_message_to_use_in_injectTypeMissionFeature; // v3.0.241.9
+  std::string briefer_starting_location_desc; // v25.05.1
 
   bool prepare_mission_based_on_external_fpln(IXMLNode& pNode); // v3.0.253.1
   bool prepare_mission_based_on_ils_search(IXMLNode& pNode);    // v3.0.253.6
   void add_waypoints_for_fpln_or_simbrief(IXMLNode& pNode); // v25.04.2
   bool prepare_mission_based_on_user_fpln_or_simbrief(IXMLNode& pNode); // v25.03.3
+  mx_return prepare_medevac_surprise_me (const IXMLNode &inRootTemplate, const IXMLNode &inoutMetaNode) const; // v25.05.1
   bool prepare_mission_based_on_oilrig ( const IXMLNode & pNode, std::string& outErr); // v3.303.14
 
 

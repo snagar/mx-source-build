@@ -721,7 +721,7 @@ public:
   // static std::vector<std::string> vecCurrentMissionFileSupportedVersions; // v24.12.2
 
   // missionx_conf node from missionx_conf.xml file
-  static IXMLNode xMissionxPropertiesNode;
+  static IXMLNode xMissionxProperties_node;
 
     // Map Layer
   static XPLMMapLayerID g_layer; // v3.305.4
@@ -750,10 +750,6 @@ public:
   static XPLMCameraPosition_t mxCameraPosition;
   static int                  isLosingControl_i;
 
-  // From which layer we called random engine
-  static void                   setGenerateLayerFrom(missionx::uiLayer_enum inLayerName) { data_manager::generate_from_layer = inLayerName; }
-  static missionx::uiLayer_enum getGeneratedFromLayer() { return data_manager::generate_from_layer; }
-  static float                  Max_Slope_To_Land_On;
 
   // Timers defined by mission files. We should not have more than 3 timers. 1 Global and 2 internal at most that can fail the mission
   static std::map<std::string, missionx::Timer> mapFailureTimers;
@@ -878,7 +874,7 @@ public:
   static bool             is_choice_name_exists(std::string& inChoiceName);
 
   // RealityXP related
-  static std::string                      write_fpln_to_external_folder(); // v3.0.241.2 our first external utility is RealityXP.
+  static std::string                      write_fpln_to_external_folder(const std::map<int, missionx::NavAidInfo>& in_map_fms_entries); // v3.0.241.2 our first external utility is RealityXP.
   static std::deque<missionx::NavAidInfo> extractNavaidInfoFromPlanesFMS();
   static std::string                      prepare_flight_plan_for_GTN_RXP(std::deque<missionx::NavAidInfo>& inNavList);
   static std::string                      prepare_flight_plan_for_XPLN11(std::deque<missionx::NavAidInfo>& inNavList);
@@ -954,7 +950,7 @@ public:
   
   // GPS / FMS
   static void clearFMSEntries();
-  static void setGPS(); // v3.0.215.7
+  static std::map<int, missionx::NavAidInfo> setGPS(); // v3.0.215.7 // v25.05.1 added return container
   // Add entry to GPS/FMS.
   // -1 = add to the end. This is the default behavior
   static void addLatLonEntryToGPS(Point& inPoint, const int& inEntry = -1); // v3.0.241.10 b3
@@ -1136,16 +1132,24 @@ public:
 
   static IXMLNode init_littlenavmap_missionInfo(IXMLNode & inNode);
 
-  /// <summary>
-  /// Prepare flight plan in the random folder based on the LittleNavMap flight plan table.
-  /// </summary>
-  /// <param name="inOriginalFlightPlanFileName">the original fpln file name</param>
-  /// <param name="inMainNode">this is the dummy node we created in the briefer screen "mx_conv_layer.xConvMainNode". The struct is: <DUMMY><leg[]><conv_info>
-  /// We should conver <conv_info> to <mission_info> and each Leg in the table into its own flight_leg.
-  /// </param>
-  /// 
-  /// <param name="in_tableOfLoadedFpln">Holds all flight legs and their order. It also contain whether a waypoint is ignored or is a flight leg or "just" a way point</param>
-  /// <returns></returns>
+  //////////////////////////////////////////////////////////////////
+  ///// SHARED functions and data with the UI screens
+  //////////////////////////////////////////////////////////////////
+
+  // From which layer we called random engine
+  static void                   setGenerateLayerFrom (missionx::uiLayer_enum inLayerName) { data_manager::generate_from_layer = inLayerName; }
+  static missionx::uiLayer_enum getGeneratedFromLayer () { return data_manager::generate_from_layer; }
+  static float                  Max_Slope_To_Land_On;
+
+  typedef struct _mx_strct_ui_share_data_def
+  {
+    std::vector<const char *> medevac_arr = { mxconst::CAT_ANY_LOCATION.data (), mxconst::CAT_ACCIDENT_OSM.data (), mxconst::CAT_SURPRISE_ME.data () };
+    std::vector<const char *> oilrig_arr  = { "Oil Rig Cargo", "Medevac" };
+    std::vector<const char *> cargo_arr   = { "GA Cargo", "Farming Cargo", "Isolated Areas" }; // These are only baseline values, it is affected by the "cargo_data.xml" file.
+  } strct_ui_share_data_def;
+  static strct_ui_share_data_def strct_ui_share_data;
+
+
   static void add_advanceSettingsDateTime_and_Weather_to_node(IXMLNode &xGlobalSettings, IXMLNode & inPropNode, const std::string & inCurrentWeatherDatarefs_s);
   static bool generate_missionx_mission_file_from_convert_screen(missionx::mx_base_node inPropNode, IXMLNode& inMainNode, IXMLNode& inGlobalSettingsFromConversionFile, std::map<int, missionx::mx_local_fpln_strct> in_map_tableOfParsedFpln, bool inStoreState_b, bool inGenerateNewGlobalSettingsNode);
 
@@ -1164,7 +1168,9 @@ public:
   static bool flag_setupShowDebugMessageTab; // v3.305.4
   static bool flag_setupUseXP11InventoryUI; // v24.12.2 toggle between inventory ui layout (with stations, xp12, and without xp11).
 
-  // static int get_inv_layout_based_on_mission_ver_and_compatibility_node();
+  
+  ///////////////// END Shared UI ////////////////////
+
   // v25.03.1
   static int get_inv_layout_based_on_mission_ver_and_compatibility_node(const std::string &in_mission_format_versions, const IXMLNode & in_compatibility_node, const bool &in_flag_setupUseXP11InventoryUI);
 
@@ -1243,9 +1249,10 @@ public:
   static void flc_datarefs_interpolation(); // v3.303.13
 
   // v3.303.14 Oil Rig
-  static const std::unordered_map<int, std::vector<missionx::mx_mission_subcategory_type>> mapMissionCategoriesCodes;
+  //static std::map<int, std::vector<missionx::mx_mission_subcategory_type>> mapMissionCategoriesCodes; // v25.05.1 deprecated
+  static std::vector<int>                                                  vecMissionCategoriesCodes; // v25.05.1 replaces mapMissionCategoriesCodes
 
-  static const std::string getMissionSubcategoryTranslationCode(int in_missionCodeType, int in_subCategoryCode);
+  static const std::string getMissionSubcategoryTranslationCode(int in_missionCodeType, int in_subCategoryCode, IXMLNode &outMetaNode);
 
   //// v3.305.1b
   static mx_sceneryOrPlaneLoad_state_strct strct_sceneryOrPlaneLoadState;
@@ -1265,6 +1272,10 @@ public:
   static void flc_acf_change();
   static void set_acf(const std::string& inFileName); // only set the current plane filename without calling "gather_acf_info" function.
   static void set_active_acf_and_gather_info(const std::string& inFileName); // set the current plane filename and call the "gather_acf_info" function.
+
+  // v25.05.1
+  static IXMLNode get_default_overpass_urls_node ();
+  static std::vector<std::string> get_default_overpass_urls_as_vector (const IXMLNode& inNode);
 
  private:
   static bool flag_found_missing_3D_object_files;

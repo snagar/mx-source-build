@@ -51,7 +51,7 @@ station::parse_node()
   if (station_indx < 0
     || ( this->name.empty ()
         && missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY
-        && !(mxUtils::mx_between <missionx::mx_mission_state_enum> (missionx::data_manager::missionState, missionx::mx_mission_state_enum::mission_is_being_loaded_from_the_original_file, missionx::mx_mission_state_enum::mission_is_running ) )
+        && !(mxUtils::mx_between <missionx::mx_mission_state_enum> (missionx::data_manager::missionState, missionx::mx_mission_state_enum::mission_is_being_loaded_from_the_original_file, missionx::mx_mission_state_enum::mission_is_running, missionx::enums::mx_between_types::both_can_be_equal ) )
        )
      )
   {

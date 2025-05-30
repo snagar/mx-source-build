@@ -952,7 +952,7 @@ Inventory::gather_acf_cargo_data (Inventory &inout_current_plane_inventory, cons
   if (data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_being_loaded_from_the_original_file && data_manager::missionState != missionx::mx_mission_state_enum::mission_loaded_from_savepoint)
   {
     // if (in_plane_was_changed_b || (data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_being_loaded_from_the_original_file && data_manager::missionState <= missionx::mx_mission_state_enum::mission_loaded_from_the_original_file))
-    if ( in_plane_was_changed_b || mxUtils::mx_between<missionx::mx_mission_state_enum>(data_manager::missionState, missionx::mx_mission_state_enum::mission_is_being_loaded_from_the_original_file, missionx::mx_mission_state_enum::mission_loaded_from_the_original_file) )
+    if ( in_plane_was_changed_b || mxUtils::mx_between<missionx::mx_mission_state_enum>(data_manager::missionState, missionx::mx_mission_state_enum::mission_is_being_loaded_from_the_original_file, missionx::mx_mission_state_enum::mission_loaded_from_the_original_file, missionx::enums::mx_between_types::both_can_be_equal) )
     {
       IXMLNode new_node = Inventory::mergeAcfAndPlaneInventories2 (new_acf_inventory.node, inout_current_plane_inventory.node);
       inout_current_plane_inventory.init_plane_inventory ();

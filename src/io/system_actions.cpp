@@ -705,7 +705,7 @@ missionx::system_actions::add_overpass_urls()
 {
   // parse default URL
 
-  if (missionx::data_manager::xMissionxPropertiesNode.isEmpty())
+  if (missionx::data_manager::xMissionxProperties_node.isEmpty())
   {
     IXMLDomParser iDom;
     IXMLResults   parse_result_strct;
@@ -717,7 +717,7 @@ missionx::system_actions::add_overpass_urls()
   }
   else
   {
-    return missionx::data_manager::xMissionxPropertiesNode.deepCopy();
+    return missionx::data_manager::xMissionxProperties_node.deepCopy();
   }
 
   return IXMLNode();
@@ -728,11 +728,11 @@ missionx::system_actions::store_plugin_options()
 {
 
 
-  if (missionx::data_manager::xMissionxPropertiesNode.isEmpty())
-    missionx::data_manager::xMissionxPropertiesNode = create_new_plugin_preference_file();
+  if (missionx::data_manager::xMissionxProperties_node.isEmpty())
+    missionx::data_manager::xMissionxProperties_node = create_new_plugin_preference_file();
   else
   {
-    const auto        fileVer_s          = Utils::readAttrib(missionx::data_manager::xMissionxPropertiesNode, mxconst::get_ATTRIB_MXFEATURE(), mxUtils::formatNumber<int>(missionx::MX_FEATURES_VERSION));
+    const auto        fileVer_s          = Utils::readAttrib(missionx::data_manager::xMissionxProperties_node, mxconst::get_ATTRIB_MXFEATURE(), mxUtils::formatNumber<int>(missionx::MX_FEATURES_VERSION));
     const std::string fullPathToPrefFile = system_actions::getOptionFileAndPath();
 
 
@@ -740,7 +740,7 @@ missionx::system_actions::store_plugin_options()
     IXMLNode     xMainNode;
     IXMLRenderer xmlWriter;
 
-    auto xLocalMissionxNode = missionx::data_manager::xMissionxPropertiesNode.deepCopy();
+    auto xLocalMissionxNode = missionx::data_manager::xMissionxProperties_node.deepCopy();
 
     // remove <setup> because we will use system_action setup node instead
     if (auto setupNode = xLocalMissionxNode.getChildNode(mxconst::get_ELEMENT_SETUP().c_str())
@@ -766,8 +766,8 @@ missionx::system_actions::store_plugin_options()
     }
 
     // replace <MISSIONX> node in data manager with the new constructed one. This is not performance friendly but it has minimal to no impact
-    missionx::data_manager::xMissionxPropertiesNode = IXMLNode::emptyNode (); // v25.03.3 replaced "delete nodes"
-    missionx::data_manager::xMissionxPropertiesNode = xLocalMissionxNode.deepCopy();
+    missionx::data_manager::xMissionxProperties_node = IXMLNode::emptyNode (); // v25.03.3 replaced "delete nodes"
+    missionx::data_manager::xMissionxProperties_node = xLocalMissionxNode.deepCopy();
 
     [[maybe_unused]] IXMLErrorInfo xmlLoadErr = xmlWriter.writeToFile(xLocalMissionxNode, fullPathToPrefFile.c_str());
 

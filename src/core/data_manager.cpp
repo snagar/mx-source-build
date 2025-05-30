@@ -30,7 +30,7 @@ namespace fs = std::filesystem;
 namespace missionx
 {
 // missionx missionx_conf file node
-IXMLNode data_manager::xMissionxPropertiesNode;
+IXMLNode data_manager::xMissionxProperties_node;
 
 const std::string              data_manager::plugin_sig = "missionx_snagar.dev";
 std::vector<std::future<void>> mImageLoadFutures; // we use future<void> since out function returns void.
@@ -858,12 +858,14 @@ std::map<int, std::unordered_map<std::string, std::string>> data_manager::mapWea
 ThreeStoppers                        data_manager::mxThreeStoppers;
 std::map<std::string, dataref_param> data_manager::mapInterpolDatarefs;
 
-// v3.303.14
-const std::unordered_map<int, std::vector<mx_mission_subcategory_type>> data_manager::mapMissionCategoriesCodes = {
-  { static_cast<int> ( mx_mission_type::medevac ), { mx_mission_subcategory_type::med_any_location, mx_mission_subcategory_type::med_accident, mx_mission_subcategory_type::med_outdoors } },
-  { static_cast<int> ( mx_mission_type::oil_rig ), { mx_mission_subcategory_type::oilrig_cargo, mx_mission_subcategory_type::oilrig_med, mx_mission_subcategory_type::oilrig_personnel } },
-  { static_cast<int> ( mx_mission_type::cargo ), { mx_mission_subcategory_type::cargo_ga, mx_mission_subcategory_type::cargo_farming, mx_mission_subcategory_type::cargo_isolated, mx_mission_subcategory_type::cargo_heavy } }
-};
+// v3.303.14 // v25.05.1 deprecated "mapMissionCategoriesCodes"
+//std::map<int, std::vector<mx_mission_subcategory_type>> data_manager::mapMissionCategoriesCodes = {
+//  { static_cast<int> ( mx_mission_type::medevac ), { mx_mission_subcategory_type::med_any_location, mx_mission_subcategory_type::med_accident, mx_mission_subcategory_type::med_outdoors } },
+//  { static_cast<int> ( mx_mission_type::oil_rig ), { mx_mission_subcategory_type::oilrig_cargo, mx_mission_subcategory_type::oilrig_med, mx_mission_subcategory_type::oilrig_personnel } },
+//  { static_cast<int> ( mx_mission_type::cargo ), { mx_mission_subcategory_type::cargo_ga, mx_mission_subcategory_type::cargo_farming, mx_mission_subcategory_type::cargo_isolated, mx_mission_subcategory_type::cargo_heavy } }
+//};
+
+std::vector<int> data_manager::vecMissionCategoriesCodes = { static_cast<int> (mx_mission_type::medevac), static_cast<int> (mx_mission_type::cargo), static_cast<int> (mx_mission_type::oil_rig) };
 
 GatherStats                        data_manager::gather_stats;
 mx_enrout_stats_strct              data_manager::strct_currentLegStats4UIDisplay; // v3.303.14 holds current leg stats
@@ -906,6 +908,10 @@ std::string data_manager::mission_file_supported_versions; // v24.12.2
 // v25.03.1
 std::string missionx::data_manager::active_acf;
 std::string missionx::data_manager::prev_acf;
+
+// v25.05.1
+missionx::data_manager::strct_ui_share_data_def missionx::data_manager::strct_ui_share_data;
+
 
 // -------------------------------------
 
@@ -1721,7 +1727,7 @@ data_manager::is_choice_name_exists(std::string& inChoiceName)
 // -------------------------------------
 
 std::string
-data_manager::write_fpln_to_external_folder()
+data_manager::write_fpln_to_external_folder(const std::map<int, missionx::NavAidInfo>& in_map_fms_entries)
 {
   ///// Supported formats
   const std::string GTNRXP = "GTNRXP"; // G750
@@ -1743,7 +1749,6 @@ data_manager::write_fpln_to_external_folder()
     // read from file
 
     std::ifstream infs;
-
     std::ios_base::sync_with_stdio(false);
     std::cin.tie(nullptr);
 
@@ -1756,16 +1761,31 @@ data_manager::write_fpln_to_external_folder()
     }
     else
     {
-      // PREPARE data based on the FMS
-      if ( std::deque<NavAidInfo> fmsNavAids = extractNavaidInfoFromPlanesFMS ()
-        ; !fmsNavAids.empty())
+      // PREPARE data based on the FMS // v25.05.1 added lambda to dynamically use the <container> or the <fms> based on available data.
+      const auto lmbda_get_fms_navaid_info =[] (const std::map<int, missionx::NavAidInfo>& local_map_fms_entries)
+      {
+        // Due to duplicate FMS entries.
+        return extractNavaidInfoFromPlanesFMS ();
+
+        if (local_map_fms_entries.empty())
+          return extractNavaidInfoFromPlanesFMS();
+
+        std::deque<NavAidInfo> fmsNavAids;
+        for (const auto &navAid : local_map_fms_entries | std::views::values)
+          fmsNavAids.push_back(navAid);
+
+        return fmsNavAids;
+      };
+
+      if (std::deque<NavAidInfo> fmsNavAids = lmbda_get_fms_navaid_info (in_map_fms_entries);
+        !fmsNavAids.empty())
       {
         std::ofstream outFPLN_file;
         // read each line and parse it
         std::string line;
         while (getline(infs, line))
         {
-          // skip if has comment string or is empty
+          // skip, if it has comment string or is empty
           line = mxUtils::trim(line);
           if ((!line.empty() && (line.front() == '#' || line.front() == ';')) || line.empty())
             continue;
@@ -1923,7 +1943,7 @@ data_manager::extractNavaidInfoFromPlanesFMS()
 std::string
 data_manager::prepare_flight_plan_for_GTN_RXP(std::deque<NavAidInfo>& inNavList)
 {
-  const size_t MAX_GTN_ICAO_STRING_LENGTH = 5;        // according to "GTN Flight Plan and User Waypoint transfer.pdf". Paragraph 2.4 En Route. ":F:<Waypoint identifier, up to five characters>
+  constexpr size_t MAX_GTN_ICAO_STRING_LENGTH = 5;        // according to "GTN Flight Plan and User Waypoint transfer.pdf". Paragraph 2.4 En Route. ":F:<Waypoint identifier, up to five characters>
   std::string  flight_plan                = "FPN/RI"; // line prefix
 
   for (auto& navInfo : inNavList)
@@ -3959,78 +3979,95 @@ data_manager::drawCueInfoOn2DMap(const float* inMapBoundsLeftTopRightBottom, con
 
 // -------------------------------------
 
-void
+std::map<int, missionx::NavAidInfo>
 data_manager::setGPS()
 {
-  bool           flag_found = false;
-  const bool bUseGPS   = (xmlLoadedFMS.isEmpty()) ? true : false; // v25.04.2 decide if to use GPS or FMS, we will use the bool value to decide if to read the auto_load option or not.
-  const IXMLNode xFMS_ptr   = (bUseGPS) ? xmlGPS : xmlLoadedFMS; // pick the FMS element or GPS dependent on availability in the mission/checkpoint file.
+  bool              flag_found      = false;
+  const bool        bUseGPS         = (xmlLoadedFMS.isEmpty ()) ? true : false; // v25.04.2 decide if to use GPS or FMS, we will use the bool value to decide if to read the auto_load option or not.
+  const IXMLNode    xFMS_ptr        = (bUseGPS) ? xmlGPS : xmlLoadedFMS; // pick the FMS element or GPS dependent on availability in the mission/checkpoint file.
+  const std::string mission_state_s = Utils::readAttrib (mx_global_settings.node, mxconst::get_PROP_MISSION_STATE (), ""); // empty value means new mission and not loaded checkpoint
+  std::map<int, missionx::NavAidInfo> map_fms_entries; // v25.05.1
 
   if (xFMS_ptr.isEmpty())
-    return;
+    return map_fms_entries;
 
   // v25.04.2
   if (bUseGPS)
   {
-    const bool bAutoLoad = Utils::readBoolAttrib (data_manager::xmlGPS, mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), false);
+    const bool bAutoLoad    = Utils::readBoolAttrib (data_manager::xmlGPS, mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), mxconst::DEFAULT_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B);
     const bool bGenerateGPS = Utils::readBoolAttrib (data_manager::xmlGPS, mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), false);
     if ( !(bGenerateGPS * bAutoLoad) )
-      return; // exit the code in this function.
+      return map_fms_entries; // exit the code in this function.
   }
 
   // v3.0.303.2
-  auto       nodeLocationAdjust_ptr = xMainNode.getChildNodeByPath((mxconst::get_ELEMENT_BRIEFER() + "/" + mxconst::get_ELEMENT_LOCATION_ADJUST()).c_str());
-  const bool b_locationTypeIsPlane  = mxconst::get_ELEMENT_PLANE() == Utils::readAttrib(nodeLocationAdjust_ptr, mxconst::get_ATTRIB_LOCATION_TYPE(), "");
+  const auto nodeLocationAdjust_ptr = xMainNode.getChildNodeByPath ((mxconst::get_ELEMENT_BRIEFER () + "/" + mxconst::get_ELEMENT_LOCATION_ADJUST ()).c_str ());
+  const bool b_locationTypeIsPlane  = mxconst::get_ELEMENT_PLANE () == Utils::readAttrib (nodeLocationAdjust_ptr, mxconst::get_ATTRIB_LOCATION_TYPE (), "");
   // clear GPS
   clearFMSEntries(); // v3.0.253.7
 
-  // store the current entry to set later on.
-  const int iCurrentGpsActiveEntry = static_cast<int> ( Utils::readNumericAttrib ( xFMS_ptr, mxconst::get_ATTRIB_DESTINATION_ENTRY(), 0.0 ) );
-
   const int nChilds = xFMS_ptr.nChildNode(mxconst::get_ELEMENT_POINT().c_str());
 
-  int index = 0;
+  int valid_entries_counter = 0;
+
+  constexpr int min = 0;
+  const int max = (nChilds-1 > min) ? (nChilds-1) : min + 1;
+
   for (int i1 = 0; i1 < nChilds; ++i1)
   {
-    NavAidInfo navInfo;
+    flag_found = false;
 
-    flag_found         = false;
+    NavAidInfo navInfo;
     IXMLNode cNode_ptr = xFMS_ptr.getChildNode(mxconst::get_ELEMENT_POINT().c_str(), i1); // .deepCopy(); // v3.0.219.7 copy of GPS point
 
-    auto              lat_f              = Utils::readNodeNumericAttrib<float> ( cNode_ptr, mxconst::get_ATTRIB_LAT(), 0.0f );
-    auto              lon_f              = Utils::readNodeNumericAttrib<float> ( cNode_ptr, mxconst::get_ATTRIB_LONG(), 0.0f );
-    const auto        elev_ft_f          = Utils::readNodeNumericAttrib<float> ( cNode_ptr, mxconst::get_ATTRIB_ELEV_FT(), 0.0f ); // v3.0.241.3
-    const std::string icao               = Utils::xml_get_attribute_value ( cNode_ptr, mxconst::get_ELEMENT_ICAO(), flag_found );
-    const int         navType_fromNode_i = Utils::readNodeNumericAttrib<int> ( cNode_ptr, mxconst::get_ATTRIB_NAV_TYPE(), xplm_Nav_Unknown ); // v3.0.255.4
+    auto              lat_f              = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LAT (), 0.0f);
+    auto              lon_f              = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LONG (), 0.0f);
+    const auto        elev_ft_f          = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_ELEV_FT (), 0.0f); // v3.0.241.3
+    // const std::string icao               = Utils::xml_get_attribute_value (cNode_ptr, mxconst::get_ELEMENT_ICAO (), flag_found);
+    // const int         navType_fromNode_i = Utils::readNodeNumericAttrib<int> (cNode_ptr, mxconst::get_ATTRIB_NAV_TYPE (), xplm_Nav_Unknown); // v3.0.255.4
+
+    navInfo.navRef    = Utils::readNodeNumericAttrib<int> (cNode_ptr, mxconst::get_ATTRIB_NAVREF (), XPLM_NAV_NOT_FOUND); // v25.05.1
+    navInfo.lat       = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LAT (), 0.0f);
+    navInfo.lon       = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LONG (), 0.0f);
+    navInfo.height_mt = (Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_ELEV_FT (), 0.0f) * missionx::feet2meter);
+    navInfo.setID (Utils::readAttrib (cNode_ptr, mxconst::get_ELEMENT_ICAO (), ""));
+    navInfo.navType = Utils::readNodeNumericAttrib<int> (cNode_ptr, mxconst::get_ATTRIB_NAV_TYPE (), xplm_Nav_Unknown);
+
+    // v25.05.1 decide which navtype to search
+    XPLMNavType nav_type = xplm_Nav_Airport; // xplm_Nav_Airport|xplm_Nav_Fix|xplm_Nav_VOR|xplm_Nav_NDB
+    if ( mxUtils::mx_between <int>(i1, min, max, missionx::enums::mx_between_types::gt_min_less_max))
+      nav_type = xplm_Nav_Airport|xplm_Nav_Fix|xplm_Nav_VOR|xplm_Nav_NDB;
+
 
     // v3.0.221.7 - add ICAO if available
     bool flag_icao_is_valid = false; // will hold the icao string if it is valid one.
-    if (!icao.empty())
+    if (navInfo.navRef == XPLM_NAV_NOT_FOUND)
     {
-      // search XPLMNavRef
-      if (index == 0 && b_locationTypeIsPlane)
+      if (navInfo.getID ().empty () && lat_f * lon_f != 0.0)
       {
-        // don't do anything
+        navInfo.navRef = XPLMFindNavAid(nullptr, nullptr, &lat_f, &lon_f, nullptr, nav_type);
       }
-      else
+      else if (!navInfo.getID ().empty () && lat_f * lon_f != 0.0)
       {
-        XPLMNavRef nav_ref = XPLM_NAV_NOT_FOUND;
-
-        if (navType_fromNode_i > xplm_Nav_Unknown)  // v3.0.255.4
-          nav_ref = XPLMFindNavAid(nullptr, icao.data(), &lat_f, &lon_f, nullptr, navType_fromNode_i); // find ref based on point nav_type. We can add assert on navRef_fromNode_i
+        if (navInfo.navType > xplm_Nav_Unknown)
+          navInfo.navRef = XPLMFindNavAid(nullptr, navInfo.getID ().data(), &lat_f, &lon_f, nullptr, navInfo.navType); // find ref based on point nav_type. We can add assert on navRef_fromNode_i
         else
-          nav_ref = XPLMFindNavAid(nullptr, icao.data(), &lat_f, &lon_f, nullptr, xplm_Nav_Airport);
-
-        if (nav_ref != XPLM_NAV_NOT_FOUND)
-        {
-          flag_icao_is_valid = true;
-          XPLMGetNavAidInfo(nav_ref, &navInfo.navType, &navInfo.lat, &navInfo.lon, &navInfo.height_mt, &navInfo.freq, &navInfo.heading, navInfo.ID, navInfo.name, navInfo.inRegion);
-
-          XPLMSetFMSEntryInfo(index, nav_ref, static_cast<int> ( navInfo.height_mt ) );
-
-          ++index;
-        }
+          navInfo.navRef = XPLMFindNavAid(nullptr, navInfo.getID ().data(), &lat_f, &lon_f, nullptr, nav_type);
       }
+    }
+
+    if (navInfo.navRef != XPLM_NAV_NOT_FOUND)
+    {
+      flag_icao_is_valid = true;
+      XPLMGetNavAidInfo(navInfo.navRef, &navInfo.navType, &navInfo.lat, &navInfo.lon, &navInfo.height_mt, &navInfo.freq, &navInfo.heading, navInfo.ID, navInfo.name, navInfo.inRegion);
+      const auto distance = mxUtils::mxCalcDistanceBetween2Points (navInfo.lat, navInfo.lon, lat_f, lon_f);
+      if (distance < 1.2)
+      {
+        XPLMSetFMSEntryInfo(valid_entries_counter, navInfo.navRef, static_cast<int> ( navInfo.height_mt ) );
+        Utils::addElementToMap (map_fms_entries, valid_entries_counter, navInfo);
+        ++valid_entries_counter;
+      }
+
     }
 
 
@@ -4049,28 +4086,39 @@ data_manager::setGPS()
     // v3.0.241.2 adding RealityXP ".gpf" flight plan format
     if (flag_icao_is_valid)
     {
+      const double distance = mxUtils::mxCalcDistanceBetween2Points(navInfo.lat, navInfo.lon, lat_f, lon_f);
 
-      const double distance = Utils::calcDistanceBetween2Points_nm(navInfo.lat, navInfo.lon, lat_f, lon_f);
-
-      // skip lat/lon in FMS if too close to ICAO default location
-      if (distance < 0.2)
+      // skip lat/lon in FMS only if this is not a loaded mission and distance to entry is to close.
+      if (((i1 == 0 && distance < 1.2 ) || (i1 > 0 && distance < 0.2) ) && mission_state_s.empty () )
       {
         continue;
       }
     }
 
-    XPLMSetFMSEntryLatLon(index, lat_f, lon_f, elev_mt_i); // v3.0.241.3
+    // v25.05.1
+    missionx::NavAidInfo nav (lat_f, lon_f, static_cast<float>(elev_mt_i) );
+    Utils::addElementToMap (map_fms_entries, valid_entries_counter, navInfo);
 
-    ++index;
+    XPLMSetFMSEntryLatLon(valid_entries_counter, lat_f, lon_f, elev_mt_i); // v3.0.241.3
+
+    ++valid_entries_counter;
   } // end loop over all child <point>s
 
-  const std::string mission_state_s = Utils::readAttrib(mx_global_settings.node,   mxconst::get_PROP_MISSION_STATE(), ""); // empty value means new mission and not loaded checkpoint
-  const int         entries         = XPLMCountFMSEntries ();
+  // Decide on which FMS entry to point
+  const int entries = XPLMCountFMSEntries ();
+  int iCurrentGpsActiveEntry = static_cast<int> ( Utils::readNumericAttrib ( xFMS_ptr, mxconst::get_ATTRIB_DESTINATION_ENTRY(), -1 ) );
 
-  if (mission_state_s.empty())
+  // validations
+  if (entries > 0 && iCurrentGpsActiveEntry < 0)
+    iCurrentGpsActiveEntry = 1;
+  else if ( iCurrentGpsActiveEntry < 0 )
+    iCurrentGpsActiveEntry = 0;
+
+  // set FMS only if positive
+  if (iCurrentGpsActiveEntry)
     XPLMSetDestinationFMSEntry(iCurrentGpsActiveEntry); // set GPS/FMS active entry
-  else
-    XPLMSetDestinationFMSEntry(entries - 1); // set last entry for loaded from checkpoint
+
+  return map_fms_entries;
 }
 
 // -------------------------------------
@@ -6546,7 +6594,7 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outE
 // -------------------------------------
 
 NavAidInfo
-data_manager::getPlaneAirportOrNearestICAO(const bool& inOnlySearchInDatabase, const double& inLat, const double& inLon, bool inIsThread)
+data_manager::getPlaneAirportOrNearestICAO(const bool& inOnlySearchInDatabase, const double& inLat, const double& inLon, const bool inIsThread)
 {
   // The following function will first try to figure out if the plane inside one of the airports boundary which is stored in the SQLITE database.
   // If not then it will fall back to the original code, by using the XPSDK.
@@ -6595,9 +6643,9 @@ where is_plane_in_boundary = 1
 
 
 
-#ifndef RELEASE
-  Log::logMsgThread("Fetch_airport_where_plane_is_in_its_boundary Query:\n" + query);
-#endif // !RELEASE
+  #ifndef RELEASE
+  Log::logMsgThread( fmt::format("{} Plane in airport boundary query:\n{}", __func__, query) );
+  #endif // !RELEASE
 
 
   if (db_xp_airports.db_is_open_and_ready)
@@ -6645,6 +6693,7 @@ where is_plane_in_boundary = 1
 
   if (inOnlySearchInDatabase + inIsThread)
   {
+    // Since we only want data from the database, we do not use the XPLMGetNavAidInfo() function.
     if (flagFoundPlaneInAirportArea)
       navAid.navRef = XPLMFindNavAid(nullptr, navAid.ID, &navAid.lat, &navAid.lon, nullptr, xplm_Nav_Airport); // we are still using XPlane library to re-fetch information but this time we set the ICAO and lat/lon beforehand
 
@@ -6697,7 +6746,7 @@ data_manager::get_and_guess_nav_info (const std::string &in_id_nav_name, const m
   NavAidInfo  nNavAid;
   auto lat = static_cast<float>(prevPoint.lat);
   auto lon = static_cast<float>(prevPoint.lon);
-  nNavAid.navRef = XPLMFindNavAid (nullptr, in_id_nav_name.c_str (), &lat, &lon, nullptr, xplm_Nav_Airport|xplm_Nav_NDB|xplm_Nav_VOR| xplm_Nav_Fix|xplm_Nav_DME); // find navaid
+  nNavAid.navRef = XPLMFindNavAid (nullptr, in_id_nav_name.c_str (), &lat, &lon, nullptr, xplm_Nav_Airport|xplm_Nav_NDB|xplm_Nav_VOR|xplm_Nav_Fix|xplm_Nav_DME); // find navaid
 
   if (nNavAid.navRef == XPLM_NAV_NOT_FOUND)
     nNavAid.init ();
@@ -8244,43 +8293,93 @@ data_manager::flc_datarefs_interpolation()
 }
 
 std::string const
-data_manager::getMissionSubcategoryTranslationCode(int in_missionCodeType, int in_subCategoryCode)
+data_manager::getMissionSubcategoryTranslationCode (const int in_missionCodeType, int in_mission_subcategory, IXMLNode &outMetaNode)
 {
-  // assert(missionx::data_manager::mapMissionCategoriesCodes.at(in_missionCodeType) != nullptr &&  "No Mission Code was Found.");
-  // assert(missionx::data_manager::mapMissionCategoriesCodes.at(in_missionCodeType).at(in_subCategoryCode) != nullptr && ": No Sub code was Found.");
+  // v25.05.1 Changed the function logic so we won't be dependent on the mx_mission_subcategory_type.
+  // We will focus only on the "in_missionCodeType" and a "key word" in the picked sub category.
+  // We will remove the "data_manager::mapMissionCategoriesCodes" from the code.
 
-  mx_mission_subcategory_type code = mapMissionCategoriesCodes.at(in_missionCodeType).at(in_subCategoryCode); // lmbda_get_category_code(in_missionCodeType, in_subCategoryCode);
-
-  switch (code)
+  if (mxUtils::isElementExistsInVec<int> (data_manager::vecMissionCategoriesCodes, in_missionCodeType))
   {
-    case (mx_mission_subcategory_type::med_any_location):
-    case (mx_mission_subcategory_type::med_accident):
-    case (mx_mission_subcategory_type::med_outdoors):
-      return mxconst::get_GENERATE_TYPE_MEDEVAC();
-      break;
-    case (mx_mission_subcategory_type::cargo_ga):
-    case (mx_mission_subcategory_type::cargo_farming):
-    case (mx_mission_subcategory_type::cargo_isolated):
-    case (mx_mission_subcategory_type::cargo_heavy):
-      return mxconst::get_GENERATE_TYPE_CARGO();
-      break;
-    case (mx_mission_subcategory_type::oilrig_cargo):
-      return mxconst::get_GENERATE_TYPE_OILRIG_CARGO();
-      break;
-    case (mx_mission_subcategory_type::oilrig_med):
-      return mxconst::get_GENERATE_TYPE_OILRIG_MED();
-      break;
-    case (mx_mission_subcategory_type::oilrig_personnel):
-      return mxconst::get_GENERATE_TYPE_OILRIG_CARGO();
-      break;
-    default:
-      break;
+    outMetaNode.updateAttribute ( "", mxconst::get_ATTRIB_SURPRISE_ME_SUB_CAT_B ().c_str (), mxconst::get_ATTRIB_SURPRISE_ME_SUB_CAT_B ().c_str ());
 
-  } // end switch
+    switch (in_missionCodeType)
+    {
+      case static_cast<int> (missionx::mx_mission_type::medevac):
+      {
+        assert (in_mission_subcategory < data_manager::strct_ui_share_data.medevac_arr.size () && fmt::format ("[{}] subcategory index: '{}', is out of bound for medevac.", __func__, in_mission_subcategory).c_str ());
+        const std::string code_text = data_manager::strct_ui_share_data.medevac_arr.at (in_mission_subcategory);
+        if (mxUtils::stringToLower (code_text).find (mxconst::SEARCH_SURPRISE_ME_TEXT) != std::string::npos)
+          Utils::xml_set_attribute_in_node <bool>(outMetaNode, mxconst::get_ATTRIB_SURPRISE_ME_SUB_CAT_B (), true, outMetaNode.getName () ); // special attribute that will affect how the mission will be built.
 
+        return mxconst::get_GENERATE_TYPE_MEDEVAC ();
+      }
+      break;
+      case static_cast<int> (missionx::mx_mission_type::cargo):
+      {
+        assert (in_mission_subcategory < data_manager::strct_ui_share_data.cargo_arr.size () && fmt::format ("[{}] subcategory index: '{}', is out of bound for cargo.", __func__, in_mission_subcategory).c_str ());
+        const std::string code_text = data_manager::strct_ui_share_data.cargo_arr.at (in_mission_subcategory);
+        return mxconst::get_GENERATE_TYPE_CARGO ();
+      }
+      break;
+      case static_cast<int> (missionx::mx_mission_type::oil_rig):
+      {
+        assert (in_mission_subcategory < data_manager::strct_ui_share_data.oilrig_arr.size () && fmt::format ("[{}] subcategory index: '{}', is out of bound for oilrig.", __func__, in_mission_subcategory).c_str ());
+        const std::string code_text = data_manager::strct_ui_share_data.oilrig_arr.at (in_mission_subcategory);
+        // check if code_text has "med" in the cargo text
+        if (mxUtils::stringToLower (code_text).find ("med") != std::string::npos)
+          return mxconst::get_GENERATE_TYPE_OILRIG_MED ();
+
+        return mxconst::get_GENERATE_TYPE_OILRIG_MED ();
+      }
+      break;
+      default:
+        break;
+    } // end switch
+  }
 
 
   return "";
+
+
+  // assert(missionx::data_manager::mapMissionCategoriesCodes.at(in_missionCodeType) != nullptr &&  "No Mission Code was Found.");
+  // assert(missionx::data_manager::mapMissionCategoriesCodes.at(in_missionCodeType).at(in_subCategoryCode) != nullptr && ": No Sub code was Found.");
+  //
+  //if (mxUtils::isElementExists (data_manager::mapMissionCategoriesCodes, in_missionCodeType))
+  //{
+  //  const auto vec = data_manager::mapMissionCategoriesCodes[in_missionCodeType];    
+  //
+  //  const mx_mission_subcategory_type code = vec.at (in_subCategoryCode);
+  //
+  //  switch (code)
+  //  {
+  //    case (mx_mission_subcategory_type::med_any_location):
+  //    case (mx_mission_subcategory_type::med_accident):
+  //    case (mx_mission_subcategory_type::med_outdoors):
+  //      return mxconst::get_GENERATE_TYPE_MEDEVAC ();
+  //      break;
+  //    case (mx_mission_subcategory_type::cargo_ga):
+  //    case (mx_mission_subcategory_type::cargo_farming):
+  //    case (mx_mission_subcategory_type::cargo_isolated):
+  //    case (mx_mission_subcategory_type::cargo_heavy):
+  //      return mxconst::get_GENERATE_TYPE_CARGO ();
+  //      break;
+  //    case (mx_mission_subcategory_type::oilrig_cargo):
+  //      return mxconst::get_GENERATE_TYPE_OILRIG_CARGO ();
+  //      break;
+  //    case (mx_mission_subcategory_type::oilrig_med):
+  //      return mxconst::get_GENERATE_TYPE_OILRIG_MED ();
+  //      break;
+  //    case (mx_mission_subcategory_type::oilrig_personnel):
+  //      return mxconst::get_GENERATE_TYPE_OILRIG_CARGO ();
+  //      break;
+  //    default:
+  //      break;
+  //
+  //  } // end switch
+  //}
+  //
+  //return "";
 }
 
 // -------------------------------------
@@ -8352,20 +8451,57 @@ data_manager::set_acf (const std::string &inFileName)
 // -------------------------------------
 
 void
-data_manager::set_active_acf_and_gather_info (const std::string& inFileName)
+data_manager::set_active_acf_and_gather_info (const std::string &inFileName)
 {
 
-    #ifndef RELEASE
-    Log::logMsg (fmt::format("Gathering ACF: {} Information.", inFileName) );
-    #endif
-    data_manager::set_acf (inFileName);
+#ifndef RELEASE
+  Log::logMsg (fmt::format ("Gathering ACF: {} Information.", inFileName));
+#endif
+  data_manager::set_acf (inFileName);
 
-    missionx::Inventory::gather_acf_cargo_data(data_manager::mapInventories[mxconst::get_ELEMENT_PLANE()], true);
-    data_manager::dref_acf_station_max_kgs_f_arr.setAndInitializeKey("sim/aircraft/weight/acf_m_station_max");
-    missionx::dataref_param::set_dataref_values_into_xplane(data_manager::dref_m_stations_kgs_f_arr ); // force original weight on the new plane
+  missionx::Inventory::gather_acf_cargo_data (data_manager::mapInventories[mxconst::get_ELEMENT_PLANE ()], true);
+  data_manager::dref_acf_station_max_kgs_f_arr.setAndInitializeKey ("sim/aircraft/weight/acf_m_station_max");
+  missionx::dataref_param::set_dataref_values_into_xplane (data_manager::dref_m_stations_kgs_f_arr); // force original weight on the new plane
 
-    missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::gather_acf_custom_datarefs); // v3.303.13 make sure we will have the plane dataref information
+  missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::gather_acf_custom_datarefs); // v3.303.13 make sure we will have the plane dataref information
+}
 
+// -------------------------------------
+
+IXMLNode
+data_manager::get_default_overpass_urls_node ()
+{
+  IXMLNode overpass_node = IXMLNode::emptyIXMLNode;
+  IXMLDomParser dummy;
+  auto xDomOverpass = dummy.parseString ( mxconst::get_OVERPASS_XML_URLS().c_str(), mxconst::get_ELEMENT_OVERPASS ().c_str() );
+  if (!xDomOverpass.isEmpty())
+  {
+    overpass_node = xDomOverpass.deepCopy ();
+  }
+
+  return overpass_node;
+}
+
+// -------------------------------------
+
+std::vector<std::string>
+data_manager::get_default_overpass_urls_as_vector (const IXMLNode &inNode)
+{
+  std::vector<std::string > vecUrls;
+
+  if (!inNode.isEmpty ())
+  {
+    int nodeCounter_i = inNode.nChildNode(mxconst::get_ELEMENT_URL ().c_str ());
+    for (int i1=0; i1 < nodeCounter_i; ++i1)
+    {
+      const auto node = inNode.getChildNode (mxconst::get_ELEMENT_URL ().c_str (), i1);
+      if (const auto text = Utils::xml_get_text (node);
+          !text.empty ())
+        vecUrls.emplace_back (text);
+    }
+  }
+
+  return vecUrls;
 }
 
 // -------------------------------------
