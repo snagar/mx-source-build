@@ -1193,7 +1193,10 @@ setSharedDataRef(std::string inDataName, XPLMDataTypeID inDataType, XPLMDataChan
 
       // add to shared params in data_manager
       Utils::addElementToMap(missionx::data_manager::mapSharedParams, inDataName, dref);
-      XPLMDebugString(std::string("missionx: Added shared dataref: " + inDataName + "\t " + dref.to_string()).c_str());
+      #ifndef RELEASE
+      // Log::logMsg(std::string("missionx: Added shared dataref: " + inDataName + "\t " + dref.to_string()).c_str());
+      Log::logMsg(std::format("missionx: Added shared dataref: {}\t {}",inDataName, dref.to_string()));
+      #endif
     }
     else
     {

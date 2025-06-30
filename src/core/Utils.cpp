@@ -51,7 +51,7 @@ TimerFunc::TimerFunc (const std::string &inFilename, const std::string &inSource
 
   std::snprintf(buf_filename, sizeof(buf_filename), "%-*.*s", static_cast<int32_t> (TimerFunc::FILENAME_WIDTH_CHAR) - 1, static_cast<int32_t> (TimerFunc::FILENAME_WIDTH_CHAR) - 1, this->sourceFileName.c_str());
   std::snprintf(buf_funcName, sizeof(buf_funcName), "%-*.*s", static_cast<int32_t> (TimerFunc::FUNCNAME_WIDTH_CHAR) - 1, static_cast<int32_t> (TimerFunc::FUNCNAME_WIDTH_CHAR) - 1, this->sourceFuncName.c_str());
-  std::snprintf(buff_seq, sizeof(buff_seq) - static_cast<size_t> (1), "%i", this->seq);
+  std::snprintf(buff_seq, sizeof(buff_seq) - static_cast<size_t> (1), "%loop2", this->seq);
 
   const std::string info_buff = std::string(buf_filename) + "\t:" + buf_funcName + "(" + buff_seq + ")\t: \t\t\t" + info;
 
@@ -105,7 +105,7 @@ TimerFunc::stop() const
 
   std::snprintf(buf_filename, sizeof(buf_filename), "%-*.*s", static_cast<int32_t> (TimerFunc::FILENAME_WIDTH_CHAR) - 1, static_cast<int32_t> (TimerFunc::FILENAME_WIDTH_CHAR) - 1, this->sourceFileName.c_str());
   std::snprintf(buf_funcName, sizeof(buf_funcName), "%-*.*s", static_cast<int32_t> (TimerFunc::FUNCNAME_WIDTH_CHAR) - 1, static_cast<int32_t> (TimerFunc::FUNCNAME_WIDTH_CHAR) - 1, this->sourceFuncName.c_str());
-  std::snprintf(buff_seq, sizeof(buff_seq) - static_cast<size_t> (1), "%i", this->seq);
+  std::snprintf(buff_seq, sizeof(buff_seq) - static_cast<size_t> (1), "%loop2", this->seq);
 
   #if defined LIN
   std::snprintf(buf_duration_mcs, sizeof(char) * sizeof(buf_duration_mcs) - static_cast<size_t> (1), "%*ld", 10, durationMicro);
@@ -618,6 +618,53 @@ missionx::Utils::splitStringToList(const std::string& inString, const std::strin
 
   const auto vec = mxUtils::split_v2(inString, delimateChars); // v3.305.1
   return std::list<std::string>(vec.begin(), vec.end());
+}
+
+// -------------------------------------------
+
+std::vector<int>
+missionx::Utils::splitStringAndGetShuffledIndexVector (const std::string &inString, const std::string &delimateChars, std::vector<std::string> &out_split_vec)
+{
+  std::vector<int> shuffled_indx_vec;
+  out_split_vec = mxUtils::split_v2 (inString, delimateChars);
+
+  // init random seed
+  std::random_device rd;
+  std::mt19937       g (rd ()); // Mersenne Twister engine seeded by random_device
+
+  int index_counter = 0;
+  std::for_each (out_split_vec.begin (),
+                 out_split_vec.end (),
+                 [&] (const std::string &str)
+                 {
+                   shuffled_indx_vec[index_counter] = index_counter; // 0-based indexing, to be complient with vector indexing.
+                   index_counter++;
+                 });
+   // Shuffle index vector
+  std::ranges::shuffle (shuffled_indx_vec, g);
+
+  return shuffled_indx_vec;
+}
+
+// -------------------------------------------
+
+
+std::vector<int>
+missionx::Utils::getShuffledIndexVector (const int &inNumbersInVector)
+{
+
+  // init random seed
+  std::random_device rd;
+  std::mt19937       g (rd ()); // Mersenne Twister engine seeded by random_device
+
+  std::vector<int> shuffled_indx_vec;
+  for (int i = 0; i < inNumbersInVector; ++i)
+    shuffled_indx_vec.push_back (i);
+
+  // Shuffle Vector
+  std::ranges::shuffle (shuffled_indx_vec, g);
+
+  return shuffled_indx_vec;
 }
 
 
@@ -1179,6 +1226,25 @@ missionx::Utils::readAttrib(const IXMLNode& node, const std::string &attribOptio
 // -------------------------------------------
 // -------------------------------------------
 
+
+IXMLNode
+missionx::Utils::xml_search_and_set_attributes_in_node (IXMLNode &inNode, const std::list<missionx::structs::strct_node_attribute_key_value> &in_attrib_list, const bool &inReturnCopy)
+{
+  // loop over in_attrib_list and set the trigger node
+  for (const auto &kv : in_attrib_list)
+  {
+    if (kv.attrib_name.empty ())
+      continue;
+
+    Utils::xml_search_and_set_attribute_in_IXMLNode (inNode, kv.attrib_name, kv.attrib_value, kv.tag);
+  }
+
+  if (inReturnCopy)
+    return inNode.deepCopy ();
+
+  return inNode; // return the pointer of the original node
+}
+
 bool
 missionx::Utils::xml_search_and_set_attribute_in_IXMLNode(IXMLNode& inNode, const std::string& inAttribName, const std::string& attribValue, const std::string &inModifyByElementName)
 {
@@ -1186,28 +1252,27 @@ missionx::Utils::xml_search_and_set_attribute_in_IXMLNode(IXMLNode& inNode, cons
   // Search attribute in current Node
   if (!inNode.isEmpty() && !inAttribName.empty())
   {
-    bool flag_same_name_for_element_and_search_name = false;
-    if (const std::string currentElementTagName = inNode.getName ()
-      ; currentElementTagName == inModifyByElementName)
-      flag_same_name_for_element_and_search_name = true;
+    //bool flag_node_name_and_search_element_name_are_the_same = false;
+    //if (const std::string currentElementTagName = inNode.getName ()
+    //  ; currentElementTagName == inModifyByElementName)
+    //  flag_node_name_and_search_element_name_are_the_same = true;
+
+    #ifndef RELEASE    
+    const std::string currentElementTagName = inNode.getName ();
+    #endif // !RELEASE
+
+
+    const bool flag_node_name_and_search_element_name_are_the_same = (inNode.getName () == inModifyByElementName) ? true : false;
+
 
     // check all attributes in current Node level. If no attribute found then recurse to lower level
-    const int attribCounter  = inNode.nAttribute();
-    bool      flag_canChange = false;          // will be used after attribute loop.
+    const int attribCounter  = inNode.nAttribute ();
     for (int i1 = 0; i1 < attribCounter; ++i1) // loop over all attributes of current Node
     {
       const std::string attribName       = inNode.getAttributeName(i1);
 
-      // decide if we can set the attribute we found.
-      // if (const bool flag_attribFound = (inAttribName == attribName)
-      //   ; flag_attribFound && inModifyByElementName.empty())
-      //   flag_canChange = true;
-      // else if (flag_attribFound && !inModifyByElementName.empty() && flag_same_name_for_element_and_search_name)
-      //   flag_canChange = true;
-
-      flag_canChange = static_cast<bool> ((inAttribName == attribName) * (inModifyByElementName.empty() + (!inModifyByElementName.empty() * flag_same_name_for_element_and_search_name ) ) );
-
-      if (flag_canChange)
+      // check if we can change the attribute value based on "attribute name" and the "tag name".
+      if ((inAttribName == attribName) * (inModifyByElementName.empty () + (!inModifyByElementName.empty () * flag_node_name_and_search_element_name_are_the_same)))
       {
         inNode.updateAttribute(attribValue.c_str(), inAttribName.c_str(), i1);
         return true;
@@ -1217,14 +1282,15 @@ missionx::Utils::xml_search_and_set_attribute_in_IXMLNode(IXMLNode& inNode, cons
     // *********************************************
     // SPECIAL CASE:
     // Did not find attribute but on same element as the search one. In this case we will create the attribute
-    if (!flag_canChange && flag_same_name_for_element_and_search_name)
+    //if (!flag_canChange && flag_node_name_and_search_element_name_are_the_same)
+    if (flag_node_name_and_search_element_name_are_the_same)
     {
       inNode.addAttribute(inAttribName.c_str(), attribValue.c_str());
       return true;
     }
     //// END Special Case **************************
 
-    // if we reach here, it means we did not find the attribute. Loop over all sub-nodes and recurse the search
+    // Drill down: if we reach here, it means we did not find the attribute. Loop over all sub-nodes and recurse the search
     const int nChilds = inNode.nChildNode();
     for (int i1 = 0; i1 < nChilds; ++i1)
     {
@@ -1851,6 +1917,66 @@ missionx::Utils::xml_get_attribute_value (const IXMLNode &pNode, const std::stri
   }
 
   return value;
+}
+
+// -------------------------------------------
+
+std::string
+Utils::xml_get_attribute_value (const IXMLNode &in_node, const std::string &in_attrib_to_search, const std::string &in_default_value)
+{
+  if (in_node.isEmpty())
+    return in_default_value;
+
+  const int nAttributes = in_node.nAttribute();
+  for (int i = 0; i < nAttributes; i++)
+  {
+    if (IXMLAttr attrib = in_node.getAttribute(i);
+        in_attrib_to_search == attrib.sName)
+      return attrib.sValue;
+  }
+
+  return in_default_value;
+}
+
+// -------------------------------------------
+
+std::string
+missionx::Utils::xml_get_attrib_value_based_on_other_attrib_presence (const IXMLNode &pNode, const std::string &in_tag, const std::string &in_attrib_to_base_our_search, const std::string &in_attrib_value_we_search, const std::string &in_attrib_name_to_return_its_value, const std::string &in_default_value)
+{
+  std::string real_value_to_return{ in_default_value };
+
+  if (pNode.isEmpty ())
+    return in_default_value;
+
+  // loop over all sub elements and find the node with same "tag" name "attribute=value" and then return the requested attribute value.
+  const auto iNodes = pNode.nChildNode (in_tag.c_str ());
+  for (int loop1 = 0; loop1 < iNodes; ++loop1)
+  {
+    bool flag_found_base_attrib_name_and_its_value = false;
+    bool flag_found_requested_attrib_value         = false;
+
+    auto in_node = pNode.getChildNode (in_tag.c_str (), loop1);
+
+    // loop over all nodes attributes and search for the base attribute name=value
+    const int nAttributes = in_node.nAttribute ();
+    for (int loop2 = 0; loop2 < nAttributes && !(flag_found_requested_attrib_value * flag_found_requested_attrib_value); ++loop2)
+    {
+      if (const IXMLAttr base_attrib = in_node.getAttribute (loop2); in_attrib_to_base_our_search == base_attrib.sName && in_attrib_value_we_search == base_attrib.sValue)
+        flag_found_base_attrib_name_and_its_value = true;
+      else if (const IXMLAttr ref_attrib = in_node.getAttribute (loop2); in_attrib_name_to_return_its_value == ref_attrib.sName)
+      {
+        real_value_to_return              = ref_attrib.sValue;
+        flag_found_requested_attrib_value = true;
+      }
+    }
+
+    // did we find the <tag> and both attributes ?
+    if (flag_found_requested_attrib_value * flag_found_base_attrib_name_and_its_value)
+      return real_value_to_return;
+
+  } // end loop1
+
+  return in_default_value;
 }
 
 // -------------------------------------------
@@ -2943,11 +3069,13 @@ missionx::Utils::xml_print_node(const IXMLNode& inNode, const bool bThread)
 {
   if (inNode.isEmpty() == false)
   {
+    const auto   tag_name = inNode.getName ();
     IXMLRenderer xmlWriter;
     if (bThread) // v3.303.8 added thread support
-      Log::logMsgThread(xmlWriter.getString(inNode));
+      Log::logMsgThread( fmt::format ("== {} ==\n{}", tag_name, xmlWriter.getString(inNode)) );
     else
-      Log::logMsg(xmlWriter.getString(inNode));
+      Log::logMsg (fmt::format ("== {} ==\n{}", tag_name, xmlWriter.getString (inNode)));
+
 
     xmlWriter.clear();
   }

@@ -35,7 +35,7 @@ constexpr static const int MX_FEATURES_VERSION = 20250501; //20241212; //2023091
 #define SPECIAL_BUILD ""
 
 inline constexpr static auto PLUGIN_VER_MAJOR                  = "25"; // year
-inline constexpr static auto PLUGIN_VER_MINOR                  = "05"; // month
+inline constexpr static auto PLUGIN_VER_MINOR                  = "06"; // month
 inline constexpr static auto PLUGIN_VER_SUB                    = "1"; // sub-version
 inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
@@ -97,7 +97,8 @@ inline static constexpr float meter2nm             = 0.000539957f;
 inline static constexpr float nm2meter             = 1852.0f;
 inline static constexpr float nm2km                = 1.852f;
 inline static constexpr float km2nm                = 0.539957f;
-inline static constexpr float OneNmh2meterInSecond = 0.5144444f; //
+inline static constexpr float OneNmh2meterInSecond = 0.5144444f;
+constexpr double              NM_TO_DEG_LAT        = (1.0 / 60.0); // v25.06.1
 
 inline static constexpr float seconds2minutes_f = 0.0166f; // v3.305.3
 
@@ -111,7 +112,7 @@ inline static constexpr float fts2kmh = 1.09728f;  // v3.0.202
 inline static constexpr int OUT_OF_BOUNDING_ALERT_TIMER_SEC = 30; // 30 sec. alert will broadcast every 30 seconds
 inline static constexpr float MISSIONX_DOUBLE_CLICK           = 0.9f;
 
-inline const static std::string EMPTY_STRING = "";
+inline const static std::string EMPTY_STRING;
 inline const static std::string PREF_FILE_NAME = "missionx_pref.xml";
 
 inline static constexpr int BRIEFER_DESC_CHAR_WIDTH = 70;
@@ -137,6 +138,7 @@ inline static constexpr intptr_t HOURS_IN_A_DAY_24     = 24;
 
 inline static constexpr double NEARLY_ZERO = 0.0000000001; // dataref_manager
 
+
 #ifdef DEBUG_WRONG_TERRAIN_ELEV
 inline const static unsigned int NUM_CIRCLE_POINTS = 25; // v3.0.253.1
 #else
@@ -157,6 +159,14 @@ namespace enums
 //   loaded_from_savepoint = 1,
 //   loaded_from_random = 2
 // } mx_from_where_mission_was_loaded;
+
+typedef enum class mx_osm_regions_enum : uint8_t
+{
+  nw = 1,
+  ne = 2,
+  se = 3,
+  sw = 4
+} mx_osm_region;
 
 typedef enum class _mx_between_types : uint8_t
 {
@@ -254,6 +264,43 @@ static const std::map <missionx::enums::mx_note_longField_enum, const char*> trn
     {missionx::enums::mx_note_longField_enum::cruise_notes, "cruise_notes"},
     {missionx::enums::mx_note_longField_enum::descent_notes, "descent_notes"}
   };
+}
+
+
+// v25.06.1 add structs namespace
+namespace structs
+{
+typedef struct node_attribute_key_value_struct
+{
+  std::string tag;
+  std::string attrib_name;
+  std::string attrib_value;
+
+  node_attribute_key_value_struct (const std::string &inTag, const std::string &inName, const std::string &inValue) 
+  {
+    tag = inTag;
+    attrib_name = inName;
+    attrib_value = inValue;
+  }
+} strct_node_attribute_key_value;
+
+// Structure for a bounding box
+typedef struct BBox_struct {
+  double minLat, minLon;
+  double maxLat, maxLon;
+
+  [[nodiscard]] std::string get_bbox() const {
+    return  fmt::format("{}, {}, {}, {}", minLat, minLon, maxLat, maxLon);
+  }
+  [[nodiscard]] std::string get_bbox_short() const {
+    return  fmt::format("{:.5},{:.6},{:.5},{:.6}", minLat, minLon, maxLat, maxLon);
+  }
+  void print() const {
+    std::cout << "BBOX: (" << minLat << ", " << minLon << ") to ("
+              << maxLat << ", " << maxLon << ")\n";
+  }
+} BBox;
+
 }
 
 typedef struct _mxVec3

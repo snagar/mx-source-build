@@ -80,7 +80,7 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
   this->strct_setup_layer.bDisplayTargetMarkers = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_DISPLAY_TARGET_MARKERS (), true); // v3.0.254.10 one time initialization
   this->strct_setup_layer.bGPSImmediateExposure = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE (), true);
   this->strct_setup_layer.bPauseIn2D            = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_PAUSE_IN_2D (), mxconst::DEFAULT_AUTO_PAUSE_IN_2D); // v3.0.253.9.1
-  this->strct_setup_layer.bPauseInVR            = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_PAUSE_IN_VR (), mxconst::DEFAULT_AUTO_PAUSE_IN_VR); // v3.0.253.9.1
+  // this->strct_setup_layer.bPauseInVR            = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_PAUSE_IN_VR (), mxconst::DEFAULT_AUTO_PAUSE_IN_VR); // v3.0.253.9.1
   this->strct_setup_layer.bCycleLogFiles        = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_OPT_CYCLE_LOG_FILES (), true); // v25.03.1
   // We will force XP11 layout if X-Plane is v11.x, else, we will read from the properties file.
   missionx::data_manager::flag_setupUseXP11InventoryUI = (missionx::data_manager::xplane_ver_i < missionx::XP12_VERSION_NO) ? true : Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::SETUP_USE_XP11_INV_LAYOUT, (missionx::data_manager::xplane_ver_i < missionx::XP12_VERSION_NO)); // v24.12.2
@@ -3441,15 +3441,18 @@ WinImguiBriefer::draw_setup_layer ()
 
       ImGui::NewLine ();
 
-      ImGui::TextColored (missionx::color::color_vec4_yellow, "Pause X-Plane when Mission-X screen is open in:");
+      // v25.06.1 deprecate the option
+      const bool bDisable = this->mxStartUiDisableState(true);
+      ImGui::TextColored (missionx::color::color_vec4_yellow, "Pause X-Plane when Mission-X is open in VR Mode:");
       ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
-      if (ImGui::Checkbox ("Pause in VR mode", &this->strct_setup_layer.bPauseInVR))
+      if (ImGui::Checkbox ("(Deprecated, always on) Pause in VR mode", &this->strct_setup_layer.bPauseInVR))
       {
+        this->strct_setup_layer.bPauseInVR = false;
         // ADD set option value
-        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_AUTO_PAUSE_IN_VR (), this->strct_setup_layer.bPauseInVR);
-        this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
+        // missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_AUTO_PAUSE_IN_VR (), this->strct_setup_layer.bPauseInVR);
+        // this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
       }
-
+      this->mxEndUiDisableState (bDisable);
       ImGui::Separator (); // v3.305.1
 
       // Cycle Mission-X Log File
@@ -5395,43 +5398,125 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
       ///// Display Generate or Start buttons
       if (!this->selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running)
       {
-        int styleCounter                       = 0;
         this->flag_generatedRandomFile_success = false; // this will also assist in hiding the "start" button since we are generating
         ImGui::SameLine (region_width_arr[0] + 10.0f);
+        // v25.06.1 Add options button to display options that are not part of the template @randomuser
         ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_red);
-        styleCounter++;
-        if (ImGui::Button ("Generate Mission From Template"))
+        if (ImGui::Button ("More Options + Generate Mission") )
         {
-          // v3.303.12 added weather
-          switch (this->adv_settings_strct.iWeatherType_user_picked)
-          {
-            case missionx::mx_ui_random_weather_options::pick_pre_defined:
-            {
-              // store values in the prop_userDefinedMission_ui. During Random mission generation the weather will be picked from the list
-              missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_WEATHER_USER_PICKED (), this->adv_settings_strct.get_weather_picked_by_user ());
-              missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_WEATHER_CHANGE_MODE_USER_PICKED (), this->adv_settings_strct.get_weather_change_mode_picked_by_user ()); // v3.303.13
-            }
-            break;
-            case missionx::mx_ui_random_weather_options::use_xplane_weather_and_store:
-            {
-              missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_WEATHER_USER_PICKED (), mxconst::get_VALUE_STORE_CURRENT_WEATHER_DATAREFS ());
-              missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_PROP_WEATHER_CHANGE_MODE_USER_PICKED ().c_str ()); // v3.303.13
-            }
-            break;
-            default:
-            {
-              missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_PROP_WEATHER_USER_PICKED ().c_str ());
-              missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_PROP_WEATHER_CHANGE_MODE_USER_PICKED ().c_str ()); // v3.303.13
-            }
-            break;
-          }
-
-          this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_MISSION); // should hide the window
+          ImGui::OpenPopup (GENERATE_TEMPLATE_QUESTION.c_str ());
         }
-        ImGui::SameLine (0.0f, 10.0f); // v24.03.2
-        missionx::WinImguiBriefer::add_designer_mode_checkbox (); // v24.03.2
+        ImGui::PopStyleColor ();
 
-        ImGui::PopStyleColor (styleCounter);
+        ImVec2 center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f); // center of screen
+        ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
+        ImGui::SetNextWindowSize (ImVec2 (480.0f, 300.0f));
+
+        ImGui::PushStyleColor (ImGuiCol_PopupBg, missionx::color::color_vec4_black);
+        {
+          const ImVec2 modal_center (mxUiGetContentWidth () * 0.5f, ImGui::GetWindowHeight () * 0.5f);
+          if (ImGui::BeginPopupModal (GENERATE_TEMPLATE_QUESTION.c_str (), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+          {
+            ImGui::Checkbox ("Generate GPS waypoints.", &this->strct_cross_layer_properties.flag_generate_gps_waypoints);
+            this->add_ui_auto_load_checkbox (); // v25.04.2
+            ImGui::Spacing (); // v3.303.14.2 added default weight to the generate screen
+            ImGui::Checkbox ("Add default base weights.\n(Not advisable for planes > GAs)", &this->adv_settings_strct.flag_add_default_weight_settings);
+            ImGui::Spacing ();
+
+            // this->add_ui_pick_subcategories (this->mapMissionCategories[static_cast<int> (missionx::mx_mission_type::cargo)]);
+            // ImGui::Spacing ();
+
+            this->add_ui_advance_settings_random_date_time_weather_and_weight_button2 (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
+            ImGui::Spacing ();
+            add_designer_mode_checkbox (); // v24.03.2 Designer mode flag
+
+            ImGui::NewLine ();
+            ImGui::Separator ();
+            ImGui::NewLine ();
+            ImGui::NewLine ();
+            ImGui::SameLine (modal_center.x * 0.2f);
+            ImGui::SetItemDefaultFocus ();
+
+            // v3.303.10
+            static bool bRerunRandomDateTime{ false };
+
+            // display the option only if we are not in the middle of a running mission
+
+            if (missionx::data_manager::missionState != missionx::mx_mission_state_enum::mission_is_running)
+            {
+
+              bRerunRandomDateTime = add_ui_checkbox_rerun_random_date_and_time ();
+              ImGui::SameLine (0.0f, 5.0f);
+
+              this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+            }
+
+            ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_red);
+            {
+              if (missionx::data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
+              {
+                ImGui::TextColored (missionx::color::color_vec4_aqua, "%s", "Can't generate at this time.");
+              }
+              else if (ImGui::Button (">> Generate <<", ImVec2 (120, 0)))
+              {
+                if (bRerunRandomDateTime) // v3.303.10
+                  this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
+
+                // v3.303.12 added weather
+                switch (this->adv_settings_strct.iWeatherType_user_picked)
+                {
+                  case missionx::mx_ui_random_weather_options::pick_pre_defined:
+                  {
+                    // store values in the prop_userDefinedMission_ui. During Random mission generation the weather will be picked from the list
+                    missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_WEATHER_USER_PICKED (), this->adv_settings_strct.get_weather_picked_by_user ());
+                    missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_WEATHER_CHANGE_MODE_USER_PICKED (), this->adv_settings_strct.get_weather_change_mode_picked_by_user ()); // v3.303.13
+                  }
+                  break;
+                  case missionx::mx_ui_random_weather_options::use_xplane_weather_and_store:
+                  {
+                    missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_WEATHER_USER_PICKED (), mxconst::get_VALUE_STORE_CURRENT_WEATHER_DATAREFS ());
+                    missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_PROP_WEATHER_CHANGE_MODE_USER_PICKED ().c_str ()); // v3.303.13
+                  }
+                  break;
+                  default:
+                  {
+                    missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_PROP_WEATHER_USER_PICKED ().c_str ());
+                    missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_PROP_WEATHER_CHANGE_MODE_USER_PICKED ().c_str ()); // v3.303.13
+                  }
+                  break;
+                }
+
+                // if (const auto vecToDisplay = this->mapMissionCategories[static_cast<int> (missionx::mx_mission_type::cargo)]; vecToDisplay.size () > this->strct_user_create_layer.iMissionSubCategoryPicked)
+                //   missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_MISSION_SUBCATEGORY_LBL (), vecToDisplay.at (this->strct_user_create_layer.iMissionSubCategoryPicked));
+                // this->addAdvancedSettingsPropertiesBeforeGeneratingRandomMission (); // TODO: Consider if to use the advance settings
+
+                // Prepare and call ACTION_GENERATE_RANDOM_MISSION
+                missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), this->strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12 generate GPS waypoints
+
+                ImGui::CloseCurrentPopup ();
+                this->execAction (mx_window_actions::ACTION_GENERATE_RANDOM_MISSION);
+
+              } // end [generate] button
+            } // end red style button color
+            ImGui::PopStyleColor (); // pop red buttons
+
+            ImGui::SetItemDefaultFocus ();
+            auto debug_pos = modal_center.x * 1.40f;
+            // ImGui::SameLine (modal_center.x * 1.40f);
+            ImGui::SameLine (0.0f, 50.0f);
+            // back button
+            if (ImGui::Button ("Back", ImVec2 (80, 0)))
+            {
+              ImGui::CloseCurrentPopup ();
+            }
+            this->mxUiReleaseLastFont ();
+
+
+            ImGui::EndPopup ();
+          } // END POPUP ILS
+        }
+        ImGui::PopStyleColor (); // black
+        //////////////////////////////
       }
       else if (missionx::RandomEngine::threadState.flagIsActive)
       {

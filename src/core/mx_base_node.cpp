@@ -21,9 +21,7 @@ missionx::mx_base_node::mx_base_node(const std::string& inTageName)
 void
 missionx::mx_base_node::initBaseNode()
 {
-  // if (!mxconst::get_ELEMENT_NODE().empty ())
   node = IXMLNode::createXMLTopNode(mxconst::get_ELEMENT_NODE().c_str());
-
 }
 
 // -----------------------------------

@@ -26,6 +26,8 @@ public:
   bool flag_navDataFetchedFromDB; // v24.03.1
   bool flag_navDataFetchedFromXPLMGetNavAidInfo; // v24.03.1
 
+  int seq{ -1 }; // v25.06.1 can hold a sequence number to be used with RandomEngin and Surprise Me flow.
+
   XPLMNavRef  navRef;                      // XPSDK type
   XPLMNavType navType{ xplm_Nav_Unknown }; // XPSDK type
   int         freq;
@@ -87,6 +89,8 @@ public:
      flag_is_brieferOrStartLocation           = in_na.flag_is_brieferOrStartLocation;
      flag_navDataFetchedFromDB                = in_na.flag_navDataFetchedFromDB;
      flag_navDataFetchedFromXPLMGetNavAidInfo = in_na.flag_navDataFetchedFromXPLMGetNavAidInfo;
+
+     seq = in_na.seq; // v25.06.1
 
      navRef  = in_na.navRef;
      navType = in_na.navType;
@@ -261,7 +265,8 @@ public:
 
   std::string get_locDesc()
   {
-    if (std::string(ID).empty() && std::string(name).empty())
+    const bool flag_navaid_has_unique_name = nav_aid_has_unique_name(); // v25.06.1
+    if ( (std::string(ID).empty() && std::string(name).empty() || !flag_navaid_has_unique_name) )
       this->loc_desc = "coordinates: [" + Utils::formatNumber<float>(this->lat, 6) + "," + Utils::formatNumber<float>(this->lon, 6) + "]";
     else if (std::string(ID).empty())
       this->loc_desc = std::string(name);
@@ -277,11 +282,23 @@ public:
     return loc_desc;
   }
 
+
+  bool nav_aid_has_unique_name ()
+  {
+    const bool has_coordinate = mxUtils::find_text (getNavAidName (), "coordinate", false) != std::string::npos;
+    const bool has_leg_string = mxUtils::find_text (getNavAidName (), mxconst::get_ELEMENT_LEG (), false) != std::string::npos;
+
+    return !(has_coordinate + has_leg_string); // Logical OR. Unique name means we do not have "coordinates" not "leg" in the navaid name.
+  };
+
+
   std::string get_locDesc_short() // v3.0.241.9 will be used in briefer
   {
-    if (std::string(ID).empty() && (std::string(name).empty() || mxconst::get_COORDINATES_IN_THE_GPS_S().compare(name) == 0))
+    const bool flag_navaid_has_unique_name = nav_aid_has_unique_name(); // v25.06.1
+    // v25.06.1 added unique name check
+    if (std::string(ID).empty() && (std::string(name).empty() || mxconst::get_COORDINATES_IN_THE_GPS_S() == name || !flag_navaid_has_unique_name))
     {
-      if (loc_desc.empty() || Utils::stringToLower(loc_desc).find("coordinates") != std::string::npos) // v3.0.241.10 b3 extended to have better description
+      if (loc_desc.empty() || !flag_navaid_has_unique_name) // v3.0.241.10 b3 extended to have better description
         this->loc_desc = ((this->flag_nav_from_webosm) ? "osmweb: (" : "XY: (") + Utils::formatNumber<float>(this->lat, 4) + ", " + Utils::formatNumber<float>(this->lon, 4) +
                          ")"; // v3.0.253.6 added flag_nav_from_webosm check to better display origin of data
       else

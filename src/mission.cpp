@@ -570,6 +570,8 @@ missionx::Mission::init()
         system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_FONT_PIXEL_SIZE).deleteNodeContent();
       if (!system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_WRITE_CACHE_TO_DB).isEmpty()) // if we have <setup_font_pixel_size> element
         system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_WRITE_CACHE_TO_DB).deleteNodeContent();
+      if (!system_actions::pluginSetupOptions.node.getChildNode(mxconst::get_OPT_AUTO_PAUSE_IN_VR().c_str()).isEmpty()) // v25.06.1 if we have <auto_pause_in_vr> element
+        system_actions::pluginSetupOptions.node.getChildNode(mxconst::get_OPT_AUTO_PAUSE_IN_VR().c_str()).deleteNodeContent();
 
       // v25.05.1 replace overpass URLS
       const auto overpass_node = missionx::data_manager::get_default_overpass_urls_node ();
@@ -578,7 +580,6 @@ missionx::Mission::init()
         setup_overpass_node.deleteNodeContent();
 
       missionx::data_manager::xMissionxProperties_node.addChild (overpass_node.deepCopy (), 0); // store new URLs
-
 
       missionx::system_actions::store_plugin_options();
     }
@@ -655,12 +656,13 @@ missionx::Mission::init()
   }
 
 
-  // v3.0.221.6
-  if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_PAUSE_IN_VR()).isEmpty())
-  {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_AUTO_PAUSE_IN_VR(), mxconst::DEFAULT_AUTO_PAUSE_IN_VR);
-    missionx::system_actions::store_plugin_options();
-  }
+  // // v3.0.221.6
+  // if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_PAUSE_IN_VR()).isEmpty())
+  // {
+  //   // missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_AUTO_PAUSE_IN_VR(), mxconst::DEFAULT_AUTO_PAUSE_IN_VR);
+  //   missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_AUTO_PAUSE_IN_VR(), false); // v25.06.1 Always false
+  //   missionx::system_actions::store_plugin_options();
+  // }
 
 
   // v3.0.221.7
@@ -797,6 +799,13 @@ missionx::Mission::init()
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B()).isEmpty())
   {
     missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B(), mxconst::DEFAULT_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B );
+    missionx::system_actions::store_plugin_options();
+  }
+
+  // v25.06.1 osm_gen_file
+  if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_PROP_OSM_GEN_FILE()).isEmpty())
+  {
+    Utils::xml_search_and_set_node_text(system_actions::pluginSetupOptions.node, mxconst::get_PROP_OSM_GEN_FILE(), mxconst::DEFAULT_OSM_GEN_FILE.data (), mxUtils::formatNumber<int>(static_cast<int> (missionx::mx_property_type::MX_STRING)), true); // "6" = string type
     missionx::system_actions::store_plugin_options();
   }
 
@@ -1305,14 +1314,14 @@ missionx::Mission::START_MISSION()
   // v3.305.2
   this->timerOptLegTriggersTimer.reset();
 
-#ifdef DISPLAY_3D_INSTANCE
-  Log::logMsg("<<<< Display 3D Instances Info >>>>\n=============================\n");
-  for (auto inst : data_manager::map3dInstances)
-  {
-    Log::logMsg(data_manager::map3dInstances[inst.first].to_string());
-  }
-  Log::logMsg("<<<< END Display 3D Instances Info >>>>\n");
-#endif
+// #ifdef DISPLAY_3D_INSTANCE
+//   Log::logMsg("<<<< Display 3D Instances Info >>>>\n=============================\n");
+//   for (auto inst : data_manager::map3dInstances)
+//   {
+//     Log::logMsg(data_manager::map3dInstances[inst.first].to_string());
+//   }
+//   Log::logMsg("<<<< END Display 3D Instances Info >>>>\n");
+// #endif
 
 }
 
@@ -1761,19 +1770,19 @@ missionx::Mission::flc_threads()
 
   ///////////////////////////////
   //  Apt Dat Thread
-  if (this->optAptDat.aptState.flagAbortThread)
+  if (missionx::OptimizeAptDat::aptState.flagAbortThread)
   {
-    if (this->optAptDat.thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
-      this->optAptDat.thread_ref.join();
+    if (missionx::OptimizeAptDat::thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
+      missionx::OptimizeAptDat::thread_ref.join();
 
-    this->optAptDat.aptState.init();
+    missionx::OptimizeAptDat::aptState.init();
 
     missionx::data_manager::flag_apt_dat_optimization_is_running = false;
     missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::enable_aptdat_optimize_menu);
   }
   else
   {
-    if (this->optAptDat.aptState.flagIsActive && !this->optAptDat.aptState.flagThreadDoneWork)
+    if (missionx::OptimizeAptDat::aptState.flagIsActive && !missionx::OptimizeAptDat::aptState.flagThreadDoneWork)
     {
       missionx::data_manager::flag_apt_dat_optimization_is_running = true;
       missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::disable_aptdat_optimize_menu);
@@ -1781,14 +1790,14 @@ missionx::Mission::flc_threads()
     else
     {
       // reset thread
-      if (this->optAptDat.aptState.flagThreadDoneWork)
+      if (missionx::OptimizeAptDat::aptState.flagThreadDoneWork)
       {
         const std::string msg = "\t\t--- APT.DAT optimization finished (" + OptimizeAptDat::aptState.getDuration() + "s) ---";
 
-        if (this->optAptDat.thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
-          this->optAptDat.thread_ref.join();
+        if (missionx::OptimizeAptDat::thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
+          missionx::OptimizeAptDat::thread_ref.join();
 
-        this->optAptDat.aptState.init();
+        missionx::OptimizeAptDat::aptState.init();
 
         missionx::data_manager::flag_apt_dat_optimization_is_running = false;
         missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::enable_aptdat_optimize_menu);
@@ -1804,7 +1813,7 @@ missionx::Mission::flc_threads()
 
   ///////////////////////////////
   //  Random Engine Thread
-  if (this->engine.threadState.flagAbortThread)
+  if (missionx::RandomEngine::threadState.flagAbortThread)
   {
     if (RandomEngine::thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
       RandomEngine::thread_ref.join();
@@ -4723,10 +4732,11 @@ missionx::Mission::flcPRE()
       break;
       case missionx::mx_flc_pre_command::pause_xplane:
       {
-        const bool val_pause_in_vr = Utils::getNodeText_type_1_5<bool>(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_PAUSE_IN_VR(), mxconst::DEFAULT_AUTO_PAUSE_IN_VR);
+        // const bool val_pause_in_vr = Utils::getNodeText_type_1_5<bool>(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_PAUSE_IN_VR(), mxconst::DEFAULT_AUTO_PAUSE_IN_VR);
         const bool val_pause_in_2d = Utils::getNodeText_type_1_5<bool>(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_PAUSE_IN_2D(), mxconst::DEFAULT_AUTO_PAUSE_IN_2D);
 
-        if (!missionx::dataref_manager::isSimPause() && ((!missionx::mxvr::vr_display_missionx_in_vr_mode && val_pause_in_2d) || val_pause_in_vr /*v3.0.221.6 dont pause in VR*/)) // if x-plane not in pause mode
+        // if (!missionx::dataref_manager::isSimPause() && ((!missionx::mxvr::vr_display_missionx_in_vr_mode && val_pause_in_2d) || val_pause_in_vr /*v3.0.221.6 dont pause in VR*/)) // if x-plane not in pause mode
+        if (!missionx::dataref_manager::isSimPause() && ( !missionx::mxvr::vr_display_missionx_in_vr_mode && val_pause_in_2d )) // if x-plane not in pause mode
         {
           XPLMCommandKeyStroke(xplm_key_pause);
           if (missionx::dataref_manager::isSimPause())
@@ -5504,11 +5514,11 @@ missionx::Mission::flcPRE()
 
           const std::string err = this->checkGLError("After XPLMBindTexture2d");
           if (err.empty()){
-#ifdef FLIP_IMAGE
+              #ifdef FLIP_IMAGE
               glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLint)inTextureFile.sImageData.Width, (GLint)inTextureFile.sImageData.Height, 0, ((inTextureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, img);
-#else
+              #else
               glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLint)textureFile.sImageData.Width, (GLint)textureFile.sImageData.Height, 0, ((textureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, textureFile.sImageData.pData);
-#endif
+              #endif
 
               glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
               glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -5517,13 +5527,13 @@ missionx::Mission::flcPRE()
           }
           else
           {
-              missionx::Log::logMsgThread("failed to set image: " + file + ", Error: " + err); // v24.06.1
+              missionx::Log::logMsgThread(std::format("failed to set image: {}, Error: {}", file, err)); // v24.06.1
           }
 
           stbi_image_free(textureFile.sImageData.pData);
-#ifdef FLIP_IMAGE
+          #ifdef FLIP_IMAGE
           stbi_image_free(img);
-#endif
+          #endif
 
           textureFile.sImageData.pData = nullptr;  
         }
@@ -5532,16 +5542,16 @@ missionx::Mission::flcPRE()
       case missionx::mx_flc_pre_command::set_story_auto_pause_timer:
       {
         if ( ! Message::lineAction4ui.vals[mxconst::get_STORY_PAUSE_TIME()].empty() && mxUtils::is_digits(Message::lineAction4ui.vals[mxconst::get_STORY_PAUSE_TIME()]) )
-          this->uiImGuiBriefer->strct_flight_leg_info.strct_story_mode.setAutoSkipTimer(mxUtils::stringToNumber<float>(Message::lineAction4ui.vals[mxconst::get_STORY_PAUSE_TIME()])); // v3.305.1
+          missionx::Mission::uiImGuiBriefer->strct_flight_leg_info.strct_story_mode.setAutoSkipTimer(mxUtils::stringToNumber<float>(Message::lineAction4ui.vals[mxconst::get_STORY_PAUSE_TIME()])); // v3.305.1
         else 
-          this->uiImGuiBriefer->strct_flight_leg_info.strct_story_mode.setAutoSkipTimer(mxconst::DEFAULT_SKIP_MESSAGE_TIMER_IN_SEC_F); // v3.305.1
+          missionx::Mission::uiImGuiBriefer->strct_flight_leg_info.strct_story_mode.setAutoSkipTimer(mxconst::DEFAULT_SKIP_MESSAGE_TIMER_IN_SEC_F); // v3.305.1
       }
       break;
       case missionx::mx_flc_pre_command::post_story_message_cache_cleanup:
       {
-#ifndef RELEASE
+        #ifndef RELEASE
         Log::logMsg("Clearing story message cache");
-#endif // !RELEASE
+        #endif // !RELEASE
 
         missionx::data_manager::releaseMessageStoryCachedTextures(); // v3.305.1
       }
@@ -5552,8 +5562,8 @@ missionx::Mission::flcPRE()
           Log::logMsg("Hiding Main window in 2D mode only");
         #endif // !RELEASE
 
-        if (!this->uiImGuiBriefer->IsInVR())
-          this->uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_HIDE_WINDOW);
+        if (!missionx::Mission::uiImGuiBriefer->IsInVR())
+          missionx::Mission::uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_HIDE_WINDOW);
       }
       break;
       case missionx::mx_flc_pre_command::post_async_story_image_binding:
@@ -5570,17 +5580,17 @@ missionx::Mission::flcPRE()
           glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
           glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); // added from imgui
-#ifdef FLIP_IMAGE
+          #ifdef FLIP_IMAGE
           glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLint)inTextureFile.sImageData.Width, (GLint)inTextureFile.sImageData.Height, 0, ((inTextureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, img);
-#else
+          #else
           glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLint)textureFile.sImageData.Width, (GLint)textureFile.sImageData.Height, 0, ((textureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, textureFile.sImageData.pData);
-#endif
+          #endif
 
 
           stbi_image_free(textureFile.sImageData.pData);
-#ifdef FLIP_IMAGE
+          #ifdef FLIP_IMAGE
           stbi_image_free(img);
-#endif
+          #endif
 
           textureFile.sImageData.pData = nullptr;  
         }
@@ -5591,7 +5601,7 @@ missionx::Mission::flcPRE()
       case missionx::mx_flc_pre_command::get_current_weather_state_and_store_in_RandomEngine:
       {
         missionx::RandomEngine::current_weather_datarefs_s = missionx::data_manager::get_weather_state();
-        this->engine.threadState.thread_wait_state         = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::RandomEngine::threadState.thread_wait_state         = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
       case missionx::mx_flc_pre_command::sound_abort_all_channels:
@@ -5634,10 +5644,10 @@ missionx::Mission::flcPRE()
       case missionx::mx_flc_pre_command::save_notes_info:
       {
         auto xNotes = Utils::xml_get_or_create_node_ptr( missionx::data_manager::xMissionxProperties_node, mxconst::get_ELEMENT_NOTES() );
-        if ( !xNotes.isEmpty() && this->uiImGuiBriefer != nullptr )
+        if ( !xNotes.isEmpty() && missionx::Mission::uiImGuiBriefer != nullptr )
         {
           Utils::xml_delete_all_subnodes(xNotes); // delete all subnodes if exists.
-          for (const auto &[key, value] : this->uiImGuiBriefer->strct_flight_leg_info.mapNoteFieldShort )
+          for (const auto &[key, value] : missionx::Mission::uiImGuiBriefer->strct_flight_leg_info.mapNoteFieldShort )
           {
             if (mxUtils::isElementExists(missionx::enums_translation::trnsEnumNoteShort, key))
             {
@@ -5648,7 +5658,7 @@ missionx::Mission::flcPRE()
             }
           }
 
-          for (const auto &[key, value] : this->uiImGuiBriefer->strct_flight_leg_info.mapNoteFieldLong )
+          for (const auto &[key, value] : missionx::Mission::uiImGuiBriefer->strct_flight_leg_info.mapNoteFieldLong )
           {
             if (mxUtils::isElementExists(missionx::enums_translation::trnsEnumNoteLong, key))
             {
@@ -5660,18 +5670,18 @@ missionx::Mission::flcPRE()
           }
 
          missionx::system_actions::store_plugin_options();
-         this->uiImGuiBriefer->setMessage("Saved Notes Data to Properties File.", 5);
+         missionx::Mission::uiImGuiBriefer->setMessage("Saved Notes Data to Properties File.", 5);
         }
       }
       break;
       case missionx::mx_flc_pre_command::load_notes_info:
       {
         auto xNotes = Utils::xml_get_or_create_node_ptr( missionx::data_manager::xMissionxProperties_node, mxconst::get_ELEMENT_NOTES() );
-        if ( !xNotes.isEmpty() && this->uiImGuiBriefer != nullptr )
+        if ( !xNotes.isEmpty() && missionx::Mission::uiImGuiBriefer != nullptr )
         {
           // this->uiImGuiBriefer->strct_flight_leg_info.mapNoteFieldShort.clear();
           // this->uiImGuiBriefer->strct_flight_leg_info.mapNoteFieldLong.clear();
-          this->uiImGuiBriefer->strct_flight_leg_info.initNoteMaps();
+          missionx::Mission::uiImGuiBriefer->strct_flight_leg_info.initNoteMaps();
 
           for (const auto &[keyEnum, tagName] : missionx::enums_translation::trnsEnumNoteShort )
           {
@@ -5679,21 +5689,21 @@ missionx::Mission::flcPRE()
             if (!xTag.isEmpty())
             {
               std::string txt = Utils::xml_get_text(xTag,"\0");
-              this->uiImGuiBriefer->strct_flight_leg_info.setNoteShortField(keyEnum, txt);
+              missionx::Mission::uiImGuiBriefer->strct_flight_leg_info.setNoteShortField(keyEnum, txt);
             }
 
 
             for (const auto &[keyEnum, tagName] : missionx::enums_translation::trnsEnumNoteLong )
             {
-              auto xTag = xNotes.getChildNode(tagName);
-              if (!xTag.isEmpty())
+              auto xTag_local = xNotes.getChildNode(tagName);
+              if (!xTag_local.isEmpty())
               {
-                std::string txt = Utils::xml_get_text(xTag,"\0");
-                this->uiImGuiBriefer->strct_flight_leg_info.setNoteLongField(keyEnum, txt);
+                std::string txt = Utils::xml_get_text(xTag_local,"\0");
+                missionx::Mission::uiImGuiBriefer->strct_flight_leg_info.setNoteLongField(keyEnum, txt);
               }
             }
 
-            this->uiImGuiBriefer->setMessage("Loaded Notes Data from Properties File.", 5);
+            missionx::Mission::uiImGuiBriefer->setMessage("Loaded Notes Data from Properties File.", 5);
           }
         }
       }
@@ -5701,18 +5711,18 @@ missionx::Mission::flcPRE()
       case missionx::mx_flc_pre_command::fetch_metar_data_after_nav_info:
       {
         // v24.03.2 Call METAR thread only if it is not active
-        if (this->uiImGuiBriefer != nullptr)
+        if (missionx::Mission::uiImGuiBriefer != nullptr)
         {
           if (missionx::data_manager::threadStateMetar.flagIsActive)
           {
-            this->uiImGuiBriefer->setMessage("METAR thread is active, will skip metar information call.", 6);
+            missionx::Mission::uiImGuiBriefer->setMessage("METAR thread is active, will skip metar information call.", 6);
           }
           else
           {
             bool bLock = true;
             data_manager::threadStateMetar.init();
             missionx::data_manager::mFetchFutures.push_back(
-              std::async(std::launch::async, missionx::data_manager::fetch_METAR, &this->uiImGuiBriefer->strct_ils_layer.mapNavaidData, &this->uiImGuiBriefer->strct_ils_layer.fetch_metar_state, &this->uiImGuiBriefer->strct_ils_layer.asyncMetarFetchMsg_s, &Mission::uiImGuiBriefer->asyncSecondMessageLine, &bLock));
+              std::async(std::launch::async, missionx::data_manager::fetch_METAR, &missionx::Mission::uiImGuiBriefer->strct_ils_layer.mapNavaidData, &missionx::Mission::uiImGuiBriefer->strct_ils_layer.fetch_metar_state, &this->uiImGuiBriefer->strct_ils_layer.asyncMetarFetchMsg_s, &Mission::uiImGuiBriefer->asyncSecondMessageLine, &bLock));
           }
         }
       }

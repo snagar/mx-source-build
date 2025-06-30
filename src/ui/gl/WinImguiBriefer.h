@@ -518,7 +518,7 @@ public:
     bool             bDisplayTargetMarkers{ true };
     bool             bOverrideExpectedTargetDistance{ false };
     bool             bPauseIn2D{ false };
-    bool             bPauseInVR{ true };
+    bool             bPauseInVR{ false }; // v25.06.1 should always be false
     bool             bCycleLogFiles{ false };
     bool             bAddCountdown{ false };
     bool             bGPSImmediateExposure{ false };
@@ -1152,6 +1152,7 @@ private:
   const std::string FPLN_MORE_DETAILS              = "More Flight Plan Details";
   const std::string GENERATE_QUESTION              = "Generate Mission From Flight Plan?";
   const std::string GENERATE_ILS_QUESTION          = "Generate Mission From ILS data?"; // v3.0.253.6
+  const std::string GENERATE_TEMPLATE_QUESTION     = "Generate Mission From Template data?"; // v25.06.1
   const std::string POPUP_FLIGHT_LEG_SETTINGS      = "Leg Detail Popup"; // v3.0.301
   const std::string POPUP_BRIEFER_SETTINGS         = "Briefer Settings Popup"; // v3.0.301
   const std::string POPUP_TRIGGER_SETTINGS         = "Trigger Settings Popup"; // v3.0.301

@@ -148,6 +148,7 @@ public:
   static std::string trim(std::string str, const std::string chars = std::string("\t\n\v\f\r "));
   static int         countCharsInString(const std::string& inText, const char& inCharToCount); // v3.303.9.1
   static bool        compare (const std::string &inStr1, const std::string &inStr2, bool inCaseSensitive = true ); // v24.05.1
+  static size_t      find_text (const std::string &inStr1, const std::string &inStr2, bool inCaseSensitive = true ); // v25.06.1 find text with ignore case
   static std::string format (const std::string & inText, std::map<int, std::string> & inArgs); // v24.05.2
   static int         calc_minutes_from_seconds(const int &in_seconds_from_midnight); // v25.04.2
 
@@ -174,6 +175,7 @@ public:
   // -------------------------------------------
   // v3.0.255.1
   static std::string remove_char_from_string(const std::string& inVal, const char inCharToRemove); // remove specific char from a given string. Return a new strin without this specific char
+  static std::string sanitize_text (const std::string &inText, const std::string &chars_to_replace = " \t\n\r\f", const char c_replace_with = '_');
   // -------------------------------------------
   static std::vector<std::string> split(const std::string& s, char delimiter = ' ', const bool bKeepEmptyTokens = false); // v3.0.219.12 from https://www.fluentcpp.com/2017/04/21/how-to-split-a-string-in-c/
   static std::vector<std::string> split_v2(const std::string& text, const std::string& delimeter = " \t\n\r\f", const bool bKeepEmptyTokens = true);
@@ -409,8 +411,8 @@ public:
   // based on https://stackoverflow.com/questions/3418231/replace-part-of-a-string-with-another-string
   static std::string replaceAll(std::string str, const std::string& from, const std::string& to);
 
-
-
+  // Function to convert NM to DEG for longitude, adjusted by latitude
+  static double nmToDegLon(double nm, double latDegrees);
 
   //#include <regex>
   //    ...
@@ -524,6 +526,8 @@ public:
   static std::map<char, size_t> getHowManyDelimitersInString(const std::string& inLine, const std::string delimiters);
 
   static int coord_in_rect(float x, float y, const float bounds_ltrb[4]);
+
+  static std::string get_mx_osm_region_trans (const missionx::enums::mx_osm_region inRegion);
 };
 
 } // namespace missionx

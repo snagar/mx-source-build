@@ -50,10 +50,14 @@ public:
   int getErrIndex() { return errIndex; }
   int getInfoIndex() { return infoIndex; }
 
-  int addErrMsg(const std::string& inText)
+  int addErrMsg(const std::string& inText, const bool inSetResultAsFail = false)
   {
     ++errIndex;
     this->errMsges[errIndex] = inText;
+
+    if (inSetResultAsFail)
+      this->result = false;
+
     return errIndex;
   }
 

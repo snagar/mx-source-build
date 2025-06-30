@@ -62,6 +62,101 @@
 namespace missionx
 {
 
+// v25.06.1 added the structs namespace
+namespace structs
+{
+struct strct_osm_query {
+  const std::string BBOX_STR = "{{bbox}}";
+  int total_way_count = 0;
+  std::string id;
+  std::string sanitized_id;
+  std::string sanitized_bbox;
+  std::string cache_folder;
+
+  // used to build the overpass query
+  std::string q_text;
+  std::string q_bbox;
+  std::string q_short_bbox_fmt; // short form of the bbox
+  std::string q_request_subject_ways;
+  IXMLNode    topic_q_node; // Hold the <q> region query count node.
+  IXMLNode    picked_q_node_as_target_query; // Holds the <q> of the search way as target, query node
+
+  // Holds the overpass respond data
+  IXMLNode tags_node; // should hold the <tags> root element
+  IXMLNode target_way_tag {IXMLNode::emptyIXMLNode}; // should hold the subject query way result
+  IXMLNode target_node_tag {IXMLNode::emptyIXMLNode}; // should hold the subject way node result
+
+  std::unordered_map<std::string, std::string> osm_queries;
+  
+  std::chrono::time_point<std::chrono::steady_clock> start_time;
+  std::chrono::time_point<std::chrono::steady_clock> end_time;
+  double duration{};
+
+  strct_osm_query()
+  {
+    total_way_count = 0;
+    IXMLDomParser parser;
+    tags_node = parser.parseString("<region_tags></region_tags>").deepCopy();
+  }
+
+  void clone (const strct_osm_query &inStrct)
+  {
+    this->total_way_count = inStrct.total_way_count;
+    this->id= inStrct.id;
+    this->sanitized_id= inStrct.sanitized_id;
+    this->sanitized_bbox= inStrct.sanitized_bbox;
+    this->cache_folder= inStrct.cache_folder;
+
+    // used to build the overpass query
+    this->q_text= inStrct.q_text;
+    this->q_bbox= inStrct.q_bbox;
+    this->q_short_bbox_fmt= inStrct.q_short_bbox_fmt;
+    this->q_request_subject_ways= inStrct.q_request_subject_ways;
+    this->topic_q_node= inStrct.topic_q_node.deepCopy();
+    this->picked_q_node_as_target_query= inStrct.picked_q_node_as_target_query.deepCopy();
+
+    // Holds the overpass respond data
+    this->tags_node= inStrct.tags_node.deepCopy();
+    this->target_way_tag= inStrct.target_way_tag.deepCopy();
+    this->target_node_tag= inStrct.target_node_tag.deepCopy();
+
+    this->osm_queries.clear();
+    std::for_each (inStrct.osm_queries.begin(), inStrct.osm_queries.end(), [&](const auto &pair)
+    {
+      this->osm_queries.insert(pair);
+    }
+    );
+
+    this->duration = inStrct.duration;
+  }
+
+  strct_osm_query & operator=(const strct_osm_query & inStruct)
+  {
+    clone (inStruct);
+    return *this;
+  }
+
+
+  [[nodiscard]] auto get_elapsed_time() const
+  {
+    if (this->start_time.time_since_epoch().count() * this->end_time.time_since_epoch().count() )
+    {
+      const std::chrono::duration<double> elapsed = end_time - start_time;
+      return elapsed.count();
+    }
+
+    return -1.0;
+  }
+
+  void calculate_elapsed_time()
+  {
+    this->duration = this->get_elapsed_time();
+  }
+
+};
+}
+
+
 typedef struct _mx_nav_data_strct
 {
   typedef struct _mx_row3 // localizer
@@ -1252,7 +1347,7 @@ public:
   //static std::map<int, std::vector<missionx::mx_mission_subcategory_type>> mapMissionCategoriesCodes; // v25.05.1 deprecated
   static std::vector<int>                                                  vecMissionCategoriesCodes; // v25.05.1 replaces mapMissionCategoriesCodes
 
-  static const std::string getMissionSubcategoryTranslationCode(int in_missionCodeType, int in_subCategoryCode, IXMLNode &outMetaNode);
+  static std::string get_translate_of_mission_subcategory_code(int in_missionCodeType, int in_subCategoryCode, IXMLNode &outMetaNode);
 
   //// v3.305.1b
   static mx_sceneryOrPlaneLoad_state_strct strct_sceneryOrPlaneLoadState;
@@ -1276,6 +1371,14 @@ public:
   // v25.05.1
   static IXMLNode get_default_overpass_urls_node ();
   static std::vector<std::string> get_default_overpass_urls_as_vector (const IXMLNode& inNode);
+
+  // v25.06.1
+  static void check_cache_folder (const std::string & in_cache_folder_name);
+  static void fetch_overpass_info_analyze_thread(missionx::base_thread::thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q, const std::map<missionx::enums::mx_osm_region, missionx::structs::BBox>& in_map_bbox);
+  // The get_targets_from_osm_queries() will pick a target from xml_gen XML, and will gather subtarget information based on the "next_tag" element
+  static std::map<int, missionx::NavAidInfo> fetch_targets_using_osm_queries_thread (missionx::base_thread::thread_state *inoutThreadState, IXMLNode &in_root_node, missionx::structs::strct_osm_query &inout_analyzed_query, const std::string &in_cache_folder);
+  static void fetch_ways_and_target_node_from_overpass_thread (missionx::base_thread::thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
+
 
  private:
   static bool flag_found_missing_3D_object_files;

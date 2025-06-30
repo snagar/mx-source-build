@@ -136,19 +136,19 @@ missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(thread_state* inThrea
     const int         xplane_ver_i      = mxUtils::stringToNumber<int>(inThreadState->mapValues[mxconst::get_PROP_XPLANE_VERSION()]);
 
     std::ifstream infs;
-    std::ofstream outCustAptdatFile;
+    // std::ofstream outCustAptdatFile;
 
     /// prepare file streams ///
     // prepare out file: CUSTOM_APT_DAT_FILE.txt file
     std::ios_base::sync_with_stdio(false); // v3.0.219.10
     std::cin.tie(nullptr);                 // v3.0.219.10
 
-    outCustAptdatFile.open(customAptDat.c_str()); // can we create/open the file ?
-    if (outCustAptdatFile.fail())
-    {
-      Log::logAttention((std::string("Fail to create file: ") + customAptDat + "\n"));
-      return false;
-    }
+    // outCustAptdatFile.open(customAptDat.c_str()); // can we create/open the file ?
+    // if (outCustAptdatFile.fail())
+    // {
+    //   Log::logAttention((std::string("Fail to create file: ") + customAptDat + "\n"));
+    //   return false;
+    // }
 
 
     // prepare reading file: "custom_scenery.ini" file
@@ -170,7 +170,7 @@ missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(thread_state* inThrea
       {
         const std::string scenery_pack          = line.substr(std::string_view(missionx::SCENERY_PACK_).length());
 
-        auto const lmbda_get_apt_dat_path = [](std::string inSceneryPack, const int inXplaneVersion, std::string inDefaultAptDatFile)
+        auto const lmbda_get_apt_dat_path = [](const std::string& inSceneryPack, const int inXplaneVersion, std::string inDefaultAptDatFile)
         {
           if (inXplaneVersion < 12000)
           {
@@ -199,20 +199,18 @@ missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(thread_state* inThrea
         const auto start = std::chrono::steady_clock::now();
         #endif
 
-        fs::path path_to_aptDat = relative_apt_dat_path;
-        if (fs::directory_entry(path_to_aptDat).is_regular_file())
+        if (fs::path path_to_aptDat = relative_apt_dat_path;
+            fs::directory_entry(path_to_aptDat).is_regular_file())
         {
           /// PARSE FILE
           OptimizeAptDat::db_airports_cache_ptr->start_transaction();                                                                                                                               // v3.0.255.3
           missionx::OptimizeAptDat::parse_aptdat(inThreadState, relative_apt_dat_path, scenery_pack, false, ((relative_apt_dat_path.find("Global Airports") == std::string::npos) ? true : false)); // if "find" returned "npos", return "true" = custom scenery
           OptimizeAptDat::db_airports_cache_ptr->end_transaction();                                                                                                                                 // v3.0.255.3
         }
-        else 
+        else
         {
-          Log::logMsgThread("\t[File Not Found] \"apt.dat\" does not exists in [" + scenery_pack + "], skipping... !!!");
+          Log::logMsgThread("\t[File Not Found] \"apt.dat\" does not exist in [" + scenery_pack + "], skipping... !!!");
         }
-
-
 
         #ifndef RELEASE
         auto end  = std::chrono::steady_clock::now();
@@ -228,58 +226,57 @@ missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(thread_state* inThrea
     if (infs.is_open())
       infs.close();
 
-    ///// Flush to disk
-    {
-      auto start = std::chrono::steady_clock::now();
-      for (auto &[airport_code, info] : missionx::data_manager::cachedNavInfo_map)
-      {
-        bool bWroteNav = false;
-        ++lineCounter;
-        for (auto nav : info.listNavInfo) // flush data into optimized apt.dat
-        {
-          // lambda to find first space TODO: make a function out of this
-          const auto lmbda_get_first_space_in_line = [](std::string& inLine)
-          {
-            // loop until you find first space
-            int i = 0;
-            for (auto c : inLine)
-            {
-              if (c == ' ')
-                return i;
-
-              ++i;
-            }
-
-            return 0;
-          };
-          auto space_location_i = lmbda_get_first_space_in_line(nav);
-          const std::string code_s = mxUtils::rtrim(nav.substr(0, space_location_i));
-          if (code_s.compare("100") == 0) // do not store runway info
-            continue;
-          else
-          {
-            outCustAptdatFile << nav;
-            ++lineCounter;
-            bWroteNav = true;
-          }
-        }
-        if (info.isCustom && bWroteNav) // * at the end of the NavAid means custom airport
-          outCustAptdatFile << "*"
-                            << "\n";
-
-        outCustAptdatFile << '\n';
-      }
-
-      auto end  = std::chrono::steady_clock::now();
-      auto diff = end - start;
-      duration  = std::chrono::duration<double, std::milli>(diff).count();
-      Log::logAttention("Flush to Disk Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec). Lines Written:  " + Utils::formatNumber<int>(lineCounter) + "\n", true);
-    }
-
-
-    //// Close files
-    if (outCustAptdatFile.is_open())
-      outCustAptdatFile.close();
+    // ///// Flush to disk
+    // {
+    //   auto start = std::chrono::steady_clock::now();
+    //   for (auto &[airport_code, info] : missionx::data_manager::cachedNavInfo_map)
+    //   {
+    //     bool bWroteNav = false;
+    //     ++lineCounter;
+    //     for (auto nav : info.listNavInfo) // flush data into optimized apt.dat
+    //     {
+    //       // lambda to find first space TODO: make a function out of this
+    //       const auto lmbda_get_first_space_in_line = [](std::string& inLine)
+    //       {
+    //         // loop until you find first space
+    //         int i = 0;
+    //         for (auto c : inLine)
+    //         {
+    //           if (c == ' ')
+    //             return i;
+    //
+    //           ++i;
+    //         }
+    //
+    //         return 0;
+    //       };
+    //       auto space_location_i = lmbda_get_first_space_in_line(nav);
+    //       const std::string code_s = mxUtils::rtrim(nav.substr(0, space_location_i));
+    //       if (code_s.compare("100") == 0) // do not store runway info
+    //         continue;
+    //       else
+    //       {
+    //         outCustAptdatFile << nav;
+    //         ++lineCounter;
+    //         bWroteNav = true;
+    //       }
+    //     }
+    //     if (info.isCustom && bWroteNav) // * at the end of the NavAid means custom airport
+    //       outCustAptdatFile << "*"
+    //                         << "\n";
+    //
+    //     outCustAptdatFile << '\n';
+    //   }
+    //
+    //   auto end  = std::chrono::steady_clock::now();
+    //   auto diff = end - start;
+    //   duration  = std::chrono::duration<double, std::milli>(diff).count();
+    //   Log::logAttention("Flush to Disk Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec). Lines Written:  " + Utils::formatNumber<int>(lineCounter) + "\n", true);
+    // }
+    //
+    // //// Close files
+    // if (outCustAptdatFile.is_open())
+    //   outCustAptdatFile.close();
 
     if (infs.is_open())
       infs.close();

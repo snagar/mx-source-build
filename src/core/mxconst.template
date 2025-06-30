@@ -776,8 +776,6 @@ const static ^std::string^                ATTRIB_RELATIVE_POS_BEARING_DEG_DISTAN
 const static ^std::string^                ATTRIB_DEBUG_RELATIVE_POS                              ^ "debug_relative_pos"; ^// v3.303.14 used with RandomEngine. After calculating ATTRIB_RELATIVE_POS_BEARING_DEG_DISTANCE_MT we need to reset its value so it won't interfer with positioning of <display_object>. The "ATTRIB_RELATIVE_POS_BEARING_DEG_DISTANCE_MT" has two uses, calculate at the start of the mission or calculate relative to target/plane during Random mission creation.
 const static ^std::string^                ATTRIB_EXCLUDE_OBJ                                     ^ "exclude_obj"; ^// v3.0.219.5 used in <point> hint Engine which objects to remove from generated mission if exists.
 const static ^std::string^                ATTRIB_INCLUDE_OBJ                                     ^ "include_obj"; ^// v3.0.219.5 used in <point> hint Engine which objects to include in generated mission. Include can only pick one: "hiker,man,woman" will pick one and add it. overlaping location restriction.
-const static ^std::string^                PROP_IS_WET                                            ^ "is_wet"; ^// v3.0.219.10 holds point data if water or terrain (land)
-const static ^std::string^                PROP_FOUND_ICAO                                        ^ "found_icao"; ^// v3.0.219.12+ flags NavAidInfo as found in optimized aptData information
 const static ^std::string^                ATTRIB_LIMIT_TO_TERRAIN_SLOPE                          ^ "limit_to_terrain_slope"; ^// v3.0.219.12+ used in <display_object> element where attribute "limit_to_terrain_slope" will assist if to display the object on certain terrain
 const static ^std::string^                ATTRIB_IS_SET_OF_FLIGHT_LEGS                           ^ "is_set_of_flight_legs"; ^// v3.0.221.7 renamed to is_set_of_goals //v3.0.219.12+ used in <display_object> element where attribute "limit_to_terrain_slope" will assist if to display the object on certain terrain
 const static ^std::string^                ATTRIB_COPY_LEG_AS_IS_B                                ^ "copy_leg_as_is_b"; ^// v3.0.303 used in combination of <content> element. when picking a set of legs we can flag them as final without the need to generate them from scratch, meaning we have all we need
@@ -802,8 +800,6 @@ const static ^std::string^                ATTRIB_FORCE_SLOPED_TERRAIN           
 const static ^std::string^                ATTRIB_FORCE_LEVELED_TERRAIN                           ^ "force_leveled_terrain"; ^// v3.0.253.9.1 // <expected_location> henry @Daikan asked for this. plugin will pick only "land" area and fail if won't find. Same as
 const static ^std::string^                ATTRIB_FORCE_TYPE_OF_TEMPLATE                          ^ "force_type_of_template"; ^// v3.0.253.9.1 // <expected_location> henry @Daikan asked for this. plugin will pick only "land" area and fail if won't find. Same as
 const static ^std::string^                ATTRIB_DESIGNER_MAX_SLOPE_TO_LAND                      ^ "max_slope_to_land"; ^// v3.0.253.9.1 // <expected_location> henry @Daikan asked for this. Designer prefered max_slope_to_land value. default is mxconst::MAX_SLOPE_TO_LAND and should be stored in data_manager::MAX_SLOPE_TO_LAND.
-const static ^std::string^                PROP_NUMBER_OF_LOOPS_TO_FORCE_TYPE_TEMPLATE            ^ "no_of_loops_to_force_slope"; ^// v3.0.253.6 // internal, used in
-const static ^std::string^                PROP_IS_LAST_FLIGHT_LEG                                ^ "is_last_flight_leg"; ^// v3.0.223.1 used during random mission generation
 const static ^std::string^                APT_1_LAND_AIRPORT_HEADER_CODE_v11_SPACE               ^ "1 "; ^// v3.0.219.12+ apt dat codes with space. add trim if you don't want space
 const static ^std::string^                APT_16_SEAPLANE_BASE_HEADER_CODE_v11_SPACE             ^ "16 "; ^// v3.0.219.12+ apt dat codes with space. add trim if you don't want space
 const static ^std::string^                APT_17_HELIPORT_HEADER_CODE_v11_SPACE                  ^ "17 "; ^// v3.0.219.12+ apt dat codes with space. add trim if you don't want space
@@ -858,6 +854,10 @@ const static ^std::string^               SETUP_AUTHORIZATION_KEY                
 const static ^std::string^ SETUP_LINUX_FLAVOR_CODE_I ^ "setup_linux_flavor_code_i"; ^// v3.303.8.1 FMOD seems to crash on System::release() in arch based Linux distro. The workaround is to not release it at all. It is not the best approach but it is a tested workaround none the less.
 #endif
 
+const static ^std::string^               PROP_NUMBER_OF_LOOPS_TO_FORCE_TYPE_TEMPLATE    ^ "no_of_loops_to_force_slope"; ^// v3.0.253.6 // internal, used in
+const static ^std::string^               PROP_IS_LAST_FLIGHT_LEG                        ^ "is_last_flight_leg"; ^// v3.0.223.1 used during random mission generation
+const static ^std::string^               PROP_IS_WET                                    ^ "is_wet"; ^// v3.0.219.10 holds point data if water or terrain (land)
+const static ^std::string^               PROP_FOUND_ICAO                                ^ "found_icao"; ^// v3.0.219.12+ flags NavAidInfo as found in optimized aptData information
 const static ^std::string^               PROP_FPLN_ID_PICKED                            ^ "fpln_id_picked"; ^// properties name to user UI // v3.0.253.1 Used with "fetch external flight plan" layer, and holds the FPLN ID picked for Random Engine + missionx::data_manager::tableExternalFPLN_vec
 const static ^std::string^               PROP_MED_CARGO_OR_OILRIG                       ^ "med_cargo_or_oilrig"; ^// v3.0.241.9 UI info from user defined mission screen
 const static ^std::string^               PROP_MISSION_SUBCATEGORY                       ^ "mission_subcategory"; ^// v3.303.14 sub category property. Used with user creation screen, stored which subcategory the user picked. Example: OilRig, medevac
@@ -888,6 +888,7 @@ const static ^std::string^               PROP_FROM_ICAO                         
 const static ^std::string^               PROP_TO_ICAO                                   ^ "toICAO"; ^// v3.0.253.3 used with external fpln // add the option to define destination location
 const static ^std::string^               PROP_LIMIT                                     ^ "limit"; ^// used with external fpln
 const static ^std::string^               PROP_SORT_FPLN_BY                              ^ "sort"; ^// used with external fpln
+const static ^std::string^               PROP_OSM_GEN_FILE                              ^ "osm_gen_file"; ^// v25.06.1 used in the missionx property file and the "surprise_me" logic in the RandomEngine.
 
 const static ^std::string^               RANDOM_TEMPLATE_BLANK_4_UI                     ^ "template_blank_4_ui.xml"; ^// template_blank_4_ui is the only template that is driven by UI so we should not load them.
 const static ^std::string^               COORDINATES_IN_THE_GPS_S                       ^ "Coordinates in GPS";
@@ -1047,8 +1048,9 @@ static const ^std::string^ ROUTE_DCT                  ^ "DCT"; ^// v25.04.2 Hold
 
 
 // OSM
-const static ^std::string^               ATTRIB_WEBOSM_OPTIMIZE                         ^ "webosm_optimize"; ^// v3.0.253.4     <expected_location location_type~"webosm,near,xy" // location_value~"nm~25|tag~webosm_helipads|webosm_optimize~n|ramp~H|dbfile~osm-liechtenstein.db,nm~20,tag~start_location" force_template_distances_b~"yes" />
-const static ^std::string^               DEFAULT_OVERPASS_WAYS_FILTER                   ^ "[timeout:25];(way[highway~primary]({{bbox}});way[highway~secondary]({{bbox}});way[highway~tertiary]({{bbox}});way[highway~residential]({{bbox}});way[highway~service]({{bbox}});way[highway~living_street]({{bbox}});way[highway~track]({{bbox}}););out;"; ^// v3.0.253.9 added way and ";" since we changed the way designer provide filters. We do not fix their code. // v3.0.253.4 overpass ways filter
+const static ^std::string^               ATTRIB_WEBOSM_OPTIMIZE              ^ "webosm_optimize"; ^// v3.0.253.4     <expected_location location_type~"webosm,near,xy" // location_value~"nm~25|tag~webosm_helipads|webosm_optimize~n|ramp~H|dbfile~osm-liechtenstein.db,nm~20,tag~start_location" force_template_distances_b~"yes" />
+const static ^std::string^               DEFAULT_OVERPASS_WAYS_FILTER        ^ "[timeout:25];(way[highway~primary]({{bbox}});way[highway~secondary]({{bbox}});way[highway~tertiary]({{bbox}});way[highway~residential]({{bbox}});way[highway~service]({{bbox}});way[highway~living_street]({{bbox}});way[highway~track]({{bbox}}););out;"; ^// v3.0.253.9 added way and ";" since we changed the way designer provide filters. We do not fix their code. // v3.0.253.4 overpass ways filter
+static const ^std::string^               GPS_WP      ^ "wp";                 ^// v25.06.1 used with gen_wp_node()
 
 // MEDEVAC Sub Categories
 constexpr static ^std::string_view ^          CAT_ANY_LOCATION   ^ "Any Location - Rescue"; ^// v25.05.1 Used in medevac categories
@@ -1058,5 +1060,6 @@ constexpr static ^std::string_view ^          CAT_SURPRISE_ME    ^ "(Coming soon
 static const ^std::string^      ATTRIB_SURPRISE_ME_SUB_CAT_B      ^ "surprise_me_sub_cat_b"; ^// v25.05.1 Used in medevac categories parsing and random engine
 constexpr static ^bool^         DEFAULT_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B      ^true; ^// v25.05.1 default value for PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B if it does not exists in the property file.
 constexpr static ^std::string_view ^        SEARCH_SURPRISE_ME_TEXT                      ^ "surprise me"^// v25.05.1
+constexpr static ^std::string_view ^        DEFAULT_OSM_GEN_FILE             ^ "libs/osm_gen.xml"^// v25.06.1
 
 

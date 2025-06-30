@@ -74,12 +74,12 @@ public:
   template<typename T>
   T getValue()
   {
-    return (T)this->paramNumValue;
+    return static_cast<T> (this->paramNumValue);
   }
 
   // -----------------------------------
 
-  std::string to_string() const
+  [[nodiscard]] std::string to_string() const
   {
     const std::string format = "[\"" + this->name + "\", valNum: \"" + mxUtils::formatNumber<double>(this->paramNumValue) + "\" | valString: " + this->paramStringValue + "\" ]\n";
 

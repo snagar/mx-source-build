@@ -121,8 +121,9 @@ missionx::writeLogThread::stop_plugin()
 void
 missionx::writeLogThread::add_message(const std::string& inMsg)
 {
-  if (!writeLogThread::tState.flagAbortThread)
+  if (!writeLogThread::tState.flagAbortThread && !writeLogThread::tState.flagIsActive)
   {
+    std::lock_guard<std::mutex> lock(writeLogThread::s_write_mutex);
     missionx::writeLogThread::qLogMessages.emplace(fmt::format("missionx T({}): {}", ++writeLogThread::seq, inMsg) );
   }
 }

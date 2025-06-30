@@ -389,6 +389,14 @@ public:
 
   // -------------------------------------------
 
+  std::vector<int> static splitStringAndGetShuffledIndexVector(const std::string& inString, const std::string& delimateChars, std::vector<std::string> &out_split_vec);
+
+  // -------------------------------------------
+
+  std::vector<int> static getShuffledIndexVector(const int &inNumbersInVector);
+
+  // -------------------------------------------
+
   // Extract base string from a string. Good to extract file name without the extension "[file].exe", for example.
   static std::string extractBaseFromString(const std::string& inFullFileName, const std::string &delimiter = ".", std::string* outRestOfString = nullptr);
 
@@ -655,6 +663,8 @@ public:
   }
   // -------------------------------------------
 
+  // The function can drill down and set the attribute values based on "tag name"
+  static IXMLNode xml_search_and_set_attributes_in_node (IXMLNode &inNode, const std::list<missionx::structs::strct_node_attribute_key_value> &in_attrib_list, const bool &inReturnCopy = false); // v25.06.1
   static bool xml_search_and_set_attribute_in_IXMLNode(IXMLNode& inNode, const std::string& attribName, const std::string& attribValue, const std::string &inElementName = missionx::EMPTY_STRING); // v3.0.217.4
 
 
@@ -714,6 +724,11 @@ public:
   // -------------------------------------------
   // return attribute value as string. If not found return empty string and flag_found is set to false
   static std::string xml_get_attribute_value (const IXMLNode &pNode, const std::string &attribName, bool& flag_found);
+  static std::string xml_get_attribute_value (const IXMLNode &in_node, const std::string & in_attrib_to_search, const std::string & in_default_value = ""); // v25.06.1
+  // Function returns an attribute value of a <node> if other "attribute" name and value were found.
+  // Example: <tag k="name" v="Chemin du Moulin des Frasserands"/>
+  // We are interested in the "v" attribute base on the "k="name" attribute.
+  static std::string xml_get_attrib_value_based_on_other_attrib_presence (const IXMLNode &pNode, const std::string & in_tag, const std::string & in_attrib_to_base_our_search, const std::string & in_attrib_value_we_search, const std::string & in_attrib_name_to_return_its_value, const std::string & in_default_value = ""); // v25.06.1
 
   // -------------------------------------------
   static int xml_find_node_location (const IXMLNode & pNode, const std::string &tagNameToSearch);

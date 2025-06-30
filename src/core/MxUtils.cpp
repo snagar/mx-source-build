@@ -186,6 +186,17 @@ bool missionx::mxUtils::compare(const std::string &inStr1, const std::string &in
 
 // ----------------------------------------------
 
+size_t
+missionx::mxUtils::find_text (const std::string &inStr1, const std::string &inStr2, const bool inCaseSensitive)
+{
+  if (inCaseSensitive)
+    return inStr1.find ( inStr2 );
+
+  return mxUtils::stringToLower(inStr1).find ( mxUtils::stringToLower(inStr2) ); // case-insensitive check
+}
+
+// ----------------------------------------------
+
 std::string
 missionx::mxUtils::format (const std::string &inText, std::map<int, std::string> &inArgs)
 {
@@ -363,6 +374,23 @@ missionx::mxUtils::remove_char_from_string(const std::string& inVal, const char 
   }
 
   return retVal_s;
+}
+
+// ----------------------------------------------
+
+std::string
+missionx::mxUtils::sanitize_text (const std::string &inText, const std::string &chars_to_replace, const char c_replace_with)
+{
+  std::stringstream ss;
+  for (const char c : inText)
+  {
+    if (chars_to_replace.find(c) != std::string::npos)
+      ss << c_replace_with;
+    else
+      ss << c;
+  }
+
+  return ss.str();
 }
 
 // ----------------------------------------------
@@ -608,19 +636,32 @@ missionx::mxUtils::getFreqFormated(const int freq)
 // ----------------------------------------------
 
 std::string
-missionx::mxUtils::replaceAll(std::string str, const std::string& from, const std::string& to)
+missionx::mxUtils::replaceAll (std::string str, const std::string &from, const std::string &to)
 {
-  if (!from.empty())
+  if (!from.empty ())
   {
     size_t start_pos = 0;
-    while ((start_pos = str.find(from, start_pos)) != std::string::npos)
+    while ((start_pos = str.find (from, start_pos)) != std::string::npos)
     {
-      str.replace(start_pos, from.length(), to);
-      start_pos += to.length(); // In case 'to' contains 'from', like replacing 'x' with 'yx'
+      str.replace (start_pos, from.length (), to);
+      start_pos += to.length (); // In case 'to' contains 'from', like replacing 'x' with 'yx'
     }
   } // end if "from" has value
 
   return str;
+}
+
+// ----------------------------------------------
+
+double
+missionx::mxUtils::nmToDegLon (const double nm, const double latDegrees)
+{
+  #ifndef IBM
+  const double latRadians = latDegrees * M_PI / 180.0; // M_PI from math.h
+  #else
+  const double latRadians = latDegrees * missionx::PI / 180.0; // M_PI from math.h
+  #endif
+  return nm * missionx::NM_TO_DEG_LAT * std::cos(latRadians);
 }
 
 // ----------------------------------------------
@@ -1005,14 +1046,34 @@ missionx::mxUtils::getHowManyDelimitersInString(const std::string& inLine, const
   return mapDelimiters;
 }
 
+// ----------------------------------------------
+
 int
 missionx::mxUtils::coord_in_rect(float x, float y, const float bounds_ltrb[4])
 {
   return ((x >= bounds_ltrb[0]) && (x < bounds_ltrb[2]) && (y >= bounds_ltrb[3]) && (y < bounds_ltrb[1]));
 }
 
+// ----------------------------------------------
+
+std::string
+missionx::mxUtils::get_mx_osm_region_trans (const missionx::enums::mx_osm_region inRegion)
+{
+  switch (inRegion) {
+    case missionx::enums::mx_osm_region::nw:
+      return "nw";
+    case missionx::enums::mx_osm_region::ne:
+      return "ne";
+    case missionx::enums::mx_osm_region::se:
+      return "se";
+    case missionx::enums::mx_osm_region::sw:
+      return "sw";
+  }
+
+  return "error";
+
+}
 
 
-
-
+// ----------------------------------------------
 // ----------------------------------------------

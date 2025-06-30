@@ -45,7 +45,7 @@ missionx::Log::~Log()
 }
 
 void
-missionx::Log::add_missionLoadError(std::string inMsg)
+missionx::Log::add_missionLoadError(const std::string& inMsg)
 {
   if (!inMsg.empty())
     Log::deq_LoadMissionFileErrors.push_back(inMsg);
@@ -80,74 +80,74 @@ missionx::Log::get_deq_errors_container_size()
 }
 
 void
-missionx::Log::logMsgThread(std::string message, missionx::format_type format) // v3.0.223.6 added the thread option
+missionx::Log::logMsgThread(const std::string &message, missionx::format_type format) // v3.0.223.6 added the thread option
 {
   printToLog(message, true, format);
 }
 
 /*  Snagar */
 void
-missionx::Log::logMsg(std::string message, bool isThread, missionx::format_type format, bool isHeader)
+missionx::Log::logMsg(const std::string &message, const bool isThread, const missionx::format_type format, const bool isHeader)
 {
   printToLog(message, isThread, format, isHeader);
 }
 
 void
-missionx::Log::logMsgNone(std::string message, bool isThread)
+missionx::Log::logMsgNone(const std::string &message, bool isThread)
 {
   printToLog(message, isThread, format_type::none);
 }
 
 void
-missionx::Log::logMsgExtScript(std::string message, bool isThread)
+missionx::Log::logMsgExtScript(const std::string &message, bool isThread)
 {
   printToLog(message, isThread, format_type::script);
 }
 
 void
-missionx::Log::logMsgNoneCR(std::string message, bool isThread)
+missionx::Log::logMsgNoneCR(const std::string &message, bool isThread)
 {
   printToLog(message, isThread, format_type::none_cr);
 }
 
 void
-missionx::Log::logMsgErr(std::string message, bool isThread)
+missionx::Log::logMsgErr(const std::string &message, bool isThread)
 {
   printToLog(message, isThread, format_type::error);
 }
 
 void
-missionx::Log::logMsgWarn(std::string message, bool isThread)
+missionx::Log::logMsgWarn(const std::string &message, bool isThread)
 {
   printToLog(message, isThread, format_type::warning);
 }
 
 void
-missionx::Log::logAttention(std::string message, bool isThread)
+missionx::Log::logAttention(const std::string &message, bool isThread)
 {
   printToLog(message, isThread, format_type::attention);
 }
 
 void
-missionx::Log::logDebugBO(std::string message, bool isThread) // log debug in Build Only mode
+missionx::Log::logDebugBO(const std::string& message, bool isThread) // log debug in Build Only mode
 {
-#ifndef RELEASE
+  #ifndef RELEASE
   printToLog("[#debug] " + message, isThread);
-#endif
+  #endif
 }
 
 
 void
-missionx::Log::logXPLMDebugString(std::string message, bool bDecoration)
+missionx::Log::logXPLMDebugString(const std::string& message, bool bDecoration)
 {
-  Log::writeThread.add_message(message); // v3.305.2
+  missionx::writeLogThread::add_message(message); // v3.305.2
 
   const std::string out = (bDecoration)? "missionx: " + message : message;
   XPLMDebugString(out.c_str()); // not thread safe
 }
 
 void
-missionx::Log::logTXT(std::string message, bool bDecoration)
+missionx::Log::logTXT(const std::string& message, bool bDecoration)
 {
   const std::string out = (bDecoration)? "missionx: " + message : message;
   XPLMDebugString(out.c_str()); // not thread safe
@@ -157,14 +157,14 @@ missionx::Log::logTXT(std::string message, bool bDecoration)
 
 // Simple formatting of headers in Log
 void
-missionx::Log::printHeaderToLog(std::string s, bool isThread, format_type format)
+missionx::Log::printHeaderToLog(const std::string &s, const bool isThread, const format_type format)
 {
   printToLog(s, isThread, format, true);
 }
 
 // Simple formatting for data in Log
 void
-missionx::Log::printToLog(std::string s, bool isThread, format_type format, bool isHeader)
+missionx::Log::printToLog(std::string s, const bool isThread, const format_type format, const bool isHeader)
 {
   Log::LOGMODE logMode = Log::LOG_INFO;
 
@@ -218,7 +218,7 @@ missionx::Log::printToLog(std::string s, bool isThread, format_type format, bool
 
 
 void
-missionx::Log::logToFile(std::string msg, int mode, bool isThread)
+missionx::Log::logToFile(const std::string& msg, const int mode, const bool isThread)
 {
 //#ifdef TIMER_FUNC
 //  auto m_startTimepoint = std::chrono::high_resolution_clock::now();
@@ -226,7 +226,7 @@ missionx::Log::logToFile(std::string msg, int mode, bool isThread)
 
 
   std::string errStr;
-  std::string out = "";
+  std::string out;
 
   switch (mode)
   {
@@ -317,10 +317,10 @@ Log::log_to_missionx_log(const std::string& msg)
     ofs.close();
 
 
-#else
+  #else
   // in release mode, we only use the thread route.
   missionx::writeLogThread::add_message(msg);
-#endif
+  #endif
 
 }
 

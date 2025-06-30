@@ -200,9 +200,31 @@ private:
   bool prepare_mission_based_on_ils_search(IXMLNode& pNode);    // v3.0.253.6
   void add_waypoints_for_fpln_or_simbrief(IXMLNode& pNode); // v25.04.2
   bool prepare_mission_based_on_user_fpln_or_simbrief(IXMLNode& pNode); // v25.03.3
-  mx_return prepare_medevac_surprise_me (const IXMLNode &inRootTemplate, const IXMLNode &inoutMetaNode) const; // v25.05.1
-  bool prepare_mission_based_on_oilrig ( const IXMLNode & pNode, std::string& outErr); // v3.303.14
 
+  // v25.06.1
+  std::map<missionx::enums::mx_osm_region, missionx::structs::BBox> generateQuadrantBBoxes(double centerLat, double centerLon);
+
+  int seq_triggers = 0;
+  int seq_tasks    = 0;
+  int seq_objectives = 0;
+  int seq_waypoints = 0; // flight leg
+
+  std::vector<missionx::structs::strct_osm_query> osm_analyze2 (mx_return &out_mx_return, const std::string &xmlFilename, const std::string &in_cache_folder, double centre_lat, double centre_lon, IXMLNode &outRootNode = IXMLNode::emptyIXMLNode);
+  
+  
+
+  bool      osm_analyze (mx_return &out_mx_return, const std::string &xmlFilename, const std::string &in_cache_folder, const double centre_lat, const double centre_lon, missionx::NavAidInfo &navaid_target);
+  IXMLNode  gen_trigger_node (int &seq, const std::string &prefix_name, const std::string &postfix_name, missionx::NavAidInfo &inTargetNavAid, const std::list<missionx::structs::strct_node_attribute_key_value> &in_attrib_list, IXMLNode *parentNode = nullptr);
+  IXMLNode  gen_task_node (int &seq, const std::string &prefix_name, const std::string &postfix_name,  missionx::NavAidInfo &inTargetNavAid, const std::list<missionx::structs::strct_node_attribute_key_value> &in_attrib_list, IXMLNode *parentNode = nullptr);
+  IXMLNode  gen_objective_node (int &seq, const std::string &prefix_name, const std::string &postfix_name, IXMLNode *parentNode = nullptr);
+  IXMLNode  gen_wp_node (int *seq, const std::string& prefix_name, const std::string &postfix_name, missionx::NavAidInfo *inTargetNavAid, std::list<missionx::structs::strct_node_attribute_key_value> *in_attrib_list, IXMLNode *parentNode = nullptr);
+  // The function returns "shuffled index vector" as value, and initialize the "out_main_subject_node" and "analyzed_query" from inside the function to use later from the calling routine.
+  std::vector<int> get_osm_topic_subject_and_prep_shuffled_q (missionx::base_thread::thread_state *inoutThreadState, const IXMLNode &in_root_node, const std::vector<missionx::structs::strct_osm_query> &vec_osm_queries, IXMLNode &out_main_subject_node, missionx::structs::strct_osm_query &analyzed_query);
+  mx_return prepare_medevac_surprise_me2 (const IXMLNode &inRootTemplate, const IXMLNode &inoutMetaNode, const missionx::Point &in_plane_location); // v25.05.1
+
+  mx_return prepare_medevac_surprise_me (const IXMLNode &inRootTemplate, const IXMLNode &inoutMetaNode, const missionx::Point &in_plane_location); // v25.05.1
+  bool      prepare_mission_based_on_oilrig (const IXMLNode &pNode, std::string &outErr); // v3.303.14
+  // end v25.06.1
 
   //// OSM related queries
   bool flag_picked_from_osm_database;
@@ -212,6 +234,7 @@ public:
   ~RandomEngine() override;
 
   void abortThread();
+  void reset_sequence_numbers(); // v25.06.1
 
   missionx::TemplateFileInfo* working_tempFile_ptr;          // v3.0.241.9
   bool                        flag_rules_defined_by_user_ui; // v3.0.241.9
@@ -329,7 +352,7 @@ private:
   // main function
   // bool generateRandomMission(std::string *inKey_ptr, thread_state *inThreadState);
   std::string inject_files_into_xml(missionx::TemplateFileInfo* tempFile_ptr);  // v24.12.2 implement the new multi options code.
-  std::string inject_files_into_xml_1(missionx::TemplateFileInfo* tempFile_ptr); // keep the original code before using the "multi option" code.
+  // std::string inject_files_into_xml_1(missionx::TemplateFileInfo* tempFile_ptr); // keep the original code before using the "multi option" code.
   bool        generateRandomMission();
 
   // A simple function to manage thread wait for main thread actions that needs to take place before it can continue. Default wait time is 500 milliseconds for 10 iteration (5 seconds)
@@ -422,6 +445,8 @@ private:
 
   // v25.02.1
   static std::vector<IXMLNode> calc_land_hover_display_objects (const double &inLat, const double &inLon, const int &inRadiusMT, const int &inHowManyObjects, int &inout_seq, const std::string &inFileName = "land_hover01.obj");
+  // v25.06.1
+
 
 };
 
