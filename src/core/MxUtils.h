@@ -148,7 +148,7 @@ public:
   static std::string trim(std::string str, const std::string chars = std::string("\t\n\v\f\r "));
   static int         countCharsInString(const std::string& inText, const char& inCharToCount); // v3.303.9.1
   static bool        compare (const std::string &inStr1, const std::string &inStr2, bool inCaseSensitive = true ); // v24.05.1
-  static size_t      find_text (const std::string &inStr1, const std::string &inStr2, bool inCaseSensitive = true ); // v25.06.1 find text with ignore case
+  static size_t      find_text (const std::string &in_source, const std::string &in_search_text, bool inCaseSensitive = true ); // v25.06.1 find text with ignore case
   static std::string format (const std::string & inText, std::map<int, std::string> & inArgs); // v24.05.2
   static int         calc_minutes_from_seconds(const int &in_seconds_from_midnight); // v25.04.2
 
@@ -528,6 +528,12 @@ public:
   static int coord_in_rect(float x, float y, const float bounds_ltrb[4]);
 
   static std::string get_mx_osm_region_trans (const missionx::enums::mx_osm_region inRegion);
+
+  // -------------------------------------------
+  static bool check_file_exists (const std::string& in_path);
+  static bool check_folder_exists (const std::string& in_path);
+
+  static std::string eval_text(const bool in_has_value, const std::string &in_preferred_outcome, const std::string &in_fallback_outcome);
 };
 
 } // namespace missionx

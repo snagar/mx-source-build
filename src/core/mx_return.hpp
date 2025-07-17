@@ -31,6 +31,12 @@ public:
   std::unordered_map<int, std::string> errMsges;
   std::unordered_map<int, std::string> infoMsges;
 
+  missionx::mx_return& operator= (const bool &in_val)
+  {
+    this->result = in_val;
+    return *this;
+  }
+
   mx_return()
   {
     result    = false;

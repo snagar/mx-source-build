@@ -1061,5 +1061,9 @@ static const ^std::string^      ATTRIB_SURPRISE_ME_SUB_CAT_B      ^ "surprise_me
 constexpr static ^bool^         DEFAULT_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B      ^true; ^// v25.05.1 default value for PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B if it does not exists in the property file.
 constexpr static ^std::string_view ^        SEARCH_SURPRISE_ME_TEXT                      ^ "surprise me"^// v25.05.1
 constexpr static ^std::string_view ^        DEFAULT_OSM_GEN_FILE             ^ "libs/osm_gen.xml"^// v25.06.1
+constexpr static ^std::string_view ^        DEFAULT_CUSTOM_OSM_GEN_FILE      ^ "libs/custom_osm_gen.xml"^// v25.06.1 user own version of the osm_gen.xml file. It won't be overridden by plugin upgrade nor Skunkcrafts application.
 
+constexpr static ^std::string_view ^        DEFAULT_LAND_HOVER_INV_RADIUS_MT      ^ "400"^// v25.06.1
+constexpr static ^std::string_view ^        DEFAULT_HOVER_RADIUS_MT               ^ "40"^// v25.06.1
+constexpr static ^std::string_view ^        DEFAULT_HOVER_VOL_HEIGHT_FOR_OSM_FT   ^ "328"^// v25.06.1
 

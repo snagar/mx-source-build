@@ -137,11 +137,11 @@ missionx::Briefer::positionPlane(const bool inflag_setupForcePlanePositioning, c
       missionx::Point plane = missionx::dataref_manager::getCurrentPlanePointLocation();
     
       if (!ICAO.empty())
-        Utils::position_plane_in_ICAO(ICAO, (float)p1.getLat(), (float)p1.getLon(), (float)plane.getLat(), (float)plane.getLon());
+        Utils::position_plane_in_ICAO(ICAO, static_cast<float> (p1.getLat ()), static_cast<float> (p1.getLon ()), static_cast<float> (plane.getLat ()), static_cast<float> (plane.getLon ()));
     
       if ( lat1 * lon1 * (inflag_setupForcePlanePositioning + flag_is_plane_is_in_20Meter_from_starting_position) != 0) // if Zero then skip <location adjust>
       {       
-        if (p1.getElevationInMeter() == 0.0)
+        if (p1.getElevationInMeters() == 0.0)
         {
           {
             XPLMProbeResult       probeResult;
@@ -153,7 +153,7 @@ missionx::Briefer::positionPlane(const bool inflag_setupForcePlanePositioning, c
 
 
 
-        XPLMPlaceUserAtLocation(p1.getLat(), p1.getLon(), (float)(p1.getElevationInMeter() ), heading_psi_f, (float)startingSpeed);      
+        XPLMPlaceUserAtLocation(p1.getLat(), p1.getLon(), static_cast<float> (p1.getElevationInMeters ()), heading_psi_f, static_cast<float> (startingSpeed));
       }
     }
     else 
@@ -195,7 +195,7 @@ missionx::Briefer::setPlaneHeading(const float& inHeading)
     hpr.Heading = inHeading;
 
     Utils::HPRToQuaternion(hpr, &q);
-    missionx::dataref_manager::setQuaternion((float)q.w, (float)q.x, (float)q.y, (float)q.z);
+    missionx::dataref_manager::setQuaternion(static_cast<float> (q.w), static_cast<float> (q.x), static_cast<float> (q.y), static_cast<float> (q.z));
 
 }
 
@@ -204,27 +204,27 @@ missionx::Briefer::setPlaneHeading(const float& inHeading)
 void
 missionx::Briefer::positionPlane_v10(missionx::Point& inNewPosition, const bool inForceHeading_b)
 {
-  int                         heading_psi_i = Utils::readNodeNumericAttrib<int>(this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str()), mxconst::get_ATTRIB_HEADING_PSI(), (int)XPLMGetDataf(drefConst.dref_heading_psi_f));
-  const double                elev_ft     = Utils::readNodeNumericAttrib<double>(this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str()), mxconst::get_ATTRIB_ELEV_FT(), 0.0); // v3.0.241.1
+  int                         heading_psi_i = Utils::readNodeNumericAttrib<int>(this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str()), mxconst::get_ATTRIB_HEADING_PSI(), static_cast<int> (XPLMGetDataf (drefConst.dref_heading_psi_f)));
+  const double                elev_ft       = Utils::readNodeNumericAttrib<double>(this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str()), mxconst::get_ATTRIB_ELEV_FT(), 0.0); // v3.0.241.1
   XPLMProbeResult             probeResult;
   float                       q_orig[4]; // v2.1.26a8
   std::string                 STARTING_ICAO = Utils::readAttrib(this->node, mxconst::get_ATTRIB_STARTING_ICAO(), "");
-  std::string                 ICAO = Utils::readAttrib(this->node, mxconst::get_ELEMENT_ICAO(), "");
+  std::string                 ICAO          = Utils::readAttrib(this->node, mxconst::get_ELEMENT_ICAO(), "");
   missionx::Utils::QUATERNION q;
   missionx::Utils::HPR        hpr;  
-  dataref_const dm;
+  dataref_const               dm;
   missionx::Point             plane                           = missionx::dataref_manager::getCurrentPlanePointLocation();
-  auto probedElevInWorldCoordinates_mt = missionx::Point::getTerrainElevInMeter_FromPoint(inNewPosition, probeResult);
+  auto                        probedElevInWorldCoordinates_mt = missionx::Point::getTerrainElevInMeter_FromPoint(inNewPosition, probeResult);
 
   // decide which heading to use. If we do not force heading, then use current planes heading, if we force, then we use the mission heading
-  hpr.Heading = (float)((inForceHeading_b * Utils::calc_heading_base_on_plane_move(plane.lat, plane.lon, inNewPosition.lat, inNewPosition.lon, heading_psi_i)) + ((float)(!inForceHeading_b) * XPLMGetDataf(drefConst.dref_heading_psi_f)) );
+  hpr.Heading = (float)((inForceHeading_b * Utils::calc_heading_base_on_plane_move(plane.lat, plane.lon, inNewPosition.lat, inNewPosition.lon, heading_psi_i)) + (static_cast<float> (!inForceHeading_b) * XPLMGetDataf(drefConst.dref_heading_psi_f)) );
 
   double plane_dref_acf_h_eqlbm = (double)XPLMGetDataf(drefConst.dref_acf_h_eqlbm); // height plane from ground in meters
 
   snprintf(LOG_BUFF, sizeof(LOG_BUFF) - 1, "[positionPlane 10]  Before: probElevInWorldCoord meters: %f, New Pos elevation mt: %f, New Pos elevation ft: %f", 
-           (float)probedElevInWorldCoordinates_mt
-         , (float)inNewPosition.getElevationInMeter()
-         , (float)inNewPosition.getElevationInFeet());
+           static_cast<float> (probedElevInWorldCoordinates_mt)
+         , static_cast<float> (inNewPosition.getElevationInMeters ())
+         , static_cast<float> (inNewPosition.getElevationInFeet ()));
   
   Log::logMsg(LOG_BUFF);
 
@@ -234,9 +234,9 @@ missionx::Briefer::positionPlane_v10(missionx::Point& inNewPosition, const bool 
 
   bool         flag_used_elev_workaround = false;
   bool         flag_positioned_plane_in_ICAO = false;
-  const double store_elev_mt_d = inNewPosition.getElevationInMeter(); // store elevation before moving plane. used only if we don't have ICAO or elevation is 0
+  const double store_elev_mt_d = inNewPosition.getElevationInMeters(); // store elevation before moving plane. used only if we don't have ICAO or elevation is 0
 
-  Utils::position_plane_in_ICAO(ICAO, (float)inNewPosition.getLat(), (float)inNewPosition.getLon(), (float)plane.getLat(), (float)plane.getLon(), true);
+  Utils::position_plane_in_ICAO(ICAO, static_cast<float> (inNewPosition.getLat ()), static_cast<float> (inNewPosition.getLon ()), static_cast<float> (plane.getLat ()), static_cast<float> (plane.getLon ()), true);
 
   
   if (ICAO.empty() || (elev_ft <= 0 && flag_positioned_plane_in_ICAO == false)) // this code might never be executed
@@ -259,7 +259,7 @@ missionx::Briefer::positionPlane_v10(missionx::Point& inNewPosition, const bool 
   // decide about the final plane position based on target terrain elevation + user request elemvation + plane height from ground
   probedElevInWorldCoordinates_mt = missionx::Point::getTerrainElevInMeter_FromPoint(plane, probeResult);
   if (probeResult == xplm_ProbeHitTerrain &&
-      (flag_used_elev_workaround || inNewPosition.getElevationInMeter() < probedElevInWorldCoordinates_mt || (inNewPosition.getElevationInMeter() - (plane_dref_acf_h_eqlbm + probedElevInWorldCoordinates_mt) < 0.0)))
+      (flag_used_elev_workaround || inNewPosition.getElevationInMeters() < probedElevInWorldCoordinates_mt || (inNewPosition.getElevationInMeters() - (plane_dref_acf_h_eqlbm + probedElevInWorldCoordinates_mt) < 0.0)))
   {
     inNewPosition.setElevationMt(probedElevInWorldCoordinates_mt + plane_dref_acf_h_eqlbm);  
     inNewPosition.calcSimLocalData();
@@ -269,9 +269,9 @@ missionx::Briefer::positionPlane_v10(missionx::Point& inNewPosition, const bool 
   }
 
   snprintf(LOG_BUFF, sizeof(LOG_BUFF)-1, "[positionPlane 10]  Before: probElevInWorldCoord meters: %f, New Pos elevation mt: %f, New Pos elevation ft: %f",
-            (float)probedElevInWorldCoordinates_mt,
-            (float)inNewPosition.getElevationInMeter(),
-            (float)inNewPosition.getElevationInFeet());  
+            static_cast<float> (probedElevInWorldCoordinates_mt),
+            static_cast<float> (inNewPosition.getElevationInMeters ()),
+            static_cast<float> (inNewPosition.getElevationInFeet ()));
 
   Log::logMsg(LOG_BUFF);
 
@@ -282,7 +282,7 @@ missionx::Briefer::positionPlane_v10(missionx::Point& inNewPosition, const bool 
   hpr.Roll    = dataref_manager::getDataRefValue<float>("sim/flightmodel/position/phi");
   //hpr.Heading = (float)heading_psi_i; // deprecated, we decide what will be the heading at the begining of this function
   Utils::HPRToQuaternion(hpr, &q);
-  missionx::dataref_manager::setQuaternion((float)q.w, (float)q.x, (float)q.y, (float)q.z);
+  missionx::dataref_manager::setQuaternion(static_cast<float> (q.w), static_cast<float> (q.x), static_cast<float> (q.y), static_cast<float> (q.z));
 
   override_planepath = 0;
   XPLMSetDatavi(dm.dref_override_planepath_i_arr, &override_planepath, 0, 1);

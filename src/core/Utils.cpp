@@ -632,15 +632,16 @@ missionx::Utils::splitStringAndGetShuffledIndexVector (const std::string &inStri
   std::random_device rd;
   std::mt19937       g (rd ()); // Mersenne Twister engine seeded by random_device
 
-  int index_counter = 0;
-  std::for_each (out_split_vec.begin (),
-                 out_split_vec.end (),
-                 [&] (const std::string &str)
-                 {
-                   shuffled_indx_vec[index_counter] = index_counter; // 0-based indexing, to be complient with vector indexing.
-                   index_counter++;
-                 });
-   // Shuffle index vector
+  // for (int iRange = 0; iRange < out_split_vec.size (); ++iRange)
+  //   shuffled_indx_vec.push_back(iRange);
+
+  int counter = 0;
+  std::ranges::for_each (out_split_vec, [&] (const auto &str)
+  {
+    shuffled_indx_vec.push_back ( counter );
+    counter++;
+  });
+
   std::ranges::shuffle (shuffled_indx_vec, g);
 
   return shuffled_indx_vec;
@@ -1230,6 +1231,9 @@ missionx::Utils::readAttrib(const IXMLNode& node, const std::string &attribOptio
 IXMLNode
 missionx::Utils::xml_search_and_set_attributes_in_node (IXMLNode &inNode, const std::list<missionx::structs::strct_node_attribute_key_value> &in_attrib_list, const bool &inReturnCopy)
 {
+  if (inNode.isEmpty ())
+    return IXMLNode::emptyIXMLNode;
+
   // loop over in_attrib_list and set the trigger node
   for (const auto &kv : in_attrib_list)
   {
@@ -2002,7 +2006,7 @@ missionx::Utils::xml_find_node_location (const IXMLNode & pNode, const std::stri
 // -------------------------------------------
 
 bool
-missionx::Utils::xml_add_cdata(IXMLNode& node, const std::string &cdataString)
+missionx::Utils::xml_add_cdata(IXMLNode& node, const std::string &cdata_text)
 {
   if (node.isEmpty())
     return false;
@@ -2013,7 +2017,7 @@ missionx::Utils::xml_add_cdata(IXMLNode& node, const std::string &cdataString)
     node.deleteClear(0); // v3.0.241.8 instead of i1, always delete 0 because it probably shifts
 
   [[maybe_unused]]
-  IXMLClear* c = node.addClear(cdataString.c_str(), nullptr); // , "<![CDATA[", "]]>"); // v3.0.241.8 add to the start
+  IXMLClear* c = node.addClear(cdata_text.c_str(), nullptr); // , "<![CDATA[", "]]>"); // v3.0.241.8 add to the start
   return true;
 }
 
@@ -3323,6 +3327,17 @@ missionx::Utils::xml_add_info_child(IXMLNode& inParent, const std::string& inTex
   return Utils::xml_add_child(inParent, inTagName, "", "", inTextValue);
 }
 
+// -------------------------------------------
+
+IXMLNode
+Utils::xml_get_child_node (const IXMLNode &inParent, const std::string &inTagName, const int &in_child_index)
+{
+  if (inParent.isEmpty())
+    return IXMLNode::emptyIXMLNode;
+
+  return inParent.getChildNode(inTagName.c_str(), in_child_index);
+}
+
 
 // -------------------------------------------
 
@@ -3529,8 +3544,8 @@ missionx::Utils::prepare_static_XSD()
     <item name="" barcode="" quantity="1"  weight_kg="0"/> 
     <loc_and_elev_data> 
       <radius length_mt="100" /> 
-      <point lat="" long=""/> 
-    </loc_and_elev_data> 
+      <point lat="" long=""/>
+    </loc_and_elev_data>
   </inventory> 
    
   <item name="" barcode="" quantity="0"  weight_kg="0"/> 
@@ -3663,8 +3678,7 @@ missionx::Utils::prepare_static_XSD()
   }
   else
   {
-    IXMLRenderer render;
-    Log::logMsgNone("Internal Mapping:\n================\n" + std::string(render.getString(missionx::Utils::xml_xMainXSDNode)) + "\n");
+    // Log::logMsgNone("Internal Mapping:\n================\n" + Utils::xml_get_node_content_as_text (missionx::Utils::xml_xMainXSDNode.deepCopy ()) + "\n");
   }
   #endif
 

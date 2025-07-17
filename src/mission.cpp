@@ -4947,6 +4947,14 @@ missionx::Mission::flcPRE()
         Mission::uiImGuiBriefer->strct_ext_layer.fetch_state = missionx::mxFetchState_enum::fetch_guess_wp_ended;
       }
       break;
+      case missionx::mx_flc_pre_command::get_terrain_elev_in_point: // v25.06.1
+      {
+        engine.shared_navaid_info.isWet = false;
+        engine.shared_navaid_info.p.setElevationMt ( engine.shared_navaid_info.p.get_terrain_elev_mt_from_probe ());
+
+        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+      }
+      break;
       case missionx::mx_flc_pre_command::get_is_point_wet:
       {
         engine.shared_navaid_info.isWet = false;

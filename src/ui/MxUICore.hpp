@@ -3,16 +3,18 @@
 
 #pragma once
 
-#include "XPLMUtilities.h"
 #include "XPLMDisplay.h"
 #include "XPLMGraphics.h"
-#include <string>
+#include "XPLMUtilities.h"
+
+#include <cstdint>
 #include <map>
+#include <string>
 #include <unordered_map>
 
 namespace missionx
 {
-typedef enum _mx_ui_state : uint8_t
+typedef enum class _mx_ui_state : std::uint8_t
 {
   ui_hidden,               // not visible therefore also disabled
   ui_disabled_and_visible, // disable + visible

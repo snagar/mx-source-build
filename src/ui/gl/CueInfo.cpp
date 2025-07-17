@@ -94,7 +94,7 @@ missionx::CueInfo::calculateCircleFromPoint(Point& inPoint, const bool doCloseSh
     #endif
     const double p_x = inPoint.getLat ();
     const double p_y = inPoint.getLon ();
-    const double p_z = inPoint.getElevationInMeter (); // return as meters
+    const double p_z = inPoint.getElevationInMeters (); // return as meters
 
     Point pFirst; // to help close the shape
 
@@ -200,7 +200,7 @@ missionx::CueInfo::refreshCirclePointsRelativeToSource(missionx::Point& pSource)
       Utils::calcPointBasedOnDistanceAndBearing_2DPlane(outLat, outLon, pSource.getLat(), pSource.getLon(), (float)p1->getHeading(), (double)getRadiusAsNm() /*v3.0.203 fix radius calculation*/);
       p1->setLat(outLat);
       p1->setLon(outLon);
-      p1->setElevationMt(pSource.getElevationInMeter());
+      p1->setElevationMt(pSource.getElevationInMeters());
       p1->calcSimLocalData(); // calculate local info
     }                         // end loop iterator
     wasCalculated = true;

@@ -1,5 +1,7 @@
 #include "MxUtils.h"
 
+#include <filesystem>
+
 #ifdef IBM
   #include <algorithm>
 #endif
@@ -187,12 +189,12 @@ bool missionx::mxUtils::compare(const std::string &inStr1, const std::string &in
 // ----------------------------------------------
 
 size_t
-missionx::mxUtils::find_text (const std::string &inStr1, const std::string &inStr2, const bool inCaseSensitive)
+missionx::mxUtils::find_text (const std::string &in_source, const std::string &in_search_text, const bool inCaseSensitive)
 {
   if (inCaseSensitive)
-    return inStr1.find ( inStr2 );
+    return in_source.find ( in_search_text );
 
-  return mxUtils::stringToLower(inStr1).find ( mxUtils::stringToLower(inStr2) ); // case-insensitive check
+  return mxUtils::stringToLower(in_source).find ( mxUtils::stringToLower(in_search_text) ); // case-insensitive check
 }
 
 // ----------------------------------------------
@@ -1072,6 +1074,30 @@ missionx::mxUtils::get_mx_osm_region_trans (const missionx::enums::mx_osm_region
 
   return "error";
 
+}
+
+// ----------------------------------------------
+
+bool
+missionx::mxUtils::check_file_exists (const std::string& in_path)
+{
+  const std::filesystem::path file_path(in_path);
+  return std::filesystem::exists(file_path) && std::filesystem::is_regular_file(file_path);
+}
+
+// ----------------------------------------------
+
+bool
+missionx::mxUtils::check_folder_exists (const std::string& in_path)
+{
+  const std::filesystem::path file_path(in_path);
+  return std::filesystem::exists(file_path) && std::filesystem::is_directory(file_path);
+}
+
+std::string
+missionx::mxUtils::eval_text (const bool in_has_value, const std::string &in_preferred_outcome, const std::string &in_fallback_outcome)
+{
+  return (in_has_value ? in_preferred_outcome : in_fallback_outcome);
 }
 
 

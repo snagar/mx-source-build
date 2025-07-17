@@ -547,7 +547,7 @@ missionx::obj3d::setCoordinateOnVector(missionx::Point& pointFrom, missionx::Poi
 
   this->displayCoordinate.setLat((pointTo.getLat() - pointFrom.getLat()) * time + pointFrom.getLat());
   this->displayCoordinate.setLon((pointTo.getLon() - pointFrom.getLon()) * time + pointFrom.getLon());
-  this->displayCoordinate.setElevationMt((pointTo.getElevationInMeter() - pointFrom.getElevationInMeter()) * time + pointFrom.getElevationInMeter());
+  this->displayCoordinate.setElevationMt((pointTo.getElevationInMeters() - pointFrom.getElevationInMeters()) * time + pointFrom.getElevationInMeters());
 
   if (pointTo.adjust_heading == 0) // keep same heading
   {
@@ -632,7 +632,7 @@ missionx::obj3d::checkAreWeThereYet()
 
             mvStat.prevPoint.setLat(this->displayCoordinate.getLat());
             mvStat.prevPoint.setLon(this->displayCoordinate.getLon());
-            mvStat.prevPoint.setElevationMt(this->displayCoordinate.getElevationInMeter());
+            mvStat.prevPoint.setElevationMt(this->displayCoordinate.getElevationInMeters());
             mvStat.prevPoint.timeToWaitOnPoint_sec = this->displayCoordinate.timeToWaitOnPoint_sec;
 
 
@@ -727,7 +727,7 @@ missionx::obj3d::getElevInFeet()
 double
 missionx::obj3d::getElevInMeter()
 {
-  return this->displayCoordinate.getElevationInMeter();
+  return this->displayCoordinate.getElevationInMeters();
 }
 
 std::string

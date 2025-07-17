@@ -93,8 +93,8 @@ public:
 
 
   // merge two inventories based on the "acf" file. This is relevant only when using <station> based inventories
-  // static missionx::Inventory mergeAcfAndPlaneInventories (missionx::Inventory &inTargetInventory, missionx::Inventory &inSourceInventory); // v25.04.2 deprecated function
-  static IXMLNode mergeAcfAndPlaneInventories2 ( IXMLNode inTargetInventory, const IXMLNode &inSourceInventory); // This is a dedicated function
+  static IXMLNode mergeTwoInventories ( IXMLNode inTargetInventory, const IXMLNode &inSourceInventory); // This is a dedicated function
+  static IXMLNode copy_items_from_one_inventory_to_the_other_xp11_style( IXMLNode inTargetInventory, const IXMLNode &inSourceInventory); // v25.06.1
   // END v24.12.2
 
   // v25.03.1

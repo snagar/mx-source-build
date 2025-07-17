@@ -291,7 +291,7 @@ public:
   void setHeading(double inValue)
   {
     this->setNodeProperty<double>(mxconst::get_ATTRIB_HEADING_PSI(), inValue);  // v3.0.241.8
-    heading    = (float)inValue;
+    heading    = static_cast<float> (inValue);
     pointState = missionx::mx_point_state::defined;
   }
 
@@ -303,7 +303,7 @@ public:
   {
     this->setNodeProperty<double>(mxconst::get_ATTRIB_ROLL(), inValue);  // v3.0.241.8
 
-    roll       = (float)inValue;
+    roll       = static_cast<float> (inValue);
     pointState = missionx::mx_point_state::defined;
   }
 
@@ -315,7 +315,7 @@ public:
   {
     this->setNodeProperty<double>(mxconst::get_ATTRIB_PITCH(), inValue);  // v3.0.241.8
 
-    pitch      = (float)inValue;
+    pitch      = static_cast<float> (inValue);
     pointState = missionx::mx_point_state::defined;
   }
 
@@ -327,7 +327,7 @@ public:
   {
     this->setNodeProperty<double>(mxconst::get_ATTRIB_ADJUST_HEADING(), inValue);  // v3.0.241.8
 
-    adjust_heading = (float)inValue;
+    adjust_heading = static_cast<float> (inValue);
     pointState     = missionx::mx_point_state::defined;
   }
 
@@ -452,16 +452,16 @@ public:
 
   void setSpeedInFts(double inSpeed) // v3.0.202
   {
-    this->speed_fts = (float)inSpeed;
-    this->speed_kmh = (float)(inSpeed * missionx::fts2kmh);
+    this->speed_fts = static_cast<float> (inSpeed);
+    this->speed_kmh = static_cast<float> (inSpeed * missionx::fts2kmh);
   }
 
   // -----------------------------------
 
   void setSpeedInKmh(double inSpeed) // v3.0.202
   {
-    this->speed_kmh = (float)inSpeed;
-    this->speed_fts = (float)(inSpeed * missionx::kmh2fts);
+    this->speed_kmh = static_cast<float> (inSpeed);
+    this->speed_fts = static_cast<float> (inSpeed * missionx::kmh2fts);
   }
 
   // -----------------------------------
@@ -474,7 +474,7 @@ public:
 
   // -----------------------------------
 
-  double getElevationInMeter()
+  double getElevationInMeters()
   {
     const double elev_ft_d = Utils::readNumericAttrib(this->node, mxconst::get_ATTRIB_ELEV_FT(), 0.0); // v3.0.241.8
     if (elev_ft_d == this->elevation_ft)
@@ -563,10 +563,10 @@ public:
     }
 
     double tanx, s;
-    tanx = (double)((y2 - y1)) / (double)((x2 - x1));
+    tanx = static_cast<double> ((y2 - y1)) / static_cast<double> ((x2 - x1));
     s    = atan(tanx);
     s    = (180 / missionx::PI) * s;
-    return (int)s;
+    return static_cast<int> (s);
   }
 
   // -----------------------------------
@@ -582,7 +582,7 @@ public:
     tanx = (inP.lon - this->lon) / (inP.lat - this->lat);
     s    = atan(tanx);
     s    = (180 / missionx::PI) * s;
-    return (int)s;
+    return static_cast<int> (s);
   }
   // -----------------------------------
 
@@ -598,7 +598,7 @@ public:
     tanx = (p2.lon - p1.lon) / (p2.lat - p1.lat);
     s    = atan(tanx);
     s    = (180 / missionx::PI) * s;
-    return (float)s;
+    return static_cast<float> (s);
   }
 
   // -----------------------------------
@@ -654,7 +654,7 @@ public:
   // calculate target point relative to Origin point, given bearing(heading) and distance in nautical Miles
   void static calcPointBasedOnDistanceAndBearing_2DPlane(Point& pOrigin, Point& pTarget, float inHdg, double inDistance, missionx::mx_units_of_measure inUnits = missionx::mx_units_of_measure::nm)
   {
-    float distanceInNm = (float)inDistance;
+    float distanceInNm = static_cast<float> (inDistance);
 
     if (inUnits != missionx::mx_units_of_measure::nm)
     {
@@ -675,7 +675,7 @@ public:
   {
     Point pTarget(0.0, 0.0);
 
-    float distanceInNm = (float)inDistance;
+    float distanceInNm = static_cast<float> (inDistance);
 
     if (inUnits != missionx::mx_units_of_measure::nm)
     {
@@ -745,7 +745,7 @@ public:
       if (elevAboveGround != 0.0)
       {
         XPLMProbeResult outProbeResult;
-        float           groundElevation = (float)Point::getTerrainElevInMeter_FromPoint((*this), outProbeResult);
+        float           groundElevation = static_cast<float> (Point::getTerrainElevInMeter_FromPoint ((*this), outProbeResult));
         if (outProbeResult == xplm_ProbeHitTerrain)
           this->setElevationFt(groundElevation + elevAboveGround);
       }
@@ -814,7 +814,7 @@ public:
   void calcSimLocalData()
   {
     // calculate locals from lat long elev. Will need to re-calculate every scenery change
-    XPLMWorldToLocal(getLat(), getLon(), getElevationInMeter(), &local_x, &local_y, &local_z);
+    XPLMWorldToLocal(getLat(), getLon(), getElevationInMeters(), &local_x, &local_y, &local_z);
   }
 
 // ---------------------------------------
@@ -833,7 +833,7 @@ public:
 
     lat     = p1.getLat();
     lon     = p1.getLon();
-    elev_mt = p1.getElevationInMeter();
+    elev_mt = p1.getElevationInMeters();
 
     XPLMWorldToLocal(lat, lon, 0, &local_x, &local_y, &local_z);
 
@@ -901,7 +901,7 @@ public:
     info.velocityZ  = 0.0f;
     info.structSize = sizeof(info);
 
-    outResult = XPLMProbeTerrainXYZ(probe, (float)inLocalXgl, (float)inLocalYgl, (float)inLocalZgl, &info);
+    outResult = XPLMProbeTerrainXYZ(probe, static_cast<float> (inLocalXgl), static_cast<float> (inLocalYgl), static_cast<float> (inLocalZgl), &info);
 
 
     XPLMDestroyProbe(probe);
@@ -914,8 +914,7 @@ public:
   // You can check the "Point::probe_info" struct for coordination information
   XPLMProbeResult calc_terrain_Y_Probe_info()
   {
-    XPLMProbeResult probe_result;
-    XPLMProbeRef    probe = NULL;
+    XPLMProbeRef    probe = nullptr;
 
     this->calcSimLocalData();
 
@@ -924,7 +923,9 @@ public:
 
     this->probe_info.structSize = sizeof(this->probe_info);
 
-    probe_result = XPLMProbeTerrainXYZ(probe, (float)this->local_x, (float)this->local_y, (float)this->local_z, &this->probe_info);
+    XPLMProbeResult probe_result = XPLMProbeTerrainXYZ(probe, static_cast<float>(this->local_x),
+                                                       static_cast<float>(this->local_y),
+                                                       static_cast<float>(this->local_z), &this->probe_info);
 
     XPLMDestroyProbe(probe);
 
@@ -942,7 +943,7 @@ public:
       XPLMLocalToWorld(this->probe_info.locationX, this->probe_info.locationY, this->probe_info.locationZ, &this->lat, &this->lon, &this->terrain_elev_mt); // write elevation to current Point.
       XPLMWorldToLocal(this->lat, this->lon, this->terrain_elev_mt, &this->local_x, &this->local_y, &this->local_z); // calculate with Terrain elevation data so this->local_y will hold terrain level information
       XPLMProbeRef probe = XPLMCreateProbe(xplm_ProbeY);
-      this->probe_result = XPLMProbeTerrainXYZ(probe, (float)local_x, (float)local_y, (float)local_z, &this->probe_info); // Once again for improved precision
+      this->probe_result = XPLMProbeTerrainXYZ(probe, static_cast<float> (local_x), static_cast<float> (local_y), static_cast<float> (local_z), &this->probe_info); // Once again for improved precision
       XPLMDestroyProbe(probe);
 
       return this->terrain_elev_mt;
@@ -1053,7 +1054,7 @@ public:
 
       auto vecSize = vecLatLonElev.size();
       int  counter = 0;
-      for (auto i1 = (size_t)0; i1 < vecSize; ++i1, ++counter)
+      for (auto i1 = static_cast<size_t> (0); i1 < vecSize; ++i1, ++counter)
       // for (auto & num : vecLatLonElev)
       {
         switch (counter)
@@ -1076,7 +1077,7 @@ public:
 
       counter = 0;
       vecSize = vecHeadPitchRoll.size();
-      for (auto i1 = (size_t)0; i1 < vecSize; ++i1, ++counter)
+      for (auto i1 = static_cast<size_t> (0); i1 < vecSize; ++i1, ++counter)
       {
         switch (counter)
         {
@@ -1097,7 +1098,7 @@ public:
 
       vecSize = vecSpeedTimewait.size();
       counter = 0;
-      for (auto i1 = (size_t)0; i1 < vecSize; ++i1, ++counter)
+      for (auto i1 = static_cast<size_t> (0); i1 < vecSize; ++i1, ++counter)
       //        for (auto & num : vecSpeedTimewait)
       {
         switch (counter)
@@ -1106,7 +1107,7 @@ public:
             this->setSpeedInFts(vecSpeedTimewait.at(counter));
             break;
           case 1:
-            this->timeToWaitOnPoint_sec = (float)vecSpeedTimewait.at(counter);
+            this->timeToWaitOnPoint_sec = static_cast<float> (vecSpeedTimewait.at (counter));
             break;
         } // end switch
       } // end loop vecSpeedTimewait
@@ -1186,7 +1187,7 @@ public:
       if (elevAboveGround != 0.0)
       {
         XPLMProbeResult outProbeResult;
-        float           groundElevation = (float)Point::getTerrainElevInMeter_FromPoint((*this), outProbeResult);
+        float           groundElevation = static_cast<float> (Point::getTerrainElevInMeter_FromPoint ((*this), outProbeResult));
         if (outProbeResult == xplm_ProbeHitTerrain)
           this->setElevationFt(groundElevation + elevAboveGround);
       }

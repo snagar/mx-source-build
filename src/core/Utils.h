@@ -734,7 +734,7 @@ public:
   static int xml_find_node_location (const IXMLNode & pNode, const std::string &tagNameToSearch);
 
   // -------------------------------------------
-  static bool xml_add_cdata(IXMLNode& node, const std::string &cdataString);
+  static bool xml_add_cdata(IXMLNode& node, const std::string &cdata_text);
 
   // -------------------------------------------
 
@@ -976,6 +976,7 @@ public:
   static IXMLNode xml_add_warning_child(IXMLNode& inParent, const std::string& inTextValue, const std::string& inTagName = mxconst::get_ELEMENT_WARNING());                                                                           // v3.305.3 Short version to concentrate on the Text part
   static IXMLNode xml_add_info_child(IXMLNode& inParent, const std::string& inTextValue, const std::string& inTagName = mxconst::get_ELEMENT_INFO());                                                                           // v3.305.3 Short version to concentrate on the Text part
 
+  static IXMLNode xml_get_child_node (const IXMLNode& inParent, const std::string& inTagName, const int &in_child_index = 0);
   // -------------------------------------------
 
   static void read_external_sql_query_file(std::map<std::string, std::string>& mapQueries, const std::string& inRootNodeName, const std::string& inFilePath = "Resources/plugins/missionx/libs/sql.xml"); // the function will read the external <query> content and override the container

@@ -2127,11 +2127,11 @@ data_manager::prepare_flight_plan_for_LTLNAV (const std::deque<NavAidInfo>& inNa
       {
         std::string ident_s = "WP" + Utils::formatNumber<int>(seq_i);
         std::string name;
-        if (navInfo.getSomeName().empty()
-           || (navInfo.getSomeName().front() == '+' || navInfo.getSomeName().front() == '-') )
+        if (navInfo.get_name_or_icao_id().empty()
+           || (navInfo.get_name_or_icao_id().front() == '+' || navInfo.get_name_or_icao_id().front() == '-') )
           name = ident_s;
         else
-          name = navInfo.getSomeName();
+          name = navInfo.get_name_or_icao_id();
 
         if (navInfo.getID().empty()
           || (navInfo.getID().front() == '+' || navInfo.getID().front() == '-')
@@ -3688,7 +3688,7 @@ data_manager::flc_cue(cue_actions_enum inAction)
           result                              = -1;
           const double groundElevationInMeter = CueInfo::getTerrainElevInMeter_FromPoint(pUpper, result);
 
-          if (groundElevationInMeter > pUpper.getElevationInMeter())
+          if (groundElevationInMeter > pUpper.getElevationInMeters())
           {
             pUpper.setElevationMt(groundElevationInMeter);
             pUpper.elevWasProbed = true;
@@ -4107,9 +4107,9 @@ data_manager::addLatLonEntryToGPS(Point& inPoint, const int& inEntry)
   {
     int entries = XPLMCountFMSEntries ();
     if (inEntry < 0)
-      XPLMSetFMSEntryLatLon(entries, static_cast<float> ( inPoint.getLat () ), static_cast<float> ( inPoint.getLon () ), static_cast<int> ( inPoint.getElevationInMeter () ) );
+      XPLMSetFMSEntryLatLon(entries, static_cast<float> ( inPoint.getLat () ), static_cast<float> ( inPoint.getLon () ), static_cast<int> ( inPoint.getElevationInMeters () ) );
     else
-      XPLMSetFMSEntryLatLon(inEntry, static_cast<float> ( inPoint.getLat () ), static_cast<float> ( inPoint.getLon () ), static_cast<int> ( inPoint.getElevationInMeter () ) );
+      XPLMSetFMSEntryLatLon(inEntry, static_cast<float> ( inPoint.getLat () ), static_cast<float> ( inPoint.getLon () ), static_cast<int> ( inPoint.getElevationInMeters () ) );
   }
 }
 
@@ -6487,12 +6487,17 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outE
 
   //// Fetch information
   std::string err;
-  std::string cert_loc_s = mx_folders_properties.getAttribStringValue(mxconst::get_PROP_MISSIONX_PATH(), "", err);
+  // std::string cert_loc_s = mx_folders_properties.getAttribStringValue(mxconst::get_PROP_MISSIONX_PATH(), "", err);
 
   {
     // #ifdef USE_CURL
 
     std::lock_guard<std::mutex> lock(s_thread_sync_mutex);
+
+    // sleep before calling overpass
+    std::this_thread::sleep_for (std::chrono::seconds(2)); // v25.06.1 not overwhelm the overpass server
+
+
     // curl_global_init(CURL_GLOBAL_DEFAULT); // DO NOT USE
     long httpStatus = 0;
     if (curl)
@@ -6546,9 +6551,9 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outE
         }
 
 
-#ifndef RELEASE
+        #ifndef RELEASE
         Log::logMsgThread(outError); // debug
-#endif
+        #endif
       }
       else
       {
@@ -6556,9 +6561,9 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outE
       }
 
     } // end data_manager::curl - handling cURL
-#ifndef RELEASE
+    #ifndef RELEASE
     // Log::logMsgThread("Curl Result: \n" + result_s); // debug
-#endif
+    #endif
 
     // #endif
   } // end CURL handling if HTTPLIB failed
@@ -8480,6 +8485,13 @@ data_manager::check_cache_folder (const std::string &in_cache_folder_name)
 void
 data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_state *inoutThreadState, std::string *outStatusMessage, missionx::structs::strct_osm_query *q, const std::map<missionx::enums::mx_osm_region, missionx::structs::BBox> &in_map_bbox)
 {
+  if (inoutThreadState == nullptr)
+    return; // abort function execution
+
+  assert (inoutThreadState != nullptr && std::format ("[{}] Thread state is not initialized correctly.", __func__).c_str ());
+
+  inoutThreadState->flagIsActive       = true;
+
   const auto lmbda_set_message =[&] (const std::string &inStatusMsg)
   {
     if (outStatusMessage)
@@ -8490,6 +8502,14 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_
     return;
 
   q->start_time = std::chrono::steady_clock::now ();
+
+  // check [abort]
+  if (inoutThreadState->flagAbortThread)
+  {
+    q->xml_target_nd_node     = IXMLNode::emptyIXMLNode;
+    q->xml_target_way_element = IXMLNode::emptyIXMLNode;
+    return;
+  }
 
   for (const auto &[loc, bbox] : in_map_bbox)
   {
@@ -8502,7 +8522,11 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_
     {
       bool found_valid_count_node = false;
       int  iTry                   = 0;
-      filledQuery.replace (pos, q->BBOX_STR.length (), q->q_bbox);
+      // filledQuery.replace (pos, q->BBOX_STR.length (), q->q_bbox);
+
+      filledQuery = mxUtils::replaceAll (filledQuery, q->BBOX_STR, q->q_bbox);
+      filledQuery = mxUtils::replaceAll (filledQuery, q->ALL_BBOX_STR, q->q_all_bbox);
+
       q->osm_queries[mxUtils::get_mx_osm_region_trans (loc)] = filledQuery;
 
       std::string fullQuery = fmt::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
@@ -8556,7 +8580,16 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_
         Log::logMsgThread (fmt::format ("[Exception during cache creation]\n\t{}\n", ex.what ()));
       }
 
-      while (iTry++ < 5 && !found_valid_count_node && !useCache)
+      // check [abort]
+      if (inoutThreadState->flagAbortThread)
+      {
+        q->xml_target_nd_node     = IXMLNode::emptyIXMLNode;
+        q->xml_target_way_element = IXMLNode::emptyIXMLNode;
+        return;
+      }
+
+      // Call OVERPASS using cURL and make sure we do not have ABORT request
+      while (iTry++ < 5 && !found_valid_count_node && !useCache && !inoutThreadState->flagAbortThread)
       {
         if (CURL *curl = curl_easy_init ())
         {
@@ -8586,11 +8619,19 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_
 
       } // end while iTry
 
-      if (found_valid_count_node + useCache)
+      // check [abort]
+      if (inoutThreadState->flagAbortThread)
+      {
+        q->xml_target_nd_node     = IXMLNode::emptyIXMLNode;
+        q->xml_target_way_element = IXMLNode::emptyIXMLNode;
+        return;
+      }
+
+      if ( found_valid_count_node + useCache )
       {
         IXMLDomParser xmlParser;
-        auto          root      = xmlParser.parseString (response_text.c_str ()).deepCopy ();
-        IXMLNode      nodeCount = Utils::xml_get_node_from_node_tree_IXMLNode (root, "count", true);
+        auto          xml_count_node      = xmlParser.parseString (response_text.c_str ()).deepCopy ();
+        IXMLNode      nodeCount = Utils::xml_get_node_from_node_tree_IXMLNode (xml_count_node, "count", true);
         if (!nodeCount.isEmpty ())
         {
           nodeCount.updateName ("tags");
@@ -8603,9 +8644,9 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_
           auto tag_node      = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (nodeCount, "tag", "k", "ways", false, false);
           q->total_way_count = mxUtils::stringToNumber<int> (Utils::xml_get_attribute_value (tag_node, "v", "0"));
 
-          if (!q->tags_node.isEmpty () && (q->total_way_count > 0))
+          if (!q->xml_tags_node.isEmpty () && (q->total_way_count > 0))
           {
-            q->tags_node.addChild (nodeCount);
+            q->xml_tags_node.addChild (nodeCount);
 
             // write to cache file
             if (std::ofstream outFile (filename);
@@ -8626,127 +8667,159 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_
   }
 
   q->end_time = std::chrono::steady_clock::now ();
-
 }
 
 // -------------------------------------
 
-std::map<int, missionx::NavAidInfo>
-data_manager::fetch_targets_using_osm_queries_thread (missionx::base_thread::thread_state *inoutThreadState, IXMLNode &in_root_node, missionx::structs::strct_osm_query &inout_analyzed_query, const std::string &in_cache_folder)
-{
-  constexpr int max_queries = 10;
-
-  bool          flag_all_osm_queries_are_done = false;
-  int           seq                           = 1;
-
-  std::map<int, missionx::NavAidInfo> map_navaids;
-  missionx::structs::strct_osm_query  osm_query = inout_analyzed_query;
-
-  while (!flag_all_osm_queries_are_done && seq < max_queries)
-  {
-    // Call generic overpass
-    missionx::data_manager::fetch_ways_and_target_node_from_overpass_thread (inoutThreadState, nullptr, &osm_query);
-    if (!osm_query.target_node_tag.isEmpty () && !osm_query.target_way_tag.isEmpty ())
-    {
-      const auto way_name = Utils::xml_get_attrib_value_based_on_other_attrib_presence (osm_query.target_way_tag, "tag", "k", "name", "v", "");
-
-      #ifndef RELEASE
-      Log::logMsgThread (std::format ("--> Got target node: {}<--\nQ ID: {}\nTarget Way Name: {}.\n\n--> Target Way Node: ------> \n{}\n<-- End target way node ------\n---> Target q_text: {}<----\n--->Target Node:\n", seq, osm_query.id, way_name, Utils::xml_get_node_content_as_text (osm_query.target_way_tag), osm_query.q_text));
-      Utils::xml_print_node (osm_query.target_node_tag, true);
-      Log::logMsgThread (std::format ("Target Coordinates: {}, {}\n", Utils::readAttrib (osm_query.target_node_tag, "lat", "", "-0.0", true), Utils::readAttrib (osm_query.target_node_tag, "lon", "", "-0.0", true)));
-      #endif
-
-      // store information based on the fetched "<way>" and "<nd>" elements.
-      missionx::NavAidInfo navaid_target;
-      navaid_target.setName (mxUtils::sanitize_text (way_name));
-      navaid_target.lat = Utils::readNodeNumericAttrib<float> (osm_query.target_node_tag, mxconst::get_ATTRIB_LAT_OSM (), 0.0f);
-      navaid_target.lon = Utils::readNodeNumericAttrib<float> (osm_query.target_node_tag, mxconst::get_ATTRIB_LONG_OSM (), 0.0f);
-      navaid_target.seq = seq;
-
-      if (navaid_target.lat * navaid_target.lon == 0)
-      {
-        navaid_target.init ();
-        if (seq == 1) // if it is the first iteration, then abort.
-        {
-          flag_all_osm_queries_are_done = true;
-          map_navaids.clear ();
-        }
-      }        
-      else
-      {
-        navaid_target.synchToPoint ();
-        Utils::addElementToMap (map_navaids, seq, navaid_target);
-
-        // read next tag or exit if we don't have node available
-        if (osm_query.picked_q_node_as_target_query.isEmpty ())
-        {
-          flag_all_osm_queries_are_done = true;
-          break; // exit while loop
-        }
-
-        // Construct other Navaids if we have any
-        if (std::string next_tag = Utils::readAttrib (osm_query.target_node_tag, "next_tag", ""); !next_tag.empty ())
-        {
-          std::vector<std::string> vec_split_next_tag;
-          auto                     vec_shuffled_next_tag = Utils::splitStringAndGetShuffledIndexVector (next_tag, ",", vec_split_next_tag);
-
-          for (const auto &v_index : vec_shuffled_next_tag)
-          {
-            assert (vec_shuffled_next_tag.size () < v_index && std::format ("[{}] Shuffled index is out of vector bounds. Split vector size: {}", __func__, vec_split_next_tag.size ()).c_str ());
-            const auto& picked_next_tag = vec_split_next_tag.at (v_index);
-
-            // handle if picked END or PLUGIN "next_tag"
-            if (mxUtils::compare (picked_next_tag, "end", false) + mxUtils::compare (picked_next_tag, "plugin", false))
-            {
-              missionx::NavAidInfo na;
-              na.setName (mxUtils::stringToLower (picked_next_tag));
-              na.seq = seq;
-
-              navaid_target.synchToPoint ();
-              Utils::addElementToMap (map_navaids, seq, na);
-              flag_all_osm_queries_are_done = true;
-              seq                           = max_queries;
-              break;
-            }
-
-            // Handle Next Query Subject
-            osm_query.tags_node = in_root_node.getChildNode (picked_next_tag.c_str ());
-            if (osm_query.tags_node.isEmpty ())
-              continue;
-
-            auto vec_shuffle_q                      = Utils::getShuffledIndexVector (osm_query.tags_node.nChildNode ("q"));
-            osm_query.picked_q_node_as_target_query = osm_query.tags_node.getChildNode ("q", vec_shuffle_q.front ());
-            osm_query.q_text                        = Utils::xml_read_cdata_node (osm_query.picked_q_node_as_target_query, "");
-
-            break; // skip loop over shuffled queries vector and return to the "while" loop to fetch next NavAid
-
-          } // end loop over shuffled queries vector
-
-        } // End if there is next_tag
-        else
-        { // handle cases where there is no "next_tag".
-          missionx::NavAidInfo na;
-          na.setName (mxUtils::stringToLower ("end"));
-          na.seq = seq;
-
-          navaid_target.synchToPoint ();
-          Utils::addElementToMap (map_navaids, seq, na);
-          flag_all_osm_queries_are_done = true;
-          seq                           = max_queries;
-
-          break; // Should exit the "while" loop
-        }
-       
-      }
-      
-    } // end if osm_query is valid
-
-    seq++;     
-  } // end while loop
-
-  return map_navaids;
-}
-
+// std::map<int, missionx::NavAidInfo>
+// data_manager::fetch_targets_using_osm_queries_from_a_thread (missionx::base_thread::thread_state *inoutThreadState, const IXMLNode &in_root_node, missionx::structs::strct_osm_query &inout_osm_query)
+// {
+//   constexpr int max_queries = 10;
+//   bool          flag_all_osm_queries_are_done = false;
+//   int           seq                           = 1;
+//
+//   std::map<int, missionx::NavAidInfo> map_navaids;
+//
+//   if (inoutThreadState == nullptr)
+//   {
+//     return map_navaids;
+//   }
+//
+//   // add assert
+//   inoutThreadState->flagIsActive = true;
+//
+//
+//   while (!flag_all_osm_queries_are_done && seq < max_queries && !inoutThreadState->flagAbortThread)
+//   {
+//     // init the query object
+//     inout_osm_query.q_text                 = Utils::xml_read_cdata_node (inout_osm_query.xml_query_node_to_search_a_new_target, "");
+//     inout_osm_query.id                     = Utils::readAttrib (inout_osm_query.xml_query_node_to_search_a_new_target, "id", "");
+//     inout_osm_query.xml_target_way_element = IXMLNode::emptyIXMLNode;
+//     inout_osm_query.xml_target_nd_node     = IXMLNode::emptyIXMLNode;
+//
+//     if (inout_osm_query.q_text.empty ())
+//     {
+//       Log::logMsgThread (std::format("[{}] Could not initialize 'q_text', exiting function.", __func__) );
+//
+//       // exit function
+//       flag_all_osm_queries_are_done = true;
+//       seq = max_queries;
+//       continue;
+//     }
+//
+//     // ------------------
+//     // Call CURL / Cache
+//     // ------------------
+//     missionx::data_manager::fetch_ways_and_target_node_from_overpass_thread (inoutThreadState, nullptr, &inout_osm_query);
+//
+//     if (!inout_osm_query.xml_target_nd_node.isEmpty () && !inout_osm_query.xml_target_way_element.isEmpty ())
+//     {
+//       const auto way_name = Utils::xml_get_attrib_value_based_on_other_attrib_presence (inout_osm_query.xml_target_way_element, "tag", "k", "name", "v", "");
+//
+//       #ifndef RELEASE
+//       Log::logMsgThread (std::format( "--> Target nd node:\n{}\n", Utils::xml_get_node_content_as_text (inout_osm_query.xml_target_nd_node) ) );
+//       #endif
+//
+//       // store information based on the fetched "<way>" and "<nd>" elements.
+//       missionx::NavAidInfo navaid_target;
+//       navaid_target.setName (mxUtils::sanitize_text (way_name));
+//
+//       navaid_target.fpln_seq            = seq;
+//       navaid_target.lat                 = Utils::readNodeNumericAttrib<float> (inout_osm_query.xml_target_nd_node, mxconst::get_ATTRIB_LAT_OSM (), 0.0f);
+//       navaid_target.lon                 = Utils::readNodeNumericAttrib<float> (inout_osm_query.xml_target_nd_node, mxconst::get_ATTRIB_LONG_OSM (), 0.0f);
+//       navaid_target.fpln_osm_wp_type    = Utils::readAttrib (inout_osm_query.xml_query_node_to_search_a_new_target, "wp_type", "");
+//       navaid_target.fpln_xml_osm_q_node = inout_osm_query.xml_query_node_to_search_a_new_target.deepCopy ();
+//
+//
+//       // Validate lat/lon or exit
+//       if (navaid_target.lat * navaid_target.lon == 0)
+//       {
+//         navaid_target.init ();
+//         if (seq == 1) // if it is the first iteration, then abort.
+//         {
+//           flag_all_osm_queries_are_done = true;
+//           map_navaids.clear ();
+//           return map_navaids;
+//         }
+//       }
+//
+//       // Store
+//       navaid_target.synchToPoint ();
+//       Utils::addElementToMap (map_navaids, seq, navaid_target);
+//
+//       // Construct other Navaids if we have any
+//       #ifndef RELEASE
+//       Log::logMsgThread (std::format ("\n--> Do we have 'next_tag' ?\n{}", Utils::xml_get_node_content_as_text (inout_osm_query.xml_query_node_to_search_a_new_target)));
+//       #endif
+//
+//       if (std::string next_tag = Utils::readAttrib (inout_osm_query.xml_query_node_to_search_a_new_target, "next_tag", "");
+//         !next_tag.empty ())
+//       {
+//         std::vector<std::string> vec_split_next_tag;
+//         auto                     vec_shuffled_next_tag = Utils::splitStringAndGetShuffledIndexVector (next_tag, ",", vec_split_next_tag);
+//         #ifndef RELEASE
+//         Log::logMsgThread ("Display shuffled Next Tag:");
+//         for (const auto &val : vec_shuffled_next_tag)
+//           Log::logMsgThread (std::format ("[{}]: {}", val, vec_split_next_tag.at (val)));
+//
+//         Log::logMsgThread ("<--- End Display shuffled Next Tag ---");
+//         #endif
+//
+//         // Fetch next SUBJECT "id" node based on "next_tag" values.
+//         for (size_t counter = 0; const auto &v_index : vec_shuffled_next_tag)
+//         {
+//           assert (vec_shuffled_next_tag.size () > v_index && std::format ("[{}] Shuffled index is out of vector bounds. Split vector size: {}", __func__, vec_split_next_tag.size ()).c_str ());
+//           counter++;
+//           const auto &picked_next_tag = vec_split_next_tag.at (v_index);
+//
+//           // Get next Subject "id" and validate it
+//           inout_osm_query.xml_tags_node = in_root_node.getChildNode (picked_next_tag.c_str ());
+//           if (inout_osm_query.xml_tags_node.isEmpty () && counter < vec_shuffled_next_tag.size ())
+//             continue;
+//           else if (inout_osm_query.xml_tags_node.isEmpty () )
+//           {
+//             flag_all_osm_queries_are_done = true;
+//             seq = max_queries;
+//             break;
+//           }
+//
+//           auto vec_shuffle_q                                = Utils::getShuffledIndexVector (inout_osm_query.xml_tags_node.nChildNode ("q"));
+//           inout_osm_query.xml_query_node_to_search_a_new_target = inout_osm_query.xml_tags_node.getChildNode ("q", vec_shuffle_q.front ());
+//           #ifndef RELEASE
+//           Log::logMsgThread (std::format("\n--> Found next target.\nTag:<{}>\nQuery: {}\n<-- end next target.\n\n", picked_next_tag, Utils::xml_get_node_content_as_text (inout_osm_query.xml_query_node_to_search_a_new_target) ) ); // debug
+//           // Log::logMsgThread (std::format("\n--> NavAid fpln_xml_osm_q_node:\n{}<-- fpln_xml_osm_q_node --\n", Utils::xml_get_node_content_as_text ( navaid_target.fpln_xml_osm_q_node ) ) ); // debug
+//           #endif
+//
+//
+//           break; // skip loop over shuffled queries vector and return to the "while" loop to fetch next NavAid
+//
+//         } // end loop over shuffled queries vector
+//
+//       } // End if there is next_tag
+//       else
+//       {
+//         flag_all_osm_queries_are_done = true;
+//         // break; // Should exit the "while" loop
+//       }
+//
+//     } // end if inout_osm_query is valid
+//     else
+//     {
+//       // sleep 2 seconds
+//       std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for 2 seconds before sending a new request
+//     }
+//
+//     ++seq;
+//
+//   } // end while loop
+//
+//   // check [abort]
+//   if (inoutThreadState->flagAbortThread)
+//     map_navaids.clear ();
+//
+//   return map_navaids;
+// }
+//
 // -------------------------------------
 
 void
@@ -8759,20 +8832,28 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
 
   // prepare request
   std::string filledQuery = q->q_text;
-  if (const size_t pos = filledQuery.find(q->BBOX_STR);
-          pos != std::string::npos)
+  const size_t pos_all_bbox = filledQuery.find(q->ALL_BBOX_STR);
+  if (const size_t pos_bbox = filledQuery.find(q->BBOX_STR);
+          (pos_bbox != std::string::npos) + (pos_all_bbox != std::string::npos) )
   {
-    filledQuery.replace (pos, q->BBOX_STR.length (), q->q_bbox);
-    std::string fullQuery      = fmt::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
-    q->q_request_subject_ways  = fullQuery;
-    const std::string filename = fmt::format ("{}/cached_ways_{}_{}.xml", q->cache_folder, q->id, q->q_short_bbox_fmt);
-    std::string       response_text;
-    bool              useCache = false;
+    bool        useCache = false;
+    std::string response_text;
+
+    filledQuery = mxUtils::replaceAll (filledQuery, q->BBOX_STR, q->q_bbox); // replace all occurrences.
+    filledQuery = mxUtils::replaceAll (filledQuery, q->ALL_BBOX_STR, q->q_all_bbox); // replace all occurrences.
+    // filledQuery.replace (pos, q->BBOX_STR.length (), q->q_bbox);
+    std::string fullQuery      = std::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
+    q->q_request  = fullQuery;
+
+    #ifndef RELEASE
+    Log::logMsgThread (std::format ("[{}] q_request: {}\n", __func__, q->q_request));
+    #endif
+
+    const std::string filename = std::format ("{}/cached_ways_{}_{}.xml", q->cache_folder, q->id, q->q_short_bbox_fmt);
 
     // debug
-    Log::logMsgThread (fmt::format ("{}\n", filledQuery));
+    Log::logMsgThread (std::format ("{}\n", filledQuery));
 
-    std::stringstream ss_msg;
     try
     {
       if (std::filesystem::exists (filename))
@@ -8785,24 +8866,33 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
           // Check cached result has ways node data
           IXMLDomParser xmlParser;
           IXMLResults   parseResult;
-          auto          root = xmlParser.parseString (response_text.c_str (), "osm", &parseResult).deepCopy ();
+          auto          xml_osm_node = xmlParser.parseString (response_text.c_str (), "osm", &parseResult).deepCopy ();
           // debug and validations
-          // xml_print_node(root, true);
-          ss_msg << "Parse result: " << parseResult.errorCode << ", Lines: " << parseResult.nLine << "\n";
-          Log::logMsgThread (ss_msg.str ());
+          Log::logMsgThread (std::format ("Parse result: {} {}, Lines: {}", static_cast<int> (parseResult.errorCode), (static_cast<int> (parseResult.errorCode) == 0)?"(ok)": "", parseResult.nLine));
 
-          int         nodeCount = root.nChildNode ("way");
-          std::string root_name = root.getName ();
 
-          if (nodeCount < 1 || parseResult.errorCode != IXMLError_None)
+          if (parseResult.errorCode != IXMLError_None)
           {
+            Log::logMsgThread (std::format ("Returned XML Error Code: {}\nRaw Result XML: {}\n", IXMLDomParser::getErrorMessage(parseResult.errorCode), Utils::xml_get_node_content_as_text ( xml_osm_node ) ) );
             useCache = false;
             std::filesystem::remove (filename);
           }
           else
           {
-            useCache = true;
-            Log::logMsgThread (fmt::format ("Using cache {}\n", filename));
+
+            int         nodeCount = xml_osm_node.nChildNode ("way"); // second validation
+            std::string root_name = xml_osm_node.getName (); // debug
+
+            if (nodeCount < 1)
+            {
+              useCache = false;
+              std::filesystem::remove (filename);
+            }
+            else
+            {
+              useCache = true;
+              Log::logMsgThread (std::format ("Using cache {}\n", filename));
+            }
           }
         }
       }
@@ -8810,24 +8900,54 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
     catch (const std::exception &ex)
     {
       useCache = false;
-      Log::logMsgThread (fmt::format ("[Exception during cache creation]\n\t{}\n", ex.what ()));
-      Log::logMsgThread (fmt::format ("[Expected filename]: {}\n", filename));
+      Log::logMsgThread (std::format ("[Exception during cache creation]\n\t{}\n", ex.what ()));
+      Log::logMsgThread (std::format ("[Expected filename]: {}\n", filename));
     }
     // end reading cache file
 
     if (CURL *curl = curl_easy_init ();
       curl && !useCache)
     {
-      curl_easy_setopt (curl, CURLOPT_URL, "https://overpass-api.de/api/interpreter");
-      curl_easy_setopt (curl, CURLOPT_POSTFIELDS, fullQuery.c_str());
-      curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, my_write);
-      curl_easy_setopt (curl, CURLOPT_WRITEDATA, &response_text);
-      // Execute REQUEST
-      CURLcode res = curl_easy_perform (curl);
+      CURLcode res = CURL_LAST;
+      bool flag_curl_results_are_ok = false;
+      size_t url_loop_counter_i = 0;
+      // Call Overpass up to "data_manager::vecOverpassUrls.size ()" times
+      while (!flag_curl_results_are_ok && url_loop_counter_i < data_manager::vecOverpassUrls.size ())
+      {
+        const auto& overpass_url = (url_loop_counter_i < data_manager::vecOverpassUrls.size ())? data_manager::vecOverpassUrls.at (url_loop_counter_i) : mxconst::get_DEFAULT_OVERPASS_URL ();
+
+        response_text.clear ();
+        // curl_easy_setopt (curl, CURLOPT_URL, "https://overpass-api.de/api/interpreter");
+        curl_easy_setopt (curl, CURLOPT_URL, overpass_url.c_str ());
+        curl_easy_setopt (curl, CURLOPT_POSTFIELDS, q->q_request.c_str());
+        curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, my_write);
+        curl_easy_setopt (curl, CURLOPT_WRITEDATA, &response_text);
+        // Execute REQUEST
+        res = curl_easy_perform (curl);
+
+        url_loop_counter_i++;
+        if (res == CURLE_OK )
+        {
+          if (mxUtils::find_text (response_text, "Error", false) != std::string::npos)
+          {
+            Log::logMsgThread ( std::format("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
+            std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for 2 seconds before sending a new request
+          }
+          else
+            flag_curl_results_are_ok = true;
+        } // end internal test
+        else
+        { // respond code was not CURLE_OK
+          Log::logMsgThread ( std::format("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
+          std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for 2 seconds before sending a new request
+        }
+
+      } // end while loop
+
 
       if (res == CURLE_OK)
       {
-        Log::logMsgThread (fmt::format ("Query ID: {} BBOX: {}\n", q->id, q->q_bbox));
+        Log::logMsgThread (std::format ("Query ID: {} BBOX: {}\n", q->id, q->q_bbox));
 
         // write to cache file
         if (std::ofstream outFile (filename);
@@ -8841,7 +8961,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
       {
         // res != CURLE_OK
         response_text.clear ();
-        Log::logMsgThread (fmt::format ("\tCurl error: \n\t{}", curl_easy_strerror (res)));
+        Log::logMsgThread (std::format ("\tCurl error: \n\t{}", curl_easy_strerror (res)));
       }
 
       curl_easy_cleanup (curl);
@@ -8854,16 +8974,15 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
     {
       IXMLDomParser xmlParser;
       IXMLResults   parseResult;
-      auto          root2 = xmlParser.parseString (response_text.c_str (), "osm", &parseResult).deepCopy ();
-      ss_msg.clear ();
-      ss_msg << "Parse root2 result: " << parseResult.errorCode << ", Lines: " << parseResult.nLine << "\n";
-
+      auto          xml_osm_node = xmlParser.parseString (response_text.c_str (), "osm", &parseResult).deepCopy ();
+      //ss_msg.clear ();
+      //ss_msg << "Parse root2 result: " << parseResult.errorCode << ", Lines: " << parseResult.nLine << "\n";
+      
       #ifndef RELEASE
-      // auto test_way_node = root2.getChildNode ("way");
-      // Utils::xml_print_node (test_way_node, true); // debug
+      Log::logMsgThread (std::format ("[{}] (xml_osm_node) Parse result osm: {}, nLine: {}\n", __func__, static_cast<int> (parseResult.errorCode), parseResult.nLine));
       #endif
 
-      int nodeCount = root2.nChildNode ("way");
+      int nodeCount = xml_osm_node.nChildNode ("way");
       if (nodeCount > 0)
       {
         // Get shuffled vector index
@@ -8871,43 +8990,77 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
 
         for (const auto &w : vecShuffleWayNodes)
         {
-          //auto way_node = root2.getChildNode("way", w);
-          q->target_way_tag  = root2.getChildNode ("way", w);
-          const int nd_count = q->target_way_tag.nChildNode ("nd");
+          q->xml_target_way_element  = xml_osm_node.getChildNode ("way", w).deepCopy ();
+          #ifndef RELEASE
+          Log::logMsgThread (std::format ("[{}] Picked <way>: {}\n", __func__, Utils::xml_get_node_content_as_text (q->xml_target_way_element)));
+          #endif
+
+          const int nd_count = q->xml_target_way_element.nChildNode ("nd");
           if (nd_count < 1)
             continue;
 
           auto rand_node_num = Utils::getRandomIntNumber (0, nd_count - 1);
           // fetch node
-          auto nd_node_id = q->target_way_tag.getChildNode ("nd", rand_node_num);
+          auto nd_node_id = q->xml_target_way_element.getChildNode ("nd", rand_node_num);
           if (CURL *curl = curl_easy_init ();
             curl)
           {
-            response_text.clear ();
-            auto node_ref_id = Utils::readAttrib (nd_node_id, "ref", "", "-1", true);
-            filledQuery      = fmt::format ("[out:xml][timeout:15];node({});out body;", node_ref_id);
-            fullQuery        = fmt::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
-            curl_easy_setopt (curl, CURLOPT_URL, "https://overpass-api.de/api/interpreter");
-            curl_easy_setopt (curl, CURLOPT_POSTFIELDS, fullQuery.c_str());
-            curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, my_write);
-            curl_easy_setopt (curl, CURLOPT_WRITEDATA, &response_text);
-            // Execute REQUEST
-            CURLcode res = curl_easy_perform (curl);
+            CURLcode res = CURL_LAST;
+            bool flag_curl_results_are_ok = false;
+            size_t url_loop_counter_i = 0;
+            // Call Overpass up to "data_manager::vecOverpassUrls.size ()" times
+            while (!flag_curl_results_are_ok && url_loop_counter_i < data_manager::vecOverpassUrls.size ())
+            {
+              const auto& overpass_url = (url_loop_counter_i < data_manager::vecOverpassUrls.size ())? data_manager::vecOverpassUrls.at (url_loop_counter_i) : mxconst::get_DEFAULT_OVERPASS_URL ();
+
+              response_text.clear ();
+              auto node_ref_id = Utils::readAttrib (nd_node_id, "ref", "", "-1", true);
+              filledQuery      = std::format ("[out:xml][timeout:15];node({});out body;", node_ref_id);
+              fullQuery        = std::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
+
+              // curl_easy_setopt (curl, CURLOPT_URL, "https://overpass-api.de/api/interpreter");
+              curl_easy_setopt (curl, CURLOPT_URL, overpass_url.c_str ());
+              curl_easy_setopt (curl, CURLOPT_POSTFIELDS, fullQuery.c_str());
+              curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, my_write);
+              curl_easy_setopt (curl, CURLOPT_WRITEDATA, &response_text);
+              // Execute REQUEST
+              // CURLcode res = curl_easy_perform (curl);
+              res = curl_easy_perform (curl);
+
+              url_loop_counter_i++;
+              if (res == CURLE_OK )
+              {
+                if (mxUtils::find_text (response_text, "Error", false) != std::string::npos)
+                {
+                  Log::logMsgThread ( std::format("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
+                  std::this_thread::sleep_for (std::chrono::seconds (1)); // wait for 2 seconds before sending a new request
+                }
+                else
+                  flag_curl_results_are_ok = true;
+              } // end internal test
+              else
+              { // respond code was not CURLE_OK
+                  Log::logMsgThread ( std::format("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
+                std::this_thread::sleep_for (std::chrono::seconds (1)); // wait for 2 seconds before sending a new request
+              }
+
+            } // end while loop
+
 
             if (res == CURLE_OK)
             {
               IXMLDomParser local_xmlParser;
-              auto          root3 = local_xmlParser.parseString (response_text.c_str ()).deepCopy ();
+              auto          xml_ref_nd_node = local_xmlParser.parseString (response_text.c_str ()).deepCopy ();
               #ifndef RELEASE
-              Utils::xml_print_node (root3, true); // debug node
+              Log::logMsgThread (std::format ("--> [{}] <nd>: Target Node:\n{}", __func__, Utils::xml_get_node_content_as_text (xml_ref_nd_node))); // debug
+              // Utils::xml_print_node (root3, true); // debug node
               #endif
-
-              q->target_node_tag = root3.getChildNode ("node").deepCopy ();
+              q->xml_target_nd_node = xml_ref_nd_node.getChildNode ("node").deepCopy ();
               break; // force loop exit
             }
             else
             {
-              Log::logMsgThread (fmt::format ("\tReading Node Curl error: \n\t{}\n", curl_easy_strerror (res)));
+              Log::logMsgThread (std::format ("\tReading Node Curl error: \n\t{}\n", curl_easy_strerror (res)));
             }
           } // end fetch specific node from Overpass
         } // end loop "shuffle way nodes"

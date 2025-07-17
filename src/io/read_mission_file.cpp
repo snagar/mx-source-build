@@ -826,7 +826,7 @@ missionx::read_mission_file::readInventories ( const ITCXMLNode & xParent)
   if ( missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY )
   {
     // we override the plane inventory with the ACF inventory node, after we "copied" the items to the ACF stations.
-    planeInventory.node = missionx::Inventory::mergeAcfAndPlaneInventories2(acfInventory.node, planeInventory.node);
+    planeInventory.node = missionx::Inventory::mergeTwoInventories(acfInventory.node, planeInventory.node);
     planeInventory.parse_node();
     // planeInventory = missionx::Inventory::mergeAcfAndPlaneInventories(acfInventory, planeInventory);
   }

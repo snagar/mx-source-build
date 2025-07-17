@@ -67,6 +67,7 @@ namespace structs
 {
 struct strct_osm_query {
   const std::string BBOX_STR = "{{bbox}}";
+  const std::string ALL_BBOX_STR = "{{all_bbox}}";
   int total_way_count = 0;
   std::string id;
   std::string sanitized_id;
@@ -75,16 +76,17 @@ struct strct_osm_query {
 
   // used to build the overpass query
   std::string q_text;
-  std::string q_bbox;
+  std::string q_bbox; // holds only the selected area: SW,NW,NE or SE
+  std::string q_all_bbox; // holds the full osm area and not just a specific area.
   std::string q_short_bbox_fmt; // short form of the bbox
-  std::string q_request_subject_ways;
+  std::string q_request;
   IXMLNode    topic_q_node; // Hold the <q> region query count node.
-  IXMLNode    picked_q_node_as_target_query; // Holds the <q> of the search way as target, query node
+  IXMLNode    xml_query_node_to_search_a_new_target; // Holds the <q> of the search way as target, query node
 
   // Holds the overpass respond data
-  IXMLNode tags_node; // should hold the <tags> root element
-  IXMLNode target_way_tag {IXMLNode::emptyIXMLNode}; // should hold the subject query way result
-  IXMLNode target_node_tag {IXMLNode::emptyIXMLNode}; // should hold the subject way node result
+  IXMLNode xml_tags_node; // should hold the <tags> root element
+  IXMLNode xml_target_way_element {IXMLNode::emptyIXMLNode}; // should hold the subject query way result
+  IXMLNode xml_target_nd_node {IXMLNode::emptyIXMLNode}; // should hold the subject way node result
 
   std::unordered_map<std::string, std::string> osm_queries;
   
@@ -96,7 +98,7 @@ struct strct_osm_query {
   {
     total_way_count = 0;
     IXMLDomParser parser;
-    tags_node = parser.parseString("<region_tags></region_tags>").deepCopy();
+    xml_tags_node = parser.parseString("<region_tags></region_tags>").deepCopy();
   }
 
   void clone (const strct_osm_query &inStrct)
@@ -110,15 +112,16 @@ struct strct_osm_query {
     // used to build the overpass query
     this->q_text= inStrct.q_text;
     this->q_bbox= inStrct.q_bbox;
+    this->q_all_bbox= inStrct.q_all_bbox;
     this->q_short_bbox_fmt= inStrct.q_short_bbox_fmt;
-    this->q_request_subject_ways= inStrct.q_request_subject_ways;
+    this->q_request= inStrct.q_request;
     this->topic_q_node= inStrct.topic_q_node.deepCopy();
-    this->picked_q_node_as_target_query= inStrct.picked_q_node_as_target_query.deepCopy();
+    this->xml_query_node_to_search_a_new_target= inStrct.xml_query_node_to_search_a_new_target.deepCopy();
 
     // Holds the overpass respond data
-    this->tags_node= inStrct.tags_node.deepCopy();
-    this->target_way_tag= inStrct.target_way_tag.deepCopy();
-    this->target_node_tag= inStrct.target_node_tag.deepCopy();
+    this->xml_tags_node= inStrct.xml_tags_node.deepCopy();
+    this->xml_target_way_element= inStrct.xml_target_way_element.deepCopy();
+    this->xml_target_nd_node= inStrct.xml_target_nd_node.deepCopy();
 
     this->osm_queries.clear();
     std::for_each (inStrct.osm_queries.begin(), inStrct.osm_queries.end(), [&](const auto &pair)
@@ -232,6 +235,7 @@ typedef enum class _flc_commands
   gather_random_airport_mainThread, // 20                       // v3.0.221.4
   generate_mission_from_littlenavmap_fpln,                      // v3.0.301 converts imported LNM flight plan to a missionx mission file.
   get_current_weather_state_and_store_in_RandomEngine,          // v3.303.13
+  get_terrain_elev_in_point,                                    // v25.06.1
   get_is_point_wet,                                             // v3.0.221.4
   get_and_guess_nav_aid_info_mainThread,                        // v25.04.2 used in Random Engine, when we try to add the "simbrief/fpln" waypoint route.
   get_nav_aid_info_mainThread,                                  // v3.0.253.6
@@ -1375,8 +1379,9 @@ public:
   // v25.06.1
   static void check_cache_folder (const std::string & in_cache_folder_name);
   static void fetch_overpass_info_analyze_thread(missionx::base_thread::thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q, const std::map<missionx::enums::mx_osm_region, missionx::structs::BBox>& in_map_bbox);
-  // The get_targets_from_osm_queries() will pick a target from xml_gen XML, and will gather subtarget information based on the "next_tag" element
-  static std::map<int, missionx::NavAidInfo> fetch_targets_using_osm_queries_thread (missionx::base_thread::thread_state *inoutThreadState, IXMLNode &in_root_node, missionx::structs::strct_osm_query &inout_analyzed_query, const std::string &in_cache_folder);
+  // The get_targets_from_osm_queries() will pick a target from osm_gen.xml, and will gather subtarget information based on the "next_tag" element. Make sure to initialize the "inout_osm_query.cache_folder" before calling this function.
+  // static std::map<int, missionx::NavAidInfo> fetch_targets_using_osm_queries_from_a_thread (missionx::base_thread::thread_state *inoutThreadState, const IXMLNode &in_root_node, missionx::structs::strct_osm_query &inout_osm_query);
+  // The function will fetch OSM information from local cache folder or the web. Make sure to initialize the "cache_folder" in the "*q" parameter before calling this function.
   static void fetch_ways_and_target_node_from_overpass_thread (missionx::base_thread::thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
 
 
