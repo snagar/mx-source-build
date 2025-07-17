@@ -8488,7 +8488,7 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_
   if (inoutThreadState == nullptr)
     return; // abort function execution
 
-  assert (inoutThreadState != nullptr && std::format ("[{}] Thread state is not initialized correctly.", __func__).c_str ());
+  assert (inoutThreadState != nullptr && fmt::format ("[{}] Thread state is not initialized correctly.", __func__).c_str ());
 
   inoutThreadState->flagIsActive       = true;
 
@@ -8699,7 +8699,7 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_
 //
 //     if (inout_osm_query.q_text.empty ())
 //     {
-//       Log::logMsgThread (std::format("[{}] Could not initialize 'q_text', exiting function.", __func__) );
+//       Log::logMsgThread (fmt::format("[{}] Could not initialize 'q_text', exiting function.", __func__) );
 //
 //       // exit function
 //       flag_all_osm_queries_are_done = true;
@@ -8717,7 +8717,7 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_
 //       const auto way_name = Utils::xml_get_attrib_value_based_on_other_attrib_presence (inout_osm_query.xml_target_way_element, "tag", "k", "name", "v", "");
 //
 //       #ifndef RELEASE
-//       Log::logMsgThread (std::format( "--> Target nd node:\n{}\n", Utils::xml_get_node_content_as_text (inout_osm_query.xml_target_nd_node) ) );
+//       Log::logMsgThread (fmt::format( "--> Target nd node:\n{}\n", Utils::xml_get_node_content_as_text (inout_osm_query.xml_target_nd_node) ) );
 //       #endif
 //
 //       // store information based on the fetched "<way>" and "<nd>" elements.
@@ -8749,7 +8749,7 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_
 //
 //       // Construct other Navaids if we have any
 //       #ifndef RELEASE
-//       Log::logMsgThread (std::format ("\n--> Do we have 'next_tag' ?\n{}", Utils::xml_get_node_content_as_text (inout_osm_query.xml_query_node_to_search_a_new_target)));
+//       Log::logMsgThread (fmt::format ("\n--> Do we have 'next_tag' ?\n{}", Utils::xml_get_node_content_as_text (inout_osm_query.xml_query_node_to_search_a_new_target)));
 //       #endif
 //
 //       if (std::string next_tag = Utils::readAttrib (inout_osm_query.xml_query_node_to_search_a_new_target, "next_tag", "");
@@ -8760,7 +8760,7 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_
 //         #ifndef RELEASE
 //         Log::logMsgThread ("Display shuffled Next Tag:");
 //         for (const auto &val : vec_shuffled_next_tag)
-//           Log::logMsgThread (std::format ("[{}]: {}", val, vec_split_next_tag.at (val)));
+//           Log::logMsgThread (fmt::format ("[{}]: {}", val, vec_split_next_tag.at (val)));
 //
 //         Log::logMsgThread ("<--- End Display shuffled Next Tag ---");
 //         #endif
@@ -8768,7 +8768,7 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_
 //         // Fetch next SUBJECT "id" node based on "next_tag" values.
 //         for (size_t counter = 0; const auto &v_index : vec_shuffled_next_tag)
 //         {
-//           assert (vec_shuffled_next_tag.size () > v_index && std::format ("[{}] Shuffled index is out of vector bounds. Split vector size: {}", __func__, vec_split_next_tag.size ()).c_str ());
+//           assert (vec_shuffled_next_tag.size () > v_index && fmt::format ("[{}] Shuffled index is out of vector bounds. Split vector size: {}", __func__, vec_split_next_tag.size ()).c_str ());
 //           counter++;
 //           const auto &picked_next_tag = vec_split_next_tag.at (v_index);
 //
@@ -8786,8 +8786,8 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_
 //           auto vec_shuffle_q                                = Utils::getShuffledIndexVector (inout_osm_query.xml_tags_node.nChildNode ("q"));
 //           inout_osm_query.xml_query_node_to_search_a_new_target = inout_osm_query.xml_tags_node.getChildNode ("q", vec_shuffle_q.front ());
 //           #ifndef RELEASE
-//           Log::logMsgThread (std::format("\n--> Found next target.\nTag:<{}>\nQuery: {}\n<-- end next target.\n\n", picked_next_tag, Utils::xml_get_node_content_as_text (inout_osm_query.xml_query_node_to_search_a_new_target) ) ); // debug
-//           // Log::logMsgThread (std::format("\n--> NavAid fpln_xml_osm_q_node:\n{}<-- fpln_xml_osm_q_node --\n", Utils::xml_get_node_content_as_text ( navaid_target.fpln_xml_osm_q_node ) ) ); // debug
+//           Log::logMsgThread (fmt::format("\n--> Found next target.\nTag:<{}>\nQuery: {}\n<-- end next target.\n\n", picked_next_tag, Utils::xml_get_node_content_as_text (inout_osm_query.xml_query_node_to_search_a_new_target) ) ); // debug
+//           // Log::logMsgThread (fmt::format("\n--> NavAid fpln_xml_osm_q_node:\n{}<-- fpln_xml_osm_q_node --\n", Utils::xml_get_node_content_as_text ( navaid_target.fpln_xml_osm_q_node ) ) ); // debug
 //           #endif
 //
 //
@@ -8842,17 +8842,17 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
     filledQuery = mxUtils::replaceAll (filledQuery, q->BBOX_STR, q->q_bbox); // replace all occurrences.
     filledQuery = mxUtils::replaceAll (filledQuery, q->ALL_BBOX_STR, q->q_all_bbox); // replace all occurrences.
     // filledQuery.replace (pos, q->BBOX_STR.length (), q->q_bbox);
-    std::string fullQuery      = std::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
+    std::string fullQuery      = fmt::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
     q->q_request  = fullQuery;
 
     #ifndef RELEASE
-    Log::logMsgThread (std::format ("[{}] q_request: {}\n", __func__, q->q_request));
+    Log::logMsgThread (fmt::format ("[{}] q_request: {}\n", __func__, q->q_request));
     #endif
 
-    const std::string filename = std::format ("{}/cached_ways_{}_{}.xml", q->cache_folder, q->id, q->q_short_bbox_fmt);
+    const std::string filename = fmt::format ("{}/cached_ways_{}_{}.xml", q->cache_folder, q->id, q->q_short_bbox_fmt);
 
     // debug
-    Log::logMsgThread (std::format ("{}\n", filledQuery));
+    Log::logMsgThread (fmt::format ("{}\n", filledQuery));
 
     try
     {
@@ -8868,12 +8868,12 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
           IXMLResults   parseResult;
           auto          xml_osm_node = xmlParser.parseString (response_text.c_str (), "osm", &parseResult).deepCopy ();
           // debug and validations
-          Log::logMsgThread (std::format ("Parse result: {} {}, Lines: {}", static_cast<int> (parseResult.errorCode), (static_cast<int> (parseResult.errorCode) == 0)?"(ok)": "", parseResult.nLine));
+          Log::logMsgThread (fmt::format ("Parse result: {} {}, Lines: {}", static_cast<int> (parseResult.errorCode), (static_cast<int> (parseResult.errorCode) == 0)?"(ok)": "", parseResult.nLine));
 
 
           if (parseResult.errorCode != IXMLError_None)
           {
-            Log::logMsgThread (std::format ("Returned XML Error Code: {}\nRaw Result XML: {}\n", IXMLDomParser::getErrorMessage(parseResult.errorCode), Utils::xml_get_node_content_as_text ( xml_osm_node ) ) );
+            Log::logMsgThread (fmt::format ("Returned XML Error Code: {}\nRaw Result XML: {}\n", IXMLDomParser::getErrorMessage(parseResult.errorCode), Utils::xml_get_node_content_as_text ( xml_osm_node ) ) );
             useCache = false;
             std::filesystem::remove (filename);
           }
@@ -8891,7 +8891,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
             else
             {
               useCache = true;
-              Log::logMsgThread (std::format ("Using cache {}\n", filename));
+              Log::logMsgThread (fmt::format ("Using cache {}\n", filename));
             }
           }
         }
@@ -8900,8 +8900,8 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
     catch (const std::exception &ex)
     {
       useCache = false;
-      Log::logMsgThread (std::format ("[Exception during cache creation]\n\t{}\n", ex.what ()));
-      Log::logMsgThread (std::format ("[Expected filename]: {}\n", filename));
+      Log::logMsgThread (fmt::format ("[Exception during cache creation]\n\t{}\n", ex.what ()));
+      Log::logMsgThread (fmt::format ("[Expected filename]: {}\n", filename));
     }
     // end reading cache file
 
@@ -8930,7 +8930,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
         {
           if (mxUtils::find_text (response_text, "Error", false) != std::string::npos)
           {
-            Log::logMsgThread ( std::format("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
+            Log::logMsgThread ( fmt::format("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
             std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for 2 seconds before sending a new request
           }
           else
@@ -8938,7 +8938,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
         } // end internal test
         else
         { // respond code was not CURLE_OK
-          Log::logMsgThread ( std::format("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
+          Log::logMsgThread ( fmt::format("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
           std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for 2 seconds before sending a new request
         }
 
@@ -8947,7 +8947,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
 
       if (res == CURLE_OK)
       {
-        Log::logMsgThread (std::format ("Query ID: {} BBOX: {}\n", q->id, q->q_bbox));
+        Log::logMsgThread (fmt::format ("Query ID: {} BBOX: {}\n", q->id, q->q_bbox));
 
         // write to cache file
         if (std::ofstream outFile (filename);
@@ -8961,7 +8961,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
       {
         // res != CURLE_OK
         response_text.clear ();
-        Log::logMsgThread (std::format ("\tCurl error: \n\t{}", curl_easy_strerror (res)));
+        Log::logMsgThread (fmt::format ("\tCurl error: \n\t{}", curl_easy_strerror (res)));
       }
 
       curl_easy_cleanup (curl);
@@ -8979,7 +8979,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
       //ss_msg << "Parse root2 result: " << parseResult.errorCode << ", Lines: " << parseResult.nLine << "\n";
       
       #ifndef RELEASE
-      Log::logMsgThread (std::format ("[{}] (xml_osm_node) Parse result osm: {}, nLine: {}\n", __func__, static_cast<int> (parseResult.errorCode), parseResult.nLine));
+      Log::logMsgThread (fmt::format ("[{}] (xml_osm_node) Parse result osm: {}, nLine: {}\n", __func__, static_cast<int> (parseResult.errorCode), parseResult.nLine));
       #endif
 
       int nodeCount = xml_osm_node.nChildNode ("way");
@@ -8992,7 +8992,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
         {
           q->xml_target_way_element  = xml_osm_node.getChildNode ("way", w).deepCopy ();
           #ifndef RELEASE
-          Log::logMsgThread (std::format ("[{}] Picked <way>: {}\n", __func__, Utils::xml_get_node_content_as_text (q->xml_target_way_element)));
+          Log::logMsgThread (fmt::format ("[{}] Picked <way>: {}\n", __func__, Utils::xml_get_node_content_as_text (q->xml_target_way_element)));
           #endif
 
           const int nd_count = q->xml_target_way_element.nChildNode ("nd");
@@ -9015,8 +9015,8 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
 
               response_text.clear ();
               auto node_ref_id = Utils::readAttrib (nd_node_id, "ref", "", "-1", true);
-              filledQuery      = std::format ("[out:xml][timeout:15];node({});out body;", node_ref_id);
-              fullQuery        = std::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
+              filledQuery      = fmt::format ("[out:xml][timeout:15];node({});out body;", node_ref_id);
+              fullQuery        = fmt::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
 
               // curl_easy_setopt (curl, CURLOPT_URL, "https://overpass-api.de/api/interpreter");
               curl_easy_setopt (curl, CURLOPT_URL, overpass_url.c_str ());
@@ -9032,7 +9032,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
               {
                 if (mxUtils::find_text (response_text, "Error", false) != std::string::npos)
                 {
-                  Log::logMsgThread ( std::format("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
+                  Log::logMsgThread ( fmt::format("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
                   std::this_thread::sleep_for (std::chrono::seconds (1)); // wait for 2 seconds before sending a new request
                 }
                 else
@@ -9040,7 +9040,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
               } // end internal test
               else
               { // respond code was not CURLE_OK
-                  Log::logMsgThread ( std::format("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
+                  Log::logMsgThread ( fmt::format("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
                 std::this_thread::sleep_for (std::chrono::seconds (1)); // wait for 2 seconds before sending a new request
               }
 
@@ -9052,7 +9052,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
               IXMLDomParser local_xmlParser;
               auto          xml_ref_nd_node = local_xmlParser.parseString (response_text.c_str ()).deepCopy ();
               #ifndef RELEASE
-              Log::logMsgThread (std::format ("--> [{}] <nd>: Target Node:\n{}", __func__, Utils::xml_get_node_content_as_text (xml_ref_nd_node))); // debug
+              Log::logMsgThread (fmt::format ("--> [{}] <nd>: Target Node:\n{}", __func__, Utils::xml_get_node_content_as_text (xml_ref_nd_node))); // debug
               // Utils::xml_print_node (root3, true); // debug node
               #endif
               q->xml_target_nd_node = xml_ref_nd_node.getChildNode ("node").deepCopy ();
@@ -9060,7 +9060,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
             }
             else
             {
-              Log::logMsgThread (std::format ("\tReading Node Curl error: \n\t{}\n", curl_easy_strerror (res)));
+              Log::logMsgThread (fmt::format ("\tReading Node Curl error: \n\t{}\n", curl_easy_strerror (res)));
             }
           } // end fetch specific node from Overpass
         } // end loop "shuffle way nodes"

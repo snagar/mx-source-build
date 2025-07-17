@@ -290,7 +290,7 @@ public:
 
   std::string getRampInfo()
    {
-     return std::format("Gate Type: {}, For planes: {}, ramp name: {}", this->ramp_info.gate, this->ramp_info.jets, this->ramp_info.uq_name);
+     return fmt::format("Gate Type: {}, For planes: {}, ramp name: {}", this->ramp_info.gate, this->ramp_info.jets, this->ramp_info.uq_name);
    }
 
   std::string get_loc_desc() const
@@ -312,16 +312,16 @@ public:
      std::string loc_desc;
      const bool  flag_navaid_has_unique_name = nav_aid_has_unique_name (); // v25.06.1 check if the name does not have "coordinate" or "leg" text in it.
      if ((getID().empty () && getName().empty () || !flag_navaid_has_unique_name))
-       this->loc_desc = std::format("{}: [{:.4f}, {:.4f}]", ((this->flag_nav_from_webosm) ? "osmweb": "coordinates"), this->lat, this->lon);
+       this->loc_desc = fmt::format("{}: [{:.4f}, {:.4f}]", ((this->flag_nav_from_webosm) ? "osmweb": "coordinates"), this->lat, this->lon);
      else if (getID ().empty ())
        this->loc_desc = getName ();
      else
-       this->loc_desc = std::format ("{}({})", getName (), getID ());
+       this->loc_desc = fmt::format ("{}({})", getName (), getID ());
 
      if (this->height_mt != 0.0f)
      {
        const float height_ft = height_mt * missionx::meter2feet;
-       this->loc_desc.append ( std::format (" (elevation: ~{}ft)", Utils::formatNumber<float> (height_ft, 0) ) );
+       this->loc_desc.append ( fmt::format (" (elevation: ~{}ft)", Utils::formatNumber<float> (height_ft, 0) ) );
      }
 
      return this->loc_desc;
@@ -337,10 +337,10 @@ public:
     if (this->getID ().empty() && (this->getName ().empty() || mxconst::get_COORDINATES_IN_THE_GPS_S() == name || !flag_navaid_has_unique_name))
     {
       if (this->loc_desc.empty() || !flag_navaid_has_unique_name) // v3.0.241.10 b3 extended to have better description
-        loc_desc_short = std::format("{}: [{:.4f}, {:.4f}]", ((this->flag_nav_from_webosm) ? "osmweb": "coordinates"), this->lat, this->lon);
+        loc_desc_short = fmt::format("{}: [{:.4f}, {:.4f}]", ((this->flag_nav_from_webosm) ? "osmweb": "coordinates"), this->lat, this->lon);
         // loc_desc_short = ((this->flag_nav_from_webosm) ? "osmweb: (" : "XY: (") + Utils::formatNumber<float>(this->lat, 4) + ", " + Utils::formatNumber<float>(this->lon, 4) + ")"; // v3.0.253.6 added flag_nav_from_webosm check to better display origin of data
       else
-        loc_desc_short = std::format("{} ({:.4f}, {:.4f})", this->loc_desc, this->lat, this->lon);
+        loc_desc_short = fmt::format("{} ({:.4f}, {:.4f})", this->loc_desc, this->lat, this->lon);
         // loc_desc_short += " (" + Utils::formatNumber<float>(this->lat, 4) + ", " + Utils::formatNumber<float>(this->lon, 4) + ")";
 
 

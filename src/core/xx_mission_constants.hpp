@@ -36,7 +36,7 @@ constexpr static const int MX_FEATURES_VERSION = 20250501; //20241212; //2023091
 
 inline constexpr static auto PLUGIN_VER_MAJOR                  = "25"; // year
 inline constexpr static auto PLUGIN_VER_MINOR                  = "06"; // month
-inline constexpr static auto PLUGIN_VER_SUB                    = "1 beta "; // sub-version
+inline constexpr static auto PLUGIN_VER_SUB                    = "1-beta-"; // sub-version
 inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 
@@ -51,14 +51,14 @@ constexpr static int XP12_VERSION_NO = 120000;
 constexpr static int XP11_COMPATIBILITY = 11;
 constexpr static int XP12_COMPATIBILITY = 12;
 
-// const static auto PLUGIN_VERSION_S = std::format("{} {} {}", PLUGIN_VER_MAJOR, PLUGIN_VER_MINOR, PLUGIN_REVISION_S).c_str ();
+// const static auto PLUGIN_VERSION_S = fmt::format("{} {} {}", PLUGIN_VER_MAJOR, PLUGIN_VER_MINOR, PLUGIN_REVISION_S).c_str ();
 
   #ifndef RELEASE
   const static auto FULL_VERSION = std::string(PLUGIN_VER_MAJOR).append(".").append(PLUGIN_VER_MINOR).append(".").append(PLUGIN_VER_SUB).append( PLUGIN_DEV_BUILD).append(" ").append(PLUGIN_VER_BUILD_DETAILS).append(" " __DATE__ ).append(" ").append(__TIME__);
   // static auto FULL_VERSION = std::string("{}.{}.{} {} {} {}", PLUGIN_VER_MAJOR, PLUGIN_VER_MINOR, PLUGIN_REVISION_S, PLUGIN_DEV_BUILD, __DATE__, __TIME__).c_str ();
   #else
   const static auto FULL_VERSION = std::string(PLUGIN_VER_MAJOR).append(".").append(PLUGIN_VER_MINOR).append(".").append(PLUGIN_VER_SUB);
-  // const static auto FULL_VERSION = std::format ("{}.{}.{} {}", PLUGIN_VER_MAJOR, PLUGIN_VER_MINOR, PLUGIN_DEV_BUILD, PLUGIN_REVISION_S).c_str ();
+  // const static auto FULL_VERSION = fmt::format ("{}.{}.{} {}", PLUGIN_VER_MAJOR, PLUGIN_VER_MINOR, PLUGIN_DEV_BUILD, PLUGIN_REVISION_S).c_str ();
   #endif
   const static auto FULL_VERSION_ABOUT = std::string(PLUGIN_VER_MAJOR).append(".").append(PLUGIN_VER_MINOR).append(".").append(PLUGIN_VER_SUB).append( PLUGIN_DEV_BUILD).append(" ").append(PLUGIN_VER_BUILD_DETAILS);
 
@@ -290,10 +290,10 @@ typedef struct BBox_struct {
   double maxLat, maxLon;
 
   [[nodiscard]] std::string get_bbox() const {
-    return  std::format("{}, {}, {}, {}", minLat, minLon, maxLat, maxLon);
+    return  fmt::format("{}, {}, {}, {}", minLat, minLon, maxLat, maxLon);
   }
   [[nodiscard]] std::string get_bbox_short() const {
-    return  std::format("{:.5},{:.6},{:.5},{:.6}", minLat, minLon, maxLat, maxLon);
+    return  fmt::format("{:.5},{:.6},{:.5},{:.6}", minLat, minLon, maxLat, maxLon);
   }
 
 } BBox;

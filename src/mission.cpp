@@ -5535,7 +5535,7 @@ missionx::Mission::flcPRE()
           }
           else
           {
-              missionx::Log::logMsgThread(std::format("failed to set image: {}, Error: {}", file, err)); // v24.06.1
+              missionx::Log::logMsgThread(fmt::format("failed to set image: {}, Error: {}", file, err)); // v24.06.1
           }
 
           stbi_image_free(textureFile.sImageData.pData);
