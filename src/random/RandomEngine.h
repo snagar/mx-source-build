@@ -180,13 +180,13 @@ private:
 
   void init();
 
-  void       addTriggersBasedOnTargetLocation(NavAidInfo& inNav, IXMLNode& inSpecialLegSubNode);
-  void       injectCountdownTimers();
-  static bool get_user_wants_to_start_from_plane_position(); // v3.0.253.11 a function that checks property setup + layer came from so we will ignore this property if not called from the correct layer
+  void        addTriggersBasedOnTargetLocation (NavAidInfo &inNav, IXMLNode &inSpecialLegSubNode);
+  void        injectCountdownTimers ();
+  static bool get_user_wants_to_start_from_plane_position (); // v3.0.253.11 a function that checks property setup + layer came from so we will ignore this property if not called from the correct layer
 
   //std::map<std::string, std::string> mapReplaceMessageKeywords; // v3.0.221.11 keyword, value from Navaid
 
-  void        update_start_cold_and_dark_with_special_keywords(IXMLNode& inDatarefStartColdAndDarkNode);
+  void        update_start_cold_and_dark_with_special_keywords(IXMLNode& inDatarefStartColdAndDarkNode); // todo: consider replacing with: "prepare_message_with_special_keywords()" or "gen_message_with_special_keywords_static()"
   std::string prepare_message_with_special_keywords(missionx::NavAidInfo& inNavAid, std::string inMessage);
 
   bool      flag_force_template_distances_b;
@@ -349,6 +349,7 @@ private:
                                               double                              location_value_d,
                                               double                              location_minDistance_d,
                                               double                              location_maxDistance_d);
+
   // search for airports based on XY information for all planes and for helos it can also be based on OSM data (depends on the location_type value - inLocationType)
   bool get_target_or_lastFlightLeg_based_on_XY_or_OSM (NavAidInfo                         &outNewNavInfo,
                                                        std::map<std::string, std::string> &inMapLocationSplitValues,
@@ -357,6 +358,7 @@ private:
                                                        double location_value_d,
                                                        double location_minDistance_d,
                                                        double location_maxDistance_d);
+
   // Search and pick pre-defined location based on an XML tag name
   bool get_targetBasedOnTagName(NavAidInfo&             outNewNavInfo,
                                 mx_plane_types          in_plane_type_enum,

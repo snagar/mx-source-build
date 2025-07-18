@@ -1972,10 +1972,10 @@ RandomEngine::generateRandomMissionBasedOnContent (IXMLNode &xTemplateNode)
     //// Handle Optional if set, there is no need to continue with the rest of the code if we fail here
     optional = Utils::replaceChar1WithChar2_v2 (optional, '%', ""); // v3.0.219.7 removes any % from string prior to handling it
 
-#ifndef RELEASE
+    #ifndef RELEASE
     if (!optional.empty ())
       Log::logDebugBO ("[DEBUG generate random based on content element] Optional value: " + optional, true);
-#endif
+    #endif
 
 
     // v3.0.221.7 optional test
@@ -3197,7 +3197,10 @@ RandomEngine::buildFlightLeg (int inFlightLegCounter, const IXMLNode &in_legNode
 
   // construct Flight Leg description
   std::string       desc;
-  const std::string loc_desc = (newNavInfo.loc_desc.empty ()) ? newNavInfo.init_locDesc () : newNavInfo.loc_desc;
+  // const std::string loc_desc = (newNavInfo.loc_desc.empty ()) ? newNavInfo.init_locDesc () : newNavInfo.loc_desc;
+  if (newNavInfo.loc_desc.empty ())
+    newNavInfo.init_locDesc ();
+  const std::string loc_desc = newNavInfo.get_loc_desc ();
 
   if (flight_leg_type_hover_land_or_start == mxconst::get_FL_TEMPLATE_VAL_START ())
   {
@@ -3751,9 +3754,9 @@ RandomEngine::injectMissionTypeFeatures ()
   std::string          err;
 
 
-#ifndef RELEASE
+  #ifndef RELEASE
   Log::logMsg ("[DEBUG random] injectMissionTypeFeatures.", true);
-#endif
+  #endif
 
   const int nChilds = this->xFlightLegs.nChildNode (mxconst::get_ELEMENT_LEG ().c_str ());
 
@@ -3789,7 +3792,11 @@ RandomEngine::injectMissionTypeFeatures ()
 
         if (nav.flightLegName == flight_leg_name) // same unique Leg name
         {
-          loc_desc       = (nav.loc_desc.empty ()) ? nav.init_locDesc () : nav.loc_desc;
+          if (nav.loc_desc.empty ())
+            nav.init_locDesc ();
+
+          // loc_desc       = (nav.loc_desc.empty ()) ? nav.init_locDesc () : nav.loc_desc;
+          loc_desc       = nav.get_loc_desc ();
           loc_desc_short = nav.gen_locDesc_short ();
           target_nav.clone (nav);
 
@@ -3823,6 +3830,8 @@ RandomEngine::injectMissionTypeFeatures ()
         customLegDescText = ((xDesc.nClear () > 0) ? xDesc.getClear ().sValue : missionx::EMPTY_STRING); // description of task: <task ...><![CDATA[task description]]></task>. // NO <desc> element
     }
 
+    // if (loc_desc_short.empty ())
+    //   int iStop = 0;
     // v3.0.241.9 store leg locations in a string to display in the briefer.
     if (i1 == (nChilds - 1)) // our loop is from end to start
       cumulative_location_desc_s = loc_desc_short + ((distance_to_prev_navaid_d > -1) ? "(" + Utils::formatNumber<double> (distance_to_prev_navaid_d, 2) + " nm)" : ""); // v3.0.251.1 b2 add distances
@@ -3948,6 +3957,9 @@ RandomEngine::injectMissionTypeFeatures ()
 
 
   #ifndef RELEASE
+  // if (mxUtils::trim (this->cumulative_location_desc_s).back () == ',')
+  //   Log::logMsgThread ("Ends with ',' !!!");
+
   Log::logMsg ("[DEBUG random] after injectMissionTypeFeatures.", true);
   #endif
 
@@ -5508,7 +5520,7 @@ RandomEngine::prepare_message_with_special_keywords (missionx::NavAidInfo &inNav
     const auto elev_ft_s                           = Utils::formatNumber<float> (inNavAid.height_mt * missionx::meter2feet);
     mapReplaceMessageKeywords["{navaid_elev}"]     = (inNavAid.height_mt == 0.0f) ? "" : elev_ft_s;
     // mapReplaceMessageKeywords["{navaid_loc_desc}"] = (inNavAid.loc_desc.empty ()) ? inNavAid.init_locDesc () : inNavAid.loc_desc;
-    mapReplaceMessageKeywords["{navaid_loc_desc}"] = inNavAid.init_locDesc (); // v25.06.1 TODO: use this function before adding the NavAid to the target list
+    mapReplaceMessageKeywords["{navaid_loc_desc}"] = inNavAid.get_loc_desc (); // v25.06.1 TODO: use this function before adding the NavAid to the target list
     mapReplaceMessageKeywords["{distance}"]        = (distance_d < 0.0) ? "n/a" : (Utils::formatNumber<double> (distance_d, 0) + "nm"); // v3.0.241.8
 
     for (const auto &[stringToModify, stringToReplaceWith] : mapReplaceMessageKeywords) // replace all special keywords
@@ -6989,7 +7001,8 @@ RandomEngine::gen_post_briefer_desc (std::map<int, NavAidInfo> &in_osm_na_target
     if (i1 == 0)
       continue;
 
-    cumulative_location_desc_s.append (in_osm_na_targets[i1].init_locDesc ()).append ( (i1 + 1 < in_osm_na_targets.size ()) ? ", " : ""   );
+    // cumulative_location_desc_s.append (in_osm_na_targets[i1].init_locDesc ()).append ( (i1 + 1 < in_osm_na_targets.size ()) ? ", " : ""   );
+    cumulative_location_desc_s.append (in_osm_na_targets[i1].get_loc_desc ()).append ( (i1 + 1 < in_osm_na_targets.size ()) ? ", " : ""   );
   }
 
   std::string briefer_desc = "Hello Pilot\n";
@@ -7001,7 +7014,8 @@ RandomEngine::gen_post_briefer_desc (std::map<int, NavAidInfo> &in_osm_na_target
   else if (!in_osm_na_targets[0].getID ().empty ())
     briefer_desc +=  fmt::format ("You will fly from {}.", in_osm_na_targets[0].getID ());
   else
-    briefer_desc +=  fmt::format ("You will fly to {}.", in_osm_na_targets[1].init_locDesc ());
+    // briefer_desc +=  fmt::format ("You will fly to {}.", in_osm_na_targets[1].init_locDesc ());
+    briefer_desc +=  fmt::format ("You will fly to {}.", in_osm_na_targets[1].get_loc_desc ());
 
   briefer_desc += (flag_has_wet_target) ? "\nOne of the flight legs is above water body, make sure you have all needed equipment. " : "";
 
@@ -7010,7 +7024,8 @@ RandomEngine::gen_post_briefer_desc (std::map<int, NavAidInfo> &in_osm_na_target
   if (missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool> (mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE (), true))
     briefer_desc += "\nExpected route: " + cumulative_location_desc_s + ".";
   else
-    briefer_desc += "\nFirst waypoint: " + in_osm_na_targets[1].init_locDesc () + ".";
+    // briefer_desc += "\nFirst waypoint: " + in_osm_na_targets[1].init_locDesc () + ".";
+    briefer_desc += "\nFirst waypoint: " + in_osm_na_targets[1].get_loc_desc () + ".";
 
   briefer_desc += "\n\nFly Safe !!!";
 
@@ -7189,7 +7204,8 @@ RandomEngine::gen_message_with_special_keywords_static (std::string inMessage, m
     mapReplaceMessageKeywords["{bearing_target}"]  = mxUtils::formatNumber<float> (in_target_navaid.bearing_to_current_target, 0);
     const auto elev_ft_s                           = Utils::formatNumber<float> (in_target_navaid.height_mt * missionx::meter2feet);
     mapReplaceMessageKeywords["{navaid_elev}"]     = (in_target_navaid.height_mt == 0.0f) ? "" : elev_ft_s;
-    mapReplaceMessageKeywords["{navaid_loc_desc}"] = (in_target_navaid.loc_desc.empty ()) ? in_target_navaid.init_locDesc () : in_target_navaid.loc_desc;
+    // mapReplaceMessageKeywords["{navaid_loc_desc}"] = (in_target_navaid.loc_desc.empty ()) ? in_target_navaid.init_locDesc () : in_target_navaid.loc_desc;
+    mapReplaceMessageKeywords["{navaid_loc_desc}"] = in_target_navaid.get_loc_desc ();
     mapReplaceMessageKeywords["{distance}"]        = (in_target_navaid.fpln_distance_between_prev_and_current_navaid <= 0.0) ? "n/a" : (Utils::formatNumber<double> (in_target_navaid.fpln_distance_between_prev_and_current_navaid, 0) + "nm");
 
     for (const auto &[stringToModify, stringToReplaceWith] : mapReplaceMessageKeywords) // replace all special keywords
@@ -7610,7 +7626,8 @@ RandomEngine::prepare_medevac_surprise_me (IXMLNode &inRootTemplate, const IXMLN
   #ifndef RELEASE
   Log::logMsgThread ( fmt::format("--- osm_targets {} ----------------------------->>>", __func__ ) );
   for (auto &[k, na] : osm_na_targets)
-    Log::logMsgThread ( fmt::format ("[{}] {}. \tpos: [{}]", k, na.init_locDesc (), na.get_latLon () ) );
+    // Log::logMsgThread ( fmt::format ("[{}] {}. \tpos: [{}]", k, na.init_locDesc (), na.get_latLon () ) );
+    Log::logMsgThread ( fmt::format ("[{}] {}. \tpos: [{}]", k, na.get_loc_desc (), na.get_latLon () ) );
   Log::logMsgThread ( fmt::format("<<<--- End {} -------------------------------\n\n", __func__ ) );
   #endif
 
@@ -8294,6 +8311,11 @@ RandomEngine::osm_get_navaid_from_overpass (NavAidInfo                         &
     meshList.emplace_back (box);
   }
 
+
+  // v25.06.1 Populate the vector with sequential indices (0, 1, 2, ...)
+  std::vector<int> vec_shuffled_mesh_list = Utils::getShuffledIndexVector (static_cast<int>(meshList.size ()));
+
+
   ///// Pick randomly one of the boxes
   int        iTryCounter           = 0;
   const auto meshSize              = static_cast<float> (meshList.size ());
@@ -8311,7 +8333,8 @@ PICK_RANDOM_OSM_BBOX:
     return false;
 
   iTryCounter++;
-  if (!meshList.empty ())
+  // if (!meshList.empty ())
+  if ( ! vec_shuffled_mesh_list.empty () ) // v25.06.1 we work on the shuffled vector
   {
     std::string err;
 
@@ -8321,7 +8344,11 @@ PICK_RANDOM_OSM_BBOX:
       return false;
     }
 
-    int               rnd_box_i   = Utils::getRandomIntNumber (0, static_cast<int> (meshList.size () - 1));
+    // int               rnd_box_i   = Utils::getRandomIntNumber (0, static_cast<int> (meshList.size () - 1));
+    // auto              box         = meshList.at (rnd_box_i);
+    int rnd_box_i = vec_shuffled_mesh_list.back ();
+    vec_shuffled_mesh_list.pop_back ();
+
     auto              box         = meshList.at (rnd_box_i);
     const std::string bounds_s_01 = mxUtils::formatNumber<double> (box.bottomLeft.lat, 8) + "," + mxUtils::formatNumber<double> (box.bottomLeft.lon, 8) + "," + mxUtils::formatNumber<double> (box.topRight.lat, 8) + "," + mxUtils::formatNumber<double> (box.topRight.lon, 8);
 
@@ -8345,7 +8372,7 @@ PICK_RANDOM_OSM_BBOX:
         Log::logDebugBO ("[force slope] Water body found. Skipped boxed area: " + box.print_BL_and_TR (), true);
         #endif // !RELEASE
 
-        Utils::deque_erase_item_at_index<missionx::strct_box> (meshList, rnd_box_i);
+        // // Utils::deque_erase_item_at_index<missionx::strct_box> (meshList, rnd_box_i);
         goto PICK_RANDOM_OSM_BBOX;
       }
     }
@@ -8469,7 +8496,7 @@ PICK_RANDOM_OSM_BBOX:
         #endif // !RELEASE
 
         Log::logMsgThread ("[overpass] Found no valid sub node elements, will try different way box."); // debug
-        Utils::deque_erase_item_at_index<missionx::strct_box> (meshList, rnd_box_i);
+        // Utils::deque_erase_item_at_index<missionx::strct_box> (meshList, rnd_box_i);
 
 
         goto PICK_RANDOM_OSM_BBOX;
@@ -8491,7 +8518,7 @@ PICK_RANDOM_OSM_BBOX:
         #endif // !RELEASE
 
         Log::logMsgThread ("[overpass] Found no valid sub node elements, will try different way box."); // debug
-        Utils::deque_erase_item_at_index<missionx::strct_box> (meshList, rnd_box_i);
+        // Utils::deque_erase_item_at_index<missionx::strct_box> (meshList, rnd_box_i);
         goto PICK_RANDOM_OSM_BBOX; // pick another box
       }
       else
@@ -8593,7 +8620,7 @@ PICK_RANDOM_OSM_BBOX:
             if (nodeOSM_XML.isEmpty () || node_result_s.empty ())
             {
               Log::logMsgThread ("[overpass2] Failed to fetch a <node>. will try a different area box."); // debug
-              Utils::deque_erase_item_at_index<missionx::strct_box> (meshList, rnd_box_i);
+              // Utils::deque_erase_item_at_index<missionx::strct_box> (meshList, rnd_box_i);
               goto PICK_RANDOM_OSM_BBOX; // pick another box
             }
             else
@@ -8687,7 +8714,7 @@ PICK_RANDOM_OSM_BBOX:
             {
               Log::logMsgThread ("[overpass2] Slopped node failed for: " + mxUtils::formatNumber<int> (number_of_times_to_loop_over_force_template_type_i) + " times, Will try other <way> box"); // v3.0.253.6
 
-              Utils::deque_erase_item_at_index<missionx::strct_box> (meshList, rnd_box_i);
+              // Utils::deque_erase_item_at_index<missionx::strct_box> (meshList, rnd_box_i);
               goto PICK_RANDOM_OSM_BBOX; // pick another box
             }
           }
@@ -9285,7 +9312,9 @@ RandomEngine::initQueries ()
 bool
 RandomEngine::check_if_new_target_is_same_as_prev (missionx::NavAidInfo &inCurrentTargetNav, missionx::NavAidInfo &inPrevNav)
 {
-  return (inCurrentTargetNav.getID () == inPrevNav.getID ()) && (inCurrentTargetNav.getName () == inPrevNav.getName ());
+  return (inCurrentTargetNav.getID () == inPrevNav.getID ()) && (inCurrentTargetNav.getName () == inPrevNav.getName ()
+         && ( ! inCurrentTargetNav.getID().empty() + ! inCurrentTargetNav.getName().empty () ) // v25.06.1 added empty test
+         );
 }
 
 // -----------------------------------
@@ -9304,12 +9333,12 @@ RandomEngine::check_last_2_legs_if_they_have_same_icao ()
     listNavInfo2.pop_back ();
     auto preLast = listNavInfo2.back ();
 
-    if (last.getID () == preLast.getID ())
+    if ( !(last.getID ().empty ()) && last.getID () == preLast.getID () ) // v25.06.1 added last.getID ().empty () so it test empty content
     {
       this->listNavInfo.pop_back (); // pop out the last NavInfo since it and the one before it are at the same ICAO
-#ifndef RELEASE
+      #ifndef RELEASE
       Log::logMsgThread ("Removed duplicate last two ICAO: " + last.getID ());
-#endif // !RELEASE
+      #endif // !RELEASE
       return false;
     }
   }
@@ -9806,7 +9835,8 @@ RandomEngine::get_target_or_lastFlightLeg_based_on_XY_or_OSM (NavAidInfo        
     // this->shared_navaid_info.inMaxDistance_nm = max Radius
     // location_minDistance_d = min radius distance
     this->calculate_bbox_coordinates (N0, S180, E90, W270, this->lastFlightLegNavInfo.lat, this->lastFlightLegNavInfo.lon, this->shared_navaid_info.inMaxDistance_nm);
-    if (NavAidInfo navAid; this->osm_get_navaid_from_osm (navAid, inMapLocationSplitValues, inProperties, this->lastFlightLegNavInfo.lat, this->lastFlightLegNavInfo.lon, S180.lat, N0.lat, W270.lon, E90.lon, this->shared_navaid_info.inMaxDistance_nm, location_minDistance_d))
+    if (NavAidInfo navAid;
+       this->osm_get_navaid_from_osm (navAid, inMapLocationSplitValues, inProperties, this->lastFlightLegNavInfo.lat, this->lastFlightLegNavInfo.lon, S180.lat, N0.lat, W270.lon, E90.lon, this->shared_navaid_info.inMaxDistance_nm, location_minDistance_d))
     {
       if (navAid.lat != 0.0 && navAid.lon != 0.0)
       {
@@ -9829,7 +9859,7 @@ RandomEngine::get_target_or_lastFlightLeg_based_on_XY_or_OSM (NavAidInfo        
         outNewNavInfo.synchToPoint ();
         this->shared_navaid_info.navAid.synchToPoint ();
         const auto distance = outNewNavInfo.p.calcDistanceBetween2Points (this->shared_navaid_info.navAid.p);
-        if ((outNewNavInfo.getID () == this->shared_navaid_info.navAid.getID ()) || distance <= 1.0)
+        if ((outNewNavInfo.getID () == this->shared_navaid_info.navAid.getID () && !outNewNavInfo.getID ().empty ()) || distance <= 1.0)
         {
           outNewNavInfo = this->shared_navaid_info.navAid;
           outNewNavInfo.synchToPoint ();

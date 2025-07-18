@@ -307,7 +307,8 @@ public:
    };
 
 
-  std::string init_locDesc()
+  // std::string init_locDesc()
+  void init_locDesc()
   {
      std::string loc_desc;
      const bool  flag_navaid_has_unique_name = nav_aid_has_unique_name (); // v25.06.1 check if the name does not have "coordinate" or "leg" text in it.
@@ -324,7 +325,7 @@ public:
        this->loc_desc.append ( fmt::format (" (elevation: ~{}ft)", Utils::formatNumber<float> (height_ft, 0) ) );
      }
 
-     return this->loc_desc;
+     // return this->loc_desc; // v25.06.1 removed returned value
   }
 
 

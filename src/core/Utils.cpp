@@ -658,9 +658,11 @@ missionx::Utils::getShuffledIndexVector (const int &inNumbersInVector)
   std::random_device rd;
   std::mt19937       g (rd ()); // Mersenne Twister engine seeded by random_device
 
-  std::vector<int> shuffled_indx_vec;
-  for (int i = 0; i < inNumbersInVector; ++i)
-    shuffled_indx_vec.push_back (i);
+  // for (int i = 0; i < inNumbersInVector; ++i)
+  //   shuffled_indx_vec.push_back (i);
+
+  std::vector<int> shuffled_indx_vec (inNumbersInVector);
+  std::iota(shuffled_indx_vec.begin(), shuffled_indx_vec.end(), 0);
 
   // Shuffle Vector
   std::ranges::shuffle (shuffled_indx_vec, g);
