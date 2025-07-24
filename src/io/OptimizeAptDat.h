@@ -25,7 +25,7 @@ class OptimizeAptDat : public base_thread
 private:
   static missionx::dbase* db_airports_xp_ptr;
   static missionx::dbase* db_airports_cache_ptr;
-  missionx::db_field      get_db_field_by_colName(std::list<missionx::db_field>& list_of_fields, std::string inColNameToSearch);
+  missionx::db_field      get_db_field_by_colName(std::list<missionx::db_field>& list_of_fields, const std::string& inColNameToSearch);
 
   static const int STARTING_COUNTER_I = 1; // v3.303.8.3 used with apt_dat internal character counter. Should always start with 1
 

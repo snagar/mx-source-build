@@ -86,8 +86,12 @@ dbase::open_database()
   else
   {
     db_is_open_and_ready = true;
-    mx_RegisterExtensionFunctions(db); // v3.0.241.10 added the extension function to the SQLite engine so we can use all the mathematical "gooddies" function in our query, instead of coding them in C++
+    mxRegisterExtensionFunctions(db); // v3.0.241.10 added the extension function to the SQLite engine so we can use all the mathematical "gooddies" function in our query, instead of coding them in C++
   }
+
+  #ifndef RELEASE
+  assert (this->db != nullptr && fmt::format ("[{}] Database pointer is empty.", __func__).c_str () ); // v25.06.1 debug
+  #endif
 
   return true;
 }
@@ -118,7 +122,7 @@ dbase::open_database_in_memory()
   else
   {
     db_is_open_and_ready = true;
-    mx_RegisterExtensionFunctions(db); // v3.0.241.10 added the extension function to the SQLite engine so we can use all the mathematical "gooddies" function in our query, instead of coding them in C++
+    mxRegisterExtensionFunctions(db); // v3.0.241.10 added the extension function to the SQLite engine so we can use all the mathematical "gooddies" function in our query, instead of coding them in C++
   }
 
   return true;
@@ -413,17 +417,16 @@ dbase::bind_to_stored_stmt(std::string stmt_key, missionx::db_types inType, int 
 // ----------------------------------------------------
 
 bool
-dbase::bind_and_execute_ins_stmt(std::string stmt_key, std::string in_table_name, const std::list<missionx::db_field> in_map_colValTypes)
+dbase::bind_and_execute_ins_stmt(const std::string& stmt_key, const std::string& in_table_name, const std::list<missionx::db_field>& in_map_colValTypes)
 {
 
   this->last_err.clear();
-  std::string debug_value_helper;
 
   if (!mxUtils::isElementExists(this->mapStatements, stmt_key))
   {
 
     // create new statement and prepare it
-    const auto lmbda_prepare_insert_header_and_body = [](std::list<missionx::db_field> in_row_colValTypes, std::string& outValueLine) {
+    const auto lmbda_prepare_insert_header_and_body = [](const std::list<missionx::db_field>& in_row_colValTypes, std::string& outValueLine) {
       std::string cols_header = "(";
       outValueLine            = "(";
 
@@ -451,17 +454,17 @@ dbase::bind_and_execute_ins_stmt(std::string stmt_key, std::string in_table_name
     const auto        inst_header = lmbda_prepare_insert_header_and_body(in_map_colValTypes, ins_body);
     const std::string sql         = "insert into " + in_table_name + inst_header + " values " + ins_body;
 
-#ifndef RELEASE
+    #ifndef RELEASE
     // Log::logMsgThread("\nSQL: " + sql + "\n\n");
-#endif
+    #endif
     sqlite3_stmt* stmt;
-    this->rc = sqlite3_prepare_v2(this->db, sql.c_str(), -1, &stmt, NULL);
+    this->rc = sqlite3_prepare_v2(this->db, sql.c_str(), -1, &stmt, nullptr);
     if (rc != SQLITE_OK)
     {
-#ifndef RELEASE
+      #ifndef RELEASE
       this->last_err = std::string("[DB] Error preparing sql: ") + sql + "\n\t" + sqlite3_errmsg(this->db) + "\n";
       Log::logMsg(this->last_err, true);
-#endif // !RELEASE
+      #endif // !RELEASE
 
       return false;
     }
@@ -475,7 +478,10 @@ dbase::bind_and_execute_ins_stmt(std::string stmt_key, std::string in_table_name
 
   if (mxUtils::isElementExists(this->mapStatements, stmt_key))
   {
-    sqlite3_stmt* stmt_ptr = this->mapStatements[stmt_key];
+    #ifndef RELEASE
+    std::string  debug_value_helper;
+    #endif
+    sqlite3_stmt*stmt_ptr = this->mapStatements[stmt_key];
 
     // loop over all columns and bind them
     auto it     = in_map_colValTypes.cbegin();
@@ -484,7 +490,9 @@ dbase::bind_and_execute_ins_stmt(std::string stmt_key, std::string in_table_name
     {
       const missionx::db_types field_type = it->dataype; // datatype
       const std::string        value      = it->value_s; // value
+      #ifndef RELEASE
       debug_value_helper += ((indx == 1) ? value : ", " + value);
+      #endif
       if (stmt_ptr)
       {
         switch (field_type)

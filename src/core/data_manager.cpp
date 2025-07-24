@@ -872,7 +872,7 @@ float          data_manager::s_cached_x_coords[MAX_COORDS];
 float          data_manager::s_cached_y_coords[MAX_COORDS];
 float          data_manager::s_cached_lon_coords[MAX_COORDS];
 float          data_manager::s_cached_lat_coords[MAX_COORDS];
-float          data_manager::s_icon_width = 0;
+float          data_manager::s_xp_map2d_icon_width = 0;
 
 // v24.02.5
 std::map<std::string, std::string> data_manager::mapQueries;
@@ -4542,7 +4542,7 @@ data_manager::parse_leg_dynamic_messages(Waypoint& inLeg)
       Message m;
       newMsgName = mxconst::get_PREFIX_DYN_MESSAGE_NAME() + inLeg.getName() + "_" + Utils::formatNumber<int>(seq);
 
-      m.node = Utils::xml_get_node_from_XSD_map_as_acopy( mxconst::get_ELEMENT_MESSAGE ()); // debug prepare message node
+      m.node = Utils::xml_get_node_from_XSD_map_as_a_copy( mxconst::get_ELEMENT_MESSAGE ()); // debug prepare message node
 
       m.setName(newMsgName);
 
@@ -4883,7 +4883,7 @@ data_manager::translate_relative_3d_display_object_text(std::string& inOutText)
     if (dref.flag_paramReadyToBeUsed)
     {
       dref.readDatarefValue_into_missionx_plugin();
-      inOutText = Utils::replaceStringWithOtherString(inOutText, key, dref.get_dataref_scalar_value_as_string(), true);
+      inOutText = Utils::replaceString(inOutText, key, dref.get_dataref_scalar_value_as_string(), true);
     }
   }
 
@@ -4893,7 +4893,7 @@ data_manager::translate_relative_3d_display_object_text(std::string& inOutText)
     if (dref.flag_paramReadyToBeUsed && dref.dataRefType < xplmType_FloatArray) // if not an array or data (string)
     {
       dref.readDatarefValue_into_missionx_plugin();
-      inOutText = Utils::replaceStringWithOtherString(inOutText, key, dref.get_dataref_scalar_value_as_string(), true);
+      inOutText = Utils::replaceString(inOutText, key, dref.get_dataref_scalar_value_as_string(), true);
     }
   }
 }
@@ -5724,7 +5724,7 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
 
       // v3.303.9.1 use default scoring if there is none in the mission file
       if (mx_global_settings.xScoring_ptr.isEmpty())
-        mx_global_settings.xScoring_ptr = Utils::xml_get_node_from_XSD_map_as_acopy(mxconst::get_ELEMENT_SCORING());
+        mx_global_settings.xScoring_ptr = Utils::xml_get_node_from_XSD_map_as_a_copy(mxconst::get_ELEMENT_SCORING());
 
       if (!mx_global_settings.xScoring_ptr.isEmpty())
       {
@@ -6151,6 +6151,8 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::thread_state
   //// Parse result
   if (flag_http_success)
   {
+    result_s = mxUtils::replaceAll (result_s, "<br>", ""); // v25.06.1
+
     IXMLReaderStringSZ iReaderSZ(result_s.c_str());
     IXMLResults parse_result;
     IXMLDomParser idom;
@@ -6166,6 +6168,9 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::thread_state
       auto node_general     = ofp_node.node.getChildNode (mxconst::get_ELEMENT_GENERAL().c_str ());
       auto node_origin      = ofp_node.node.getChildNode (mxconst::get_ELEMENT_ORIGIN().c_str ());
       auto node_destination = ofp_node.node.getChildNode (mxconst::get_ELEMENT_DESTINATION().c_str ());
+      auto node_fuel        = ofp_node.node.getChildNode ("fuel"); // v25.06.1 fetch fuel information
+      auto node_navlog      = ofp_node.node.getChildNode ("navlog"); // v25.06.1 fetch TOC, top of climb, data
+      auto node_weights     = ofp_node.node.getChildNode ("weights"); // v25.06.1 fetch TOC, top of climb, data
 
       if (!node_general.isEmpty ())
       {
@@ -6173,11 +6178,13 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::thread_state
         auto route_node           = node_general.getChildNode (mxconst::get_ELEMENT_ROUTE().c_str ());
         auto route_ifps_node      = node_general.getChildNode (mxconst::get_ELEMENT_ROUTE_IFPS().c_str ());
         auto route_navigraph_node = node_general.getChildNode (mxconst::get_ELEMENT_ROUTE_NAVIGRAPH().c_str ());
+        auto cruise_profile_node  = node_general.getChildNode ("costindex"); // v25.06.1
 
         fpln.flightNumber_s           = Utils::xml_get_text (flnum_node);
         fpln.simbrief_route           = Utils::xml_get_text (route_node);
         fpln.simbrief_route_ifps      = Utils::xml_get_text (route_ifps_node);
         fpln.simbrief_route_navigraph = Utils::xml_get_text (route_navigraph_node);
+        fpln.simbrief_costindex       = Utils::xml_get_text (cruise_profile_node); // v25.06.1
       }
 
       if (!node_origin.isEmpty ())
@@ -6206,8 +6213,59 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::thread_state
 
         fpln.simbrief_to_rw = Utils::xml_get_text (plan_rwy_node);
         fpln.simbrief_to_trans_alt = Utils::xml_get_text (trans_alt_node);
+      }
+
+      if (!node_fuel.isEmpty ())
+      {
+        auto enroute_burn_node = node_fuel.getChildNode ("enroute_burn");
+        auto reserve_node = node_fuel.getChildNode ("reserve");
+        auto plan_ramp_block_fuel = node_fuel.getChildNode ("plan_ramp");
+
+        fpln.simbrief_enroute_burn = Utils::xml_get_text (enroute_burn_node);
+        fpln.simbrief_reserve = Utils::xml_get_text (reserve_node);
+        fpln.simbrief_plan_ramp_block_fuel = Utils::xml_get_text (plan_ramp_block_fuel);
+      }
+
+      if (!node_navlog.isEmpty ())
+      {
+        // find <fix> subnode with a subnode <ident> and value "TOC"
+        auto toc_fix_node = Utils::xml_get_parent_node_from_node_tree_by_sub_tag_name_and_text_value (node_navlog, "ident", "TOC", 0);
+
+        auto simbrief_altitude_feet_node = Utils::xml_get_child_node (toc_fix_node, "altitude_feet");
+        auto simbrief_wind_dir_node      = Utils::xml_get_child_node (toc_fix_node, "wind_dir");
+        auto simbrief_wind_spd_node      = Utils::xml_get_child_node (toc_fix_node, "wind_spd");
+        auto simbrief_oat_isa_dev_node   = Utils::xml_get_child_node (toc_fix_node, "oat_isa_dev");
+        auto simbrief_oat_node           = Utils::xml_get_child_node (toc_fix_node, "oat");
+        auto simbrief_via_airway         = Utils::xml_get_child_node (toc_fix_node, "via_airway");
+
+        fpln.simbrief_toc_elev_ft    = Utils::xml_get_text (simbrief_altitude_feet_node);
+        fpln.simbrief_toc_wind       = fmt::format ("{}/{}", Utils::xml_get_text (simbrief_wind_dir_node), Utils::xml_get_text (simbrief_wind_spd_node));
+        fpln.simbrief_toc_wind_ISA   = Utils::xml_get_text (simbrief_oat_isa_dev_node);
+        fpln.simbrief_toc_wind_OAT   = Utils::xml_get_text (simbrief_oat_node);
+        fpln.simbrief_toc_via_airway = Utils::xml_get_text (simbrief_via_airway);
 
       }
+
+      if (!node_weights.isEmpty ())
+      {
+        auto payload_node = Utils::xml_get_child_node (node_weights, "payload");
+        auto est_tow_node = Utils::xml_get_child_node (node_weights, "est_tow"); // TOW estimation
+
+        fpln.simbrief_payload = Utils::xml_get_text (payload_node);
+        fpln.simbrief_takeoff_weight = Utils::xml_get_text (est_tow_node);
+      }
+
+      fpln.more_info = fmt::format ("General:\n\t{:<10}: {:>8}\n\n"
+                                    "Weights:\n\t{:<10}: {:>8} kg\n\t{:<10}: {:>8} kg\n\t{:<10}: {:>8} ton\n\n"
+                                    "Fuel:\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\n"
+                                    "T O C:\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\n"
+                                    , "Cost Index", fpln.simbrief_costindex // <general>
+                                    , "Payload", fpln.simbrief_payload, "Est. TOW", fpln.simbrief_takeoff_weight, "Fuel", fmt::format("{:.1f}", mxUtils::stringToNumber<float>(fpln.simbrief_plan_ramp_block_fuel) / 1000.0f )  // <weights>
+                                    , "Block Fuel", fpln.simbrief_plan_ramp_block_fuel, "Trip", fpln.simbrief_enroute_burn, "Reserve", fpln.simbrief_reserve  // <fuel>
+                                    , "Elev ft.", fpln.simbrief_toc_elev_ft, "Wind", fpln.simbrief_toc_wind, "W.ISA Dev", fpln.simbrief_toc_wind_ISA  // Top Of Climb
+                                    , "OAT", fpln.simbrief_toc_wind_OAT
+                                    , "Airway", ((fpln.simbrief_toc_via_airway.empty ())? "n/a": fpln.simbrief_toc_via_airway)
+                                   ); // Right aligned: |{:>6}|
 
       data_manager::tableExternalFPLN_simbrief_vec.emplace_back (fpln);
 
@@ -6619,6 +6677,33 @@ from
 where is_plane_in_boundary = 1
 )";
 
+//  NO Need to create fake boundaries, if an airport does not have a boundary, then it might be an inactive airport.
+//  We could try and use "distance" instead, but that is good only to edge cases.
+//
+//
+//   Consider replacing the query with fake boundaries for Empty/Null "boundary" field:
+//   from
+//   (
+//   select xp_airports.icao_id, xp_airports.icao, xp_airports.ap_name, xp_airports.ap_lat, xp_airports.ap_lon, xp_airports.ap_elev
+//   ,  case when trim(IFNULL(xp_airports.boundary, '')) = '' then
+//               mx_get_point_based_on_bearing_and_length_in_meters(xp_airports.ap_lat, xp_airports.ap_lon, 90.0, 50.0 ) || '|' ||
+//               mx_get_point_based_on_bearing_and_length_in_meters(xp_airports.ap_lat, xp_airports.ap_lon, 180.0, 50.0 ) || '|' ||
+//               mx_get_point_based_on_bearing_and_length_in_meters(xp_airports.ap_lat, xp_airports.ap_lon, 270.0, 50.0 ) || '|' ||
+//               mx_get_point_based_on_bearing_and_length_in_meters(xp_airports.ap_lat, xp_airports.ap_lon, 0.0, 50.0 )
+//           else
+//           xp_airports.boundary
+//       end
+//         boundary
+// from xp_airports
+// where xp_airports.boundary is not null
+// and ( trunc(xp_airports.ap_lat) between trunc( 52.4823770 - 1.0) and  trunc( 52.4823770 + 1.0) )
+// and ( trunc(xp_airports.ap_lon) between trunc( 13.3955518 - 1.0) and  trunc( 13.3955518 + 1.0) )
+// ) v1
+// where 1 =1
+// and is_plane_in_boundary = 1
+
+
+
 
   std::map<int, std::string> mapArgs = { { 1, planePosition.getLat_s() }, { 2, planePosition.getLon_s() } }; // v24.05.2
   query                              = mxUtils::format(query, mapArgs);
@@ -6673,10 +6758,18 @@ where is_plane_in_boundary = 1
 
   } // end airport search using sqlite boundary query
 
+  // v25.06.1 if we did not find lat/lon from database
+  if (navAid.lat * navAid.lon == 0.0)
+  {
+    navAid.lat = static_cast<float> (inLat);
+    navAid.lon = static_cast<float> (inLon);
+    navAid.synchToPoint ();
+  }
+
   if (inOnlySearchInDatabase + inIsThread)
   {
     // Since we only want data from the database, we do not use the XPLMGetNavAidInfo() function.
-    if (flagFoundPlaneInAirportArea)
+    if (flagFoundPlaneInAirportArea && !inIsThread)
       navAid.navRef = XPLMFindNavAid(nullptr, navAid.ID, &navAid.lat, &navAid.lon, nullptr, xplm_Nav_Airport); // we are still using XPlane library to re-fetch information but this time we set the ICAO and lat/lon beforehand
 
     return navAid;
@@ -7256,7 +7349,7 @@ data_manager::generate_missionx_mission_file_from_convert_screen(mx_base_node   
 
   //// Construct the <MISSION> element
   // Add <MISSION> element
-  auto root = Utils::xml_get_node_from_XSD_map_as_acopy(mxconst::get_MISSION_ELEMENT());
+  auto root = Utils::xml_get_node_from_XSD_map_as_a_copy(mxconst::get_MISSION_ELEMENT());
   root.updateAttribute("From_lnm_fpln_to_mission",  mxconst::get_ATTRIB_NAME().c_str(),  mxconst::get_ATTRIB_NAME().c_str());
   root.updateAttribute("Converted from LittleNavMap flight plan to a Mission File", mxconst::get_ATTRIB_TITLE().c_str(), mxconst::get_ATTRIB_TITLE().c_str());
 
@@ -7271,11 +7364,11 @@ data_manager::generate_missionx_mission_file_from_convert_screen(mx_base_node   
 
   // v3.305.1 add global_settings
   // auto xGlobalSettings = Utils::xml_get_node_from_XSD_map_as_acopy(mxconst::get_GLOBAL_SETTINGS().c_str());
-  auto xGlobalSettings = (!inout_xGlobalSettingsFromConversionFile.isEmpty() && !inGenerateNewGlobalSettingsNode_b) ? inout_xGlobalSettingsFromConversionFile.deepCopy() : Utils::xml_get_node_from_XSD_map_as_acopy(mxconst::get_GLOBAL_SETTINGS().c_str());
+  auto xGlobalSettings = (!inout_xGlobalSettingsFromConversionFile.isEmpty() && !inGenerateNewGlobalSettingsNode_b) ? inout_xGlobalSettingsFromConversionFile.deepCopy() : Utils::xml_get_node_from_XSD_map_as_a_copy(mxconst::get_GLOBAL_SETTINGS().c_str());
   root.addChild(xGlobalSettings);
   Utils::add_xml_comment(root);
 
-  IXMLNode xBriefer = Utils::xml_get_node_from_XSD_map_as_acopy(mxconst::get_ELEMENT_BRIEFER());
+  IXMLNode xBriefer = Utils::xml_get_node_from_XSD_map_as_a_copy(mxconst::get_ELEMENT_BRIEFER());
   root.addChild(xBriefer);
   Utils::add_xml_comment(root);
 
@@ -7365,7 +7458,7 @@ data_manager::generate_missionx_mission_file_from_convert_screen(mx_base_node   
       if (legData.flag_add_marker)
       {
         // add <display_object>
-        auto xDisplayObject = Utils::xml_get_node_from_XSD_map_as_acopy(mxconst::get_ELEMENT_DISPLAY_OBJECT());
+        auto xDisplayObject = Utils::xml_get_node_from_XSD_map_as_a_copy(mxconst::get_ELEMENT_DISPLAY_OBJECT());
         assert(xDisplayObject.isEmpty() == false && "Display Object can't be empty: ");
         assert(legData.marker_type_i < static_cast<int> ( ( mxconst::get_vecMarkerTypeOptions_markers().size () - (size_t)1 ) ) && "Marker type is not in vector ");
 
@@ -7610,7 +7703,7 @@ data_manager::generate_missionx_mission_file_from_convert_screen(mx_base_node   
   Utils::add_xml_comment(root, " +++++++ 3D Object Templates +++++++ ");
 
   // v3.0.302.2
-  auto xObj3DTemplate = Utils::xml_get_node_from_XSD_map_as_acopy("template_markers_obj3d"); // v3.0.303.3 this template holds the 4 3D marker types/files
+  auto xObj3DTemplate = Utils::xml_get_node_from_XSD_map_as_a_copy("template_markers_obj3d"); // v3.0.303.3 this template holds the 4 3D marker types/files
   xObj3DTemplate.updateName(mxconst::get_ELEMENT_OBJECT_TEMPLATES().c_str());
   root.addChild(xObj3DTemplate); // v3.0.303.2 add Object3D Template
 
@@ -7619,7 +7712,7 @@ data_manager::generate_missionx_mission_file_from_convert_screen(mx_base_node   
 
 
   // End element
-  auto xEnd = Utils::xml_get_node_from_XSD_map_as_acopy(mxconst::get_ELEMENT_END_MISSION());
+  auto xEnd = Utils::xml_get_node_from_XSD_map_as_a_copy(mxconst::get_ELEMENT_END_MISSION());
   root.addChild(xEnd);
   Utils::add_xml_comment(root);
 
@@ -7658,7 +7751,7 @@ data_manager::generate_missionx_mission_file_from_convert_screen(mx_base_node   
     if (inStoreState_b)
     {
       savePathAndFile = Utils::getMissionxCustomSceneryFolderPath_WithSep(true) + "/random/briefer/" + mxconst::get_CONVERTER_FILE();
-      auto local_root       = Utils::xml_get_node_from_XSD_map_as_acopy(mxconst::get_CONVERSION_ROOT_DOC());
+      auto local_root       = Utils::xml_get_node_from_XSD_map_as_a_copy(mxconst::get_CONVERSION_ROOT_DOC());
 
       if (!local_root.isEmpty())
       {
@@ -9131,11 +9224,11 @@ data_manager::apply_datarefs_from_text_based_on_parent_node_and_tag_name(IXMLNod
 void
 data_manager::set_success_or_reset_tasks_state(const std::string& inObjeName, const std::string& inTaskList, const enums::mx_action_from_trigger_enum& in_action, const std::string& inCurrentTask)
 {
-  const auto vecActions = Utils::split_v2(inTaskList);
+  const auto vecActions = Utils::split_v2(inTaskList, ","); // v25.06.1 added delimiter since the default one did not use the correct delimiter.
 
   for (const auto& task_name : vecActions)
   {
-      auto task_ptr = (mxUtils::isElementExists(mapObjectives[inObjeName].mapTasks, task_name)) ?
+      const auto task_ptr = (mxUtils::isElementExists(mapObjectives[inObjeName].mapTasks, task_name)) ?
                         &mapObjectives[inObjeName].mapTasks[task_name]
                        : nullptr;
 
@@ -9174,7 +9267,7 @@ data_manager::set_success_or_reset_tasks_state(const std::string& inObjeName, co
 void
 data_manager::set_trigger_state(const Trigger& inCallingTrig, const std::string& inTrigList, const enums::mx_action_from_trigger_enum& in_action)
 {
-  const auto vecTriggerNames = Utils::split_v2(inTrigList);
+  const auto vecTriggerNames = Utils::split_v2(inTrigList, ",");
 
   for (const auto& trig_name : vecTriggerNames)
   {

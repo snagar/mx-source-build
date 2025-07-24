@@ -36,7 +36,7 @@ constexpr static const int MX_FEATURES_VERSION = 20250501; //20241212; //2023091
 
 inline constexpr static auto PLUGIN_VER_MAJOR                  = "25"; // year
 inline constexpr static auto PLUGIN_VER_MINOR                  = "06"; // month
-inline constexpr static auto PLUGIN_VER_SUB                    = "1 beta-2"; // sub-version
+inline constexpr static auto PLUGIN_VER_SUB                    = "1 beta-3"; // sub-version
 inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 
@@ -219,6 +219,7 @@ typedef enum class _mxNoteLargeFields
   takeoff_notes,
   cruise_notes,
   descent_notes,
+  more_info,
   _COUNT, // ILLEGAL
   begin  = 0,
   end    = _COUNT
@@ -262,7 +263,8 @@ static const std::map <missionx::enums::mx_note_longField_enum, const char*> trn
     {missionx::enums::mx_note_longField_enum::taxi, "taxi"},
     {missionx::enums::mx_note_longField_enum::takeoff_notes, "takeoff_notes"},
     {missionx::enums::mx_note_longField_enum::cruise_notes, "cruise_notes"},
-    {missionx::enums::mx_note_longField_enum::descent_notes, "descent_notes"}
+    {missionx::enums::mx_note_longField_enum::descent_notes, "descent_notes"},
+    {missionx::enums::mx_note_longField_enum::more_info, "more_info"}
   };
 }
 
@@ -981,7 +983,7 @@ typedef struct _ext_internet_fpln_strct
   std::string simbrief_route; // v25.03.3
   std::string simbrief_route_ifps; // v25.03.3
   std::string simbrief_route_navigraph; // v25.03.3
-
+  
   std::string simbrief_sid; // v25.03.3
   std::string simbrief_star; // v25.03.3
 
@@ -990,6 +992,26 @@ typedef struct _ext_internet_fpln_strct
 
   std::string simbrief_from_trans_alt; // v25.03.3
   std::string simbrief_to_trans_alt; // v25.03.3
+
+  std::string simbrief_enroute_burn; // v25.06.1
+  std::string simbrief_reserve; // v25.06.1
+  std::string simbrief_plan_ramp_block_fuel; // v25.06.1 how much fuel on ramp (block fuel).
+
+  std::string simbrief_toc_elev_ft; // v25.06.1 <altitude_feet>
+  std::string simbrief_toc_wind; // v25.06.1 <wind_dir>/<wind_spd>
+  std::string simbrief_toc_wind_ISA; // v25.06.1 <oat_isa_dev>
+  std::string simbrief_toc_wind_OAT; // v25.06.1 <oat>
+  std::string simbrief_toc_via_airway; // v25.06.1 <via_airway>
+
+  std::string simbrief_costindex; // v25.06.1
+
+  std::string simbrief_payload; // v25.06.1 <via_airway>
+  std::string simbrief_takeoff_weight; // v25.06.1
+  //std::string simbrief_zfw_weight; // v25.06.1
+  std::string simbrief_fuel_weight; // v25.06.1
+
+  std::string more_info; // v25.06.1 holds "payload, fuel and TOC data in one string
+
 
   void reset()
   {
@@ -1027,6 +1049,20 @@ typedef struct _ext_internet_fpln_strct
     simbrief_to_rw.clear();
     simbrief_from_trans_alt.clear();
     simbrief_to_trans_alt.clear();
+
+    // v25.06.1
+    simbrief_costindex.clear();
+    simbrief_takeoff_weight.clear ();
+    simbrief_enroute_burn.clear();
+    simbrief_reserve.clear();
+    simbrief_plan_ramp_block_fuel.clear();
+    simbrief_toc_elev_ft.clear();
+    simbrief_toc_wind.clear();
+    simbrief_toc_wind_ISA.clear();
+    simbrief_toc_wind_OAT.clear();
+    simbrief_toc_via_airway.clear();
+    simbrief_payload.clear();
+    more_info.clear();
   }
 
 } mx_ext_internet_fpln_strct;

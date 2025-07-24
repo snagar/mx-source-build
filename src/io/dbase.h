@@ -39,12 +39,12 @@ private:
 
 public:
   missionx::db_types dataype{ missionx::db_types::skip_field };
-  std::string        value_s{ "" };
-  std::string        col_name{ "" };
+  std::string        value_s;
+  std::string        col_name;
 
-  db_field() {}
-  ~db_field() {}
-  db_field(std::string inColName, missionx::db_types inType, std::string inVal_s = "")
+  db_field() = default;
+  ~db_field() = default;
+  db_field(std::string inColName, const missionx::db_types inType, const std::string &inVal_s = "")
     : dataype(inType)
     , value_s(inVal_s)
     , col_name(inColName)
@@ -60,7 +60,7 @@ public:
 class dbase : public base_thread
 {
 private:
-  std::string absolute_path_to_db_file_s{ "" };
+  std::string absolute_path_to_db_file_s;
   // https://visualstudiomagazine.com/articles/2014/02/01/using-sqlite-with-modern-c.aspx Looks more compatible aware
 
   //// https://bryanstamour.com/post/sqlite-with-cpp/
@@ -80,7 +80,7 @@ private:
   //  void operator () (sqlite3* db) const { sqlite3_close(db); }
   //};
 
-  // quate: Next we introduce a type alias to make the rest of our code easier to follow.
+  // quote: Next we introduce a type alias to make the rest of our code easier to follow.
   // Not sure what that means... new staff :-)
   // using sqlite3_handle = unique_ptr<sqlite3, sqlite3_deleter>; // c++ 14/17
 
@@ -144,7 +144,7 @@ public:
   bool end_transaction();   // commit
   bool bind_stmt(sqlite3_stmt* inStmt, missionx::db_types inType, int indx, std::string inValue);
   bool bind_to_stored_stmt(std::string stmt_key, missionx::db_types inType, int indx, std::string inValue);
-  bool bind_and_execute_ins_stmt(std::string stmt_key, std::string in_table_name, const std::list<missionx::db_field> in_map_colValTypes);
+  bool bind_and_execute_ins_stmt(const std::string& stmt_key, const std::string& in_table_name, const std::list<missionx::db_field>& in_map_colValTypes);
 
   int  step(sqlite3_stmt* inStmt);
 

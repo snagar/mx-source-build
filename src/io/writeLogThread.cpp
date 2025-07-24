@@ -9,7 +9,7 @@ namespace missionx
 long long writeLogThread::seq; // v3.305.2
 char writeLogThread::buff[21]; // v3.305.2
 
-std::queue<std::string>        writeLogThread::qLogMessages;            // v3.0.217.8
+std::queue<std::string>        writeLogThread::qLogMessages; // v3.0.217.8
 std::queue<std::string>        writeLogThread::qLogMessages_mainThread; // v3.0.221.4
 std::string                    writeLogThread::staticLogFilePath;
 std::vector<std::future<bool>> writeLogThread::mWriteFuture;
@@ -17,6 +17,8 @@ std::vector<std::string>       writeLogThread::vecLogCycle = { "missionx.log", "
 writeLogThread::thread_state   writeLogThread::tState;
 std::thread                    writeLogThread::thread_ref;
 std::mutex                     writeLogThread::s_write_mutex;
+std::deque<std::string>        writeLogThread::dq_waiting_messages_for_next_write;
+
 }
 
 missionx::writeLogThread::writeLogThread() = default;
@@ -124,8 +126,21 @@ missionx::writeLogThread::add_message(const std::string& inMsg)
   if (!writeLogThread::tState.flagAbortThread && !writeLogThread::tState.flagIsActive)
   {
     std::lock_guard<std::mutex> lock(writeLogThread::s_write_mutex);
+    // add waiting messages
+    while ( ! writeLogThread::dq_waiting_messages_for_next_write.empty () )
+    {
+      missionx::writeLogThread::qLogMessages.emplace(fmt::format("missionx T({}): {}", ++writeLogThread::seq, writeLogThread::dq_waiting_messages_for_next_write.front()) );
+      writeLogThread::dq_waiting_messages_for_next_write.pop_front ();
+    }
+
     missionx::writeLogThread::qLogMessages.emplace(fmt::format("missionx T({}): {}", ++writeLogThread::seq, inMsg) );
   }
+  else // v25.06.1 handle cases of waiting messages
+  {
+    std::lock_guard<std::mutex> lock(writeLogThread::s_write_mutex);
+    writeLogThread::dq_waiting_messages_for_next_write.push_back (fmt::format("(dq){}", inMsg) );
+  }
+
 }
 
 

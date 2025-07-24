@@ -178,9 +178,9 @@ public:
   static std::string sanitize_text (const std::string &inText, const std::string &chars_to_replace = " \t\n\r\f", const char c_replace_with = '_');
   // -------------------------------------------
   static std::vector<std::string> split(const std::string& s, char delimiter = ' ', const bool bKeepEmptyTokens = false); // v3.0.219.12 from https://www.fluentcpp.com/2017/04/21/how-to-split-a-string-in-c/
-  static std::vector<std::string> split_v2(const std::string& text, const std::string& delimeter = " \t\n\r\f", const bool bKeepEmptyTokens = true);
+  static std::vector<std::string> split_v2(const std::string& text, const std::string& delimiter, const bool bKeepEmptyTokens = true); // v25.06.1 removed delimiter = " \t\n\r\f"
   //static std::vector<std::string> split_skipEmptyTokens(const std::string& text, const std::string& delimeter = " \t\n\r\f");
-  static std::vector<std::string> split_skipEmptyTokens(const std::string& text, const char& delimeter = ' ');
+  static std::vector<std::string> split_skipEmptyTokens(const std::string& text, const char& delimiter = ' ');
 
 
   static std::string translateMxPadLabelPositionToValid(std::string inLabelPosition);

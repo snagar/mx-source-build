@@ -832,6 +832,14 @@ WinImguiBriefer::add_flight_planning ()
         this->strct_flight_leg_info.setNoteLongField (missionx::enums::mx_note_longField_enum::waypoints, "");
       }
 
+      // v25.06.1
+      ImGui::SameLine (0.0f, 10.0f);
+      if (ImGui::Button ("Extra Data"))
+      {
+        ImGui::OpenPopup (POPUP_FPLN_EXTRA_DATA.c_str ());
+      }
+      draw_popup_extra_data_ext_fpln(POPUP_FPLN_EXTRA_DATA);
+
       // SAVE BUTTON
       ImGui::SameLine (win_size_vec2.x * 0.5f, 0.0f);
       ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_grey);
@@ -1120,6 +1128,7 @@ WinImguiBriefer::flc ()
         this->strct_flight_leg_info.setNoteShortField (missionx::enums::mx_note_shortField_enum::toTrans, fpln.simbrief_to_trans_alt);
 
         this->strct_flight_leg_info.setNoteLongField (missionx::enums::mx_note_longField_enum::waypoints, fpln.simbrief_route);
+        this->strct_flight_leg_info.setNoteLongField (missionx::enums::mx_note_longField_enum::more_info, fpln.more_info); // v25.06.1
 
         missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::save_notes_info);
       }
@@ -2306,17 +2315,15 @@ WinImguiBriefer::add_ui_simbrief_pilot_id ()
     missionx::WinImguiBriefer::HelpMarker ("Stores your Simbrief Pilot ID, so we could fetch your last flight plan.\nCan be found in your 'Account Settings' menu");
     ImGui::SameLine ();
     ImGui::TextColored (missionx::color::color_vec4_turquoise, "Your Simbrief pilot ID:");
+    ImGui::Text ("%s", "Pilot ID:");
     ImGui::SameLine ();
+
     ImGui::SetNextItemWidth (120.0f);
     if (ImGui::InputTextWithHint ("##SimbriefPilotID", "Simbrief Pilot ID", this->strct_setup_layer.buf_simbrief_pilot_id, static_cast<int> (sizeof (this->strct_setup_layer.buf_simbrief_pilot_id)), ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_EnterReturnsTrue))
-    {
       lmbda_save_simbrief_settings ();
-    }
     ImGui::SameLine ();
     if (ImGui::Button ("Save##SaveSimBriefButton"))
-    {
       lmbda_save_simbrief_settings ();
-    }
   }
   this->mxUiReleaseLastFont ();
 }
@@ -2330,7 +2337,6 @@ WinImguiBriefer::add_ui_flightplandb_key (const bool isPopup)
 {
   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
   {
-    ImGui::TextColored (missionx::color::color_vec4_greenyellow, "flightplandatabase.com:");
     ImGui::TextColored (missionx::color::color_vec4_turquoise, "Enter authorization key (if you have one):");
     ImGui::SetNextItemWidth (300.0f);
     ImGui::InputText ("##AuthorizationInputText", this->strct_ext_layer.buf_authorization, sizeof (this->strct_ext_layer.buf_authorization) - 1);
@@ -2812,6 +2818,49 @@ WinImguiBriefer::popup_draw_quit_mission (std::string_view inPopupWindowName)
 }
 
 
+void
+WinImguiBriefer::draw_popup_extra_data_ext_fpln (std::string_view inPopupWindowName)
+{
+  ImVec2 center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f);
+  ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
+
+  ImGui::SetNextWindowSize (ImVec2 (500.0f, 350.0f));
+
+  constexpr auto multiLineSize_vec2_wpc = ImVec2 (0.0f, 250.0f); // child size for extra data
+  constexpr auto multiLineSize_vec2_wp  = ImVec2 (-FLT_MIN, multiLineSize_vec2_wpc.y - 10.0f); // waypoint multiline
+
+  ImGui::PushStyleColor (ImGuiCol_PopupBg, missionx::color::color_vec4_black);
+  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+  {
+    if (ImGui::BeginPopupModal (inPopupWindowName.data (), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+      const ImVec2 modal_center (mxUiGetContentWidth () * 0.5f, ImGui::GetWindowHeight () * 0.5f);
+
+      ImGui::TextColored (missionx::color::color_vec4_burlywood, "%s", "Extra Data:");
+      ImGui::BeginChild ("waypoints##Child", multiLineSize_vec2_wpc, ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
+      {
+        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+        ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_lightgoldenrodyellow);
+        ImGui::InputTextMultiline ("##extradata", this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::more_info], sizeof (this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::more_info]), multiLineSize_vec2_wp, ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopStyleColor ();
+        this->mxUiReleaseLastFont ();
+      }
+      ImGui::EndChild ();
+
+      ImGui::Separator ();
+      ImGui::Spacing ();
+      ImGui::SameLine (modal_center.x - 40.0f);
+      // close button
+      if (ImGui::Button ("Close", ImVec2 (80.0f, 0.0f)))
+        ImGui::CloseCurrentPopup ();
+
+      ImGui::EndPopup ();
+    }
+  }
+  this->mxUiReleaseLastFont ();
+  ImGui::PopStyleColor ();
+}
+
 
 void
 WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::string_view inPopupWindowName, const missionx::mx_ext_internet_fpln_strct &rowData, const int &picked_fpln_id_i)
@@ -2936,9 +2985,9 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
             if (!mxUtils::trim (std::string (this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints])).empty ())
               missionx::data_manager::prop_userDefinedMission_ui.addChildText (mxconst::get_PROP_ADD_ROUTE_WAYPOINTS (), this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints]); // v25.04.2
 
-#ifndef RELEASE
+            #ifndef RELEASE
             Utils::xml_print_node (missionx::data_manager::prop_userDefinedMission_ui.node);
-#endif
+            #endif
           }
           else
           {
@@ -11974,7 +12023,7 @@ WinImguiBriefer::subDraw_ui_xTrigger_main (missionx::mx_local_fpln_strct &inLegD
           {
             this->strct_conv_layer.trig_ui_mode = mxTrig_ui_mode_enm::newTrigger;
             this->strct_conv_layer.trigger.init ();
-            this->strct_conv_layer.trigger.node_ptr = Utils::xml_get_node_from_XSD_map_as_acopy (mxconst::get_ELEMENT_TRIGGER ());
+            this->strct_conv_layer.trigger.node_ptr = Utils::xml_get_node_from_XSD_map_as_a_copy (mxconst::get_ELEMENT_TRIGGER ());
             this->strct_conv_layer.trigger.indx     = this->strct_conv_layer.trig_seq;
             // v3.0.303.7
             auto              xLocElevData = Utils::xml_get_or_create_node_ptr (this->strct_conv_layer.trigger.node_ptr, mxconst::get_ELEMENT_LOC_AND_ELEV_DATA ());

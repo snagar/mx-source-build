@@ -1116,7 +1116,7 @@ missionx::Trigger::clear_condition_properties()
   Utils::xml_search_and_set_attribute_in_IXMLNode(this->xConditions, mxconst::get_ATTRIB_PLANE_ON_GROUND(), "", xConditions.getName());
   Utils::xml_search_and_set_attribute_in_IXMLNode(this->xConditions, mxconst::get_ATTRIB_COND_SCRIPT(), "", xConditions.getName());
   //Utils::xml_clear_all_node_attribute_values(this->xConditions); // v3.305.3
-  Utils::xml_delete_all_node_attribute(this->xConditions);       // v3.305.3
+  Utils::xml_delete_all_node_attributes(this->xConditions);       // v3.305.3
 }
 
 void
@@ -1128,7 +1128,7 @@ missionx::Trigger::clear_outcome_properties()
   }
   this->setNodeStringProperty(mxconst::get_ATTRIB_POST_SCRIPT(), "");
   //Utils::xml_clear_all_node_attribute_values(this->xOutcome); // v3.305.3
-  Utils::xml_delete_all_node_attribute(this->xOutcome);       // v3.305.3
+  Utils::xml_delete_all_node_attributes(this->xOutcome);       // v3.305.3
 
   #ifndef RELEASE
   Utils::xml_print_node(xOutcome);

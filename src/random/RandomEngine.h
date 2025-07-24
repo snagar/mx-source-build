@@ -186,8 +186,8 @@ private:
 
   //std::map<std::string, std::string> mapReplaceMessageKeywords; // v3.0.221.11 keyword, value from Navaid
 
-  void        update_start_cold_and_dark_with_special_keywords(IXMLNode& inDatarefStartColdAndDarkNode); // todo: consider replacing with: "prepare_message_with_special_keywords()" or "gen_message_with_special_keywords_static()"
-  std::string prepare_message_with_special_keywords(missionx::NavAidInfo& inNavAid, std::string inMessage);
+  // void        update_start_cold_and_dark_with_special_keywords(IXMLNode& inDatarefStartColdAndDarkNode); // todo: consider replacing with: "prepare_message_with_special_keywords()" or "gen_message_with_special_keywords_static()"
+  std::string prepare_message_with_special_keywords(missionx::NavAidInfo& inNavAid, const std::string &inMessage);
 
   bool      flag_force_template_distances_b;
   const int RADIUS_MT_MINIMUM_LENGTH = 50;
@@ -431,6 +431,7 @@ private:
   int seq_tasks      = 0;
   int seq_objectives = 0;
   int seq_waypoints  = 0; // flight leg
+  int seq_messages   = 0; // messages
   typedef struct _inventory_track_struct
   {
     bool flag_created_move_and_remove_item_from_plane_script = false;
@@ -453,7 +454,6 @@ private:
 
   mx_return        prepare_medevac_surprise_me (IXMLNode &inRootTemplate, const IXMLNode &inoutMetaNode, const missionx::Point &in_plane_location); // v25.05.1
 
-
   static std::vector<missionx::structs::strct_osm_query> osm_analyze (mx_return &out_mx_return, const std::string &xmlFilename, const std::string &in_cache_folder, double centre_lat, double centre_lon, IXMLNode &outRootNode = IXMLNode::emptyIXMLNode);
   // The function returns "shuffled index vector" as value, and initialize the "out_main_subject_node" and "analyzed_query" from inside the function to use later from the calling routine.
   static std::vector<int> get_osm_subject_node_and_prepare_shuffled_q (missionx::base_thread::thread_state *inoutThreadState, const IXMLNode &in_root_node, const std::vector<missionx::structs::strct_osm_query> &vec_osm_queries, IXMLNode &out_main_subject_node, missionx::structs::strct_osm_query &analyzed_query);
@@ -472,8 +472,10 @@ private:
   static IXMLNode      gen_inventory_node (const int &in_seq, missionx::NavAidInfo & inout_navaid, std::unordered_map<int, mx_inventory_track_strct> &inout_map_osm_inventory_track, const std::list<missionx::structs::strct_node_attribute_key_value> &in_attrib_list );
   static void          gen_target_inventory_scripts (missionx::NavAidInfo &in_target_navaid, std::unordered_map<int, mx_inventory_track_strct> &inout_map_osm_inventory_track);
   static std::string   gen_message_with_special_keywords_static (std::string inMessage, missionx::NavAidInfo &in_target_navaid);
-  static void          gen_leg_description (const missionx::structs::strct_osm_query &osm_target_query_node, IXMLNode &inout_leg_node, missionx::NavAidInfo &in_leg_as_navaid, missionx::NavAidInfo *in_next_leg_as_navaid_ptr = nullptr); //, random_airport_info_struct &inout_random_airport_info_struct);
+  static void          gen_leg_description (IXMLNode &inout_leg_node, missionx::NavAidInfo &in_leg_as_navaid, missionx::NavAidInfo *in_next_leg_as_navaid_ptr = nullptr); //, random_airport_info_struct &inout_random_airport_info_struct);
   static void          gen_3d_marker_for_target (IXMLNode &inout_leg_node, missionx::NavAidInfo &in_target_navaid); // adds a marker - <display_object>, above the target.
+  static void          gen_leg_start_messages ( int & seq, NavAidInfo &inout_target_na, IXMLNode & inout_xml_messages ); // adds simple messages between flight legs.
+  static void          gen_messages_when_reaching_target_leg (int &seq_trig, int &seq_msg, NavAidInfo &inout_target_na, IXMLNode &inout_xml_messages, IXMLNode &inout_xml_triggers, const IXMLNode &in_xml_land_trigger, const IXMLNode &in_xml_hover_trigger); // add "you reached the target area" message. Add as trigger
   // end v25.06.1
 
 

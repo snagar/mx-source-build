@@ -773,7 +773,7 @@ missionx::Mission::init()
   {
     if (auto node_ptr = missionx::data_manager::xMissionxProperties_node.getChildNode(mxconst::get_ELEMENT_SCORING().c_str()); node_ptr.isEmpty())
     {
-      const auto newNode = Utils::xml_get_node_from_XSD_map_as_acopy(mxconst::get_ELEMENT_SCORING());
+      const auto newNode = Utils::xml_get_node_from_XSD_map_as_a_copy(mxconst::get_ELEMENT_SCORING());
       assert( (! newNode.isEmpty() ) && "There is no <scoring> element in Utils::XSD");
 
       node_ptr = missionx::data_manager::xMissionxProperties_node.addChild(newNode.deepCopy());
@@ -5687,8 +5687,6 @@ missionx::Mission::flcPRE()
         auto xNotes = Utils::xml_get_or_create_node_ptr( missionx::data_manager::xMissionxProperties_node, mxconst::get_ELEMENT_NOTES() );
         if ( !xNotes.isEmpty() && missionx::Mission::uiImGuiBriefer != nullptr )
         {
-          // this->uiImGuiBriefer->strct_flight_leg_info.mapNoteFieldShort.clear();
-          // this->uiImGuiBriefer->strct_flight_leg_info.mapNoteFieldLong.clear();
           missionx::Mission::uiImGuiBriefer->strct_flight_leg_info.initNoteMaps();
 
           for (const auto &[keyEnum, tagName] : missionx::enums_translation::trnsEnumNoteShort )

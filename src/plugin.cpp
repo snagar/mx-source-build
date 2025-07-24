@@ -547,6 +547,8 @@ XPluginDisable(void)
   // abort Log writeMessage
   missionx::Log::stop_mission(); // v3.0.217.8
 
+  XPLMDestroyMapLayer(data_manager::g_layer); // v25.06.1
+
 
   // debug
   Log::logMsg("[Mission-X] Plug-in Disabled");
@@ -1099,14 +1101,15 @@ prep_cache(XPLMMapLayerID layer, const float* inTotalMapBoundsLeftTopRightBottom
     for (int lat = -90; lat < 90; ++lat)
     {
       float       x, y;
-      const float offset = 0.0f;  //0.25; // to avoid drawing on grid lines
+      // const float offset = 0.0f;  //0.25; // to avoid drawing on grid lines
       XPLMMapProject(projection, lat, lon, &x, &y);
       if (mxUtils::coord_in_rect(x, y, inTotalMapBoundsLeftTopRightBottom))
       {
-        data_manager::s_cached_x_coords[data_manager::s_num_cached_coords] = x;
-        data_manager::s_cached_y_coords[data_manager::s_num_cached_coords] = y;
-        data_manager::s_cached_lon_coords[data_manager::s_num_cached_coords] = lon + offset;
-        data_manager::s_cached_lat_coords[data_manager::s_num_cached_coords] = lat + offset;
+        constexpr int offset                                                 = 0;
+        data_manager::s_cached_x_coords[data_manager::s_num_cached_coords]   = x;
+        data_manager::s_cached_y_coords[data_manager::s_num_cached_coords]   = y;
+        data_manager::s_cached_lon_coords[data_manager::s_num_cached_coords] = static_cast<float>(lon); // + offset;
+        data_manager::s_cached_lat_coords[data_manager::s_num_cached_coords] = static_cast<float>(lat); // + offset;
         ++data_manager::s_num_cached_coords;
       }
     }
@@ -1118,7 +1121,7 @@ prep_cache(XPLMMapLayerID layer, const float* inTotalMapBoundsLeftTopRightBottom
   const float midpoint_x = (inTotalMapBoundsLeftTopRightBottom[0] + inTotalMapBoundsLeftTopRightBottom[2]) / 2;
   const float midpoint_y = (inTotalMapBoundsLeftTopRightBottom[1] + inTotalMapBoundsLeftTopRightBottom[3]) / 2;
   // We'll draw our icons to be 5000 meters wide in the map
-  data_manager::s_icon_width = XPLMMapScaleMeter(projection, midpoint_x, midpoint_y) * 5000;
+  data_manager::s_xp_map2d_icon_width = XPLMMapScaleMeter(projection, midpoint_x, midpoint_y) * 5000;
 }
 
 void
@@ -1137,6 +1140,10 @@ will_be_deleted(XPLMMapLayerID layer, void* inRefcon)
 void
 createMapLayer(const char* mapIdentifier, void* refcon)
 {
+  #ifndef RELEASE
+  auto is_map_exists = XPLMMapExists (mapIdentifier);
+  #endif
+
   if (!missionx::data_manager::g_layer &&    // Confirm we haven't created our markings layer yet (e.g., as a result of a previous callback), or if we did, it's been destroyed
       !strcmp(mapIdentifier, XPLM_MAP_USER_INTERFACE)) // we only want to create a layer in the normal user interface map (not the IOS)
   {

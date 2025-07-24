@@ -1116,6 +1116,7 @@ private:
 
   void draw_top_toolbar (); // were we place the HOME button and layer name
   void popup_draw_quit_mission (std::string_view inPopupWindowName); // v3.303.8.3
+  void draw_popup_extra_data_ext_fpln (std::string_view inPopupWindowName ); // v25.06.1
   void draw_popup_generate_mission_based_on_ext_fpln (std::string_view inPopupWindowName, const missionx::mx_ext_internet_fpln_strct &rowData, const int &picked_fpln_id_i = 0); // v25.03.3
   void draw_conv_popup_which_global_settings_to_save (std::string_view inPopupWindowName); // v3.303.8.3
   void draw_globals_online_edit_popup (std::string_view inPopupWindowName, char inType, std::string inKey, std::string inVal); // v3.303.8.3
@@ -1163,6 +1164,7 @@ private:
   const std::string POPUP_PICK_GLOBAL_SETTING_NODE = "Pick GlobalSettings to store Popup"; // v3.305.1
   const std::string POPUP_ONLINE_SCRIPT_EDIT       = "Script Online Edit"; // v3.305.3
   const std::string POPUP_ONLINE_GLOBALS_EDIT      = "Globals Online Edit"; // v3.305.3
+  const std::string POPUP_FPLN_EXTRA_DATA          = "FPLN Extra Data"; // v25.06.1
 
 
 #ifndef RELEASE

@@ -21,6 +21,7 @@ namespace missionx
 class writeLogThread //: public base_thread
 {
 private:
+  static std::deque<std::string> dq_waiting_messages_for_next_write; // will hold messages that could not be added due to "active writing flag" of the thread.
   typedef struct _thread_state
   {
     // Chrono

@@ -3,6 +3,7 @@
 #include <filesystem>
 
 #ifdef IBM
+  #include <numbers>
   #include <algorithm>
 #endif
 
@@ -416,14 +417,13 @@ missionx::mxUtils::split(const std::string& s, char delimiter, const bool bKeepE
 // ----------------------------------------------
 
 std::vector<std::string>
-missionx::mxUtils::split_v2(const std::string& text, const std::string& delimeter, const bool bKeepEmptyTokens)
+missionx::mxUtils::split_v2(const std::string& text, const std::string& delimiter, const bool bKeepEmptyTokens)
 {
   std::vector<std::string> vecTokens;
   std::string              token;
   for (const auto& c : text)
   {
-    //if (delimeter.find(c) != std::string::npos && (false == token.empty())) // if we found delimiter and we have a token
-    if (delimeter.find(c) != std::string::npos ) // if we found delimiter and we have a token
+    if (delimiter.find(c) != std::string::npos ) // if we found delimiter and we have a token
     {
       if (token.empty() && !bKeepEmptyTokens) // v3.305.4 should we keep empty tokens ? Original code kept them
         continue;
@@ -447,14 +447,13 @@ missionx::mxUtils::split_v2(const std::string& text, const std::string& delimete
 
 std::vector<std::string>
 //missionx::mxUtils::split_skipEmptyTokens(const std::string& text, const std::string& delimeter)
-missionx::mxUtils::split_skipEmptyTokens(const std::string& text, const char& delimeter)
+missionx::mxUtils::split_skipEmptyTokens(const std::string& text, const char& delimiter)
 {
   std::vector<std::string> vecTokens;
   std::string              token;
   for (const auto& c : text)
   {
-    // if (delimeter.find(c) != std::string::npos && (false == token.empty())) // if we found delimiter and we have a token
-    if (delimeter == c ) // if we found delimiter and we have a token
+    if (delimiter == c ) // if we found delimiter and we have a token
     {
       if (token.empty() ) // skip empty tokens
         continue;
@@ -658,12 +657,8 @@ missionx::mxUtils::replaceAll (std::string str, const std::string &from, const s
 double
 missionx::mxUtils::nmToDegLon (const double nm, const double latDegrees)
 {
-  #ifndef IBM
-  const double latRadians = latDegrees * M_PI / 180.0; // M_PI from math.h
-  #else
-  const double latRadians = latDegrees * missionx::PI / 180.0; // M_PI from math.h
-  #endif
-  return nm * missionx::NM_TO_DEG_LAT * std::cos(latRadians);
+  const double latRadians = latDegrees * std::numbers::pi / 180.0; // M_PI from math.h
+  return nm / (60.0 * std::cos(latRadians)); // Was: nm * missionx::NM_TO_DEG_LAT * std::cos(latRadians); // But it provide wrong calculation for Longitude. It was half the expected length.
 }
 
 // ----------------------------------------------
@@ -674,19 +669,19 @@ missionx::mxUtils::mxCalcPointBasedOnDistanceAndBearing_2DPlane(double& outLat, 
   double epsilon = 0.000001; // # threshold for floating-point equality
 
   // Convert info to radians
-  double rlat1    = DegToRad * inLat; //
-  double rlon1    = DegToRad * inLon;
-  float  rbearing = DegToRad * (360 - inHdg_deg);        // Fix heading with X-Plane
-  double distance = inDistance_meters / planet_great_circle_in_meters;   //missionx::EARTH_RADIUS_M; // EARTH_AVG_RADIUS_NM; // # normalize linear distance to radian slope_angle
+  const double rlat1    = DegToRad * inLat; //
+  const double rlon1    = DegToRad * inLon;
+  const float  rbearing = DegToRad * (360.0f - inHdg_deg);        // Fix heading with X-Plane
+  const double distance = inDistance_meters / planet_great_circle_in_meters;   //missionx::EARTH_RADIUS_M; // EARTH_AVG_RADIUS_NM; // # normalize linear distance to radian slope_angle
 
-  double rlat = asin(sin(rlat1) * cos(distance) + cos(rlat1) * sin(distance) * cos(rbearing));
+  const double rlat = asin(sin(rlat1) * cos(distance) + cos(rlat1) * sin(distance) * cos(rbearing));
   double rlon = 0.0;
 
-  if (cos(rlat) == 0 || fabs(cos(rlat)) < epsilon) //# Endpoint a pole
+  if (cos(rlat) == 0.0 || fabs(cos(rlat)) < epsilon) //# Endpoint a pole
     rlon = rlon1;
   else
   {
-    double dlon = atan2(sin(rbearing) * sin(distance) * cos(rlat1), cos(distance) - sin(rlat1) * sin(rlat));
+    const double dlon = atan2(sin(rbearing) * sin(distance) * cos(rlat1), cos(distance) - sin(rlat1) * sin(rlat));
     rlon        = fmod(rlon1 - dlon + missionx::PI, missionx::PI2) - missionx::PI;
   }
 
@@ -700,24 +695,23 @@ missionx::mxUtils::mxCalcPointBasedOnDistanceAndBearing_2DPlane(double& outLat, 
 double
 missionx::mxUtils::mxCalcBearingBetween2Points(const double gFromLat, const double gFromLong, const double gTargetLat, const double gTargetLong)
 {
-  double pTargetLatRad, pTargetLongRad;
 
   // convert lat/long to Radiance
   const double pLatRad  = missionx::PI / 180 * gFromLat;
   const double pLongRad = missionx::PI / 180 * gFromLong;
 
-  pTargetLatRad  = missionx::PI / 180 * gTargetLat;
-  pTargetLongRad = missionx::PI / 180 * gTargetLong;
+  const double pTargetLatRad  = missionx::PI / 180 * gTargetLat;
+  const double pTargetLongRad = missionx::PI / 180 * gTargetLong;
 
-  double tc1 = fmod(atan2(sin(pTargetLongRad - pLongRad) * cos(pTargetLatRad), cos(pLatRad) * sin(pTargetLatRad) - sin(pLatRad) * cos(pTargetLatRad) * cos(pTargetLongRad - pLongRad)), missionx::PI2);
-  double val = RadToDeg * tc1;
+  const double tc1 = fmod(atan2(sin(pTargetLongRad - pLongRad) * cos(pTargetLatRad), cos(pLatRad) * sin(pTargetLatRad) - sin(pLatRad) * cos(pTargetLatRad) * cos(pTargetLongRad - pLongRad)), missionx::PI2);
+  const double val = RadToDeg * tc1;
 
 
   // from javascript: http://instantglobe.com/CRANES/GeoCoordTool.html (check the source of the page)
   // Number.prototype.toBrng = function() {  // convert radians to degrees (as bearing: 0...360)
   //  return (this.toDeg() + 360) % 360;
   //}
-  double bearing = std::fmod(val + 360.0, 360.0); // handle negative bearing correctly
+  const double bearing = std::fmod(val + 360.0, 360.0); // handle negative bearing correctly
 
   return bearing;
 }
@@ -727,15 +721,13 @@ missionx::mxUtils::mxCalcBearingBetween2Points(const double gFromLat, const doub
 bool
 missionx::mxUtils::mxIsPointInPolyArea(const std::vector<missionx::mxVec2d> inPolyArea, const missionx::mxVec2d inPoint)
 {
-  /* The coordinates of the plane coordinations */
-  double px, py;
-  missionx::mxVec2d p1;
+  /* The coordinates of the plane coordination's */
   missionx::mxVec2d p2;
 
-  
 
-  px = inPoint.lat; // plane or point lat position
-  py = inPoint.lon; // plane or point lon position
+
+  const double px = inPoint.lat; // plane or point lat position
+  const double py = inPoint.lon; // plane or point lon position
 
   // Calculate How many times the ray crosses the area segments
   int crossings = 0;
@@ -746,7 +738,7 @@ missionx::mxUtils::mxIsPointInPolyArea(const std::vector<missionx::mxVec2d> inPo
   for (auto& itPoint : inPolyArea)
   {
     counter++;
-    p1 = (itPoint);
+    const missionx::mxVec2d p1 = (itPoint);
     if (counter < inPolyArea.size())
       p2 = inPolyArea.at(counter);
     else
@@ -768,12 +760,12 @@ missionx::mxUtils::mxIsPointInPolyArea(const std::vector<missionx::mxVec2d> inPo
     // First check if the ray is possible to cross the line
     if (px > x1 && px <= x2 && (py < p1.lon || py <= p2.lon))
     {
-      static const double eps = 0.000001f;
+      static constexpr double eps = 0.000001f;
 
 
       // Calculate the equation of the line
-      double dx = p2.lat - p1.lat;
-      double dy = p2.lon - p1.lon;
+      const double dx = p2.lat - p1.lat;
+      const double dy = p2.lon - p1.lon;
       double k;
 
       if (fabs(dx) < eps)
@@ -789,10 +781,10 @@ missionx::mxUtils::mxIsPointInPolyArea(const std::vector<missionx::mxVec2d> inPo
         k = dy / dx;
       }
 
-      double m = p1.lon - k * p1.lat;
+      const double m = p1.lon - k * p1.lat;
 
       // Find if the ray crosses the line
-      double y2 = k * px + m;
+      const double y2 = k * px + m;
       if (py <= y2)
       {
         crossings++;

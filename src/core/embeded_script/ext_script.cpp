@@ -3171,7 +3171,7 @@ missionx::ext_script::ext_create_new_comm_message(mb_interpreter_t* s, void** l)
       Message msg; // v3.0.241.2 construct an empty message, we will handle the details later
 
       // v3.0.241.1 added XML support. Get template node from MAPPING element and use it to construct a new message node.
-      msg.node = Utils::xml_get_node_from_XSD_map_as_acopy(mxconst::get_ELEMENT_MESSAGE ()); // prepare a message element (maybe we should do it in the constructor)
+      msg.node = Utils::xml_get_node_from_XSD_map_as_a_copy(mxconst::get_ELEMENT_MESSAGE ()); // prepare a message element (maybe we should do it in the constructor)
       if (!msg.node.isEmpty())
       {
         msg.setName(name);

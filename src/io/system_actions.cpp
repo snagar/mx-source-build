@@ -467,14 +467,14 @@ missionx::system_actions::search_datarefs_in_obj_file(fs::path inFile)
         continue;
 
 
-      std::vector<std::string> tokens = mxUtils::split_v2(line);
+      std::vector<std::string> tokens = mxUtils::split_v2(line, " \t\n\r\f");
 
       if (tokens.empty())
         continue;
 
-      const auto lastVal_s = tokens.back();
+      const auto& lastVal_s = tokens.back();
 
-      if (lastVal_s.find("CMND=") == 0) // represent command flag, for example in aerobask Phenom 300
+      if (lastVal_s.find("CMND=") == 0) // represent command flag, for example in Aerobask Phenom 300
         continue;
 
       if (mxUtils::countCharsInString(lastVal_s, '/') > 0)
@@ -751,7 +751,7 @@ missionx::system_actions::store_plugin_options()
       xLocalMissionxNode.addChild(add_overpass_urls());
 
     if (xLocalMissionxNode.nChildNode(mxconst::get_ELEMENT_SCORING().c_str()) == 0)
-      xLocalMissionxNode.addChild( Utils::xml_get_node_from_XSD_map_as_acopy (mxconst::get_ELEMENT_SCORING()) );
+      xLocalMissionxNode.addChild( Utils::xml_get_node_from_XSD_map_as_a_copy (mxconst::get_ELEMENT_SCORING()) );
 
     // add <setup> main node
     xLocalMissionxNode.addChild(missionx::system_actions::pluginSetupOptions.node.deepCopy());

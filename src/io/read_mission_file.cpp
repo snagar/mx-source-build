@@ -46,7 +46,7 @@ missionx::read_mission_file::readGlobalSettings ( const ITCXMLNode & xParent) //
 
   data_manager::mx_global_settings.node = xParent.getChildNode(mxconst::get_GLOBAL_SETTINGS().c_str()).deepCopy(); 
   if (data_manager::mx_global_settings.node.isEmpty())
-    data_manager::mx_global_settings.node = Utils::xml_get_node_from_XSD_map_as_acopy(mxconst::get_GLOBAL_SETTINGS());
+    data_manager::mx_global_settings.node = Utils::xml_get_node_from_XSD_map_as_a_copy(mxconst::get_GLOBAL_SETTINGS());
 
 
   if (!data_manager::mx_global_settings.node.isEmpty())

@@ -829,7 +829,7 @@ public:
   static float          s_cached_y_coords[MAX_COORDS];   // The map y coordinates at which we will draw our icons; only the range [0, s_num_cached_coords) are valid
   static float          s_cached_lon_coords[MAX_COORDS]; // The real latitudes that correspond to our cached map (x, y) coordinates; only the range [0, s_num_cached_coords) are valid
   static float          s_cached_lat_coords[MAX_COORDS]; // The real latitudes that correspond to our cached map (x, y) coordinates; only the range [0, s_num_cached_coords) are valid
-  static float          s_icon_width;                    // The width, in map units, that we should draw our icons.
+  static float          s_xp_map2d_icon_width;                    // The width, in map units, that we should draw our icons.
 
   // XPSDK Plugin ID
   static const std::string plugin_sig;   // = "missionx_snagar.dev";

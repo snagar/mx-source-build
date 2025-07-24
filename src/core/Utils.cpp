@@ -288,7 +288,7 @@ missionx::Utils::replaceCharsWithString(const std::string& outString, const std:
 // -------------------------------------------
 
 std::string
-missionx::Utils::replaceStringWithOtherString(std::string inStringToModify, const std::string& inStringToReplace, const std::string& inNewString, const bool flag_forAllOccurences, const size_t skip_occurence)
+missionx::Utils::replaceString(std::string inStringToModify, const std::string& inStringToReplace, const std::string& inNewString, const bool flag_forAllOccurences, const size_t skip_occurence)
 {
   //  bool flag_continueSearch = true;
   size_t occurrence = 0;
@@ -801,7 +801,7 @@ missionx::Utils::sentenceTokenizerWithBoundaries (const std::string &inString, c
   // if width = 0 then immediate return vecWord. For backward compatibility with old code, if any.
   if (width == 0)
   {
-    std::vector<std::string> vecWords = mxUtils::split_v2(delimiterChar); // v3.305.1
+    std::vector<std::string> vecWords = mxUtils::split_v2(delimiterChar, " \t\n\r\f"); // v3.305.1
     return vecWords; // no need to create sentence
   }
 
@@ -1622,7 +1622,7 @@ missionx::Utils::xml_get_attribute_value_drill (const IXMLNode & node, const std
 // -------------------------------------------
 
 bool
-missionx::Utils::xml_delete_all_node_attribute(IXMLNode& inNode)
+missionx::Utils::xml_delete_all_node_attributes(IXMLNode& inNode)
 {
   if (inNode.isEmpty ())
     return false;
@@ -1762,21 +1762,56 @@ missionx::Utils::xml_copy_specific_attributes_using_white_list (const IXMLNode &
 
 // -------------------------------------------
 
-void
-missionx::Utils::xml_clear_node_attributes_excluding_list ( IXMLNode &sNode, const std::string &inExcludeList_s, const bool flag_includeClearData )
-{
-  const auto vecExcludeList = mxUtils::split_v2 ( inExcludeList_s, ",", false );
+// void
+// missionx::Utils::xml_clear_node_attributes_excluding_list ( IXMLNode &sNode, const std::string &inExcludeList_s, const bool flag_includeClearData )
+// {
+//   const auto vecExcludeList = mxUtils::split_v2 ( inExcludeList_s, ",", false );
+//
+//   if (!sNode.isEmpty())
+//   {
+//     const int nAttribs = sNode.nAttribute ();
+//     for (int i1 = 0; i1 < nAttribs; ++i1)
+//     {
+//       const IXMLAttr attrib = sNode.getAttribute ( i1 );
+//       if ( mxUtils::isStringExistsInVec ( vecExcludeList, attrib.sName ) )
+//         continue;
+//
+//       sNode.updateAttribute ( "", attrib.sName, i1 );
+//     }
+//
+//     if ( flag_includeClearData )
+//     {
+//       const int nClear = sNode.nClear ();
+//       for ( int i1 = 0; i1 < nClear; ++i1 )
+//       {
+//         IXMLClear c = sNode.getClear ( i1 );
+//         sNode.addClear ( c.sValue, c.sOpenTag, c.sCloseTag );
+//       }
+//     } // end handle clear node
+//   }
+// }
 
+// -------------------------------------------
+
+void
+Utils::xml_clear_node_attributes_excluding_list (IXMLNode &sNode, const std::vector<std::string> &inExcludeList, const bool flag_includeClearData, const bool flag_remove_attribute)
+{
   if (!sNode.isEmpty())
   {
     const int nAttribs = sNode.nAttribute ();
-    for (int i1 = 0; i1 < nAttribs; ++i1)
+    int attrib_counter = 0;
+    for (int i1 = nAttribs - 1; i1 > 0; --i1)
     {
       const IXMLAttr attrib = sNode.getAttribute ( i1 );
-      if ( mxUtils::isStringExistsInVec ( vecExcludeList, attrib.sName ) )
+      if ( mxUtils::isStringExistsInVec ( inExcludeList, attrib.sName ) )
         continue;
 
-      sNode.updateAttribute ( "", attrib.sName, i1 );
+
+      if (flag_remove_attribute)
+        sNode.deleteAttribute (i1);
+      else
+        sNode.updateAttribute ( "", attrib.sName, i1 );
+
     }
 
     if ( flag_includeClearData )
@@ -1790,6 +1825,7 @@ missionx::Utils::xml_clear_node_attributes_excluding_list ( IXMLNode &sNode, con
     } // end handle clear node
   }
 }
+
 
 // -------------------------------------------
 
@@ -1896,6 +1932,37 @@ missionx::Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode(I
 
   return IXMLNode::emptyIXMLNode;
 }
+
+// -------------------------------------------
+
+IXMLNode
+Utils::xml_get_parent_node_from_node_tree_by_sub_tag_name_and_text_value (IXMLNode &pNode, const std::string &tag_name_to_search, const std::string &tag_text_to_search, const int &level, bool flag_returnCopy, const int &max_level_to_drill)
+{
+  bool flag_found_node = false;
+
+  if (pNode.isEmpty() || ( level > max_level_to_drill))
+    return IXMLNode::emptyIXMLNode;
+
+  auto node = Utils::xml_get_child_node (pNode, tag_name_to_search);
+  if (!node.isEmpty())
+    flag_found_node = Utils::xml_get_text (node) == tag_text_to_search;
+
+  if (flag_found_node)
+    return pNode;
+
+  int n_childs = pNode.nChildNode();
+  for (int i1 = 0; i1 < n_childs; ++i1)
+  {
+    IXMLNode child_node = pNode.getChildNode (i1);
+    IXMLNode result_node = Utils::xml_get_parent_node_from_node_tree_by_sub_tag_name_and_text_value (child_node, tag_name_to_search, tag_text_to_search, (level + 1), flag_returnCopy, max_level_to_drill);
+    if (!result_node.isEmpty())
+      return result_node;
+  }
+
+  return IXMLNode::emptyIXMLNode;
+}
+
+
 
 // -------------------------------------------
 
@@ -2194,13 +2261,14 @@ missionx::Utils::xml_add_comment(IXMLNode& node, const std::string &inCommentStr
 
 // -------------------------------------------
 
-void missionx::Utils::xml_delete_all_subnodes(IXMLNode& pNode, const std::string &inSubNodeName, const bool inDelClear_b)
+int missionx::Utils::xml_delete_all_subnodes(IXMLNode& pNode, const std::string &inSubNodeName, const bool inDelClear_b)
 {
+  int affected_nodes = 0; // v25.06.1
   std::string err;
   err.clear();
 
   if (pNode.isEmpty())
-    return;
+    return affected_nodes;
 
   // loop over all child nodes
   int node_child_i = (inSubNodeName.empty()) ? pNode.nChildNode() : pNode.nChildNode(inSubNodeName.c_str());
@@ -2208,26 +2276,31 @@ void missionx::Utils::xml_delete_all_subnodes(IXMLNode& pNode, const std::string
   {
     auto node = (inSubNodeName.empty())? pNode.getChildNode(i1) : pNode.getChildNode(inSubNodeName.c_str(), i1);
     node.deleteNodeContent();
+    affected_nodes++;
   }
 
   if (inDelClear_b)
   {
     node_child_i = pNode.nClear();
     for (int i1 = node_child_i - 1; i1 >= 0; --i1)
+    {
       pNode.deleteClear(i1);
+      affected_nodes++;
+    }
   }
 
+    return affected_nodes;
 }
 
 // -------------------------------------------
 
-void
+int
 missionx::Utils::xml_delete_all_subnodes_except(IXMLNode& pNode, const std::string &inSubNodeName, const bool inDelClear_b, const std::string& exceptElementWithTagAndAttribAndValue)
 {
-
+  int affected_nodes = 0; // v25.06.1
 
   std::string exceptTag, andExceptWithAttribName, andExceptWithAttribValue;
-  if (auto vecExceptionTag = Utils::split (exceptElementWithTagAndAttribAndValue, ',')
+  if (const auto vecExceptionTag = Utils::split (exceptElementWithTagAndAttribAndValue, ',')
     ; vecExceptionTag.size() > 2)
   {
     exceptTag = vecExceptionTag.at(0);
@@ -2238,7 +2311,7 @@ missionx::Utils::xml_delete_all_subnodes_except(IXMLNode& pNode, const std::stri
     exceptTag = andExceptWithAttribName = andExceptWithAttribValue = "";
 
   if (pNode.isEmpty())
-    return;
+    return affected_nodes;
 
   // loop over all child nodes, delete all who are not in the exception rule
   int node_child_i = (inSubNodeName.empty()) ? pNode.nChildNode() : pNode.nChildNode(inSubNodeName.c_str());
@@ -2260,15 +2333,23 @@ missionx::Utils::xml_delete_all_subnodes_except(IXMLNode& pNode, const std::stri
       continue; // skip this element, do not delete
     }
     else
+    {
       node.deleteNodeContent();
+      affected_nodes++; // v25.06.1
+    }
   }
 
   if (inDelClear_b)
   {
     node_child_i = pNode.nClear();
     for (int i1 = node_child_i - 1; i1 >= 0; --i1)
+    {
       pNode.deleteClear(i1);
+      affected_nodes++; // v25.06.1
+    }
   }
+
+  return affected_nodes;
 }
 
 // -------------------------------------------
@@ -2299,7 +2380,7 @@ IXMLNode missionx::Utils::xml_create_node_from_string (const std::string& inStri
 IXMLNode missionx::Utils::xml_create_message (const std::string& inMsgName, const std::string &inText)
 {
   //const missionx::mxconst mx_const; // v25.04.2
-  IXMLNode xMsg = Utils::xml_get_node_from_XSD_map_as_acopy(mxconst::get_ELEMENT_MESSAGE ());
+  IXMLNode xMsg = Utils::xml_get_node_from_XSD_map_as_a_copy(mxconst::get_ELEMENT_MESSAGE ());
   xMsg.updateAttribute(inMsgName.c_str(), mxconst::get_ATTRIB_NAME().c_str(), mxconst::get_ATTRIB_NAME().c_str());
 
   if (inText.empty())
@@ -2398,7 +2479,7 @@ missionx::Utils::xml_get_or_create_node_ptr(IXMLNode& pNode, const std::string &
   if (node_ptr.isEmpty())
   {
     // v3.0.241.1 search node in our internal mapping
-    node_ptr = Utils::xml_get_node_from_XSD_map_as_acopy(tagChildNodeName_s); // v3.0.301 use the function to instantiate the XDS node if not already done
+    node_ptr = Utils::xml_get_node_from_XSD_map_as_a_copy(tagChildNodeName_s); // v3.0.301 use the function to instantiate the XDS node if not already done
 
     // make sure that child node belongs to the parent node (pNode)
     if (node_ptr.isEmpty()) // if we did not find the <tag> in "Utils::xml_xMainXSDNode()" then create one
@@ -2411,7 +2492,8 @@ missionx::Utils::xml_get_or_create_node_ptr(IXMLNode& pNode, const std::string &
       node_ptr.updateAttribute(with_attrib_value.c_str(), with_attrib_name.c_str(), with_attrib_name.c_str());
   }
 
-  assert(!node_ptr.isEmpty()); // crash if node is empty
+  // assert (!node_ptr.isEmpty () ); // crash if node is empty
+  assert (!node_ptr.isEmpty () && fmt::format ("[{}] Failed to create new node: {}.", __func__, std::string(tagChildNodeName_s) ).c_str ()); // crash if node is empty
 
   return node_ptr;
 }
@@ -2462,6 +2544,23 @@ missionx::Utils::xml_read_cdata_node (const IXMLNode &inNode, std::string defaul
 
   //const std::string str = (inNode.nClear() > 0) ? inNode.getClear().sValue : default_value; // v3.305.4 cause a bug with there are comments in the same <leg>.
   return default_value;
+}
+
+
+// -------------------------------------------
+
+
+std::string
+Utils::xml_get_text_or_cdata_text (const IXMLNode &inNode, const std::string &default_value)
+{
+  if (inNode.isEmpty())
+    return default_value;
+
+  std::string text = mxUtils::trim ( inNode.getText() );
+  if (text.empty())
+    return Utils::xml_read_cdata_node (inNode, default_value);
+
+  return text;
 }
 
 
@@ -3334,10 +3433,65 @@ missionx::Utils::xml_add_info_child(IXMLNode& inParent, const std::string& inTex
 IXMLNode
 Utils::xml_get_child_node (const IXMLNode &inParent, const std::string &inTagName, const int &in_child_index)
 {
-  if (inParent.isEmpty())
+  if (inParent.isEmpty ())
     return IXMLNode::emptyIXMLNode;
 
-  return inParent.getChildNode(inTagName.c_str(), in_child_index);
+  return inParent.getChildNode (inTagName.c_str (), in_child_index);
+}
+
+
+IXMLNode
+Utils::xml_get_recursively_child_node (const IXMLNode &inParent, const std::string &in_tag_name_to_search, const bool b_return_ptr, const int &in_level)
+{
+  if (in_level > 5) // stop recursion once it reaches 10th deep.
+    return IXMLNode::emptyIXMLNode;
+
+  const int n_child_nodes = inParent.nChildNode();
+  for (int iLoop01 = 0; iLoop01 < n_child_nodes; iLoop01++)
+  {
+
+    if (IXMLNode node = inParent.getChildNode (iLoop01);
+       !node.isEmpty ())
+    {
+      if (in_tag_name_to_search == node.getName ())
+        return (b_return_ptr) ? node : node.deepCopy ();
+
+      // recursive call
+      Utils::xml_get_recursively_child_node (node, in_tag_name_to_search, b_return_ptr, in_level + 1);
+    }
+  }
+
+  return IXMLNode::emptyIXMLNode;
+}
+
+// -------------------------------------------
+
+
+void
+Utils::xml_copy_or_replace_sub_nodes (IXMLNode &inout_parent_node, const IXMLNode &in_source_node, const bool b_delete_exist_parent_sub_node, const std::vector<std::string> *in_exclude_nodes, const std::vector<std::string> *in_include_nodes)
+{
+  if (in_source_node.isEmpty ())
+    return;
+
+  // loop over all subnodes
+  auto i_nodes = in_source_node.nChildNode();
+  for (int iLoop1 = 0; iLoop1 < i_nodes; iLoop1++)
+  {
+    IXMLNode node = in_source_node.getChildNode (iLoop1);
+    if (node.isEmpty ())
+      continue;
+
+    if (in_exclude_nodes != nullptr && Utils::isStringExistsInVec ( (*in_exclude_nodes), node.getName () )  )
+      continue; // skip node
+
+    // if (b_delete_exist_parent_sub_node)
+    //   Utils::xml_delete_all_subnodes (inout_parent_node, node.getName ());
+
+    // add the node to parent node, if there is no "in_include_nodes" defined, or if the vector was defined and the subnode tag is same as in the vector
+    if ( in_include_nodes == nullptr ||  (!in_include_nodes && Utils::isStringExistsInVec ( (*in_include_nodes), node.getName () ) ) )
+      inout_parent_node.addChild (node.deepCopy());
+  }
+
 }
 
 
@@ -3473,7 +3627,7 @@ missionx::Utils::read_external_blueprint_items(const std::string& inRootNodeName
 // -------------------------------------------
 
 IXMLNode
-missionx::Utils::xml_get_node_from_XSD_map_as_acopy (const std::string &inNodeName)
+missionx::Utils::xml_get_node_from_XSD_map_as_a_copy (const std::string &inNodeName)
 {
   if (Utils::xml_xMainXSDNode.isEmpty())
     Utils::prepare_static_XSD();

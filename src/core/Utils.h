@@ -96,7 +96,7 @@ public:
   // v3.0.241.1 moved from data_manager class.
   ///// XML Mission-X mission XSD like factory
   static IXMLDomParser xml_iDomXSD;
-  static IXMLNode xml_get_node_from_XSD_map_as_acopy (const std::string &inNodeName);
+  static IXMLNode xml_get_node_from_XSD_map_as_a_copy (const std::string &inNodeName);
   static void     prepare_static_XSD(); // v3.0.241.1
 
   using mxUtils::formatNumber;
@@ -252,7 +252,7 @@ public:
   static std::string replaceCharsWithString(const std::string& outString, const std::string& charsToReplace, const std::string &newChar);
 
   // -------------------------------------------
-  static std::string replaceStringWithOtherString(std::string inStringToModify, const std::string& inStringToReplace, const std::string& inNewString, bool flag_forAllOccurences = false, size_t skip_occurence = 0);
+  static std::string replaceString(std::string inStringToModify, const std::string& inStringToReplace, const std::string& inNewString, bool flag_forAllOccurences = false, size_t skip_occurence = 0);
 
   // -------------------------------------------
 
@@ -705,12 +705,12 @@ public:
 
   // -------------------------------------------
   // Copy source Node attributes to target attributes
-  static bool xml_delete_all_node_attribute(IXMLNode& inNode); // v3.305.3
+  static bool xml_delete_all_node_attributes(IXMLNode& inNode); // v3.305.3
   //static bool xml_clear_all_node_attribute_values(IXMLNode& inNode); // v25.02.1 deprecated, use: "xml_clear_node_attributes_excluding_list()" instead. // v3.305.3
   static bool xml_copy_node_attributes (const IXMLNode & sNode, IXMLNode& tNode, bool flag_includeClearData = false);
   static bool xml_copy_node_attributes_excluding_black_list (const IXMLNode & sNode, IXMLNode& tNode, std::set<std::string>* inExclude = nullptr, bool flag_includeClearData = false);   // the blacklist is for excluding attribute names
   static bool xml_copy_specific_attributes_using_white_list (const IXMLNode & sNode, IXMLNode& tNode, std::set<std::string>* inWhiteList = nullptr, bool flag_includeClearData = false); // the white list is for specific attribute list to copy
-  static void xml_clear_node_attributes_excluding_list ( IXMLNode &sNode, const std::string &inExcludeList_s = "", bool flag_includeClearData = false ); // v25.02.1 the blacklist is for excluding attribute names
+  static void xml_clear_node_attributes_excluding_list ( IXMLNode &sNode, const std::vector<std::string> &inExcludeList = {}, bool flag_includeClearData = false, const bool flag_remove_attribute = false ); // v25.06.1 converted string to <vector> // v25.02.1 the blacklist is for excluding attribute names
 
   // -------------------------------------------
 
@@ -720,6 +720,7 @@ public:
 
   static IXMLNode xml_get_node_pointer_from_node_tree_by_attrib_name_and_value_IXMLNode(IXMLNode& pNode, const std::string &inSearchedElementName, const std::string &inAttribName, const std::string &attribValue, bool flag_searchAllAttributesWithName = false); // v3.0.301 B3 Helper function so we only get the XML pointer and not a copy by mistake.
   static IXMLNode xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode(IXMLNode& pNode, const std::string &inSearchedElementName, const std::string &inAttribName, const std::string &attribValue, bool flag_returnCopy = true, bool flag_searchAllAttributesWithName = false); // v24.05.1 added searchAllAttributes flag
+  static IXMLNode xml_get_parent_node_from_node_tree_by_sub_tag_name_and_text_value(IXMLNode& pNode, const std::string &tag_name_to_search, const std::string &tag_text_to_search, const int &level, bool flag_returnCopy = true, const int &max_level_to_drill = 5); // v25.06.1 To get Simbrief TOC data. Search for the <fix> node that has a sub node: <ident>TOC<ident>
 
   // -------------------------------------------
   // return attribute value as string. If not found return empty string and flag_found is set to false
@@ -758,8 +759,8 @@ public:
 
   // -------------------------------------------
   // delete all sub-nodes with certain tag name. If empty, then delete all sub-nodes. It will check only the root level.
-  static void xml_delete_all_subnodes(IXMLNode& pNode, const std::string &inSubNodeName = "", bool inDelClear_b = false);
-  static void xml_delete_all_subnodes_except(IXMLNode& pNode, const std::string &inSubNodeName = "", bool inDelClear_b = false, const std::string& exceptElementWithTagAndAttribAndValue = "" ); // delete all sub-nodes with certain tag name. If empty then delete all subnodes
+  static int xml_delete_all_subnodes(IXMLNode& pNode, const std::string &inSubNodeName = "", bool inDelClear_b = false);
+  static int xml_delete_all_subnodes_except(IXMLNode& pNode, const std::string &inSubNodeName = "", bool inDelClear_b = false, const std::string& exceptElementWithTagAndAttribAndValue = "" ); // delete all sub-nodes with certain tag name. If empty then delete all subnodes
 
   // -------------------------------------------
 
@@ -794,6 +795,7 @@ public:
   // -------------------------------------------
   static std::string xml_read_cdata_node (const ITCXMLNode &inNode, const std::string &default_value);
   static std::string xml_read_cdata_node (const IXMLNode &inNode, std::string default_value);
+  static std::string xml_get_text_or_cdata_text (const IXMLNode &inNode, const std::string &default_value); // v25.06.1
 
   // -------------------------------------------
   //=================================================================
@@ -977,11 +979,18 @@ public:
   static IXMLNode xml_add_info_child(IXMLNode& inParent, const std::string& inTextValue, const std::string& inTagName = mxconst::get_ELEMENT_INFO());                                                                           // v3.305.3 Short version to concentrate on the Text part
 
   static IXMLNode xml_get_child_node (const IXMLNode& inParent, const std::string& inTagName, const int &in_child_index = 0);
+  // search recursively and return the first sub-node with the given tag name.
+  static IXMLNode xml_get_recursively_child_node (const IXMLNode& inParent, const std::string& in_tag_name_to_search, bool b_return_ptr, const int &in_level);
+  // v25.06.1 Copy all sub nodes from source to target. Delete target sub nodes with same name.
+  static void xml_copy_or_replace_sub_nodes (IXMLNode &inout_parent_node, const IXMLNode &in_source_node, bool b_delete_exist_parent_sub_node = true, const std::vector<std::string> *in_exclude_nodes = nullptr, const std::vector<std::string> *in_include_nodes = nullptr);
+
+
   // -------------------------------------------
 
   static void read_external_sql_query_file(std::map<std::string, std::string>& mapQueries, const std::string& inRootNodeName, const std::string& inFilePath = "Resources/plugins/missionx/libs/sql.xml"); // the function will read the external <query> content and override the container
   static std::vector<std::string> read_external_categories(const std::string& inRootNodeName, const std::string& inFilePath = fmt::format ("Resources/plugins/missionx/libs/{}", missionx::CARGO_DATA_FILE) ); // v24.05.1
   static IXMLNode                 read_external_blueprint_items(const std::string& inRootNodeName, const std::string& inSearchTagName, const std::string &inSubCategoryType, bool inThread = false, bool inCaseSensitive = true, const std::string& inFilePath = fmt::format( "Resources/plugins/missionx/libs/{}", missionx::CARGO_DATA_FILE) ); // v24.05.1
+
 
   ////////////////////////////////////////
   //////////////// JSON Related functions

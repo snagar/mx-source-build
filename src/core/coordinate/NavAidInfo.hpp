@@ -75,7 +75,7 @@ public:
   //NavAidInfo *prev_navaid{ nullptr };
   double fpln_distance_between_prev_and_current_navaid{ 0.0f };
   double fpln_distance_to_next_navaid{ 0.0f };
-  IXMLNode fpln_xml_mission_leg_node; // holds a pointer to the XML node that represent this navaid. Example: trigger node.
+  IXMLNode fpln_xml_target_leg_node; // holds a pointer to the XML node that represent this navaid. Example: trigger node.
   IXMLNode fpln_xml_inv_node; // holds the target inventory information during random engine mission generation
   IXMLNode fpln_xml_osm_q_node; // holds original osm_query <q> node
 
@@ -148,7 +148,7 @@ public:
      fpln_seq = in_na.fpln_seq; // v25.06.1
      fpln_osm_wp_type = in_na.fpln_osm_wp_type; // v25.06.1
      //prev_navaid = in_na.prev_navaid; // v25.06.1
-     fpln_xml_mission_leg_node = in_na.fpln_xml_mission_leg_node; // v25.06.1
+     fpln_xml_target_leg_node = in_na.fpln_xml_target_leg_node.deepCopy (); // v25.06.1
      fpln_xml_osm_q_node = in_na.fpln_xml_osm_q_node.deepCopy ();
 
      this->synchToPoint ();
@@ -211,7 +211,7 @@ public:
     fpln_seq = -1; // v25.06.1
     fpln_osm_wp_type.clear (); // v25.06.1
     //prev_navaid = nullptr; // v25.06.1
-    fpln_xml_mission_leg_node = IXMLNode::emptyIXMLNode; // v25.06.1
+    fpln_xml_target_leg_node = IXMLNode::emptyIXMLNode; // v25.06.1
     fpln_xml_osm_q_node = IXMLNode::emptyIXMLNode; // v25.06.1
 
   }

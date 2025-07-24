@@ -449,12 +449,12 @@ RandomEngine::inject_files_into_xml (missionx::TemplateFileInfo *tempFile_ptr)
 
                     infs_txt.close ();
 
-                    xml_template_node_content_s = Utils::replaceStringWithOtherString (xml_template_node_content_s, find_s, txt_file_content_s, true); // replace string but skip the first occurence since it will hold the find replace
+                    xml_template_node_content_s = Utils::replaceString (xml_template_node_content_s, find_s, txt_file_content_s, true); // replace string but skip the first occurence since it will hold the find replace
                   }
                 }
                 else if (!replace_with_file_s.empty ()) // v3.0.255.4.1 if file not exists then use the string as the replacer
                 {
-                  xml_template_node_content_s = Utils::replaceStringWithOtherString (xml_template_node_content_s, find_s, replace_with_file_s, true); // replace string but skip the first occurence since it will hold the find replace
+                  xml_template_node_content_s = Utils::replaceString (xml_template_node_content_s, find_s, replace_with_file_s, true); // replace string but skip the first occurence since it will hold the find replace
                 }
 
 
@@ -3028,7 +3028,7 @@ RandomEngine::buildFlightLeg (int inFlightLegCounter, const IXMLNode &in_legNode
 
     // v25.02.1 clear the <outcome> element after "copy" since it might hold unwanted attribute values
     auto xOutcome = xMessageOnTarget.getChildNode (mxconst::get_ELEMENT_OUTCOME ().c_str ());
-    Utils::xml_clear_node_attributes_excluding_list (xOutcome, "", true);
+    Utils::xml_clear_node_attributes_excluding_list (xOutcome, {}, true);
 
     Utils::xml_search_and_set_attribute_in_IXMLNode (xMessageOnTarget, mxconst::get_ATTRIB_NAME (), message_triggerTargetName, mxconst::get_ELEMENT_TRIGGER ()); // v3.0.219.3
     Utils::xml_search_and_set_attribute_in_IXMLNode (xMapMessage, mxconst::get_ATTRIB_NAME (), message_triggerTargetName, mxconst::get_ELEMENT_MESSAGE ()); // v3.0.219.3 the trigger and message elements have the smane name. No conflict
@@ -3216,6 +3216,7 @@ RandomEngine::buildFlightLeg (int inFlightLegCounter, const IXMLNode &in_legNode
     else
       desc = customLegDescText;
   }
+  // desc = RandomEngine::gen_message_with_special_keywords_static (desc, newNavInfo); // v3.0.241.9
   desc = this->prepare_message_with_special_keywords (newNavInfo, desc); // v3.0.241.9
 
   // v3.0.253.4 add ways around target location to the end of the description. Restriction: target is now skewed
@@ -3241,6 +3242,7 @@ RandomEngine::buildFlightLeg (int inFlightLegCounter, const IXMLNode &in_legNode
       if (!text.empty ())
       {
         text = this->prepare_message_with_special_keywords (newNavInfo, text); // v3.0.223.4 replaced specific code to be in its own function to be used in other message code during Random mission creation.
+        // text = RandomEngine::gen_message_with_special_keywords_static (text, newNavInfo); // v3.0.223.4 replaced specific code to be in its own function to be used in other message code during Random mission creation.
         xLegDynamicMessageNode.deleteText ();
         xLegDynamicMessageNode.addText (text.c_str ());
       }
@@ -4418,8 +4420,34 @@ RandomEngine::writeTargetFile ()
   IXMLNode xDrefStartColdAndDark = this->xRootTemplate.getChildNode (mxconst::get_ELEMENT_DATAREFS_START_COLD_AND_DARK ().c_str ()).deepCopy ();
   if (!xDrefStartColdAndDark.isEmpty () && (Utils::readBoolAttrib (xRootTemplate, mxconst::get_ATTRIB_COPY_LEG_AS_IS_B (), false) == false)) // v3.0.303 add support for special words "{navaid_lat}" and "{navaid_lon}"
   {
-    this->update_start_cold_and_dark_with_special_keywords (xDrefStartColdAndDark);
-  }
+    // search for the first navaid and modify the start cold and dark
+    if (this->listNavInfo.size () > static_cast<size_t> (1))
+    {
+      // find the first NavAid that briefer is using.
+      const std::string firstLeg_s = Utils::readAttrib (this->xBriefer, mxconst::get_ATTRIB_STARTING_LEG (), "");
+      bool bFoundFirstLeg = false;
+      auto leg            = this->listNavInfo.begin ();
+      do
+      {
+        bFoundFirstLeg = (leg->flightLegName == firstLeg_s);
+        if (bFoundFirstLeg)
+        {
+          if (leg->lat != 0.0)
+          {
+            std::string text = Utils::xml_get_text (xDrefStartColdAndDark);
+            text             = Utils::replaceString (text, "{navaid_lat}", leg->getLat (), true);
+            text             = Utils::replaceString (text, "{navaid_lon}", leg->getLon (), true);
+
+            Utils::xml_set_text (xDrefStartColdAndDark, text);
+          }
+        }
+        else
+          ++leg;
+      } while (!bFoundFirstLeg); // end while
+    } // end if listNavInfo.size() > 1
+
+  } // xDrefStartColdAndDark
+
 
   // v3.0.255.3 test validity of 3D Objects. Inject warning into Briefer
   std::string localErr;
@@ -5082,6 +5110,7 @@ RandomEngine::reset_sequence_numbers ()
   this->seq_tasks    = 0;
   this->seq_objectives = 0;
   this->seq_waypoints = 0; // flight leg
+  this->seq_messages = 0; // messages
 }
 
 // -----------------------------------
@@ -5434,41 +5463,9 @@ RandomEngine::get_terrain_elevation_at_point_in_mt (const missionx::NavAidInfo &
 
 // -----------------------------------
 
-void
-RandomEngine::update_start_cold_and_dark_with_special_keywords (IXMLNode &inDatarefStartColdAndDarkNode)
-{
-  // find the first NavAid that briefer is using.
-  const std::string firstLeg_s = Utils::readAttrib (this->xBriefer, mxconst::get_ATTRIB_STARTING_LEG (), "");
-
-  if (this->listNavInfo.size () > static_cast<size_t> (1))
-  {
-    bool bFoundFirstLeg = false;
-    auto leg            = this->listNavInfo.begin ();
-    while (!bFoundFirstLeg)
-    {
-      bFoundFirstLeg = (leg->flightLegName == firstLeg_s);
-      if (!bFoundFirstLeg)
-        ++leg;
-    }
-
-    if (bFoundFirstLeg)
-    {
-      if ((*leg).lat != 0.0)
-      {
-        std::string text = Utils::xml_get_text (inDatarefStartColdAndDarkNode);
-        text             = Utils::replaceStringWithOtherString (text, "{navaid_lat}", (*leg).getLat (), true);
-        text             = Utils::replaceStringWithOtherString (text, "{navaid_lon}", (*leg).getLon (), true);
-
-        Utils::xml_set_text (inDatarefStartColdAndDarkNode, text);
-      }
-    }
-  }
-}
-
-// -----------------------------------
 
 std::string
-RandomEngine::prepare_message_with_special_keywords (missionx::NavAidInfo &inNavAid, std::string inMessage)
+RandomEngine::prepare_message_with_special_keywords (missionx::NavAidInfo &inNavAid, const std::string &inMessage)
 {
   // std::string resultMessage = std::move(inMessage);
 
@@ -5496,42 +5493,46 @@ RandomEngine::prepare_message_with_special_keywords (missionx::NavAidInfo &inNav
     if (prevNav.lat != 0.0f && prevNav.lon != 0.0f)
     {
       std::string err;
-      return inTargetNavAid.p.calcDistanceBetween2Points (prevNav.p);
+      return inTargetNavAid.p - prevNav.p; // v25.06.1 calculate distance using operator
+      // return inTargetNavAid.p.calcDistanceBetween2Points (prevNav.p);
     }
 
     return -1.0; // distance did not calculated due to NavAid targetLat/targetLon values not correct
   };
 
-  const double distance_d = lmbda_get_distance_between_2_nav_points (inNavAid, this->listNavInfo);
-#ifndef RELEASE
-  Log::logMsg ("[prepare message] Distance to prev NavAid: " + Utils::formatNumber<double> (distance_d, 0) + "nm", true);
-#endif
+  inNavAid.fpln_distance_between_prev_and_current_navaid = lmbda_get_distance_between_2_nav_points (inNavAid, this->listNavInfo);
 
-  if (!inMessage.empty ())
-  {
-    std::map<std::string, std::string> mapReplaceMessageKeywords; // v3.0.221.11 keyword, value from Navaid
+  #ifndef RELEASE
+  Log::logMsg ("[prepare message] Distance to prev NavAid: " + Utils::formatNumber<double> (inNavAid.fpln_distance_between_prev_and_current_navaid, 0) + "nm", true);
+  #endif
 
-    //// v3.0.221.11 refine Flight Leg message
-    mapReplaceMessageKeywords["{navaid_name}"]     = std::string (inNavAid.name);
-    mapReplaceMessageKeywords["{navaid_icao}"]     = std::string (inNavAid.ID);
-    mapReplaceMessageKeywords["{navaid_lat}"]      = inNavAid.getLat ();
-    mapReplaceMessageKeywords["{navaid_lon}"]      = inNavAid.getLon ();
-    mapReplaceMessageKeywords["{bearing_target}"]  = mxUtils::formatNumber<float> (inNavAid.bearing_to_current_target, 0);
-    const auto elev_ft_s                           = Utils::formatNumber<float> (inNavAid.height_mt * missionx::meter2feet);
-    mapReplaceMessageKeywords["{navaid_elev}"]     = (inNavAid.height_mt == 0.0f) ? "" : elev_ft_s;
-    // mapReplaceMessageKeywords["{navaid_loc_desc}"] = (inNavAid.loc_desc.empty ()) ? inNavAid.init_locDesc () : inNavAid.loc_desc;
-    mapReplaceMessageKeywords["{navaid_loc_desc}"] = inNavAid.get_loc_desc (); // v25.06.1 TODO: use this function before adding the NavAid to the target list
-    mapReplaceMessageKeywords["{distance}"]        = (distance_d < 0.0) ? "n/a" : (Utils::formatNumber<double> (distance_d, 0) + "nm"); // v3.0.241.8
-
-    for (const auto &[stringToModify, stringToReplaceWith] : mapReplaceMessageKeywords) // replace all special keywords
-    {
-      inMessage = Utils::replaceStringWithOtherString (inMessage, stringToModify, stringToReplaceWith, true);
-    }
-  }
-  else
-    Log::logMsgWarn ("[random special_keywords] Received empty message. Skipping...", true);
-
-  return inMessage;
+  return RandomEngine::gen_message_with_special_keywords_static (inMessage, inNavAid);
+  // if (!inMessage.empty ())
+  // {
+  //   return RandomEngine::gen_message_with_special_keywords_static (inMessage, inNavAid);
+    // std::map<std::string, std::string> mapReplaceMessageKeywords; // v3.0.221.11 keyword, value from Navaid
+    //
+    // //// v3.0.221.11 refine Flight Leg message
+    // mapReplaceMessageKeywords["{navaid_name}"]     = std::string (inNavAid.name);
+    // mapReplaceMessageKeywords["{navaid_icao}"]     = std::string (inNavAid.ID);
+    // mapReplaceMessageKeywords["{navaid_lat}"]      = inNavAid.getLat ();
+    // mapReplaceMessageKeywords["{navaid_lon}"]      = inNavAid.getLon ();
+    // mapReplaceMessageKeywords["{bearing_target}"]  = mxUtils::formatNumber<float> (inNavAid.bearing_to_current_target, 0);
+    // const auto elev_ft_s                           = Utils::formatNumber<float> (inNavAid.height_mt * missionx::meter2feet);
+    // mapReplaceMessageKeywords["{navaid_elev}"]     = (inNavAid.height_mt == 0.0f) ? "" : elev_ft_s;
+    // // mapReplaceMessageKeywords["{navaid_loc_desc}"] = (inNavAid.loc_desc.empty ()) ? inNavAid.init_locDesc () : inNavAid.loc_desc;
+    // mapReplaceMessageKeywords["{navaid_loc_desc}"] = inNavAid.get_loc_desc (); // v25.06.1 TODO: use this function before adding the NavAid to the target list
+    // mapReplaceMessageKeywords["{distance}"]        = (distance_d < 0.0) ? "n/a" : (Utils::formatNumber<double> (distance_d, 0) + "nm"); // v3.0.241.8
+    //
+    // for (const auto &[stringToModify, stringToReplaceWith] : mapReplaceMessageKeywords) // replace all special keywords
+    // {
+    //   inMessage = Utils::replaceString (inMessage, stringToModify, stringToReplaceWith, true);
+    // }
+  // }
+  // else
+  //   Log::logMsgWarn ("[random special_keywords] Received empty message. Skipping...", true);
+  //
+  // return inMessage;
 }
 
 // -----------------------------------
@@ -6574,17 +6575,19 @@ RandomEngine::prepare_mission_based_on_user_fpln_or_simbrief (IXMLNode &pNode)
 std::map<missionx::enums::mx_osm_region, missionx::structs::BBox>
 RandomEngine::generateQuadrantBBoxes (const double centerLat, const double centerLon)
 {
-  // constexpr double rangeNm = 75.0;
+  #ifdef RELEASE
+   constexpr double rangeNm = 75.0;
+  #else
   constexpr double rangeNm = 10.0; // debug
+  #endif
   constexpr double exclusionNm = 1.5;
 
-  // Calculate latitude deltas
-  constexpr double     deltaLat     = rangeNm * missionx::NM_TO_DEG_LAT;
-  constexpr double exclusionLat = exclusionNm * missionx::NM_TO_DEG_LAT;
+  // Latitudinal deltas
+  constexpr double deltaLat = rangeNm * NM_TO_DEG_LAT;
+  constexpr double exclusionLat = exclusionNm * NM_TO_DEG_LAT;
 
-  // Calculate longitude deltas
-  // const double deltaLon     = mxUtils::nmToDegLon (rangeNm * 2.0, centerLat); // without " * 2.0" The longitude will be half the "rangeNm" (~37.5nm west and east)
-  const double deltaLon     = mxUtils::nmToDegLon (rangeNm, centerLat); // without " * 2.0" The longitude will be half the "rangeNm" (~37.5nm west and east)
+  // Longitudinal deltas
+  const double deltaLon = mxUtils::nmToDegLon(rangeNm, centerLat);
   const double exclusionLon = mxUtils::nmToDegLon(exclusionNm, centerLat);
 
   std::map<enums::mx_osm_region, structs::BBox> bboxes;
@@ -6643,7 +6646,7 @@ try
       all_bbox.maxLon = map_bbox.at(enums::mx_osm_region::ne).maxLon;
     }
 
-    Log::logMsgThread (fmt::format ("\n\t\t--------------> ALL BBOX region: {} <-------------------\n", all_bbox.get_bbox ()));
+    Log::logMsgThread (fmt::format ("\n--------> Full BBOX region: {} <-----------\n", all_bbox.get_bbox ()));
 
     std::string err;
     IXMLDomParser parser;
@@ -6657,7 +6660,7 @@ try
 
     const auto root = dom_root.deepCopy();
     #ifndef RELEASE
-    // Utils::xml_print_node (root, true);
+     auto all_bboxes = all_bbox.get_bbox (); // debug
     #endif
 
     if ( root.isEmpty() ) { // != "osm"
@@ -6792,15 +6795,19 @@ RandomEngine::gen_trigger_node (int &seq, const std::string &prefix_name, const 
   // get trigger node template
   IXMLNode xTrigger = missionx::data_manager::xmlMappingNode.getChildNode (mxconst::get_ELEMENT_TRIGGER ().c_str ()).deepCopy ();
   if (xTrigger.isEmpty ())
-    xTrigger = Utils::xml_get_node_from_XSD_map_as_acopy (mxconst::get_ELEMENT_TRIGGER ());
+    xTrigger = Utils::xml_get_node_from_XSD_map_as_a_copy (mxconst::get_ELEMENT_TRIGGER ());
 
   assert (!xTrigger.isEmpty () && fmt::format ("[{}] Failed to get a Trigger node template.", __func__).c_str ());
 
   if (xTrigger.isEmpty ())
     return IXMLNode::emptyIXMLNode;
 
+  // clear <outcome> node attributes
+  IXMLNode xml_outcome_node = xTrigger.getChildNode (mxconst::get_ELEMENT_OUTCOME ().c_str ());
+  Utils::xml_delete_all_node_attributes (xml_outcome_node);
+
   const std::string sanitize_navaid_name = mxUtils::sanitize_text (inTargetNavAid.getName ());
-  const std::string trig_name            = fmt::format ("{}_{}_{}{}", prefix_name, seq, sanitize_navaid_name, (sanitize_navaid_name.empty ()) ? postfix_name : std::string ("-") + postfix_name);
+  const std::string trig_name            = fmt::format ("{}_{}_target_{}{}", prefix_name, seq, sanitize_navaid_name, (sanitize_navaid_name.empty ()) ? postfix_name : std::string ("-") + postfix_name);
   // set xTrigger information
   xTrigger.updateAttribute (trig_name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
   Utils::xml_search_and_set_attribute_in_IXMLNode (xTrigger, mxconst::get_ATTRIB_LAT (), inTargetNavAid.getLat (), mxconst::get_ELEMENT_POINT ());
@@ -6827,10 +6834,11 @@ RandomEngine::gen_task_node (int &seq, const std::string &prefix_name, const std
 {
   IXMLNode xTask = missionx::data_manager::xmlMappingNode.getChildNode (mxconst::get_ELEMENT_TASK ().c_str ()).deepCopy ();
   if (xTask.isEmpty ())
-    xTask = Utils::xml_get_node_from_XSD_map_as_acopy (mxconst::get_ELEMENT_TASK ());
+    xTask = Utils::xml_get_node_from_XSD_map_as_a_copy (mxconst::get_ELEMENT_TASK ());
 
   assert (!xTask.isEmpty () && fmt::format ("[{}] Failed to get a Task node template.", __func__).c_str ());
 
+  Utils::xml_delete_all_node_attributes (xTask);
   
   if (xTask.isEmpty ())
     return IXMLNode::emptyIXMLNode;
@@ -6862,7 +6870,7 @@ RandomEngine::gen_objective_node (int &seq, const std::string &prefix_name, cons
 {
   IXMLNode node = missionx::data_manager::xmlMappingNode.getChildNode (mxconst::get_ELEMENT_OBJECTIVE ().c_str ()).deepCopy ();
   if (node.isEmpty ())
-    node = Utils::xml_get_node_from_XSD_map_as_acopy (mxconst::get_ELEMENT_OBJECTIVE ());
+    node = Utils::xml_get_node_from_XSD_map_as_a_copy (mxconst::get_ELEMENT_OBJECTIVE ());
 
   assert (!node.isEmpty () && fmt::format ("[{}] Failed to get a Task node template.", __func__).c_str ());
 
@@ -6876,39 +6884,101 @@ RandomEngine::gen_objective_node (int &seq, const std::string &prefix_name, cons
 
 // -----------------------------------
 
+void
+RandomEngine::gen_leg_description (IXMLNode &inout_leg_node, missionx::NavAidInfo &in_leg_as_navaid, missionx::NavAidInfo *in_next_leg_as_navaid_ptr) //, random_airport_info_struct &inout_random_airport_info_struct)
+{
+  // prepare default description for <leg>
+  const std::string target_icao = in_leg_as_navaid.getID ();
+  const std::string target_name = in_leg_as_navaid.get_name_or_icao_id ();
+  const std::string target_desc = in_leg_as_navaid.gen_locDesc_short ();
+
+  auto lmbda_get_pre_message_for_default_desc_text = [&] ()
+  {
+    std::string desc_s = target_name;
+
+    if (!target_icao.empty ())
+      desc_s.append (fmt::format ("({})", target_icao));
+
+    if (desc_s.empty () && !target_desc.empty ())
+      return fmt::format ("Fly to: \"{}\"", mxUtils::sanitize_text (target_desc, "_", ' '));
+
+    return fmt::format ("Fly to \"{}\"", mxUtils::sanitize_text (desc_s, "_", ' '));
+  };
+
+  const auto desc_next_target_text = lmbda_get_pre_message_for_default_desc_text ();
+  const auto desc_distance_text    = "Expected distance: {distance}";
+  const auto desc_elevation_text   = "(Elev: {navaid_elev}ft)";
+  auto       desc_wet_text         = (in_leg_as_navaid.fpln_is_wet) ? "> Your next leg might be above water body.\n" : "\n";
+  const std::string default_description_template    = fmt::format ("{}.\n{} {}.\n{}--> Fly Safe <--", desc_next_target_text, desc_distance_text, desc_elevation_text, desc_wet_text);
+
+  // check custom description
+  std::string    err;
+  const IXMLNode xml_custom_desc_from_target_leg_node = Utils::xml_get_node_randomly_by_name_IXMLNode (in_leg_as_navaid.fpln_xml_osm_q_node, mxconst::get_ELEMENT_DESC (), err);
+
+  #ifndef RELEASE
+  Log::logMsgThread ( fmt::format ( "[{}] <{}> info:\n{}\n<-- end fpln_xml_target_leg_node \n"
+                    , __func__, in_leg_as_navaid.fpln_xml_osm_q_node.getName (),  Utils::xml_get_node_content_as_text ( in_leg_as_navaid.fpln_xml_osm_q_node ) ) );
+  #endif
+
+  // construct the final template of the flight leg description if <desc> node in target <leg> is empty.
+  const std::string leg_description = Utils::xml_get_text_or_cdata_text (xml_custom_desc_from_target_leg_node, default_description_template); // read custom description
+
+  // replace {special keywords}.
+  const std::string final_leg_description_text = RandomEngine::gen_message_with_special_keywords_static (leg_description, in_leg_as_navaid);
+
+  Utils::xml_add_cdata (inout_leg_node, final_leg_description_text);
+
+}
+
+// -----------------------------------
+
+
 IXMLNode
 RandomEngine::gen_leg_node (int *seq, const std::string &prefix_name, const std::string &postfix_name, missionx::NavAidInfo *inTargetNavAid, std::list<missionx::structs::strct_node_attribute_key_value> *in_attrib_list, IXMLNode *parentNode)
 {
-  IXMLNode node = missionx::data_manager::xmlMappingNode.getChildNode (mxconst::get_ELEMENT_LEG ().c_str ()).deepCopy ();
-  if (node.isEmpty ())
-    node = Utils::xml_get_node_from_XSD_map_as_acopy (mxconst::get_ELEMENT_LEG ());
+  if (inTargetNavAid == nullptr)
+    return IXMLNode::emptyIXMLNode;
 
-  assert (!node.isEmpty () && fmt::format ("[{}] Failed to get a Leg node template.", __func__).c_str ());
+  IXMLNode leg_node = missionx::data_manager::xmlMappingNode.getChildNode (mxconst::get_ELEMENT_LEG ().c_str ()).deepCopy ();
+  if (leg_node.isEmpty ())
+    leg_node = Utils::xml_get_node_from_XSD_map_as_a_copy (mxconst::get_ELEMENT_LEG ());
 
-  if (node.isEmpty ())
+  assert (!leg_node.isEmpty () && fmt::format ("[{}] Failed to get a Leg node template.", __func__).c_str ());
+
+  if (leg_node.isEmpty ())
     return IXMLNode::emptyIXMLNode;
 
   const auto lmbda_get_name = [] (const int *in_seq, missionx::NavAidInfo *inNav, const std::string &in_prefix_name, const std::string &in_postfix_name)
   {
-    auto seq      = (in_seq) ? (*in_seq) : -1;
+    auto seq1      = (in_seq) ? (*in_seq) : -1;
     auto nav_name = (inNav) ? mxUtils::trim (inNav->getName ()) : "";
 
-
-    return fmt::format ("{}_{}_{}{}", in_prefix_name, seq, nav_name, (nav_name.empty ()) ? in_postfix_name : std::string ("-") + in_postfix_name);
+    return fmt::format ("{}_{}_{}{}", in_prefix_name, seq1, nav_name, (nav_name.empty ()) ? in_postfix_name : std::string ("-") + in_postfix_name);
   };
 
   const std::string name = lmbda_get_name (seq, inTargetNavAid, prefix_name, postfix_name);
+
   // set xTask information
-  node.updateAttribute (name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
-  Utils::xml_search_and_set_attribute_in_IXMLNode (node, mxconst::get_ATTRIB_LAT (), inTargetNavAid->getLat (), mxconst::get_ELEMENT_POINT ());
-  Utils::xml_search_and_set_attribute_in_IXMLNode (node, mxconst::get_ATTRIB_LONG (), inTargetNavAid->getLon (), mxconst::get_ELEMENT_POINT ());
+  leg_node.updateAttribute (name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
+  Utils::xml_search_and_set_attribute_in_IXMLNode (leg_node, mxconst::get_ATTRIB_LAT (), inTargetNavAid->getLat (), mxconst::get_ELEMENT_POINT ());
+  Utils::xml_search_and_set_attribute_in_IXMLNode (leg_node, mxconst::get_ATTRIB_LONG (), inTargetNavAid->getLon (), mxconst::get_ELEMENT_POINT ());
 
   // loop over in_attrib_list and set the trigger node
   if (in_attrib_list)
-    Utils::xml_search_and_set_attributes_in_node (node, (*in_attrib_list));
+    Utils::xml_search_and_set_attributes_in_node (leg_node, (*in_attrib_list));
+
+  // copy all subnodes nodes from the <q> if present
+  bool isEmpty = inTargetNavAid->fpln_xml_osm_q_node.isEmpty ();
+
+  if (!(inTargetNavAid->fpln_xml_osm_q_node.isEmpty ()))
+  {
+    // exclude <inventory> and <desc> nodes. <desc> node will be picked in gen_leg_description() function.
+    const std::vector<std::string> in_exclude_nodes = {mxconst::get_ELEMENT_INVENTORY (), mxconst::get_ELEMENT_DESC ()};
+    Utils::xml_copy_or_replace_sub_nodes (leg_node, inTargetNavAid->fpln_xml_osm_q_node, true, &in_exclude_nodes);
+  }
 
   (*seq)++;
-  return node;
+  return leg_node.deepCopy ();
 }
 
 
@@ -6924,7 +6994,7 @@ RandomEngine::gen_briefer_node (missionx::Point inPlanePosition, RandomEngine::r
   missionx::NavAidInfo na_briefer;
   ///////////////////////
   // <briefer>
-  IXMLNode x_briefer_node = Utils::xml_get_node_from_XSD_map_as_acopy (mxconst::get_ELEMENT_BRIEFER () );
+  IXMLNode x_briefer_node = Utils::xml_get_node_from_XSD_map_as_a_copy (mxconst::get_ELEMENT_BRIEFER () );
 
   // <location_adjust>
   IXMLNode x_location_adjust = Utils::xml_get_child_node ( x_briefer_node,mxconst::get_ELEMENT_LOCATION_ADJUST ());
@@ -6977,7 +7047,7 @@ RandomEngine::gen_briefer_node (missionx::Point inPlanePosition, RandomEngine::r
 
 
   na_briefer.flag_is_brieferOrStartLocation = true;
-  na_briefer.fpln_xml_mission_leg_node = x_briefer_node.deepCopy ();
+  na_briefer.fpln_xml_target_leg_node = x_briefer_node.deepCopy ();
 
   na_briefer.synchToPoint ();
   return na_briefer;
@@ -7029,7 +7099,7 @@ RandomEngine::gen_post_briefer_desc (std::map<int, NavAidInfo> &in_osm_na_target
 
   briefer_desc += "\n\nFly Safe !!!";
 
-  Utils::xml_add_cdata (in_osm_na_targets[0].fpln_xml_mission_leg_node, briefer_desc);
+  Utils::xml_add_cdata (in_osm_na_targets[0].fpln_xml_target_leg_node, briefer_desc);
 }
 
 // -----------------------------------
@@ -7068,7 +7138,7 @@ RandomEngine::gen_inventory_node (const int &in_seq, missionx::NavAidInfo & inou
   const std::string inv_name = fmt::format ("inv_{}", in_seq);
 
   // Prepare <inventory> node, and clean it.
-  IXMLNode xml_inv_node = Utils::xml_get_node_from_XSD_map_as_acopy (mxconst::get_ELEMENT_INVENTORY ());
+  IXMLNode xml_inv_node = Utils::xml_get_node_from_XSD_map_as_a_copy (mxconst::get_ELEMENT_INVENTORY ());
   Utils::xml_delete_all_subnodes (xml_inv_node, mxconst::get_ELEMENT_ITEM (), true);
   Utils::xml_delete_all_subnodes (xml_inv_node, mxconst::get_ELEMENT_STATION (), true);
 
@@ -7204,13 +7274,12 @@ RandomEngine::gen_message_with_special_keywords_static (std::string inMessage, m
     mapReplaceMessageKeywords["{bearing_target}"]  = mxUtils::formatNumber<float> (in_target_navaid.bearing_to_current_target, 0);
     const auto elev_ft_s                           = Utils::formatNumber<float> (in_target_navaid.height_mt * missionx::meter2feet);
     mapReplaceMessageKeywords["{navaid_elev}"]     = (in_target_navaid.height_mt == 0.0f) ? "" : elev_ft_s;
-    // mapReplaceMessageKeywords["{navaid_loc_desc}"] = (in_target_navaid.loc_desc.empty ()) ? in_target_navaid.init_locDesc () : in_target_navaid.loc_desc;
     mapReplaceMessageKeywords["{navaid_loc_desc}"] = in_target_navaid.get_loc_desc ();
     mapReplaceMessageKeywords["{distance}"]        = (in_target_navaid.fpln_distance_between_prev_and_current_navaid <= 0.0) ? "n/a" : (Utils::formatNumber<double> (in_target_navaid.fpln_distance_between_prev_and_current_navaid, 0) + "nm");
 
     for (const auto &[stringToModify, stringToReplaceWith] : mapReplaceMessageKeywords) // replace all special keywords
     {
-      inMessage = Utils::replaceStringWithOtherString (inMessage, stringToModify, stringToReplaceWith, true);
+      inMessage = Utils::replaceString (inMessage, stringToModify, stringToReplaceWith, true);
     }
   }
   else
@@ -7223,47 +7292,11 @@ RandomEngine::gen_message_with_special_keywords_static (std::string inMessage, m
 
 
 void
-RandomEngine::gen_leg_description (const missionx::structs::strct_osm_query &osm_target_query_node, IXMLNode &inout_leg_node, missionx::NavAidInfo &in_leg_as_navaid, missionx::NavAidInfo *in_next_leg_as_navaid_ptr) //, random_airport_info_struct &inout_random_airport_info_struct)
-{
-  // prepare description in <leg>
-  Utils::xml_delete_all_subnodes (inout_leg_node, mxconst::get_ELEMENT_DESC (), true);
-
-  const std::string target_icao = in_leg_as_navaid.getID ();
-  const std::string target_name = in_leg_as_navaid.get_name_or_icao_id ();
-  const std::string target_desc = in_leg_as_navaid.gen_locDesc_short ();
-
-  auto lmbda_get_pre_message_for_default_desc_text = [&] ()
-  {
-    std::string desc_s = target_name;
-
-    if (!target_icao.empty ())
-      desc_s.append (fmt::format ("({})", target_icao));
-
-    if (desc_s.empty () && !target_desc.empty ())
-      return fmt::format ("Fly to: \"{}\"", mxUtils::sanitize_text (target_desc, "_", ' '));
-
-    return fmt::format ("Fly to \"{}\"", mxUtils::sanitize_text (desc_s, "_", ' '));
-  };
-
-  const auto desc_next_target_text = lmbda_get_pre_message_for_default_desc_text ();
-  const auto desc_distance_text    = "Expected distance: {distance}";
-  const auto desc_elevation_text   = "(Elev: {navaid_elev}ft)";
-  auto       desc_wet_text         = (in_leg_as_navaid.fpln_is_wet) ? "> Your next leg might be above water body.\n" : "\n";
-
-  const std::string default_description_template    = fmt::format ("{}.\n{} {}.\n{}--> Fly Safe <--", desc_next_target_text, desc_distance_text, desc_elevation_text, desc_wet_text);
-  const IXMLNode    xml_custom_desc_from_osm_q_node = osm_target_query_node.xml_query_node_to_search_a_new_target.getChildNode (mxconst::get_ELEMENT_DESC ().c_str ());
-  const std::string custom_desc                     = Utils::xml_read_cdata_node (xml_custom_desc_from_osm_q_node, default_description_template); // read custom description
-
-  const std::string final_leg_description_text = RandomEngine::gen_message_with_special_keywords_static (custom_desc, in_leg_as_navaid);
-
-  Utils::xml_add_cdata (inout_leg_node, final_leg_description_text);
-}
-void
 RandomEngine::gen_3d_marker_for_target (IXMLNode &inout_leg_node, missionx::NavAidInfo &in_target_navaid)
 {
   assert (!inout_leg_node.isEmpty () && fmt::format("[{}] <leg> element can't be empty !!", __func__).c_str () );
 
-  IXMLNode display_object_node = Utils::xml_get_node_from_XSD_map_as_acopy ( mxconst::mxconst::get_ELEMENT_DISPLAY_OBJECT () );
+  IXMLNode display_object_node = Utils::xml_get_node_from_XSD_map_as_a_copy ( mxconst::mxconst::get_ELEMENT_DISPLAY_OBJECT () );
   assert (!display_object_node.isEmpty () && fmt::format("[{}][{}] <display_object> element can't be empty !!", __func__, __LINE__ ).c_str () );
 
   const std::string leg_name = Utils::readAttrib ( inout_leg_node, mxconst::get_ATTRIB_NAME (), "");
@@ -7280,6 +7313,198 @@ RandomEngine::gen_3d_marker_for_target (IXMLNode &inout_leg_node, missionx::NavA
   Utils::xml_search_and_set_attributes_in_node (display_object_node, lsAttrib_display_target_marker);
 
   inout_leg_node.addChild (display_object_node); // add the marker node
+}
+
+// -----------------------------------
+
+void
+RandomEngine::gen_leg_start_messages (int &seq, NavAidInfo &inout_target_na, IXMLNode &inout_xml_messages)
+{
+  // add new messages to the "<leg>'s "start_message" sub-element.
+  // The "inout_messages_node" is the main node that holds new created messages.
+  if (inout_xml_messages.isEmpty ())
+    return;
+
+
+  const std::string msg_text = fmt::format("Fly to: {}.", inout_target_na.get_loc_desc());
+  const std::string msg_name = fmt::format ("start_msg_leg_{}", inout_target_na.fpln_seq);
+  // create a new message and add to the inout_messages_node
+  if (IXMLNode msg_node = inout_xml_messages.addChild ( mxconst::get_ELEMENT_MESSAGE ().c_str () );
+    !msg_node.isEmpty ())
+  {
+    // set message name
+    Utils::xml_set_attribute_in_node_asString ( msg_node, mxconst::get_ATTRIB_NAME (), msg_name, mxconst::get_ELEMENT_MESSAGE ());
+    // Add <mix> node
+    IXMLNode msg_mix_text_node = msg_node.addChild (mxconst::get_ELEMENT_MIX ().c_str ());
+    // Set <mix> type
+    Utils::xml_set_attribute_in_node_asString ( msg_mix_text_node, mxconst::get_ATTRIB_MESSAGE_MIX_TRACK_TYPE (), mxconst::get_CHANNEL_TYPE_TEXT (), msg_mix_text_node.getName ());
+    // Add <cdata> message text
+    Utils::xml_add_cdata (msg_mix_text_node, msg_text);
+
+    // Add the message to the <leg> node as "<start_leg_message>"
+    IXMLNode xml_start_msg = Utils::xml_get_or_create_node_ptr (inout_target_na.fpln_xml_target_leg_node, mxconst::get_ELEMENT_START_LEG_MESSAGE ());
+    if (xml_start_msg.isEmpty ())
+      xml_start_msg = inout_target_na.fpln_xml_target_leg_node.addChild (mxconst::get_ELEMENT_START_LEG_MESSAGE ().c_str ());
+
+    assert ( !xml_start_msg.isEmpty () && fmt::format ("[{}] Failed to create or get node: ", __func__, mxconst::get_ELEMENT_START_LEG_MESSAGE ()).c_str () );
+
+    // set the message name to call
+    Utils::xml_set_attribute_in_node_asString ( xml_start_msg, mxconst::get_ATTRIB_NAME (), msg_name, xml_start_msg.getName ());
+    seq++;
+  }
+
+}
+
+// -----------------------------------
+
+void
+RandomEngine::gen_messages_when_reaching_target_leg (int &seq_trig, int &seq_msg, NavAidInfo &inout_target_na, IXMLNode &inout_xml_messages, IXMLNode &inout_xml_triggers, const IXMLNode &in_xml_land_trigger, const IXMLNode &in_xml_hover_trigger)
+{
+  assert (!inout_xml_messages.isEmpty () && !in_xml_land_trigger.isEmpty () && fmt::format ("[{}] One of the key parameters is empty and not valid.", __func__).c_str () );
+  // constexpr auto MSG_ENTERED_TARGET_AREA_TEXT = "You entered the target area";
+  // constexpr auto DEFAULT_ENTERED_TARGET_AREA_MSG_NAME = "entered_target_area_msg";
+
+  const bool  flag_wp_type_is_land_hover = (inout_target_na.fpln_osm_wp_type == mxconst::get_FL_TEMPLATE_VAL_LAND_HOVER ());
+
+  // ---------------------------------------
+  // Prepare the landing and hover messages
+  // ---------------------------------------
+  const std::string land_msg_name = fmt::format ("msg_{}_leg_{}_target", seq_msg, inout_target_na.fpln_seq);
+  const std::string hover_msg_name = fmt::format ("msg_{}_leg_{}_enter_target_hover_area", seq_msg, inout_target_na.fpln_seq);
+  // special physical area message
+  const std::string land_msg_when_in_physical_area_name = fmt::format ("leg_{}_entered_landing_phys_area_msg_{}", inout_target_na.fpln_seq, seq_msg);
+  seq_msg++;
+
+
+  const auto lmbda_get_land_in_target_text =[] (missionx::NavAidInfo &in_na)
+  {
+    if (in_na.nav_aid_has_unique_name ())
+      return fmt::format ("You are in the target area: {}", in_na.get_loc_desc ());
+
+    return std::string("You are in the target area.");
+  };
+
+  const std::string landed_in_area_msg_text       = lmbda_get_land_in_target_text (inout_target_na);
+  const std::string entered_landing_area_msg_text = "You entered the landing area.";
+  const std::string entered_hover_area_msg_text   = fmt::format ("You entered the hover area. {}", ((flag_wp_type_is_land_hover) ? "You can decide if to hover or to land." : ""));
+
+
+  // <mix> base properties
+  const std::list<missionx::structs::strct_node_attribute_key_value> lsAttrib_mix_text = {
+    { mxconst::get_ELEMENT_MIX (), mxconst::get_ATTRIB_MESSAGE_MIX_TRACK_TYPE (), mxconst::get_ATTRIB_TEXT ()  },
+    { mxconst::get_ELEMENT_MIX (), mxconst::get_ATTRIB_LABEL (), "radio" },
+    { mxconst::get_ELEMENT_MIX (), mxconst::get_ATTRIB_LABEL_COLOR (), mxconst::get_YELLOW () },
+  };
+
+  // -----------------------------
+  // create the message nodes
+  // -----------------------------
+
+  // Create the template <message> node
+  IXMLNode msg_template_node = Utils::xml_get_node_from_XSD_map_as_a_copy (mxconst::get_ELEMENT_MESSAGE ());
+  [[maybe_unused]]
+  const int nodes_deleted = Utils::xml_delete_all_subnodes (msg_template_node); // delete all subnodes and prepare one <mix> subnode
+  IXMLNode    mix_subnode   = msg_template_node.addChild (mxconst::get_ELEMENT_MIX ().c_str ()); // create <mix> subnode
+
+  Utils::xml_search_and_set_attributes_in_node (mix_subnode, lsAttrib_mix_text); // set base properties
+
+  // create <message> based on template for "land" hover" and "entering physical area"
+  IXMLNode msg_land_node                        = msg_template_node.deepCopy ();
+  IXMLNode msg_hover_node                       = msg_template_node.deepCopy ();
+  IXMLNode msg_land_entered_physical_area_node  = msg_template_node.deepCopy ();
+  // IXMLNode msg_you_entered_the_target_area_node = msg_template_node.deepCopy ();
+
+  // set names
+  Utils::xml_set_attribute_in_node_asString (msg_land_node, mxconst::get_ATTRIB_NAME (), land_msg_name, msg_land_node.getName ());
+  Utils::xml_set_attribute_in_node_asString (msg_hover_node, mxconst::get_ATTRIB_NAME (), hover_msg_name, msg_hover_node.getName ());
+  Utils::xml_set_attribute_in_node_asString (msg_land_entered_physical_area_node, mxconst::get_ATTRIB_NAME (), land_msg_when_in_physical_area_name, msg_land_entered_physical_area_node.getName ());
+  // Utils::xml_set_attribute_in_node_asString (msg_you_entered_the_target_area_node, mxconst::get_ATTRIB_NAME (), DEFAULT_ENTERED_TARGET_AREA_MSG_NAME, msg_you_entered_the_target_area_node.getName ());
+
+  // set message text
+  IXMLNode land_mix_text_node = Utils::xml_get_or_create_node_ptr (msg_land_node, mxconst::get_ELEMENT_MIX (), mxconst::get_ATTRIB_MESSAGE_MIX_TRACK_TYPE (), mxconst::get_CHANNEL_TYPE_TEXT ());
+  IXMLNode hover_mix_text_node = Utils::xml_get_or_create_node_ptr (msg_hover_node, mxconst::get_ELEMENT_MIX (), mxconst::get_ATTRIB_MESSAGE_MIX_TRACK_TYPE (), mxconst::get_CHANNEL_TYPE_TEXT ());
+  IXMLNode land_mix_entered_area_node = Utils::xml_get_or_create_node_ptr (msg_land_entered_physical_area_node, mxconst::get_ELEMENT_MIX (), mxconst::get_ATTRIB_MESSAGE_MIX_TRACK_TYPE (), mxconst::get_CHANNEL_TYPE_TEXT ());
+  // IXMLNode land_mix_entered_target_area = Utils::xml_get_or_create_node_ptr (msg_you_entered_the_target_area_node, mxconst::get_ELEMENT_MIX (), mxconst::get_ATTRIB_MESSAGE_MIX_TRACK_TYPE (), mxconst::get_CHANNEL_TYPE_TEXT ());
+
+  Utils::xml_add_cdata (land_mix_text_node, landed_in_area_msg_text);
+  Utils::xml_add_cdata (hover_mix_text_node, entered_hover_area_msg_text);
+  Utils::xml_add_cdata (land_mix_entered_area_node, entered_landing_area_msg_text);
+  // Utils::xml_add_cdata (land_mix_entered_target_area, MSG_ENTERED_TARGET_AREA_TEXT);
+
+
+  // --------------------------------------------------
+  // create the triggers that will fire the messages
+  // --------------------------------------------------
+
+  const std::string trig_land_name  = fmt::format ("trig_{}_leg_{}_msg_land", seq_trig, inout_target_na.fpln_seq );
+  const std::string trig_hover_name = fmt::format ("trig_{}_leg_{}_msg_hover", seq_trig, inout_target_na.fpln_seq);
+
+  // Prepare triggers attributes
+  std::list<missionx::structs::strct_node_attribute_key_value> lsAttrib_trig_landing_area = {
+    { mxconst::get_ELEMENT_TRIGGER (), mxconst::get_ATTRIB_NAME (), trig_land_name },
+    { mxconst::get_ELEMENT_TRIGGER (), mxconst::get_ATTRIB_RE_ARM (), "true" },
+    { mxconst::get_ELEMENT_CONDITIONS (), mxconst::get_ATTRIB_PLANE_ON_GROUND (), "true" },
+    { mxconst::get_ELEMENT_OUTCOME (), mxconst::get_ATTRIB_MESSAGE_NAME_WHEN_FIRED (), land_msg_name },
+  };
+
+  if (flag_wp_type_is_land_hover) // we will add the physical entry message only in the case of land + hover navaids
+    lsAttrib_trig_landing_area.emplace_back( mxconst::get_ELEMENT_OUTCOME (), mxconst::get_ATTRIB_MESSAGE_NAME_WHEN_ENTERING_PHYSICAL_AREA (), land_msg_when_in_physical_area_name );
+
+
+  const std::list<missionx::structs::strct_node_attribute_key_value> lsAttrib_trig_hover_area = {
+    { mxconst::get_ELEMENT_TRIGGER (), mxconst::get_ATTRIB_NAME (), trig_hover_name },
+    { mxconst::get_ELEMENT_TRIGGER (), mxconst::get_ATTRIB_RE_ARM (), "true" },
+    { mxconst::get_ELEMENT_CONDITIONS (), mxconst::get_ATTRIB_PLANE_ON_GROUND (), "false" },
+    { mxconst::get_ELEMENT_OUTCOME (), mxconst::get_ATTRIB_MESSAGE_NAME_WHEN_FIRED (), hover_msg_name },
+  };
+
+  // Duplicate trigger nodes
+  IXMLNode trig_land_msg_node  = in_xml_land_trigger.deepCopy ();
+  IXMLNode trig_hover_msg_node = in_xml_hover_trigger.deepCopy ();
+
+  // clear land <outcome> node
+  IXMLNode xml_outcome_node = trig_land_msg_node.getChildNode (mxconst::get_ELEMENT_OUTCOME ().c_str ());
+  Utils::xml_delete_all_node_attributes (xml_outcome_node);
+  // clear hover <outcome> node
+  xml_outcome_node = trig_hover_msg_node.getChildNode (mxconst::get_ELEMENT_OUTCOME ().c_str ());
+  Utils::xml_delete_all_node_attributes (xml_outcome_node);
+
+
+  // set attributes
+  Utils::xml_search_and_set_attributes_in_node (trig_land_msg_node, lsAttrib_trig_landing_area);
+  Utils::xml_search_and_set_attributes_in_node (trig_hover_msg_node, lsAttrib_trig_hover_area);
+
+  seq_trig++;
+
+  // add triggers to <triggers> root node
+  inout_xml_triggers.addChild (trig_land_msg_node);
+  inout_xml_triggers.addChild (trig_hover_msg_node);
+
+  // ----------------------------------------------
+  // Add the nodes to the global root nodes
+  // ----------------------------------------------
+
+  // add the messages to the <messages_template> root node
+  inout_xml_messages.addChild (msg_land_node);
+  // if ( Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (inout_xml_messages, mxconst::get_ELEMENT_MESSAGE (), mxconst::get_ATTRIB_NAME (), DEFAULT_ENTERED_TARGET_AREA_MSG_NAME ).isEmpty () )
+  //   inout_xml_messages.addChild (msg_you_entered_the_target_area_node);
+
+  if (flag_wp_type_is_land_hover)
+  {
+    inout_xml_messages.addChild (msg_land_entered_physical_area_node);
+    inout_xml_messages.addChild (msg_hover_node);
+  }
+
+
+  // add triggers to <leg>
+  IXMLNode link_trigger = inout_target_na.fpln_xml_target_leg_node.addChild (mxconst::get_ELEMENT_LINK_TO_TRIGGER ().c_str ());
+  Utils::xml_set_attribute_in_node_asString (link_trigger, mxconst::get_ATTRIB_NAME (), trig_land_name, mxconst::get_ELEMENT_LINK_TO_TRIGGER ());
+  if (flag_wp_type_is_land_hover)
+  {
+    link_trigger = inout_target_na.fpln_xml_target_leg_node.addChild (mxconst::get_ELEMENT_LINK_TO_TRIGGER ().c_str ());
+    Utils::xml_set_attribute_in_node_asString (link_trigger, mxconst::get_ATTRIB_NAME (), trig_hover_name, mxconst::get_ELEMENT_LINK_TO_TRIGGER ());
+  }
+
 }
 
 
@@ -7603,7 +7828,15 @@ RandomEngine::prepare_medevac_surprise_me (IXMLNode &inRootTemplate, const IXMLN
   // -- Prepare <GPS> node
   // ----------------------
   for (const auto &na : osm_na_targets | std::views::values)
-    this->xGPS.addChild (na.p.node.deepCopy ());
+  {
+    auto p_gps_node = na.p.node.deepCopy ();
+    Utils::xml_clear_node_attributes_excluding_list (p_gps_node,
+                                          { mxconst::get_ATTRIB_LAT (), mxconst::get_ATTRIB_LONG (), mxconst::get_ATTRIB_ELEV_FT ()
+                                                         , mxconst::get_ELEMENT_ICAO (), mxconst::get_ATTRIB_NAME (), mxconst::get_ATTRIB_IS_SKEWED_POSITION_B ()
+                                            , mxconst::get_PROP_IS_WET ()
+                                          }, false, true);
+    this->xGPS.addChild (p_gps_node);
+  }
 
 
   // ----------------------
@@ -7753,15 +7986,6 @@ RandomEngine::prepare_medevac_surprise_me (IXMLNode &inRootTemplate, const IXMLN
         xTargetObjective.addChild (xTaskTargetHover);
       xTargetObjective.addChild (xTaskTargetLand);
 
-      // //-------------------------
-      // //-------- Water Bodies ---
-      // //-------------------------
-      // target_navaid.fpln_is_wet = get_is_wet_at_point (target_navaid);
-      //
-      // // store wet state if the "flag" is not true, yet.
-      // if (!flag_one_of_the_targets_above_water_body)
-      //   flag_one_of_the_targets_above_water_body = target_navaid.fpln_is_wet;
-
       //-------------------------
       // <leg> element creation
       //-------------------------
@@ -7771,13 +7995,12 @@ RandomEngine::prepare_medevac_surprise_me (IXMLNode &inRootTemplate, const IXMLN
         { mxconst::get_ELEMENT_LEG (), mxconst::get_ATTRIB_TITLE (), target_navaid.gen_locDesc_short () },
         { mxconst::get_ELEMENT_LINK_TO_OBJECTIVE (), mxconst::get_ATTRIB_NAME (), obj_target_name },
       };
-      IXMLNode xTargetLeg = RandomEngine::gen_leg_node (&this->seq_waypoints, mxconst::get_GPS_WP (), "leg", &target_navaid, &lsAttrib_wp_target);
+      target_navaid.fpln_xml_target_leg_node = RandomEngine::gen_leg_node (&this->seq_waypoints, mxconst::get_GPS_WP (), "leg", &target_navaid, &lsAttrib_wp_target);
 
       // Add to main mission nodes
       this->xTriggers.addChild (xTriggerTargetLand);
       this->xTriggers.addChild (xTriggerTargetHover);
       this->xObjectives.addChild (xTargetObjective);
-      target_navaid.fpln_xml_mission_leg_node = this->xFlightLegs.addChild (xTargetLeg);
 
       // find elevation using call to main thread
       target_navaid.height_mt = this->get_terrain_elevation_at_point_in_mt (target_navaid, this->shared_navaid_info);
@@ -7801,26 +8024,38 @@ RandomEngine::prepare_medevac_surprise_me (IXMLNode &inRootTemplate, const IXMLN
         gen_gather_navaid_metadata_relative_to_target (target_navaid, osm_na_targets[indx - 1], next_navaid_ptr);
 
         // If we have a previous <leg> node, we need to update its "next_leg" and "distance" attributes for future usage with messages and descriptions
-        if (!osm_na_targets[indx - 1].fpln_xml_mission_leg_node.isEmpty ())
+        if (!osm_na_targets[indx - 1].fpln_xml_target_leg_node.isEmpty ())
         {
           // update "starting_leg" or "next_leg" attributes
-          const auto current_leg_name = Utils::readAttrib ( xTargetLeg, mxconst::get_ATTRIB_NAME (), "" );
+          const auto current_leg_name = Utils::readAttrib ( target_navaid.fpln_xml_target_leg_node, mxconst::get_ATTRIB_NAME (), "" );
           if (osm_na_targets[indx - 1].flag_is_brieferOrStartLocation)
-            osm_na_targets[indx - 1].fpln_xml_mission_leg_node.updateAttribute (current_leg_name.c_str (), mxconst::get_ATTRIB_STARTING_LEG ().c_str (), mxconst::get_ATTRIB_STARTING_LEG ().c_str () );
+            osm_na_targets[indx - 1].fpln_xml_target_leg_node.updateAttribute (current_leg_name.c_str (), mxconst::get_ATTRIB_STARTING_LEG ().c_str (), mxconst::get_ATTRIB_STARTING_LEG ().c_str () );
           else
-            osm_na_targets[indx - 1].fpln_xml_mission_leg_node.updateAttribute (current_leg_name.c_str (), mxconst::get_ATTRIB_NEXT_LEG ().c_str (), mxconst::get_ATTRIB_NEXT_LEG ().c_str () );
+            osm_na_targets[indx - 1].fpln_xml_target_leg_node.updateAttribute (current_leg_name.c_str (), mxconst::get_ATTRIB_NEXT_LEG ().c_str (), mxconst::get_ATTRIB_NEXT_LEG ().c_str () );
 
-          osm_na_targets[indx - 1].fpln_xml_mission_leg_node.updateAttribute (fmt::format ("{}", osm_na_targets[indx - 1].fpln_distance_between_prev_and_current_navaid).c_str (), mxconst::get_ATTRIB_DISTANCE_NM ().c_str (), mxconst::get_ATTRIB_DISTANCE_NM ().c_str () );
+          osm_na_targets[indx - 1].fpln_xml_target_leg_node.updateAttribute (fmt::format ("{}", osm_na_targets[indx - 1].fpln_distance_between_prev_and_current_navaid).c_str (), mxconst::get_ATTRIB_DISTANCE_NM ().c_str (), mxconst::get_ATTRIB_DISTANCE_NM ().c_str () );
+
+          // #ifndef RELEASE
+          // Log::logMsgThread ( fmt::format ("[{}] new fpln_xml_target_leg_node:\n{}\n<-- end new fpln_xml_target_leg_node\n", __func__, Utils::xml_get_node_content_as_text ( target_navaid.fpln_xml_target_leg_node ) ) );
+          // #endif
 
           // add <leg> description
-          gen_leg_description (osm_query, xTargetLeg, target_navaid, next_navaid_ptr);
+          gen_leg_description (target_navaid.fpln_xml_target_leg_node, target_navaid, next_navaid_ptr);
 
           // add target marker
-          gen_3d_marker_for_target (xTargetLeg, target_navaid);
+          gen_3d_marker_for_target (target_navaid.fpln_xml_target_leg_node, target_navaid);
+
+          // add start messages
+          gen_leg_start_messages (this->seq_messages, target_navaid,this->xMessages);
+
+          // add hint messages related to the target land/hover actions
+          gen_messages_when_reaching_target_leg (this->seq_triggers, this->seq_messages, target_navaid, this->xMessages, this->xTriggers, xTriggerTargetLand, xTriggerTargetHover);
+
         }
       }
 
       target_navaid.synchToPoint ();
+      target_navaid.fpln_xml_target_leg_node = this->xFlightLegs.addChild (target_navaid.fpln_xml_target_leg_node);
 
       // check [abort]
       if (RandomEngine::threadState.flagAbortThread)
@@ -7834,7 +8069,7 @@ RandomEngine::prepare_medevac_surprise_me (IXMLNode &inRootTemplate, const IXMLN
 
     // add Briefer description
     gen_post_briefer_desc (osm_na_targets, flag_one_of_the_targets_above_water);
-    this->xBriefer = osm_na_targets[0].fpln_xml_mission_leg_node.deepCopy ();
+    this->xBriefer = osm_na_targets[0].fpln_xml_target_leg_node.deepCopy ();
 
     // loop over all inventories and add to the xInvenotries node
     for (auto &[key, nav] : osm_na_targets )
@@ -7849,7 +8084,7 @@ RandomEngine::prepare_medevac_surprise_me (IXMLNode &inRootTemplate, const IXMLN
     #ifndef RELEASE
     Log::logMsgThread (fmt::format ("-------------- RESULTS - Post {} --------------", __func__));
     Log::logMsgThread (fmt::format ("BRIEFER_INFO:\n{}\n", Utils::xml_get_node_content_as_text (xBrieferInfo)));
-    Log::logMsgThread (fmt::format ("BRIEFER:\n{}\n", Utils::xml_get_node_content_as_text (osm_na_targets[0].fpln_xml_mission_leg_node))); // we store the briefer in [0]
+    Log::logMsgThread (fmt::format ("BRIEFER:\n{}\n", Utils::xml_get_node_content_as_text (osm_na_targets[0].fpln_xml_target_leg_node))); // we store the briefer in [0]
     Log::logMsgThread (fmt::format ("TRIGGERS:\n{}\n", Utils::xml_get_node_content_as_text (this->xTriggers)));
     Log::logMsgThread (fmt::format ("OBJECTIVES:\n{}\n", Utils::xml_get_node_content_as_text (this->xObjectives)));
     Log::logMsgThread (fmt::format ("FLIGHT LEGS:\n{}\n", Utils::xml_get_node_content_as_text (this->xFlightLegs)));
@@ -7858,7 +8093,7 @@ RandomEngine::prepare_medevac_surprise_me (IXMLNode &inRootTemplate, const IXMLN
     Log::logMsgThread (fmt::format ("-------------- END RESULTS - {} --------------", __func__));
     #endif // !RELEASE
 
-  }
+  } // end loop over all target nodes
 
 
   return out_mx_return = true;
@@ -9367,7 +9602,7 @@ RandomEngine::calc_land_hover_display_objects (const double &inLat, const double
   // 2. validate inRadiusMT and inHowManyObjects are valid.
   // 3. calculate new locations relative to the "target" position.
   std::vector<IXMLNode> vec_3d_display_objects;
-  const auto            display_object_node = Utils::xml_get_node_from_XSD_map_as_acopy (mxconst::get_ELEMENT_DISPLAY_OBJECT ());
+  const auto            display_object_node = Utils::xml_get_node_from_XSD_map_as_a_copy (mxconst::get_ELEMENT_DISPLAY_OBJECT ());
   // basic validation
   if (inFileName.empty () + (inHowManyObjects < 4) + (inRadiusMT < 1) + display_object_node.isEmpty ())
   {

@@ -516,13 +516,10 @@ missionx::OptimizeAptDat::parse_aptdat(thread_state* inThreadState, std::string&
         ++this->icao_id_counter;
         if (!inReadCachedFile) // v3.0.255.3
         {
-          //#ifndef RELEASE
-          //          if (airportCode.compare("UHBB") == 0) // used to debug specific issues
-          //          {
-          //            int d = 1;
-          //            d = 2;
-          //          }
-          //#endif // !RELEASE
+          // #ifndef RELEASE
+          //           if (airportCode == "EDDI") // used to debug specific issues
+          //             int iStopHere = 1; // debug, break
+          // #endif
           parse_airport_to_sqlite(inThreadState, airportCode, info, (*OptimizeAptDat::db_airports_cache_ptr), scenery_pack_name); // v3.0.255.3
         }
       }
@@ -571,7 +568,7 @@ missionx::OptimizeAptDat::parse_aptdat(thread_state* inThreadState, std::string&
       lmbda_store_navinfo_in_cache();
       continue;
     }
-    else if (charCounter_i == 4 && (c == '\n' || c == ' ') && code.compare("130") == 0) // code 130 = start boundary
+    else if (charCounter_i == 4 && (c == '\n' || c == ' ') && code == "130") // code 130 = start boundary
     {
       std::getline(file_aptDat, line); // skip until end of line
       flag_start_code130_node = true;
@@ -626,7 +623,7 @@ missionx::OptimizeAptDat::parse_aptdat(thread_state* inThreadState, std::string&
 
       // 16   1355 0 0 01MN [S] Barnes  => seaway
       // 17    122 0 0 02CA [H] Swepi Beta Platform Ellen => Helipad
-      if (code.compare("16") == 0 || code.compare("17") == 0)
+      if (code == "16" || code == "17")
       {
         std::getline(file_aptDat, line);
         vec_splitLineAfterCode = mxUtils::split(mxUtils::trim(line), ' ');
@@ -639,7 +636,7 @@ missionx::OptimizeAptDat::parse_aptdat(thread_state* inThreadState, std::string&
         if (lmbda_has130_valid_code()) // v3.303.8.3
           lmbda_reset_bound_flags(); 
       }
-      else if ((code.compare("1300") == 0) || (code.compare("15") == 0)) // ramp data
+      else if ((code == "1300") || (code == "15")) // ramp data
       {
         // 1300  10.91196027  124.43800826 221.55 misc jets|turboprops|props|helos Cargo Ramp
         std::getline(file_aptDat, line);
@@ -652,7 +649,7 @@ missionx::OptimizeAptDat::parse_aptdat(thread_state* inThreadState, std::string&
         if (lmbda_has130_valid_code()) // v3.303.8.3
           lmbda_reset_bound_flags(); 
       }
-      else if ((code.compare("1302") == 0)) // Metadata // v3.0.241.10
+      else if ((code == "1302")) // Metadata // v3.0.241.10
       {
         // 1302 icao_code NJ51  // in the format of code, key value
         std::getline(file_aptDat, line);
@@ -676,7 +673,7 @@ missionx::OptimizeAptDat::parse_aptdat(thread_state* inThreadState, std::string&
         if (lmbda_has130_valid_code())
           lmbda_reset_bound_flags(); 
       }
-      else if (code.compare("100") == 0 || code.compare("101") == 0 || code.compare("102") == 0 /*|| code.compare("56") == 0*/)
+      else if (code == "100" || code == "101" || code == "102" /*|| code.compare("56") == 0*/)
       {
 
         ////100 25.00 3 0 1.00 0 0 0 05R  50.12933714  014.52302572    0    0 0 0 0 0 23L  50.13387196  014.53174893    0    0 0 0 0 0
@@ -689,22 +686,23 @@ missionx::OptimizeAptDat::parse_aptdat(thread_state* inThreadState, std::string&
         std::getline(file_aptDat, line);
         vec_splitLineAfterCode = mxUtils::split(mxUtils::trim(line), ' ');
 
-        info.listNavInfo.push_back(code + mxconst::get_SPACE() + line + "\n");
+        // info.listNavInfo.push_back(code + mxconst::get_SPACE() + line + "\n");
+        info.listNavInfo.push_back(fmt::format("{} {}\n",code, line) );
         flag_has100_101_102_code = true;
 
         if (lmbda_has130_valid_code()) // v3.303.8.3
           lmbda_reset_bound_flags(); 
       }
-      else if ( (flag_start_code130_node + flag_closingBoundary_code130_with_code113_node) == 1 && code.compare("111") == 0) // Node of a boundary - in this context
+      else if ( (flag_start_code130_node + flag_closingBoundary_code130_with_code113_node) == 1 && code == "111") // Node of a boundary - in this context
       {
         lmbda_store_bound_nodes();
       }
-      else if ( (flag_start_code130_node + flag_closingBoundary_code130_with_code113_node) == 1 && code.compare("113") == 0) // End node of an airport boundary
+      else if ( (flag_start_code130_node + flag_closingBoundary_code130_with_code113_node) == 1 && code == "113") // End node of an airport boundary
       {
         lmbda_store_bound_nodes();
         flag_closingBoundary_code130_with_code113_node = true;
       }
-      else if ( (flag_start_code130_node + flag_closingBoundary_code130_with_code113_node) == 1 && ((code.compare("113") == 0) + (code.compare("111") == 0) == 0)) // Airport boundary is not valid because we don't have the correct set of lines
+      else if ( (flag_start_code130_node + flag_closingBoundary_code130_with_code113_node) == 1 && ((code == "113") + (code == "111") == 0)) // Airport boundary is not valid because we don't have the correct set of lines
       {
         lmbda_reset_bound_flags(); // reset flags: flag_start_code130_node, flag_closingBoundary_code130_with_code113_node and flag_has130_valid_code
         info.boundary.clear();
@@ -747,15 +745,13 @@ missionx::OptimizeAptDat::parse_aptdat(thread_state* inThreadState, std::string&
 
 
 missionx::db_field
-missionx::OptimizeAptDat::get_db_field_by_colName(std::list<missionx::db_field>& list_of_fields, std::string inColNameToSearch)
+missionx::OptimizeAptDat::get_db_field_by_colName(std::list<missionx::db_field>& list_of_fields, const std::string& inColNameToSearch)
 {
   missionx::db_field dummy;
   for (auto& field : list_of_fields)
   {
-    if (mxUtils::stringToLower(field.col_name).compare(mxUtils::stringToLower(inColNameToSearch)) == 0)
-    {
+    if (mxUtils::stringToLower(field.col_name) == mxUtils::stringToLower(inColNameToSearch))
       return field;
-    }
   }
 
   return dummy;
@@ -987,7 +983,7 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(thread_state* inThreadState, c
         auto it_field_mapping     = table_col_name_type_mapping[code_i].begin();
         auto it_field_mapping_end = table_col_name_type_mapping[code_i].cend();
 
-        const int no_of_mapped_fields = (int)table_col_name_type_mapping[code_i].size();
+        const int no_of_mapped_fields = static_cast<int> (table_col_name_type_mapping[code_i].size ());
 
         // we store ICAO manually since it is not in the split line data
         if (it_field_mapping->dataype != db_types::skip_field)
@@ -1014,7 +1010,7 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(thread_state* inThreadState, c
         if (it_field != it_line_end && it_field_mapping != it_field_mapping_end && split_fields_counter_i <= no_of_mapped_fields) // if last field is a text field, then append all the rest of splitted strings
         {
           bool        flag_read_more_than_one_word = false;
-          std::string last_field_to_the_end = "";
+          std::string last_field_to_the_end;
           do
           {
             if (flag_read_more_than_one_word)
@@ -1041,7 +1037,7 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(thread_state* inThreadState, c
           {
 
             prep_stmt_key_s = "ins_xp_airports";
-            if (list_of_fields.size() > 0)
+            if (!list_of_fields.empty())
             {
               // v3.0.253.6 add extra field that holds custom scenery flag
               {
@@ -1066,19 +1062,22 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(thread_state* inThreadState, c
               {
                 missionx::db_field field;
                 field.col_name = "boundary";
-                field.dataype  = missionx::db_types::text_typ;
                 if (!info.boundary.empty())
                 {
+                  field.dataype  = missionx::db_types::text_typ;
                   field.value_s = info.boundary; // boundary string, delimited by "|"
                 }
+                else
+                  field.dataype = missionx::db_types::null_typ; // v25.06.1 added NULL option
+
                 list_of_fields.emplace_back(field);
               }
 
               if (!db.bind_and_execute_ins_stmt(prep_stmt_key_s, " xp_airports ", list_of_fields))
               {
-#ifndef RELEASE
-                Log::logMsgThread("\tduplicate airport: (" + icao_code + ", " + scenery_pack_name + ") !!!!");
-#endif                  // !RELEASE
+                #ifndef RELEASE
+                Log::logMsgThread( fmt::format("\t Found duplicate airport: ({},{})!!!!",icao_code, scenery_pack_name) );
+                #endif
                 return; // exit function due to duplication or failure in binding insert command
               }
             }
@@ -1087,7 +1086,7 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(thread_state* inThreadState, c
           case 1302: // airport metadata
           {
             prep_stmt_key_s = "ins_xp_ap_metadata_1302";
-            if (list_of_fields.size() > 0)
+            if (!list_of_fields.empty())
             {
               db.bind_and_execute_ins_stmt(prep_stmt_key_s, " xp_ap_metadata ", list_of_fields);
             }
@@ -1102,7 +1101,7 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(thread_state* inThreadState, c
           case 1056: // airport frq
           {
             prep_stmt_key_s = "ins_xp_ap_frq_1050_1056";
-            if (list_of_fields.size() > 0)
+            if (!list_of_fields.empty())
             {
               db.bind_and_execute_ins_stmt(prep_stmt_key_s, " xp_ap_frq ", list_of_fields);
             }
@@ -1111,7 +1110,7 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(thread_state* inThreadState, c
           case 1300: // startup location, like ramps
           {
             prep_stmt_key_s = "ins_xp_ap_ramps_1300";
-            if (list_of_fields.size() > 0)
+            if (!list_of_fields.empty())
             {
               db.bind_and_execute_ins_stmt(prep_stmt_key_s, " xp_ap_ramps ", list_of_fields);
             }
@@ -1120,7 +1119,7 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(thread_state* inThreadState, c
           case 15: // older startup location, like ramps
           {
             prep_stmt_key_s = "ins_xp_ap_ramps_15";
-            if (list_of_fields.size() > 0)
+            if (!list_of_fields.empty())
             {
               db.bind_and_execute_ins_stmt(prep_stmt_key_s, " xp_ap_ramps ", list_of_fields);
             }
@@ -1129,7 +1128,7 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(thread_state* inThreadState, c
           case 100: // Land runway
           case 101: // Water runway
           {
-            if (list_of_fields.size() > 0)
+            if (!list_of_fields.empty())
             {
               double             lat1, lon1, lat2, lon2;
               std::string        lat1_s, lon1_s, lat2_s, lon2_s;
@@ -1153,7 +1152,7 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(thread_state* inThreadState, c
                 int disp_rw_2_i = (disp_rw2_s.empty()) ? 0 : mxUtils::stringToNumber<int>(disp_rw2_s); // v3.0.255.3 fixed calculation if value is empty.
 
 
-                double dist_d          = Utils::calcDistanceBetween2Points_nm(lat1, lon1, lat2, lon2, missionx::mx_units_of_measure::meter) - ((double)(disp_rw_1_i + disp_rw_2_i)); // v3.0.253.6 added display hold to the calculation. need to detract from the distance
+                double dist_d          = Utils::calcDistanceBetween2Points_nm(lat1, lon1, lat2, lon2, missionx::mx_units_of_measure::meter) - static_cast<double> (disp_rw_1_i + disp_rw_2_i); // v3.0.253.6 added display hold to the calculation. need to detract from the distance
                 rwLength_field.value_s = mxUtils::formatNumber<double>(dist_d, 0);
               }
 
@@ -1186,7 +1185,7 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(thread_state* inThreadState, c
           case 102: // Helipad
           {
             prep_stmt_key_s = "ins_helipad_102";
-            if (list_of_fields.size() > 0)
+            if (!list_of_fields.empty())
             {
               db.bind_and_execute_ins_stmt(prep_stmt_key_s, " xp_helipads ", list_of_fields);
               if (!flag_wrote_airport_lat_long_based_on_runway)
