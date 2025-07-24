@@ -20,9 +20,6 @@
 #include "xx_mission_constants.hpp"
 #include "mx_return.hpp"
 
-//using namespace missionx;
-//using namespace mxconst;
-// using namespace std;
 
 namespace missionx
 {

@@ -3,9 +3,10 @@
 #include <filesystem>
 
 #ifdef IBM
-  #include <numbers>
   #include <algorithm>
 #endif
+
+#include <numbers>
 
 #ifdef MAC
 #include <cmath> // solve std::remindar in XCode
