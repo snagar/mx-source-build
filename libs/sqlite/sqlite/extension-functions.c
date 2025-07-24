@@ -1,6 +1,6 @@
 #ifndef EXTENSIONFUNCTION_H_
 #define EXTENSIONFUNCTION_H_
-#pragma once
+// #pragma once
 
 /*
 This library will provide common mathematical and string functions in
@@ -110,24 +110,20 @@ Original code 2006 June 05 by relicoder.
 
 */
 
-// namespace missionx
-// {
-  #include <inttypes.h>
-  // #include "../../../src/core/MxUtils.h" // missionx - saar
+#include <inttypes.h>
+//  #include "../../../src/core/MxUtils.h" // missionx - saar
 
 // Mission-X saar
-static const float LOCAL_EARTH_RADIUS_M = 6378145.0f;
-// static const double M_PI  = 3.1415926535897932384626433832795; // from windows calculator
-static const double MX_PI  = 3.141592653589793238; // from windows calculator
-static const double MX_PI2 = 6.283185307179586476925286766559;  // FOR DROPPING calculation
-static const float mx_nm2meter             = 1852.0f;
-static const float mx_meter2nm             = 0.000539957f;
-static const float mx_nm2km                = 1.852f;
-static const float mx_meter2feet           = 3.28083f;
+static const float EARTH_RADIUS_M = 6378145.0f;
+static const double PI  = 3.1415926535897932384626433832795; // from windows calculator
+static const double PI2 = 6.283185307179586476925286766559;  // FOR DROPPING calculation
+static const float nm2meter             = 1852.0f;
+static const float meter2nm             = 0.000539957f;
+static const float nm2km                = 1.852f;
+static const float meter2feet           = 3.28083f;
 
-static const float mx_RadToDeg             = (float)(180.0f / MX_PI); // 57.295779513082320876798154814105
-static const float mx_DegToRad             = 1.0f / mx_RadToDeg;      // 0.01745329251994329576923690768489
-
+static const float RadToDeg             = (float)(180.0f / PI); // 57.295779513082320876798154814105
+static const float DegToRad             = 1.0f / RadToDeg;      // 0.01745329251994329576923690768489
 
 typedef enum
 {
@@ -136,17 +132,19 @@ typedef enum
   meter = 2,
   km = 3, // kilometers
   nm = 4  // nautical miles
-} mx_sqlite_units_of_measure;
+} mx_units_of_measure;
 
 typedef struct mx_latLonDouble
 {
   double lat;
   double lon;
-} mx_vec2d;
+} mxVec2d;
+
+
 
 //#include "config.h"
 
-//#define COMPILE_SQLITE_EXTENSIONS_AS_LOADABLE_MODULE 1
+#define COMPILE_SQLITE_EXTENSIONS_AS_LOADABLE_MODULE 1
 #define HAVE_ACOSH 1
 #define HAVE_ASINH 1
 #define HAVE_ATANH 1
@@ -704,245 +702,86 @@ static void floorFunc(sqlite3_context* context, int argc, sqlite3_value** argv) 
   }
 }
 
+
+
 /*     MISSIONX Functions                  */
 
-mx_vec2d* parseCoordinatesString(const unsigned char* coord_string, int* out_num_coords) {
-  if (coord_string == NULL || out_num_coords == NULL) {
-    fprintf(stderr, "Error: Invalid input to parseCoordinatesString.\n");
-    return NULL;
-  }
 
-  // Create a mutable copy of the input string because strtok modifies the string.
-  // +1 for null terminator
-  char* mutable_string = (char*)malloc(strlen((const char*)coord_string) + 1);
-  if (mutable_string == NULL) {
-    fprintf(stderr, "Error: Memory allocation failed for mutable string.\n");
-    return NULL;
-  }
-  strcpy(mutable_string, (const char*)coord_string);
 
-  mx_vec2d* coords_array = NULL;
-  int current_capacity = 0;
-  int count = 0;
-
-  char* token_pair;
-  char* rest_of_string = mutable_string;
-
-  // First, split by '|' to get individual coordinate pairs (e.g., "lat1,lon1")
-  #ifndef _WIN32
-  while ((token_pair = strtok_r (rest_of_string, "|", &rest_of_string)) != NULL)
-  #else 
-  while ((token_pair = strtok_s (rest_of_string, "|", &rest_of_string)) != NULL)  
-  #endif
-  {
-    char* token_coord;
-    char* rest_of_pair = token_pair;
-    double lat_val = 0.0;
-    double lon_val = 0.0;
-    int coord_part_count = 0;
-
-    // Split each pair by ',' to get latitude and longitude
-    //while ((token_coord = strtok_r(rest_of_pair, ",", &rest_of_pair)) != NULL) 
-    #ifndef _WIN32
-    while ((token_coord = strtok_r (rest_of_pair, ",", &rest_of_pair)) != NULL)
-    #else
-    while ((token_coord = strtok_s (rest_of_pair, ",", &rest_of_pair)) != NULL)
-    #endif
-
-    {
-      if (coord_part_count == 0) {
-        lat_val = atof(token_coord); // Convert string to double for latitude
-      } else if (coord_part_count == 1) {
-        lon_val = atof(token_coord); // Convert string to double for longitude
-      } else {
-        // More than two parts in a coordinate pair (e.g., "lat,lon,extra")
-        fprintf(stderr, "Warning: Unexpected extra part in coordinate pair: %s\n", token_pair);
-        break; // Stop processing this pair
-      }
-      coord_part_count++;
+mxVec2d* parseCoordinatesString(const unsigned char* coord_string, int* out_num_coords) {
+    if (coord_string == NULL || out_num_coords == NULL) {
+        fprintf(stderr, "Error: Invalid input to parseCoordinatesString.\n");
+        return NULL;
     }
 
-    // Ensure we got exactly two parts (lat and lon)
-    if (coord_part_count == 2) {
-      // If capacity is full, reallocate more memory
-      if (count >= current_capacity) {
-        current_capacity = (current_capacity == 0) ? 4 : current_capacity * 2; // Start with 4, then double
-        mx_vec2d* new_coords_array = (mx_vec2d*)realloc(coords_array, current_capacity * sizeof(mx_vec2d));
-        if (new_coords_array == NULL) {
-          fprintf(stderr, "Error: Memory reallocation failed.\n");
-          free(coords_array); // Free already allocated memory
-          free(mutable_string);
-          *out_num_coords = 0;
-          return NULL;
+    // Create a mutable copy of the input string because strtok modifies the string.
+    // +1 for null terminator
+    char* mutable_string = (char*)malloc(strlen((const char*)coord_string) + 1);
+    if (mutable_string == NULL) {
+        fprintf(stderr, "Error: Memory allocation failed for mutable string.\n");
+        return NULL;
+    }
+    strcpy(mutable_string, (const char*)coord_string);
+
+    mxVec2d* coords_array = NULL;
+    int current_capacity = 0;
+    int count = 0;
+
+    char* token_pair;
+    char* rest_of_string = mutable_string;
+
+    // First, split by '|' to get individual coordinate pairs (e.g., "lat1,lon1")
+    while ((token_pair = strtok_r(rest_of_string, "|", &rest_of_string)) != NULL) {
+        char* token_coord;
+        char* rest_of_pair = token_pair;
+        double lat_val = 0.0;
+        double lon_val = 0.0;
+        int coord_part_count = 0;
+
+        // Split each pair by ',' to get latitude and longitude
+        while ((token_coord = strtok_r(rest_of_pair, ",", &rest_of_pair)) != NULL) {
+            if (coord_part_count == 0) {
+                lat_val = atof(token_coord); // Convert string to double for latitude
+            } else if (coord_part_count == 1) {
+                lon_val = atof(token_coord); // Convert string to double for longitude
+            } else {
+                // More than two parts in a coordinate pair (e.g., "lat,lon,extra")
+                fprintf(stderr, "Warning: Unexpected extra part in coordinate pair: %s\n", token_pair);
+                break; // Stop processing this pair
+            }
+            coord_part_count++;
         }
-        coords_array = new_coords_array;
-      }
 
-      // Store the parsed coordinates
-      coords_array[count].lat = lat_val;
-      coords_array[count].lon = lon_val;
-      count++;
-    } else {
-      fprintf(stderr, "Warning: Skipping malformed coordinate pair: %s\n", token_pair);
-    }
-  }
+        // Ensure we got exactly two parts (lat and lon)
+        if (coord_part_count == 2) {
+            // If capacity is full, reallocate more memory
+            if (count >= current_capacity) {
+                current_capacity = (current_capacity == 0) ? 4 : current_capacity * 2; // Start with 4, then double
+                mxVec2d* new_coords_array = (mxVec2d*)realloc(coords_array, current_capacity * sizeof(mxVec2d));
+                if (new_coords_array == NULL) {
+                    fprintf(stderr, "Error: Memory reallocation failed.\n");
+                    free(coords_array); // Free already allocated memory
+                    free(mutable_string);
+                    *out_num_coords = 0;
+                    return NULL;
+                }
+                coords_array = new_coords_array;
+            }
 
-  free(mutable_string); // Free the mutable copy of the string
-
-  *out_num_coords = count; // Set the output parameter for the number of coordinates
-  return coords_array;     // Return the dynamically allocated array
-}
-
-
-
-double
-mxCalcDistanceBetween2Points(const double lat1, const double lon1, const double lat2, const double lon2, const mx_sqlite_units_of_measure inReturnInUnits,  const double planet_great_circle ) // nm=4, circle=3440.0
-{
-  const double teta1 = deg2rad(lat1);
-  const double teta2 = deg2rad(lon1);
-  const double teta3 = deg2rad(lat2);
-  const double teta4 = deg2rad(lon2);
-
-  // const double distance_result = planet_great_circle * acos(cos(teta1) * cos(teta3) * cos(teta2 - teta4) + (sin(teta1) * sin(teta3)));
-
-  const double planet_great_circle_in_meters = planet_great_circle * mx_nm2meter;
-  const double retValue_d = round(planet_great_circle_in_meters * acos(cos(teta1) * cos(teta3) * cos(teta2 - teta4) + (sin(teta1) * sin(teta3))));
-
-
-  switch (inReturnInUnits)
-  {
-    case nm:
-    {
-      return retValue_d * mx_meter2nm;
-    }
-      break;
-    case meter:
-    {
-      return retValue_d;
-    }
-      break;
-    case km:
-    {
-      return retValue_d * mx_meter2nm * mx_nm2km;
-    }
-      break;
-    case ft:
-    {
-      return retValue_d * mx_meter2feet;
-    }
-      break;
-    default:
-      break;
-  }
-
-
-  return retValue_d; // distance in meters
-  // return distance_result;
-}
-
-
-
-float
-mxCalcBearingBetween2Points(const double gFromLat, const double gFromLong, const double gTargetLat, const double gTargetLong)
-{
-  double pTargetLatRad, pTargetLongRad;
-
-  // convert lat/long to Radiance
-  const double pLatRad  = PI / 180 * gFromLat;
-  const double pLongRad = PI / 180 * gFromLong;
-
-  pTargetLatRad  = PI / 180 * gTargetLat;
-  pTargetLongRad = PI / 180 * gTargetLong;
-
-  double tc1 = fmod(atan2(sin(pTargetLongRad - pLongRad) * cos(pTargetLatRad), cos(pLatRad) * sin(pTargetLatRad) - sin(pLatRad) * cos(pTargetLatRad) * cos(pTargetLongRad - pLongRad)), PI2);
-  double val = RadToDeg * tc1;
-
-
-  // from javascript: http://instantglobe.com/CRANES/GeoCoordTool.html (check the source of the page)
-  // Number.prototype.toBrng = function() {  // convert radians to degrees (as bearing: 0...360)
-  //  return (this.toDeg() + 360) % 360;
-  //}
-  // double bearing = std::fmod(val + 360.0, 360.0); // handle negative bearing correctly
-  double bearing = fmod(val + 360.0, 360.0); // handle negative bearing correctly
-
-  return static_cast<float>(bearing);
-
-}
-
-
-void mxCalcPointBasedOnDistanceAndBearing_2DPlane(double* outLat, double* outLon, const double inLat, const double inLon, const float inHdg_deg, const double inDistance_meters, const double planet_great_circle_in_meters ) // LOCAL_EARTH_RADIUS_M
-{
-  double epsilon = 0.000001; // # threshold for floating-point equality
-
-  // Convert info to radians
-  double rlat1    = mx_DegToRad * inLat; //
-  double rlon1    = mx_DegToRad * inLon;
-  float  rbearing = mx_DegToRad * (360 - inHdg_deg);        // Fix heading with X-Plane
-  double distance = inDistance_meters / planet_great_circle_in_meters;   //missionx::LOCAL_EARTH_RADIUS_M; // EARTH_AVG_RADIUS_NM; // # normalize linear distance to radian slope_angle
-
-  double rlat = asin(sin(rlat1) * cos(distance) + cos(rlat1) * sin(distance) * cos(rbearing));
-  double rlon = 0.0;
-
-  if (cos(rlat) == 0 || fabs(cos(rlat)) < epsilon) //# Endpoint a pole
-    rlon = rlon1;
-  else
-  {
-    double dlon = atan2(sin(rbearing) * sin(distance) * cos(rlat1), cos(distance) - sin(rlat1) * sin(rlat));
-    rlon        = fmod(rlon1 - dlon + PI, PI2) - PI;
-  }
-
-  (*outLat) = rlat * RadToDeg;
-  (*outLon) = rlon * RadToDeg;
-
-}
-
-
-
-int mxIsPointInPolyArea(const mx_vec2d *vecRunwayEdges, const int numEdges, const mx_vec2d planePos) {
-  int i, j;
-  int inside = 0;
-
-  // A polygon must have at least 3 vertices to be considered a valid area.
-  if (numEdges < 3) {
-    // Optionally, you could print an error or handle this case differently.
-    // For simplicity, we return false for invalid polygons.
-    return 0;
-  }
-
-  // Iterate through each edge of the polygon.
-  // The loop connects vertex 'i' with vertex 'j'.
-  // 'j' is initially the last vertex (numEdges - 1) to form the closing edge with the first vertex (i=0).
-  // In subsequent iterations, 'j' becomes the previous 'i', and 'i' increments.
-  for (i = 0, j = numEdges - 1; i < numEdges; j = i++) {
-    const mx_vec2d p1 = vecRunwayEdges[i]; // Current vertex
-    const mx_vec2d p2 = vecRunwayEdges[j]; // Previous vertex
-
-    // Check if the horizontal ray from 'planePos' (extending to the right)
-    // crosses the current edge (p1, p2).
-
-    // Condition 1: The edge must straddle the horizontal ray's y-coordinate (planePos.lon).
-    // This means one endpoint of the edge must be above the ray and the other below (or on) it.
-    // The '!=' ensures that the y-coordinates of p1 and p2 are on opposite sides of planePos.lon.
-    if (((p1.lon > planePos.lon) != (p2.lon > planePos.lon)) &&
-        // Condition 2: The intersection point's x-coordinate must be to the right of planePos.lat.
-        // Calculate the x-coordinate where the ray intersects the line segment (p1, p2).
-        // This formula is derived from the equation of a line and handles the case where
-        // the edge is vertical (p1.lat == p2.lat) or slanted.
-        // If p1.lon == p2.lon (horizontal edge), the first part of the condition
-        // `((p1.lon > planePos.lon) != (p2.lon > planePos.lon))` will be false,
-        // correctly preventing horizontal edges that are not collinear with the ray
-        // from causing an intersection.
-        (planePos.lat < (p2.lat - p1.lat) * (planePos.lon - p1.lon) / (p2.lon - p1.lon) + p1.lat)) {
-
-      // If both conditions are met, the ray crosses this edge.
-      // Flip the 'inside' status.
-      inside = !inside;
+            // Store the parsed coordinates
+            coords_array[count].lat = lat_val;
+            coords_array[count].lon = lon_val;
+            count++;
+        } else {
+            fprintf(stderr, "Warning: Skipping malformed coordinate pair: %s\n", token_pair);
         }
-  }
+    }
 
-  return inside;
+    free(mutable_string); // Free the mutable copy of the string
+
+    *out_num_coords = count; // Set the output parameter for the number of coordinates
+    return coords_array;     // Return the dynamically allocated array
 }
-
 
 
 
@@ -970,11 +809,111 @@ calc_bearing(const double lat1, const double lon1, const double lat2, const doub
 
 
 double
-calc_distance_between_2_points_nm(const double lat1, const double lon1, const double lat2, const double lon2)
+mxCalcDistanceBetween2Points(const double lat1, const double lon1, const double lat2, const double lon2, const mx_units_of_measure inReturnInUnits,  const double planet_great_circle ) // nm=4, circle=3440.0
 {
-  // return mxUtils::mxCalcDistanceBetween2Points(lat1, lon1, lat2, lon2);
-  return mxCalcDistanceBetween2Points(lat1, lon1, lat2, lon2, nm, 3440.0);
+  const double teta1 = deg2rad(lat1);
+  const double teta2 = deg2rad(lon1);
+  const double teta3 = deg2rad(lat2);
+  const double teta4 = deg2rad(lon2);
+
+  // const double distance_result = planet_great_circle * acos(cos(teta1) * cos(teta3) * cos(teta2 - teta4) + (sin(teta1) * sin(teta3)));
+
+  const double planet_great_circle_in_meters = planet_great_circle * nm2meter;
+  const double retValue_d = round(planet_great_circle_in_meters * acos(cos(teta1) * cos(teta3) * cos(teta2 - teta4) + (sin(teta1) * sin(teta3))));
+
+
+  switch (inReturnInUnits)
+  {
+  case nm:
+    {
+      return retValue_d * meter2nm;
+    }
+    break;
+  case meter:
+    {
+      return retValue_d;
+    }
+    break;
+  case km:
+    {
+      return retValue_d * meter2nm * nm2km;
+    }
+    break;
+  case ft:
+    {
+      return retValue_d * meter2feet;
+    }
+    break;
+  default:
+    break;
+  }
+
+
+  return retValue_d; // distance in meters
+  // return distance_result;
 }
+
+
+float
+mxCalcBearingBetween2Points(const double gFromLat, const double gFromLong, const double gTargetLat, const double gTargetLong)
+{
+  double pTargetLatRad, pTargetLongRad;
+
+  // convert lat/long to Radiance
+  const double pLatRad  = PI / 180 * gFromLat;
+  const double pLongRad = PI / 180 * gFromLong;
+
+  pTargetLatRad  = PI / 180 * gTargetLat;
+  pTargetLongRad = PI / 180 * gTargetLong;
+
+  double tc1 = fmod(atan2(sin(pTargetLongRad - pLongRad) * cos(pTargetLatRad), cos(pLatRad) * sin(pTargetLatRad) - sin(pLatRad) * cos(pTargetLatRad) * cos(pTargetLongRad - pLongRad)), PI2);
+  double val = RadToDeg * tc1;
+
+
+  // from javascript: http://instantglobe.com/CRANES/GeoCoordTool.html (check the source of the page)
+  // Number.prototype.toBrng = function() {  // convert radians to degrees (as bearing: 0...360)
+  //  return (this.toDeg() + 360) % 360;
+  //}
+  // double bearing = std::fmod(val + 360.0, 360.0); // handle negative bearing correctly
+  double bearing = fmod(val + 360.0, 360.0); // handle negative bearing correctly
+
+  return bearing;
+
+}
+
+
+void mxCalcPointBasedOnDistanceAndBearing_2DPlane(double* outLat, double* outLon, const double inLat, const double inLon, const float inHdg_deg, const double inDistance_meters, const double planet_great_circle_in_meters ) // EARTH_RADIUS_M
+{
+  double epsilon = 0.000001; // # threshold for floating-point equality
+
+  // Convert info to radians
+  double rlat1    = DegToRad * inLat; //
+  double rlon1    = DegToRad * inLon;
+  float  rbearing = DegToRad * (360 - inHdg_deg);        // Fix heading with X-Plane
+  double distance = inDistance_meters / planet_great_circle_in_meters;   //missionx::EARTH_RADIUS_M; // EARTH_AVG_RADIUS_NM; // # normalize linear distance to radian slope_angle
+
+  double rlat = asin(sin(rlat1) * cos(distance) + cos(rlat1) * sin(distance) * cos(rbearing));
+  double rlon = 0.0;
+
+  if (cos(rlat) == 0 || fabs(cos(rlat)) < epsilon) //# Endpoint a pole
+    rlon = rlon1;
+  else
+  {
+    double dlon = atan2(sin(rbearing) * sin(distance) * cos(rlat1), cos(distance) - sin(rlat1) * sin(rlat));
+    rlon        = fmod(rlon1 - dlon + PI, PI2) - PI;
+  }
+
+  (*outLat) = rlat * RadToDeg;
+  (*outLon) = rlon * RadToDeg;
+
+}
+
+
+
+
+
+
+
 
 // https://gis.stackexchange.com/questions/252672/calculate-bearing-between-two-decimal-gps-coordinates-arduino-c?noredirect=1&lq=1
 static void mx_bearing (sqlite3_context* context, int argc, sqlite3_value** argv) {
@@ -1033,15 +972,14 @@ mx_get_center_between_2_points(sqlite3_context* context, int argc, sqlite3_value
       char   charray[30];
 
       const float brng = (float) calc_bearing(rValat1, rValon1, rValat2, rValon2);
-      double distnace_nm = calc_distance_between_2_points_nm(rValat1, rValon1, rValat2, rValon2);
-      // mxUtils::mxCalcPointBasedOnDistanceAndBearing_2DPlane(outLat1, outLon1, rValat1, rValon1, brng, ((distnace_nm * 0.5) * missionx::nm2meter));
-      mxCalcPointBasedOnDistanceAndBearing_2DPlane(&outLat1, &outLon1, rValat1, rValon1, brng, ((distnace_nm * 0.5) * missionx::nm2meter), LOCAL_EARTH_RADIUS_M);
+      double distnace_nm = mxCalcDistanceBetween2Points(rValat1, rValon1, rValat2, rValon2, nm, 3440.0);
+      mxCalcPointBasedOnDistanceAndBearing_2DPlane(&outLat1, &outLon1, rValat1, rValon1, brng, ((distnace_nm * 0.5) * nm2meter), EARTH_RADIUS_M);
 
-      #ifdef IBM
+#ifdef IBM
       sprintf(charray, "%4.8f,%4.8f", outLat1, outLon1);
-      #else
+#else
       snprintf(charray, sizeof(charray)-1, "%4.8f,%4.8f", outLat1, outLon1);
-      #endif
+#endif
       sqlite3_result_text(context, charray, -1, SQLITE_TRANSIENT);
       break;
     }
@@ -1067,14 +1005,15 @@ mx_get_point_based_on_bearing_and_length_in_meters(sqlite3_context* context, int
     }
     default:
     {
-      const double rValat1 = sqlite3_value_double(argv[0]); // lat1
-      const double rValon1 = sqlite3_value_double(argv[1]); // lon1
-      char   charray[30];
-      double outLat1 = 0.0, outLon1 = 0.0;
+      double rValat1 = sqlite3_value_double(argv[0]); // lat1
+      double rValon1 = sqlite3_value_double(argv[1]); // lon1
 
-      const float  brng        = (float)sqlite3_value_double(argv[2]); // bearing
-      const double distnace_mt = sqlite3_value_double(argv[3]); // distance
-      mxCalcPointBasedOnDistanceAndBearing_2DPlane(&outLat1, &outLon1, rValat1, rValon1, brng, distnace_mt, LOCAL_EARTH_RADIUS_M);
+      double outLat1 = 0.0, outLon1 = 0.0;
+      char   charray[30];
+
+      float  brng        = (float)sqlite3_value_double(argv[2]); // bearing
+      double distnace_mt = sqlite3_value_double(argv[3]); // distance
+      mxCalcPointBasedOnDistanceAndBearing_2DPlane(&outLat1, &outLon1, rValat1, rValon1, brng, distnace_mt, EARTH_RADIUS_M);
 
       #ifdef IBM
       sprintf(charray, "%4.8f,%4.8f", outLat1, outLon1);
@@ -1103,6 +1042,7 @@ static void mx_calc_distance(sqlite3_context* context, int argc, sqlite3_value**
 {
   //i64 iVal = 0;
   assert(argc >= 4 && "mx_calc_distance() function received less than 4 variables");
+  double planet_great_circle = 3440.0; // Earth great circle length in Nautical Miles
 
   switch (sqlite3_value_type(argv[0])) {
     case SQLITE_NULL: {
@@ -1110,21 +1050,18 @@ static void mx_calc_distance(sqlite3_context* context, int argc, sqlite3_value**
       break;
     }
     default: {
-      double planet_great_circle = 3440.0; // Earth great circle length in Nautical Miles
 
-      const double rValat1 = sqlite3_value_double(argv[0]); // lat1 - plane
-      const double rValon1 = sqlite3_value_double(argv[1]); // lon1 - plane
-      const double rValat2 = sqlite3_value_double(argv[2]); // lat2 - target
-      const double rValon2 = sqlite3_value_double(argv[3]); // lon2 - target
+      double rValat1 = sqlite3_value_double(argv[0]); // lat1 - plane
+      double rValon1 = sqlite3_value_double(argv[1]); // lon1 - plane
+      double rValat2 = sqlite3_value_double(argv[2]); // lat2 - target
+      double rValon2 = sqlite3_value_double(argv[3]); // lon2 - target
       if (argc > 4)
         planet_great_circle = sqlite3_value_double(argv[4]); // great circle custom value
 
-      const double teta1 = deg2rad(rValat1);
-      const double teta2 = deg2rad(rValon1);
-      const double teta3 = deg2rad(rValat2);
-      const double teta4 = deg2rad(rValon2);
 
-      const double calc_distance = planet_great_circle * acos(cos(teta1) * cos(teta3) * cos(teta2 - teta4) + (sin(teta1) * sin(teta3)));
+      //// const double calc_distance = planet_great_circle * acos(cos(teta1) * cos(teta3) * cos(teta2 - teta4) + (sin(teta1) * sin(teta3)));
+      double calc_distance = mxCalcDistanceBetween2Points (rValat1, rValon1, rValat2, rValon2, nm, planet_great_circle);
+
 
       sqlite3_result_double(context, calc_distance); // always return positive value in nautical miles
       break;
@@ -1132,19 +1069,69 @@ static void mx_calc_distance(sqlite3_context* context, int argc, sqlite3_value**
   }
 }
 
+
+
+int mxIsPointInPolyArea(const mxVec2d *vecRunwayEdges, const int numEdges, const mxVec2d planePos) {
+    int i, j;
+    int inside = 0;
+
+    // A polygon must have at least 3 vertices to be considered a valid area.
+    if (numEdges < 3) {
+        // Optionally, you could print an error or handle this case differently.
+        // For simplicity, we return false for invalid polygons.
+        return 0;
+    }
+
+    // Iterate through each edge of the polygon.
+    // The loop connects vertex 'i' with vertex 'j'.
+    // 'j' is initially the last vertex (numEdges - 1) to form the closing edge with the first vertex (i=0).
+    // In subsequent iterations, 'j' becomes the previous 'i', and 'i' increments.
+    for (i = 0, j = numEdges - 1; i < numEdges; j = i++) {
+        const mxVec2d p1 = vecRunwayEdges[i]; // Current vertex
+        const mxVec2d p2 = vecRunwayEdges[j]; // Previous vertex
+
+        // Check if the horizontal ray from 'planePos' (extending to the right)
+        // crosses the current edge (p1, p2).
+
+        // Condition 1: The edge must straddle the horizontal ray's y-coordinate (planePos.lon).
+        // This means one endpoint of the edge must be above the ray and the other below (or on) it.
+        // The '!=' ensures that the y-coordinates of p1 and p2 are on opposite sides of planePos.lon.
+        if (((p1.lon > planePos.lon) != (p2.lon > planePos.lon)) &&
+            // Condition 2: The intersection point's x-coordinate must be to the right of planePos.lat.
+            // Calculate the x-coordinate where the ray intersects the line segment (p1, p2).
+            // This formula is derived from the equation of a line and handles the case where
+            // the edge is vertical (p1.lat == p2.lat) or slanted.
+            // If p1.lon == p2.lon (horizontal edge), the first part of the condition
+            // `((p1.lon > planePos.lon) != (p2.lon > planePos.lon))` will be false,
+            // correctly preventing horizontal edges that are not collinear with the ray
+            // from causing an intersection.
+            (planePos.lat < (p2.lat - p1.lat) * (planePos.lon - p1.lon) / (p2.lon - p1.lon) + p1.lat)) {
+
+            // If both conditions are met, the ray crosses this edge.
+            // Flip the 'inside' status.
+            inside = !inside;
+        }
+    }
+
+    return inside;
+}
+
+
+
 /*
     Function: mx_plane_on_which_rw_and_how_center_it_is
-    Parameers: Plane lat, plane lon, rw_center_lat_1, rw_center_lon_1, rw_center_lat_2, rw_center_lon2, rw_width_in_meters
+    Parameters: Plane lat, plane lon, rw_center_lat_1, rw_center_lon_1, rw_center_lat_2, rw_center_lon2, rw_width_in_meters
     What needs to calculate: Is plane coordinates in the runway box and how far from center line,
 
     return a string in the format: 1,{plane center from center line}
 */
 
-
 static void
 mx_is_plane_in_rw_area(sqlite3_context* context, int argc, sqlite3_value** argv)
-{
-  assert(argc >= 7 && "mx_is_plane_in_rw_area() function received less than 7 variables");
+{ 
+  assert(argc >= 7 && "mx_plane_on_which_rw_and_how_center_it_is() function received less than 7 variables");
+
+  double planet_great_circle = 3440.0; // Earth great circle length in Nautical Miles
 
   switch (sqlite3_value_type(argv[0]))
   {
@@ -1155,27 +1142,39 @@ mx_is_plane_in_rw_area(sqlite3_context* context, int argc, sqlite3_value** argv)
     }
     default:
     {
-      double planet_great_circle = 3440.0; // Earth great circle length in Nautical Miles
 
-      const double dPlaneLat1 = sqlite3_value_double(argv[0]); // lat1 - plane
-      const double dPlaneLon1 = sqlite3_value_double(argv[1]); // lon1 - plane
-      const double dRunwayCenterEdgeLat1 = sqlite3_value_double(argv[2]); // lat1 - rw center edge lat 1
-      const double dRunwayCenterEdgeLon1 = sqlite3_value_double(argv[3]); // lon1 - rw center edge lon 1
-      const double dRunwayCenterEdgeLat2 = sqlite3_value_double(argv[4]); // lat2 - rw center edge lat 2
-      const double dRunwayCenterEdgeLon2 = sqlite3_value_double(argv[5]); // lon2 - rw center edge lon 2
-      const double dRunwayWidthInMeters  = sqlite3_value_double(argv[6]); // Runway width in meters
+      double dPlaneLat1 = sqlite3_value_double(argv[0]); // lat1 - plane
+      double dPlaneLon1 = sqlite3_value_double(argv[1]); // lon1 - plane
+      double dRunwayCenterEdgeLat1 = sqlite3_value_double(argv[2]); // lat1 - rw center edge lat 1
+      double dRunwayCenterEdgeLon1 = sqlite3_value_double(argv[3]); // lon1 - rw center edge lon 1
+      double dRunwayCenterEdgeLat2 = sqlite3_value_double(argv[4]); // lat2 - rw center edge lat 2
+      double dRunwayCenterEdgeLon2 = sqlite3_value_double(argv[5]); // lon2 - rw center edge lon 2
+      double dRunwayWidthInMeters  = sqlite3_value_double(argv[6]); // Runway width in meters
       if (argc <= 7)
-        planet_great_circle = LOCAL_EARTH_RADIUS_M; // Earth great circle
-      else // if (argc > 7)
+        planet_great_circle = EARTH_RADIUS_M; // Earth great circle
+      else if (argc > 7)
         planet_great_circle = sqlite3_value_double(argv[7]); // great circle custom value in meters
 
-      const mx_vec2d planePos = {.lat = dPlaneLat1, .lon = dPlaneLon1};
-      const mx_vec2d rwCenterEdge1 = { .lat = dRunwayCenterEdgeLat1, .lon = dRunwayCenterEdgeLon1};
-      const mx_vec2d rwCenterEdge2 = { .lat = dRunwayCenterEdgeLat2, .lon = dRunwayCenterEdgeLon2};
+
+      // Convert lat/lon to Radians
+      //const double       rPlaneLat1            = deg2rad(dPlaneLat1); // lat1 - plane
+      //const double       rPlaneLon1            = deg2rad(dPlaneLon1); // lon1 - plane
+      //const double       rRunwayCenterEdgeLat1 = deg2rad(dRunwayCenterEdgeLat1); // lat1 - rw center edge lat 1
+      //const double       rRunwayCenterEdgeLon1 = deg2rad(dRunwayCenterEdgeLon1); // lon1 - rw center edge lon 1
+      //const double       rRunwayCenterEdgeLat2 = deg2rad(dRunwayCenterEdgeLat2); // lat2 - rw center edge lat 2
+      //const double       rRunwayCenterEdgeLon2 = deg2rad(dRunwayCenterEdgeLon2); // lon2 - rw center edge lon 2
+
+      // mxVec2d planePos(dPlaneLat1, dPlaneLon1);
+      // mxVec2d rwCenterEdge1(dRunwayCenterEdgeLat1, dRunwayCenterEdgeLon1);
+      // mxVec2d rwCenterEdge2(dRunwayCenterEdgeLat2, dRunwayCenterEdgeLon2);
+
+      mxVec2d planePos = {.lat = dPlaneLat1, .lon = dPlaneLon1};
+      mxVec2d rwCenterEdge1 = { .lat = dRunwayCenterEdgeLat1, .lon = dRunwayCenterEdgeLon1};
+      mxVec2d rwCenterEdge2 = { .lat = dRunwayCenterEdgeLat2, .lon = dRunwayCenterEdgeLon2};
 
       float bearing_between_rw_edges = (float)mxCalcBearingBetween2Points(rwCenterEdge1.lat, rwCenterEdge1.lon, rwCenterEdge2.lat, rwCenterEdge2.lon);
 
-      mx_vec2d rwTopLeftPos, rwBottomLeftPos, rwTopRightPos, rwBottomRightPos;
+      mxVec2d rwTopLeftPos, rwBottomLeftPos, rwTopRightPos, rwBottomRightPos;
 
       // TL                    TR
       // +---------------------+
@@ -1188,7 +1187,7 @@ mx_is_plane_in_rw_area(sqlite3_context* context, int argc, sqlite3_value** argv)
       // calculate Bottom Left
       mxCalcPointBasedOnDistanceAndBearing_2DPlane(&rwBottomLeftPos.lat, &rwBottomLeftPos.lon, rwCenterEdge1.lat, rwCenterEdge1.lon, bearing_between_rw_edges - -90.0f, dRunwayWidthInMeters / 2.0, planet_great_circle);
 
-      // now calculate second runway edge with opposite bearings
+      // now calculate second runway edge with oposite bearings
       bearing_between_rw_edges -= 180.0;
       if (bearing_between_rw_edges < 0.0)
         bearing_between_rw_edges += 360.0;
@@ -1198,19 +1197,22 @@ mx_is_plane_in_rw_area(sqlite3_context* context, int argc, sqlite3_value** argv)
       // Calculate Bottom Right
       mxCalcPointBasedOnDistanceAndBearing_2DPlane(&rwBottomRightPos.lat, &rwBottomRightPos.lon, rwCenterEdge2.lat, rwCenterEdge2.lon, bearing_between_rw_edges + -90.0f, dRunwayWidthInMeters / 2.0, planet_great_circle);
 
-      // C equivalent of const std::vector<mx_vec2d> vecRunwayEdges
-      // Create the array of runway edges
-      const mx_vec2d vecRunwayEdges[] = {
-        rwTopLeftPos,
-        rwTopRightPos,
-        rwBottomRightPos,
-        rwBottomLeftPos
-    };
+      // check if position is inside the runway area
+      // const std::vector<mxVec2d> vecRunwayEdges = { rwTopLeftPos, rwTopRightPos, rwBottomRightPos, rwBottomLeftPos };
 
-      // 3. Determine the number of elements in the array
-      //    This is crucial for C functions that operate on arrays
-      const int numEdges = 4; // sizeof(vecRunwayEdges) / sizeof(vecRunwayEdges[0]);
-      const int result = mxIsPointInPolyArea(vecRunwayEdges, numEdges, planePos);
+      // C equivalent of const std::vector<mxVec2d> vecRunwayEdges
+        // Create the array of runway edges
+        const mxVec2d vecRunwayEdges[] = {
+          rwTopLeftPos,
+          rwTopRightPos,
+          rwBottomRightPos,
+          rwBottomLeftPos
+      };
+
+        // 3. Determine the number of elements in the array
+        //    This is crucial for C functions that operate on arrays
+        const int numEdges = sizeof(vecRunwayEdges) / sizeof(vecRunwayEdges[0]);
+        const int result = mxIsPointInPolyArea(vecRunwayEdges, numEdges, planePos);
 
       //sqlite3_result_text(context, )
       sqlite3_result_int(context, result);
@@ -1219,13 +1221,12 @@ mx_is_plane_in_rw_area(sqlite3_context* context, int argc, sqlite3_value** argv)
   }
 }
 
-
 /*
-@ mx_get_shortest_distance_to_rw_vector() function receive 3 coordinates:
+@ mx_get_shortest_distance_to_rw_vector() function receive 3 coordinatates:
 First: lat,lon: Plane touchdown position
 Second coordinates: Runway Center Edge Start
 Third coordinates: Runway Center Edge End
-Optional: planet radius in meters, default is EARTH radius
+Optional: planet radius in meters, default is EARTH radiues
 
 Overall, minimum parameters to provide are: 6.
 */
@@ -1243,30 +1244,27 @@ mx_get_shortest_distance_to_rw_vector(sqlite3_context* context, int argc, sqlite
       break;
     }
     default:
-    {
-
-      double dPlaneLat1            = sqlite3_value_double(argv[0]); // lat1 - plane
-      double dPlaneLon1            = sqlite3_value_double(argv[1]); // lon1 - plane
-      double dRunwayCenterEdgeLat1 = sqlite3_value_double(argv[2]); // lat1 - rw center edge lat 1
-      double dRunwayCenterEdgeLon1 = sqlite3_value_double(argv[3]); // lon1 - rw center edge lon 1
-      double dRunwayCenterEdgeLat2 = sqlite3_value_double(argv[4]); // lat2 - rw center edge lat 2
-      double dRunwayCenterEdgeLon2 = sqlite3_value_double(argv[5]); // lon2 - rw center edge lon 2
-//      if (argc > 6)
-//        planet_great_circle = sqlite3_value_double(argv[6]); // great planet circle, custom value in meters
-
-
-      missionx::mxVec2d planePos (dPlaneLat1, dPlaneLon1);
-      missionx::mxVec2d rwCenterEdge1(dRunwayCenterEdgeLat1, dRunwayCenterEdgeLon1);
-      missionx::mxVec2d rwCenterEdge2(dRunwayCenterEdgeLat2, dRunwayCenterEdgeLon2);
+      {
+        double dPlaneLat1            = sqlite3_value_double(argv[0]); // lat1 - plane
+        double dPlaneLon1            = sqlite3_value_double(argv[1]); // lon1 - plane
+        double dRunwayCenterEdgeLat1 = sqlite3_value_double(argv[2]); // lat1 - rw center edge lat 1
+        double dRunwayCenterEdgeLon1 = sqlite3_value_double(argv[3]); // lon1 - rw center edge lon 1
+        double dRunwayCenterEdgeLat2 = sqlite3_value_double(argv[4]); // lat2 - rw center edge lat 2
+        double dRunwayCenterEdgeLon2 = sqlite3_value_double(argv[5]); // lon2 - rw center edge lon 2
+        //      if (argc > 6)
+        //        planet_great_circle = sqlite3_value_double(argv[6]); // great planet circle, custom value in meters
 
 
-      // const float bearing_between_rw_edges                 = (float)mxUtils::mxCalcBearingBetween2Points(rwCenterEdge1.lat, rwCenterEdge1.lon, rwCenterEdge2.lat, rwCenterEdge2.lon);
-      // const float bearing_between_Edge1_and_touchdownPoint = (float)mxUtils::mxCalcBearingBetween2Points(rwCenterEdge1.lat, rwCenterEdge1.lon, planePos.lat, planePos.lon);
+        mxVec2d planePos = { dPlaneLat1, dPlaneLon1};
+        mxVec2d rwCenterEdge1 = { dRunwayCenterEdgeLat1, dRunwayCenterEdgeLon1 };
+        mxVec2d rwCenterEdge2 = { dRunwayCenterEdgeLat2, dRunwayCenterEdgeLon2 };
+
+
       const float bearing_between_rw_edges                 = (float)mxCalcBearingBetween2Points(rwCenterEdge1.lat, rwCenterEdge1.lon, rwCenterEdge2.lat, rwCenterEdge2.lon);
       const float bearing_between_Edge1_and_touchdownPoint = (float)mxCalcBearingBetween2Points(rwCenterEdge1.lat, rwCenterEdge1.lon, planePos.lat, planePos.lon);
       const float angle_between_the_2_bearings             = fabsf(bearing_between_rw_edges - bearing_between_Edge1_and_touchdownPoint);
 
-      // Calculate shortest distance using pythagorian theorm.
+      // Calculate the shortest distance using pythagorian theorem.
       //
       //                           C
       //                           +
@@ -1276,13 +1274,19 @@ mx_get_shortest_distance_to_rw_vector(sqlite3_context* context, int argc, sqlite
       //                     A +---+ B (90deg)
       //
       // The idea is, that the shortest line to the AB vector is a strait line that creates 90deg angle.
-      // We can caluclate the length of the height (BC) using: sin(a) = BC/AC  =>  sin(a) * AC = BC
+      // We can calculate the length of the height (BC) using: sin(a) = BC/AC  =>  sin(a) * AC = BC
       //
+      //#ifndef RELEASE
+      //      double AC_length_meters = mxUtils::mxCalcDistanceBetween2Points (rwCenterEdge1.lat, rwCenterEdge1.lon, planePos.lat, planePos.lon, missionx::mx_units_of_measure::meter, missionx::EARTH_RADIUS_M);
+      //      double sinRsult         = sin(deg2rad(angle_between_the_2_bearings));
+      //      double AB_length_meter  = sinRsult * AC_length_meters;
+      //#endif
 
       // -1.0 means outside of runway boundaries. Since we always pick the "left" center the plane can be to the right of it, so the angles can be 0 and 180 at worst cases. You should test if plane is inside the RW boundaries first and only then check the touchdown relative to center.
       double result = -1.0;
       if (angle_between_the_2_bearings < 180.0f)
-        result = sin(deg2rad(angle_between_the_2_bearings)) * mxCalcDistanceBetween2Points(rwCenterEdge1.lat, rwCenterEdge1.lon, planePos.lat, planePos.lon, meter, missionx::EARTH_RADIUS_M);
+        result = sin(deg2rad(angle_between_the_2_bearings)) * mxCalcDistanceBetween2Points(rwCenterEdge1.lat, rwCenterEdge1.lon, planePos.lat, planePos.lon, meter, EARTH_RADIUS_M);
+
 
       // sqlite3_result_text(context, )
       sqlite3_result_double(context, result);
@@ -1306,7 +1310,7 @@ static void
 mx_is_plane_in_airport_boundary(sqlite3_context* context, int argc, sqlite3_value** argv)
 {
   assert(argc >= 3 && "mx_is_plane_in_airport_boundary() function received less than 3 variables");
-  int result = 0;
+  int result = 0; // false
 
 //  double planet_great_circle = EARTH_RADIUS_M;
   switch (sqlite3_value_type(argv[0]))
@@ -1323,34 +1327,17 @@ mx_is_plane_in_airport_boundary(sqlite3_context* context, int argc, sqlite3_valu
       double dPlaneLon1 = sqlite3_value_double(argv[1]); // lon1 - plane
       const unsigned char*  argv2_const      = sqlite3_value_text(argv[2]);   // set of lat, lon | lat, lon | ...
 
-      std::string argv2 = std::string(reinterpret_cast<const char*> (argv2_const));
+      int num_parsed_coords = 0;
+      mxVec2d* parsed_coords = parseCoordinatesString(argv2_const, &num_parsed_coords);
 
-
-      if ( ! argv2.empty() )
+      if (parsed_coords != NULL)
       {
+        const mxVec2d planePos = {dPlaneLat1, dPlaneLon1};
+        result = mxIsPointInPolyArea(parsed_coords, num_parsed_coords, planePos);
 
-        missionx::mxVec2d planePos; // (dPlaneLat1, dPlaneLon1);
-
-        planePos.lat = dPlaneLat1;
-        planePos.lon = dPlaneLon1;
-
-        // http://www.martinbroadhurst.com/split-a-string-in-c.html
-        //dynarray* arrayOfCoordinates = dynarray_create(0);
-        std::vector<missionx::mxVec2d> vecCoordinates;
-        std::vector<std::string> vecSplitNodes = mxUtils::split(argv2, '|');
-        for (const auto& node : vecSplitNodes)
-        {
-          std::vector<std::string> vecOf2 = mxUtils::split(node, ',');
-          if (vecOf2.size() > 1)
-          {
-            const missionx::mxVec2d vec2(mxUtils::stringToNumber<double>(vecOf2.at(0)), mxUtils::stringToNumber<double>(vecOf2.at(1)));
-            vecCoordinates.emplace_back(vec2);
-          }
-          else
-            continue;
-        }
-
-        result = mxUtils::mxIsPointInPolyArea(vecCoordinates, planePos);
+        // free memory
+        free(parsed_coords);
+        parsed_coords = NULL; // Good practice to set pointer to NULL after freeing
 
       } // if bounds is not NULL
 
@@ -2443,7 +2430,7 @@ static void differenceFunc(sqlite3_context* context, int argc, sqlite3_value** a
 ** functions.  This should be the only routine in this file with
 ** external linkage.
 */
-int mxRegisterExtensionFunctions(sqlite3* db) {
+int RegisterExtensionFunctions(sqlite3* db) {
   static const struct FuncDef {
     char* zName;
     signed char nArg;
@@ -2696,8 +2683,5 @@ void print_elem(void* e, int64_t c, void* p) {
   //  https://stackoverflow.com/questions/9225567/how-to-portably-print-a-int64-t-type-in-c
   printf("%d => %" PRId64 "\n", ee, c);
 }
-
-
-// } // end of namespace
 
 #endif // !EXTENSIONFUNCTION_H_
