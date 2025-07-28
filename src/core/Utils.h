@@ -675,9 +675,11 @@ public:
 
   static bool xml_add_node_to_element_IXMLNode(IXMLNode& rootNode, IXMLNode& inNodeToAdd, const std::string& nameOfParentElementToAddTo = missionx::EMPTY_STRING); // v3.0.217.4
 
-         // -------------------------------------------
-         // Function returns random node. IMPORTANT: this will remove the node from source node tree, if we add the result node to an other element.
-  static IXMLNode xml_get_node_randomly_by_name_IXMLNode (const IXMLNode & rootNode, const std::string &inTagToSearch, std::string& outErr, bool flag_removePicked = false); // v3.0.217.4 return random XML node from N child nodes with same tag name
+  // -------------------------------------------
+  // Function returns random node. IMPORTANT: this will remove the node from source node tree, if we add the result node to another element.
+  // And empty node means we did not find a valid <tag>
+  static IXMLNode xml_get_node_randomly_by_name_IXMLNode (const IXMLNode & rootNode, const std::string &inTagToSearch, bool flag_removePicked = false); // v3.0.217.4 return random XML node from N child nodes with same tag name
+  // static IXMLNode xml_get_node_randomly_by_name_IXMLNode (const IXMLNode & rootNode, const std::string &inTagToSearch, std::string& outErr, bool flag_removePicked = false); // v3.0.217.4 return random XML node from N child nodes with same tag name
 
   // -------------------------------------------
   // Function returns random node based on the attribute name and value and not the tag name.
@@ -758,7 +760,7 @@ public:
   static void xml_add_comment(IXMLNode& node, const std::string &inCommentString);
 
   // -------------------------------------------
-  // delete all sub-nodes with certain tag name. If empty, then delete all sub-nodes. It will check only the root level.
+  // Returns the pointer to the XML node after it deletes all sub-nodes with certain tag name. If 'inSubNodeName' is empty, then delete all sub-nodes. It will check only the root level.
   static int xml_delete_all_subnodes(IXMLNode& pNode, const std::string &inSubNodeName = "", bool inDelClear_b = false);
   static int xml_delete_all_subnodes_except(IXMLNode& pNode, const std::string &inSubNodeName = "", bool inDelClear_b = false, const std::string& exceptElementWithTagAndAttribAndValue = "" ); // delete all sub-nodes with certain tag name. If empty then delete all subnodes
 

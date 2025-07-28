@@ -771,6 +771,7 @@ const static ^std::string^                ATTRIB_RADIUS_MT                      
 const static ^std::string^                ATTRIB_LOC_DESC                                        ^ "loc_desc"; ^// v3.0.217.6 used in point template
 const static ^std::string^                ATTRIB_RANDOM_TAG                                      ^ "random_tag"; ^// v3.0.219.1 the name of the element tag to search for random data. Can be random 3D Object or <point> etc.
 const static ^std::string^                ATTRIB_SET_NAME                                        ^ "set_name"; ^// v3.0.219.14 the name of a sub element that we need to random pick from.
+const static ^std::string^                ATTRIB_SLOPE_SET_NAME                                  ^ "slope_set_name"; ^// v25.06.1 explicitly define slope set name. Used in Surprise Me flow code.
 const static ^std::string^                ATTRIB_RANDOM_WATER_TAG                                ^ "random_water_tag"; ^// v3.0.219.10 the name of the element tag to search for random water 3D Objects
 const static ^std::string^                ATTRIB_RELATIVE_POS_BEARING_DEG_DISTANCE_MT            ^ "relative_pos_bearing_deg_distance_mt"; ^// v3.0.219.1 position 3D Object providing: "bearing|distance"
 const static ^std::string^                ATTRIB_DEBUG_RELATIVE_POS                              ^ "debug_relative_pos"; ^// v3.303.14 used with RandomEngine. After calculating ATTRIB_RELATIVE_POS_BEARING_DEG_DISTANCE_MT we need to reset its value so it won't interfer with positioning of <display_object>. The "ATTRIB_RELATIVE_POS_BEARING_DEG_DISTANCE_MT" has two uses, calculate at the start of the mission or calculate relative to target/plane during Random mission creation.
@@ -1063,7 +1064,8 @@ constexpr static ^std::string_view ^        SEARCH_SURPRISE_ME_TEXT             
 constexpr static ^std::string_view ^        DEFAULT_OSM_GEN_FILE             ^ "libs/osm_gen.xml"^// v25.06.1
 constexpr static ^std::string_view ^        DEFAULT_CUSTOM_OSM_GEN_FILE      ^ "libs/custom_osm_gen.xml"^// v25.06.1 user own version of the osm_gen.xml file. It won't be overridden by plugin upgrade nor Skunkcrafts application.
 
-constexpr static ^std::string_view ^        DEFAULT_LAND_HOVER_INV_RADIUS_MT      ^ "400"^// v25.06.1
+constexpr static ^std::string_view ^        DEFAULT_LAND_OR_INV_RADIUS_MT         ^ "350"^// v25.06.1
 constexpr static ^std::string_view ^        DEFAULT_HOVER_RADIUS_MT               ^ "40"^// v25.06.1
+constexpr static ^std::string_view ^        DEFAULT_LAND_ONLY_RADIUS_MT           ^ "20"^// v25.06.1
 constexpr static ^std::string_view ^        DEFAULT_HOVER_VOL_HEIGHT_FOR_OSM_FT   ^ "328"^// v25.06.1
 

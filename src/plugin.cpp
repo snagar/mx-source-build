@@ -283,7 +283,7 @@ XPluginStart(char* outName, char* outSig, char* outDesc)
   mission.mx_menu.toolsCreateExternalFPLN_fromGPS        = XPLMAppendMenuItem(mission.missionMenuToolsEntry, "Create External FPLN based on GPS (fpln_folders.ini)", reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_TOOLS_CREATE_EXTERNAL_FPLN_BASED_ON_GPS), 1);          // v3.0.255.4.4
   mission.mx_menu.toolsModifyPointFileBaseOnTerrainProbe = XPLMAppendMenuItem(mission.missionMenuToolsEntry, "Modify points.xml file (check designer guide)", reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_TOOLS_UPDATE_POINT_IN_FILE_WITH_TEMPLATE_BASED_ON_PROBE), 1); // v3.0.221.15rc3.4
 
-  // Reload pluigins / internal
+  // Reload plugins / internal
   XPLMAppendMenuSeparator(mission.missionMenuToolsEntry);
   mission.mx_menu.reloadPluginsMenu = XPLMAppendMenuItemWithCommand(mission.missionMenuToolsEntry, "Reload Plugins", XPLMFindCommand("missionx/internal/missionx-reload_plugins")); // v3.305.2
 
@@ -520,12 +520,16 @@ XPluginEnable(void)
 // We want to create our layer in the standard map used in the UI (not other maps like the IOS).
   // If the map already exists in X-Plane (i.e., if the user has opened it), we can create our layer immediately.
   // Otherwise, though, we need to wait for the map to be created, and only *then* can we create our layers.
-  if (XPLMMapExists(XPLM_MAP_USER_INTERFACE))
-  {
-    createMapLayer(XPLM_MAP_USER_INTERFACE, nullptr);
-  }
+  // if (XPLMMapExists(XPLM_MAP_USER_INTERFACE))
+  // {
+  //   createMapLayer(XPLM_MAP_USER_INTERFACE, nullptr);
+  // }
+  // else
+  createMapLayer (XPLM_MAP_USER_INTERFACE, nullptr);
+
   // Listen for any new map objects that get created
   XPLMRegisterMapCreationHook(&createMapLayer, nullptr);
+
 
   return 1; // important so callback will continue
 }
@@ -547,8 +551,13 @@ XPluginDisable(void)
   // abort Log writeMessage
   missionx::Log::stop_mission(); // v3.0.217.8
 
-  XPLMDestroyMapLayer(data_manager::g_layer); // v25.06.1
-
+  // v25.06.1
+  // Clean up our map layer: if we created it, we should be good citizens and destroy it before the plugin is unloaded
+  if (missionx::data_manager::g_layer)
+  {
+    // Triggers the will-be-deleted callback of the layer, causing g_layer to get set back to NULL
+    XPLMDestroyMapLayer(missionx::data_manager::g_layer);
+  }
 
   // debug
   Log::logMsg("[Mission-X] Plug-in Disabled");

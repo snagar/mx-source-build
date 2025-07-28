@@ -416,7 +416,7 @@ missionx::Mission::add_GPS_data (const int optionalPointIndex)
   {
     auto              lat_f              = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LAT(), 0.0f);
     auto              lon_f              = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LONG(), 0.0f);
-    const auto        elev_ft_f          = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_ELEV_FT(), 0.0f); // v3.0.241.3
+    const auto        elev_ft_f          = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_ELEV_FT (), 0.0f); // v3.0.241.3
     const std::string icao               = Utils::readAttrib (cNode_ptr, mxconst::get_ELEMENT_ICAO(), "");
     const int         navType_fromNode_i = Utils::readNodeNumericAttrib<int> (cNode_ptr, mxconst::get_ATTRIB_NAV_TYPE(), xplm_Nav_Unknown); // v3.0.255.4
 
@@ -1764,10 +1764,6 @@ std::string Mission::checkGLError(const std::string &label)
 void
 missionx::Mission::flc_threads()
 {
-//#ifdef TIMER_FUNC
-//  missionx::TimerFunc timerFunc(std::string(__FILE__), std::string(__func__), false);
-//#endif // TIMER_FUNC
-
   ///////////////////////////////
   //  Apt Dat Thread
   if (missionx::OptimizeAptDat::aptState.flagAbortThread)
@@ -1860,7 +1856,7 @@ missionx::Mission::flc_threads()
         RandomEngine::threadState.init();
         missionx::data_manager::flag_generate_engine_is_running = false;
 
-        Mission::uiImGuiBriefer->setMessage("Finished Generating mission file. [Destinations: " + Utils::formatNumber<int>(this->engine.get_num_of_flight_legs()) + "].  Based on \"" + Mission::uiImGuiBriefer->selectedTemplateKey + "\".", 8);
+        Mission::uiImGuiBriefer->setMessage(fmt::format("Finished Generating mission file. [Destinations: {}] Based on \"{}\"", this->engine.get_num_of_flight_legs(), Mission::uiImGuiBriefer->selectedTemplateKey ),  8);
 
         if (missionx::data_manager::getGeneratedFromLayer() == missionx::uiLayer_enum::option_external_fpln_layer )
           Mission::uiImGuiBriefer->asyncSecondMessageLine.clear(); // Do not display Flight Plan in "option_external_fpln_layer" layer since we know the route.

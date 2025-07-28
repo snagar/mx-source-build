@@ -653,13 +653,9 @@ missionx::Utils::splitStringAndGetShuffledIndexVector (const std::string &inStri
 std::vector<int>
 missionx::Utils::getShuffledIndexVector (const int &inNumbersInVector)
 {
-
   // init random seed
   std::random_device rd;
   std::mt19937       g (rd ()); // Mersenne Twister engine seeded by random_device
-
-  // for (int i = 0; i < inNumbersInVector; ++i)
-  //   shuffled_indx_vec.push_back (i);
 
   std::vector<int> shuffled_indx_vec (inNumbersInVector);
   std::iota(shuffled_indx_vec.begin(), shuffled_indx_vec.end(), 0);
@@ -1405,10 +1401,11 @@ IXMLNode missionx::Utils::xml_get_node_ptr_randomly_by_attrib_and_value (const I
 
   // -------------------------------------------
 
+// IXMLNode
+// missionx::Utils::xml_get_node_randomly_by_name_IXMLNode (const IXMLNode & rootNode, const std::string &inTagToSearch, std::string& outErr, const bool flag_removePicked /*default false*/)
 IXMLNode
-missionx::Utils::xml_get_node_randomly_by_name_IXMLNode (const IXMLNode & rootNode, const std::string &inTagToSearch, std::string& outErr, const bool flag_removePicked /*default false*/)
+missionx::Utils::xml_get_node_randomly_by_name_IXMLNode (const IXMLNode & rootNode, const std::string &inTagToSearch, const bool flag_removePicked /*default false*/)
 {
-  outErr.clear();
   IXMLNode result = IXMLNode::emptyIXMLNode;
 
   if (const int nChilds = (inTagToSearch.empty ()) ? rootNode.nChildNode () : rootNode.nChildNode (inTagToSearch.c_str ())
@@ -1419,7 +1416,8 @@ missionx::Utils::xml_get_node_randomly_by_name_IXMLNode (const IXMLNode & rootNo
   }
   else
   {
-    outErr = "[utils random pick] Failed to find tag: <" + inTagToSearch + "> to pick from root node: " + rootNode.getName() + ". Check your XML file.";
+    Log::logMsgThread ( "[utils random pick] Failed to find tag: <" + inTagToSearch + "> to pick from root node: " + rootNode.getName() + ". Check your XML file." );
+    return IXMLNode::emptyIXMLNode;
   }
 
   if (flag_removePicked)
@@ -1458,7 +1456,8 @@ missionx::Utils::xml_get_node_randomly_by_name_and_distance_IXMLNode (const IXML
   // if no distance restrictions
   if (inMinDistance == 0.0 && inMaxDistance == 0.0)
   {
-    result = Utils::xml_get_node_randomly_by_name_IXMLNode(rootNode, inTagToSearch, outErr, flag_removePicked);
+    // result = Utils::xml_get_node_randomly_by_name_IXMLNode(rootNode, inTagToSearch, outErr, flag_removePicked);
+    result = Utils::xml_get_node_randomly_by_name_IXMLNode(rootNode, inTagToSearch, flag_removePicked);
     return result;
   }
   else

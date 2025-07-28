@@ -4424,15 +4424,13 @@ data_manager::setSharedDatarefData()
       }
     }
 
-#ifndef RELEASE
+    #ifndef RELEASE
     Log::logMsg("\nwwwwwwwwww Writing to shared datarefs  wwwwwwwwwwww\n");
-#endif
+    #endif
 
 
     /// set shared data
-    std::string dref_name;
-
-    dref_name = "xpshared/target/lat"; // holds target latitude
+    std::string dref_name = "xpshared/target/lat"; // holds target latitude
     if (Utils::isElementExists(mapSharedParams, dref_name))
       mapSharedParams[dref_name].setValue(navAid.lat);
 
@@ -5039,6 +5037,84 @@ data_manager::db_close_database(dbase& inDB)
     inDB.close_database();
 }
 
+// -------------------------------------
+
+void
+data_manager::fetch_nearest_osm_navaid_from_sqlite (missionx::NavAidInfo *inFrom_navaid, missionx::NavAidInfo *out_navaid)
+{
+  if (inFrom_navaid == nullptr || out_navaid == nullptr)
+    return;
+
+  std::lock_guard<std::mutex> lock(s_thread_sync_mutex);
+
+  std::string query = R"(select v1.icao, v1.ap_name, v1.ap_lat, v1.ap_lon, v1.distance
+from  (
+select mx_calc_distance({1}, {2}, v1.ap_lat , v1.ap_lon, 3440) as distance, v1.icao_id, v1.icao, v1.ap_name, v1.ap_lat, v1.ap_lon
+from airports_vu v1
+where 1 = 1
+and {1} between trunc(v1.ap_lat) - 2.0 and trunc(v1.ap_lat) + 2.0
+and {2} between trunc(v1.ap_lon) - 2.0 and trunc(v1.ap_lon) + 2.0
+) as v1
+where  1= 1
+and distance <= 0.53
+order by distance asc
+limit 1
+)";
+
+
+  if (init_xp_airport_db() && db_xp_airports.db_is_open_and_ready)
+  {
+    const std::string stmt_uq_name = "nearest_navaid_query_from_db";
+    // read query from query.xml file.
+    Utils::read_external_sql_query_file(data_manager::mapQueries, mxconst::get_SQLITE_ILS_SQLS());
+    if (mxUtils::isElementExists(mapQueries, stmt_uq_name))
+    {
+      query = mapQueries[stmt_uq_name];
+      #ifndef RELEASE
+      Log::logMsgThread(fmt::format ("[{}] Picked query from sql.xml file.", __func__) );
+      #endif
+    }
+
+
+    // prepare query with lat/lon
+    std::map<int, std::string> mapArgs = { { 1, inFrom_navaid->getLat () }, { 2, inFrom_navaid->getLon () } };
+    query                              = mxUtils::format (query, mapArgs);
+
+    #ifndef RELEASE
+    Log::logMsgThread (fmt::format ("[{}] Query:\n{}", __func__, query));
+    Log::logMsgThread (fmt::format ("[{}] Query lat/lon: {}\n", __func__, inFrom_navaid->get_latLon ())); // debug
+    #endif
+
+    // add query to "global query" map if it does not exist
+    if (!mxUtils::isElementExists(mapQueries, stmt_uq_name)) // add the query to mapQueries
+      mapQueries[stmt_uq_name] = query;
+
+    // prepare and execute the statement
+    if (db_xp_airports.prepareNewStatement(stmt_uq_name, query))
+    {
+      assert(data_manager::db_xp_airports.mapStatements[stmt_uq_name] != nullptr && fmt::format("[{}] Could not find the query.", __func__ ).c_str () );
+      // There should only be one row
+      int seq = 0;
+      while (sqlite3_step(db_xp_airports.mapStatements[stmt_uq_name]) == SQLITE_ROW && seq < 1)
+      {
+        // mx_ils_airport_row_strct row;
+        int column_indx = 0;
+        out_navaid->setID (std::string(reinterpret_cast<const char*>(sqlite3_column_text(db_xp_airports.mapStatements[stmt_uq_name], column_indx) ) ) );
+        column_indx++;
+        out_navaid->setName (std::string(reinterpret_cast<const char*>(sqlite3_column_text(db_xp_airports.mapStatements[stmt_uq_name], column_indx) ) ) );
+        column_indx++;
+        out_navaid->lat = static_cast<float> ( sqlite3_column_double(db_xp_airports.mapStatements[stmt_uq_name], column_indx) );
+        column_indx++;
+        out_navaid->lon = static_cast<float> ( sqlite3_column_double(db_xp_airports.mapStatements[stmt_uq_name], column_indx) );
+
+        seq++; // force exit
+      } // end while
+
+    } // end prepared stmt and data fetching
+
+  } // if init_xp_airport_db() && db_xp_airports.db_is_open_and_ready
+
+}
 
 // -------------------------------------
 
@@ -5168,7 +5244,7 @@ where 1 = 1
     (*outStatusMessage) = "Could not work on database. Consider rebuilding using apt.dat optimization.\n" + db_xp_airports.last_err;
   }
 
-  (*outState) = mxFetchState_enum::fetch_ended; // once we change the state, the UI can show/hide the relevent layers/widgets
+  (*outState) = mxFetchState_enum::fetch_ended; // once we change the state, the UI can show/hide the relevant layers/widgets
 }
 
 // -------------------------------------
@@ -8737,9 +8813,9 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_
           auto tag_node      = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (nodeCount, "tag", "k", "ways", false, false);
           q->total_way_count = mxUtils::stringToNumber<int> (Utils::xml_get_attribute_value (tag_node, "v", "0"));
 
-          if (!q->xml_tags_node.isEmpty () && (q->total_way_count > 0))
+          if (!q->xml_q_tags_header_node.isEmpty () && (q->total_way_count > 0))
           {
-            q->xml_tags_node.addChild (nodeCount);
+            q->xml_q_tags_header_node.addChild (nodeCount);
 
             // write to cache file
             if (std::ofstream outFile (filename);
@@ -8922,12 +8998,14 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
     return;
 
   q->start_time = std::chrono::steady_clock::now ();
+  q->flag_data_respond_was_valid = false;
 
   // prepare request
   std::string filledQuery = q->q_text;
   const size_t pos_all_bbox = filledQuery.find(q->ALL_BBOX_STR);
   if (const size_t pos_bbox = filledQuery.find(q->BBOX_STR);
-          (pos_bbox != std::string::npos) + (pos_all_bbox != std::string::npos) )
+      (pos_bbox != std::string::npos) + (pos_all_bbox != std::string::npos)
+     )
   {
     bool        useCache = false;
     std::string response_text;
@@ -8980,10 +9058,12 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
             {
               useCache = false;
               std::filesystem::remove (filename);
+              q->flag_data_respond_was_valid = false;
             }
             else
             {
               useCache = true;
+              q->flag_data_respond_was_valid = true;
               Log::logMsgThread (fmt::format ("Using cache {}\n", filename));
             }
           }
@@ -9040,6 +9120,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
 
       if (res == CURLE_OK)
       {
+        q->flag_data_respond_was_valid = true;
         Log::logMsgThread (fmt::format ("Query ID: {} BBOX: {}\n", q->id, q->q_bbox));
 
         // write to cache file
@@ -9054,6 +9135,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
       {
         // res != CURLE_OK
         response_text.clear ();
+        q->flag_data_respond_was_valid = false;
         Log::logMsgThread (fmt::format ("\tCurl error: \n\t{}", curl_easy_strerror (res)));
       }
 
@@ -9075,11 +9157,12 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
       Log::logMsgThread (fmt::format ("[{}] (xml_osm_node) Parse result osm: {}, nLine: {}\n", __func__, static_cast<int> (parseResult.errorCode), parseResult.nLine));
       #endif
 
-      int nodeCount = xml_osm_node.nChildNode ("way");
-      if (nodeCount > 0)
+      q->total_way_count = xml_osm_node.nChildNode ("way");
+
+      if (q->total_way_count > 0)
       {
         // Get shuffled vector index
-        std::vector<int> vecShuffleWayNodes = Utils::getShuffledIndexVector (nodeCount);
+        std::vector<int> vecShuffleWayNodes = Utils::getShuffledIndexVector (q->total_way_count);
 
         for (const auto &w : vecShuffleWayNodes)
         {

@@ -67,17 +67,21 @@ public:
   // v25.06.1 ////////////////
   int fpln_seq{ -1 }; // v25.06.1 can hold a sequence number to be used with RandomEngin and Surprise Me flow.
   bool fpln_is_wet{ false };
+  double fpln_slope{ 0.0 }; // holds the expected slope at the target area
 
   // Valid values: "land_hover", "land". Used with the osm_gen.xml nodes. Each <q> node should have "wp_type" attribute that hints the plugin how to deal with the wp.
   // "land_hover" will have two triggers based tasks that will allow you to either land or hover. "land" type will have one task based trigger, with smaller radius to land in.
   // As a rule of thumb, Odd sequence = "land_hover", while Even = "land". Example "seq=1" -> "land_hover", "seq=2" -> "land".
-  std::string fpln_osm_wp_type;
-  //NavAidInfo *prev_navaid{ nullptr };
+
   double fpln_distance_between_prev_and_current_navaid{ 0.0f };
   double fpln_distance_to_next_navaid{ 0.0f };
+  std::string fpln_osm_wp_type;
+  std::string fpln_leg_name;
   IXMLNode fpln_xml_target_leg_node; // holds a pointer to the XML node that represent this navaid. Example: trigger node.
   IXMLNode fpln_xml_inv_node; // holds the target inventory information during random engine mission generation
   IXMLNode fpln_xml_osm_q_node; // holds original osm_query <q> node
+  IXMLNode fpln_xml_way_node; // holds <way> node result
+  IXMLNode fpln_xml_q_tag_header_node; // holds <{topic}> node without the childs, at first
 
   ///// End v25.06.1
 
@@ -144,12 +148,15 @@ public:
      bearing_to_current_target   = in_na.bearing_to_current_target;
      bearing_back_to_prev_target = in_na.bearing_back_to_prev_target;
 
-     fpln_is_wet = in_na.fpln_is_wet; // v25.06.1
-     fpln_seq = in_na.fpln_seq; // v25.06.1
-     fpln_osm_wp_type = in_na.fpln_osm_wp_type; // v25.06.1
-     //prev_navaid = in_na.prev_navaid; // v25.06.1
-     fpln_xml_target_leg_node = in_na.fpln_xml_target_leg_node.deepCopy (); // v25.06.1
-     fpln_xml_osm_q_node = in_na.fpln_xml_osm_q_node.deepCopy ();
+     fpln_is_wet                = in_na.fpln_is_wet; // v25.06.1
+     fpln_seq                   = in_na.fpln_seq; // v25.06.1
+     fpln_osm_wp_type           = in_na.fpln_osm_wp_type; // v25.06.1
+     fpln_leg_name              = in_na.fpln_leg_name; // v25.06.1
+     fpln_xml_target_leg_node   = in_na.fpln_xml_target_leg_node.deepCopy (); // v25.06.1
+     fpln_xml_osm_q_node        = in_na.fpln_xml_osm_q_node.deepCopy ();
+     fpln_xml_inv_node          = in_na.fpln_xml_inv_node.deepCopy ();
+     fpln_xml_way_node          = in_na.fpln_xml_way_node.deepCopy ();
+     fpln_xml_q_tag_header_node = in_na.fpln_xml_q_tag_header_node.deepCopy ();
 
      this->synchToPoint ();
    }
@@ -210,9 +217,12 @@ public:
 
     fpln_seq = -1; // v25.06.1
     fpln_osm_wp_type.clear (); // v25.06.1
-    //prev_navaid = nullptr; // v25.06.1
-    fpln_xml_target_leg_node = IXMLNode::emptyIXMLNode; // v25.06.1
-    fpln_xml_osm_q_node = IXMLNode::emptyIXMLNode; // v25.06.1
+    fpln_leg_name.clear (); // v25.06.1
+    fpln_xml_target_leg_node   = IXMLNode::emptyIXMLNode; // v25.06.1
+    fpln_xml_osm_q_node        = IXMLNode::emptyIXMLNode; // v25.06.1
+    fpln_xml_inv_node          = IXMLNode::emptyIXMLNode; // v25.06.1
+    fpln_xml_way_node          = IXMLNode::emptyIXMLNode; // v25.06.1
+    fpln_xml_q_tag_header_node = IXMLNode::emptyIXMLNode; // v25.06.1
 
   }
 
@@ -386,10 +396,10 @@ public:
 
   std::string getNavAsAptRampCode_1300() const { return mxconst::get_APT_1300_RAMP_CODE_v11_SPACE() + mxUtils::formatNumber<double>(this->lat, 8) + mxconst::get_SPACE() + mxUtils::formatNumber<double>(this->lon, 8); }
 
-  void synchToPoint()
+  void synchToPoint(const bool &force_init_desc = false)
   {
-    if (this->loc_desc.empty()) // v3.0.221.10
-      init_locDesc();            // this init the loc_desc attribute
+    if (this->loc_desc.empty() || force_init_desc) // v3.0.221.10
+    init_locDesc(); // Init the loc_desc attribute
 
     p = missionx::Point(lat, lon);
     p.setElevationMt(height_mt);
@@ -446,6 +456,8 @@ public:
 
   void syncPointToNav()
   {
+    this->init_locDesc ();
+
     // this->NavAidInfo::NavAidInfo();
     lat           = static_cast<float> (p.getLat ());
     lon           = static_cast<float> (p.getLon ());
@@ -508,7 +520,7 @@ public:
     if (this->node.isEmpty())
       return;
 
-    // this->NavAidInfo::NavAidInfo();
+    this->init_locDesc ();
 
     // bool flag_found = false;
     this->lat       = static_cast<float> (Utils::readNumericAttrib (this->node, mxconst::get_ATTRIB_LAT (), 0.0));

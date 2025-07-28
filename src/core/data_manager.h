@@ -68,6 +68,7 @@ namespace structs
 struct strct_osm_query {
   const std::string BBOX_STR = "{{bbox}}";
   const std::string ALL_BBOX_STR = "{{all_bbox}}";
+  bool flag_data_respond_was_valid = false; // indicator of the cached/http request state.
   int total_way_count = 0;
   std::string id;
   std::string sanitized_id;
@@ -84,7 +85,7 @@ struct strct_osm_query {
   IXMLNode    xml_query_node_to_search_a_new_target; // Holds the <q> of the search way as target, query node
 
   // Holds the overpass respond data
-  IXMLNode xml_tags_node; // should hold the <tags> root element
+  IXMLNode xml_q_tags_header_node; // should hold the <tags> root element
   IXMLNode xml_target_way_element {IXMLNode::emptyIXMLNode}; // should hold the subject query way result
   IXMLNode xml_target_nd_node {IXMLNode::emptyIXMLNode}; // should hold the subject way node result
 
@@ -98,7 +99,7 @@ struct strct_osm_query {
   {
     total_way_count = 0;
     IXMLDomParser parser;
-    xml_tags_node = parser.parseString("<region_tags></region_tags>").deepCopy();
+    xml_q_tags_header_node = parser.parseString("<region_tags></region_tags>").deepCopy();
   }
 
   void clone (const strct_osm_query &inStrct)
@@ -119,7 +120,7 @@ struct strct_osm_query {
     this->xml_query_node_to_search_a_new_target= inStrct.xml_query_node_to_search_a_new_target.deepCopy();
 
     // Holds the overpass respond data
-    this->xml_tags_node= inStrct.xml_tags_node.deepCopy();
+    this->xml_q_tags_header_node= inStrct.xml_q_tags_header_node.deepCopy();
     this->xml_target_way_element= inStrct.xml_target_way_element.deepCopy();
     this->xml_target_nd_node= inStrct.xml_target_nd_node.deepCopy();
 
@@ -1181,9 +1182,13 @@ public:
   static int                      overpass_last_url_indx_used_i; // v3.0.255.4.1
   static std::string              fetch_overpass_info(const std::string& in_url_s, std::string& outError); // This function is part of the RandomEngine class call, which is threaded already.
 
+  // v25.06.1 Use the sqlite db information to find the nearest navaid
+  static void fetch_nearest_osm_navaid_from_sqlite (missionx::NavAidInfo *inFrom_navaid, missionx::NavAidInfo *out_navaid);
+
   // ILS SQLITE
-  static void                                               fetch_ils_rw_from_sqlite(missionx::NavAidInfo* inFrom_navaid, std::string* inFilterQuery, missionx::mxFetchState_enum* outState, std::string* outStatusMessage);
-  static void                                               fetch_nav_data_from_sqlite(std::unordered_map<int, mx_nav_data_strct>* mapNavaidData, std::string* inICAO, missionx::Point* inPlanePos, missionx::mxFetchState_enum* outState, std::string* outStatusMessage);
+  static void fetch_ils_rw_from_sqlite (missionx::NavAidInfo *inFrom_navaid, std::string *inFilterQuery, missionx::mxFetchState_enum *outState, std::string *outStatusMessage);
+  static void fetch_nav_data_from_sqlite (std::unordered_map<int, mx_nav_data_strct> *mapNavaidData, std::string *inICAO, missionx::Point *inPlanePos, missionx::mxFetchState_enum *outState, std::string *outStatusMessage);
+
   static std::vector<missionx::mx_ils_airport_row_strct>    table_ILS_rows_vec;
   static std::map<int, missionx::mx_ils_airport_row_strct*> indexPointer_for_ILS_rows_tableVector;                                                          // index pointer to the vector table_ILS_rows_vec
   static void                                               fetch_last_mission_stats(missionx::mxFetchState_enum* outState, std::string* outStatusMessage); // the query is a constant one on same table "stats"
