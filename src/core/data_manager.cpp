@@ -52,11 +52,12 @@ std::string data_manager::selectedMissionKey; // v3.0.241.1
 std::map<std::string, Waypoint>  data_manager::mapFlightLegs;
 std::map<std::string, Objective> data_manager::mapObjectives;
 std::map<std::string, Trigger>   data_manager::mapTriggers;
-std::map<std::string, Inventory> data_manager::mapInventories;     // v3.0.213.1
+std::map<std::string, Inventory> data_manager::mapInventories; // v3.0.213.1
 Inventory                        data_manager::planeInventoryCopy; // v24.12.2
-IXMLNode                                   data_manager::xmlBlueprints;      // v3.0.241.1
-Inventory data_manager::externalInventoryCopy;       // v3.0.241.1 external inventory copy
-std::string         data_manager::active_external_inventory_name; // v3.0.251.1
+IXMLNode                         data_manager::xmlBlueprints; // v3.0.241.1
+Inventory                        data_manager::externalInventoryCopy; // v3.0.241.1 external inventory copy
+std::string                      data_manager::active_external_inventory_name; // v3.0.251.1
+bool                             data_manager::flag_inhibit_mxpad_when_entering_inventory_and_airborne; // v25.06.1
 
 std::map<std::string, Message> data_manager::mapMessages;
 
@@ -2026,8 +2027,6 @@ data_manager::prepare_flight_plan_for_XPLN11(std::deque<NavAidInfo>& inNavList)
       }
     }
 
-    // if (!b_isItAnAirport)  // v3.0.303.2 use WPn(lat/lon) instead of just "lat/lon"
-    //   icao = (Utils::isStringIsValidArithmetic(icao)) ? (WP_S + mxUtils::formatNumber<size_t>(counter)) : icao; // if icao holds lat/lon string then use WPn name
     if (!(b_isItAnAirport) * Utils::isStringIsValidArithmetic(icao))  // v3.0.303.2 use WPn(lat/lon) instead of just "lat/lon"
       icao = (WP_S + mxUtils::formatNumber<size_t>(counter)); // if icao holds lat/lon string then use WPn name
 
@@ -2290,14 +2289,12 @@ data_manager::stopMission()
   mapInventories.clear();
   planeInventoryCopy.init_plane_inventory(); // v25.03.1 reset plane inventory info.  //init(); // v24.12.2
   externalInventoryCopy.reset_inventory_content(); // v24.12.2
-  //data_manager::xmlPlaneInventoryCopy.reset_inventory_content();    // v24.12.2
 
   mapMessages.clear();
 
   errStr.clear();
   briefer.clear();
 
-  // data_manager::loadErrors.clear();
   lstLoadErrors.clear(); // v3.305.3 replaces load Errors
 
   missionSavepointFilePath.clear();
@@ -2374,16 +2371,11 @@ data_manager::init_static()
 {
   const dataref_const dc;
 
-  // #ifdef USE_CURL
   curl = curl_easy_init();
   if (!curl)
   {
     throw std::runtime_error("[data_manager] Couldn't initialize curl");
   }
-  // #endif
-
-  // if (!data_manager::mapFonts.empty())
-  //   data_manager::mapFonts.clear();
 
   xmlMappingNode = IXMLNode::emptyIXMLNode;
 
@@ -2404,12 +2396,10 @@ data_manager::init_static()
 void
 data_manager::release_static()
 {
-  // #ifdef USE_CURL
   if (curl)
   {
     curl_easy_cleanup(curl);
   }
-  // #endif
 }
 
 
@@ -2714,7 +2704,8 @@ data_manager::validateFlightLegs(std::string& outError, std::string& outMsg)
     IXMLNode xDesc = leg.node.getChildNode(mxconst::get_ELEMENT_DESC().c_str()); // v3.303.14
 
     std::string flightLegName = leg.getName();
-    std::string desc          = Utils::xml_read_cdata_node(xDesc, Utils::xml_read_cdata_node(leg.node, "")); // v3.305.3 fixing wrong info that there is no description, we take into consideration dorect description // v3.303.14 fixed desc warning //   leg.getAttribStringValue(mxconst::get_ELEMENT_DESC(), "" , data_manager::errStr);
+    // std::string desc          = Utils::xml_read_cdata_node(xDesc, Utils::xml_read_cdata_node(leg.node, "")); // v3.305.3 fixing wrong info that there is no description, we take into consideration dorect description // v3.303.14 fixed desc warning //   leg.getAttribStringValue(mxconst::get_ELEMENT_DESC(), "" , data_manager::errStr);
+    std::string desc          = Utils::xml_get_text_or_cdata_text(xDesc, Utils::xml_get_text_or_cdata_text(leg.node, "")); // v3.305.3 fixing wrong info that there is no description, we take into consideration dorect description // v3.303.14 fixed desc warning //   leg.getAttribStringValue(mxconst::get_ELEMENT_DESC(), "" , data_manager::errStr);
     std::string nextLeg       = leg.getAttribStringValue(mxconst::get_ATTRIB_NEXT_LEG(), "", errStr);
     std::string target_pos;
     target_pos.clear();
@@ -4036,7 +4027,7 @@ data_manager::setGPS()
     if (navInfo.navRef != XPLM_NAV_NOT_FOUND)
     {
       flag_icao_is_valid = true;
-      XPLMGetNavAidInfo(navInfo.navRef, &navInfo.navType, &navInfo.lat, &navInfo.lon, &navInfo.height_mt, &navInfo.freq, &navInfo.heading, navInfo.ID, navInfo.name, navInfo.inRegion);
+      XPLMGetNavAidInfo (navInfo.navRef, &navInfo.navType, &navInfo.lat, &navInfo.lon, &navInfo.height_mt, &navInfo.freq, &navInfo.heading, navInfo.ID, navInfo.name, nullptr);
       const auto distance = mxUtils::mxCalcDistanceBetween2Points (navInfo.lat, navInfo.lon, lat_f, lon_f);
       if (distance < 1.2)
       {
@@ -6374,7 +6365,7 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::thread_state
 
 
 void
-data_manager::fetch_fpln_from_external_site(base_thread::thread_state* inoutThreadState, const IXMLNode& inUserPref, mxFetchState_enum* outState, std::string* outStatusMessage)
+data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::thread_state* inoutThreadState, const IXMLNode& inUserPref, mxFetchState_enum* outState, std::string* outStatusMessage)
 {
   outStatusMessage->clear();
   std::lock_guard<std::mutex> lock(s_thread_sync_mutex);
@@ -6612,7 +6603,8 @@ data_manager::fetch_fpln_from_external_site(base_thread::thread_state* inoutThre
 std::string
 data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outError)
 {
-  // bool flag_http_success = false;
+  std::lock_guard<std::mutex> lock (s_thread_sync_mutex);
+
   std::string result_s;
   outError.clear();
 
@@ -6621,12 +6613,9 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outE
 
   //// Fetch information
   std::string err;
-  // std::string cert_loc_s = mx_folders_properties.getAttribStringValue(mxconst::get_PROP_MISSIONX_PATH(), "", err);
-
   {
     // #ifdef USE_CURL
 
-    std::lock_guard<std::mutex> lock(s_thread_sync_mutex);
 
     // sleep before calling overpass
     std::this_thread::sleep_for (std::chrono::seconds(2)); // v25.06.1 not overwhelm the overpass server
@@ -6644,6 +6633,8 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outE
       curl_easy_setopt(curl, CURLOPT_URL, in_url_s.c_str());
       // curl_easy_setopt(data_manager::curl, CURLOPT_PORT, 443L);
       curl_easy_setopt(curl, CURLOPT_USERAGENT, APP_NAME);
+
+      // ignore SSL - important for Windows
       curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
       curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
       curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
@@ -6670,7 +6661,8 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outE
 
       if (httpStatus != 200 || !errBuff_s.empty())
       {
-        outError.append(std::string("CURL HTTP status: ") + std::to_string(httpStatus) + ((errBuff_s.empty()) ? "" : std::string(". Error Buff: ") + errBuff_s)); // v3.0.255.4 added logic to display "Error Buff" only if there is a string value in it
+        //outError.append(std::string("CURL HTTP status: ") + std::to_string(httpStatus) + ((errBuff_s.empty()) ? "" : fmt::format(". Error Buff: {}", errBuff_s) ) ); // v3.0.255.4 added logic to display "Error Buff" only if there is a string value in it
+        outError.append (fmt::format ("CURL HTTP status: {} {}", std::to_string (httpStatus), ((errBuff_s.empty()) ? "" : fmt::format (". Error Buff: {}", errBuff_s)))); // v3.0.255.4 added logic to display "Error Buff" only if there is a string value in it
 
         switch (httpStatus)
         {
@@ -6695,9 +6687,6 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outE
       }
 
     } // end data_manager::curl - handling cURL
-    #ifndef RELEASE
-    // Log::logMsgThread("Curl Result: \n" + result_s); // debug
-    #endif
 
     // #endif
   } // end CURL handling if HTTPLIB failed
@@ -6883,7 +6872,7 @@ data_manager::getICAO_info (const std::string &inICAO)
   if (nNavAid.navRef == XPLM_NAV_NOT_FOUND)
     nNavAid.init ();
   else
-    XPLMGetNavAidInfo (nNavAid.navRef, &nNavAid.navType, &nNavAid.lat, &nNavAid.lon, &nNavAid.height_mt, &nNavAid.freq, &nNavAid.heading, nNavAid.ID, nNavAid.name, NULL);
+    XPLMGetNavAidInfo (nNavAid.navRef, &nNavAid.navType, &nNavAid.lat, &nNavAid.lon, &nNavAid.height_mt, &nNavAid.freq, &nNavAid.heading, nNavAid.ID, nNavAid.name, nullptr);
 
   return nNavAid;
 }
@@ -6902,7 +6891,7 @@ data_manager::get_and_guess_nav_info (const std::string &in_id_nav_name, const m
   if (nNavAid.navRef == XPLM_NAV_NOT_FOUND)
     nNavAid.init ();
   else
-    XPLMGetNavAidInfo (nNavAid.navRef, &nNavAid.navType, &nNavAid.lat, &nNavAid.lon, &nNavAid.height_mt, &nNavAid.freq, &nNavAid.heading, nNavAid.ID, nNavAid.name, NULL);
+    XPLMGetNavAidInfo (nNavAid.navRef, &nNavAid.navType, &nNavAid.lat, &nNavAid.lon, &nNavAid.height_mt, &nNavAid.freq, &nNavAid.heading, nNavAid.ID, nNavAid.name, nullptr);
 
   return nNavAid;
 }
@@ -6968,7 +6957,7 @@ data_manager::validate_display_object_file_existence(const std::string& inMissio
   for (int i2 = 0; i2 < legs_i; ++i2)
   {
 
-    auto leg = parentOfLegNodes_ptr.getChildNode(mxconst::get_ELEMENT_LEG().c_str(), i2);
+    const auto leg = parentOfLegNodes_ptr.getChildNode(mxconst::get_ELEMENT_LEG().c_str(), i2);
     if (!leg.isEmpty())
     {
       // loop over all display objects
@@ -7001,13 +6990,13 @@ data_manager::validate_display_object_file_existence(const std::string& inMissio
 
           if (file_name.empty())
             continue;
-          else if (!Utils::isElementExists(mapFilesAndErrors, file_name)) // if not already exists
+
+          if (!Utils::isElementExists(mapFilesAndErrors, file_name)) // if not already exists
           {
             bool is_virtual_file = false;
-            // check if file exists
             std::string err;
 
-
+            // check if file exists
             // Lambda function to search the file //
             const auto lmbda_get_3d_file_location = [file_name = file_name, missionPackageFolder = missionPackageFolder, inGlobalSettingsNode = inGlobalSettingsNode, missionFilePath = missionFilePath](bool& outIsVirtual)
             {
@@ -7021,80 +7010,68 @@ data_manager::validate_display_object_file_existence(const std::string& inMissio
                 outIsVirtual = true;
                 return file_name + " (" + mxUtils::formatNumber<int>(i) + ")";
               }
-              else
-              { // search as physical
 
-                fs::path display_file = file_name;
+              // search as physical
+              const fs::path display_file = file_name;
+              #ifndef RELEASE
+              const std::string filename     = display_file.filename ().string (); // debug
+              const std::string relativePath = display_file.relative_path ().string (); // debug
+              #endif
+
+              if (display_file.filename () == display_file.relative_path ()) // this is probably locally defined 3D object and not an external library 3D object
+              {
+                // get 3D Object location from global_settings
+                // Concatenate the file_name with the mission root folder (missionPackageFolder).
+                bool              flag_found               = false;
+                const IXMLNode    globalSettings_cloneNode = inGlobalSettingsNode.deepCopy ();
+                const std::string obj3d_custom_folder_name = Utils::xml_get_attribute_value_drill (globalSettings_cloneNode, mxconst::get_ATTRIB_OBJ3D_FOLDER_NAME (), flag_found, mxconst::get_ELEMENT_FOLDERS ());
+
                 #ifndef RELEASE
-                const std::string filename     = display_file.filename().string();      // debug
-                const std::string relativePath = display_file.relative_path().string(); // debug
-                #endif
+                const std::string debug_filePath = (obj3d_custom_folder_name.empty ()) ? missionPackageFolder + file_name : missionPackageFolder + obj3d_custom_folder_name + "/" + file_name;
+                #endif // !RELEASE
 
-                if (display_file.filename() == display_file.relative_path()) // this is probably locally defined 3D object and not an external library 3D object
-                {
-                  // get 3D Object location from global_settings
-                  // Concatenate the file_name with the mission root folder (missionPackageFolder).
-                  bool              flag_found               = false;
-                  IXMLNode          globalSettings_cloneNode = inGlobalSettingsNode.deepCopy();
-                  const std::string obj3d_custom_folder_name = Utils::xml_get_attribute_value_drill(globalSettings_cloneNode, mxconst::get_ATTRIB_OBJ3D_FOLDER_NAME(), flag_found, mxconst::get_ELEMENT_FOLDERS());
-
-                  #ifndef RELEASE
-                  // debug purposes
-                  const std::string debug_filePath = (obj3d_custom_folder_name.empty()) ? missionPackageFolder + file_name : missionPackageFolder + obj3d_custom_folder_name + "/" + file_name;
-                  #endif // !RELEASE
-
-                  return (obj3d_custom_folder_name.empty()) ? missionPackageFolder + file_name : missionPackageFolder + obj3d_custom_folder_name + "/" + file_name;
-                }
-                else
-                { // v3.303.14 check if file string starts with ".." which means relative to Mission Pack location
-                  if (file_name.find("..") == 0 || ((file_name.find('/') == std::string::npos) && (file_name.find('\\') == std::string::npos))) // if we provide only 3D Object name and there is no path in it
-                    return missionFilePath + file_name; // construct file location relative to mission briefer folder location, example: "{xp11}/Custom Scenery/missionx/random/briefer" + file_name
-                  else
-                    return "Custom Scenery/" + file_name; // v3.303.14 Add "Head of Custom Scenery" folder to the file name, which means "relative to X-Plane root folder".
-                }
+                return (obj3d_custom_folder_name.empty ()) ? fmt::format("{}{}", missionPackageFolder, file_name) : fmt::format ("{}{}/{}", missionPackageFolder, obj3d_custom_folder_name, file_name );
               }
-              return EMPTY_STRING;
+
+              // v3.303.14 check if file string starts with ".." which means relative to Mission Pack location
+              if (file_name.find ("..") == 0 || ((file_name.find ('/') == std::string::npos) && (file_name.find ('\\') == std::string::npos))) // if we provide only 3D Object name and there is no path in it
+                return missionFilePath + file_name; // construct file location relative to mission briefer folder location, example: "{xp11}/Custom Scenery/missionx/random/briefer" + file_name
+
+              return "Custom Scenery/" + file_name; // v3.303.14 Add "Head of Custom Scenery" folder to the file name, which means "relative to X-Plane root folder".
+
+              // return EMPTY_STRING;
             };
-
-
 
             std::string objectFile3D = lmbda_get_3d_file_location(is_virtual_file); // The function returns file location and if it is from a virtual object. It tests for Virtual and then constructs the Physical Path as string.
 
             if (is_virtual_file)
             {
 
-              if (objectFile3D.empty()) // means we did not found virtual file
+              if (objectFile3D.empty()) // we did not find virtual file
               {
                 ++err_counter_i;
                 err = fmt::format("[Validate 3D file] Not valid File: \"{}\", is not a valid virtual file. Copy the correct value from the library: EXPORT VIRTUAL PHYSICAL. See: https://developer.x-plane.com/article/library-library-txt-file-format-specification/", file_name);
                 Log::logMsgThread(err);
-                // Log::logMsgThread("[dm Validate 3D Objects]: " + err);
               }
             }
-            else // if (!is_virtual_file)
+            // else // if (!is_virtual_file)
+            else if ( fs::path file = objectFile3D; !exists(file) || !fs::directory_entry(file).is_regular_file())
             {
-              if ( fs::path file = objectFile3D
-                  ; !exists(file) || !fs::directory_entry(file).is_regular_file())
-              {
-                ++err_counter_i;
-                if (!exists(file))
-                  err = "Not Found File: " + file.string();
-                else if (!fs::directory_entry(file).is_regular_file())
-                  err = "Not a File: " + file.string() + " is a folder and not a file";
-                else
-                  err = "Not valid File: " + file.string() + " is of wrong type";
+              ++err_counter_i;
+              if (!exists (file))
+                err = "Not Found File: " + file.string ();
+              else if (!fs::directory_entry (file).is_regular_file ())
+                err = "Not a File: " + file.string () + " is a folder and not a file";
+              else
+                err = "Not valid File: " + file.string () + " is of wrong type";
 
-                Log::logMsgThread("[Validate 3D file] " + err);
-              }
-              // else
-              //   result = "Found: " + file.string();
+              Log::logMsgThread ("[Validate 3D file] " + err);
             }
 
             if (err.empty())
               Log::logMsgThread("[Validate 3D file] Found " + ((is_virtual_file) ? "Virtual File: " + file_name : "File: " + objectFile3D));
 
             Utils::addElementToMap(mapFilesAndErrors, file_name, err);
-
 
           } // end if file is not in map[] element (no duplications)
 
@@ -7481,7 +7458,8 @@ data_manager::generate_missionx_mission_file_from_convert_screen(mx_base_node   
       flagFoundBriefer                  = true;
       const std::string heading_psi_s   = Utils::readAttrib(legData.xLeg, mxconst::get_ATTRIB_HEADING_PSI(), "0");
       const std::string start_elev_ft_s = Utils::readAttrib(legData.xLeg, mxconst::get_ATTRIB_ELEV_FT(), "0");
-      const std::string desc_s          = Utils::xml_read_cdata_node(legData.xLeg, "Welcome pilot\nFly the suggested route, prepare the plane and the needed charts.\nBlue Skies\nMission-X");
+      // const std::string desc_s          = Utils::xml_read_cdata_node(legData.xLeg, "Welcome pilot\nFly the suggested route, prepare the plane and the needed charts.\nBlue Skies\nMission-X");
+      const std::string desc_s          = Utils::xml_get_text_or_cdata_text(legData.xLeg, "Welcome pilot\nFly the suggested route, prepare the plane and the needed charts.\nBlue Skies\nMission-X");
 
       // store in conversion
       Utils::xml_set_attribute_in_node_asString(legData.xConv, mxconst::get_ATTRIB_HEADING_PSI(), heading_psi_s, mxconst::get_ELEMENT_FPLN());
@@ -7998,18 +7976,18 @@ data_manager::gather_custom_acf_datarefs_as_a_thread(const std::string& inAcfPat
         if (is_regular_file(file) && ext.compare(".obj") == 0)
         {
 
-#ifndef RELEASE
+          #ifndef RELEASE
           auto startThreadClock2 = std::chrono::steady_clock::now();
-#endif // ! RELEASE
+          #endif // ! RELEASE
 
           std::set<std::string> drefKeySetFromObjFile = system_actions::search_datarefs_in_obj_file(file);
 
-#ifndef RELEASE
+          #ifndef RELEASE
           auto endCacheLoad = std::chrono::steady_clock::now();
           auto diff_cache   = endCacheLoad - startThreadClock2;
           auto duration     = std::chrono::duration<double, std::milli>(diff_cache).count();
           Log::logMsgThread(">> parsed: " + file.path().string() + ", Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec) ");
-#endif
+          #endif
 
           objCustomDatarefs.insert(drefKeySetFromObjFile.cbegin(), drefKeySetFromObjFile.cend());
         }
@@ -8074,188 +8052,6 @@ data_manager::gather_custom_acf_datarefs_as_a_thread(const std::string& inAcfPat
 
 // -----------------------------------
 
-//
-// void
-// data_manager::parse_max_weight_line(const std::string& line, std::map<int, float>& mapMaxWeight, int& outMaxStations)
-// {
-//   std::istringstream iss(line);
-//   int                tokenCount = 0;
-//
-//   std::vector<std::string> vecTokens = mxUtils::split_skipEmptyTokens(line);
-//
-//   const std::string& lastToken = vecTokens.back();
-//
-//   // Test number or scientific number
-//   float      f_last_token_value = 0.0;
-//   const bool bIsNumberic        = mxUtils::isNumeric(lastToken);
-//   const bool bIsSceintific      = mxUtils::isScientific(lastToken); // in the LR airbus, some station had scientific weight values.
-//
-//   if (!bIsNumberic && bIsSceintific)
-//     f_last_token_value = static_cast<float>(mxUtils::convertScientificToDecimal(lastToken));
-//   else
-//     f_last_token_value = mxUtils::stringToNumber<float>(lastToken);
-//
-//
-//   if ((bIsNumberic + bIsSceintific) && vecTokens.size() > 2)
-//   {
-//     const float v_third_token_num_value = f_last_token_value; // v_third_token_num_value can represent "weight" or "max stations in plane"
-//
-//     if (const auto pos = vecTokens.at(1).find_last_of('/'); pos != std::string::npos)
-//     {
-//       if (const std::string v_station_index_str = vecTokens.at (1).substr (pos + 1)
-//         ; mxUtils::is_number(v_station_index_str))
-//       {
-//         const int v_station_index     = mxUtils::stringToNumber<int> (v_station_index_str);
-//         mapMaxWeight[v_station_index] = v_third_token_num_value;
-//       }
-//       else if (v_station_index_str == "count")
-//       {
-//         outMaxStations = static_cast<int>(v_third_token_num_value);
-//       }
-//     }
-//   }
-// }
-//
-// // -----------------------------------
-//
-// void
-// data_manager::parse_station_name_line(const std::string& line, std::map<int, std::string>& mapStationNames)
-// {
-//   std::istringstream iss(line);
-//   std::string        tokens[10];
-//   int                tokenCount = 0;
-//
-//   while (iss >> tokens[tokenCount] && tokenCount < 10)
-//     tokenCount++;
-//
-//   if (const auto pos = tokens[1].find_last_of ('/')
-//     ; pos != std::string::npos)
-//   {
-//     if (const std::string v_station_index_str = tokens[1].substr (pos + 1)
-//       ; mxUtils::is_number(v_station_index_str))
-//     {
-//       int v_station_index = std::stoi(v_station_index_str);
-//
-//       std::string v_station_name;
-//       for (int i = 2; i < tokenCount; ++i)
-//       {
-//         if (!v_station_name.empty())
-//           v_station_name += " ";
-//         v_station_name += tokens[i];
-//       }
-//       mapStationNames[v_station_index] = v_station_name;
-//     }
-//   }
-// }
-//
-// // -----------------------------------
-
-//void
-//missionx::data_manager::gather_acf_cargo_data(Inventory& inoutPlaneInventory)
-//{
-//  auto startTimer = std::chrono::steady_clock::now();
-//
-//  std::array<std::string, 2> arr_text = { "P acf/_fixed_max", "P acf/_fixed_name" };
-//
-//  char outFileName[512]{ 0 };
-//  char outPathAndFile[2048]{ 0 };
-//  XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, outFileName, outPathAndFile); // we will only return the file name
-//  fs::path acf_file = outPathAndFile;
-//  std::ios_base::sync_with_stdio(false);
-//  std::cin.tie(nullptr);
-//
-//  auto planeInventory = Inventory(mxconst::get_ELEMENT_PLANE(), mxconst::get_ELEMENT_PLANE());
-//  #ifndef RELEASE
-//  Log::log_to_missionx_log(fmt::format("Local inventory before reading [{}] file.\n==========>\n{}\n<=========", acf_file.string(), Utils::xml_get_node_content_as_text(planeInventory.node)));
-//  #endif
-//
-//  if (fs::exists(acf_file) && fs::is_regular_file(acf_file))
-//  {
-//    std::ifstream file_toRead;
-//    file_toRead.open(acf_file.string(), std::ios::in); // read the file
-//    if (file_toRead.is_open())
-//    {
-//      int stations_i = 0;
-//      // std::unordered_map<int, std::string> mapStationNames;
-//      std::map<int, float>           mapMaxWeights;
-//      std::string                    line;
-//      char                           ch{ '\0' };
-//      int                            char_counter_i = 0;
-//      while (file_toRead.get(ch))
-//      {
-//        if ((char_counter_i > 17) + (ch == '\n'))
-//        {
-//          if (ch != '\n')
-//          {
-//            std::string restOfLine;
-//            std::getline(file_toRead, restOfLine);
-//            line.append(ch + restOfLine); // append to "line" the last character we read + the rest of line.
-//          }
-//          if (line.starts_with(arr_text[0])) // "P acf/_fixed_max"
-//            data_manager::parse_max_weight_line(line, mapMaxWeights, stations_i);
-//          else if (line.starts_with(arr_text[1])) // "P acf/_fixed_name"
-//            data_manager::parse_station_name_line(line, planeInventory.map_acf_station_names);
-//
-//          line.clear();
-//          char_counter_i = 0; // reset counter
-//        }
-//        else
-//        {
-//          line += ch;
-//          ++char_counter_i;
-//        }
-//      }
-//
-//      // Initialize the inventory with the information. Only inventories with "max weight" higher than 0.0 will be listed.
-//      for (const auto& [station_id, maxWeightKg] : mapMaxWeights)
-//      {
-//        if ((maxWeightKg > 0.0) && mxUtils::isElementExists(planeInventory.map_acf_station_names, station_id))
-//        {
-//          planeInventory.mapStations[station_id]                    = missionx::station(station_id, planeInventory.map_acf_station_names[station_id]);
-//          planeInventory.mapStations[station_id].max_allowed_weight = maxWeightKg;
-//
-//          // Adding <station> node to "inventory" element.
-//          auto stationNode_ptr = planeInventory.addChild(mxconst::get_ELEMENT_STATION(), mxconst::get_ATTRIB_ID(), fmt::format("{}", station_id), "");
-//          if (!stationNode_ptr.isEmpty())
-//          {
-//            stationNode_ptr.updateAttribute(planeInventory.mapStations[station_id].name.c_str(), mxconst::get_ATTRIB_NAME().c_str(), mxconst::get_ATTRIB_NAME().c_str());
-//            stationNode_ptr.updateAttribute(fmt::format("{}", planeInventory.mapStations[station_id].max_allowed_weight).c_str(), mxconst::get_ATTRIB_WEIGHT_KG().c_str(), mxconst::get_ATTRIB_WEIGHT_KG().c_str());
-//            planeInventory.mapStations[station_id].node = stationNode_ptr; // add pointer to node
-//          }
-//
-//          Log::logMsg(fmt::format("Station - {}:{},\tMax Weight: {}kg.", station_id, planeInventory.map_acf_station_names[station_id], maxWeightKg));
-//        }
-//        else if (mxUtils::isElementExists(planeInventory.map_acf_station_names, station_id))
-//        {
-//          Log::logMsg(fmt::format("Station - {}:{} Does not have station max weight defined. skipping.", station_id, planeInventory.map_acf_station_names[station_id]));
-//        }
-//      }
-//    } // finish read acf file
-//  }   // end evaluate file exists
-//
-//  #ifndef RELEASE
-//  Log::log_to_missionx_log( fmt::format( "Local Inventory Information:\n=================>\n [{}]", planeInventory.get_node_as_text()) ); // debug v24.12.2
-//  #endif                                                                                                          // !RELEASE
-//
-//  if (data_manager::missionState >= mx_mission_state_enum::mission_loaded_from_the_original_file )
-//  {
-//    missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i = missionx::data_manager::get_inv_layout_based_on_mission_ver_and_compatibility_node(); // v24.12.2
-//
-//    inoutPlaneInventory = planeInventory;
-//  }
-//
-//
-//  #ifndef RELEASE
-//  Log::log_to_missionx_log( fmt::format( "Plane Inventory Station Information:\n=================>\n [{}]", inoutPlaneInventory.get_node_as_text()) ); // debug v24.12.2
-//  #endif  // !RELEASE
-//
-//  auto endTimer   = std::chrono::steady_clock::now();
-//  auto diff_cache = endTimer - startTimer;
-//  auto duration   = std::chrono::duration<double, std::milli>(diff_cache).count();
-//  Log::logMsg(">> parsed: " + acf_file.string() + ", Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration * 0.001), 3) + "sec) ");
-//}
-
-// -----------------------------------
 
 mx_return
 data_manager::check_mandatory_item_move(const IXMLNode& item_node, const std::string& target_inventory_name)
@@ -8762,7 +8558,19 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_
       {
         if (CURL *curl = curl_easy_init ())
         {
+          char errBuff[CURL_ERROR_SIZE] = "\0";
+
           curl_easy_setopt (curl, CURLOPT_URL, "https://overpass-api.de/api/interpreter");
+          
+          curl_easy_setopt (curl, CURLOPT_USERAGENT, APP_NAME);
+
+          // ignore SSL - important for Windows
+          curl_easy_setopt (curl, CURLOPT_FOLLOWLOCATION, 1L);
+          curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
+          curl_easy_setopt (curl, CURLOPT_NOPROGRESS, 0L);
+
+          curl_easy_setopt (curl, CURLOPT_ERRORBUFFER, errBuff);
+
           curl_easy_setopt (curl, CURLOPT_POSTFIELDS, fullQuery.c_str());
           curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, my_write);
           curl_easy_setopt (curl, CURLOPT_WRITEDATA, &response_text);
@@ -8840,156 +8648,6 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_
 
 // -------------------------------------
 
-// std::map<int, missionx::NavAidInfo>
-// data_manager::fetch_targets_using_osm_queries_from_a_thread (missionx::base_thread::thread_state *inoutThreadState, const IXMLNode &in_root_node, missionx::structs::strct_osm_query &inout_osm_query)
-// {
-//   constexpr int max_queries = 10;
-//   bool          flag_all_osm_queries_are_done = false;
-//   int           seq                           = 1;
-//
-//   std::map<int, missionx::NavAidInfo> map_navaids;
-//
-//   if (inoutThreadState == nullptr)
-//   {
-//     return map_navaids;
-//   }
-//
-//   // add assert
-//   inoutThreadState->flagIsActive = true;
-//
-//
-//   while (!flag_all_osm_queries_are_done && seq < max_queries && !inoutThreadState->flagAbortThread)
-//   {
-//     // init the query object
-//     inout_osm_query.q_text                 = Utils::xml_read_cdata_node (inout_osm_query.xml_query_node_to_search_a_new_target, "");
-//     inout_osm_query.id                     = Utils::readAttrib (inout_osm_query.xml_query_node_to_search_a_new_target, "id", "");
-//     inout_osm_query.xml_target_way_element = IXMLNode::emptyIXMLNode;
-//     inout_osm_query.xml_target_nd_node     = IXMLNode::emptyIXMLNode;
-//
-//     if (inout_osm_query.q_text.empty ())
-//     {
-//       Log::logMsgThread (fmt::format("[{}] Could not initialize 'q_text', exiting function.", __func__) );
-//
-//       // exit function
-//       flag_all_osm_queries_are_done = true;
-//       seq = max_queries;
-//       continue;
-//     }
-//
-//     // ------------------
-//     // Call CURL / Cache
-//     // ------------------
-//     missionx::data_manager::fetch_ways_and_target_node_from_overpass_thread (inoutThreadState, nullptr, &inout_osm_query);
-//
-//     if (!inout_osm_query.xml_target_nd_node.isEmpty () && !inout_osm_query.xml_target_way_element.isEmpty ())
-//     {
-//       const auto way_name = Utils::xml_get_attrib_value_based_on_other_attrib_presence (inout_osm_query.xml_target_way_element, "tag", "k", "name", "v", "");
-//
-//       #ifndef RELEASE
-//       Log::logMsgThread (fmt::format( "--> Target nd node:\n{}\n", Utils::xml_get_node_content_as_text (inout_osm_query.xml_target_nd_node) ) );
-//       #endif
-//
-//       // store information based on the fetched "<way>" and "<nd>" elements.
-//       missionx::NavAidInfo navaid_target;
-//       navaid_target.setName (mxUtils::sanitize_text (way_name));
-//
-//       navaid_target.fpln_seq            = seq;
-//       navaid_target.lat                 = Utils::readNodeNumericAttrib<float> (inout_osm_query.xml_target_nd_node, mxconst::get_ATTRIB_LAT_OSM (), 0.0f);
-//       navaid_target.lon                 = Utils::readNodeNumericAttrib<float> (inout_osm_query.xml_target_nd_node, mxconst::get_ATTRIB_LONG_OSM (), 0.0f);
-//       navaid_target.fpln_osm_wp_type    = Utils::readAttrib (inout_osm_query.xml_query_node_to_search_a_new_target, "wp_type", "");
-//       navaid_target.fpln_xml_osm_q_node = inout_osm_query.xml_query_node_to_search_a_new_target.deepCopy ();
-//
-//
-//       // Validate lat/lon or exit
-//       if (navaid_target.lat * navaid_target.lon == 0)
-//       {
-//         navaid_target.init ();
-//         if (seq == 1) // if it is the first iteration, then abort.
-//         {
-//           flag_all_osm_queries_are_done = true;
-//           map_navaids.clear ();
-//           return map_navaids;
-//         }
-//       }
-//
-//       // Store
-//       navaid_target.synchToPoint ();
-//       Utils::addElementToMap (map_navaids, seq, navaid_target);
-//
-//       // Construct other Navaids if we have any
-//       #ifndef RELEASE
-//       Log::logMsgThread (fmt::format ("\n--> Do we have 'next_tag' ?\n{}", Utils::xml_get_node_content_as_text (inout_osm_query.xml_query_node_to_search_a_new_target)));
-//       #endif
-//
-//       if (std::string next_tag = Utils::readAttrib (inout_osm_query.xml_query_node_to_search_a_new_target, "next_tag", "");
-//         !next_tag.empty ())
-//       {
-//         std::vector<std::string> vec_split_next_tag;
-//         auto                     vec_shuffled_next_tag = Utils::splitStringAndGetShuffledIndexVector (next_tag, ",", vec_split_next_tag);
-//         #ifndef RELEASE
-//         Log::logMsgThread ("Display shuffled Next Tag:");
-//         for (const auto &val : vec_shuffled_next_tag)
-//           Log::logMsgThread (fmt::format ("[{}]: {}", val, vec_split_next_tag.at (val)));
-//
-//         Log::logMsgThread ("<--- End Display shuffled Next Tag ---");
-//         #endif
-//
-//         // Fetch next SUBJECT "id" node based on "next_tag" values.
-//         for (size_t counter = 0; const auto &v_index : vec_shuffled_next_tag)
-//         {
-//           assert (vec_shuffled_next_tag.size () > v_index && fmt::format ("[{}] Shuffled index is out of vector bounds. Split vector size: {}", __func__, vec_split_next_tag.size ()).c_str ());
-//           counter++;
-//           const auto &picked_next_tag = vec_split_next_tag.at (v_index);
-//
-//           // Get next Subject "id" and validate it
-//           inout_osm_query.xml_tags_node = in_root_node.getChildNode (picked_next_tag.c_str ());
-//           if (inout_osm_query.xml_tags_node.isEmpty () && counter < vec_shuffled_next_tag.size ())
-//             continue;
-//           else if (inout_osm_query.xml_tags_node.isEmpty () )
-//           {
-//             flag_all_osm_queries_are_done = true;
-//             seq = max_queries;
-//             break;
-//           }
-//
-//           auto vec_shuffle_q                                = Utils::getShuffledIndexVector (inout_osm_query.xml_tags_node.nChildNode ("q"));
-//           inout_osm_query.xml_query_node_to_search_a_new_target = inout_osm_query.xml_tags_node.getChildNode ("q", vec_shuffle_q.front ());
-//           #ifndef RELEASE
-//           Log::logMsgThread (fmt::format("\n--> Found next target.\nTag:<{}>\nQuery: {}\n<-- end next target.\n\n", picked_next_tag, Utils::xml_get_node_content_as_text (inout_osm_query.xml_query_node_to_search_a_new_target) ) ); // debug
-//           // Log::logMsgThread (fmt::format("\n--> NavAid fpln_xml_osm_q_node:\n{}<-- fpln_xml_osm_q_node --\n", Utils::xml_get_node_content_as_text ( navaid_target.fpln_xml_osm_q_node ) ) ); // debug
-//           #endif
-//
-//
-//           break; // skip loop over shuffled queries vector and return to the "while" loop to fetch next NavAid
-//
-//         } // end loop over shuffled queries vector
-//
-//       } // End if there is next_tag
-//       else
-//       {
-//         flag_all_osm_queries_are_done = true;
-//         // break; // Should exit the "while" loop
-//       }
-//
-//     } // end if inout_osm_query is valid
-//     else
-//     {
-//       // sleep 2 seconds
-//       std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for 2 seconds before sending a new request
-//     }
-//
-//     ++seq;
-//
-//   } // end while loop
-//
-//   // check [abort]
-//   if (inoutThreadState->flagAbortThread)
-//     map_navaids.clear ();
-//
-//   return map_navaids;
-// }
-//
-// -------------------------------------
 
 void
 data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_thread::thread_state *inoutThreadState, std::string *outStatusMessage, missionx::structs::strct_osm_query *q)
@@ -9085,13 +8743,25 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
       bool flag_curl_results_are_ok = false;
       size_t url_loop_counter_i = 0;
       // Call Overpass up to "data_manager::vecOverpassUrls.size ()" times
+
       while (!flag_curl_results_are_ok && url_loop_counter_i < data_manager::vecOverpassUrls.size ())
       {
         const auto& overpass_url = (url_loop_counter_i < data_manager::vecOverpassUrls.size ())? data_manager::vecOverpassUrls.at (url_loop_counter_i) : mxconst::get_DEFAULT_OVERPASS_URL ();
 
         response_text.clear ();
-        // curl_easy_setopt (curl, CURLOPT_URL, "https://overpass-api.de/api/interpreter");
-        curl_easy_setopt (curl, CURLOPT_URL, overpass_url.c_str ());
+        char errBuff[CURL_ERROR_SIZE] = "\0";
+
+        curl_easy_setopt (curl, CURLOPT_URL, overpass_url.c_str());
+
+        curl_easy_setopt (curl, CURLOPT_USERAGENT, APP_NAME);
+
+        // ignore SSL - important for Windows
+        curl_easy_setopt (curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
+        curl_easy_setopt (curl, CURLOPT_NOPROGRESS, 0L);
+
+        curl_easy_setopt (curl, CURLOPT_ERRORBUFFER, errBuff);
+
         curl_easy_setopt (curl, CURLOPT_POSTFIELDS, q->q_request.c_str());
         curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, my_write);
         curl_easy_setopt (curl, CURLOPT_WRITEDATA, &response_text);
@@ -9196,11 +8866,20 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
 
               // curl_easy_setopt (curl, CURLOPT_URL, "https://overpass-api.de/api/interpreter");
               curl_easy_setopt (curl, CURLOPT_URL, overpass_url.c_str ());
+
+              curl_easy_setopt (curl, CURLOPT_USERAGENT, APP_NAME);
+
+              // ignore SSL - important for Windows
+              curl_easy_setopt (curl, CURLOPT_FOLLOWLOCATION, 1L);
+              curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
+              curl_easy_setopt (curl, CURLOPT_NOPROGRESS, 0L);
+
+
               curl_easy_setopt (curl, CURLOPT_POSTFIELDS, fullQuery.c_str());
               curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, my_write);
               curl_easy_setopt (curl, CURLOPT_WRITEDATA, &response_text);
-              // Execute REQUEST
-              // CURLcode res = curl_easy_perform (curl);
+              
+              // Execute REQUEST              
               res = curl_easy_perform (curl);
 
               url_loop_counter_i++;
@@ -9209,6 +8888,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
                 if (mxUtils::find_text (response_text, "Error", false) != std::string::npos)
                 {
                   Log::logMsgThread ( fmt::format("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
+                  Log::logMsgThread (fmt::format ("\tCurl error: \n\t{}\n", curl_easy_strerror (res)));
                   std::this_thread::sleep_for (std::chrono::seconds (1)); // wait for 2 seconds before sending a new request
                 }
                 else
@@ -9216,7 +8896,8 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
               } // end internal test
               else
               { // respond code was not CURLE_OK
-                  Log::logMsgThread ( fmt::format("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
+                Log::logMsgThread (fmt::format ("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
+                Log::logMsgThread (fmt::format ("\tCurl error: \n\t{}\n", curl_easy_strerror (res)));
                 std::this_thread::sleep_for (std::chrono::seconds (1)); // wait for 2 seconds before sending a new request
               }
 

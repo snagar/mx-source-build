@@ -435,7 +435,8 @@ missionx::Mission::add_GPS_data (const int optionalPointIndex)
       if (nav_ref != XPLM_NAV_NOT_FOUND)
       {
         flag_icao_is_valid = true;
-        XPLMGetNavAidInfo(nav_ref, &navInfo.navType, &navInfo.lat, &navInfo.lon, &navInfo.height_mt, &navInfo.freq, &navInfo.heading, navInfo.ID, navInfo.name, navInfo.inRegion);
+        XPLMGetNavAidInfo(nav_ref, &navInfo.navType, &navInfo.lat, &navInfo.lon, &navInfo.height_mt, &navInfo.freq, &navInfo.heading, navInfo.ID, navInfo.name, nullptr);
+        //XPLMGetNavAidInfo(nav_ref, &navInfo.navType, &navInfo.lat, &navInfo.lon, &navInfo.height_mt, &navInfo.freq, &navInfo.heading, navInfo.ID, navInfo.name, NULL);
 
 
         XPLMSetFMSEntryInfo(index, nav_ref, static_cast<int> (navInfo.height_mt));
@@ -2332,7 +2333,8 @@ missionx::Mission::flc_fail_timers()
           {
             IXMLNode textMixNode =
               Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode(missionx::data_manager::mapMessages[msgKey].node, mxconst::get_ELEMENT_MIX(), mxconst::get_ATTRIB_MESSAGE_MIX_TRACK_TYPE(), mxconst::get_CHANNEL_TYPE_TEXT());
-            customFailMessageText = Utils::xml_read_cdata_node(textMixNode, customFailMessageText);
+            // customFailMessageText = Utils::xml_read_cdata_node(textMixNode, customFailMessageText);
+            customFailMessageText = Utils::xml_get_text_or_cdata_text (textMixNode, customFailMessageText);
           }
 
           if (bFailMissionOnTimeout) // v3.305.3
@@ -3647,6 +3649,9 @@ missionx::Mission::flc_check_plane_in_external_inventory_area()
     if ((inArea * inElev) + (cameraInArea * cameraInElev))
     {
       missionx::data_manager::active_external_inventory_name = name; // v3.0.251.1 store active inventory name in "data_manager" instead of the UI classes.
+      // Inhibit mxpad when plane is airborne and the "inhibit_mxpad" attribute is set to "true"
+      data_manager::flag_inhibit_mxpad_when_entering_inventory_and_airborne = inv.getBoolValue (mxconst::get_ATTRIB_INHIBIT_MXPAD_B (), false)
+                                                                              && dataref_manager::isPlaneAirborne (); // v25.06.1
 
       Mission::uiImGuiBriefer->setExternalInventoryName(name);
 
@@ -3659,6 +3664,7 @@ missionx::Mission::flc_check_plane_in_external_inventory_area()
   if (!foundInv)
   {
     missionx::data_manager::active_external_inventory_name.clear(); // v3.0.251.1 store active "inventory name" state in "data_manager" instead of the UI classes.
+    data_manager::flag_inhibit_mxpad_when_entering_inventory_and_airborne = false; // v25.06.1
     Mission::uiImGuiBriefer->setExternalInventoryName("");
   }
 }
@@ -4415,7 +4421,7 @@ missionx::Mission::flcPRE()
 
           if (engine.exec_generate_mission_thread(Mission::uiImGuiBriefer->selectedTemplateKey))
           {
-            Mission::uiImGuiBriefer->setMessage("Mission creation is running in the BACKGROUND, please wait for it to finish. file:'" + Mission::uiImGuiBriefer->selectedTemplateKey + "'", 20);
+            Mission::uiImGuiBriefer->setMessage("The mission is created in the background. Please wait until it finishes. file:'" + Mission::uiImGuiBriefer->selectedTemplateKey + "'", 20);
             missionx::data_manager::flag_generate_engine_is_running = true;
           }
           else
@@ -4899,7 +4905,8 @@ missionx::Mission::flcPRE()
           }
 
           // fetch and store information on navAid if in correct distance
-          XPLMGetNavAidInfo(navAid.navRef, &navAid.navType, &navAid.lat, &navAid.lon, &navAid.height_mt, &navAid.freq, &navAid.heading, navAid.ID, navAid.name, navAid.inRegion);
+          XPLMGetNavAidInfo(navAid.navRef, &navAid.navType, &navAid.lat, &navAid.lon, &navAid.height_mt, &navAid.freq, &navAid.heading, navAid.ID, navAid.name, nullptr);
+          //XPLMGetNavAidInfo(navAid.navRef, &navAid.navType, &navAid.lat, &navAid.lon, &navAid.height_mt, &navAid.freq, &navAid.heading, navAid.ID, navAid.name, NULL);
           navAid.synchToPoint();
 
           // v3.0.253.7 try to pick ramp
@@ -5001,7 +5008,8 @@ missionx::Mission::flcPRE()
                             &this->engine.shared_navaid_info.navAid.heading,
                             this->engine.shared_navaid_info.navAid.ID,
                             this->engine.shared_navaid_info.navAid.name,
-                            this->engine.shared_navaid_info.navAid.inRegion);
+                            nullptr);
+                            // &this->engine.shared_navaid_info.navAid.inRegion);
         }
 
         missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
@@ -5035,7 +5043,8 @@ missionx::Mission::flcPRE()
                             &this->engine.shared_navaid_info.navAid.heading,
                             this->engine.shared_navaid_info.navAid.ID,
                             this->engine.shared_navaid_info.navAid.name,
-                            this->engine.shared_navaid_info.navAid.inRegion);
+                            nullptr);
+                            // &this->engine.shared_navaid_info.navAid.inRegion);
         }
 
         missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
@@ -6144,7 +6153,8 @@ missionx::Mission::setUiEndMissionTexture()
         Mission::uiImGuiBriefer->strct_flight_leg_info.endTexture = data_manager::mapCurrentMissionTextures[file];
       }
 
-      end_desc = Utils::xml_read_cdata_node(data_manager::endMissionElement.node.getChildNode(mxconst::get_ELEMENT_END_SUCCESS_MSG().c_str()), "");
+      // end_desc = Utils::xml_read_cdata_node(data_manager::endMissionElement.node.getChildNode(mxconst::get_ELEMENT_END_SUCCESS_MSG().c_str()), "");
+      end_desc = Utils::xml_get_text_or_cdata_text (data_manager::endMissionElement.node.getChildNode(mxconst::get_ELEMENT_END_SUCCESS_MSG().c_str()), "");
       if (!end_desc.empty())
       {
 
@@ -6172,7 +6182,8 @@ missionx::Mission::setUiEndMissionTexture()
         end_desc = Utils::readAttrib(data_manager::mx_global_settings.node, mxconst::get_PROP_MISSION_ABORT_REASON(), "aborting mission...");
 
       if (end_desc.empty()) // read failure message
-        end_desc = Utils::xml_read_cdata_node(data_manager::endMissionElement.node.getChildNode(mxconst::get_ELEMENT_END_FAIL_MSG().c_str()), "");
+        end_desc = Utils::xml_get_text_or_cdata_text(data_manager::endMissionElement.node.getChildNode(mxconst::get_ELEMENT_END_FAIL_MSG().c_str()), "");
+        // end_desc = Utils::xml_read_cdata_node(data_manager::endMissionElement.node.getChildNode(mxconst::get_ELEMENT_END_FAIL_MSG().c_str()), "");
 
       if (!end_desc.empty())
       {

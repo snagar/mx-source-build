@@ -69,7 +69,7 @@ WinImguiMxpad::WinImguiMxpad(int left, int top, int right, int bot, XPLMWindowDe
   this->mWindow = this->GetWindowId();
 }
 
-WinImguiMxpad::~WinImguiMxpad() {}
+WinImguiMxpad::~WinImguiMxpad() = default;
 
 
 void
@@ -392,7 +392,8 @@ WinImguiMxpad::flc_autoHideMXPAD()
   else // show mx-pad if there are
   {
     if (!QueueMessageManager::listPoolMsg.empty() || !QueueMessageManager::listPadQueueMessages.empty() 
-     || !missionx::data_manager::active_external_inventory_name.empty() || XPLMGetWindowIsVisible(this->optionsWindow))
+     || (!missionx::data_manager::active_external_inventory_name.empty() && !data_manager::flag_inhibit_mxpad_when_entering_inventory_and_airborne) // v25.06.1 added inhibit check
+     || XPLMGetWindowIsVisible(this->optionsWindow))
     {
       execAction(missionx::mx_window_actions::ACTION_TOGGLE_WINDOW);
       this->wasHiddenByAutoHideOption = true; // need to come after the action since we always reset this value to false in execAction function.

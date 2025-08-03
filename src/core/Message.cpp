@@ -294,7 +294,8 @@ missionx::Message::parseStoryMessage()
 {
   std::deque<std::string> result;
   std::stringstream buffer;
-  auto text = Utils::xml_read_cdata_node(this->xml_nodeTextTrack_ptr, "");
+  // auto text = Utils::xml_read_cdata_node(this->xml_nodeTextTrack_ptr, "");
+  auto text = Utils::xml_get_text_or_cdata_text(this->xml_nodeTextTrack_ptr, "");
   buffer << text;
   std::string line;
 

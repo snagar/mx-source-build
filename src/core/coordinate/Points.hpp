@@ -354,23 +354,23 @@ public:
 
   // ---------------------------------------
   // readChildPointElements allow you to read multiple point child elements under parent element.
-  static void readChildPointElements(ITCXMLNode& inParentPointNode, std::deque<missionx::Point>& outDeqPoints, int inLimit, std::string& outErr)
-  {
-    int nChilds = inParentPointNode.nChildNode(mxconst::get_ELEMENT_POINT().c_str());
-    inLimit     = (inLimit <= 0) ? nChilds : inLimit; // if limit is 0 then we fetch all points
+  //static void readChildPointElements(ITCXMLNode& inParentPointNode, std::deque<missionx::Point>& outDeqPoints, int inLimit, std::string& outErr)
+  //{
+  //  int nChilds = inParentPointNode.nChildNode(mxconst::get_ELEMENT_POINT().c_str());
+  //  inLimit     = (inLimit <= 0) ? nChilds : inLimit; // if limit is 0 then we fetch all points
 
-    for (int i1 = 0; i1 < nChilds && i1 < inLimit; ++i1)
-    {
-      Point      p;
-      ITCXMLNode xPoint = inParentPointNode.getChildNode(mxconst::get_ELEMENT_POINT().c_str(), i1);
-      if (!xPoint.isEmpty())
-      {
-        p.loadPointElement(xPoint);
-        if (outErr.empty())
-          outDeqPoints.push_back(p);
-      }
-    }
-  }
+  //  for (int i1 = 0; i1 < nChilds && i1 < inLimit; ++i1)
+  //  {
+  //    Point      p;
+  //    ITCXMLNode xPoint = inParentPointNode.getChildNode(mxconst::get_ELEMENT_POINT().c_str(), i1);
+  //    if (!xPoint.isEmpty())
+  //    {
+  //      p.loadPointElement(xPoint);
+  //      if (outErr.empty())
+  //        outDeqPoints.push_back(p);
+  //    }
+  //  }
+  //}
   // ---------------------------------------
 
   bool isPointInRadiusArea(Point& trigPoint, float inRadius_nm, Point& objectPoint)

@@ -31,7 +31,7 @@ public:
   int         freq;
   char        ID[64];
   char        name[256];
-  char        inRegion[1];
+  // char        inRegion = 0;
 
   float degRelativeToSearchPoint; // degrees // bearingRelativeToSearchPoint;
   float lat, lon, height_mt, heading;
@@ -65,6 +65,7 @@ public:
   float bearing_back_to_prev_target{ 0.0f }; // holds the bearing to the previous target. If bearing_relative_from_prev_target=10 degrease then bearing_back_to_prev_target=10+180
 
   // v25.06.1 ////////////////
+  bool fpln_is_last_flight_leg {false};
   int fpln_seq{ -1 }; // v25.06.1 can hold a sequence number to be used with RandomEngin and Surprise Me flow.
   bool fpln_is_wet{ false };
   double fpln_slope{ 0.0 }; // holds the expected slope at the target area
@@ -100,7 +101,7 @@ public:
      this->node = in_na.node.deepCopy();
      this->setID(in_na.ID);
      this->setName(in_na.name);
-     this->setRegion (in_na.inRegion);
+     // this->setRegion (in_na.inRegion);
 
      this->setBaseNodeName( in_na.getBaseNodeName () );
 
@@ -148,6 +149,7 @@ public:
      bearing_to_current_target   = in_na.bearing_to_current_target;
      bearing_back_to_prev_target = in_na.bearing_back_to_prev_target;
 
+     fpln_is_last_flight_leg    = in_na.fpln_is_last_flight_leg; // v25.06.1
      fpln_is_wet                = in_na.fpln_is_wet; // v25.06.1
      fpln_seq                   = in_na.fpln_seq; // v25.06.1
      fpln_osm_wp_type           = in_na.fpln_osm_wp_type; // v25.06.1
@@ -187,7 +189,7 @@ public:
     freq                            = 0; // not set
     ID[0]                           = '\0';
     name[0]                         = '\0';
-    inRegion[0]                     = '\0';
+    // inRegion                        = 0;
 
     node.updateName(mxconst::get_ELEMENT_POINT().c_str()); // v3.303.11
 
@@ -215,7 +217,9 @@ public:
     flag_navDataFetchedFromDB = false; // v24.03.1
     flag_navDataFetchedFromXPLMGetNavAidInfo = false; // v24.03.1
 
-    fpln_seq = -1; // v25.06.1
+    fpln_is_last_flight_leg = false; // v25.06.1
+    fpln_is_wet             = false; // v25.06.1
+    fpln_seq                = -1; // v25.06.1
     fpln_osm_wp_type.clear (); // v25.06.1
     fpln_leg_name.clear (); // v25.06.1
     fpln_xml_target_leg_node   = IXMLNode::emptyIXMLNode; // v25.06.1
@@ -247,8 +251,10 @@ public:
         {
           bool              bFound = false;
           auto              nTag   = w.getChildNode("tag", i2);
-          const std::string key    = Utils::xml_get_attribute_value(nTag, mxconst::get_ATTRIB_OSM_KEY(), bFound);
-          const std::string val    = Utils::xml_get_attribute_value(nTag, mxconst::get_ATTRIB_OSM_VALUE(), bFound);
+          // const std::string key    = Utils::xml_get_attribute_value(nTag, mxconst::get_ATTRIB_OSM_KEY(), bFound);
+          // const std::string val    = Utils::xml_get_attribute_value(nTag, mxconst::get_ATTRIB_OSM_VALUE(), bFound);
+          const std::string key    = Utils::readAttrib(nTag, mxconst::get_ATTRIB_OSM_KEY(), "");
+          const std::string val    = Utils::readAttrib(nTag, mxconst::get_ATTRIB_OSM_VALUE(), "");
 
           if (mxconst::get_ATTRIB_NAME() == key && !val.empty())
             Utils::addElementToMap(mapStreets, val, val);
@@ -385,14 +391,10 @@ public:
     #endif
   }
 
-  void setRegion(const std::string& inVal)
-  {
-    #ifdef IBM
-    strncpy_s(this->inRegion, 1, inVal.c_str(), 1);
-    #else
-    std::strncpy(this->inRegion, inVal.c_str(), 1);
-    #endif
-  }
+  // void setRegion(const char inVal)
+  // {
+  //   inRegion = inVal;
+  // }
 
   std::string getNavAsAptRampCode_1300() const { return mxconst::get_APT_1300_RAMP_CODE_v11_SPACE() + mxUtils::formatNumber<double>(this->lat, 8) + mxconst::get_SPACE() + mxUtils::formatNumber<double>(this->lon, 8); }
 

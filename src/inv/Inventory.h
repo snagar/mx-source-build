@@ -99,7 +99,7 @@ public:
 
   // v25.03.1
   // v25.03.1 parse station weight and add <station> to the parent node
-  static void parse_max_weight_line_and_station_name(const std::string& line, IXMLNode &pNode, const missionx::enums::mx_acf_line_type_enum in_line_type);
+  static void parse_acf_max_weight_line_and_station_name(const std::string& line, IXMLNode &pNode, const missionx::enums::mx_acf_line_type_enum in_line_type);
   // static void parse_station_name_line(const std::string& line, std::map<int, std::string>& mapStationNames); // v24.12.2 Deprecated since it was not implemented
 
   static void gather_acf_cargo_data (Inventory &inout_current_plane_inventory, bool in_plane_was_changed_b = false); // v25.03.1 this function will run in the main flight callback.

@@ -1031,6 +1031,7 @@ static constexpr const ^char  ^         *REPLACE_KEYWORD_SELF                   
 static const ^std::string^               ELEMENT_NOTES                                  ^ "notes"; ^// v24.03.1
 static const ^std::string^               ELEMENT_STATION                                ^ "station"; ^// v24.12.2 Used with acf cargo information. sim/flightmodel/weight/m_stations []
 static const ^std::string^               ATTRIB_TARGET_INVENTORY                        ^ "target_inventory"; ^// v24.12.2 target inventory
+static const ^std::string^               ATTRIB_INHIBIT_MXPAD_B                         ^ "inhibit_mxpad_b"; ^// v25.06.1 used with surprise me. Do not open mxpad if you entered the inventory area and you are airborne
 static const ^std::string^               ATTRIB_FALLTHROUGH_B                           ^ "fallthrough_b"; ^// v3.305.1b used in Messages. If message is last message and we want quick transition to next leg, we should set this attribute to true.
 
 // Simbrief
@@ -1056,7 +1057,7 @@ static const ^std::string^               GPS_WP      ^ "wp";                 ^//
 // MEDEVAC Sub Categories
 constexpr static ^std::string_view ^          CAT_ANY_LOCATION   ^ "Any Location - Rescue"; ^// v25.05.1 Used in medevac categories
 constexpr static ^std::string_view ^          CAT_ACCIDENT_OSM   ^ "Accident (OSM)"; ^// v25.05.1 Used in medevac categories
-constexpr static ^std::string_view ^          CAT_SURPRISE_ME    ^ "(Coming soon) Surprise Me (OSM)"; ^// v25.05.1 Used in medevac categories
+constexpr static ^std::string_view ^          CAT_SURPRISE_ME    ^ "(WIP) Surprise Me (OSM)"; ^// v25.05.1 Used in medevac categories
 
 static const ^std::string^      ATTRIB_SURPRISE_ME_SUB_CAT_B      ^ "surprise_me_sub_cat_b"; ^// v25.05.1 Used in medevac categories parsing and random engine
 constexpr static ^bool^         DEFAULT_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B      ^true; ^// v25.05.1 default value for PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B if it does not exists in the property file.

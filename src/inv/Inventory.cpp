@@ -760,12 +760,12 @@ Inventory::copy_items_from_one_inventory_to_the_other_xp11_style (IXMLNode inTar
 // -----------------------------------
 
 void
-Inventory::parse_max_weight_line_and_station_name (const std::string &line, IXMLNode &pNode, const missionx::enums::mx_acf_line_type_enum in_line_type)
+Inventory::parse_acf_max_weight_line_and_station_name (const std::string &line, IXMLNode &pNode, const missionx::enums::mx_acf_line_type_enum in_line_type)
 {
   std::istringstream       iss (line);
 
   const std::vector<std::string> vecTokens  = mxUtils::split_skipEmptyTokens (line);
-  const auto               tokenCount = vecTokens.size ();
+  const auto                     tokenCount = vecTokens.size ();
 
   const auto lmbda_get_station_from_pNode =[] (IXMLNode &parent_node, const std::string &in_station_id)
   {
@@ -892,9 +892,9 @@ Inventory::gather_acf_cargo_data (Inventory &inout_current_plane_inventory, cons
             line.append (ch + restOfLine); // append to "line" the last character we read + the rest of line.
           }
           if (line.starts_with (arr_text[0])) // "P acf/_fixed_max"
-            Inventory::parse_max_weight_line_and_station_name (line, new_acf_inventory.node, missionx::enums::mx_acf_line_type_enum::max_weight_line);
+            Inventory::parse_acf_max_weight_line_and_station_name (line, new_acf_inventory.node, missionx::enums::mx_acf_line_type_enum::max_weight_line);
           else if (line.starts_with (arr_text[1])) // "P acf/_fixed_name"
-            Inventory::parse_max_weight_line_and_station_name (line, new_acf_inventory.node, missionx::enums::mx_acf_line_type_enum::station_name_line);
+            Inventory::parse_acf_max_weight_line_and_station_name (line, new_acf_inventory.node, missionx::enums::mx_acf_line_type_enum::station_name_line);
 
           line.clear ();
           char_counter_i = 0; // reset counter

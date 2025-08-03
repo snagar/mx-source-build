@@ -44,10 +44,12 @@ missionx::Waypoint::parse_node()
 
   // read description
   IXMLNode    xDesc   = this->node.getChildNode(mxconst::get_ELEMENT_DESC().c_str());
-  std::string legDesc = Utils::xml_read_cdata_node(this->node, ""); // try to read cdata in <leg>    
+  // std::string legDesc = Utils::xml_read_cdata_node(this->node, ""); // try to read cdata in <leg>
+  std::string legDesc = Utils::xml_get_text_or_cdata_text(this->node, ""); // try to read cdata in <leg>
 
   if (!xDesc.isEmpty() && legDesc.empty()) // v3.305.3 Changed order of CDATA read. We start from <leg> and if not then from <desc> sub element.
-    legDesc = Utils::xml_read_cdata_node(xDesc, "");
+    // legDesc = Utils::xml_read_cdata_node(xDesc, "");
+    legDesc = Utils::xml_get_text_or_cdata_text(xDesc, "");
 
   this->setStringProperty(mxconst::get_ATTRIB_NAME(), legName);
   this->setStringProperty(mxconst::get_ATTRIB_TITLE(), legTitle);

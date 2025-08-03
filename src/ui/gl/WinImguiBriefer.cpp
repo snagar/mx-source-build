@@ -1094,9 +1094,9 @@ WinImguiBriefer::add_flight_planning ()
 void
 WinImguiBriefer::flc ()
 {
-#ifdef TIMER_FUNC
+  #ifdef TIMER_FUNC
   missionx::TimerFunc timerFunc (std::string (__FILE__), std::string (__func__), false);
-#endif // TIMER_FUNC
+  #endif // TIMER_FUNC
 
   // v3.305.1
   if (this->GetVisible () && !this->flag_displayedOnce)
@@ -1206,7 +1206,19 @@ WinImguiBriefer::flc ()
     if (this->IsInVR () && !missionx::mxvr::flag_in_vr) // if our window in VR but x-plane is not in VR mode then move to 2D mode.
       nextWinPosMode = xplm_WindowPositionFree; // place briefer
     else if (!this->IsInVR () && missionx::mxvr::vr_display_missionx_in_vr_mode) // if our window is visible in 2D mode but X-Plane is in VR mode and we support VR mode then move to VR
-      nextWinPosMode = xplm_WindowVR; // automaticaly place window in VR
+      nextWinPosMode = xplm_WindowVR; // automatically place window in VR
+
+    if (data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
+    {
+      // v25.06.1
+      if (!missionx::data_manager::strct_success_timer_info.triggerNameWithShortestSuccessTimer.empty ())
+      {
+        if (missionx::data_manager::mapTriggers[missionx::data_manager::strct_success_timer_info.triggerNameWithShortestSuccessTimer].timer.getRemainingTime () < 4.0f)
+          this->countdown_success_textColorVec4 = missionx::color::color_vec4_lime;
+        else
+          this->countdown_success_textColorVec4 = missionx::color::color_vec4_deepskyblue;
+      }
+    }
   }
 
   if (this->nextWinPosMode >= 0)
@@ -2382,16 +2394,21 @@ void
 WinImguiBriefer::add_ui_pick_subcategories (const std::vector<const char *> &vecToDisplay)
 {
   // iMissionSubCategoryPicked should always be smaller than the vecToDisplay.size () because the numbering starts in "0"
-  if (static_cast<int> (vecToDisplay.size ()) <= this->strct_user_create_layer.iMissionSubCategoryPicked)
+  if (static_cast<int> (vecToDisplay.size ()) <= this->strct_user_create_layer.iMissionSubCategoryPicked || this->strct_user_create_layer.iMissionSubCategoryPicked < 0)
+  {
     this->strct_user_create_layer.iMissionSubCategoryPicked = 0;
+    missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_MISSION_SUBCATEGORY_LBL (), vecToDisplay.at (this->strct_user_create_layer.iMissionSubCategoryPicked));
+  }
 
   missionx::WinImguiBriefer::HelpMarker ("Pick one of the sub categories");
   ImGui::SameLine ();
   // auto vecToDisplay = this->mapMissionCategories[this->strct_user_create_layer.iRadioMissionTypePicked];
   ImGui::SetNextItemWidth (250.0f);
-  ImGui::Combo ("##mission_subcategory", &this->strct_user_create_layer.iMissionSubCategoryPicked, vecToDisplay.data (), static_cast<int> (vecToDisplay.size ()));
-  // always store the subcategory value - NOT FPS friendly
-  missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_MISSION_SUBCATEGORY_LBL (), vecToDisplay.at (this->strct_user_create_layer.iMissionSubCategoryPicked));
+  //ImGui::Combo ("##mission_subcategory", &this->strct_user_create_layer.iMissionSubCategoryPicked, vecToDisplay.data (), static_cast<int> (vecToDisplay.size ()));
+  if (ImGui::Combo ("##mission_subcategory", &this->strct_user_create_layer.iMissionSubCategoryPicked, vecToDisplay.data (), static_cast<int> (vecToDisplay.size ())))
+  { // always store the subcategory value - NOT FPS friendly
+    missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_MISSION_SUBCATEGORY_LBL (), vecToDisplay.at (this->strct_user_create_layer.iMissionSubCategoryPicked));
+  }
 }
 
 // -------------------------------------------
@@ -2715,6 +2732,18 @@ WinImguiBriefer::draw_top_toolbar ()
       {
         ImGui::TextColored (this->countdown_textColorVec4, "Countdown: %s", title_s.c_str ());
       }
+
+      // v25.02.1 Display Success timer countdown
+      if (!missionx::data_manager::strct_success_timer_info.triggerNameWithShortestSuccessTimer.empty ())
+      {
+        if (missionx::data_manager::lowestFailTimerName_s.empty ())
+          ImGui::SameLine (0.0f, 5.0f);
+        else
+          ImGui::SameLine ();
+
+        ImGui::TextColored (this->countdown_success_textColorVec4, "%s", fmt::format ("{}{}", (missionx::data_manager::lowestFailTimerName_s.empty ()) ? "ST: " : "| ST: ", missionx::data_manager::mapTriggers[missionx::data_manager::strct_success_timer_info.triggerNameWithShortestSuccessTimer].timer.get_formated_timer_as_text ("")).c_str ());
+      }
+
     }
 
     ///////// ABOUT BUTTON
@@ -2942,7 +2971,7 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
           ImGui::Spacing ();
           this->add_ui_pick_subcategories (this->mapMissionCategories[static_cast<int> (missionx::mx_mission_type::cargo)]);
           ImGui::Spacing ();
-          this->add_ui_advance_settings_random_date_time_weather_and_weight_button2 (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked);
+          this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked);
           ImGui::Spacing (); // v24.03.2
           add_designer_mode_checkbox (); // v24.03.2 Designer mode flag
         }
@@ -4507,7 +4536,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
       ImGui::PopStyleColor (1);
 
       ImGui::SameLine (0.0f, 50.0f);
-      this->add_ui_advance_settings_random_date_time_weather_and_weight_button2 (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
+      this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
 
       if (ImGui::RadioButton ("Medevac", this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_mission_type::medevac)))
       {
@@ -4545,6 +4574,20 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
         const auto vecToDisplay = this->mapMissionCategories[this->strct_user_create_layer.iRadioMissionTypePicked];
         this->add_ui_pick_subcategories (vecToDisplay); // v25.04.1
       }
+
+
+      const bool bPickedOilRigMission            = this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_mission_type::oil_rig);
+      const bool bPickedMedevacMission           = this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (mx_mission_type::medevac);
+      const bool bPickedMedevacSurpriseMeMission = (bPickedMedevacMission && this->strct_user_create_layer.iMissionSubCategoryPicked == 2);
+
+
+      if (bPickedMedevacSurpriseMeMission)
+      {
+        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
+        ImGui::TextColored (missionx::color::color_vec4_aqua, "You can test this category, it is still a Work.In.Progress.");
+        this->mxUiReleaseLastFont ();
+      }
+
 
       ImGui::Separator ();
       ImGui::NewLine ();
@@ -4588,7 +4631,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
         // ------------------------
         // -- Skewed 3D Markers
         // ------------------------
-        if (this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_mission_type::medevac)) // v3.0.253.6
+        if (bPickedMedevacMission) // v3.0.253.6
         {
           add_skewed_marker_checkbox ();
           ImGui::NewLine ();
@@ -4597,9 +4640,11 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
         // ------------------------
         // -- Preferred Plane
         // ------------------------
-        ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
-        ImGui::Text ("Pick Preferred Plane:");
-        ImGui::PopStyleColor (1);
+
+        // const bool b_ui_disable_pick_preferred_plane = this->mxStartUiDisableState (bPickedMedevacSurpriseMeMission); // v25.06.1 start disable/enable
+        this->mxStartUiDisableState (bPickedMedevacSurpriseMeMission); // v25.06.1 start disable/enable
+
+        ImGui::TextColored  ( missionx::color::color_vec4_yellow, "Pick Preferred Plane:");
 
         for (const auto &planeTypeLabel : this->mapListPlaneRadioLabel | std::views::values) // v24.12.1
         {
@@ -4657,13 +4702,17 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
           ImGui::NewLine ();
         }
 
+        this->mxEndUiDisableState ( bPickedMedevacSurpriseMeMission ); // v25.06.1 end disable/enable
+        if (bPickedMedevacSurpriseMeMission)
+          ImGui::TextColored (missionx::color::color_vec4_yellow, "Inventory will be XP11 compatible - No stations.");
 
         //------------------------------------------------
         //           Row 3 - sliders
         //------------------------------------------------
         const static std::string popupOverpassWindowName = "overpass filter popup";
 
-        if (this->strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_mission_type::oil_rig))
+        //if (this->strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_mission_type::oil_rig))
+        if (!bPickedOilRigMission && !bPickedMedevacSurpriseMeMission ) // Display for missions that are NOT Oil Rig nor "Surprise Me type".
         {
           ImGui::Columns (2);
           {
@@ -4695,8 +4744,8 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
           ImGui::Columns ();
 
 
-          if (strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (mx_mission_type::medevac) && (this->strct_user_create_layer.iMissionSubCategoryPicked > 0)) // > 0 = med_any_location
-          // data_manager::mapMissionCategoriesCodes.at(strct_user_create_layer.iRadioMissionTypePicked).at(this->strct_user_create_layer.iMissionSubCategoryPicked) > missionx::mx_mission_subcategory_type::med_any_location) // display OSM WEB and OSM DB only if it is not cargo type
+          //if (strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (mx_mission_type::medevac) && (this->strct_user_create_layer.iMissionSubCategoryPicked > 0)) // > 0 = med_any_location
+          if (bPickedMedevacMission && (this->strct_user_create_layer.iMissionSubCategoryPicked > 0)) // > 0 = med_any_location
           {
             // display OSM WEB and OSM DB only if it is not cargo type
 
@@ -4871,7 +4920,8 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
         int iMinLegsVal = 1;
         int iMaxLegsVal = 4;
         // calculate default number of flight legs per mission and plane type
-        if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types::plane_type_helos && strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::_mission_type::medevac)) || (this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_mission_type::oil_rig)))
+        //if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types::plane_type_helos && strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::_mission_type::medevac)) || (this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_mission_type::oil_rig)))
+        if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types::plane_type_helos && bPickedMedevacMission) || (bPickedOilRigMission))
         {
           iMinLegsVal                                = 2;
           iMaxLegsVal                                = 2;
@@ -4885,11 +4935,10 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
           strct_user_create_layer.iNumberOfFlighLegs = iMinLegsVal; // we're automatically resetting the starting/picked legs to only one, for jets and heavies.
         }
 
-        if (this->strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_mission_type::medevac) && this->strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_mission_type::oil_rig) && strct_user_create_layer.iRadioPlaneType < missionx::mx_plane_types::plane_type_jets)
+        //if (this->strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_mission_type::medevac) && this->strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_mission_type::oil_rig) && strct_user_create_layer.iRadioPlaneType < missionx::mx_plane_types::plane_type_jets)
+        if (!bPickedMedevacMission && !bPickedOilRigMission && !bPickedMedevacSurpriseMeMission && strct_user_create_layer.iRadioPlaneType < missionx::mx_plane_types::plane_type_jets)
         {
-          ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
-          ImGui::Text ("How Many Flight Legs ? "); // between 2 and 4
-          ImGui::PopStyleColor (1);
+          ImGui::TextColored (missionx::color::color_vec4_yellow ,"How Many Flight Legs ? "); // between 2 and 4
 
           ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_white); // internal color
           for (int i = iMinLegsVal; i <= iMaxLegsVal; ++i)
@@ -4924,7 +4973,8 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
         // ------------------------
         // -- Countdown
         // ------------------------
-        if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types::plane_type_helos && strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::_mission_type::medevac)) || (this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_mission_type::oil_rig)))
+        //if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types::plane_type_helos && strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::_mission_type::medevac)) || (this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_mission_type::oil_rig)))
+        if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types::plane_type_helos && bPickedMedevacMission) || (bPickedOilRigMission))
         {
           // ImGui::SameLine(0.0f, 100.0f);
           ImGui::Checkbox ("Add Countdown", &this->strct_setup_layer.bAddCountdown);
@@ -5226,7 +5276,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
 
             // v3.303.12
             ImGui::SameLine (0.0f, 20.0f);
-            this->add_ui_advance_settings_random_date_time_weather_and_weight_button2 (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked, mxconst::get_TEXT_TYPE_TITLE_SMALLEST ());
+            this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked, mxconst::get_TEXT_TYPE_TITLE_SMALLEST ());
           }
           else
           {
@@ -5475,7 +5525,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
             // this->add_ui_pick_subcategories (this->mapMissionCategories[static_cast<int> (missionx::mx_mission_type::cargo)]);
             // ImGui::Spacing ();
 
-            this->add_ui_advance_settings_random_date_time_weather_and_weight_button2 (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
+            this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
             ImGui::Spacing ();
             add_designer_mode_checkbox (); // v24.03.2 Designer mode flag
 
@@ -8590,7 +8640,7 @@ WinImguiBriefer::child_draw_ils_search ()
                 this->add_ui_pick_subcategories (this->mapMissionCategories[static_cast<int> (missionx::mx_mission_type::cargo)]);
                 ImGui::Spacing ();
                 // v3.303.10 // v25.04.1 moved advance button to the popup window for better flow
-                this->add_ui_advance_settings_random_date_time_weather_and_weight_button2 (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
+                this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
                 ImGui::Spacing ();
                 add_designer_mode_checkbox (); // v24.03.2 Designer mode flag
 
@@ -10425,7 +10475,7 @@ There are other options that are best handle manually inside an editor and not i
       ImGui::SameLine (0.0f, 50.0f);
       bRerunRandomDateTime = add_ui_checkbox_rerun_random_date_and_time ();
       ImGui::SameLine ();
-      this->add_ui_advance_settings_random_date_time_weather_and_weight_button2 (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked);
+      this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked);
 
       ImGui::SameLine (0.0f, 25.0f);
       missionx::WinImguiBriefer::add_designer_mode_checkbox (); // v24.03.2
@@ -10621,399 +10671,8 @@ WinImguiBriefer::draw_about_layer ()
 // -----------------------------------------------
 
 
-// void
-// WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_button(int& out_iClockDayOfYearPicked, int& out_iClockHourPicked, int& out_iClockMinutesPicked, const std::string& inTEXT_TYPE)
-// {
-//   constexpr auto popupRandomize_Weather_DateTime = "set_weather_date_and_time_rules";
-//   missionx::WinImguiBriefer::HelpMarker("Configure Preferred Weather, Default Weight and Date/Time.\nYou can disable default weight when flying online and you don't want Mission-X to mess with the weights.");
-//   ImGui::SameLine();
-//   this->mxUiSetFont(inTEXT_TYPE); // default TEXT_TYPE_TITLE_REG
-//   if (ImGui::Button("Advance Settings"))
-//   {
-//     ImGui::OpenPopup(popupRandomize_Weather_DateTime); // v3.303.10 make it a popup
-//   }
-//   this->mxUiReleaseLastFont();
-//
-//   this->mx_add_tooltip(missionx::color::color_vec4_yellow, "Configure Preferred Weather, Default Weight and Date/Time");
-//
-//   ImGui::SameLine(0.0f, 5.0f);
-//   ImGui::TextColored(missionx::color::color_vec4_lightgoldenrodyellow, "Day: %i, hour: %i", out_iClockDayOfYearPicked, out_iClockHourPicked);
-//
-//
-//   //// Randomize Date and Time popup
-//   const ImVec2 center(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);
-//   ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-//   ImGui::SetNextWindowSize(ImVec2(650.0f, 350.0f));
-//   ImGui::PushStyleColor(ImGuiCol_ChildBg, missionx::color::color_vec4_black);
-//
-//   if (ImGui::BeginPopupModal(popupRandomize_Weather_DateTime, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-//   {
-//     static float fRadioPadding = 20.0f;
-//     // float        win_width     = mxUiGetContentWidth();
-//     float  win_height = ImGui::GetWindowHeight();
-//     ImVec2 modal_center(mxUiGetContentWidth() * 0.5f, ImGui::GetWindowHeight() * 0.5f);
-//
-//     /////////////////////////////////
-//     //// Start Tab Child/Group /////
-//     ///////////////////////////////
-//
-//     ImGui::BeginGroup();                                                        // v3.305.1
-//     ImGui::BeginChild("##MainAdvancedSettingTabWindow", ImVec2(-5.0f, -35.0f)); // v3.305.1
-//
-//     // start TABs
-//     ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
-//     if (ImGui::BeginTabBar("AdvancedWeatherAndTimeSettings", tab_bar_flags))
-//     {
-//       if (ImGui::BeginTabItem("Date and Time"))
-//       {
-//         {
-//           ImGui::BeginChild("random_date_and_time", ImVec2(-5.0f, 0.0f), ImGuiChildFlags_Borders); // v3.305.1 // The Apply button will be shown after the child and not part of it
-//           {
-//             // --------- Option Text -----------
-//
-//             this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
-//             ImGui::TextColored(missionx::color::color_vec4_yellow, "How the engine should pick the date and time ?");
-//             this->mxUiReleaseLastFont();
-//
-//             this->mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_REG());
-//             ImGui::TextWrapped("Pick X-Plane\nDate/Time");
-//             ImGui::SameLine(0.0f, 40.0f);
-//             ImGui::TextWrapped("Pick OS\nDate/Time");
-//             ImGui::SameLine(0.0f, 40.0f);
-//             ImGui::TextWrapped("Pick Any Time");
-//             ImGui::SameLine(0.0f, 40.0f);
-//             ImGui::TextWrapped("Pick Exact\nDate/Time");
-//             ImGui::SameLine(0.0f, 40.0f);
-//             ImGui::TextWrapped("Pick Preferred\nMonths/Time");
-//             ImGui::NewLine();
-//             this->mxUiReleaseLastFont();
-//
-//             // --------- Option Radio Buttons -----------
-//             ImGui::SameLine(fRadioPadding, 0.0f);
-//
-//             for (const auto &[type, label, toolTip] : this->listRandomCalendarRadioLabel)
-//             {
-//               if (ImGui::RadioButton(label.c_str(), type == this->adv_settings_strct.iRadioRandomDateTime_pick))
-//               {
-//                 this->adv_settings_strct.iRadioRandomDateTime_pick = type;
-//
-//                 switch (this->adv_settings_strct.iRadioRandomDateTime_pick)
-//                 {
-//                   case missionx::mx_ui_random_date_time_type::current_day_and_time:
-//                   {
-//                     out_iClockDayOfYearPicked = dataref_manager::getLocalDateDays(); // strct_user_create_layer.iClockDayOfYearPicked
-//                     out_iClockHourPicked      = dataref_manager::getLocalHour();     // strct_user_create_layer.iClockHourPicked
-//                     out_iClockMinutesPicked   = dataref_manager::getLocalMinutes (); // v25.04.2 How many minutes passed since the start of the hour
-//                   }
-//                   break;
-//                   case missionx::mx_ui_random_date_time_type::os_day_and_time:
-//                   {
-//                     missionx::mx_clock_time_strct osClock = Utils::get_os_time();
-//                     out_iClockDayOfYearPicked             = osClock.dayInYear;
-//                     out_iClockHourPicked                  = osClock.hour;
-//                     out_iClockMinutesPicked               = mxUtils::calc_minutes_from_seconds (osClock.seconds_in_day); // v25.04.2 How many minutes passed since the start of the hour
-//                   }
-//                   break;
-//                   case missionx::mx_ui_random_date_time_type::any_day_time:
-//                   {
-//                     this->execAction(missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
-//                   }
-//                   break;
-//                   default: // the two other options need more input from user
-//                     break;
-//                 } // end internal radio switch
-//               }
-//               this->mx_add_tooltip(missionx::color::color_vec4_yellow, toolTip);
-//
-//               fRadioPadding += 110.0f;
-//               ImGui::SameLine(fRadioPadding, 0.0f);
-//             }
-//             fRadioPadding = 20.0; // reset to start of line
-//
-//             // --------- Draw User Options  -----------
-//             ImGui::NewLine();
-//             ImGui::Separator();
-//             switch (this->adv_settings_strct.iRadioRandomDateTime_pick)
-//             {
-//               case missionx::mx_ui_random_date_time_type::any_day_time:
-//               {
-//                 if (ImGui::Checkbox("##checkIncludeNightHours", &this->adv_settings_strct.flag_includeNightHours))
-//                 {
-//                   // this->strct_user_create_layer.flag_includeNightHours ^= 1;
-//                   this->execAction(missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
-//                 }
-//                 ImGui::SameLine(0.0f, 2.0f);
-//                 this->mxUiSetFont(mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1());
-//                 ImGui::TextColored(missionx::color::color_vec4_burlywood, "Include night hours.");
-//                 this->mxUiReleaseLastFont();
-//               }
-//               break;
-//               case missionx::mx_ui_random_date_time_type::exact_day_and_time:
-//               {
-//
-//                 if (this->IsInVR())
-//                 {
-//                   ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_yellow);
-//                   HelpMarker("Reset to current Day and Hour");
-//                   ImGui::PopStyleColor(1);
-//                   ImGui::SameLine();
-//                 }
-//
-//                 this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
-//                 if (ImgWindow::ButtonTooltip(mxUtils::from_u8string(ICON_FA_SYNC).append( "##syncDayInYearAndHours" ).c_str(), "Reset to local day and hour"))
-//                 {
-//                   out_iClockDayOfYearPicked = dataref_manager::getLocalDateDays(); // strct_user_create_layer.iClockDayOfYearPicked
-//                   out_iClockHourPicked      = dataref_manager::getLocalHour();     // strct_user_create_layer.iClockHourPicked
-//                 }
-//                 this->mxUiReleaseLastFont();
-//
-//                 ImGui::SameLine();
-//                 ImGui::TextColored(missionx::color::color_vec4_yellow, "Day:");
-//
-//                 ImGui::SameLine();
-//                 ImGui::SetNextItemWidth(80.0f);
-//                 ImGui::Combo("##DayOfYear", &out_iClockDayOfYearPicked, this->clockDayOfYear_arr, IM_ARRAYSIZE(this->clockDayOfYear_arr));
-//
-//                 ImGui::SameLine(0.0f, 10.0f);
-//                 ImGui::TextColored(missionx::color::color_vec4_yellow, "HH:mm");
-//                 ImGui::SameLine();
-//
-//                 ImGui::SetNextItemWidth(50.0f);
-//                 ImGui::Combo("##StartHours", &out_iClockHourPicked, this->clockHours_arr, IM_ARRAYSIZE(this->clockHours_arr));
-//                 ImGui::SameLine();
-//                 ImGui::TextColored(missionx::color::color_vec4_yellow, ":");
-//                 ImGui::SameLine();
-//                 ImGui::SetNextItemWidth(50.0f);
-//                 ImGui::Combo("##StartMinutes", &out_iClockMinutesPicked, this->clockMinutes_arr, IM_ARRAYSIZE(this->clockMinutes_arr));
-//               }
-//               break;
-//               case missionx::mx_ui_random_date_time_type::pick_months_and_part_of_preferred_day:
-//               {
-//
-//                 ImGui::BeginGroup();
-//                 {
-//                   ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_yellowgreen);
-//                   ImGui::Checkbox("Pick Any Month", &this->adv_settings_strct.flag_checkAnyMonth);
-//                   ImGui::PopStyleColor();
-//
-//
-//                   for (int y = 0; y < 3; y++)
-//                     for (int x = 0; x < 4; x++)
-//                     {
-//                       if (x > 0)
-//                         ImGui::SameLine();
-//                       ImGui::PushID(y * 4 + x);
-//                       if (ImGui::Selectable(this->adv_settings_strct.selected_lbl[y][x].c_str(), this->adv_settings_strct.selected_dateTime_by_user_arr[y][x] != 0, (this->adv_settings_strct.flag_checkAnyMonth) ? ImGuiSelectableFlags_Disabled : 0, ImVec2(30.0f, 30.0f)))
-//                       {
-//                         // Toggle clicked cell
-//                         this->adv_settings_strct.selected_dateTime_by_user_arr[y][x] ^= 1;
-//                       }
-//                       ImGui::PopID();
-//                     } // end X loop
-//
-//                   ImGui::PushStyleColor(ImGuiCol_Button, missionx::color::color_vec4_green);
-//                   this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG()); // v3.303.14
-//                   if (ImGui::Button("Pick Random Day/Time"))
-//                   {
-//                     this->execAction(missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
-//                   }                            // end push button
-//                   this->mxUiReleaseLastFont(); // v3.303.14
-//                   ImGui::PopStyleColor();
-//                 }
-//                 ImGui::EndGroup();
-//
-//
-//                 ImGui::SameLine(0.0f, 60.0f);
-//
-//                 // Time of day
-//                 this->mxUiSetFont(mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1()); // v3.303.14
-//                 ImGui::BeginGroup();
-//                 {
-//                   ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_yellowgreen);
-//                   ImGui::Checkbox("Pick Any Hour", &this->adv_settings_strct.checkPartOfDay_b);
-//                   ImGui::PopStyleColor();
-//
-//                   if (ImGui::BeginTable("Pick Any Hour Table", 2, ImGuiTableFlags_Borders)) // ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_Borders))
-//                   {
-//                     for (int y = 0; y < 4; y++)
-//                       for (int x = 0; x < 2; x++)
-//                       {
-//                         ImGui::TableNextColumn();
-//
-//                         ImGui::PushID(y * 4 + x);
-//
-//                         if (ImGui::Selectable(this->adv_settings_strct.selected_time_lbl[y][x].c_str(), this->adv_settings_strct.selectedTime[y][x] != 0, (this->adv_settings_strct.checkPartOfDay_b) ? ImGuiSelectableFlags_Disabled : 0, ImVec2(200.0f, 25.0f)))
-//                         {
-//                           // Toggle clicked cell
-//                           this->adv_settings_strct.selectedTime[y][x] ^= 1; // I think this means shift 1
-//                         }
-//                         ImGui::PopID();
-//                       }
-//                     ImGui::EndTable();
-//                   } // end time in day table
-//                 }
-//                 ImGui::EndGroup();
-//                 this->mxUiReleaseLastFont(); // v3.303.14
-//
-//               } // pick_months_and_part_of_preferred_day
-//               break;
-//               default:
-//                 break;
-//             }
-//           }
-//           ImGui::EndChild();
-//         }
-//         ImGui::EndTabItem();
-//       }
-//       if (ImGui::BeginTabItem("Weather Settings"))
-//       {
-//         { // begin tab
-//           ImGui::BeginChild("random_weather_tab", ImVec2(-5.0f, 0.0f), ImGuiChildFlags_Borders); // The Apply button will be shown after the child and not part of it
-//           {
-//             // --------- Weather Header Text -----------
-//             this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG()); // v3.303.14
-//             ImGui::TextColored(missionx::color::color_vec4_yellow, "How do you want to setup the weather ?");
-//             this->mxUiReleaseLastFont();
-//
-//             ImGui::NewLine();
-//
-//             fRadioPadding = 20.0f;
-//             ImGui::SameLine(fRadioPadding, 0.0f);
-//
-//             this->mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_REG()); // v3.303.14
-//             for (const auto& radio : this->listRandomWeatherRadioLabel)
-//             {
-//               if (ImGui::RadioButton(radio.label.c_str(), radio.type == this->adv_settings_strct.iWeatherType_user_picked))
-//               {
-//                 this->adv_settings_strct.iWeatherType_user_picked = radio.type;
-//                 if (radio.type == missionx::mx_ui_random_weather_options::pick_pre_defined)
-//                 {
-//                   // reset weather mode change to default static
-//                   for (int y = 0; y < missionx::WinImguiBriefer::mx_popup_adv_settings_strct::weather_mode_y; y++)
-//                     for (int x = 0; x < missionx::WinImguiBriefer::mx_popup_adv_settings_strct::weather_mode_x; x++)
-//                     {
-//                       if (y == missionx::WinImguiBriefer::mx_popup_adv_settings_strct::DEFAULT_WEATHER_MODE_Y && x == missionx::WinImguiBriefer::mx_popup_adv_settings_strct::DEFAULT_WEATHER_MODE_X)
-//                         this->adv_settings_strct.selected_weather_mode_by_user_arr_0_1_xp12[y][x] = 1; // static is highlighted
-//                       else
-//                         this->adv_settings_strct.selected_weather_mode_by_user_arr_0_1_xp12[y][x] = 0; // not picked
-//                     }
-//                 }
-//               }
-//
-//               this->mx_add_tooltip(missionx::color::color_vec4_yellow, radio.toolTip);
-//
-//               ImGui::SameLine(0.0f, fRadioPadding);
-//             } // end loop over all radio options
-//
-//             this->mxUiReleaseLastFont();
-//
-//             fRadioPadding = 20.0; // reset to start of line
-//
-//             ImGui::NewLine();
-//             ImGui::Separator();
-//             switch (this->adv_settings_strct.iWeatherType_user_picked)
-//             {
-//               case missionx::mx_ui_random_weather_options::pick_pre_defined:
-//               {
-//                 // decide which array to pick
-//                 this->mxUiSetFont(mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1()); // v3.303.14
-//                 ImGui::BeginGroup();
-//                 {
-//                   if (ImGui::BeginTable("Pick Custom Weather Type Table", missionx::WinImguiBriefer::mx_popup_adv_settings_strct::weather_x, ImGuiTableFlags_Borders)) // ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_Borders))
-//                   {
-//                     for (int y = 0; y < missionx::WinImguiBriefer::mx_popup_adv_settings_strct::weather_y; y++)
-//                       for (int x = 0; x < missionx::WinImguiBriefer::mx_popup_adv_settings_strct::weather_x; x++)
-//                       {
-//                         ImGui::TableNextColumn();
-//
-//                         ImGui::PushID(y * missionx::WinImguiBriefer::mx_popup_adv_settings_strct::weather_x + x);
-//                         if (ImGui::Selectable((*this->adv_settings_strct.ptr_selected_weather_lbl)[y][x].c_str(), (*this->adv_settings_strct.ptr_selected_weather_by_user_arr)[y][x] != 0, 0, ImVec2(95.0f, 25.0f))) //(this->flag_pickAnyWeatherType) ? ImGuiSelectableFlags_Disabled : 0, ImVec2(85.0f, 25.0f)))
-//                         {
-//                           // Toggle clicked cell
-//                           if ((*this->adv_settings_strct.ptr_selected_weather_code)[y][x] >= 0)
-//                             (*this->adv_settings_strct.ptr_selected_weather_by_user_arr)[y][x] ^= 1;
-//
-//                           // Log::logMsg("Clicked: " + this->adv_settings_strct.selected_weather_lbl_xp12[y][x]); // debug
-//                         }
-//                         ImGui::PopID();
-//                       } // end X loop over weather array and // end Y loop over weather array
-//
-//                     ImGui::EndTable();
-//                   } // end table
-//                 }   // end ui group
-//                 ImGui::EndGroup();
-//                 this->mxUiReleaseLastFont(); // v3.303.14
-//
-//               }
-//               break;
-//               default:
-//                 break;
-//
-//             } // switch
-//
-//           } // end child
-//           ImGui::EndChild();
-//
-//         }                    // end tab
-//         ImGui::EndTabItem(); // end weather TAB
-//       }
-//       if (ImGui::BeginTabItem("Weight Settings"))
-//       {
-//
-//         { // begin tab
-//           // ImGui::BeginChild("weight_tab", ImVec2(win_width - 10.0f, win_height - 95.0f), true);
-//           ImGui::BeginChild("weight_tab", ImVec2(-5.0f, 0.0f), ImGuiChildFlags_Borders); // v3.305.1
-//           {
-//             this->mxUiSetFont(mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1()); // v3.303.14
-//             this->add_ui_xp11_comp_checkbox ( false );
-//             ImGui::Separator ();
-//             ImGui::NewLine ();
-//             this->add_default_weight_ui (); // v25.02.1
-//             this->mxUiReleaseLastFont();
-//           }
-//           ImGui::EndChild();
-//         }
-//         ImGui::EndTabItem(); // end weather TAB
-//       }
-//       ImGui::EndTabBar();
-//     }
-//
-//     ImGui::EndChild(); // v3.305.1
-//     ImGui::EndGroup(); // v3.305.1
-//
-//
-//     // --------- BUTTONS -----------
-//     ImGui::Spacing();
-//     ImGui::SameLine(modal_center.x * 0.75f);
-//     ImGui::SetCursorPosY(win_height - 35.0f);
-//     ImGui::BeginGroup();
-//
-//     this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG()); // v3.303.14
-//     if (ImGui::Button("Apply & Close##AdvSettingsApplyAndClose", ImVec2(150, 0)))
-//     {
-//       ImGui::CloseCurrentPopup();
-//     }
-//     this->mxUiReleaseLastFont();
-//
-//     ImGui::SameLine(0.0f, 20.0f);
-//     ImGui::SetCursorPosY(ImGui::GetCursorPos().y + 5.0f);
-//     ImGui::TextColored(missionx::color::color_vec4_lightgoldenrodyellow, "Picked Day: %i, %i:%i", this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked);
-//     this->mx_add_tooltip(missionx::color::color_vec4_lightyellow, "Day of Year and Hour");
-//     ImGui::EndGroup();
-//
-//     ////// End Popup //////
-//     ImGui::EndPopup();
-//   } // end randomize date and time popup}
-//
-//   ImGui::PopStyleColor(1); // end popup background color
-//
-//
-// } // end add_ui_advance_settings_random_date_time_weather_and_weight_button function
-
-// -----------------------------------------------
-
 void
-WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_button2 (int &out_iClockDayOfYearPicked, int &out_iClockHourPicked, int &out_iClockMinutesPicked, const std::string &inTEXT_TYPE)
+WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_button (int &out_iClockDayOfYearPicked, int &out_iClockHourPicked, int &out_iClockMinutesPicked, const std::string &inTEXT_TYPE)
 {
   constexpr auto popupRandomize_Weather_DateTime = "set_weather_date_and_time_rules";
   missionx::WinImguiBriefer::HelpMarker ("Configure Preferred Weather, Default Weight and Date/Time.\nYou can disable default weight when flying online and you don't want Mission-X to mess with the weights.");
@@ -11872,7 +11531,8 @@ WinImguiBriefer::subDraw_ui_xScriptlet (IXMLNode &pNode, mxTrig_ui_mode_enm &inM
 
   assert (xScriptlet_ptr.isEmpty () == false && " scriptlet cNode can't be empty");
 
-  std::string script_cdata_s = (xScriptlet_ptr.isEmpty ()) ? "" : Utils::xml_read_cdata_node (xScriptlet_ptr, "");
+  // std::string script_cdata_s = (xScriptlet_ptr.isEmpty ()) ? "" : Utils::xml_read_cdata_node (xScriptlet_ptr, "");
+  std::string script_cdata_s = (xScriptlet_ptr.isEmpty ()) ? "" : Utils::xml_get_text_or_cdata_text (xScriptlet_ptr, "");
   if (inTrig_ptr)
     inTrig_ptr->setBuff (inTrig_ptr->iCurrentBuf, script_cdata_s);
 
@@ -12533,7 +12193,8 @@ WinImguiBriefer::read_and_parse_saved_state (const std::string inPathAndFile)
 
         for (int i2 = 0; i2 < buf_i; ++i2)
         {
-          std::string buf_s = Utils::xml_read_cdata_node (xLeg.getChildNode (mxconst::get_ELEMENT_BUFFERS ().c_str ()).getChildNode (mxconst::get_ELEMENT_BUFF ().c_str (), i2), "");
+          // std::string buf_s = Utils::xml_read_cdata_node (xLeg.getChildNode (mxconst::get_ELEMENT_BUFFERS ().c_str ()).getChildNode (mxconst::get_ELEMENT_BUFF ().c_str (), i2), "");
+          std::string buf_s = Utils::xml_get_text_or_cdata_text (xLeg.getChildNode (mxconst::get_ELEMENT_BUFFERS ().c_str ()).getChildNode (mxconst::get_ELEMENT_BUFF ().c_str (), i2), "");
           leg.setBuff (i2, buf_s);
         }
 
@@ -12760,7 +12421,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
         this->strct_ext_layer.fetch_state = missionx::mxFetchState_enum::fetch_in_process;
         this->strct_ext_layer.threadState.init (); // v24.06.1
 
-        missionx::data_manager::mFetchFutures.push_back (std::async (std::launch::async, missionx::data_manager::fetch_fpln_from_external_site, &this->strct_ext_layer.threadState, missionx::data_manager::prop_userDefinedMission_ui.node, &this->strct_ext_layer.fetch_state, &this->strct_ext_layer.asyncFetchMsg_s));
+        missionx::data_manager::mFetchFutures.push_back (std::async (std::launch::async, missionx::data_manager::fetch_fpln_from_flightplandatabase_site, &this->strct_ext_layer.threadState, missionx::data_manager::prop_userDefinedMission_ui.node, &this->strct_ext_layer.fetch_state, &this->strct_ext_layer.asyncFetchMsg_s));
         this->setMessage ("Fetching information from 'external site', may take up to one minute.", 8); // v24.06.1
       }
     }

@@ -120,7 +120,7 @@ static int maxXMLEntitiesLen = 5; // the maximum of XMLEntities[i].lengthMinus1 
 typedef struct { IXMLCStr s; int lengthMinus1; IXMLChar c; } IJSONCharacterEntity;
 static IJSONCharacterEntity JSONEntities[] =
 {
-  { _CXML("/"), 1, _CXML(static_cast<IXMLChar>('\\/'))}, // 13-oct-2023 missionx saar: added static cast using QT suggestion
+  { _CXML("/"), 1, _CXML( static_cast<IXMLChar>('\\/') )}, // 13-oct-2023 missionx saar: added static cast using QT suggestion
   { _CXML("o"), 1, _CXML('m')}
 };
 static int maxJSONEntitiesLen = 1; // the maximum of XMLEntities[i].lengthMinus1 for all i
@@ -333,7 +333,7 @@ static inline FILE* xfopen(IXMLCStr filename, IXMLCStr mode)
 }
 static inline int xstrlen(IXMLCStr c)
 {
-  return (int)strlen(c); // saar added (int) casting to remove warning during build
+  return strlen(c); // saar added (int) casting to remove warning during build
 }
 #ifdef IBM // saar
 static inline int xstrnicmp(IXMLCStr c1, IXMLCStr c2, int l)

@@ -81,6 +81,8 @@ public:
   //static std::set<std::string> gather_custom_acf_datarefs(fs::path inFile);
   static std::set<std::string> search_datarefs_in_acf_file(const std::string& inSourceFile);
   static std::set<std::string> search_datarefs_in_obj_file(fs::path inFile);
+  // purge cached files on plugin load.
+  static void purge_cache_files (const fs::path& directory_path, bool is_thread = false); // v25.06.1
 
 private:
   static constexpr const int MX_LOAD_KEY_POS_IN_VEC   = 0;

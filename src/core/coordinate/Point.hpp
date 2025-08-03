@@ -693,106 +693,106 @@ public:
 
 
   // -----------------------------------
-  static missionx::mx_location_3d_objects readPointElement(ITCXMLNode& xNode)
-  {
-    missionx::mx_location_3d_objects info;
+  
+  //static missionx::mx_location_3d_objects readPointElement(ITCXMLNode& xNode)
+  //{
+  //  missionx::mx_location_3d_objects info;
 
-    info.lat               = Utils::readAttrib(xNode, mxconst::get_ATTRIB_LAT(), "");
-    info.lon               = Utils::readAttrib(xNode, mxconst::get_ATTRIB_LONG(), "");
-    info.elev              = Utils::readAttrib(xNode, mxconst::get_ATTRIB_ELEV_FT(), "");
-    info.elev_above_ground = Utils::readAttrib(xNode, mxconst::get_ATTRIB_ELEV_ABOVE_GROUND_FT(), "");
+  //  info.lat               = Utils::readAttrib(xNode, mxconst::get_ATTRIB_LAT(), "");
+  //  info.lon               = Utils::readAttrib(xNode, mxconst::get_ATTRIB_LONG(), "");
+  //  info.elev              = Utils::readAttrib(xNode, mxconst::get_ATTRIB_ELEV_FT(), "");
+  //  info.elev_above_ground = Utils::readAttrib(xNode, mxconst::get_ATTRIB_ELEV_ABOVE_GROUND_FT(), "");
 
-    // v3.0.202 added move 3d info
-    info.heading = Utils::readAttrib(xNode, mxconst::get_ATTRIB_HEADING_PSI(), "");
-    info.pitch   = Utils::readAttrib(xNode, mxconst::get_ATTRIB_PITCH(), "");
-    info.roll    = Utils::readAttrib(xNode, mxconst::get_ATTRIB_ROLL(), "");
-    info.speed   = Utils::readAttrib(xNode, mxconst::get_ATTRIB_SPEED_KMH(), "");
+  //  // v3.0.202 added move 3d info
+  //  info.heading = Utils::readAttrib(xNode, mxconst::get_ATTRIB_HEADING_PSI(), "");
+  //  info.pitch   = Utils::readAttrib(xNode, mxconst::get_ATTRIB_PITCH(), "");
+  //  info.roll    = Utils::readAttrib(xNode, mxconst::get_ATTRIB_ROLL(), "");
+  //  info.speed   = Utils::readAttrib(xNode, mxconst::get_ATTRIB_SPEED_KMH(), "");
 
-    // v3.0.207.5
-    info.adjust_heading = Utils::readAttrib(xNode, mxconst::get_ATTRIB_ADJUST_HEADING(), "0"); // zero means no adjustment
+  //  // v3.0.207.5
+  //  info.adjust_heading = Utils::readAttrib(xNode, mxconst::get_ATTRIB_ADJUST_HEADING(), "0"); // zero means no adjustment
 
 
-    return info;
-  }
+  //  return info;
+  //}
   // -----------------------------------
 
-//  bool loadPointElement(ITCXMLNode& inPointNode, std::string& outErr)
-  bool loadPointElement(ITCXMLNode& inPointNode)
-  {
-    missionx::mx_location_3d_objects info = Point::readPointElement(inPointNode);
-
-    // location validations
-    if (Utils::is_number(info.lat) && Utils::is_number(info.lon))
-    {
-      setLat(mxUtils::stringToNumber<double>(info.lat));
-      setLon(mxUtils::stringToNumber<double>(info.lon));
-    }
-    else
-    {
-      Log::logMsgErr("[read point] One of the coordination Lat/Lon might be malformed: " + mxconst::get_QM() + info.lat + "," + info.lon + mxconst::get_QM() + ". Skipping...");
-      return false;
-    }
-
-    if (!info.elev.empty() && Utils::is_number(info.elev))
-      this->setElevationFt(mxUtils::stringToNumber<double>(info.elev));
-    else
-      this->setElevationFt(0); // on ground
-
-    // add elevation above ground logic // v3.0.200
-    if (Utils::is_number(info.elev_above_ground))
-    {
-      double elevAboveGround = mxUtils::stringToNumber<double>(info.elev_above_ground);
-      if (elevAboveGround != 0.0)
-      {
-        XPLMProbeResult outProbeResult;
-        float           groundElevation = static_cast<float> (Point::getTerrainElevInMeter_FromPoint ((*this), outProbeResult));
-        if (outProbeResult == xplm_ProbeHitTerrain)
-          this->setElevationFt(groundElevation + elevAboveGround);
-      }
-    }
-    else
-      this->setElevationAboveGroundFt(0); // basically ignore this value and use elevation value instead
-
-    // read tilt information: heading, pitch, roll
-    if (!info.heading.empty() && mxUtils::is_number(info.heading))
-    {
-      this->setHeading(mxUtils::stringToNumber<float>(info.heading));
-    }
-    else
-      this->setHeading(0.0f);
-
-    if (!info.pitch.empty() && mxUtils::is_number(info.pitch))
-    {
-      this->setPitch(mxUtils::stringToNumber<float>(info.pitch));
-    }
-    else
-      this->setPitch(0.0f);
-
-    if (!info.roll.empty() && mxUtils::is_number(info.roll))
-    {
-      this->setRoll(mxUtils::stringToNumber<float>(info.roll));
-    }
-    else
-      this->setRoll(0.0f);
-
-    if (!info.speed.empty() && mxUtils::is_number(info.speed))
-    {
-      this->setSpeedInKmh(mxUtils::stringToNumber<float>(info.speed));
-    }
-    else
-      this->setSpeedInKmh(0.0); // v3.0.253.7
-
-    // v3.0.207.5 - adjust heading
-    if (!info.adjust_heading.empty() && mxUtils::is_number(info.adjust_heading))
-    {
-      this->setAdjustHeading(mxUtils::stringToNumber<float>(info.adjust_heading));
-    }
-    else
-      this->setAdjustHeading(0.0f); // v3.0.207.2 default speed 10kmh
-
-
-    return true; // pointIsValid;
-  }
+//  bool loadPointElement(ITCXMLNode& inPointNode)
+//  {
+//    missionx::mx_location_3d_objects info = Point::readPointElement(inPointNode);
+//
+//    // location validations
+//    if (Utils::is_number(info.lat) && Utils::is_number(info.lon))
+//    {
+//      setLat(mxUtils::stringToNumber<double>(info.lat));
+//      setLon(mxUtils::stringToNumber<double>(info.lon));
+//    }
+//    else
+//    {
+//      Log::logMsgErr("[read point] One of the coordination Lat/Lon might be malformed: " + mxconst::get_QM() + info.lat + "," + info.lon + mxconst::get_QM() + ". Skipping...");
+//      return false;
+//    }
+//
+//    if (!info.elev.empty() && Utils::is_number(info.elev))
+//      this->setElevationFt(mxUtils::stringToNumber<double>(info.elev));
+//    else
+//      this->setElevationFt(0); // on ground
+//
+//    // add elevation above ground logic // v3.0.200
+//    if (Utils::is_number(info.elev_above_ground))
+//    {
+//      double elevAboveGround = mxUtils::stringToNumber<double>(info.elev_above_ground);
+//      if (elevAboveGround != 0.0)
+//      {
+//        XPLMProbeResult outProbeResult;
+//        float           groundElevation = static_cast<float> (Point::getTerrainElevInMeter_FromPoint ((*this), outProbeResult));
+//        if (outProbeResult == xplm_ProbeHitTerrain)
+//          this->setElevationFt(groundElevation + elevAboveGround);
+//      }
+//    }
+//    else
+//      this->setElevationAboveGroundFt(0); // basically ignore this value and use elevation value instead
+//
+//    // read tilt information: heading, pitch, roll
+//    if (!info.heading.empty() && mxUtils::is_number(info.heading))
+//    {
+//      this->setHeading(mxUtils::stringToNumber<float>(info.heading));
+//    }
+//    else
+//      this->setHeading(0.0f);
+//
+//    if (!info.pitch.empty() && mxUtils::is_number(info.pitch))
+//    {
+//      this->setPitch(mxUtils::stringToNumber<float>(info.pitch));
+//    }
+//    else
+//      this->setPitch(0.0f);
+//
+//    if (!info.roll.empty() && mxUtils::is_number(info.roll))
+//    {
+//      this->setRoll(mxUtils::stringToNumber<float>(info.roll));
+//    }
+//    else
+//      this->setRoll(0.0f);
+//
+//    if (!info.speed.empty() && mxUtils::is_number(info.speed))
+//    {
+//      this->setSpeedInKmh(mxUtils::stringToNumber<float>(info.speed));
+//    }
+//    else
+//      this->setSpeedInKmh(0.0); // v3.0.253.7
+//
+//    // v3.0.207.5 - adjust heading
+//    if (!info.adjust_heading.empty() && mxUtils::is_number(info.adjust_heading))
+//    {
+//      this->setAdjustHeading(mxUtils::stringToNumber<float>(info.adjust_heading));
+//    }
+//    else
+//      this->setAdjustHeading(0.0f); // v3.0.207.2 default speed 10kmh
+//
+//
+//    return true; // pointIsValid;
+//  }
 
 
   // -----------------------------------

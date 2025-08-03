@@ -66,7 +66,7 @@ public:
   void         setMuteSound(bool inFlag);
   void         setPauseSound(bool inFlag);
 
-  void testMp3();
+  //void testMp3();
 };
 
 } // end namespace

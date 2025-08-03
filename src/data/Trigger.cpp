@@ -350,158 +350,157 @@ missionx::Trigger::parseElevationVolume(std::string inMinMax, std::string& outEr
   this->setStringProperty(mxconst::get_ATTRIB_ELEV_LOWER_UPPER_FT(), inMinMax); // v3.0.205.3 will replace ATTRIB_ELEV_MIN_MAX_FT in future
 
 
-#if defined DEBUG || defined _DEBUG
+  #ifndef RELEASE 
   std::string trigName = getName(); // v3.0.219.2
-#endif
+  #endif
   std::vector<std::string> vecSplitElev = mxUtils::split_v2(inMinMax, "|");
   if (vecSplitElev.empty())
   {
     outErr = "Trigger - " + getName() + " has malform 'elevation_volume' settings ";
     return false;
   }
+  
+  
+  int count = (int)vecSplitElev.size ();
+
+  // check if first variable starts with "++" or "--"
+  if (count == 0)
+    return false; // skip elevation settings
+
+
+  std::string strElevationWithoutPrefix = ""; // v3.0.219.2 holds elevation without the ++/--/+++/---
+  std::string numStr                    = vecSplitElev.front (); // first elev value
+  double      trigMin, trigMax;
+  trigMin = trigMax = 0.0;
+
+  bool   flag_calculateRelativeToGround     = false;
+  double terrainLevel_ft                    = 0.0;
+  double suggestedElevationRelativeToGround = 0.0;
+
+
+  // check special case with +++/--- or ++/--
+  if ((numStr.find ("+++") == 0) || (numStr.find ("---") == 0)) // v3.0.219.2 if string starts with +++/---
+  {
+    strElevationWithoutPrefix = numStr.substr (3);
+    XPLMProbeResult probeResult;
+    this->calcCenterOfArea ();
+    terrainLevel_ft = UtilsGraph::getTerrainElevInMeter_FromPoint (this->pCenter, probeResult) * meter2feet;
+
+    if (probeResult == xplm_ProbeHitTerrain)
+    {
+      flag_calculateRelativeToGround     = true;
+      suggestedElevationRelativeToGround = Utils::stringToNumber<double> (strElevationWithoutPrefix);
+      suggestedElevationRelativeToGround += terrainLevel_ft; // add terrain elevation
+    }
+
+  } // end special case where we use +++ or ---
+  else if ((numStr.find ("++") == 0) || (numStr.find ("--") == 0)) // v3.0.219.2 if string starts with ++/--
+  {
+    strElevationWithoutPrefix = numStr.substr (2);
+  }
+
+
+  if ((numStr.find ("++") == 0 || (numStr.find ("+++") == 0 && flag_calculateRelativeToGround)) && count == 1 /* no lower|upper settings*/)
+  {
+    numStr = strElevationWithoutPrefix; // v3.0.219.2 if we probed ground we ned to retrive from 3rd character.
+    if (flag_calculateRelativeToGround) // v3.0.219.2
+      numStr = Utils::formatNumber<double> (suggestedElevationRelativeToGround, 2); // change original numStr value to keep original code logic intact
+
+
+    double elevation_d = Utils::stringToNumber<double> (numStr);
+
+    this->setNodeProperty<double> (mxconst::get_ATTRIB_ELEV_FT (), elevation_d); // v3.0.241.1 update both properties and xml
+
+    elevation_d += 100000.0; // define highest value = elevation_d(min) + 100000ft
+    this->setNodeProperty<double> (mxconst::get_ATTRIB_ELEV_MAX_FT (), elevation_d); // v3.0.241.1 update both properties and xml
+
+    std::string isPlaneOnGound = Utils::readAttrib (this->xConditions, mxconst::get_ATTRIB_PLANE_ON_GROUND (), "");
+
+    this->trigElevType = missionx::mx_trigger_elev_type_enum::above;
+    return true; // skip rest of code
+  }
+  else if ((numStr.find ("--") == 0 || (numStr.find ("---") == 0 && flag_calculateRelativeToGround)) && count == 1 /* no lower|upper settings*/)
+  {
+    numStr = strElevationWithoutPrefix; // v3.0.219.2 if we probed ground we ned to retrive from 3rd character.
+    if (flag_calculateRelativeToGround) // v3.0.219.2
+      numStr = Utils::formatNumber<double> (suggestedElevationRelativeToGround, 2); // change original numStr value to keep original code logic intact
+
+
+    double dNumStr = Utils::stringToNumber<double> (numStr);
+    double min     = missionx::LOWEST_GROUND_ELEV_FOR_TRIGGERS; // constant
+    // make sure ATTRIB_ELEV_MAX_FT always larger than ATTRIB_ELEV_FT
+    if (dNumStr < min)
+    {
+      double tmp = min;
+      min        = dNumStr;
+      dNumStr    = tmp;
+    }
+
+    this->setNodeProperty<double> (mxconst::get_ATTRIB_ELEV_FT (), min);
+    this->setNodeProperty<double> (mxconst::get_ATTRIB_ELEV_MAX_FT (), dNumStr);
+
+
+    this->trigElevType = missionx::mx_trigger_elev_type_enum::below;
+    return true; // skip rest of code
+  }
+  else if (!flag_calculateRelativeToGround && Utils::is_number (numStr) /* keep original logic*/)
+    trigMin = Utils::stringToNumber<double> (numStr); // will test min against max to see if they are valid
+  else if (flag_calculateRelativeToGround && count > 1) // if we had +++/--- sign and we have lower|upper values
+    trigMin = suggestedElevationRelativeToGround; // lower elevation should add ground level
   else
   {
-    int count = (int)vecSplitElev.size();
+    outErr = "Fail to convert: " + numStr + ", to number. Skipping trigger elevation settings.";
+    return false;
+  }
 
-    // check if first variable starts with "++" or "--"
-    if (count == 0)
+  // check if on ground
+  if (count == 1 && trigMin == 0.0)
+  {
+    this->trigElevType = mx_trigger_elev_type_enum::on_ground;
+    if (!this->xConditions.isEmpty ())
+      Utils::xml_set_attribute_in_node_asString (this->xConditions, mxconst::get_ATTRIB_PLANE_ON_GROUND (), mxconst::get_MX_YES (), this->xConditions.getName ()); // v3.0.241.1 update both properties and xml
+
+    this->setNodeProperty<int> (mxconst::get_PROP_TRIG_ELEV_TYPE (), (int)this->trigElevType); // this will override original settings
+  }
+  else if (count > 1) // read max if present
+  {
+    numStr.clear ();
+    numStr = vecSplitElev.at (1);
+    if (Utils::is_number (numStr))
     {
-      return false; // skip elevation settings
+      trigMax = Utils::stringToNumber<double> (numStr); // will test min against max to see if they are valid
+      if (flag_calculateRelativeToGround) // v3.0.219.2 add terrain level to upper elevation
+        trigMax += terrainLevel_ft;
     }
-
-    std::string strElevationWithoutPrefix = "";                   // v3.0.219.2 holds elevation without the ++/--/+++/---
-    std::string numStr                    = vecSplitElev.front(); // first elev value
-    double      trigMin, trigMax;
-    trigMin = trigMax = 0.0;
-
-    bool   flag_calculateRelativeToGround     = false;
-    double terrainLevel_ft                    = 0.0;
-    double suggestedElevationRelativeToGround = 0.0;
-
-
-    // check special case with +++/--- or ++/--
-    if ((numStr.find("+++") == 0) || (numStr.find("---") == 0)) // v3.0.219.2 if string starts with +++/---
-    {
-      strElevationWithoutPrefix = numStr.substr(3);
-      XPLMProbeResult probeResult;
-      this->calcCenterOfArea();
-      terrainLevel_ft = UtilsGraph::getTerrainElevInMeter_FromPoint(this->pCenter, probeResult) * meter2feet;
-
-      if (probeResult == xplm_ProbeHitTerrain)
-      {
-        flag_calculateRelativeToGround     = true;
-        suggestedElevationRelativeToGround = Utils::stringToNumber<double>(strElevationWithoutPrefix);
-        suggestedElevationRelativeToGround += terrainLevel_ft; // add terrain elevation
-      }
-
-    }                                                              // end special case where we use +++ or ---
-    else if ((numStr.find("++") == 0) || (numStr.find("--") == 0)) // v3.0.219.2 if string starts with ++/--
-    {
-      strElevationWithoutPrefix = numStr.substr(2);
-    }
-
-
-    if ((numStr.find("++") == 0 || (numStr.find("+++") == 0 && flag_calculateRelativeToGround)) && count == 1 /* no lower|upper settings*/)
-    {
-      numStr = strElevationWithoutPrefix; //v3.0.219.2 if we probed ground we ned to retrive from 3rd character.
-      if (flag_calculateRelativeToGround)                                            // v3.0.219.2
-        numStr = Utils::formatNumber<double>(suggestedElevationRelativeToGround, 2); // change original numStr value to keep original code logic intact
-
-
-      double elevation_d = Utils::stringToNumber<double>(numStr);
-
-      this->setNodeProperty<double>(mxconst::get_ATTRIB_ELEV_FT(), elevation_d); // v3.0.241.1 update both properties and xml
-
-      elevation_d += 100000.0; // define highest value = elevation_d(min) + 100000ft
-      this->setNodeProperty<double>(mxconst::get_ATTRIB_ELEV_MAX_FT(), elevation_d); // v3.0.241.1 update both properties and xml
-
-      std::string isPlaneOnGound = Utils::readAttrib(this->xConditions, mxconst::get_ATTRIB_PLANE_ON_GROUND(), "");
-
-      this->trigElevType = missionx::mx_trigger_elev_type_enum::above;
-      return true; // skip rest of code
-    }
-    else if ((numStr.find("--") == 0 || (numStr.find("---") == 0 && flag_calculateRelativeToGround)) && count == 1 /* no lower|upper settings*/)
-    {
-      numStr = strElevationWithoutPrefix;                                            //v3.0.219.2 if we probed ground we ned to retrive from 3rd character.
-      if (flag_calculateRelativeToGround)                                            // v3.0.219.2
-        numStr = Utils::formatNumber<double>(suggestedElevationRelativeToGround, 2); // change original numStr value to keep original code logic intact
-
-
-      double dNumStr = Utils::stringToNumber<double>(numStr);
-      double min     = missionx::LOWEST_GROUND_ELEV_FOR_TRIGGERS; // constant
-      // make sure ATTRIB_ELEV_MAX_FT always larger than ATTRIB_ELEV_FT
-      if (dNumStr < min)
-      {
-        double tmp = min;
-        min        = dNumStr;
-        dNumStr    = tmp;
-      }
-
-      this->setNodeProperty<double>(mxconst::get_ATTRIB_ELEV_FT(), min); 
-      this->setNodeProperty<double>(mxconst::get_ATTRIB_ELEV_MAX_FT(), dNumStr); 
-
-
-      this->trigElevType = missionx::mx_trigger_elev_type_enum::below;
-      return true; // skip rest of code
-    }
-    else if (!flag_calculateRelativeToGround && Utils::is_number(numStr) /* keep original logic*/)
-      trigMin = Utils::stringToNumber<double>(numStr);    // will test min against max to see if they are valid
-    else if (flag_calculateRelativeToGround && count > 1) // if we had +++/--- sign and we have lower|upper values
-      trigMin = suggestedElevationRelativeToGround;       // lower elevation should add ground level
     else
     {
       outErr = "Fail to convert: " + numStr + ", to number. Skipping trigger elevation settings.";
       return false;
     }
 
-    // check if on ground
-    if (count == 1 && trigMin == 0.0)
+    // check min < max and switch if not
+    if (trigMax < trigMin)
     {
-      this->trigElevType = mx_trigger_elev_type_enum::on_ground;
-      if (!this->xConditions.isEmpty())
-        Utils::xml_set_attribute_in_node_asString(this->xConditions, mxconst::get_ATTRIB_PLANE_ON_GROUND(), mxconst::get_MX_YES(), this->xConditions.getName()); // v3.0.241.1 update both properties and xml
-
-      this->setNodeProperty<int>(mxconst::get_PROP_TRIG_ELEV_TYPE(), (int)this->trigElevType);  // this will override original settings
+      double tmp = trigMin;
+      trigMin    = trigMax;
+      trigMax    = tmp;
     }
-    else if (count > 1) // read max if present
-    {
-      numStr.clear();
-      numStr = vecSplitElev.at(1);
-      if (Utils::is_number(numStr))
-      {
-        trigMax = Utils::stringToNumber<double>(numStr); // will test min against max to see if they are valid
-        if (flag_calculateRelativeToGround)              // v3.0.219.2 add terrain level to upper elevation
-          trigMax += terrainLevel_ft;
-      }
-      else
-      {
-        outErr = "Fail to convert: " + numStr + ", to number. Skipping trigger elevation settings.";
-        return false;
-      }
 
-      // check min < max and switch if not
-      if (trigMax < trigMin)
-      {
-        double tmp = trigMin;
-        trigMin    = trigMax;
-        trigMax    = tmp;
-      }
+    // set properties
+    this->setNodeProperty<double> (mxconst::get_ATTRIB_ELEV_FT (), trigMin); // v3.0.241.1 update both properties and xml
+    this->setNodeProperty<double> (mxconst::get_ATTRIB_ELEV_MAX_FT (), trigMax); // v3.0.241.1 update both properties and xml
 
-      // set properties
-      this->setNodeProperty<double>(mxconst::get_ATTRIB_ELEV_FT(), trigMin); // v3.0.241.1 update both properties and xml
-      this->setNodeProperty<double>(mxconst::get_ATTRIB_ELEV_MAX_FT(), trigMax); // v3.0.241.1 update both properties and xml
+    this->trigElevType = mx_trigger_elev_type_enum::min_max; // set type
+    this->setNodeProperty<int> (mxconst::get_PROP_TRIG_ELEV_TYPE (), (int)this->trigElevType); // v3.0.241.1 update both properties and xml
 
-      this->trigElevType = mx_trigger_elev_type_enum::min_max; // set type
-      this->setNodeProperty<int>(mxconst::get_PROP_TRIG_ELEV_TYPE(), (int)this->trigElevType); // v3.0.241.1 update both properties and xml
+  } // if max is present
+  else
+  {
+    outErr = "Trigger: " + this->getName () + " has an issue with attribute 'elevation_volume' does not have MAX value. Please fix settings. Skipping trigger elevation settings.";
+    return false;
+  } // end regular min/max validation
 
-    } // if max is present
-    else
-    {
-      outErr = "Trigger: " + this->getName() + " has an issue with attribute 'elevation_volume' does not have MAX value. Please fix settings. Skipping trigger elevation settings.";
-      return false;
-    } // end regular min/max validation
-
-  } // end vecSplitElev vector is not empty
+  // end vecSplitElev vector is not empty
 
 
   return true;

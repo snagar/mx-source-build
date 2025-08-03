@@ -87,6 +87,11 @@ private:
   static ITCXMLNode xml_xMainXSDNode; // = iDom.openFileHelper(pluginDataFullFileNameDir.c_str(), mxconst::get_MISSION_ELEMENT().c_str(), &errMsg);
   static missionx::mutex s_CalcDistMutex; // v3.305.2 Used with the sorting trigger function to optimize evaluation performace
 
+
+  static std::string xml_read_cdata_node (const ITCXMLNode &inNode, const std::string &default_value);
+  static std::string xml_read_cdata_node (const IXMLNode &inNode, std::string default_value);
+
+
 public:
   Utils();
   virtual ~Utils();
@@ -712,7 +717,7 @@ public:
   static bool xml_copy_node_attributes (const IXMLNode & sNode, IXMLNode& tNode, bool flag_includeClearData = false);
   static bool xml_copy_node_attributes_excluding_black_list (const IXMLNode & sNode, IXMLNode& tNode, std::set<std::string>* inExclude = nullptr, bool flag_includeClearData = false);   // the blacklist is for excluding attribute names
   static bool xml_copy_specific_attributes_using_white_list (const IXMLNode & sNode, IXMLNode& tNode, std::set<std::string>* inWhiteList = nullptr, bool flag_includeClearData = false); // the white list is for specific attribute list to copy
-  static void xml_clear_node_attributes_excluding_list ( IXMLNode &sNode, const std::vector<std::string> &inExcludeList = {}, bool flag_includeClearData = false, const bool flag_remove_attribute = false ); // v25.06.1 converted string to <vector> // v25.02.1 the blacklist is for excluding attribute names
+  static IXMLNode xml_clear_node_attributes_excluding_list (IXMLNode &sNode, const std::vector<std::string> &inExcludeList = {}, bool flag_includeClearData = false, const bool flag_remove_attribute = false); // v25.06.1 converted string to <vector> // v25.02.1 the blacklist is for excluding attribute names
 
   // -------------------------------------------
 
@@ -754,7 +759,7 @@ public:
 
   // -------------------------------------------
 
-  static void xml_delete_attribute(IXMLNode& node, std::set<std::string>& inSetAttributes, const std::string &inTagName = "");
+  static void xml_delete_attribute(IXMLNode& node, const std::set<std::string>& inSetAttributes, const std::string &inTagName = "");
   // -------------------------------------------
 
   static void xml_add_comment(IXMLNode& node, const std::string &inCommentString);
@@ -795,8 +800,8 @@ public:
   static IXMLNode xml_get_or_create_node(IXMLNode pNode, const std::string &tagChildNodeName_s, const bool& in_flag_return_copy = true); // v3.0.241.10 b3 added return a copy of the Node or a pointer.
 
   // -------------------------------------------
-  static std::string xml_read_cdata_node (const ITCXMLNode &inNode, const std::string &default_value);
-  static std::string xml_read_cdata_node (const IXMLNode &inNode, std::string default_value);
+  // static std::string xml_read_cdata_node (const ITCXMLNode &inNode, const std::string &default_value);
+  // static std::string xml_read_cdata_node (const IXMLNode &inNode, std::string default_value);
   static std::string xml_get_text_or_cdata_text (const IXMLNode &inNode, const std::string &default_value); // v25.06.1
 
   // -------------------------------------------

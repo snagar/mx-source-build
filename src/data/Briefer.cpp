@@ -51,7 +51,8 @@ missionx::Briefer::parse_node()
   // read and set main briefer properties
   const std::string startICAO      = Utils::readAttrib(this->node, mxconst::get_ATTRIB_STARTING_ICAO(), "");
   const std::string startFlightLeg = Utils::readAttrib(this->node, mxconst::get_ATTRIB_STARTING_LEG(), mxconst::get_ATTRIB_STARTING_GOAL(), "", true); // v3.0.221.15rc5 compatible with new Leg and briefer attribute start_goal
-  const std::string brieferDesc    = Utils::xml_read_cdata_node (this->node, "Please add Briefer description!!!");
+  // const std::string brieferDesc    = Utils::xml_read_cdata_node (this->node, "Please add Briefer description!!!");
+  const std::string brieferDesc    = Utils::xml_get_text_or_cdata_text (this->node, "Please add Briefer description!!!");
 
   this->setStringProperty(mxconst::get_ATTRIB_STARTING_ICAO(), startICAO);
   this->setStringProperty(mxconst::get_ELEMENT_DESC(), brieferDesc, false);

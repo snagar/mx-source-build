@@ -438,65 +438,113 @@ missionx::system_actions::save_acf_datarefs_with_savepoint_v2(const std::string&
 
 
 std::set<std::string>
-missionx::system_actions::search_datarefs_in_obj_file(fs::path inFile)
+missionx::system_actions::search_datarefs_in_obj_file (fs::path inFile)
 {
   const size_t          min_line_chars = 25;
   std::ifstream         file_toRead;
   std::set<std::string> setDatarefs;
 
-  std::ios_base::sync_with_stdio(false);
-  std::cin.tie(nullptr);
+  std::ios_base::sync_with_stdio (false);
+  std::cin.tie (nullptr);
 
-  file_toRead.open(inFile.string(), std::ios::in); // read the file
-  if (file_toRead.is_open())
+  file_toRead.open (inFile.string (), std::ios::in); // read the file
+  if (file_toRead.is_open ())
   {
     std::string line;
     std::string line_s;
 
-    while (getline(file_toRead, line))
+    while (getline (file_toRead, line))
     {
-      line_s.clear();
+      line_s.clear ();
 
-      line = mxUtils::trim(line);
-      if (line.length() < min_line_chars)
+      line = mxUtils::trim (line);
+      if (line.length () < min_line_chars)
         continue;
 
-      line_s = mxUtils::stringToLower(line);
+      line_s = mxUtils::stringToLower (line);
 
-      if (line_s.find("anim_") != 0)
+      if (line_s.find ("anim_") != 0)
         continue;
 
 
-      std::vector<std::string> tokens = mxUtils::split_v2(line, " \t\n\r\f");
+      std::vector<std::string> tokens = mxUtils::split_v2 (line, " \t\n\r\f");
 
-      if (tokens.empty())
+      if (tokens.empty ())
         continue;
 
-      const auto& lastVal_s = tokens.back();
+      const auto &lastVal_s = tokens.back ();
 
-      if (lastVal_s.find("CMND=") == 0) // represent command flag, for example in Aerobask Phenom 300
+      if (lastVal_s.find ("CMND=") == 0) // represent command flag, for example in Aerobask Phenom 300
         continue;
 
-      if (mxUtils::countCharsInString(lastVal_s, '/') > 0)
+      if (mxUtils::countCharsInString (lastVal_s, '/') > 0)
       {
-        setDatarefs.insert(lastVal_s);
+        setDatarefs.insert (lastVal_s);
       }
 
 
     } // end loop over file lines
 
 
-    if (file_toRead.bad())
-      perror("error while reading file");
+    if (file_toRead.bad ())
+      perror ("error while reading file");
   }
   else // fail to open file
   {
-    Log::logAttention((std::string("[Fail parse aptdat] Fail to open file: ") + inFile.string()).c_str(), true);
+    Log::logAttention ((std::string ("[Fail parse aptdat] Fail to open file: ") + inFile.string ()).c_str (), true);
   }
   return setDatarefs;
 }
 
 
+// -----------------------------------
+
+
+void
+system_actions::purge_cache_files (const fs::path &directory_path, const bool is_thread)
+{
+  const auto now = std::chrono::file_clock::now();  // For file_time_type comparison
+  const auto age_limit = now - std::chrono::days(7);  // Files older than 7 days
+
+  if (!fs::exists(directory_path) || !fs::is_directory(directory_path)) {
+    Log::logMsg (fmt::format ("Invalid directory: {}\n", directory_path.string ()), is_thread);
+    return;
+  }
+
+  for (const auto& entry : fs::directory_iterator(directory_path)) {
+    if (!entry.is_regular_file())
+      continue;
+
+    const auto &file_path = entry.path ();
+    const auto &filename  = file_path.filename ().string ();
+    const auto  pos       = filename.find ("cache"); // debug
+
+    if (filename.starts_with ("cache") && filename.ends_with (".xml") )
+    {
+      std::error_code ec;
+      auto            ftime = fs::last_write_time (entry, ec);
+      if (ec)
+      {
+        Log::logMsg (fmt::format ("Error accessing file time for: {}\n", file_path.string ()), is_thread);
+        continue;
+      }
+
+      if (ftime < age_limit)
+      {
+        fs::remove (file_path, ec);
+        if (ec)
+          Log::logMsg (fmt::format ("Failed to delete: {} ({})\n", file_path.string (), ec.message ()), is_thread);
+        else
+          Log::logMsg (fmt::format ("Deleted: {}\n", file_path.string ()), is_thread);
+      }
+    }
+  }
+
+
+}
+
+
+// -----------------------------------
 
 bool
 missionx::system_actions::read_saved_mission_dataref_file(std::string inFileAndPath, std::string& outError, const bool bIsCustomDataref)
@@ -656,6 +704,7 @@ missionx::system_actions::read_saved_mission_dataref_file(std::string inFileAndP
 } // read_saved_mission_dataref_file
 
 
+// -----------------------------------
 
 std::string
 missionx::system_actions::getOptionFileAndPath()
@@ -674,6 +723,7 @@ missionx::system_actions::getOptionFileAndPath()
 }
 
 
+// -----------------------------------
 
 IXMLNode
 missionx::system_actions::load_plugin_options()
@@ -699,6 +749,7 @@ missionx::system_actions::load_plugin_options()
 
 
 
+// -----------------------------------
 
 IXMLNode
 missionx::system_actions::add_overpass_urls()
@@ -722,6 +773,8 @@ missionx::system_actions::add_overpass_urls()
 
   return IXMLNode();
 }
+
+// -----------------------------------
 
 void
 missionx::system_actions::store_plugin_options()
@@ -793,6 +846,7 @@ missionx::system_actions::store_plugin_options()
 } // store_plugin_options
 
 
+// -----------------------------------
 
 IXMLNode
 missionx::system_actions::create_new_plugin_preference_file(IXMLNode inOldOptionsNode)
@@ -845,6 +899,7 @@ missionx::system_actions::create_new_plugin_preference_file(IXMLNode inOldOption
 }
 
 
+// -----------------------------------
 
 std::set<std::string>
 missionx::system_actions::search_datarefs_in_acf_file(const std::string& inSourceFile)

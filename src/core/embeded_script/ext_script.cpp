@@ -938,7 +938,7 @@ missionx::ext_script::ext_get_or_create_global_string(mb_interpreter_t* s, void*
 // -----------------------------------
 
 int
-ext_script::ext_set_global_decimal(mb_interpreter_t* s, void** l)
+missionx::ext_script::ext_set_global_decimal(mb_interpreter_t* s, void** l)
 {
   return ext_script::ext_store_global_decimal(s, l);
 }
@@ -3524,10 +3524,8 @@ missionx::ext_script::ext_get_nav_info(mb_interpreter_t* s, void** l)
   float outHeading = 0.0f;
   char  outID[48];
   char  outName[256];
-  char  outReg[2]; // byte output. 1 for in DSF 0 for not in DSF
-  outReg[0] = '\0';
-  // outReg[1] = '\0';
-
+  char  outReg = 0; // byte output. 1 for in DSF 0 for not in DSF
+  
   unsigned char isInDSF;
   // #ifdef IBM
   //   std::byte isInDSF;
@@ -3535,10 +3533,10 @@ missionx::ext_script::ext_get_nav_info(mb_interpreter_t* s, void** l)
   //   unsigned char isInDSF;
   // #endif
 
-  XPLMGetNavAidInfo(navRef, &navType, &searchLat, &searchLon, &outHeight, &searchFreq, &outHeading, outID, outName, outReg);
-  outReg[1] = '\0';
+  XPLMGetNavAidInfo(navRef, &navType, &searchLat, &searchLon, &outHeight, &searchFreq, &outHeading, outID, outName, nullptr);
+  //outReg = '\0';
 
-  isInDSF = outReg[0];
+  isInDSF = outReg;
 
   std::string outValue = mxUtils::formatNumber<int>(navType);
 
@@ -6033,7 +6031,7 @@ missionx::ext_script::ext_move_item_from_inv(mb_interpreter_t* s, void** l)
   }
   mb_check(mb_attempt_close_bracket(s, l));
 
-  // Check if all attributes were read
+  // Check if all mandatory attributes were set
   if (counter < 2)
   {
     errMsg = "Function: " + mxconst::get_QM() + funcName + mxconst::get_QM() + ", did not receive correct parameter list. Please fix your script. skipping command.";
@@ -6047,8 +6045,8 @@ missionx::ext_script::ext_move_item_from_inv(mb_interpreter_t* s, void** l)
     StationId = "0";
   }
 
-  fromInvName = (outFromInvName == nullptr) ? missionx::EMPTY_STRING : std::string(outFromInvName);
-  barcode     = (outBarcode == nullptr) ? missionx::EMPTY_STRING : std::string(outBarcode);
+  fromInvName = (outFromInvName == nullptr) ? "" : std::string (outFromInvName);
+  barcode     = (outBarcode == nullptr) ? "" : std::string (outBarcode);
   if (quantity.empty() )
     checkString(outQuantity, quantity);
 
@@ -6149,7 +6147,7 @@ missionx::ext_script::ext_move_item_from_inv(mb_interpreter_t* s, void** l)
 // -----------------------------------
 
 int
-ext_script::ext_move_item_to_plane(mb_interpreter_t* s, void** l)
+missionx::ext_script::ext_move_item_to_plane(mb_interpreter_t* s, void** l)
 {
   // An inventory item can be moved from source store to target.
   // Source inventory is mandatory
@@ -6271,7 +6269,7 @@ ext_script::ext_move_item_to_plane(mb_interpreter_t* s, void** l)
 // -----------------------------------
 
 int
-ext_script::ext_get_inv_layout_type(mb_interpreter_t* s, void** l)
+missionx::ext_script::ext_get_inv_layout_type(mb_interpreter_t* s, void** l)
 {
   const std::string funcName = std::string(__func__).replace(0, 4, "fn_");
   std::string       errMsg;

@@ -122,6 +122,7 @@ private:
   bool flag_displayedOnce{ false };
 
   ImVec4 countdown_textColorVec4;
+  ImVec4 countdown_success_textColorVec4; // v25.06.1
 
   typedef enum _mx_btn_state
     : uint8_t
@@ -207,7 +208,7 @@ public:
 
 
     int            iRadioMissionTypePicked{ (int)missionx::_mission_type::medevac }; // which type of template user picked ?
-    int            iMissionSubCategoryPicked{ 0 }; // v3.303.14
+    int            iMissionSubCategoryPicked{ -1 }; // v3.303.14 // v25.06.1 init -1 which is not valid
     mx_plane_types iRadioPlaneType{ missionx::mx_plane_types::plane_type_helos };
     bool           flag_narrow_helos_filtering{ false };
 
@@ -1184,8 +1185,7 @@ private:
 
 #endif // RELEASE
 
-  // void add_ui_advance_settings_random_date_time_weather_and_weight_button(int& out_iClockDayOfYearPicked, int& out_iClockHourPicked, int &out_iClockMinutesPicked, const std::string& inTEXT_TYPE = mxconst::get_TEXT_TYPE_TITLE_REG() );
-  void add_ui_advance_settings_random_date_time_weather_and_weight_button2 (int &out_iClockDayOfYearPicked, int &out_iClockHourPicked, int &out_iClockMinutesPicked, const std::string &inTEXT_TYPE = mxconst::get_TEXT_TYPE_TITLE_REG ());
+  void add_ui_advance_settings_random_date_time_weather_and_weight_button (int &out_iClockDayOfYearPicked, int &out_iClockHourPicked, int &out_iClockMinutesPicked, const std::string &inTEXT_TYPE = mxconst::get_TEXT_TYPE_TITLE_REG ());
   bool add_ui_checkbox_rerun_random_date_and_time ();
 
 

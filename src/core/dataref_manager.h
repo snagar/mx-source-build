@@ -79,6 +79,7 @@ public:
   static bool isSimRunning();  // v3.303.14
   static bool isSimInReplayMode(); // v3.303.14
   static bool isPlaneOnGround();
+  static bool isPlaneAirborne(); // v25.06.1
 
   static double getLat();
   static double getLong();

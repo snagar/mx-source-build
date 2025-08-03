@@ -370,9 +370,9 @@ missionx::MxSound::flc(SoundFragment& sf)
                 command.step_i = (int)command.transition_time_f;
                 sf.setVolume((sf.volume < command.new_volume) ? command.new_volume : sf.volume);
                 this->setBackgroundVolume(sf.volumeToPlay);
-#ifndef RELEASE
+                #ifndef RELEASE
                 Log::logMsg("[sound:flc] " + sf.getName() + ", [+] immediate volume change to: " + mxUtils::formatNumber<float>(sf.volume, 2) + ", step: " + mxUtils::formatNumber<int>(command.step_i));
-#endif              
+                #endif              
               }
             }
             break;
@@ -382,18 +382,18 @@ missionx::MxSound::flc(SoundFragment& sf)
               if (command.transition_time_f)
               {
                 command.increment_by_f = ((sf.volume - command.new_volume) / (command.transition_time_f - command.step_i));
-#ifndef RELEASE
+                #ifndef RELEASE
                 Log::logMsg("[sound:flc] " + sf.getName() + ", [-] increment_by_f: " + mxUtils::formatNumber<float>(command.increment_by_f, 2) + ", step: " + mxUtils::formatNumber<int>(command.step_i));
-#endif
+                #endif
               }
               else // immediate
               {
                 command.step_i = (int)command.transition_time_f;                
                 sf.setVolume((sf.volume > command.new_volume) ? (float)command.new_volume : sf.volume);
                 this->setBackgroundVolume(sf.volumeToPlay);
-#ifndef RELEASE
+                #ifndef RELEASE
                 Log::logMsg("[sound:flc] " + sf.getName() + ", [-] immediate volume change to: " + mxUtils::formatNumber<float>(sf.volume, 2) + ", step: " + mxUtils::formatNumber<int>(command.step_i));
-#endif
+                #endif
               }
               
             }
@@ -402,9 +402,9 @@ missionx::MxSound::flc(SoundFragment& sf)
             case 's': // stop
             case 'S': // stop
             {
-#ifndef RELEASE
+              #ifndef RELEASE
               Log::logMsg("[sound:flc] stopping channel: " + sf.getName() + ", step: " + mxUtils::formatNumber<int>(command.step_i));
-#endif
+              #endif
 
               command.step_i = (int)command.transition_time_f;
               mxUtils::purgeQueueContainer(sf.qSoundCommands);
@@ -455,24 +455,17 @@ missionx::MxSound::flc(SoundFragment& sf)
               #endif // !RELEASE
 
 
-              //sf.areWeWaitingForSoundFileToLoad = true; // v24026 because it is repeating
               sf.isRepeating                    = true; // v24026 because it is repeating
               this->playStreamFile(sf);                 // we have to call this function until the state of the sf buffer is set and it can play the stream again.
               if (!sf.areWeWaitingForSoundFileToLoad)
                 missionx::Timer::start(sf.timerChannel, sf.timerChannel.getSecondsToRun(), sf.timerChannel.getName(), sf.timerChannel.getIsCumulative()); // restart timer so it won't be release in QMM::flc()
 
 
-
-              //const FMOD_OPENSTATE state = getOpenSoundFileState(sf.sound);
               #ifndef RELEASE
               const FMOD_OPENSTATE state = sf.getOpenSoundFileState();
               #endif
               
-              //TODO Consider removing the "if" condition since we should always remove the repeat ("r") command
-              //if ((sf.sound != nullptr && this->is_sf_state_valid(state, command.bCalledRepeatAtLeastOnce)) || (state == FMOD_OPENSTATE_ERROR))
-              //{
-                sf.removeActiveCommand(); // v3.306.1b remove the command. It is important so we won't have an endless loop
-              //}
+              sf.removeActiveCommand(); // v3.306.1b remove the command. It is important so we won't have an endless loop
               
               return; // exit flc
             }
@@ -497,7 +490,6 @@ missionx::MxSound::flc(SoundFragment& sf)
               }
 
               sf.timerChannel.setEnd(); // End timer
-              //missionx::Timer::start(sf.timerChannel, sf.timerChannel.getSecondsToRun(), sf.timerChannel.getName(), sf.timerChannel.getIsCumulative()); // restart timer so it won't be release in QMM::flc()
 
               if (!command.bCalledRepeatAtLeastOnce)
               { // stop channel
@@ -525,13 +517,11 @@ missionx::MxSound::flc(SoundFragment& sf)
               #endif // !RELEASE
 
 
-              //sf.areWeWaitingForSoundFileToLoad = true; // v24026 because it is repeating
               sf.isRepeating                    = true; // v24026 because it is repeating
               this->playStreamFile(sf);                 // we have to call this function until the state of the sf buffer is set and it can play the stream again.
               if (!sf.areWeWaitingForSoundFileToLoad)
                 missionx::Timer::start(sf.timerChannel, sf.timerChannel.getSecondsToRun(), sf.timerChannel.getName(), sf.timerChannel.getIsCumulative()); // restart timer so it won't be release in QMM::flc()
 
-              //const FMOD_OPENSTATE state = getOpenSoundFileState(sf.sound);
               const FMOD_OPENSTATE state = sf.getOpenSoundFileState();
               
               // v3.305.4 Added loop restriction. Example if we define "120|L|1" it means that after one loop we should stop              
@@ -559,9 +549,9 @@ missionx::MxSound::flc(SoundFragment& sf)
           {
             sf.setVolume( sf.volume + command.increment_by_f * ((command.command == '+') ? 1.0f : -1.0f)); // increment/decrement according to command sign
             sf.channel->setVolume(sf.volumeToPlay);
-#ifndef RELEASE
+            #ifndef RELEASE
             Log::logMsg("[sound:flc] " + sf.getName() + ", Setting increment_by_f, volumeToPlay: " + mxUtils::formatNumber<float>(sf.volumeToPlay, 3) + ", step: " + mxUtils::formatNumber<int>(command.step_i));
-#endif
+            #endif
           }
           ++command.step_i;
           if (!sf.qSoundCommands.empty() && (float)command.step_i >= command.transition_time_f)
@@ -613,31 +603,9 @@ missionx::MxSound::stopAndReleaseChannel(SoundFragment& sf)
     result = sf.channel->stop();
     checkResult(result);
 
-    //if (bIsPlaying)
-    //{
-    //  //FMOD::ChannelGroup *cg;
-    //  //result = sf.channel->getChannelGroup(&cg);
-    //  //if (cg)
-    //  //{
-    //  //  int n;
-    //  //  result = cg->getNumChannels(&n);
-    //  //  for (int i1 = 0; i1 < n; ++i1)
-    //  //  {
-    //  //    FMOD::Channel* cn = nullptr;
-    //  //    result            = cg->getChannel(i1, &cn);
-    //  //    if (checkResult(result) == FMOD_OK)
-    //  //    {
-    //  //        cn->stop();
-    //  //    }
-    //  //
-    //  //  }
-    //  //}
-    //  result = sf.channel->stop();
-    //  checkResult(result);
-    //}
   }
 
-  //FMOD_OPENSTATE state = this->getOpenSoundFileState(sf.sound);
+
   FMOD_OPENSTATE state = sf.getOpenSoundFileState();
 
   if (state != FMOD_OPENSTATE_ERROR)
@@ -712,13 +680,12 @@ missionx::MxSound::setCommVolume(float inVolume)
   if (!this->wasSoundInitSuccess)
     return;
 
-#ifndef RELEASE
+  #ifndef RELEASE
   float volume{ 0.3f };
   {
     result = commChannelGroup->getVolume(&volume);
   }
-
-#endif // !RELEASE
+  #endif // !RELEASE
 
   if (commChannelGroup != nullptr)
   {
@@ -818,35 +785,35 @@ missionx::MxSound::release()
 // -------------------------
 
 
-void
-missionx::MxSound::testMp3()
-{
-  //  Log::logMsg("Create stream to MP3 file");
-  //#ifdef IBM
-  ////    result = fmodSystem->createStream("C:\\Fun\\hapil.mp3", FMOD_SOFTWARE | FMOD_LOOP_NORMAL | FMOD_NONBLOCKING, 0, &music);
-  //  result = fmodSystem->createStream("C:\\Fun\\hapil.mp3", FMOD_DEFAULT, 0, &music);
-  //#else
-  //  std::string fullPathName = soundFilePath + "test.mp3";
-  //  Log::logMsg( fullPathName );
-  //#ifdef MAC
-  //  char tmpPath[1024];
-  //  if (  Utils::ConvertPath ( fullPathName.c_str(), tmpPath, 1000 ) == 0 )
-  //  {
-  //    fullPathName = tmpPath;
-  //  }
-  //  Log::logMsg( fullPathName );
-  //
-  //#endif
-  //  result = fmodSystem->createStream( fullPathName.c_str() , FMOD_SOFTWARE, 0, &music);
-  //#endif
-  //  FmodErrorCheck(result);
-  //
-  //  Log::logMsg("Play MP3 file");
-  //  result = fmodSystem->playSound(music, 0, false, &musicChannel);
-  //  FmodErrorCheck(result);
-  //  if ( result == FMOD_OK )
-  //    musicChannel->setVolume( 0.3f );
-}
+//void
+//missionx::MxSound::testMp3()
+//{
+//  //  Log::logMsg("Create stream to MP3 file");
+//  //#ifdef IBM
+//  ////    result = fmodSystem->createStream("C:\\Fun\\hapil.mp3", FMOD_SOFTWARE | FMOD_LOOP_NORMAL | FMOD_NONBLOCKING, 0, &music);
+//  //  result = fmodSystem->createStream("C:\\Fun\\hapil.mp3", FMOD_DEFAULT, 0, &music);
+//  //#else
+//  //  std::string fullPathName = soundFilePath + "test.mp3";
+//  //  Log::logMsg( fullPathName );
+//  //#ifdef MAC
+//  //  char tmpPath[1024];
+//  //  if (  Utils::ConvertPath ( fullPathName.c_str(), tmpPath, 1000 ) == 0 )
+//  //  {
+//  //    fullPathName = tmpPath;
+//  //  }
+//  //  Log::logMsg( fullPathName );
+//  //
+//  //#endif
+//  //  result = fmodSystem->createStream( fullPathName.c_str() , FMOD_SOFTWARE, 0, &music);
+//  //#endif
+//  //  FmodErrorCheck(result);
+//  //
+//  //  Log::logMsg("Play MP3 file");
+//  //  result = fmodSystem->playSound(music, 0, false, &musicChannel);
+//  //  FmodErrorCheck(result);
+//  //  if ( result == FMOD_OK )
+//  //    musicChannel->setVolume( 0.3f );
+//}
 
 
 // -------------------------

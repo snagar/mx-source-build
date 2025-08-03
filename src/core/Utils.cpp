@@ -1792,7 +1792,7 @@ missionx::Utils::xml_copy_specific_attributes_using_white_list (const IXMLNode &
 
 // -------------------------------------------
 
-void
+IXMLNode
 Utils::xml_clear_node_attributes_excluding_list (IXMLNode &sNode, const std::vector<std::string> &inExcludeList, const bool flag_includeClearData, const bool flag_remove_attribute)
 {
   if (!sNode.isEmpty())
@@ -1823,6 +1823,8 @@ Utils::xml_clear_node_attributes_excluding_list (IXMLNode &sNode, const std::vec
       }
     } // end handle clear node
   }
+
+  return sNode.deepCopy ();
 }
 
 
@@ -2189,7 +2191,7 @@ missionx::Utils::getRandomIntNumber (const int inMin, const int inMax)
 // ----------------------------------------------------------------
 
 void
-missionx::Utils::xml_delete_attribute(IXMLNode& node, std::set<std::string>& inSetAttributes, const std::string &inTagName)
+missionx::Utils::xml_delete_attribute(IXMLNode& node, const std::set<std::string>& inSetAttributes, const std::string &inTagName)
 {
 
   if (node.isEmpty())
@@ -2555,7 +2557,8 @@ Utils::xml_get_text_or_cdata_text (const IXMLNode &inNode, const std::string &de
   if (inNode.isEmpty())
     return default_value;
 
-  std::string text = mxUtils::trim ( inNode.getText() );
+  std::string text = mxUtils::trim ( Utils::xml_get_text(inNode) );
+
   if (text.empty())
     return Utils::xml_read_cdata_node (inNode, default_value);
 

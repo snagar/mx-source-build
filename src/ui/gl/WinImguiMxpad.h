@@ -81,11 +81,11 @@ public:
   void      flc() override;
   void      execAction(mx_window_actions actionCommand); // special function to handle specific requests from outside of the window
 
-  void flc_autoHideMXPAD();                                                            // check if MX-Pad needs to be hidden automatically because of the "Auto Hide Option" is set (OPT_AUTO_HIDE_SHOW_MXPAD)
-  bool getWasHiddenByAutoHideOption() { return this->wasHiddenByAutoHideOption; }                //
-  void setWasHiddenByAutoHideOption(bool inValue) { this->wasHiddenByAutoHideOption = inValue; } //
-  void resetMxpadWindowPosition();                                                               // sould be called during start of mission, will set windows position at the top right.
-  void reset();                                                                                  // reset variables for next reload of missions.
+  void               flc_autoHideMXPAD (); // check if MX-Pad needs to be hidden automatically because of the "Auto Hide Option" is set (OPT_AUTO_HIDE_SHOW_MXPAD)
+  [[nodiscard]] bool getWasHiddenByAutoHideOption () const { return this->wasHiddenByAutoHideOption; } //
+  void               setWasHiddenByAutoHideOption (const bool inValue) { this->wasHiddenByAutoHideOption = inValue; } //
+  void               resetMxpadWindowPosition (); // should be called during start of mission, will set windows position at the top right.
+  void               reset (); // reset variables for next reload of missions.
 private:
   ImVec4 countdown_textColorVec4; // v3.305.3
   ImVec4 countdown_success_textColorVec4; // v25.02.1

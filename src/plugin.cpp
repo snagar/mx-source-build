@@ -314,11 +314,11 @@ XPluginStart(char* outName, char* outSig, char* outDesc)
   }
   XPLMAppendMenuSeparator(mission.missionMenuEntry); // v3.0.219.12
 
-#ifdef IBM
+  #ifdef IBM
   mission.mx_menu.optimizeAptDatMenu = XPLMAppendMenuItem(mission.missionMenuEntry, "APT.DAT optimization (run in the background: 1-2min)", (void*)Mission::mx_menuIdRefs::MENU_APT_DAT_OPTIMIZATION, 1); // v3.0.219.2 Apt.dat optimization
-#else
+  #else
   mission.mx_menu.optimizeAptDatMenu = XPLMAppendMenuItem(mission.missionMenuEntry, "APT.DAT optimization (run in the background: 15-60 sec)", reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_APT_DAT_OPTIMIZATION), 1); // v3.0.231.1 Linux and MAC  are much faster
-#endif
+  #endif
   XPLMAppendMenuSeparator(mission.missionMenuEntry); // v3.0.217.1
 
 
@@ -375,6 +375,11 @@ XPluginStart(char* outName, char* outSig, char* outDesc)
   auto now = std::chrono::system_clock::now();
   std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
   std::srand(static_cast<unsigned>(std::time(&currentTime)));
+
+
+  // v25.06.1 purge cache files
+  const std::string cache_folder = fmt::format ("{}/{}", Utils::getRelativePluginsPath (), "missionx/db/cache");
+  missionx::system_actions::purge_cache_files (cache_folder);
 
 
   Timer::wasEnded(t1);

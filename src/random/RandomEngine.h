@@ -52,7 +52,7 @@ private:
   // key=types value: string translation in lower case  
   std::map<mx_plane_types, std::string> mapPlaneEnumToStringTypes;
   std::map<std::string, mx_plane_types> mapPlaneStringTypesToEnum;
-  mx_plane_types                        template_plane_type_enum; // holds the enum type. we can then use mapPlaneEnumToStringTypes to translate to string value
+  static mx_plane_types                 template_plane_type_enum; // holds the enum type. we can then use mapPlaneEnumToStringTypes to translate to string value
 
   std::string              translatePlaneTypeToString(mx_plane_types in_plane_type);
   missionx::mx_plane_types translatePlaneTypeToEnum(const std::string& in_plane_type);
@@ -61,11 +61,11 @@ private:
   std::string pathToRandomRootFolder;
   std::string pathToRandomBrieferFolder;
   // std::string templateFile; // v25.02.1 deprecated, use local inKey instead // v3.0.217.6 holds the picked template file name. We can use it in other class functions
-  bool        flag_found;
-  std::string randomPlaneType; // v3.0.221.11
-  void        setPlaneType(std::string inPlaneType);
-  void        setPlaneType(mx_plane_types inPlaneType);
-  uint8_t     getPlaneType();
+  bool           flag_found;
+  std::string    randomPlaneType; // v3.0.221.11
+  void           setPlaneType (std::string inPlaneType);
+  void           setPlaneType (mx_plane_types inPlaneType);
+  static uint8_t getPlaneType ();
 
   std::string errMsg;
 
@@ -159,7 +159,7 @@ private:
 
   // void readOptimizedAptDatIntoCache(); // v25.06.1 deprecated
 
-  bool setInstanceProperties(IXMLNode& pNode, missionx::NavAidInfo& inTargetNavInfo, bool flag_place_target_markers_near_target);
+  static bool setInstanceProperties(IXMLNode& pNode, missionx::NavAidInfo& inTargetNavInfo, IXMLNode &inDummyTopNode, const bool &flag_isLastFlightLeg);
   void injectMissionTypeFeatures();
   void injectMessagesWhileFlyingToDestination();
   typedef enum _inv_source
@@ -425,7 +425,7 @@ private:
 
   // v25.02.1
   static std::vector<IXMLNode> gen_land_hover_display_objects (const double &inLat, const double &inLon, const int &inRadiusMT, const int &inHowManyObjects, int &inout_seq, const std::string &inFileName = "land_hover01.obj");
-  static std::map<missionx::enums::mx_osm_region, missionx::structs::BBox> generateQuadrantBBoxes (double centerLat, double centerLon);
+  static std::map<missionx::enums::mx_osm_region, missionx::structs::BBox> gen_quadrant_bboxes (double centerLat, double centerLon);
 
   int seq_triggers   = 0;
   int seq_tasks      = 0;
@@ -453,13 +453,10 @@ private:
   std::unordered_map<int, RandomEngine::mx_inventory_track_strct> map_osm_inventory_track;
 
   mx_return        prepare_medevac_surprise_me (IXMLNode &inRootTemplate, const IXMLNode &inoutMetaNode, const missionx::Point &in_plane_location); // v25.05.1
-
   static std::vector<missionx::structs::strct_osm_query> gen_osm_analyse (mx_return &out_mx_return, const std::string &xmlFilename, const std::string &in_cache_folder, double centre_lat, double centre_lon, IXMLNode &outRootNode = IXMLNode::emptyIXMLNode);
   // The function returns "shuffled index vector" as value, and initialize the "out_main_subject_node" and "analyzed_query" from inside the function to use later from the calling routine.
   static std::vector<int> gen_shuffled_q_from_osm_subject_node (missionx::base_thread::thread_state *inoutThreadState, const IXMLNode &in_root_node, const std::vector<missionx::structs::strct_osm_query> &vec_osm_queries, IXMLNode &out_main_subject_node, missionx::structs::strct_osm_query &analyzed_query);
-
   static std::map<int, missionx::NavAidInfo> gen_targets_using_osm_queries_from_a_thread (missionx::base_thread::thread_state *inoutThreadState, const IXMLNode &in_root_node, missionx::structs::strct_osm_query &inout_osm_query, random_airport_info_struct &inout_shared_navaid);
-
   // find metadata of current target NavAid relative to previous and next NavAids
   static std::string   gen_leg_name (int *seq, const std::string &prefix_name, const std::string &postfix_name, missionx::NavAidInfo &inTargetNavAid);
   static void          gen_gather_navaid_metadata_relative_to_target (missionx::NavAidInfo &inout_target_navaid, missionx::NavAidInfo &inout_from_navaid, missionx::NavAidInfo *inout_next_navaid_ptr);
@@ -467,6 +464,7 @@ private:
   static IXMLNode      gen_task_node (int &seq, const std::string &prefix_name, const std::string &postfix_name, missionx::NavAidInfo &inTargetNavAid, const std::list<missionx::structs::strct_node_attribute_key_value> &in_attrib_list, IXMLNode *parentNode = nullptr);
   static IXMLNode      gen_objective_node (int &seq, const std::string &prefix_name, const std::string &postfix_name, IXMLNode *parentNode = nullptr);
   static IXMLNode      gen_leg_node (const std::string &prefix_name, const std::string &postfix_name, missionx::NavAidInfo *inTargetNavAid, std::list<missionx::structs::strct_node_attribute_key_value> *in_attrib_list, IXMLNode *parentNode = nullptr);
+  static void          gen_skew_target_data (missionx::NavAidInfo &in_target_navaid );
   static NavAidInfo    gen_briefer_node (missionx::Point inPlanePosition, random_airport_info_struct &inout_random_airport_info_struct, const bool in_flag_we_have_target_above_water);
   static void          gen_post_briefer_desc ( std::map<int, NavAidInfo> &in_osm_na_targets, bool flag_has_wet_target);
   IXMLNode             gen_mission_info_node (const IXMLNode &xRootTemplate, const std::string &in_template_name, const std::string &in_template_image_file_name, const std::string &in_mission_folder_name);
@@ -478,8 +476,11 @@ private:
   static void          gen_3d_marker_for_target (IXMLNode &inout_leg_node, missionx::NavAidInfo &in_target_navaid); // adds a marker - <display_object>, above the target.
   static void          gen_leg_start_messages ( int & seq, NavAidInfo &inout_target_na, IXMLNode & inout_xml_messages ); // adds simple messages between flight legs.
   static void          gen_messages_when_reaching_target_leg (int &seq_trig, int &seq_msg, NavAidInfo &inout_target_na, IXMLNode &inout_xml_messages, IXMLNode &inout_xml_triggers, const IXMLNode &in_xml_land_trigger, const IXMLNode &in_xml_hover_trigger); // add "you reached the target area" message. Add as trigger
+  static void          gen_2nm_message (int &seq_trig, int &seq_msg, NavAidInfo &inout_target_na, IXMLNode &inout_xml_messages, IXMLNode &inout_xml_triggers, const IXMLNode &in_xml_land_trigger);
   static void          gen_3d_object_set (const NavAidInfo &inout_target_na, IXMLNode &inout_leg_node, IXMLNode &in_template_node, IXMLNode &inout_x3DObjTemplate, double &in_expected_slope_at_target_location_d); // Add 3D clutter Objects around the target
   static void          gen_3d_hint_objects_for_land_and_hover (const NavAidInfo &inout_target_na, IXMLNode &inout_leg_node, const NavAidInfo *next_navaid_ptr); // Add 3D hint objects
+  static bool          gen_3d_instance_properties(IXMLNode& pNode, missionx::NavAidInfo& in_target_navaid);
+
 
   // end v25.06.1
 

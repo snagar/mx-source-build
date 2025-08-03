@@ -900,6 +900,7 @@ public:
   static IXMLNode            xmlBlueprints;                  // v3.0.241.1 item blueprints
   static missionx::Inventory externalInventoryCopy;          // v3.0.241.1 external inventory copy // v24.12.2 renamed
   static std::string         active_external_inventory_name; // v3.0.251.1
+  static bool                flag_inhibit_mxpad_when_entering_inventory_and_airborne; // v24.06.1
 
   static std::map<std::string, missionx::Message> mapMessages;
   static std::map<std::string, missionx::obj3d>   map3dObj;                     // v3.0.200 //name, obj3d template// Holds static 3D Objects and should also hold moving objects (in future)
@@ -1174,7 +1175,7 @@ public:
   static std::vector<std::future<void>> mFetchFutures;         //  holds async pointers
 
   static void fetch_fpln_from_simbrief_site(missionx::base_thread::thread_state* inoutThreadState, const std::string &in_pilot_id, missionx::mxFetchState_enum* outState, std::string* outStatusMessage);
-  static void fetch_fpln_from_external_site(missionx::base_thread::thread_state* inoutThreadState, const IXMLNode& inUserPref, missionx::mxFetchState_enum* outState, std::string* outStatusMessage);
+  static void fetch_fpln_from_flightplandatabase_site(missionx::base_thread::thread_state* inoutThreadState, const IXMLNode& inUserPref, missionx::mxFetchState_enum* outState, std::string* outStatusMessage);
 
   static int                      overpass_counter_i;            // v3.0.255.4.1
   static std::vector<std::string> vecOverpassUrls;               // v3.0.255.4.1

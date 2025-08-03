@@ -228,6 +228,12 @@ missionx::dataref_manager::isPlaneOnGround()
   return (XPLMGetDataf (missionx::drefConst.dref_faxil_gear_f) != 0.0f); // in air value == 0
 }
 
+bool
+dataref_manager::isPlaneAirborne ()
+{
+  return (!isPlaneOnGround());
+}
+
 double
 missionx::dataref_manager::getLat()
 {
