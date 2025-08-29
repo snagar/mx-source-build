@@ -1,8 +1,8 @@
 #include "BitmapReader.h"
 #include <filesystem>
 
-#include <GL/glew.h>
 #include <GL/gl.h>
+#include <GL/glew.h>
 
 namespace fs = std::filesystem;
 
