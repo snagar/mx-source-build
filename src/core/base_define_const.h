@@ -102,7 +102,7 @@ const static std::string PLUGIN_SOUND = ";(NO FMOD sound support)" + DESIGNER_DE
 
 
   // 21638.7 Naotical Miles; 40075.0 km  24901.5 miles
-  const static float EQUATER_LEN_NM = 21638.7f;
+  const static float EQUATOR_LEN_NM = 21638.7f;
   // const static float EQUATER_LEN_KM = 40075.0;
   // const static float EQUATER_LEN_MI = 24901.5;
   // const static float EARTH_AVG_RADIUS_KM = 6371.01;

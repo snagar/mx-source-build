@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="ASCII"?>
+<osm>
+  <analyze>
+
+     <q id="highway_primary"><![CDATA[
+      [out:xml][timeout:15];
+      (
+      wr["highway"="primary"]({{bbox}});
+      );
+      out count;]]></q>
+
+    <q id="highway_tertiary"><![CDATA[
+      [out:xml][timeout:15];
+      (
+      wr["highway"="tertiary"][!foot][!bicycle][!segregated][!residential]({{bbox}});
+      );
+      out count;]]></q>
+
+    <q id="highway_path"><![CDATA[
+      [out:xml][timeout:15];
+      (
+      wr["highway"="path"]({{bbox}});
+      );
+      out count;]]></q>
+
+    <!--
+      <q id="building"><![CDATA[
+      [out:xml][timeout:15];
+      (
+      wr["building"]({{bbox}});
+      );
+      out count;]]></q>
+
+    <q id="landuse"><![CDATA[
+      [out:xml][timeout:15];
+      (
+      wr["landuse"]({{bbox}});
+      );
+      out count;]]></q>
+
+    <q id="natural"><![CDATA[
+      [out:xml][timeout:15];
+      (
+      wr["natural"~"wood|heath|grassland|fell|bare_rock|shrubbery|water"]({{bbox}});
+      );
+      out count;]]></q>
+    -->
+
+  </analyze>
+
+  <highway_primary random_tag="object_sets" set_name="medevac" slope_set_name="medevac_slope">
+    <!--
+    surface=dirt //highway=residential,tertiary
+    way["highway"]["surface"="asphalt"]["name"];
+    (._;>;);
+    -->
+
+      <q id="road" wp_type="land_hover" next_tag="hospital,icao" ><![CDATA[
+        [out:xml][timeout:15][bbox:{{bbox}}];
+        way[highway=primary][name];
+        out body;
+        out;]]>
+        <inventory >
+          <item name="Injured person" barcode="injured_p01" weight_kg="75" quantity="1" mandatory="y" image_file_name="" target_inventory="" />
+        </inventory>
+        <desc >Multi-vehicle pileup on a major road involving several cars during foggy conditions. Immediate evacuation of a critical passenger is required. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc >Late-night motorcycle crash left a rider unconscious with suspected spinal injuries. Immediate night flight extraction is needed. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc random_tag="osm_object_set" set_name="road_primary_car" >Suspect vehicle crashed during a police pursuit on a major road. Driver sustained major trauma, unconscious at the scene. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc random_tag="osm_object_set" set_name="road_primary_truck">A fuel tanker exploded following a collision. Burns and smoke inhalation injuries require urgent evacuation from the scene. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc>Bicycle commuter hit by speeding car on morning rush hour. Broken leg and head trauma suspected. Road partially blocked. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc random_tag="osm_object_set" set_name="road_primary_truck">Heavy cargo truck jackknifed across lanes, crushing a car. One trapped passenger is in critical condition. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+
+      </q>
+
+    </highway_primary>
+
+    <highway_tertiary random_tag="osm_object_set" set_name="road_tertiary_truck" slope_set_name="">
+
+      <q id="path" wp_type="land_hover" next_tag="hospital,icao"><![CDATA[
+        [out:xml][timeout:15][bbox:{{bbox}}];
+        way["highway"="tertiary"]["name"]({{bbox}});
+        out body;]]>
+        <inventory >
+          <item name="Injured person" barcode="injured_p02" weight_kg="80" quantity="1" mandatory="y" image_file_name="" target_inventory="" />
+        </inventory>
+
+        <desc >A logging truck overturned on a winding rural road, trapping the driver inside. Nearby responders request air evacuation. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc>An off-road SUV overturned while navigating a narrow tertiary route. The driver sustained thoracic injuries and cannot be moved by ground ambulance due to terrain. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc>A motorcycle skidded on gravel while approaching a sharp bend. Rider sustained open fractures and spinal injury; terrain prevents wheeled extraction. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc>A farm tractor and a delivery vehicle collided on a tight curve. The driver of the delivery truck is unconscious with chest injuries. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc>An elderly woman suffered a hip fracture after a sudden stop on a rural transit minibus. Condition deteriorating—airlift recommended. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc>An off-road vehicle struck a pedestrian walking near a farming road. Victim has multiple fractures and suspected internal bleeding. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc>Passenger fell from the back of a moving pickup in a rural area. Head trauma suspected. Local access is limited by terrain. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+      </q>
+
+    </highway_tertiary>
+
+    <highway_path random_tag="osm_object_set" set_name="path_generic" slope_set_name="" >
+
+      <q id="path" wp_type="land_hover" next_tag="hospital,icao"><![CDATA[
+        [out:xml][timeout:15][bbox:{{bbox}}];
+        way["highway"="path"]["name"][!foot][!bicycle][!segregated][!residential]({{bbox}});
+        out body;]]>
+        <inventory >
+          <item name="Injured person" barcode="injured_p03" weight_kg="68" quantity="1" mandatory="y" image_file_name="" target_inventory="" />
+        </inventory>
+
+        <desc>Pick up an injured tourist at {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}). Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc>An unconscious hiker was found on "Forgotten Ridge Trail", a remote named path lacking clear foot access. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc>A mountain biker suffered a fall on a path which lacks bicycle permissions. The trail is known for its uneven terrain and loose gravel. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc>A telecom field technician collapsed during a terrain scan. The route lacks defined access, delaying emergency foot responders. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc>A university cartography team was surveying a new path. One member suffered a leg fracture after slipping on wet roots. Access info on the path is unclear. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+
+      </q>
+
+      <q id="mountain trail" wp_type="land_hover" next_tag="hospital,icao" ><![CDATA[
+        [out:xml][timeout:25][bbox:{{bbox}}];
+        (
+        way["highway"="path"]["sac_scale"]["name"]({{bbox}});
+        );
+        out body;
+        ]]>
+        <inventory >
+          <item name="hiker" barcode="hiker_01" weight_kg="85" quantity="2" mandatory="y" image_file_name="" target_inventory="" />
+        </inventory>
+
+        <desc random_tag="osm_object_set" set_name="path_mountain_solo"  >A hiker was injured  at {navaid_loc_desc}. We need to pick him asap, Expected distance: ~{distance}, bearing: {bearing_target}). Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc random_tag="osm_object_set" set_name="path_mountain_solo"  >A solo climber on a high-altitude route developed severe altitude sickness. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc random_tag="osm_object_set" set_name="path_mountain"  >Two hikers became disoriented and stranded due to fog on {navaid_loc_desc}. They reported short supplies and hypothermia risk. Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc random_tag="osm_object_set" set_name="path_mountain"  >An avalanche warning triggered immediate evacuation of hikers on "{navaid_loc_desc}". Trail is on steep terrain". Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+        <desc random_tag="osm_object_set" set_name="path_mountain"  >During a guided technical ascent, a climber fell on "{navaid_loc_desc}". Rescue teams requested airlift support.  Fly to: {navaid_loc_desc} (distance: ~{distance}, bearing: {bearing_target}).</desc>
+      </q>
+
+  </highway_path>
+
+
+
+
+  <hospital random_tag="object_sets" set_name="medevac_land_hospital" >
+    <q id="hospital" wp_type="land" next_tag=""><![CDATA[
+      [out:xml][timeout:25][bbox:{{all_bbox}}];
+      (
+      wr['amenity'='hospital']['name']({{all_bbox}});
+      );
+      out body;
+      ]]></q>
+
+     <desc>Fly to: {navaid_loc_desc}.
+Land at the marked location even if there is no helipad insight.
+Estimated distance: ~{distance}, bearing: {bearing_target}).</desc>
+
+  </hospital>
+
+  <icao random_tag="object_sets" set_name="medevac_land_icao" >
+    <q id="helipad" wp_type="land" next_tag=""><![CDATA[
+      [out:xml][timeout:25][bbox:{{all_bbox}}];
+      (
+      wr['aeroway'='helipad']['name']({{all_bbox}});
+      );
+      out body;
+      ]]></q>
+  </icao>
+
+</osm>

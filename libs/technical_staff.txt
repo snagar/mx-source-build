@@ -497,3 +497,5 @@ kernel.yama.ptrace_scope=0
 sudo sysctl --system
 
 
+rsync -avc --dry-run --exclude='*.ps1' --exclude='*.txt' ~/programming/xplane/missionx_v3_git/src ~/programming/xplane/mx-source-build/src
+

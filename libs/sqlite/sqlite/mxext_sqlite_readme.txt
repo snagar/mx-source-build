@@ -1,4 +1,10 @@
+Mission-X plugin
+================
+The plugin is using the "extension-functions.h" file since we embedd it into the plugin.
+
+
 Compiling A Loadable Extension
+==============================
 Loadable extensions are C-code. To compile them on most unix-like operating systems, the usual command is something like this:
 
 gcc -g -fPIC -shared YourCode.c -o YourCode.so

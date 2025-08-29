@@ -207,7 +207,7 @@ public:
     mx_layer_state_enum layer_state{ missionx::mx_layer_state_enum::not_initialized }; // v3.0.253.9
 
 
-    int            iRadioMissionTypePicked{ (int)missionx::_mission_type::medevac }; // which type of template user picked ?
+    int            iRadioMissionTypePicked{ static_cast<int> (missionx::_mission_type::medevac) }; // which type of template user picked ?
     int            iMissionSubCategoryPicked{ -1 }; // v3.303.14 // v25.06.1 init -1 which is not valid
     mx_plane_types iRadioPlaneType{ missionx::mx_plane_types::plane_type_helos };
     bool           flag_narrow_helos_filtering{ false };
@@ -233,7 +233,14 @@ public:
     std::string       overpass_main_filter{ overpass_original_filter };
     std::string       overpass_pre_apply_filter_s{ overpass_main_filter };
 
-
+    // Oilrig
+    //std::string oilrig_part_of_globe_label; // v25.08.1
+    std::map <int, std::string> map_pick_oilrig_globe_part { 
+       { missionx::PICKED_GLOBE, " Globe " }
+      ,{ missionx::PICKED_HALF_GLOBE, " Half Globe " }
+      ,{ missionx::PICKED_QUARTER_GLOBE, " Quarter Globe " }
+      ,{ missionx::PICKED_LOCAL_REGION_GLOBE, " Local Region " }
+    };
     // Filter runway by type
     bool                                     flag_pick_any_rw{ true };
     std::map<const std::string, bool>        map_filter_runways                      = { { "Grass##filterRunways", false }, { "Dirt/Gravel##filterRunways", false }, { "Concrete/Asphalt##filterRunways", false }, { "water##filterRunways", false } };
@@ -296,6 +303,10 @@ public:
     bool flagForceNavDataTab{ false }; // v24.03.1
     bool flagIgnoreDistanceFilter{ false }; // v24.03.1
 
+    bool isIFR {true};
+    bool isVFR {false};
+
+
     mx_layer_state_enum               layer_state{ missionx::mx_layer_state_enum::not_initialized };
     missionx::enums::mx_treeNodeState enum_elevSliderOpenState{ missionx::enums::mx_treeNodeState::closed }; // v24.03.1 converted the flag to enum
 
@@ -317,7 +328,7 @@ public:
     std::string ils_slider2_lbl = "[" + Utils::formatNumber<float> (ils_sliderVal1, 0) + ".." + Utils::formatNumber<float> (ils_sliderVal2, 0) + "]";
 
     // ILS types
-    std::string                                ils_types_tree_label{ "" }; // empty means "any"
+    std::string                                ils_types_tree_label; // empty means "any"
     std::map<missionx::mx_ils_type_enum, bool> mapCheck_ILS_types;
 
     // RW Length Slider
@@ -335,21 +346,20 @@ public:
 
 
     // search ILS from database - progress
-    std::string filter_query_s = { "" }; // v24.03.1
-    // std::string                 final_query_s  = { "" }; // v24.03.1 deprecated, moved to the "fetch_xxx" function in data_manager
+    std::string filter_query_s; // v24.03.1
     missionx::mxFetchState_enum fetch_ils_state{ missionx::mxFetchState_enum::fetch_not_started };
     missionx::mxFetchState_enum fetch_nav_state{ missionx::mxFetchState_enum::fetch_not_started };
     missionx::mxFetchState_enum fetch_metar_state{ missionx::mxFetchState_enum::fetch_not_started };
 
-    std::string asyncFetchMsg_s{ "" };
-    std::string asyncNavFetchMsg_s{ "" };
-    std::string asyncMetarFetchMsg_s{ "" };
+    std::string asyncFetchMsg_s;
+    std::string asyncNavFetchMsg_s;
+    std::string asyncMetarFetchMsg_s;
 
     // Plane location
     missionx::Point planePos;
 
     // Nav Data // v24025
-    std::string                                sNavICAO{ "" };
+    std::string                                sNavICAO;
     std::unordered_map<int, mx_nav_data_strct> mapNavaidData; // airport data
 
     // ---------------- Members -----------------
@@ -358,7 +368,7 @@ public:
     void init_mapChecks_ils_types ()
     {
       mapCheck_ILS_types.clear ();
-      for (const auto &[keyType, bVal] : missionx::mapILS_types)
+      for (const auto &keyType : missionx::mapILS_types | std::views::keys)
         mapCheck_ILS_types[keyType] = false; // reset to false
     }
 
@@ -1142,7 +1152,8 @@ private:
   void draw_child_ext_fpln_home_screen ();
   void draw_child_ext_fpln_db_site_screen ();
   void draw_ils_screen (); // v3.0.253.6
-  void child_draw_ils_search (); // v25.04.1
+  // void child_draw_ils_search (); // v25.04.1
+  void child_draw_ils_search2 (); // v25.08.1
   void child_draw_nav_search (); // v24.02.5
   void draw_about_layer ();
   void draw_conv_main_fpln_to_mission_window (); // v3.0.301
@@ -1359,8 +1370,9 @@ private:
   void        add_ui_flightplandb_key (bool isPopup); // v25.03.3
   void        add_ui_pick_subcategories (const std::vector<const char *> &vecToDisplay); // v25.04.1
   void        add_ui_auto_load_checkbox (const missionx::mx_window_actions &inActionToExecute = missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS); // v25.04.2
-
-  void                callNavData (std::string_view inICAO, bool bNavigatingFromOtherLayer); // v24.03.1
+  int         add_ui_two_option_buttons (bool &bOptA, bool &bOptB, const int &returnValueForA, const int &returnValueForB);
+  int         add_ui_dynamic_options_buttons (const int &inout_picked_lbl, std::map<int, std::string> &map_lbl_and_values);
+  void        callNavData (std::string_view inICAO, bool bNavigatingFromOtherLayer); // v24.03.1
   const dataref_const dc;
 };
 

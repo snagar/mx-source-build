@@ -35,7 +35,7 @@ constexpr static const int MX_FEATURES_VERSION = 20250501; //20241212; //2023091
 #define SPECIAL_BUILD ""
 
 inline constexpr static auto PLUGIN_VER_MAJOR                  = "25"; // year
-inline constexpr static auto PLUGIN_VER_MINOR                  = "06"; // month
+inline constexpr static auto PLUGIN_VER_MINOR                  = "08"; // month
 inline constexpr static auto PLUGIN_VER_SUB                    = "1"; // sub-version
 inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
@@ -55,10 +55,8 @@ constexpr static int XP12_COMPATIBILITY = 12;
 
   #ifndef RELEASE
   const static auto FULL_VERSION = std::string(PLUGIN_VER_MAJOR).append(".").append(PLUGIN_VER_MINOR).append(".").append(PLUGIN_VER_SUB).append( PLUGIN_DEV_BUILD).append(" ").append(PLUGIN_VER_BUILD_DETAILS).append(" " __DATE__ ).append(" ").append(__TIME__);
-  // static auto FULL_VERSION = std::string("{}.{}.{} {} {} {}", PLUGIN_VER_MAJOR, PLUGIN_VER_MINOR, PLUGIN_REVISION_S, PLUGIN_DEV_BUILD, __DATE__, __TIME__).c_str ();
   #else
   const static auto FULL_VERSION = std::string(PLUGIN_VER_MAJOR).append(".").append(PLUGIN_VER_MINOR).append(".").append(PLUGIN_VER_SUB);
-  // const static auto FULL_VERSION = fmt::format ("{}.{}.{} {}", PLUGIN_VER_MAJOR, PLUGIN_VER_MINOR, PLUGIN_DEV_BUILD, PLUGIN_REVISION_S).c_str ();
   #endif
   const static auto FULL_VERSION_ABOUT = std::string(PLUGIN_VER_MAJOR).append(".").append(PLUGIN_VER_MINOR).append(".").append(PLUGIN_VER_SUB).append( PLUGIN_DEV_BUILD).append(" ").append(PLUGIN_VER_BUILD_DETAILS);
 
@@ -85,7 +83,10 @@ inline static constexpr double PI2 = 6.283185307179586476925286766559;  // FOR D
 
 // static double Gravity=-9.81;
 
-inline static constexpr float EARTH_RADIUS_M                  = 6378145.0f;
+// 21638.7 Nautical Miles; 40075.0 km  24901.5 miles
+inline static constexpr float  EQUATOR_LEN_NM                  = 21638.7f;
+inline static constexpr float  EARTH_AVG_RADIUS_NM             = 3440.07f;
+inline static constexpr float  EARTH_RADIUS_M                  = 6378145.0f;
 inline static constexpr double LOWEST_GROUND_ELEV_FOR_TRIGGERS = -3000.0; // v3.0.253.5 used in cases we need to configure triggers with "--" or "---" signs
 
 
@@ -108,8 +109,7 @@ inline static constexpr float kmh2fts = 0.911344f; // v3.0.202
 inline static constexpr float fts2kmh = 1.09728f;  // v3.0.202
 
 
-
-inline static constexpr int OUT_OF_BOUNDING_ALERT_TIMER_SEC = 30; // 30 sec. alert will broadcast every 30 seconds
+inline static constexpr int   OUT_OF_BOUNDING_ALERT_TIMER_SEC = 30; // 30 sec. alert will broadcast every 30 seconds
 inline static constexpr float MISSIONX_DOUBLE_CLICK           = 0.9f;
 
 inline const static std::string EMPTY_STRING;
@@ -123,12 +123,7 @@ inline static constexpr int LOG_BUFF_SIZE = 2048;
 inline static char      LOG_BUFF[LOG_BUFF_SIZE];
 
 
-// 21638.7 Nautical Miles; 40075.0 km  24901.5 miles
-inline static constexpr float EQUATER_LEN_NM      = 21638.7f;
-inline static constexpr float EARTH_AVG_RADIUS_NM = 3440.07019148103f;
-
-
-inline static constexpr float    DEGREESE_IN_CIRCLE    = 360.0f;
+inline static constexpr float    DEGREES_IN_CIRCLE    = 360.0f;
 inline static constexpr intptr_t DAYS_IN_YEAR_365      = 365;
 inline static constexpr intptr_t SECONDS_IN_1HOUR_3600 = 3600;
 inline static constexpr intptr_t SECONDS_IN_1MINUTE    = 60;
@@ -146,6 +141,16 @@ inline static constexpr unsigned int NUM_CIRCLE_POINTS        = 25; // v3.0.253.
 inline static constexpr unsigned int NUM_CIRCLE_POINTS_3D_OBJ = 8;  // v3.0.253.7 decreased from 359; // v3.0.202a
 
 inline static constexpr size_t MAX_MX_PAD_MESSAGES = 20; // v3.0.110
+
+// v25.08.1
+constexpr static int PICKED_IFR = 0;
+constexpr static int PICKED_VFR = 1;
+
+constexpr static int PICKED_GLOBE = 1;
+constexpr static int PICKED_HALF_GLOBE = 2;
+constexpr static int PICKED_QUARTER_GLOBE = 3;
+constexpr static int PICKED_LOCAL_REGION_GLOBE = 4;
+
 
 #endif
 ////// ENUMS & STRUCTS //////

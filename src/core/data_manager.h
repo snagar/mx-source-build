@@ -1273,7 +1273,9 @@ public:
   static bool flag_setupShowDebugMessageTab; // v3.305.4
   static bool flag_setupUseXP11InventoryUI; // v24.12.2 toggle between inventory ui layout (with stations, xp12, and without xp11).
 
-  
+  static int  ui_ifr_or_vfr_i; // 0 = IFR and 1 = VFR
+  static int  ui_oilrig_globe_part_i; // 1 = globe, 2 = Half globe, 3 = quarter globe, 4 = local_region
+
   ///////////////// END Shared UI ////////////////////
 
   // v25.03.1

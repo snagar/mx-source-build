@@ -4666,7 +4666,8 @@ missionx::Mission::flcPRE()
 
 
           if (overrideLegName.empty() && flag_auto_position_plane)
-            data_manager::briefer.positionPlane(missionx::data_manager::flag_setupForcePlanePositioningAtMissionStart, missionx::data_manager::flag_setupChangeHeadingEvenIfPlaneIn_20meter_radius, data_manager::xplane_ver_i);
+            data_manager::briefer.positionPlane(missionx::data_manager::flag_setupForcePlanePositioningAtMissionStart, missionx::data_manager::flag_setupChangeHeadingEvenIfPlaneIn_20meter_radius);
+            // data_manager::briefer.positionPlane(missionx::data_manager::flag_setupForcePlanePositioningAtMissionStart, missionx::data_manager::flag_setupChangeHeadingEvenIfPlaneIn_20meter_radius, data_manager::xplane_ver_i);
 
           // v3.303.12 apply weather from global settings
           if (!missionx::data_manager::mx_global_settings.xWeather_ptr.isEmpty())

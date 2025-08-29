@@ -56,7 +56,7 @@ ImgFreeTypeFontAtlas::bindTexture()
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixData);
 
-    mOurAtlas->SetTexID(reinterpret_cast<void *>(static_cast<intptr_t>(mGLTextureNum)));
+    mOurAtlas->SetTexID(mGLTextureNum);
     mTextureBound = true;
 }
 

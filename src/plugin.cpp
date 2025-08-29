@@ -20,6 +20,7 @@ namespace missionx
 double callback_duration     = 0;
 double drawcallback_duration = 0;
 #endif
+
 mxconst mx_const; // first initialization before other classes
 Mission mission;
 void    MissionMenuHandler(void* inMenuRef, void* inItemRef);
@@ -144,23 +145,21 @@ XPluginStart(char* outName, char* outSig, char* outDesc)
   if (missionx::data_manager::xplane_using_modern_driver_b)
   {
 
-    if (data_manager::xplane_ver_i <= missionx::XP12_VERSION_NO)
+    if (data_manager::xplane_ver_i >= missionx::XP12_VERSION_NO)
     {
-#ifdef MAC
-      XPLMRegisterDrawCallback(missionx::drawCallback_missionx, xplm_Phase_Modern3D, 0, NULL); // In this phase, we can't draw to the XPlane 3D World only 2D but maybe we could do some movement calculation
-      mission.setDrawingPhase(xplm_Phase_Window); // to be on the safe side
-#else
-      mission.setDrawingPhase(xplm_Phase_Modern3D);
-#endif
-      XPLMRegisterDrawCallback(missionx::drawCallback_missionx, mission.getDrawingPhase(), 0, nullptr); // VERY EXPENSIVE PHASE (according to LR) Notes: https://developer.x-plane.com/2020/04/updated-plugin-sdk-docs-and-sample-code-for-vulkan-metal/
-      //XPLMRegisterDrawCallback(missionx::drawCallback_missionx, xplm_Phase_Objects, 0, NULL); // VERY EXPENSIVE PHASE (according to LR) Notes: https://developer.x-plane.com/2020/04/updated-plugin-sdk-docs-and-sample-code-for-vulkan-metal/
-      
+      // in XP12 xplm_Phase_Window seem the only working phase but not the other phases
+      mission.setDrawingPhase (xplm_Phase_Window);
+      XPLMRegisterDrawCallback (missionx::drawCallback_missionx, mission.getDrawingPhase (), 0, nullptr); // VERY EXPENSIVE PHASE (according to LR) Notes: https://developer.x-plane.com/2020/04/updated-plugin-sdk-docs-and-sample-code-for-vulkan-metal/
     }
     else
-    { // in XP12 xplm_Phase_Window seem the only working phase but not the other phases
-      mission.setDrawingPhase(xplm_Phase_Window);
-      XPLMRegisterDrawCallback(missionx::drawCallback_missionx, mission.getDrawingPhase(), 0, nullptr); // VERY EXPENSIVE PHASE (according to LR) Notes: https://developer.x-plane.com/2020/04/updated-plugin-sdk-docs-and-sample-code-for-vulkan-metal/
-
+    { 
+      #ifdef MAC
+      XPLMRegisterDrawCallback (missionx::drawCallback_missionx, xplm_Phase_Modern3D, 0, NULL); // In this phase, we can't draw to the XPlane 3D World only 2D but maybe we could do some movement calculation
+      mission.setDrawingPhase (xplm_Phase_Window); // to be on the safe side
+      #else
+      mission.setDrawingPhase (xplm_Phase_Modern3D);
+      #endif
+      XPLMRegisterDrawCallback (missionx::drawCallback_missionx, mission.getDrawingPhase (), 0, nullptr); // VERY EXPENSIVE PHASE (according to LR) Notes: https://developer.x-plane.com/2020/04/updated-plugin-sdk-docs-and-sample-code-for-vulkan-metal/
     }
                                                                                      // and https://developer.x-plane.com/article/plugin-compatibility-guide-for-x-plane-11-50/
   }

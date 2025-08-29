@@ -1,25 +1,15 @@
 #include "BitmapReader.h"
 #include <filesystem>
+
+#include <GL/glew.h>
+#include <GL/gl.h>
+
 namespace fs = std::filesystem;
 
 /**************
 **************/
 
-missionx::BitmapReader::BitmapReader()
-{
-
-  //RED = NULL, GREEN = NULL, BLUE = NULL;
-
-  //RED            = XPLMFindDataRef("sim/graphics/misc/cockpit_light_level_r");
-  //GREEN          = XPLMFindDataRef("sim/graphics/misc/cockpit_light_level_g");
-  //BLUE           = XPLMFindDataRef("sim/graphics/misc/cockpit_light_level_b");
-  //COCKPIT_LIGHTS = XPLMFindDataRef("sim/cockpit/electrical/cockpit_lights");
-  //LIGHTS_ON      = XPLMFindDataRef("sim/cockpit/electrical/cockpit_lights_on");
-
-  //draw_phase    = -1;
-  //current_phase = draw_phase;
-}
-
+missionx::BitmapReader::BitmapReader () { }
 
 
 bool
@@ -27,71 +17,93 @@ missionx::BitmapReader::loadGLTexture(mxTextureFile& inTextureFile, std::string 
 {
   // int Status=FALSE;
   bool bTextureLoad = false;
-  const fs::path    texturePath     = inTextureFile.getAbsoluteFileLocation();
 
-  if (fs::is_regular_file(texturePath))
+  if (const fs::path texturePath     = inTextureFile.getAbsoluteFileLocation()
+    ; fs::is_regular_file(texturePath))
   {
-    // const std::string TextureFileName = texturePath.string(); // v24.06.1 deprecated, used "texturePath" instead
-
     // STB Load Image
     if (loadImageStb(texturePath.string(), &inTextureFile.sImageData, flipImage_b, outErr))
     {
       // Status=TRUE;
       bTextureLoad = true;
 
-       // Flip the Image. v3.0.253.8 we do not flip image on Y axes manually, we will use "stb" library own flag to do this for us
-       #ifdef FLIP_IMAGE
-          /*  create a copy of the image data  */
-      
-          unsigned char* img;
-          img = (unsigned char*)malloc(inTextureFile.sImageData.Width*inTextureFile.sImageData.Height*inTextureFile.sImageData.Channels );
-          memcpy( img, inTextureFile.sImageData.pData, inTextureFile.sImageData.Width*inTextureFile.sImageData.Height*inTextureFile.sImageData.Channels );
-      
-      
-          //if (flipImage_b) // Nuklear might have its own code to flip image.
-          if (true) // Nuklear might have its own code to flip image.
-          {
-            int i, j;
-            for (j = 0; j * 2 < inTextureFile.sImageData.Height; ++j)
-            {
-              int index1 = j * (int)inTextureFile.sImageData.Width * inTextureFile.sImageData.Channels;
-              int index2 = ((int)inTextureFile.sImageData.Height - 1 - j) * (int)inTextureFile.sImageData.Width * (int)inTextureFile.sImageData.Channels;
-              for (i = (int)inTextureFile.sImageData.Width * (int)inTextureFile.sImageData.Channels; i > 0; --i)
-              {
-                static unsigned char temp;
-                temp = img[index1];
-                img[index1] = img[index2];
-                img[index2] = temp;
-                ++index1;
-                ++index2;
-              }
-            }
-          }
-       #endif
-
       if (is_sync_b)
       {
-        XPLMGenerateTextureNumbers(&inTextureFile.gTexture, 1);
-        XPLMBindTexture2d(inTextureFile.gTexture, 0);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        // glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // removed v3.0.251.1
-        // glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // removed v3.0.251.1
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); // added from imgui
-                                                // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (GLint)inTextureFile.sImageData.Width, (GLint)inTextureFile.sImageData.Height, 0, ((inTextureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, img);
-#ifdef FLIP_IMAGE
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLint)inTextureFile.sImageData.Width, (GLint)inTextureFile.sImageData.Height, 0, ((inTextureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, img);
-#else
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLint)inTextureFile.sImageData.Width, (GLint)inTextureFile.sImageData.Height, 0, ((inTextureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, inTextureFile.sImageData.pData);
-#endif
+
+        // ==> Start Old and working Code
+        // v25.08.1 store hash. Caching tests should be done before generating GL texture information.
+        inTextureFile.store_hash ();
 
 
-        stbi_image_free(inTextureFile.sImageData.pData);
-#ifdef FLIP_IMAGE
-        stbi_image_free(img);
-#endif
+        // Generate texture ID and bind it
+        XPLMGenerateTextureNumbers (&inTextureFile.gTexture, 1);
+        XPLMBindTexture2d (inTextureFile.gTexture, 0);
+
+        glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        //glPixelStorei (GL_UNPACK_ROW_LENGTH, 0); // from imgui
+
+        // Upload image data using a sized internal format
+        const GLenum format         = (inTextureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA;
+        const GLenum internalFormat = (inTextureFile.sImageData.Channels < 4) ? GL_RGB8 : GL_RGBA8;
+        glTexImage2D (GL_TEXTURE_2D, 0, static_cast<GLint>(internalFormat), inTextureFile.sImageData.Width, inTextureFile.sImageData.Height, 0, format, GL_UNSIGNED_BYTE, inTextureFile.sImageData.pData);
+
+        // Free the CPU-side image data
+        stbi_image_free (inTextureFile.sImageData.pData);
 
         inTextureFile.sImageData.pData = nullptr;
+
+        // <<===== End Old and working Code
+
+        
+
+        // // v25.08.1 store hash. Caching tests should be done before generating GL texture information.
+        // inTextureFile.store_hash ();
+        //
+        // // Check if dimensions are a power of two
+        // const bool isPowerOfTwo = ((inTextureFile.sImageData.Width & (inTextureFile.sImageData.Width - 1)) == 0) && ((inTextureFile.sImageData.Height & (inTextureFile.sImageData.Height - 1)) == 0);
+        //
+        // // Generate texture ID and bind it
+        // XPLMGenerateTextureNumbers(&inTextureFile.gTexture, 1);
+        // XPLMBindTexture2d(inTextureFile.gTexture, 0);
+        //
+        // // Set texture parameters
+        // if (isPowerOfTwo)
+        // {
+        //   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        //   // Setting max level to 2 as per your previous request
+        //   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 2); // Set max mipmap level  64x64, 32x32 and 16x16, no smaller
+        // }
+        // else
+        // {
+        //   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        // }
+        //
+        // // These are common parameters that can be set regardless of mipmapping
+        // glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        // glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        // glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        //
+        //
+        // // Upload image data using a sized internal format
+        // const GLenum format         = (inTextureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA;
+        // const GLenum internalFormat = (inTextureFile.sImageData.Channels < 4) ? GL_RGB8 : GL_RGBA8;
+        // glTexImage2D (GL_TEXTURE_2D, 0, static_cast<GLint>(internalFormat), inTextureFile.sImageData.Width, inTextureFile.sImageData.Height, 0, format, GL_UNSIGNED_BYTE, inTextureFile.sImageData.pData);
+        //
+        // // Only generate mipmaps if the dimensions are a power of two
+        // if (isPowerOfTwo)
+        // {
+        //   // The glGenerateMipmap call should now work directly
+        //   glGenerateMipmap (GL_TEXTURE_2D);  // <== CTD X-Plane. Crashes X-Plane.
+        // }
+        //
+        // // Free the CPU-side image data
+        // stbi_image_free (inTextureFile.sImageData.pData);
+        //
+        // inTextureFile.sImageData.pData = nullptr;
       }
     } // end if loadImageStb
   } // end if fs::path is valid
@@ -108,14 +120,13 @@ missionx::BitmapReader::loadImageStb(std::string fileName, mxTextureFile::IMAGED
 {
   int x, y, channels;
 
-  // std::string outErr;
   outErr.clear();
 
 
-  if (inFlipImage_b)
-    stbi_set_flip_vertically_on_load(true);
-  else
-    stbi_set_flip_vertically_on_load(false);
+  //if (inFlipImage_b)
+  //  stbi_set_flip_vertically_on_load(true);
+  //else
+  stbi_set_flip_vertically_on_load(false);
 
   ImageData->pData = stbi_load(fileName.c_str(), &x, &y, &channels, 0, &outErr); // v3.0.243.1 newer version + compatibility with imgui3xp
   if (!outErr.empty())
@@ -135,23 +146,3 @@ missionx::BitmapReader::loadImageStb(std::string fileName, mxTextureFile::IMAGED
   return false;
 }
 
-//std::vector<uint8_t>
-//missionx::BitmapReader::readFile(const char* path, std::string& errMsg) // -> std::vector<uint8_t>
-//{
-//  errMsg.clear();
-//
-//  std::ifstream file(path, std::ios::binary | std::ios::ate);
-//  if (!file.is_open())
-//  {
-//    errMsg     = "Failed to open file " + std::string(path);
-//    auto bytes = std::vector<uint8_t>(0);
-//    return bytes;
-//  }
-//
-//  auto size = file.tellg();
-//  file.seekg(0, std::ios::beg);
-//  auto bytes = std::vector<uint8_t>(size);
-//  file.read(reinterpret_cast<char*>(&bytes[0]), size);
-//  file.close();
-//  return bytes;
-//}

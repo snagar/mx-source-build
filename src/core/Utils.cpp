@@ -348,7 +348,7 @@ missionx::Utils::calcDistanceBetween2Points_nm_ts(const double gFromLat, const d
 
   const double angle = acos (sin (pTargetLatRad) * sin (pLatRad) + cos (pTargetLatRad) * cos (pLatRad) * cos (lon));
 
-  const double retValue_d = missionx::EQUATER_LEN_NM * angle / (missionx::PI2);
+  const double retValue_d = missionx::EQUATOR_LEN_NM * angle / (missionx::PI2);
 
 
   if (inReturnInUnits == missionx::mx_units_of_measure::nm) // probably in most cases
@@ -393,7 +393,7 @@ missionx::Utils::calcDistanceBetween2Points_nm(const double gFromLat, const doub
 
   const double angle = acos (sin (pTargetLatRad) * sin (pLatRad) + cos (pTargetLatRad) * cos (pLatRad) * cos (lon));
 
-  const double retValue_d = missionx::EQUATER_LEN_NM * angle / (missionx::PI2);
+  const double retValue_d = missionx::EQUATOR_LEN_NM * angle / (missionx::PI2);
 
 
   if (inReturnInUnits == missionx::mx_units_of_measure::nm) // probably in most cases
@@ -3041,81 +3041,95 @@ missionx::Utils::isStringIsValidArithmetic (const std::string& inArithmetic)
 }
 
 bool
-missionx::Utils::position_plane_in_ICAO(std::string inICAO, float lat, float lon, const float currentPlaneLat, const float currentPlanelon, const bool flag_FindNearestAirportIfIcaoIsNotValid)
+missionx::Utils::position_plane_in_ICAO(const std::string& inICAO)
 {
-  [[maybe_unused]]
-  bool flag_positioned_plane_in_ICAO = false;
-  #ifndef RELEASE
-  const std::string_view FAILED_POSITIONING_VU = "Plugin might fail to position plane. Please position the plane in the starting icao and then try again.";
-  #endif
 
+  if (const XPLMNavRef navRef = XPLMFindNavAid (nullptr, inICAO.c_str (), nullptr, nullptr, nullptr, xplm_Nav_Airport)
+    ; inICAO.empty () || navRef == XPLM_NAV_NOT_FOUND )
   {
-    XPLMNavRef navRef = XPLMFindNavAid(nullptr, inICAO.c_str(), nullptr, nullptr, nullptr, xplm_Nav_Airport);
-    if (inICAO.empty() || navRef == XPLM_NAV_NOT_FOUND)
-    {
-      Log::logMsg("Failed to find airport with ICAO: " + inICAO);
-      if ( flag_FindNearestAirportIfIcaoIsNotValid )
-      {
-        #ifndef RELEASE
-        Log::logMsg("Search for nearest airport to target lat/lon");
-        #endif // !RELEASE
-        if (lat != 0.0f && lon != 0.0f)
-        {
-
-          if (XPLMNavRef local_navRef = XPLMFindNavAid (nullptr, nullptr, &lat, &lon, nullptr, xplm_Nav_Airport)
-            ; local_navRef == XPLM_NAV_NOT_FOUND)
-          {
-            if (Utils::calcDistanceBetween2Points_nm(currentPlaneLat, currentPlanelon, lat, lon) > 100) // if target is more than 100nm from target
-            {
-              #ifndef RELEASE
-              XPLMSpeakString(FAILED_POSITIONING_VU.data());
-              #endif // !RELEASE
-              Log::logMsg("Failed to find airport with ICAO: " + inICAO);
-              return false;
-            }
-          }
-          else
-          {
-            char ID[32]{ 0 };
-            XPLMGetNavAidInfo(local_navRef, nullptr, &lat, &lon, nullptr, nullptr, nullptr, ID, nullptr, nullptr);
-            inICAO = std::string(ID);
-            if (inICAO.empty())
-            {
-              #ifndef RELEASE
-              XPLMSpeakString(FAILED_POSITIONING_VU.data());
-              #endif // !RELEASE
-
-              return false;
-            }
-            else
-            {
-              flag_positioned_plane_in_ICAO = true;
-              XPLMPlaceUserAtAirport(inICAO.c_str());
-            }
-          }
-        }
-        else
-        {
-          Log::logMsg("No alternative lat/lon provided so can't position plane. Fix the starting ICAO or provide a valid <location_adjust> lat/lon values. ");
-          return false;
-        }
-      } // end flag_FindNearestAirportIfIcaoIsNotValid = true
-      else
-      {
-        Log::logMsg("No ICAO by the name: " + inICAO +" found, Fix the starting ICAO.");
-        return false;
-      }
-    } // end XPLM_NAV_NOT_FOUND
-    else
-    {
-      flag_positioned_plane_in_ICAO = true;
-      XPLMPlaceUserAtAirport(inICAO.c_str()); // position plane in ICAO
-    }
+    Log::logMsg ("Failed to find airport with ICAO: " + inICAO);
+    return false;
   }
 
+  XPLMPlaceUserAtAirport (inICAO.c_str ());
 
   return true;
 }
+
+// bool
+// missionx::Utils::position_plane_in_ICAO(std::string inICAO, float lat, float lon, const float currentPlaneLat, const float currentPlanelon, const bool flag_FindNearestAirportIfIcaoIsNotValid)
+// {
+//   // [[maybe_unused]]
+//   // bool flag_positioned_plane_in_ICAO = false;
+//   #ifndef RELEASE
+//   constexpr std::string_view FAILED_POSITIONING_VU = "Plugin might fail to position plane. Please position the plane in the starting icao and then try again.";
+//   #endif
+//
+//
+//   if (const XPLMNavRef navRef = XPLMFindNavAid (nullptr, inICAO.c_str (), nullptr, nullptr, nullptr, xplm_Nav_Airport)
+//     ; navRef == XPLM_NAV_NOT_FOUND || inICAO.empty ())
+//   {
+//     Log::logMsg ("Failed to find airport with ICAO: " + inICAO);
+//     if (flag_FindNearestAirportIfIcaoIsNotValid)
+//     {
+//       #ifndef RELEASE
+//       Log::logMsg ("Search for nearest airport to target lat/lon");
+//       #endif // !RELEASE
+//       if (lat != 0.0f && lon != 0.0f)
+//       {
+//
+//         if (const XPLMNavRef local_navRef = XPLMFindNavAid (nullptr, nullptr, &lat, &lon, nullptr, xplm_Nav_Airport)
+//           ; local_navRef == XPLM_NAV_NOT_FOUND)
+//         {
+//           if (Utils::calcDistanceBetween2Points_nm (currentPlaneLat, currentPlanelon, lat, lon) > 100) // if target is more than 100nm from target
+//           {
+//             #ifndef RELEASE
+//             XPLMSpeakString (FAILED_POSITIONING_VU.data ());
+//             #endif // !RELEASE
+//             Log::logMsg ("Failed to find airport with ICAO: " + inICAO);
+//             return false;
+//           }
+//         }
+//         else
+//         {
+//           char ID[32]{ 0 };
+//           XPLMGetNavAidInfo (local_navRef, nullptr, &lat, &lon, nullptr, nullptr, nullptr, ID, nullptr, nullptr);
+//           inICAO = std::string (ID);
+//           if (inICAO.empty ())
+//           {
+//             #ifndef RELEASE
+//             XPLMSpeakString (FAILED_POSITIONING_VU.data ());
+//             #endif // !RELEASE
+//
+//             return false;
+//           }
+//           else
+//           {
+//             XPLMPlaceUserAtAirport (inICAO.c_str ());
+//           }
+//         }
+//       }
+//       else
+//       {
+//         Log::logMsg ("No alternative lat/lon provided so can't position plane. Fix the starting ICAO or provide a valid <location_adjust> lat/lon values. ");
+//         return false;
+//       }
+//     } // end flag_FindNearestAirportIfIcaoIsNotValid = true
+//     else
+//     {
+//       Log::logMsg ("No ICAO by the name: " + inICAO + " found, Fix the starting ICAO.");
+//       return false;
+//     }
+//   } // end XPLM_NAV_NOT_FOUND
+//   else
+//   {
+//     XPLMPlaceUserAtAirport (inICAO.c_str ()); // position plane in ICAO
+//   }
+//
+//
+//
+//   return true;
+// }
 
 
 // -------------------------------------------

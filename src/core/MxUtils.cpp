@@ -22,22 +22,11 @@ THE FOLLOWING FUNCTIONS WERE COPIED FROM "uTILS" CLASS SO PROPERTIES WILL BE IND
 */
 
 
-/* ********************************************** */
-// std::string str_toupper(std::string s) {
-//  std::transform(s.begin(), s.end(), s.begin(),
-//    [](unsigned char c) { return std::toupper(c); } // correct
-//  );
-//  return s;
-//}
+// ----------------------------------------------
 
 std::string
 missionx::mxUtils::stringToUpper(std::string strToConvert)
 { // change each element of the string to upper case
-  // for (size_t i = 0; i<strToConvert.length(); i++)
-  //{
-  //  strToConvert[i] = toupper(strToConvert[i]);
-  //}
-  // return strToConvert;//return the converted string
   std::for_each(strToConvert.begin(), strToConvert.end(), [](char& c) { c = toupper(c); });
   return strToConvert;
 }
@@ -47,10 +36,6 @@ missionx::mxUtils::stringToUpper(std::string strToConvert)
 std::string
 missionx::mxUtils::stringToLower(std::string strToConvert)
 { // change each element of the string to lower case
-  //for (size_t i = 0; i < strToConvert.length(); i++)
-  //{
-  //  strToConvert[i] = tolower(strToConvert[i]);
-  //}
   for (auto& c : strToConvert)
     c = tolower(c);
 

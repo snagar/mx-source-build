@@ -39,9 +39,9 @@ public:
     return Utils::xml_get_node_content_as_text(this->node) + "\nNeed location adjust: " + ((this->has_valid_location_adjust) ? mxconst::get_MX_YES() : mxconst::get_MX_NO());
   }
 
-  void positionPlane(const bool inflag_setupForcePlanePositioning = false,const bool inflag_setupChangeHeadingEvenIfPlaneIn_20meter_radius = false, const int inXplaneVersion_i = 0);
+  void positionPlane(bool in_flag_setupForcePlanePositioning = false,bool in_flag_setupChangeHeadingEvenIfPlaneIn_20meter_radius = false);
   void setPlaneHeading(const float & inHeading);
-  void positionPlane_v10(missionx::Point& inNewPosition, const bool inForceHeading_b);
+  // void positionPlane_v10(missionx::Point& inNewPosition, bool inForceHeading_b);
 
   // -------------------------------------------
 

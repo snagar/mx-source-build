@@ -38,6 +38,7 @@ select id, distance_nm from
 select oilRigVu.icao_id, oilRigVu.icao, oilRigVu.ap_name, oilRigVu.ap_lat, oilRigVu.ap_lon, trunc(oilRigVu.ap_lat) as ap_lat_trunc, trunc(oilRigVu.ap_lon) as ap_lon_trunc
 from airports_vu oilRigVu
 where oilRigVu.is_oilrig > 0
+{}
 ),
 airports_with_helipads_vu as (
 select av.icao_id, av.icao, av.ap_name, av.ap_lat, av.ap_lon, trunc(av.ap_lat) as ap_lat_trunc, trunc(av.ap_lon) as ap_lon_trunc
@@ -51,8 +52,8 @@ select  mx_calc_distance(ov.ap_lat, ov.ap_lon, awh.ap_lat , awh.ap_lon, 3440) as
 from oilrigs_vu ov, airports_with_helipads_vu awh
 where 1 = 1
 and ov.icao_id != awh.icao_id
-and ( awh.ap_lat_trunc between ov.ap_lat_trunc - 2 and ov.ap_lat_trunc + 2
-      and awh.ap_lon_trunc between ov.ap_lon_trunc - 2 and ov.ap_lon_trunc + 2 )
+and ( awh.ap_lat between ov.ap_lat_trunc - 2 and ov.ap_lat_trunc + 2
+      and awh.ap_lon between ov.ap_lon_trunc - 2 and ov.ap_lon_trunc + 2 )
 order by RANDOM() limit 1
 ]]></query>
 
@@ -141,7 +142,7 @@ and ( t3.loc_type like ('ILS%' ) or t3.loc_type like ('LOC%' ) )
 UNION ALL
 select loc_data, distance, loc_type_code, loc_rw
 from (
-select FORMAT ("%-*s , freq: %i, Type: %s, Region: %-*s, lat/lon: %3.0f/%3.0f ", 4, t3.loc_rw, t3.frq_mhz, t3.loc_type, 3, icao_region_code, t3.lat, t3.lon ) as loc_data
+select FORMAT ("%-*s , channel: %i/%s, Type: %s, Region: %-*s, lat/lon: %3.0f/%3.0f ", 4, t3.loc_rw, t3.frq_mhz, t3.ident, t3.loc_type, 3, icao_region_code, t3.lat, t3.lon ) as loc_data
 ,  mx_calc_distance(t3.lat, t3.lon, {4}, {5}, 3440) as distance
 , t3.loc_rw
 , 2 as loc_type_code
@@ -175,6 +176,24 @@ from xp_loc, xp_rw, xp_airports xa
 where xp_rw.icao = xp_loc.icao
 and (xp_rw.rw_no_1 = xp_loc.loc_rw or xp_rw.rw_no_2 = xp_loc.loc_rw)
 and xa.icao = xp_rw.icao
+)
+where 1 = 1
+]]></query>
+
+<!-- This is the VFR option, we add the filter inside the plugin to this statement -->
+<!-- The "{}" is part of a c++ library string format. Similar to Python. We will replace it with values, instead of using bind variables, please do not replace them. -->
+  <query name="base_vfr_search_query"><![CDATA[select icao, round(distance_nm) as distance_nm, '' as loc_rw, '' as loc_type, 0 as frq_mhz, 0 as loc_bearing, rw_length_mt, rw_width, ap_elev, ap_name, surf_type_text, bearing_from_to_icao
+from (
+    select xa.icao
+    , mx_calc_distance ({}, {}, xa.ap_lat, xa.ap_lon, 3440) as distance_nm
+    , xp_rw.rw_length_mt, xp_rw.rw_width, xa.ap_elev, xa.ap_name
+    , case xp_rw.rw_surf when 1 then 'Asphalt' when 2 then 'Concrete' when 3 then 'Turf or grass' when 4 then 'Dirt' when 5 then 'Gravel' when 12 then 'Dry lakebed' when 13 then 'Water runways' when 14 then 'Snow or ice' when 15 then 'Transparent' else 'no data' end as surf_type_text
+    , mx_bearing({}, {}, xa.ap_lat, xa.ap_lon) as bearing_from_to_icao
+    from xp_rw, xp_airports xa, airports_vu avu
+    where 1 = 1
+    and xa.icao_id = xp_rw.icao_id
+    and xa.icao_id = avu.icao_id
+    and avu.ap_type = 1 -- 1 = airports, 16=sealane, 17=heliports
 )
 where 1 = 1
 ]]></query>

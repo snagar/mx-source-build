@@ -783,15 +783,10 @@ RandomEngine::generateRandomMission ()
           this->setError (local_err);
           missionx::RandomEngine::threadState.flagAbortThread = true;
         }
-        else
-        {
-          // goto post_mission_action;
-        }
 
       } // end if oilrig mission
 
     } // end handling user_driven_mission_layer
-
     else if (data_manager::getGeneratedFromLayer () == missionx::uiLayer_enum::option_external_fpln_layer)
     {
       if (!this->prepare_mission_based_on_external_fpln (xRootTemplate))
@@ -845,6 +840,7 @@ RandomEngine::generateRandomMission ()
   ///// We should read all tags and pick randomly from them.
   ///// If content available then we will call "generateRandomMissionBasedOnContent()" function
 
+  // TODO: move this part of code as an "else" to "this->flag_rules_defined_by_user_ui" => row 827
   { // added anonymous block to solve the cross compiling of nContentChilds_i with the "goto command conflict"
     if (int nContentChilds_i = this->xRootTemplate.getChildNode (mxconst::get_ELEMENT_CONTENT ().c_str ()).nChildNode (); nContentChilds_i > 0)
     {
@@ -898,9 +894,11 @@ post_mission_action:
   if (missionx::RandomEngine::threadState.flagAbortThread)
     return false;
 
+  // v25.08.1 Consider removing those messages and just keep the 2nm message.
   // v25.02.1 added suppress message, setup, option
   if (const auto bSuppressDistanceMessages = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_ATTRIB_SUPPRESS_DISTANCE_MESSAGES_B (), false); 
-  !bSuppressDistanceMessages && data_manager::getGeneratedFromLayer () != missionx::uiLayer_enum::option_external_fpln_layer && data_manager::getGeneratedFromLayer () != missionx::uiLayer_enum::option_ils_layer && !flag_copy_leg_as_is_b)
+  !bSuppressDistanceMessages && data_manager::getGeneratedFromLayer () != missionx::uiLayer_enum::option_external_fpln_layer
+  && data_manager::getGeneratedFromLayer () != missionx::uiLayer_enum::option_ils_layer && !flag_copy_leg_as_is_b)
   {
     this->injectMessagesWhileFlyingToDestination ();
   }
@@ -1215,7 +1213,8 @@ RandomEngine::prepareBrieferAndStartLocation ()
     }
     else // try to use "location_value_nm_s" property and fetch a point based on a list of points provided ad-hock
     {
-      const std::string location_xy_random_value = Utils::readAttrib (xLocationAdjust, mxconst::get_ATTRIB_LOCATION_VALUE (), "");
+      // v25.08.1 support for "location_properties" attribute that will replace "location_value"
+      const std::string location_xy_random_value = (!Utils::readAttrib (xLocationAdjust, mxconst::get_ATTRIB_LOCATION_PROPERTIES (), "").empty())? Utils::readAttrib (xLocationAdjust, mxconst::get_ATTRIB_LOCATION_PROPERTIES (), "") : Utils::readAttrib (xLocationAdjust, mxconst::get_ATTRIB_LOCATION_VALUE (), "");
       if (location_xy_random_value.empty () || Utils::is_number (location_xy_random_value)) // SHOULD NOT BE EMPTY OR A NUMBER.
       {
         this->setError ("[random] Failed to find valid starting location, No Coordinates or string List of random latitude/longitude were provided, will abort template creation. Please fix the template or change the starting location to plane.");
@@ -2217,12 +2216,14 @@ RandomEngine::buildFlightLeg (int inFlightLegCounter, const IXMLNode &in_legNode
 
   auto        location_radius_mt  = Utils::readNodeNumericAttrib<int> (xExpectedLocation, mxconst::get_ATTRIB_RADIUS_MT (), 0); // v3.0.241.8 added support for custom target radius. This for hover cases.
   std::string location_type       = Utils::readAttrib (xExpectedLocation, mxconst::get_ATTRIB_LOCATION_TYPE (), "");
-  std::string location_value_nm_s = Utils::readAttrib (xExpectedLocation, mxconst::get_ATTRIB_LOCATION_VALUE (), "");
+  // v25.08.1 support for "location_properties" attribute that will replace "location_value"
+  std::string location_value_nm_s = (!Utils::readAttrib (xExpectedLocation, mxconst::get_ATTRIB_LOCATION_PROPERTIES (), "").empty())? Utils::readAttrib (xExpectedLocation, mxconst::get_ATTRIB_LOCATION_PROPERTIES (), "") : Utils::readAttrib (xExpectedLocation, mxconst::get_ATTRIB_LOCATION_VALUE (), "");
+
   std::string location_value_restrict_ramp_type_s; // v3.0.221.7 will hold special ramp type if location value has special string characters after the numbers
 
   // location value format can be: "{number}|{ramp type}|{min-max},..."
   // mapLocationValueOptions: {name},{value}.
-  std::map<int, std::string> mapLocationValueOptions; // v3.0.221.7 will hold the coomplex options used by "|".
+  std::map<int, std::string> mapLocationValueOptions; // v3.0.221.7 will hold the complex options used by "|".
   std::string                location_value_min_max_distance_s, location_value_tag_name_s, location_value_poi_s; // v3.0.221.7 @Daikan used in Random airport pick. "location_value_tag_name_s" will be used to hold element name to search in template.
 
 
@@ -3279,6 +3280,9 @@ RandomEngine::buildFlightLeg (int inFlightLegCounter, const IXMLNode &in_legNode
     lastFlightLegNavInfo.xLegFromTemplate.updateAttribute (flightLegName.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
     lastFlightLegNavInfo.xLegFromTemplate.updateAttribute (flight_leg_type_hover_land_or_start.c_str (), mxconst::get_ATTRIB_SHARED_FLIGHT_LEG_TEMPLATE ().c_str (), mxconst::get_ATTRIB_SHARED_FLIGHT_LEG_TEMPLATE ().c_str ());
     Utils::xml_search_and_set_attribute_in_IXMLNode (lastFlightLegNavInfo.xLegFromTemplate, mxconst::get_ATTRIB_LOCATION_TYPE (), location_type, mxconst::get_ELEMENT_EXPECTED_LOCATION ());
+    // v25.08.1 support for "location_properties" attribute that will replace "location_value"
+    Utils::xml_search_and_set_attribute_in_IXMLNode (lastFlightLegNavInfo.xLegFromTemplate, mxconst::get_ATTRIB_LOCATION_PROPERTIES (), location_value_nm_s, mxconst::get_ELEMENT_EXPECTED_LOCATION ());
+    // TODO: deprecate the use of "get_ATTRIB_LOCATION_VALUE"
     Utils::xml_search_and_set_attribute_in_IXMLNode (lastFlightLegNavInfo.xLegFromTemplate, mxconst::get_ATTRIB_LOCATION_VALUE (), location_value_nm_s, mxconst::get_ELEMENT_EXPECTED_LOCATION ());
   }
   lastFlightLegNavInfo.flightLegName = flightLegName;
@@ -4627,11 +4631,11 @@ RandomEngine::callback_pick_random_ramp_location_db (void *data, const int argc,
 // -----------------------------------
 
 NavAidInfo
-RandomEngine::get_random_airport_from_db (missionx::Point &inPoint, const float inMinDistance_nm, const float inMaxDistance_nm, const int inExcludeAngle)
+RandomEngine::get_random_airport_from_db (missionx::Point &inPoint, const float inMinDistance_nm, const float inMaxDistance_nm, const int inExcludeAngle, missionx::mx_base_node &inProperties)
 {
-#ifndef RELEASE
+  #ifndef RELEASE
   auto start_db_call = std::chrono::steady_clock::now ();
-#endif
+  #endif
   /*
     select * from
     (
@@ -4648,9 +4652,12 @@ RandomEngine::get_random_airport_from_db (missionx::Point &inPoint, const float 
   const double pLat = inPoint.getLat ();
   const double pLon = inPoint.getLon ();
 
+  const bool flag_is_last_flight_leg = Utils::readBoolAttrib (inProperties.node, mxconst::get_PROP_IS_LAST_FLIGHT_LEG (), false);
+
   //// construct view query (inner query)
   // base on xp_airports
-  const std::string inner_view = "select icao_id, icao, ap_elev_ft, ap_name, ap_type, ap_lat, ap_lon, mx_calc_distance ( ap_lat, ap_lon," + mxUtils::formatNumber<double> (pLat, 10) + ", " + mxUtils::formatNumber<double> (pLon, 10) + ", 3440) as dist_nm, mx_bearing (ap_lat, ap_lon, " + mxUtils::formatNumber<double> (pLat, 10) + ", " + mxUtils::formatNumber<double> (pLon, 10) + ") as bearing, helipads, ramp_helos, ramp_planes, ramp_props, ramp_turboprops, ramp_jet_heavy, rw_hard, rw_dirt_gravel, rw_grass, rw_water, is_custom from airports_vu "; // v3.303.12 added field is_custom
+  // const std::string inner_view = "select icao_id, icao, ap_elev_ft, ap_name, ap_type, ap_lat, ap_lon, mx_calc_distance ( ap_lat, ap_lon," + mxUtils::formatNumber<double> (pLat, 10) + ", " + mxUtils::formatNumber<double> (pLon, 10) + ", 3440) as dist_nm, mx_bearing (ap_lat, ap_lon, " + mxUtils::formatNumber<double> (pLat, 10) + ", " + mxUtils::formatNumber<double> (pLon, 10) + ") as bearing, helipads, ramp_helos, ramp_planes, ramp_props, ramp_turboprops, ramp_jet_heavy, rw_hard, rw_dirt_gravel, rw_grass, rw_water, is_custom from airports_vu "; // v3.303.12 added field is_custom
+  const std::string inner_view = fmt::format("select icao_id, icao, ap_elev_ft, ap_name, ap_type, ap_lat, ap_lon, mx_calc_distance ( ap_lat, ap_lon, {}, {}, 3440) as dist_nm, mx_bearing (ap_lat, ap_lon, {}, {}) as bearing, helipads, ramp_helos, ramp_planes, ramp_props, ramp_turboprops, ramp_jet_heavy, rw_hard, rw_dirt_gravel, rw_grass, rw_water, is_custom, is_oilrig from airports_vu ", mxUtils::formatNumber<double> (pLat, 10), mxUtils::formatNumber<double> (pLon, 10), mxUtils::formatNumber<double> (pLat, 10), mxUtils::formatNumber<double> (pLon, 10)  ); // v3.303.12 added field is_custom
 
   // Construct distance
   const std::string distance_s = " and dist_nm between " + mxUtils::formatNumber<float> (inMinDistance_nm) + " and " + mxUtils::formatNumber<float> (inMaxDistance_nm);
@@ -4737,14 +4744,16 @@ RandomEngine::get_random_airport_from_db (missionx::Point &inPoint, const float 
 
   const std::string subquery_to_filter_rw_type = lmbda_filter_based_on_rw_type (Utils::readAttrib (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_FILTER_AIRPORTS_BY_RUNWAY_TYPE (), ""));
 
+  // v25.08.1 add last leg filter
+  const std::string filter_by_last_leg = (flag_is_last_flight_leg)? " and is_oilrig = 0 " : "";
 
   // adding the rw filter to the query
-  const std::string sql = "select * from ( " + inner_view + " ) vu where 1 = 1 " + distance_s + bearing_s + ramp_type_filter_s + subquery_to_filter_rw_type + " order by RANDOM() limit 10"; // v3.0.255.3 use RANDOM() function to pick random row  // older option: any valid row ordered by distance " order by dist_nm" ;
+  const std::string sql = "select * from ( " + inner_view + " ) vu where 1 = 1 " + distance_s + bearing_s + ramp_type_filter_s + subquery_to_filter_rw_type + filter_by_last_leg + " order by RANDOM() limit 10"; // v3.0.255.3 use RANDOM() function to pick random row  // older option: any valid row ordered by distance " order by dist_nm" ;
 
 
-#ifndef RELEASE
+  #ifndef RELEASE
   Log::logMsgThread ("[get_random_airport_from_db] Query: " + sql);
-#endif // !RELEASE
+  #endif // !RELEASE
 
 
 
@@ -4866,138 +4875,6 @@ RandomEngine::get_random_airport_from_db (missionx::Point &inPoint, const float 
 
 
 // -----------------------------------
-
-
-void
-RandomEngine::gatherRandomAirport_mainThread (const Point &inPoint, float inMaxDistance_nm, int inExcludeAngle, float inStartFromDistance_nm)
-{
-  // TODO: deprecate this function
-  assert (1 == 2 && "[gatherRandomAirport_mainThread] Should not be called.");
-
-#if (ENABLE_GATHER_RANDOM_AIRPORTS_FROM_MAIN_THREAD_CALL == 1)
-
-  // do 360 degrees swipe in 10deg angle
-  // search for airports in distance of "inMaxDistance/10nm", exclude the "opposite angle" we came from.
-  // Count the num of airports in std::map and random pick.
-  NavAidInfo dummy;
-  float      addToSearchRadius_nm = 0.0f; // v3.0.219.9 affect how many nm to jump until reach max distance. It will be bigger as distance of search will grow
-
-  int counter = 0; // define loop boundary of no more than 1000 iteration in loop
-
-  // validate max distance, should be in the calling function and not here.
-  inMaxDistance_nm = (inMaxDistance_nm < DEFAULT_RANDOM_POINT_JUMP_NM) ? DEFAULT_RANDOM_POINT_JUMP_NM : inMaxDistance_nm;
-  inMaxDistance_nm = (inMaxDistance_nm < mxconst::MAX_DISTANCE_TO_SEARCH_AIRPORT) ? inMaxDistance_nm : mxconst::MAX_DISTANCE_TO_SEARCH_AIRPORT;
-  float angleInRad = 0;
-
-  #ifndef RELEASE
-  Log::logMsg ("[random gatherRandomAirport_mainThread] gathering random navaid", true);
-  #endif
-
-  double p_x = inPoint.getLat ();
-  double p_y = inPoint.getLon ();
-
-  // store unique names of our airports
-  std::set<std::string> setStoredICAO; // setStoredICAO.clear();
-
-  // calculate exclude Angle
-  int excludeAngle = -1;
-  if (inExcludeAngle > -1)
-  {
-    inExcludeAngle -= 180; // we need to exclude the opposite direction of the original angle.
-    if (inExcludeAngle < 0)
-      inExcludeAngle += 360;
-
-    excludeAngle = inExcludeAngle;
-  }
-
-  if (inMaxDistance_nm < 30)
-    addToSearchRadius_nm = 0.0f;
-  else if (inMaxDistance_nm < 50)
-    addToSearchRadius_nm = std::fabs (5.0f - mxconst::DEFAULT_RANDOM_DEGREES_TO_EXCLUDE); // we want jumps every 5nm
-  else if (inMaxDistance_nm < 100)
-    addToSearchRadius_nm = std::fabs (8.0f - mxconst::DEFAULT_RANDOM_DEGREES_TO_EXCLUDE); // we want jumps every 5nm
-  else if (inMaxDistance_nm < 250)
-    addToSearchRadius_nm = std::fabs (15.0f - mxconst::DEFAULT_RANDOM_DEGREES_TO_EXCLUDE); // we want jumps every 5nm
-  else if (inMaxDistance_nm < 500)
-    addToSearchRadius_nm = std::fabs (25.0f - mxconst::DEFAULT_RANDOM_DEGREES_TO_EXCLUDE); // we want jumps every 5nm
-  else if (inMaxDistance_nm <= 5000)
-    addToSearchRadius_nm = std::fabs (50.0f - mxconst::DEFAULT_RANDOM_DEGREES_TO_EXCLUDE); // we want jumps every 5nm
-  else if (inMaxDistance_nm <= 15000)
-    addToSearchRadius_nm = std::fabs (75.0f - mxconst::DEFAULT_RANDOM_DEGREES_TO_EXCLUDE); // we want jumps every 5nm
-  else
-    addToSearchRadius_nm = std::fabs (100.0f - mxconst::DEFAULT_RANDOM_DEGREES_TO_EXCLUDE); // we want jumps every 5nm
-
-  NavAidInfo closestNavAid; // store airport data
-
-  const int MAX_COUNTER_ALLOWED_I = 1500;
-
-  //// Pick airports in circled area /////
-  for (float deg = 0.0f; deg < 360.0f && counter < MAX_COUNTER_ALLOWED_I; (deg += 10.0f))
-  {
-    // skip search in certain restricted angles so we won't return to same location, although that can happen.
-    // -1 = do not exclude angle
-    if (excludeAngle > -1 && deg >= (excludeAngle - mxconst::DEFAULT_RANDOM_DEGREES_TO_EXCLUDE) && deg <= (excludeAngle += mxconst::DEFAULT_RANDOM_DEGREES_TO_EXCLUDE))
-      continue;
-
-    angleInRad = (float)(deg * 2.0f * ((float)PI) / ((float)NUM_CIRCLE_POINTS)) * RadToDeg; // convert angle to Radians
-
-    // calculate point and pick airport near it
-    for (float radius_nm = (float)inStartFromDistance_nm; ((radius_nm <= inMaxDistance_nm) && (counter < MAX_COUNTER_ALLOWED_I)); (radius_nm += (mxconst::DEFAULT_RANDOM_POINT_JUMP_NM + addToSearchRadius_nm)))
-    {
-      missionx::NavAidInfo navAid;
-      ++counter;
-
-      navAid.degRelativeToSearchPoint = deg; // v3.0.219.6
-
-      double lat, lon;
-      lat = lon = 0.0;
-
-      Utils::calcPointBasedOnDistanceAndBearing_2DPlane (lat, lon, p_x, p_y, angleInRad, radius_nm);
-      float lat_f = (float)lat; // convert to float
-      float lon_f = (float)lon; // convert to float
-
-      // we use the targetLat/targetLon to search for airport nav ref
-      navAid.navRef = XPLMFindNavAid (NULL, NULL, &lat_f, &lon_f, NULL, xplm_Nav_Airport);
-
-      // skip if no navaid found
-      if (navAid.navRef == XPLM_NAV_NOT_FOUND)
-      {
-  #ifndef RELEASE
-        Log::logMsg ("Failed to find ICAO in lat: " + Utils::formatNumber<float> (lat_f, 8) + ", lon: " + Utils::formatNumber<float> (lon_f, 8), true);
-  #endif
-        continue;
-      }
-
-      if (Utils::isElementExists (this->mapNavAidsFromMainThread, navAid.navRef))
-        continue;
-
-
-      // fetch and store information on navAid if in correct distance
-      XPLMGetNavAidInfo (navAid.navRef, &navAid.navType, &navAid.lat, &navAid.lon, &navAid.height_mt, &navAid.freq, &navAid.heading, navAid.ID, navAid.name, nullptr);
-
-
-      if (Utils::isElementExists (data_manager::cachedNavInfo_map, navAid.getID ())) // v3.0.253.6 add custom scenery information for future pick
-      {
-        if (data_manager::cachedNavInfo_map[navAid.getID ()].isCustom)
-        {
-          Utils::addElementToMap (this->map_customScenery_XPLMNavRef_NavAidsFromMainThread, navAid.getID (), navAid.navRef);
-          navAid.flag_is_custom_scenery = true;
-        }
-      }
-
-      // add navaid to map for future use
-      Utils::addElementToMap (this->mapNavAidsFromMainThread, navAid.navRef, navAid);
-
-    } // end loop over navaids in the distance of that degree
-
-  } // end loop over 360 deg
-
-#endif
-}
-
-
-// -----------------------------------
-
 
 float
 RandomEngine::calc_slope_at_point_mainThread (NavAidInfo &inNavAid)
@@ -5172,19 +5049,22 @@ RandomEngine::get_target (NavAidInfo &outNewNavInfo, const IXMLNode &inLegFromTe
   //
   /////
 
+  // std::unordered_map<std::string, std::string> config_dc;
+
   // read options regarding target location
   // v3.0.241.7 // v3.0.241.8 added this->flag_force_template_distances_b to let designer force his "narrative" when it comes to distances.
   const bool flag_override_random_target_min_dist = (this->flag_force_template_distances_b) ? false : missionx::system_actions::pluginSetupOptions.getBoolValue (mxconst::get_OPT_OVERRIDE_RANDOM_TARGET_MIN_DISTANCE ());
 
   // get hide cues option
   const auto slider_random_min_distance_value_d = Utils::getNodeText_type_1_5<double> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SLIDER_RANDOM_TARGET_MIN_DISTANCE (), 0.0);
+
   this->errMsg.clear (); // we don't really care about the error
 
   // v3.0.241.10b2 read from property map to use later in code (using the node instead of the property)
   const std::string inFlightLegName      = Utils::readAttrib (inProperties.node, mxconst::get_ATTRIB_NAME (), "");
   const std::string inTemplateType       = Utils::readAttrib (inProperties.node, mxconst::get_ATTRIB_TYPE (), "");
   const std::string inLocationType       = Utils::readAttrib (inProperties.node, mxconst::get_ATTRIB_LOCATION_TYPE (), "");
-  const bool        flag_isLastFlightLeg = Utils::readBoolAttrib (inProperties.node, mxconst::get_PROP_IS_LAST_FLIGHT_LEG (), false);
+  const bool flag_is_last_flight_leg     = Utils::readBoolAttrib (inProperties.node, mxconst::get_PROP_IS_LAST_FLIGHT_LEG (), false);
 
   /////////////////////////////////////////////////////////////////
   // prepare local variables according to the split information
@@ -5227,9 +5107,9 @@ RandomEngine::get_target (NavAidInfo &outNewNavInfo, const IXMLNode &inLegFromTe
       #endif // !RELEASE
 
       #ifdef IBM
-      out_new_nav_info = this->get_random_airport_from_db (this->shared_navaid_info.p, this->shared_navaid_info.inMinDistance_nm, this->shared_navaid_info.inMaxDistance_nm, this->shared_navaid_info.inExcludeAngle); // v3.0.255.3 test integration
+      out_new_nav_info = this->get_random_airport_from_db (this->shared_navaid_info.p, this->shared_navaid_info.inMinDistance_nm, this->shared_navaid_info.inMaxDistance_nm, this->shared_navaid_info.inExcludeAngle, inProperties); // v3.0.255.3 test integration
       #else
-      const NavAidInfo nav = this->get_random_airport_from_db (this->shared_navaid_info.p, this->shared_navaid_info.inMinDistance_nm, this->shared_navaid_info.inMaxDistance_nm, this->shared_navaid_info.inExcludeAngle); // v3.0.255.3 test integration
+      const NavAidInfo nav = this->get_random_airport_from_db (this->shared_navaid_info.p, this->shared_navaid_info.inMinDistance_nm, this->shared_navaid_info.inMaxDistance_nm, this->shared_navaid_info.inExcludeAngle, inProperties); // v3.0.255.3 test integration
       outNewNavInfo        = nav;
       #endif
 
@@ -5295,8 +5175,6 @@ RandomEngine::get_target (NavAidInfo &outNewNavInfo, const IXMLNode &inLegFromTe
     }
   }
 
-
-
   //////////// end variables preparations ////////////
 
   if ((inTemplateType == mxconst::get_FL_TEMPLATE_VAL_START ()) || (inLocationType == mxconst::get_FL_TEMPLATE_VAL_START ())) // "start"
@@ -5315,9 +5193,9 @@ RandomEngine::get_target (NavAidInfo &outNewNavInfo, const IXMLNode &inLegFromTe
   else if (location_value_nm_s.empty () && location_value_tag_name_s.empty () && location_value_min_max_distance_s.empty () /*v3.0.241.9*/ && (this->lastFlightLegNavInfo.lat != 0.0f && this->lastFlightLegNavInfo.lon != 0.0f))
   {
     #ifdef IBM
-    outNewNavInfo = this->get_random_airport_from_db (this->lastFlightLegNavInfo.p, 3.0f, 50.0f, -1); // v3.0.255.3 test integration
+    outNewNavInfo = this->get_random_airport_from_db (this->lastFlightLegNavInfo.p, 3.0f, 50.0f, -1, inProperties); // v3.0.255.3 test integration
     #else
-    NavAidInfo nav = this->get_random_airport_from_db (this->lastFlightLegNavInfo.p, 3.0f, 50.0f, -1); // v3.0.255.3 test integration
+    NavAidInfo nav = this->get_random_airport_from_db (this->lastFlightLegNavInfo.p, 3.0f, 50.0f, -1, inProperties); // v3.0.255.3 test integration
     outNewNavInfo  = nav;
     #endif
     if (outNewNavInfo.lat == 0 || outNewNavInfo.lon == 0) // fallback code if DB logic failed
@@ -5339,10 +5217,10 @@ RandomEngine::get_target (NavAidInfo &outNewNavInfo, const IXMLNode &inLegFromTe
 
 
 
-#ifndef RELEASE
+    #ifndef RELEASE
     if (!this->errMsg.empty ())
       Log::logMsgThread (errMsg);
-#endif
+    #endif
     this->errMsg.clear ();
 
     outNewNavInfo.synchToPoint ();
@@ -5364,15 +5242,15 @@ RandomEngine::get_target (NavAidInfo &outNewNavInfo, const IXMLNode &inLegFromTe
     // check osm and UI template
     // DEBUG
 
-#ifndef RELEASE
+    #ifndef RELEASE
     if (missionx::data_manager::getGeneratedFromLayer () == missionx::uiLayer_enum::option_user_generates_a_mission_layer) // display DEBUG info only if came from specific layer
     {
       Log::logMsgThread ("Use OSM: " + Utils::readAttrib (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_USE_OSM_CHECKBOX (), "NO"));
       Log::logMsgThread ("Use WEB OSM: " + Utils::readAttrib (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_USE_WEB_OSM_CHECKBOX (), "NO"));
     }
-#endif
+    #endif
     // if "user generates a mission" and they base it on Web/OSM and the plane is Helos, and it is a medevac and not last flight leg
-    if (data_manager::getGeneratedFromLayer () == missionx::uiLayer_enum::option_user_generates_a_mission_layer && (Utils::readBoolAttrib (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_USE_OSM_CHECKBOX (), false) || Utils::readBoolAttrib (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_USE_WEB_OSM_CHECKBOX (), false)) && this->template_plane_type_enum == missionx::mx_plane_types::plane_type_helos && Utils::readNodeNumericAttrib<int> (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_MED_CARGO_OR_OILRIG (), static_cast<int> (missionx::mx_mission_type::not_defined)) == static_cast<int> (missionx::mx_mission_type::medevac) && !flag_isLastFlightLeg)
+    if (data_manager::getGeneratedFromLayer () == missionx::uiLayer_enum::option_user_generates_a_mission_layer && (Utils::readBoolAttrib (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_USE_OSM_CHECKBOX (), false) || Utils::readBoolAttrib (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_USE_WEB_OSM_CHECKBOX (), false)) && this->template_plane_type_enum == missionx::mx_plane_types::plane_type_helos && Utils::readNodeNumericAttrib<int> (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_MED_CARGO_OR_OILRIG (), static_cast<int> (missionx::mx_mission_type::not_defined)) == static_cast<int> (missionx::mx_mission_type::medevac) && !flag_is_last_flight_leg)
     {
       // get max radius and find the 4 points that create the rectangle area
       const auto maxRadius_d   = Utils::readNodeNumericAttrib<double> (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_MAX_DISTANCE_SLIDER (), static_cast<int> (mxconst::SLIDER_MAX_RND_DIST / 2));
@@ -5412,13 +5290,13 @@ RandomEngine::get_target (NavAidInfo &outNewNavInfo, const IXMLNode &inLegFromTe
     else if ((inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_OSM ()) || (inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_WEBOSM ()) || (location_value_tag_name_s.empty () && ((location_value_d > 0.0) || (location_minDistance_d > 0.0 && location_maxDistance_d > 0.0)))) // v3.0.255.3 changed last logic
     {
       // Should we pick random location for HELOS
-      if ((inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_XY () || inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_OSM () || inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_WEBOSM ()) && this->template_plane_type_enum == missionx::mx_plane_types::plane_type_helos && !flag_isLastFlightLeg)
+      if ((inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_XY () || inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_OSM () || inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_WEBOSM ()) && this->template_plane_type_enum == missionx::mx_plane_types::plane_type_helos && !flag_is_last_flight_leg)
       {
-        return get_targetForHelos_based_XY_OSM_OSMWEB (outNewNavInfo, in_plane_type_enum, inMapLocationSplitValues, inProperties, location_value_d, location_minDistance_d, location_maxDistance_d);
+        return get_targetForHelos_base_XY_OSM_OSMWEB (outNewNavInfo, in_plane_type_enum, inMapLocationSplitValues, inProperties, location_value_d, location_minDistance_d, location_maxDistance_d);
       }
       else
       {
-        return get_target_or_lastFlightLeg_based_on_XY_or_OSM (outNewNavInfo, inMapLocationSplitValues, inProperties, location_value_d, location_minDistance_d, location_maxDistance_d);
+        return get_target_or_lastFlightLeg_base_on_XY_or_OSM (outNewNavInfo, inMapLocationSplitValues, inProperties, location_value_d, location_minDistance_d, location_maxDistance_d);
       } // end handle random x/y or random navaid
 
 
@@ -5427,7 +5305,7 @@ RandomEngine::get_target (NavAidInfo &outNewNavInfo, const IXMLNode &inLegFromTe
     else if (!location_value_tag_name_s.empty ())
     {
 
-      return this->get_targetBasedOnTagName (outNewNavInfo, in_plane_type_enum, inProperties, location_value_tag_name_s, location_value_d, location_minDistance_d, location_maxDistance_d);
+      return this->get_target_base_on_tag_name (outNewNavInfo, in_plane_type_enum, inProperties, location_value_tag_name_s, location_value_d, location_minDistance_d, location_maxDistance_d);
 
     } // end if has tag name
   } // end if lastLegNav have values
@@ -5660,6 +5538,9 @@ RandomEngine::prepare_blank_template_with_flight_legs_based_on_ui (IXMLNode &pNo
           else if (med_cargo_or_oilrig_i == static_cast<int> (missionx::mx_mission_type::oil_rig)) // 0 = medical, 1 = cargo, 2 = oilrig
             location_value_s = std::string ("nm_between=5-80").append (ramp_type_s);
 
+          // v25.08.1 support for "location_properties" attribute that will replace "location_value"
+          node.getChildNode (mxconst::get_ELEMENT_EXPECTED_LOCATION ().c_str ()).updateAttribute (location_value_s.c_str (), mxconst::get_ATTRIB_LOCATION_PROPERTIES ().c_str (), mxconst::get_ATTRIB_LOCATION_PROPERTIES ().c_str ());
+          // v25.08.1 TODO: deprecate the use of "get_ATTRIB_LOCATION_VALUE" attribute
           node.getChildNode (mxconst::get_ELEMENT_EXPECTED_LOCATION ().c_str ()).updateAttribute (location_value_s.c_str (), mxconst::get_ATTRIB_LOCATION_VALUE ().c_str (), mxconst::get_ATTRIB_LOCATION_VALUE ().c_str ());
         }
         pNode.addChild (node.deepCopy ()); // add the node to template in memory
@@ -8664,12 +8545,12 @@ RandomEngine::prepare_mission_based_on_oilrig (const IXMLNode &inRootTemplate, s
 select oilRigVu.icao_id, oilRigVu.icao, oilRigVu.ap_name, oilRigVu.ap_lat, oilRigVu.ap_lon, trunc(oilRigVu.ap_lat) as ap_lat_trunc, trunc(oilRigVu.ap_lon) as ap_lon_trunc
 from airports_vu oilRigVu
 where oilRigVu.is_oilrig > 0
+{1}
 ),
 airports_with_helipads_vu as (
 select av.icao_id, av.icao, av.ap_name, av.ap_lat, av.ap_lon, trunc(av.ap_lat) as ap_lat_trunc, trunc(av.ap_lon) as ap_lon_trunc
 from airports_vu av
 where av.is_oilrig = 0
--- and av.ramp_helos + av.helipads > 0
 )
 select  mx_calc_distance(ov.ap_lat, ov.ap_lon, awh.ap_lat , awh.ap_lon, 3440) as distance
         , ov.icao_id as oilrig_icao_id, ov.icao as oilrig_icao, ov.ap_name as oilrig_name, ov.ap_lat as oilrig_lat, ov.ap_lon as oilrig_lon
@@ -8677,20 +8558,80 @@ select  mx_calc_distance(ov.ap_lat, ov.ap_lon, awh.ap_lat , awh.ap_lon, 3440) as
 from oilrigs_vu ov, airports_with_helipads_vu awh
 where 1 = 1
 and ov.icao_id != awh.icao_id
-and ( awh.ap_lat_trunc between ov.ap_lat_trunc - 2 and ov.ap_lat_trunc + 2
-      and awh.ap_lon_trunc between ov.ap_lon_trunc - 2 and ov.ap_lon_trunc + 2 )
+and ( awh.ap_lat between ov.ap_lat_trunc - 2 and ov.ap_lat_trunc + 2
+      and awh.ap_lon between ov.ap_lon_trunc - 2 and ov.ap_lon_trunc + 2 )
 order by RANDOM() limit 1
 )";
   }
 
-
-  std::string err;
-
   std::map<std::string, std::string> row_oilrig_and_start_location;
-
   Utils::read_external_sql_query_file (missionx::data_manager::mapQueries, mxconst::get_SQLITE_OILRIG_SQLS ()); // v24025
 
-  // v24025 - moved code to Utils::read_external_sql_query_file()
+
+  // v25.08.1 restrict query base on the data_manager::ui_oilrig_globe_part_i value
+  const missionx::Point plane = missionx::dataref_manager::getPlanePointLocationThreadSafe ();
+
+  std::map <int, std::string> filter01 = {{1, ""}};
+  switch (missionx::data_manager::ui_oilrig_globe_part_i)
+  {
+    case missionx::PICKED_HALF_GLOBE:
+    {
+      // Longitude: between -180..0 or 0..180
+      if (plane.lon < 0.0)
+        filter01[1] = " and oilRigVu.ap_lon between -180.0 and 0.0 and oilRigVu.ap_lat between -90.0 and 90.0 ";
+      else
+        filter01[1] = " and oilRigVu.ap_lon between 0.0 and 180.0 and oilRigVu.ap_lat between -90.0 and 90.0 ";
+    }
+      break;
+    case missionx::PICKED_QUARTER_GLOBE:
+    {
+      // Longitude: between -180..0 or 0..180
+      if (plane.lon < 0.0)
+        filter01[1] = " and oilRigVu.ap_lon between -180.0 and 0.0 ";
+      else
+        filter01[1] = " and oilRigVu.ap_lon between 0.0 and 180.0 ";
+
+      if (plane.lat >= 0.0)
+        filter01[1].append (" and oilRigVu.ap_lat between 0.0 and 90.0 ");
+      else
+        filter01[1].append (" and oilRigVu.ap_lat between -90.0 and 0.0 ");
+    }
+      break;
+    case missionx::PICKED_LOCAL_REGION_GLOBE:
+    {
+      // Longitude: between -180..0 or 0..180
+      constexpr double LON_BOUND_RADIUS = 40.0;
+      constexpr double LAT_BOUND_RADIUS = 25.0;
+      auto             local_lon_min    = (trunc (plane.lon) - LON_BOUND_RADIUS >= -180.0) ? trunc (plane.lon) - LON_BOUND_RADIUS : trunc (plane.lon) - LON_BOUND_RADIUS + 360.0;
+      auto             local_lon_max    = (local_lon_min + LON_BOUND_RADIUS * 2.0 <= 180.0) ? local_lon_min + LON_BOUND_RADIUS * 2.0 : local_lon_min + LON_BOUND_RADIUS * 2.0 - 360.0;
+
+      auto local_lat_min = (trunc (plane.lat) - LAT_BOUND_RADIUS >= -90.0) ? trunc (plane.lat) - LAT_BOUND_RADIUS : trunc (plane.lat) - LAT_BOUND_RADIUS + 180.0;
+      auto local_lat_max = (local_lat_min + LAT_BOUND_RADIUS * 2.0 <= 90.0) ? local_lat_min + LAT_BOUND_RADIUS * 2.0 : local_lat_min + LAT_BOUND_RADIUS * 2.0 - 180.0;
+
+      // make sure values are ordered correctly by size
+      if (local_lon_min > local_lon_max)
+      {
+        local_lon_min = local_lon_min + local_lon_max;
+        local_lon_max = local_lon_min - local_lon_max;
+        local_lon_min = local_lon_min - local_lon_max;
+      }
+      if (local_lat_min > local_lat_max)
+      {
+        local_lat_min = local_lat_min + local_lat_max;
+        local_lat_max = local_lat_min - local_lat_max;
+        local_lat_min = local_lat_min - local_lat_max;
+      }
+
+      filter01[1] = fmt::format (" and oilRigVu.ap_lon between {} and {} and oilRigVu.ap_lat between {} and {} ", local_lon_min, local_lon_max, local_lat_min, local_lat_max);
+    }
+      break;
+    default:
+      filter01[1] ="";
+  }
+
+  missionx::data_manager::mapQueries[STMT_KEY_Q0] = Utils::format ( missionx::data_manager::mapQueries[STMT_KEY_Q0], filter01 );
+  // end restrict oilrig region
+
 
 
   ////////////////// Step 1 ///////////////
@@ -8698,39 +8639,50 @@ order by RANDOM() limit 1
   // prepare SQL
   RandomEngine::resultTable_gather_random_airports.clear ();
 
+  #ifndef RELEASE
+  Log::logMsgThread (fmt::format("Oilrig Step 1 Query:\n{}", data_manager::mapQueries[STMT_KEY_Q0]));
+  #endif
+  auto start_time = std::chrono::steady_clock::now ();
+
   if (data_manager::db_xp_airports.db_is_open_and_ready)
   {
     char *zErrMsg = nullptr;
     RandomEngine::resultTable_gather_random_airports.clear ();
-    int rc = sqlite3_exec (data_manager::db_xp_airports.db, missionx::data_manager::mapQueries[STMT_KEY_Q0].c_str (), RandomEngine::callback_gather_random_airports_db, nullptr, &zErrMsg);
+    int rc = sqlite3_exec (data_manager::db_xp_airports.db, data_manager::mapQueries[STMT_KEY_Q0].c_str (), RandomEngine::callback_gather_random_airports_db, nullptr, &zErrMsg);
     if (rc != SQLITE_OK)
     {
       outErr = "[" + std::string (__func__) + "] SQL error: " + std::string (zErrMsg);
       sqlite3_free (zErrMsg);
       return false;
     }
+
+    auto end_time = std::chrono::steady_clock::now ();
+    // elapsed time in milliseconds
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    // elapsed time in seconds (as floating point, with decimals)
+    std::chrono::duration<double> sec = end_time - start_time;
+
+    Log::logMsgThread (fmt::format("[{}] Oil Rig information was gathered. Time taken: {}ms/{}s !", __func__, ms.count (), sec.count ()) ); // v25.08.1
+
+
+    #ifndef RELEASE
+    for (auto &[indx, row] : resultTable_gather_random_airports)
+    {
+      std::string debugOutput_s = "\tseq: " + mxUtils::formatNumber<int> (indx) + ": ";
+      for (const auto &colName : q0_columns | std::views::values)
+        debugOutput_s += "[" + colName + " = " + row[colName] + "]";
+
+      Log::logMsgThread (debugOutput_s);
+    }
+    #endif // !RELEASE
+
+    row_oilrig_and_start_location.clear ();
+    if (mxUtils::isElementExists (RandomEngine::resultTable_gather_random_airports, 0))
+      row_oilrig_and_start_location = RandomEngine::resultTable_gather_random_airports[0];
     else
     {
-      Log::logMsgThread ("[" + std::string (__func__) + "] Oil Rig information was gathered.");
-      #ifndef RELEASE
-      for (auto &[indx, row] : resultTable_gather_random_airports)
-      {
-        std::string debugOutput_s = "\tseq: " + mxUtils::formatNumber<int> (indx) + ": ";
-        for (const auto &colName : q0_columns | std::views::values)
-          debugOutput_s += "[" + colName + " = " + row[colName] + "]";
-
-        Log::logMsgThread (debugOutput_s);
-      }
-      #endif // !RELEASE
-
-      row_oilrig_and_start_location.clear ();
-      if (mxUtils::isElementExists (RandomEngine::resultTable_gather_random_airports, 0))
-        row_oilrig_and_start_location = RandomEngine::resultTable_gather_random_airports[0];
-      else
-      {
-        outErr = "No Valid information on Oil Rigs and Start location was found.";
-        return false;
-      }
+      outErr = "No Valid information on Oil Rigs and Start location was found.";
+      return false;
     }
   }
   else
@@ -8741,10 +8693,6 @@ order by RANDOM() limit 1
 
   ////////////////// Step 2 ///////////////
   // Fetch Navaid information from X-Plane - Double check what we fetched from the database
-  // NavAidInfo start_na, target_na;
-  // start_na.init();
-  // target_na.init();
-
 
   // Get data from X-Plane own Navdata database
   this->shared_navaid_info.navAid.init ();
@@ -8774,10 +8722,10 @@ order by RANDOM() limit 1
 
   ////////////////// Step 3 ///////////////
   // Reconstruct the template so it could create the mission using the generic code
-  // start_na.synchToPoint(); // v25.04.2 - done in the constructor
   if (start_na.getName ().empty ())
     start_na.setName (mxconst::get_ELEMENT_BRIEFER ());
 
+  std::string err;
   RandomEngine::resultTable_gather_random_airports.clear ();
   if (!filterAndPickRampBasedOnPlaneType (start_na, err, missionx::mxFilterRampType::start_ramp))
   {
@@ -8814,8 +8762,8 @@ order by RANDOM() limit 1
   #endif
 
 
-  int nChildLegs = inRootTemplate.nChildNode (mxconst::get_ELEMENT_LEG ().c_str ());
- for (int loop1 = 0; loop1 < nChildLegs; ++loop1)
+  const int nChildLegs = inRootTemplate.nChildNode (mxconst::get_ELEMENT_LEG ().c_str ());
+  for (int loop1 = 0; loop1 < nChildLegs; ++loop1)
   {
     if (IXMLNode pNode = inRootTemplate.getChildNode (mxconst::get_ELEMENT_LEG ().c_str (), loop1);
       !pNode.isEmpty ())
@@ -8861,8 +8809,8 @@ order by RANDOM() limit 1
     Utils::xml_print_node (xValue, true);
   }
 
-  Log::logMsgThread (fmt::format("\n\n==> Post [{}], Template XML:\n", __func__) );
-  Utils::xml_print_node (inRootTemplate, true);
+  // Log::logMsgThread (fmt::format("\n\n==> Post [{}], Template XML:\n", __func__) );
+  // Utils::xml_print_node (inRootTemplate, true);
   #endif // !RELEASE
 
 
@@ -10198,7 +10146,7 @@ RandomEngine::get_isNavAidInValidDistance (const double &currentDistanceToTarget
 // -----------------------------------
 
 bool
-RandomEngine::get_targetBasedOnTagName (NavAidInfo                   &outNewNavInfo,
+RandomEngine::get_target_base_on_tag_name (NavAidInfo                   &outNewNavInfo,
                                         mx_plane_types                in_plane_type_enum,
                                         const missionx::mx_base_node &inProperties, // v3.305.1
                                         const std::string            &location_value_tag_name_s,
@@ -10449,7 +10397,7 @@ RandomEngine::get_targetBasedOnTagName (NavAidInfo                   &outNewNavI
 
 
 bool
-RandomEngine::get_targetForHelos_based_XY_OSM_OSMWEB (NavAidInfo                         &outNewNavInfo,
+RandomEngine::get_targetForHelos_base_XY_OSM_OSMWEB (NavAidInfo                         &outNewNavInfo,
                                                       mx_plane_types                      in_plane_type_enum,
                                                       std::map<std::string, std::string> &inMapLocationSplitValues,
                                                       missionx::mx_base_node             &inProperties, // v3.305.1
@@ -10563,7 +10511,7 @@ RandomEngine::get_targetForHelos_based_XY_OSM_OSMWEB (NavAidInfo                
 
 
 bool
-RandomEngine::get_target_or_lastFlightLeg_based_on_XY_or_OSM (NavAidInfo                         &outNewNavInfo,
+RandomEngine::get_target_or_lastFlightLeg_base_on_XY_or_OSM (NavAidInfo                         &outNewNavInfo,
                                                               std::map<std::string, std::string> &inMapLocationSplitValues,
                                                               missionx::mx_base_node             &inProperties,
                                                               // v3.305.1
@@ -10603,7 +10551,7 @@ RandomEngine::get_target_or_lastFlightLeg_based_on_XY_or_OSM (NavAidInfo        
 
   // Search for HELOS last flight leg
   // OSM search first - this code will be used when there is a template or mission template with OSM information in it. It will probably won't be called from user creation screen
-  if ((inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_OSM () || inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_WEBOSM ()) && this->template_plane_type_enum == missionx::mx_plane_types::plane_type_helos)
+  if ((inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_OSM () || inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_WEBOSM ()) && missionx::RandomEngine::template_plane_type_enum == missionx::mx_plane_types::plane_type_helos)
   {
     Point E90, W270, S180, N0;
 
@@ -10661,11 +10609,9 @@ RandomEngine::get_target_or_lastFlightLeg_based_on_XY_or_OSM (NavAidInfo        
     this->shared_navaid_info.inMinDistance_nm = this->shared_navaid_info.inStartFromDistance_nm;
 
 #ifdef IBM
-  outNewNavInfo = this->get_random_airport_from_db (this->shared_navaid_info.p, this->shared_navaid_info.inMinDistance_nm, this->shared_navaid_info.inMaxDistance_nm, this->shared_navaid_info.inExcludeAngle); // v3.0.255.3 test integration
-
+  outNewNavInfo = this->get_random_airport_from_db (this->shared_navaid_info.p, this->shared_navaid_info.inMinDistance_nm, this->shared_navaid_info.inMaxDistance_nm, this->shared_navaid_info.inExcludeAngle, inProperties); // v3.0.255.3 test integration
 #else
-
-  const NavAidInfo nav = this->get_random_airport_from_db (this->shared_navaid_info.p, this->shared_navaid_info.inMinDistance_nm, this->shared_navaid_info.inMaxDistance_nm, this->shared_navaid_info.inExcludeAngle); // v3.0.255.3 test integration
+  const NavAidInfo nav = this->get_random_airport_from_db (this->shared_navaid_info.p, this->shared_navaid_info.inMinDistance_nm, this->shared_navaid_info.inMaxDistance_nm, this->shared_navaid_info.inExcludeAngle, inProperties); // v3.0.255.3 test integration
   outNewNavInfo  = nav;
 #endif
 
@@ -10692,9 +10638,9 @@ RandomEngine::get_target_or_lastFlightLeg_based_on_XY_or_OSM (NavAidInfo        
     }
 
 #ifdef IBM
-    outNewNavInfo = this->get_random_airport_from_db (this->shared_navaid_info.p, this->shared_navaid_info.inMinDistance_nm, this->shared_navaid_info.inMaxDistance_nm, this->shared_navaid_info.inExcludeAngle); // v3.0.255.3 test integration
+    outNewNavInfo = this->get_random_airport_from_db (this->shared_navaid_info.p, this->shared_navaid_info.inMinDistance_nm, this->shared_navaid_info.inMaxDistance_nm, this->shared_navaid_info.inExcludeAngle, inProperties); // v3.0.255.3 test integration
 #else
-    NavAidInfo nav = this->get_random_airport_from_db (this->shared_navaid_info.p, this->shared_navaid_info.inMinDistance_nm, this->shared_navaid_info.inMaxDistance_nm, this->shared_navaid_info.inExcludeAngle); // v3.0.255.3 test integration
+    NavAidInfo nav = this->get_random_airport_from_db (this->shared_navaid_info.p, this->shared_navaid_info.inMinDistance_nm, this->shared_navaid_info.inMaxDistance_nm, this->shared_navaid_info.inExcludeAngle, inProperties); // v3.0.255.3 test integration
     outNewNavInfo  = nav;
 #endif
 

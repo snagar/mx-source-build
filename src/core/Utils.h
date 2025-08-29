@@ -221,7 +221,6 @@ public:
     std::istringstream is(s);
     N                  n;
     std::string        num;
-    num.clear();
     for (int i = 0; i < precision; i++)
     {
       char c = '\0';
@@ -231,7 +230,6 @@ public:
     std::istringstream isNum(num);
     isNum >> n;
 
-    // is >> std::setprecision(precision) >> std::setiosflags(ios::fixed) >> n;
     return n;
   }
 
@@ -953,7 +951,8 @@ public:
 
   // -------------------------------------------
 
-  static bool position_plane_in_ICAO(std::string inICAO, float lat, float lon, float currentPlaneLat, float currentPlanelon, bool flag_FindNearestAirportIfIcaoIsNotValid = false);
+  // static bool position_plane_in_ICAO(std::string inICAO, float lat, float lon, float currentPlaneLat, float currentPlanelon);
+  static bool position_plane_in_ICAO(const std::string& inICAO);
 
   // -------------------------------------------
 

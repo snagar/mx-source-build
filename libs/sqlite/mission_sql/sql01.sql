@@ -97,7 +97,7 @@ SELECT * FROM xp_airports
     FROM (
       SELECT t1.*,
         LAG(icao_id, 1, 0) OVER (PARTITION BY t1.icao ORDER BY t1.icao) pos_in_group,
-        mx_distance_nm(t1.ap_lat, t1.ap_lon, LAG(t1.ap_lat, 1, t1.ap_lat) OVER (PARTITION BY t1.icao ORDER BY t1.icao, t1.icao_id), LAG(t1.ap_lon, 1, t1.ap_lon) OVER (PARTITION BY t1.icao ORDER BY t1.icao, t1.icao_id), 3440) AS distance,
+        mx_calc_distance(t1.ap_lat, t1.ap_lon, LAG(t1.ap_lat, 1, t1.ap_lat) OVER (PARTITION BY t1.icao ORDER BY t1.icao, t1.icao_id), LAG(t1.ap_lon, 1, t1.ap_lon) OVER (PARTITION BY t1.icao ORDER BY t1.icao, t1.icao_id), 3440) AS distance,
         trunc(t1.ap_lat) - LAG(trunc(t1.ap_lat), 1, 0) OVER (PARTITION BY t1.icao ORDER BY t1.icao, t1.icao_id) AS lat_diff,
         trunc(t1.ap_lon) - LAG(trunc(t1.ap_lon), 1, 0) OVER (PARTITION BY t1.icao ORDER BY t1.icao, t1.icao_id) AS lon_diff
       FROM xp_airports t1
@@ -429,7 +429,11 @@ select t1.rw_no_1_lat || ',' || rw_no_1_lon as start_pos
 from xp_rw t1 
 where t1.icao= 'LS11' order by rw_length_mt desc limit 1;
 
-select icao_id, icao, ap_elev_ft, ap_name, ap_type, ap_lat, ap_lon , mx_calc_distance ( ap_lat, ap_lon,32.153488159180, -91.843742370605, 3440) as dist_nm, 0 as bearing , helipads, ramp_helos, ramp_planes, ramp_props, ramp_turboprops, ramp_jet_heavy, rw_hard, rw_dirt_gravel, rw_grass , rw_water, is_custom from airports_vu where 1 = 1 and icao = 'LS11' order by dist_nm
+select icao_id, icao, ap_elev_ft, ap_name, ap_type, ap_lat, ap_lon , mx_calc_distance ( ap_lat, ap_lon,32.153488159180, -91.843742370605, 3440) as dist_nm, 0 as bearing , helipads, ramp_helos, ramp_planes, ramp_props, ramp_turboprops, ramp_jet_heavy, rw_hard, rw_dirt_gravel, rw_grass , rw_water, is_custom 
+from airports_vu 
+where 1 = 1 
+and icao = 'LS11' 
+order by dist_nm
 ;
 
 select mx_get_point_based_on_bearing_and_length_in_meters (t1.rw_no_1_lat, rw_no_1_lon, 90.0, t1.rw_width * 0.5) as start_pos, t1.rw_no_1 as name, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading, t1.rw_length_mt, t1.rw_no_1_lat || ',' || rw_no_1_lon from xp_rw t1 where t1.icao= 'LS11' order by rw_length_mt desc limit 1
@@ -1577,154 +1581,273 @@ order by loc_type_code, loc_rw
             )
             where 1 = 1
             and rw_length_mt >= 1000 and rw_width >= 45 and ap_elev >= 0  and distance_nm between 50 and 250 LIMIT 250
-;                         
+;                     
+
+select * from xp_airports 
+
+;
+
+delete from xp_airports
+where icao_id > 1000;
 
 
-
-
-
----------------------------------------------
--- Basic info on ICAO
-select t1.icao_id
-, FORMAT("%s (%s), coord: %3.4f/%3.4f (%ift) ", t1.ap_name, t1.icao, ap_lat, ap_lon, ap_elev) as data
-, mx_calc_distance(t1.ap_lat, t1.ap_lon, 37.6210070,  -122.3870101, 3440) as distance, t1.ap_lat, t1.ap_lon
-from xp_airports t1
+--select distinct loc_type
+select *
+from xp_loc
 where 1 = 1
-and icao = 'KSFO' order by distance
+and icao = 'KSFO'
+--and loc_type in ('IGS', 'LPV', 'LP', 'LDA', 'GLS', 'SDF')
 ;
 
 
 
--- Runway Info
-select t2.rw_no_1 || '/' || t2.rw_no_2 as rw_key
-, FORMAT ("%-*s Length: %d meters", 10, t2.rw_no_1 || '/' || t2.rw_no_2, t2.rw_length_mt) as rw_data
-, mx_calc_distance(t2.rw_no_1_lat, t2.rw_no_1_lon, 37.6210070, -122.3870101, 3440) as distance
-from xp_rw t2
-where 1 = 1
-and icao_id = '16457'
+
+select * 
+from 
+( 
+    select icao_id, icao, ap_elev_ft, ap_name, ap_type, ap_lat, ap_lon, mx_calc_distance ( ap_lat, ap_lon,64.7581863000, -148.0040893555, 3440) as dist_nm, mx_bearing (ap_lat, ap_lon, 64.7581863000, -148.0040893555) as bearing, helipads, ramp_helos, ramp_planes, ramp_props, ramp_turboprops, ramp_jet_heavy, rw_hard, rw_dirt_gravel, rw_grass, rw_water, is_custom 
+    from airports_vu  ) vu 
+where 1 = 1  
+and dist_nm between 1.5 and 40 
+and (helipads + ramp_helos) > 0  
+order by RANDOM() limit 20
 ;
 
--- missionx T(238): Using fetch_vor_ndb_dme_info_step3 from sql.xml file
--- missionx T(239): Nav Data Query 3:
-WITH vor_dme AS (
-  SELECT v1.ident, v1.loc_data, distance, 'VOR/DME' AS loc_type, v1.frq_mhz, identNameFrq, prevIdentNameFrq
-    FROM (
-           SELECT t3.ident,
-                  FORMAT("%.2f (%i,%s) %s", CASE WHEN length(t3.frq_mhz) = 5 THEN t3.frq_mhz / 100.0 ELSE t3.frq_mhz END
-                                          , mx_bearing(37.6210070, -122.3870101, t3.lat, t3.lon)
-                                          , 'VOR/DME'/* constant */
-                                          , t3.name) AS loc_data,
-                  mx_calc_distance(t3.lat, t3.lon, 16457, {4}, 3440) AS distance,
-                  t3.loc_type,
-                  t3.frq_mhz,
-                  IFNULL( (t3.ident || t3.name || t3.frq_mhz), t3.ident) AS identNameFrq,
-                  lag(IFNULL( (t3.ident || t3.name || t3.frq_mhz), t3.ident)) OVER (ORDER BY t3.ident, t3.frq_mhz, t3.loc_type) AS prevIdentNameFrq,
-                  lag(t3.loc_type) OVER (ORDER BY ident, frq_mhz, loc_type) AS prev_type
-             FROM xp_loc t3
-            WHERE distance <= 20
-            and t3.loc_type in ('VOR', 'DME')
-            ORDER BY distance, ident, frq_mhz, name
-         )
-         v1
-   WHERE 1 = 1
-     AND v1.identNameFrq = v1.prevIdentNameFrq
-     AND ( (v1.loc_type = 'VOR' AND v1.prev_type = 'DME') OR
-           (v1.loc_type = 'DME' AND v1.prev_type = 'VOR') )
-)
-SELECT v1.ident, v1.loc_data, v1.distance
-  FROM vor_dme v1
-UNION ALL
-SELECT *
-FROM (
-    SELECT t1.ident
-           , FORMAT("%.2f (%i,%s) %s", CASE WHEN length(t1.frq_mhz) = 5 THEN t1.frq_mhz / 100.0 ELSE t1.frq_mhz END, mx_bearing({5}, {6}, t1.lat, t1.lon), t1.loc_type, t1.name) AS loc_data
-           , mx_calc_distance(t1.lat, t1.lon, {7}, {8}, 3440) as distance
-      FROM xp_loc t1
-     WHERE mx_calc_distance (t1.lat, t1.lon, {9}, {10}, 3440) <= 20
-       AND t1.loc_type IN ('VOR', 'DME')
-       AND IFNULL( (t1.ident || t1.name || t1.frq_mhz), t1.ident) not in (select identNameFrq
-                                                                            from vor_dme)
-    UNION ALL
-    SELECT t1.ident,
-          FORMAT("%i (%i,%s) %s", t1.frq_mhz
-                                , mx_bearing({11}, {12}, t1.lat, t1.lon)
-                                , t1.loc_type
-                                , t1.name) AS loc_data
-          , mx_calc_distance(t1.lat, t1.lon, {13}, {14}, 3440) as distance
-     FROM xp_loc t1
-    WHERE mx_calc_distance(t1.lat, t1.lon, {15}, {16}, 3440) <= 20
-      AND t1.loc_type = 'NDB'
-ORDER BY distance
-)
+
+
+select *
+from ramps_vu
 ;
 
 
 
 
 
--- Output from online C++
-select loc_data, distance, loc_type_code, loc_rw
-from (
-select FORMAT ("%-*s , freq: %5.3f, Type: %s, Region: %-*s, lat/lon: %3.0f/%3.0f ", 4, t3.loc_rw, t3.frq_mhz*0.01, t3.loc_type, 3, icao_region_code, t3.lat, t3.lon ) as loc_data
-,  mx_calc_distance(t3.lat, t3.lon, 37.6210070, -122.3870101, 3440) as distance
-, t3.loc_rw
-, 1 as loc_type_code
-from xp_loc t3
-where icao = 'KSFO'
-and ( t3.loc_type like ('ILS%' ) or t3.loc_type like ('LOC%' ) )
+
+
+
+select icao, ap_name, ap_lat, ap_lon, ap_elev
+      , mx_bearing( 52.4823770, 13.3955518, ap_lat, ap_lon ) as heading
+      , mx_is_plane_in_airport_boundary( 52.4823770, 13.3955518, boundary ) as is_plane_in_boundary
+      , mx_calc_distance(52.4823770, 13.3955518, ap_lat, ap_lon, 3440) as distance
+      , icao_id, boundary
+from
+(
+  select xp_airports.icao_id, xp_airports.icao, xp_airports.ap_name, xp_airports.ap_lat, xp_airports.ap_lon, xp_airports.ap_elev,  IFNULL ( xp_airports.boundary, xp_airports.ap_lat || ',' || xp_airports.ap_lon ) as boundary
+  from xp_airports
+  where xp_airports.boundary is not null
+  and ( trunc(xp_airports.ap_lat) between trunc( 52.4823770 - 1.0) and  trunc( 52.4823770 + 1.0) )
+  and ( trunc(xp_airports.ap_lon) between trunc( 13.3955518 - 1.0) and  trunc( 13.3955518 + 1.0) )
 ) v1
-UNION ALL
-select loc_data, distance, loc_type_code, loc_rw
-from (
-select FORMAT ("%-*s , channel: %i, Type: %s, Region: %-*s, lat/lon: %3.0f/%3.0f ", 4, t3.loc_rw, t3.frq_mhz, t3.loc_type, 3, icao_region_code, t3.lat, t3.lon ) as loc_data
-,  mx_calc_distance(t3.lat, t3.lon, 37.6210070, -122.3870101, 3440) as distance
-, t3.loc_rw
-, 2 as loc_type_code
-from xp_loc t3
-where icao = 'KSFO'
-and t3.loc_type not like ('ILS%' )
-and t3.loc_type not like ('LOC%' )
-and t3.loc_type not in ('DME', 'VOR', 'NDB' )
+where 1 =1 
+and is_plane_in_boundary = 1
+--and (is_plane_in_boundary = 1 or distance < 0.6)
+
+;
+
+
+ select xp_airports.icao_id, xp_airports.icao, xp_airports.ap_name, xp_airports.ap_lat, xp_airports.ap_lon, xp_airports.ap_elev,  xp_airports.boundary
+  from xp_airports
+  where 1 = 1 --xp_airports.boundary is not null
+  and ( trunc(xp_airports.ap_lat) between trunc( 52.4823770 - 1.0) and  trunc( 52.4823770 + 1.0) )
+  and ( trunc(xp_airports.ap_lon) between trunc( 13.3955518 - 1.0) and  trunc( 13.3955518 + 1.0) )
+;  
+
+ select xp_airports.icao_id, xp_airports.icao, xp_airports.ap_name, xp_airports.ap_lat, xp_airports.ap_lon, xp_airports.ap_elev, xp_airports.boundary
+  from xp_airports
+  where xp_airports.ap_name like '%Berlin%'
+;
+
+
+-- 52.47430700,13.38807224|52.47475616,13.38733485|52.47430700,13.38659746|52.47475616,13.38733485
+select xp_airports.icao_id, xp_airports.icao, xp_airports.ap_name, xp_airports.ap_lat, xp_airports.ap_lon, xp_airports.ap_elev
+,  case when trim(xp_airports.boundary) = '' then
+            mx_get_point_based_on_bearing_and_length_in_meters(xp_airports.ap_lat, xp_airports.ap_lon, 90.0, 50.0 ) || '|' || 
+            mx_get_point_based_on_bearing_and_length_in_meters(xp_airports.ap_lat, xp_airports.ap_lon, 180.0, 50.0 ) || '|' || 
+            mx_get_point_based_on_bearing_and_length_in_meters(xp_airports.ap_lat, xp_airports.ap_lon, 270.0, 50.0 ) || '|' || 
+            mx_get_point_based_on_bearing_and_length_in_meters(xp_airports.ap_lat, xp_airports.ap_lon, 0.0, 50.0 )
+        else 
+            xp_airports.boundary
+        end
+          boundary
+from xp_airports
+where xp_airports.boundary is not null
+and ( trunc(xp_airports.ap_lat) between trunc( 52.4823770 - 1.0) and  trunc( 52.4823770 + 1.0) )
+and ( trunc(xp_airports.ap_lon) between trunc( 13.3955518 - 1.0) and  trunc( 13.3955518 + 1.0) )
+;
+
+select icao, ap_name, ap_lat, ap_lon, ap_elev
+      , mx_bearing( 52.4823770, 13.3955518, ap_lat, ap_lon ) as heading
+      , mx_is_plane_in_airport_boundary( 52.4823770, 13.3955518, boundary ) as is_plane_in_boundary
+      , mx_calc_distance(52.4823770, 13.3955518, ap_lat, ap_lon, 3440) as distance
+      , icao_id, boundary
+from
+(
+select xp_airports.icao_id, xp_airports.icao, xp_airports.ap_name, xp_airports.ap_lat, xp_airports.ap_lon, xp_airports.ap_elev
+,  case when trim(xp_airports.boundary) = '' then
+            mx_get_point_based_on_bearing_and_length_in_meters(xp_airports.ap_lat, xp_airports.ap_lon, 90.0, 50.0 ) || '|' || 
+            mx_get_point_based_on_bearing_and_length_in_meters(xp_airports.ap_lat, xp_airports.ap_lon, 1800.0, 50.0 ) || '|' || 
+            mx_get_point_based_on_bearing_and_length_in_meters(xp_airports.ap_lat, xp_airports.ap_lon, 270.0, 50.0 ) || '|' || 
+            mx_get_point_based_on_bearing_and_length_in_meters(xp_airports.ap_lat, xp_airports.ap_lon, 0.0, 50.0 )
+        else 
+            xp_airports.boundary
+        end
+          boundary
+from xp_airports
+where xp_airports.boundary is not null
+and ( trunc(xp_airports.ap_lat) between trunc( 52.4823770 - 1.0) and  trunc( 52.4823770 + 1.0) )
+and ( trunc(xp_airports.ap_lon) between trunc( 13.3955518 - 1.0) and  trunc( 13.3955518 + 1.0) )
+) v1
+where 1 =1 
+and is_plane_in_boundary = 1
+;
+
+-- Find nearest navaid
+select v1.icao, v1.ap_name, v1.ap_lat, v1.ap_lon, v1.distance
+from  (
+select mx_calc_distance(45.510887146, -122.774124146, v1.ap_lat , v1.ap_lon, 3440) as distance, v1.icao_id, v1.icao, v1.ap_name, v1.ap_lat, v1.ap_lon
+from airports_vu v1
+where 1 = 1
+and 45.510887146 between trunc(v1.ap_lat) - 2.0 and trunc(v1.ap_lat) + 2.0
+and -122.774124146 between trunc(v1.ap_lon) - 2.0 and trunc(v1.ap_lon) + 2.0
+) as v1
+where  1= 1
+and distance <= 0.53 -- 1km
+order by distance asc
+limit 1
+;
+
+
+select mx_calc_distance(45.510887146, -122.774124146, v1.ap_lat , v1.ap_lon, 3440) as distance, v1.icao_id, v1.icao, v1.ap_name, v1.ap_lat, v1.ap_lon, trunc(v1.ap_lat) as lat_trunc, trunc(ap_lon) as lon_trunc
+from airports_vu v1
+where 1 = 1
+and v1.ap_lat between trunc(v1.ap_lat) - 2.0 and trunc(v1.ap_lat) + 2.0
+      and v1.ap_lon between trunc(v1.ap_lon) - 2.0 and trunc(v1.ap_lon) + 2.0)
+;
+
+
+with oilrigs_vu as (
+select oilRigVu.icao_id, oilRigVu.icao, oilRigVu.ap_name, oilRigVu.ap_lat, oilRigVu.ap_lon, trunc(oilRigVu.ap_lat) as ap_lat_trunc, trunc(oilRigVu.ap_lon) as ap_lon_trunc
+from airports_vu oilRigVu
+where oilRigVu.is_oilrig > 0
+order by RANDOM() limit 500
+),
+airports_with_helipads_vu as (
+select av.icao_id, av.icao, av.ap_name, av.ap_lat, av.ap_lon, trunc(av.ap_lat) as ap_lat_trunc, trunc(av.ap_lon) as ap_lon_trunc
+from airports_vu av
+where av.is_oilrig = 0
+-- and av.ramp_helos + av.helipads > 0
 )
-order by loc_type_code, loc_rw
+select  mx_calc_distance(ov.ap_lat, ov.ap_lon, awh.ap_lat , awh.ap_lon, 3440) as distance
+        , mx_calc_distance(ov.ap_lat, ov.ap_lon, awh.ap_lat , awh.ap_lon, 6371000.0) as distance_meters
+        , ov.icao_id as oilrig_icao_id, ov.icao as oilrig_icao, ov.ap_name as oilrig_name, ov.ap_lat as oilrig_lat, ov.ap_lon as oilrig_lon
+        , awh.icao_id as start_icao_id, awh.icao as start_icao, awh.ap_name as start_ap_name, awh.ap_lat as start_lat, awh.ap_lon as start_lon
+from oilrigs_vu ov, airports_with_helipads_vu awh
+where 1 = 1
+and ov.icao_id != awh.icao_id
+and ( awh.ap_lat_trunc between ov.ap_lat_trunc - 2 and ov.ap_lat_trunc + 2
+      and awh.ap_lon_trunc between ov.ap_lon_trunc - 2 and ov.ap_lon_trunc + 2 )
+--limit 10      
+--order by RANDOM() limit 1
+;      
+
+
+
+
+
+with oilrigs_vu as (
+select oilRigVu.icao_id, oilRigVu.icao, oilRigVu.ap_name, oilRigVu.ap_lat, oilRigVu.ap_lon, trunc(oilRigVu.ap_lat) as ap_lat_trunc, trunc(oilRigVu.ap_lon) as ap_lon_trunc
+from airports_vu oilRigVu
+where oilRigVu.is_oilrig > 0
+order by RANDOM() limit 500
+),
+airports_with_helipads_vu as (
+select av.icao_id, av.icao, av.ap_name, av.ap_lat, av.ap_lon, trunc(av.ap_lat) as ap_lat_trunc, trunc(av.ap_lon) as ap_lon_trunc
+from airports_vu av
+where av.is_oilrig = 0
+)
+select  mx_calc_distance(ov.ap_lat, ov.ap_lon, awh.ap_lat , awh.ap_lon, 3440) as distance
+        -- , mx_calc_distance(ov.ap_lat, ov.ap_lon, awh.ap_lat , awh.ap_lon, 6371000.0) as distance_meters
+        , ov.icao_id as oilrig_icao_id, ov.icao as oilrig_icao, ov.ap_name as oilrig_name, ov.ap_lat as oilrig_lat, ov.ap_lon as oilrig_lon
+        , awh.icao_id as start_icao_id, awh.icao as start_icao, awh.ap_name as start_ap_name, awh.ap_lat as start_lat, awh.ap_lon as start_lon
+from oilrigs_vu ov, airports_with_helipads_vu awh
+where 1 = 1
+and ov.icao_id != awh.icao_id
+and ( awh.ap_lat between ov.ap_lat_trunc - 2 and ov.ap_lat_trunc + 2
+      and awh.ap_lon between ov.ap_lon_trunc - 2 and ov.ap_lon_trunc + 2 )
+order by RANDOM() limit 1      
+;
+
+select ov.*
+from 
+(
+select oilRigVu.icao_id, oilRigVu.icao, oilRigVu.ap_name, oilRigVu.ap_lat, oilRigVu.ap_lon, trunc(oilRigVu.ap_lat) as ap_lat_trunc, trunc(oilRigVu.ap_lon) as ap_lon_trunc
+from airports_vu oilRigVu
+where oilRigVu.is_oilrig > 0
+order by RANDOM() limit 100
+) ov,
+(select av.icao_id, av.icao, av.ap_name, av.ap_lat, av.ap_lon, trunc(av.ap_lat) as ap_lat_trunc, trunc(av.ap_lon) as ap_lon_trunc, orv.*
+from airports_vu av, airports_vu orv
+where av.is_oilrig = 0
+and orv.is_oilrig = 1
+and av.icao_id != orv.icao_id
+and ( av.ap_lat between orv.ap_lat - 2 and orv.ap_lat + 2
+      and av.ap_lon between orv.ap_lon - 2 and orv.ap_lon + 2 )
+) awh
+where ov.icao_id != awh.icao_id
+;
+
+
+
+
+
+
+select icao, round(distance_nm) as distance_nm, '' as loc_rw, '' as loc_type, 0 as frq_mhz, 0 as loc_bearing, rw_length_mt, rw_width, ap_elev, ap_name, surf_type_text, bearing_from_to_icao
+from (
+select xa.icao
+      , mx_calc_distance (47.447502, -122.3079, xa.ap_lat, xa.ap_lon, 3440) as distance_nm
+      , xp_rw.rw_length_mt, xp_rw.rw_width, xa.ap_elev, xa.ap_name
+      , case xp_rw.rw_surf when 1 then 'Asphalt' when 2 then 'Concrete' when 3 then 'Turf or grass' when 4 then 'Dirt' when 5 then 'Gravel' when 12 then 'Dry lakebed' when 13 then 'Water runways' when 14 then 'Snow or ice' when 15 then 'Transparent' else 'no data' end as surf_type_text
+      , mx_bearing(47.447502, -122.3079, xa.ap_lat, xa.ap_lon) as bearing_from_to_icao
+      , xp_rw.rw_surf
+from xp_rw, xp_airports xa, airports_vu avu
+where 1 = 1
+and xa.icao_id = xp_rw.icao_id
+and xa.icao_id = avu.icao_id
+and avu.ap_type = 1 -- 1 = airports, 16=sealane, 17=heliports
+)
+where 1 = 1
+  and rw_length_mt >= 1000 and rw_width >= 45 and ap_elev >= 0  and distance_nm between 50 and 250 LIMIT 250 
+;
+
+
+
+
+
+select icao, round(distance_nm) as distance_nm, loc_rw, loc_type, frq_mhz, loc_bearing, rw_length_mt, rw_width, ap_elev, ap_name, surf_type_text, bearing_from_to_icao
+from (
+select xp_loc.icao
+      , mx_calc_distance (47.447502, -122.3079, xp_loc.lat, xp_loc.lon, 3440) as distance_nm
+      
+      , xp_loc.loc_rw, xp_loc.loc_type, xp_loc.frq_mhz, xp_loc.loc_bearing, xp_rw.rw_length_mt, xp_rw.rw_width, xa.ap_elev, xa.ap_name
+      , case xp_rw.rw_surf when 1 then 'Asphalt' when 2 then 'Concrete' when 3 then 'Turf or grass' when 4 then 'Dirt' when 5 then 'Gravel' when 12 then 'Dry lakebed' when 13 then 'Water runways' when 14 then 'Snow or ice' when 15 then 'Transparent' else 'other' end as surf_type_text
+      , mx_bearing(47.447502, -122.3079, xp_loc.lat, xp_loc.lon) as bearing_from_to_icao
+from xp_loc, xp_rw, xp_airports xa
+where xp_rw.icao = xp_loc.icao
+and (xp_rw.rw_no_1 = xp_loc.loc_rw or xp_rw.rw_no_2 = xp_loc.loc_rw)
+and xa.icao = xp_rw.icao
+)
+where 1 = 1
+  and rw_length_mt >= 1000 and rw_width >= 45 and ap_elev >= 0  and distance_nm between 50 and 250 LIMIT 250 
+;
+
+
+
+select *
+from xp_rw
+order by rw_length_mt
 ;
 
 select *
-from xp_loc 
-where icao = 'KSFO'
-
-;
-
-
-
-
-
-
-
-
-
-
-select loc_data, distance, loc_type_code, loc_rw
-from (
-select FORMAT ("%-*s , channel: %i/%s, Type: %s, Region: %-*s, lat/lon: %3.0f/%3.0f ", 4, t3.loc_rw, t3.frq_mhz, t3.ident, t3.loc_type, 3, icao_region_code, t3.lat, t3.lon ) as loc_data
-,  mx_calc_distance(t3.lat, t3.lon, 37.6210070, -122.3870101, 3440) as distance
-, t3.loc_rw
-, 1 as loc_type_code
-from xp_loc t3
-where icao = 'KSFO'
-and ( t3.loc_type like ('ILS%' ) or t3.loc_type like ('LOC%' ) )
-) v1
-UNION ALL
-select loc_data, distance, loc_type_code, loc_rw
-from (
-select FORMAT ("%-*s , channel: %i, Type: %s, Region: %-*s, lat/lon: %3.0f/%3.0f ", 4, t3.loc_rw, t3.frq_mhz, t3.loc_type, 3, icao_region_code, t3.lat, t3.lon ) as loc_data
-,  mx_calc_distance(t3.lat, t3.lon, 37.6210070, -122.3870101, 3440) as distance
-, t3.loc_rw
-, 2 as loc_type_code
-from xp_loc t3
-where icao = 'KSFO'
-and t3.loc_type not like ('ILS%' )
-and t3.loc_type not like ('LOC%' )
-and t3.loc_type not in ('DME', 'VOR', 'NDB' )
-)
-order by loc_type_code, loc_rw
+from airports_vu
+where icao = 'YFLF'

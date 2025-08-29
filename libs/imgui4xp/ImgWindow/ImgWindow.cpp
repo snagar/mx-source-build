@@ -131,11 +131,12 @@ ImgWindow::ImgWindow(int left, int top, int right, int bottom, XPLMWindowDecorat
   // bind the font
   if (mFontAtlas)
   {
-    mFontTexture = static_cast<GLuint>(reinterpret_cast<intptr_t>(io.Fonts->TexID));
+    // mFontTexture = static_cast<GLuint>(reinterpret_cast<intptr_t>(io.Fonts->TexID));
+    mFontTexture = static_cast<GLuint>(io.Fonts->TexID);
   }
   else
   {
-    if (!iFontAtlas || iFontAtlas->TexID == nullptr)
+    if (!iFontAtlas || iFontAtlas->TexID == 0) // was ->TexID == nullptr
     {
       // fallback binding if an atlas wasn't explicitly set.
       unsigned char* pixels;
@@ -153,7 +154,8 @@ ImgWindow::ImgWindow(int left, int top, int right, int bottom, XPLMWindowDecorat
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
       glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
       glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, width, height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, pixels);
-      io.Fonts->SetTexID((void*)((intptr_t)(mFontTexture)));
+      // io.Fonts->SetTexID((void*)((intptr_t)(mFontTexture)));
+      io.Fonts->SetTexID(mFontTexture);
     }
   }
 
@@ -1123,7 +1125,7 @@ ImgWindow::mxUiReleaseLastFont(const int inHowManyCycles)
 bool
 ImgWindow::mxStartUiDisableState(const bool in_true_exp_to_disable)
 {
-  if (!in_true_exp_to_disable) // if expresion is false, skip.
+  if (!in_true_exp_to_disable) // if expression is false, skip.
     return in_true_exp_to_disable;
 
   ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);

@@ -116,17 +116,17 @@ Original code 2006 June 05 by relicoder.
   // #include "../../../src/core/MxUtils.h" // missionx - saar
 
 // Mission-X saar
-static const float LOCAL_EARTH_RADIUS_M = 6378145.0f;
-// static const double M_PI  = 3.1415926535897932384626433832795; // from windows calculator
-static const double MX_PI  = 3.141592653589793238; // from windows calculator
-static const double MX_PI2 = 6.283185307179586476925286766559;  // FOR DROPPING calculation
-static const float mx_nm2meter             = 1852.0f;
-static const float mx_meter2nm             = 0.000539957f;
-static const float mx_nm2km                = 1.852f;
-static const float mx_meter2feet           = 3.28083f;
+inline static constexpr double LOCAL_EARTH_RADIUS_NM = 3440.07;
+static const float             LOCAL_EARTH_RADIUS_M  = 6378145.0f;
+static const double            MX_PI                 = 3.141592653589793238; // from windows calculator
+static const double            MX_PI2                = 6.283185307179586476925286766559; // FOR DROPPING calculation
+static const float             mx_nm2meter           = 1852.0f;
+static const float             mx_meter2nm           = 0.000539957f;
+static const float             mx_nm2km              = 1.852f;
+static const float             mx_meter2feet         = 3.28083f;
 
-static const float mx_RadToDeg             = (float)(180.0f / MX_PI); // 57.295779513082320876798154814105
-static const float mx_DegToRad             = 1.0f / mx_RadToDeg;      // 0.01745329251994329576923690768489
+static const float mx_RadToDeg = (float)(180.0f / MX_PI); // 57.295779513082320876798154814105
+static const float mx_DegToRad = 1.0f / mx_RadToDeg; // 0.01745329251994329576923690768489
 
 
 typedef enum
@@ -795,8 +795,56 @@ mx_vec2d* parseCoordinatesString(const unsigned char* coord_string, int* out_num
 
 
 
+//double
+//mxCalcDistanceBetween2Points(const double lat1, const double lon1, const double lat2, const double lon2, const mx_sqlite_units_of_measure inReturnInUnits,  const double planet_great_circle_nm ) // nm=4, circle=3440.0
+//{
+//  const double teta1 = deg2rad(lat1);
+//  const double teta2 = deg2rad(lon1);
+//  const double teta3 = deg2rad(lat2);
+//  const double teta4 = deg2rad(lon2);
+//
+//  // const double distance_result = planet_great_circle * acos(cos(teta1) * cos(teta3) * cos(teta2 - teta4) + (sin(teta1) * sin(teta3)));
+//
+//  const double planet_great_circle_in_meters = planet_great_circle_nm * mx_nm2meter;
+//  const double retValue_d = round(planet_great_circle_in_meters * acos(cos(teta1) * cos(teta3) * cos(teta2 - teta4) + (sin(teta1) * sin(teta3))));
+//
+//
+//  switch (inReturnInUnits)
+//  {
+//    case nm:
+//    {
+//      return retValue_d * mx_meter2nm;
+//    }
+//      break;
+//    case meter:
+//    {
+//      return retValue_d;
+//    }
+//      break;
+//    case km:
+//    {
+//      return retValue_d * mx_meter2nm * mx_nm2km;
+//    }
+//      break;
+//    case ft:
+//    {
+//      return retValue_d * mx_meter2feet;
+//    }
+//      break;
+//    default:
+//      break;
+//  }
+//
+//
+//  return retValue_d; // distance in meters
+//  // return distance_result;
+//}
+
+
+// Return the distance between two points. Unts will be decided by the "planet_great_circle" value.
 double
-mxCalcDistanceBetween2Points(const double lat1, const double lon1, const double lat2, const double lon2, const mx_sqlite_units_of_measure inReturnInUnits,  const double planet_great_circle ) // nm=4, circle=3440.0
+//mxCalcDistanceBetween2Points(const double lat1, const double lon1, const double lat2, const double lon2, const mx_sqlite_units_of_measure inReturnInUnits,  const double planet_great_circle ) // nm=4, circle=3440.0
+mxCalcDistanceBetween2Points(const double lat1, const double lon1, const double lat2, const double lon2, const double planet_great_circle ) // nm=4, circle=3440.0
 {
   const double teta1 = deg2rad(lat1);
   const double teta2 = deg2rad(lon1);
@@ -805,35 +853,35 @@ mxCalcDistanceBetween2Points(const double lat1, const double lon1, const double 
 
   // const double distance_result = planet_great_circle * acos(cos(teta1) * cos(teta3) * cos(teta2 - teta4) + (sin(teta1) * sin(teta3)));
 
-  const double planet_great_circle_in_meters = planet_great_circle * mx_nm2meter;
-  const double retValue_d = round(planet_great_circle_in_meters * acos(cos(teta1) * cos(teta3) * cos(teta2 - teta4) + (sin(teta1) * sin(teta3))));
+  //const double planet_great_circle_in_meters = planet_great_circle * mx_nm2meter;  
+  const double retValue_d = round (planet_great_circle * acos (cos (teta1) * cos (teta3) * cos (teta2 - teta4) + (sin (teta1) * sin (teta3))));
 
 
-  switch (inReturnInUnits)
-  {
-    case nm:
-    {
-      return retValue_d * mx_meter2nm;
-    }
-      break;
-    case meter:
-    {
-      return retValue_d;
-    }
-      break;
-    case km:
-    {
-      return retValue_d * mx_meter2nm * mx_nm2km;
-    }
-      break;
-    case ft:
-    {
-      return retValue_d * mx_meter2feet;
-    }
-      break;
-    default:
-      break;
-  }
+  //switch (inReturnInUnits)
+  //{
+  //  case nm:
+  //  {
+  //    return retValue_d * mx_meter2nm;
+  //  }
+  //    break;
+  //  case meter:
+  //  {
+  //    return retValue_d;
+  //  }
+  //    break;
+  //  case km:
+  //  {
+  //    return retValue_d * mx_meter2nm * mx_nm2km;
+  //  }
+  //    break;
+  //  case ft:
+  //  {
+  //    return retValue_d * mx_meter2feet;
+  //  }
+  //    break;
+  //  default:
+  //    break;
+  //}
 
 
   return retValue_d; // distance in meters
@@ -973,7 +1021,8 @@ double
 calc_distance_between_2_points_nm(const double lat1, const double lon1, const double lat2, const double lon2)
 {
   // return mxUtils::mxCalcDistanceBetween2Points(lat1, lon1, lat2, lon2);
-  return mxCalcDistanceBetween2Points(lat1, lon1, lat2, lon2, nm, 3440.0);
+  //return mxCalcDistanceBetween2Points (lat1, lon1, lat2, lon2, mx_sqlite_units_of_measure::nm, LOCAL_EARTH_RADIUS_NM);
+  return mxCalcDistanceBetween2Points (lat1, lon1, lat2, lon2, LOCAL_EARTH_RADIUS_NM);
 }
 
 // https://gis.stackexchange.com/questions/252672/calculate-bearing-between-two-decimal-gps-coordinates-arduino-c?noredirect=1&lq=1
@@ -1276,13 +1325,14 @@ mx_get_shortest_distance_to_rw_vector(sqlite3_context* context, int argc, sqlite
       //                     A +---+ B (90deg)
       //
       // The idea is, that the shortest line to the AB vector is a strait line that creates 90deg angle.
-      // We can caluclate the length of the height (BC) using: sin(a) = BC/AC  =>  sin(a) * AC = BC
+      // We can calculate the length of the height (BC) using: sin(a) = BC/AC  =>  sin(a) * AC = BC
       //
 
       // -1.0 means outside of runway boundaries. Since we always pick the "left" center the plane can be to the right of it, so the angles can be 0 and 180 at worst cases. You should test if plane is inside the RW boundaries first and only then check the touchdown relative to center.
       double result = -1.0;
       if (angle_between_the_2_bearings < 180.0f)
-        result = sin(deg2rad(angle_between_the_2_bearings)) * mxCalcDistanceBetween2Points(rwCenterEdge1.lat, rwCenterEdge1.lon, planePos.lat, planePos.lon, meter, missionx::EARTH_RADIUS_M);
+        result = sin (deg2rad (angle_between_the_2_bearings)) * mxCalcDistanceBetween2Points (rwCenterEdge1.lat, rwCenterEdge1.lon, planePos.lat, planePos.lon, LOCAL_EARTH_RADIUS_M);
+        //result = sin (deg2rad (angle_between_the_2_bearings)) * mxCalcDistanceBetween2Points (rwCenterEdge1.lat, rwCenterEdge1.lon, planePos.lat, planePos.lon, mx_sqlite_units_of_measure::meter, LOCAL_EARTH_RADIUS_NM);
 
       // sqlite3_result_text(context, )
       sqlite3_result_double(context, result);
@@ -1298,7 +1348,7 @@ mx_get_shortest_distance_to_rw_vector(sqlite3_context* context, int argc, sqlite
 /*
 @ mx_is_plane_in_airport_boundary() function receives plane coordinate and the airport boundary string (set off nodes delimated by '|'):
 First: lat,lon: Plane position
-Second string: airport boundary string (set off nodes delimated by '|')
+Second string: airport boundary string (set off nodes delimited by '|')
 
 returns 0 if plane is not in boundary and 1 if yes.
 */

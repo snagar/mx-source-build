@@ -298,18 +298,17 @@ public:
   /// <param name="inMinDistance_nm">Minimum distance to search airports from.</param>
   /// <param name="inMaxDistance_nm">Maximum distance to search for airports.</param>
   /// <param name="inExcludeAngle">In many cases we want to pick new airports and not pick the one we just came from. The idea is to limit the angle we will fly next so the flight plan will be seen plausiable.</param>
+  /// <param name="inProperties">An XML node that hold user preference shared across the plugin.</param>
   /// <returns></returns>
-  NavAidInfo get_random_airport_from_db(missionx::Point& inPoint, float inMinDistance_nm, float inMaxDistance_nm, int inExcludeAngle);
+  NavAidInfo get_random_airport_from_db(missionx::Point& inPoint, float inMinDistance_nm, float inMaxDistance_nm, int inExcludeAngle, missionx::mx_base_node &inProperties);
 
   // gather NavAid information from main plugin thread
-  void gatherRandomAirport_mainThread(const Point& inPoint, float inMaxDistance_nm, int inExcludeAngle = -1, float inStartFromDistance_nm = 0.0f);
+  // void gatherRandomAirport_mainThread(const Point& inPoint, float inMaxDistance_nm, int inExcludeAngle = -1, float inStartFromDistance_nm = 0.0f);
 
   //// v3.0.253.7 made public
-  bool filterAndPickRampBasedOnPlaneType(missionx::NavAidInfo& navAid,
-                                         std::string&          outErrorMsg,
-                                         const missionx::mxFilterRampType & inRampFilterType
-                                         //const bool & inIgnoreCenterOfRunwayAsRamp = false
-                                         ); // v3.0.253.1 deprecated since not in use , std::string inRestrictRampType = ""); // v3.0.221.7 currently being used when reading briefer and we want to place in plausiable
+  bool filterAndPickRampBasedOnPlaneType (missionx::NavAidInfo &            navAid,
+                                          std::string &                     outErrorMsg,
+                                          const missionx::mxFilterRampType &inRampFilterType); // v3.0.221.7 currently being used when reading briefer, and we want to place in plausible
   ///// weather v3.303.13
   static std::string current_weather_datarefs_s;
 
@@ -327,9 +326,7 @@ private:
 
 
   // main function
-  // bool generateRandomMission(std::string *inKey_ptr, thread_state *inThreadState);
   std::string inject_files_into_xml(missionx::TemplateFileInfo* tempFile_ptr);  // v24.12.2 implement the new multi options code.
-  // std::string inject_files_into_xml_1(missionx::TemplateFileInfo* tempFile_ptr); // keep the original code before using the "multi option" code.
   bool        generateRandomMission();
 
   // A simple function to manage thread wait for main thread actions that needs to take place before it can continue. Default wait time is 500 milliseconds for 10 iteration (5 seconds)
@@ -341,7 +338,7 @@ private:
   bool get_target(NavAidInfo& outNewNavInfo, const IXMLNode &inLegFromTemplate, mx_plane_types in_plane_type_enum, std::map<std::string, std::string>& inMapLocationSplitValues, missionx::mx_base_node& inProperties); // v3.305.1
 
   // get Helos target based on OSM or fallback to XY location if none was found
-  bool get_targetForHelos_based_XY_OSM_OSMWEB(NavAidInfo&                         outNewNavInfo,
+  bool get_targetForHelos_base_XY_OSM_OSMWEB(NavAidInfo&                         outNewNavInfo,
                                               mx_plane_types                      in_plane_type_enum,
                                               std::map<std::string, std::string>& inMapLocationSplitValues,
                                               //missionx::mxProperties&             inProperties,
@@ -351,7 +348,7 @@ private:
                                               double                              location_maxDistance_d);
 
   // search for airports based on XY information for all planes and for helos it can also be based on OSM data (depends on the location_type value - inLocationType)
-  bool get_target_or_lastFlightLeg_based_on_XY_or_OSM (NavAidInfo                         &outNewNavInfo,
+  bool get_target_or_lastFlightLeg_base_on_XY_or_OSM (NavAidInfo                         &outNewNavInfo,
                                                        std::map<std::string, std::string> &inMapLocationSplitValues,
                                                        missionx::mx_base_node             &inProperties,
                                                        // v3.305.1
@@ -360,7 +357,7 @@ private:
                                                        double location_maxDistance_d);
 
   // Search and pick pre-defined location based on an XML tag name
-  bool get_targetBasedOnTagName(NavAidInfo&             outNewNavInfo,
+  bool get_target_base_on_tag_name(NavAidInfo&             outNewNavInfo,
                                 mx_plane_types          in_plane_type_enum,
                                   const missionx::mx_base_node& inProperties, // v3.305.1
                                 const std::string&             location_value_tag_name_s,
@@ -480,11 +477,7 @@ private:
   static void          gen_3d_object_set (const NavAidInfo &inout_target_na, IXMLNode &inout_leg_node, IXMLNode &in_template_node, IXMLNode &inout_x3DObjTemplate, double &in_expected_slope_at_target_location_d); // Add 3D clutter Objects around the target
   static void          gen_3d_hint_objects_for_land_and_hover (const NavAidInfo &inout_target_na, IXMLNode &inout_leg_node, const NavAidInfo *next_navaid_ptr); // Add 3D hint objects
   static bool          gen_3d_instance_properties(IXMLNode& pNode, missionx::NavAidInfo& in_target_navaid);
-
-
   // end v25.06.1
-
-
 };
 
 /* namespace missionx */

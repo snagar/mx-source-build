@@ -4,6 +4,13 @@
 
 #include <iomanip>
 #include <list>
+// v25.08.1 used with PyDict
+#include <iostream>
+#include <unordered_map>
+#include <variant>
+#include <string>
+#include <optional>
+
 #ifdef APL
 #include <cstdlib>
 #endif
@@ -14,15 +21,71 @@
 #ifndef IBM
 // #include "base_c_includes.h" // v3.303.14 removed
   #include <algorithm>
-  #include <math.h>
+  // #include <math.h>
+  #include <cmath>
 #endif
 
 #include "xx_mission_constants.hpp"
 #include "mx_return.hpp"
 
+//#include "XPLMPlugin.h"
+//#include "XPGL.h" // The header that defines the XPGL struct
+
 
 namespace missionx
 {
+
+// 1. Declare the function pointer at the global or class scope
+//    The X-Plane SDK provides the necessary function pointer type
+//    in its headers, but you can define it yourself if needed.
+//typedef void (APIENTRY *PFNGLGENERATEMIPMAPPROC) (GLenum target);
+//static PFNGLGENERATEMIPMAPPROC glGenerateMipmap = NULL;
+
+using PyValue = std::variant<int, double, std::string, bool>;
+
+class PyDict {
+  std::unordered_map<std::string, PyValue> data;
+
+public:
+  // Insert like Python dict: dict["key"] = value
+  PyValue& operator[](const std::string& key) {
+    return data[key];
+  }
+
+  // --- Safe type check ---
+  template <typename T>
+  bool is_type(const std::string& key) const {
+    const auto it = data.find(key);
+    return (it != data.end()) && std::holds_alternative<T>(it->second);
+  }
+
+  // --- Safe get (returns optional) ---
+  template <typename T>
+  std::optional<T> get_if(const std::string& key) {
+    if (const auto it = data.find(key); it != data.end()) {
+      if (auto p = std::get_if<T>(&(it->second))) {
+        return *p;
+      }
+    }
+    return std::nullopt;
+  }
+
+  // --- Get with default ---
+  template <typename T>
+  T get(const std::string& key, const T& default_val) {
+    if (auto val = get_if<T>(key)) {
+      return *val;
+    }
+    return default_val;
+  }
+};
+
+
+
+
+
+
+
 // A simple and basic equation calculation based on the basic algebra
 class calc
 {
@@ -130,6 +193,8 @@ public:
 //  ~mxUtils(); // https://stackoverflow.com/questions/51863588/warning-definition-of-implicit-copy-constructor-is-deprecated
 
 
+  // Plugin start
+  void plugin_start ();
 
   // Members
   static std::string stringToUpper(std::string strToConvert);

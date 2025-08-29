@@ -240,7 +240,10 @@ bool data_manager::flag_setupForcePlanePositioningAtMissionStart{ false };
 bool data_manager::flag_setupAutoSkipStoryMessage{ false }; // v3.305.3
 bool data_manager::flag_finished_load_inventory_images{ false };
 bool data_manager::flag_setupUseXP11InventoryUI{ false }; // v24.12.2
-// int  missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i {0}; // v24.12.2
+
+int data_manager::ui_ifr_or_vfr_i = missionx::PICKED_IFR; // v25.08.1
+int data_manager::ui_oilrig_globe_part_i = missionx::PICKED_LOCAL_REGION_GLOBE; // v25.08.1
+
 #ifdef RELEASE
 bool missionx::data_manager::flag_setupEnableDesignerMode{ false }; // v24.03.2
 bool missionx::data_manager::flag_setupShowDebugTabDuringMission{ false };
@@ -1104,7 +1107,15 @@ data_manager::readPluginTextures()
     if (tFile.gTexture != 0)
     {
       Utils::addElementToMap(mapCachedPluginTextures, tFile.fileName, tFile);
-      Log::logXPLMDebugString("Loaded bitmap: " + tFile.getAbsoluteFileLocation() + "\n"); // debug
+
+      // v25.08.1
+      const std::string feedback = fmt::format("Loaded bitmap: {} [{}]\n", tFile.getAbsoluteFileLocation (), tFile.texture_hash_simple); // debug
+      Log::logXPLMDebugString(feedback, false); // debug
+
+      // Log::logXPLMDebugString("Loaded bitmap: " + tFile.getAbsoluteFileLocation() + "\n"); // debug
+
+
+
     }
   }
 }
@@ -1430,25 +1441,23 @@ data_manager::loadInventoryImages()
   std::lock_guard<std::mutex> lock(s_ImageLoadMutex);
   std::string                 errorMsg;
 
-  for (auto& [file, buttonTexture] : xp_mapInvImages)
+  for (auto& [file, texture] : xp_mapInvImages)
   {
     mxTextureFile btnImage;
     // mxTextureFile textureFile;
     btnImage.fileName = file;
     btnImage.filePath = mapBrieferMissionList[selectedMissionKey].pathToMissionPackFolderInCustomScenery + XPLMGetDirectorySeparator();
 
-
     if (BitmapReader::loadGLTexture(btnImage, errorMsg, false, false)) // load image but do not flip it
     {
       // store vecTextures as generic texture button
-      buttonTexture = btnImage;
-
-      Log::logMsgThread("Loaded Inventory Texture: " + buttonTexture.fileName); // debug
+      texture = btnImage;
+      Log::logMsgThread("Loaded Inventory Texture: " + texture.fileName); // debug
 
     } // end if loaded texture
     else
     {
-      Log::logMsgThread("Failed to load Inventory texture file: " + file + "\nError: " + errorMsg);
+      Log::logMsgThread( fmt::format("Failed to load Inventory texture file: {}\nError: {}\n", file, errorMsg) );
     }
   }
 
@@ -1647,14 +1656,17 @@ data_manager::loadAllMissionsImages() // used in list mission screen (for exampl
 
       if (BitmapReader::loadGLTexture(mInfo.mapImages[file_s], errorMsg, false)) // load image but do not flip it
       {
-        // store vecTextures as generic texture button
+        // store Texture as generic texture button
+        mxTextureFile texture = mInfo.mapImages[file_s];
+        Utils::addElementToMap(xp_mapMissionIconImages, file_s, texture); // store the mxTextureFile in our generic image map for later use
 
-        mxTextureFile missionxTextureButton = mInfo.mapImages[file_s];
-        Utils::addElementToMap(xp_mapMissionIconImages, file_s, missionxTextureButton); // store the mxTextureFile in our generic image map for later use
-
-        Log::logMsg("Loaded Mission Image: " + mInfo.mapImages[file_s].fileName); // debug
+        Log::logMsg(fmt::format("Loaded Mission Image: {} [{}/{}]", mInfo.mapImages[file_s].fileName, mInfo.mapImages[file_s].texture_hash_simple, mInfo.mapImages[file_s].texture_hash_sha256) ); // debug
 
         ++iMissionImageCounter;
+      }
+      else
+      {
+        Log::logMsg (errorMsg);
       }
     }
 
@@ -3065,7 +3077,7 @@ data_manager::prepareInventoryCopies(const std::string& inInventoryName)
   planeInventoryCopy = mapInventories[mxconst::get_ELEMENT_PLANE()];
 
   #ifndef RELEASE
-  Log::log_to_missionx_log(fmt::format("==========>\nLocal inventory after Coping Plane Inventory:\n[{}\n].\n====> Source Inventory:\n[{}\n]\n<=========", Utils::xml_get_node_content_as_text(planeInventoryCopy.node), Utils::xml_get_node_content_as_text(mapInventories[mxconst::get_ELEMENT_PLANE()].node)));
+  Log::log_to_missionx_log(fmt::format("==========>\nLocal inventory after Coping Plane Inventory:\n[{}\n].\n====> Source Inventory:\n[{}\n]\n<=========\n", Utils::xml_get_node_content_as_text(planeInventoryCopy.node), Utils::xml_get_node_content_as_text(mapInventories[mxconst::get_ELEMENT_PLANE()].node)));
   #endif
 
 
@@ -5120,7 +5132,12 @@ data_manager::fetch_ils_rw_from_sqlite(NavAidInfo* inFrom_navaid, std::string* i
   // v24.03.1 add support for custom "base query" for the ILS search screen
   std::string sFilterQuery = (*inFilterQuery);
   // v24.06.1 added xx_rank column as an additional sorting
-  std::string query = R"(select icao, round(distance_nm) as distance_nm, loc_rw, loc_type, frq_mhz, loc_bearing, rw_length_mt, rw_width, ap_elev, ap_name, surf_type_text, bearing_from_to_icao
+
+  const auto lmbda_get_query = [in_ifr_or_vfr = missionx::data_manager::ui_ifr_or_vfr_i] ()
+  {
+    if (in_ifr_or_vfr == missionx::PICKED_IFR)
+    {
+      return R"(select icao, round(distance_nm) as distance_nm, loc_rw, loc_type, frq_mhz, loc_bearing, rw_length_mt, rw_width, ap_elev, ap_name, surf_type_text, bearing_from_to_icao
 from (
 select xp_loc.icao
       , mx_calc_distance ({}, {}, xp_loc.lat, xp_loc.lon, 3440) as distance_nm
@@ -5134,6 +5151,26 @@ and xa.icao = xp_rw.icao
 )
 where 1 = 1
 )";
+    }
+
+    // VFR Query - PICKED_VFR
+    return R"(select icao, round(distance_nm) as distance_nm, '' as loc_rw, '' as loc_type, 0 as frq_mhz, 0 as loc_bearing, rw_length_mt, rw_width, ap_elev, ap_name, surf_type_text, bearing_from_to_icao
+from (
+select xa.icao
+      , mx_calc_distance ({}, {}, xa.ap_lat, xa.ap_lon, 3440) as distance_nm
+      , xp_rw.rw_length_mt, xp_rw.rw_width, xa.ap_elev, xa.ap_name
+      , case xp_rw.rw_surf when 1 then 'Asphalt' when 2 then 'Concrete' when 3 then 'Turf or grass' when 4 then 'Dirt' when 5 then 'Gravel' when 12 then 'Dry lakebed' when 13 then 'Water runways' when 14 then 'Snow or ice' when 15 then 'Transparent' else 'no data' end as surf_type_text
+      , mx_bearing({}, {}, xa.ap_lat, xa.ap_lon) as bearing_from_to_icao
+from xp_rw, xp_airports xa
+where 1 = 1
+and xa.icao_id = xp_rw.icao_id
+)
+where 1 = 1
+)";
+
+  };
+
+  std::string query = lmbda_get_query();
 
   if (init_xp_airport_db() && db_xp_airports.db_is_open_and_ready)
   {
@@ -5141,7 +5178,7 @@ where 1 = 1
     //////////////////////////////////////////
     // read custom SQL first from sql.xml file
     //////////////////////////////////////////
-    const std::string stmt_base_ils_search_query_name = "base_ils_search_query"; // v24.03.1
+    const std::string stmt_base_ils_search_query_name = (data_manager::ui_ifr_or_vfr_i == missionx::PICKED_IFR)? "base_ils_search_query" : "base_vfr_search_query"; // v24.03.1 // v25.08.1
     const std::string stmt_uq_name                    = "ils_search_query";      // v24.03.1 renamed the statement final name.
 
     // v24.03.1 Reading SQL from sql.xml file
@@ -5172,14 +5209,6 @@ where 1 = 1
     if (db_xp_airports.prepareNewStatement(stmt_uq_name, query))
     {
       assert(data_manager::db_xp_airports.mapStatements[stmt_uq_name] != nullptr);
-
-
-      // v24.03.1 DEPRECATED bindings, since we are using "fmt::format" library with "{}"
-      // sqlite3_bind_double(data_manager::db_xp_airports.mapStatements[stmt_uq_name], 1, inFrom_navaid->lat); // 1 Bindings start in 1
-      // sqlite3_bind_double(data_manager::db_xp_airports.mapStatements[stmt_uq_name], 2, inFrom_navaid->lon); // 2
-      // sqlite3_bind_double(data_manager::db_xp_airports.mapStatements[stmt_uq_name], 3, inFrom_navaid->lat); // 3
-      // sqlite3_bind_double(data_manager::db_xp_airports.mapStatements[stmt_uq_name], 4, inFrom_navaid->lat); // 4 with the use of mx_calc_distance() in the new query we do not need this binding
-      // sqlite3_bind_double(data_manager::db_xp_airports.mapStatements[stmt_uq_name], 5, inFrom_navaid->lon); // 5
 
       int seq = 0;
       while (sqlite3_step(db_xp_airports.mapStatements[stmt_uq_name]) == SQLITE_ROW)
@@ -5845,11 +5874,9 @@ where (stats.activity != "" and stats.activity is not null)
 )";
 
 
-#ifndef RELEASE
-
+  #ifndef RELEASE
   Log::logMsg("\nstmt01: " + stmt01); // debug
-
-#endif // !RELEASE
+  #endif // !RELEASE
 
   const std::string unique_name_s01 = "fetch_activity_stats";
 
@@ -5948,7 +5975,7 @@ where is_plane_on_rw = 1
 
         vecActivity.emplace_back(data);
 
-        prev_landing_data = data; // there is no real use with this parameter
+        prev_landing_data = data; // there is no real use with the "prev_landing_data" parameter
       }                           // end landing activity stats
 
     } // end Q1: loop over all rows
@@ -9131,7 +9158,7 @@ data_manager::addAndLoadTextureMapNodeToLeg(const std::string& inFileName, const
       {
         Utils::addElementToMap(mapFlightLegs[inLegName].map2DMapsNodes, inFileName, xNewMap_ptr.deepCopy());
 
-        if (inLegName.compare(currentLegName) == 0) // add to current Leg only if this is what was asked
+        if (inLegName == currentLegName) // add to current Leg only if this is what was asked
         {
           strct_flight_leg_info_totalMapsCounter += 1;
           Utils::addElementToMap(maps2d_to_display, strct_flight_leg_info_totalMapsCounter, mapCurrentMissionTextures[inFileName]);
@@ -9155,7 +9182,6 @@ data_manager::loadImage(const std::string& inFileName, std::map<std::string, mxT
 {
   if (inFileName.empty())
     return false;
-
 
   const std::string       fldMissionCustom_withSep = mapBrieferMissionList[selectedMissionKey].pathToMissionPackFolderInCustomScenery + XPLMGetDirectorySeparator();
   std::string             errorMsg; // v24.06.1

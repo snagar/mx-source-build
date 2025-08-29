@@ -123,7 +123,7 @@ WinImguiMxpad::buildInterface()
       ImGui::SameLine(0.0f, 10.0f);
       if (!missionx::data_manager::active_external_inventory_name.empty())
       {
-        if (ImGui::ImageButton("InvMxPadButtonImage", reinterpret_cast<void *> (static_cast<intptr_t> (data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_INVENTORY_MXPAD()].gTexture)), size, uv0, uv1)) // padding 2
+        if (ImGui::ImageButton("InvMxPadButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_INVENTORY_MXPAD()].gTexture, size, uv0, uv1)) // padding 2
         {
           missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::open_inventory_layout);
         }
@@ -133,7 +133,7 @@ WinImguiMxpad::buildInterface()
       ImGui::SameLine(0.0f, 10.0f);
       if (!missionx::data_manager::maps2d_to_display.empty())
       {
-        if (ImGui::ImageButton("MapMxPadButtonImage", reinterpret_cast<void *> (static_cast<intptr_t> (data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_MAP_MXPAD()].gTexture)), size, uv0, uv1)) // padding 2
+        if (ImGui::ImageButton("MapMxPadButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_MAP_MXPAD()].gTexture, size, uv0, uv1)) // padding 2
         {
           missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::open_map_layout);
         }
@@ -141,7 +141,7 @@ WinImguiMxpad::buildInterface()
 
       // auto show/hide mxpad
       ImGui::SameLine(0.0f, 10.0f);
-      if (ImGui::ImageButton("AutoHideMxPadButtonImage", reinterpret_cast<void *> (static_cast<intptr_t> (data_manager::mapCachedPluginTextures[autoHideTextureState_name].gTexture)), size, uv0, uv1)) // padding 2
+      if (ImGui::ImageButton("AutoHideMxPadButtonImage", data_manager::mapCachedPluginTextures[autoHideTextureState_name].gTexture, size, uv0, uv1)) // padding 2
       {
         missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::toggle_auto_hide_show_mxpad_option);
       }
@@ -153,7 +153,7 @@ WinImguiMxpad::buildInterface()
       if (!bDisplayMarkers)
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.25f);
 
-      if (ImGui::ImageButton("ToggleTargetMarkerMxPadButtonImage", reinterpret_cast<void *> (static_cast<intptr_t> (data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_TARGET_MARKER_ICON()].gTexture)), size, uv0, uv1)) // padding 2
+      if (ImGui::ImageButton("ToggleTargetMarkerMxPadButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_TARGET_MARKER_ICON()].gTexture, size, uv0, uv1)) // padding 2
       {
         missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::toggle_target_marker_option);
       }
