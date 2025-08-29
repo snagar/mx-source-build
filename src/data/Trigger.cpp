@@ -114,7 +114,7 @@ missionx::Trigger::parse_node()
     {
 
       // Read points
-      int nChilds2 = this->xLocAndElev_ptr.nChildNode(mxconst::get_ELEMENT_POINT().c_str());
+      const int nChilds2 = this->xLocAndElev_ptr.nChildNode(mxconst::get_ELEMENT_POINT().c_str());
 
       const auto lmbda_need_only_1_point = [&](const std::string& inTrigType) {
         // v3.0.253.5 added poly + rect element test since it is a special case of auto area calculation like radius
@@ -125,7 +125,8 @@ missionx::Trigger::parse_node()
         }
 
 
-        return ((mxconst::get_TRIG_TYPE_POLY() == trigType) || (mxconst::get_TRIG_TYPE_RAD() == trigType) || (mxconst::get_TRIG_TYPE_CAMERA() == trigType)) ? true : false;
+        // TRIG_TYPE_POLY should read _ALL_ points
+        return ( (mxconst::get_TRIG_TYPE_RAD() == trigType) || (mxconst::get_TRIG_TYPE_CAMERA() == trigType)) ? true : false;
       };
 
       const bool flag_stopAfterFirstValidPoint = lmbda_need_only_1_point(trigType); // THIS IS FOR rad, camera AND Calculated slope
@@ -134,10 +135,10 @@ missionx::Trigger::parse_node()
       this->deqPoints.clear(); // this to make sure we do not have old point from the read_mission_file() class
       for (int i2 = 0; i2 < nChilds2; i2++)
       {
-        Point    p;
-        IXMLNode xPoint = this->xLocAndElev_ptr.getChildNode(mxconst::get_ELEMENT_POINT().c_str(), i2);
-        if (!xPoint.isEmpty())
+        if (IXMLNode xPoint = this->xLocAndElev_ptr.getChildNode(mxconst::get_ELEMENT_POINT().c_str(), i2)
+          ; !xPoint.isEmpty())
         {
+          Point p;
           p.node = xPoint.deepCopy();
           if (p.parse_node())
           {
@@ -194,7 +195,7 @@ missionx::Trigger::parse_node()
           else 
           {
             rect_area.bottomLeft = this->deqPoints.front();
-            rect_area.calcBoxBasedOn_bottomLeft_edgeDistances_and_heading((double)(vecDimentions_mt.at(0) * (double)missionx::meter2nm), (double)(vecDimentions_mt.at(1) * (double)missionx::meter2nm), heading_f);
+            rect_area.calcBoxBasedOn_bottomLeft_edgeDistances_and_heading((double)(vecDimentions_mt.at(0) * static_cast<double> (missionx::meter2nm)), (double)(vecDimentions_mt.at(1) * static_cast<double> (missionx::meter2nm)), heading_f);
           }
 
           this->deqPoints.clear();
@@ -215,7 +216,7 @@ missionx::Trigger::parse_node()
         }
         else
         {
-          Log::logMsgErr("[trigger rect] Fail to read valid auto rectangule trigger creation dimention. Skipping trigger: " + trigName);
+          Log::logMsgErr("[trigger rect] Fail to read valid auto rectangle trigger creation dimension. Skipping trigger: " + trigName);
           return false;
         }
       }
@@ -223,10 +224,10 @@ missionx::Trigger::parse_node()
 
 
       // check if  <elevation_volume> exists
-      if (strIsPlaneOnGround.empty()) // if designer set plane on ground and the attribute is empty then ignore elevation setting complitely.
+      if (strIsPlaneOnGround.empty()) // if designer set plane on ground and the attribute is empty then ignore elevation setting completely.
       {
         this->trigElevType = missionx::mx_trigger_elev_type_enum::not_defined;    // ignore elevation settings.
-        this->setNodeProperty<int>(mxconst::get_PROP_TRIG_ELEV_TYPE(), (int)this->trigElevType); // deprecated: we should not use this property in the long term, instead use the XML header.
+        this->setNodeProperty<int>(mxconst::get_PROP_TRIG_ELEV_TYPE(), static_cast<int> (this->trigElevType)); // deprecated: we should not use this property in the long term, instead use the XML header.
       }
       else
       {
@@ -238,7 +239,7 @@ missionx::Trigger::parse_node()
           if (elev_lower_upper.empty())
           {
             this->trigElevType = missionx::mx_trigger_elev_type_enum::not_defined; // we do not care about elevation tests. Elevation tests will always return true.
-            this->setNodeProperty<int>(mxconst::get_PROP_TRIG_ELEV_TYPE(), (int)this->trigElevType); // set as property too
+            this->setNodeProperty<int>(mxconst::get_PROP_TRIG_ELEV_TYPE(), static_cast<int> (this->trigElevType)); // set as property too
           }
           else
           {
@@ -247,7 +248,7 @@ missionx::Trigger::parse_node()
               Log::logMsg(this->err);
 
               // set radius elevation to ZERO
-              if ((mxconst::get_TRIG_TYPE_RAD().compare(trigType) == 0 || mxconst::get_TRIG_TYPE_CAMERA().compare(trigType) == 0) && this->deqPoints.size() > 0) // if radius
+              if ((mxconst::get_TRIG_TYPE_RAD() == trigType || mxconst::get_TRIG_TYPE_CAMERA() == trigType) && !this->deqPoints.empty()) // if radius
               {
                 Log::logMsgErr("[fallback] Trigger: " +mxconst::get_QM() + trigName +mxconst::get_QM() + ". Modified Radius trigger elevation to ground due to failure in parsing <elevation_volume>. This means, plane should just be in area and on ground.");
                 isPlaneOnGround    = true;
@@ -261,7 +262,7 @@ missionx::Trigger::parse_node()
               }
               // Skip rest of settings for SLOPE without <calc_slope> settings. It is mandatory for it.
               // a POLY trigger can ignore these settings, and just assume enter or leave events.
-              if ((mxconst::get_TRIG_TYPE_POLY().compare(trigType) == 0) && !(this->node.isAttributeSet(mxconst::get_PROP_HAS_CALC_SLOPE().c_str()))) // if it is a poly or slope without calc_slope element then skip, since we must have elevation information
+              if ((mxconst::get_TRIG_TYPE_POLY() == trigType) && !(this->node.isAttributeSet(mxconst::get_PROP_HAS_CALC_SLOPE().c_str()))) // if it is a poly or slope without calc_slope element then skip, since we must have elevation information
               {
                 Log::logMsgErr("Trigger \"" + trigName + "\", must have elevation volume settings. Please fix. Skipping trigger...");
                 return false;
@@ -272,12 +273,12 @@ missionx::Trigger::parse_node()
         else if (xElevVol.isEmpty() && !isPlaneOnGround) // fix a bug when trigger was defined but not elevation volume. This will fallback to "plane in air" option
         {
           this->trigElevType = missionx::mx_trigger_elev_type_enum::in_air;
-          this->setNodeProperty<int>(mxconst::get_PROP_TRIG_ELEV_TYPE(), (int)this->trigElevType);   // this will override original settings
+          this->setNodeProperty<int>(mxconst::get_PROP_TRIG_ELEV_TYPE(), static_cast<int> (this->trigElevType));   // this will override original settings
         }
         else
         {
           // set elevation to ZERO
-          if ((mxconst::get_TRIG_TYPE_RAD().compare(trigType) == 0 || mxconst::get_TRIG_TYPE_CAMERA().compare(trigType) == 0 || mxconst::get_TRIG_TYPE_POLY().compare(trigType) == 0) && this->deqPoints.size() > 0) // if radius
+          if ((mxconst::get_TRIG_TYPE_RAD() == trigType || mxconst::get_TRIG_TYPE_CAMERA() == trigType || mxconst::get_TRIG_TYPE_POLY() == trigType) && !this->deqPoints.empty()) // if radius
           {
             this->deqPoints.at(0).setElevationFt(0.0);                                                                                                                   // set on ground
             this->xLocAndElev_ptr.getChildNode(mxconst::get_ELEMENT_POINT().c_str()).updateAttribute("0.0", mxconst::get_ATTRIB_ELEV_FT().c_str(), mxconst::get_ATTRIB_ELEV_FT().c_str()); // set XML
@@ -335,7 +336,7 @@ missionx::Trigger::re_arm()
   this->setNodeProperty<bool>(mxconst::get_ATTRIB_ENABLED(), true); 
   this->setNodeProperty<bool>(mxconst::get_PROP_All_COND_MET_B(), false); 
   this->setNodeProperty<bool>(mxconst::get_PROP_SCRIPT_COND_MET_B(), false); 
-  this->setNodeProperty<int>(mxconst::get_ATTRIB_ENABLED(), (int)missionx::mx_trigger_state_enum::wait_to_be_triggered_again); 
+  this->setNodeProperty<int>(mxconst::get_ATTRIB_ENABLED(), static_cast<int> (missionx::mx_trigger_state_enum::wait_to_be_triggered_again));
 
   this->bEnteringPhysicalAreaMessageFiredOnce = false; // v3.305.1b
   this->bPlaneIsInTriggerArea                 = false; // v3.305.1c
@@ -361,7 +362,7 @@ missionx::Trigger::parseElevationVolume(std::string inMinMax, std::string& outEr
   }
   
   
-  int count = (int)vecSplitElev.size ();
+  int count = static_cast<int> (vecSplitElev.size ());
 
   // check if first variable starts with "++" or "--"
   if (count == 0)
@@ -460,7 +461,7 @@ missionx::Trigger::parseElevationVolume(std::string inMinMax, std::string& outEr
     if (!this->xConditions.isEmpty ())
       Utils::xml_set_attribute_in_node_asString (this->xConditions, mxconst::get_ATTRIB_PLANE_ON_GROUND (), mxconst::get_MX_YES (), this->xConditions.getName ()); // v3.0.241.1 update both properties and xml
 
-    this->setNodeProperty<int> (mxconst::get_PROP_TRIG_ELEV_TYPE (), (int)this->trigElevType); // this will override original settings
+    this->setNodeProperty<int> (mxconst::get_PROP_TRIG_ELEV_TYPE (), static_cast<int> (this->trigElevType)); // this will override original settings
   }
   else if (count > 1) // read max if present
   {
@@ -491,7 +492,7 @@ missionx::Trigger::parseElevationVolume(std::string inMinMax, std::string& outEr
     this->setNodeProperty<double> (mxconst::get_ATTRIB_ELEV_MAX_FT (), trigMax); // v3.0.241.1 update both properties and xml
 
     this->trigElevType = mx_trigger_elev_type_enum::min_max; // set type
-    this->setNodeProperty<int> (mxconst::get_PROP_TRIG_ELEV_TYPE (), (int)this->trigElevType); // v3.0.241.1 update both properties and xml
+    this->setNodeProperty<int> (mxconst::get_PROP_TRIG_ELEV_TYPE (), static_cast<int> (this->trigElevType)); // v3.0.241.1 update both properties and xml
 
   } // if max is present
   else
@@ -593,7 +594,7 @@ missionx::Trigger::prepareCueMetaData() // v3.0.213.7
   // RAD radius
   if (this->getTriggerType().compare(mxconst::get_TRIG_TYPE_RAD ()) == 0 || this->getTriggerType().compare(mxconst::get_TRIG_TYPE_CAMERA ()) == 0)
   {
-    float val_f = (float)Utils::readNumericAttrib(this->xRadius, mxconst::get_ATTRIB_LENGTH_MT(), 0.0);
+    float val_f = static_cast<float> (Utils::readNumericAttrib (this->xRadius, mxconst::get_ATTRIB_LENGTH_MT (), 0.0));
     this->cue.setRadiusAsMeter(val_f); // v3.0.202a init Cue settings
     if (val_f > 0.0f)
       this->cue.hasRadius = true;
@@ -621,7 +622,7 @@ void
 missionx::Trigger::setTrigState(missionx::mx_trigger_state_enum inState)
 {
   this->trigState = inState;
-  this->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), (int)inState); 
+  this->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), static_cast<int> (inState));
 }
 
 // Translate the "_trigger_elev" enum to readable string
@@ -710,11 +711,11 @@ missionx::Trigger::isInPhysicalArea(Point& pObject)
   bResult = false;
   const std::string trigType = Utils::readAttrib(this->node, mxconst::get_ATTRIB_TYPE(), ""); // v3.0.241.1
 
-  if ((mxconst::get_TRIG_TYPE_POLY().compare(trigType) == 0) || (mxconst::get_TRIG_TYPE_POLY().compare(trigType) == 0))
+  if ((mxconst::get_TRIG_TYPE_POLY() == trigType) || (mxconst::get_TRIG_TYPE_POLY() == trigType))
   {
     bResult = this->isPointInPolyArea(pObject);
   }
-  else if (mxconst::get_TRIG_TYPE_RAD().compare(trigType) == 0 || mxconst::get_TRIG_TYPE_CAMERA().compare(trigType) == 0) // check in Radius
+  else if (mxconst::get_TRIG_TYPE_RAD() == trigType || mxconst::get_TRIG_TYPE_CAMERA() == trigType) // check in Radius
   {
     double radius_nm = Utils::readNumericAttrib(this->xRadius, mxconst::get_ATTRIB_LENGTH_MT(), 50.0);
     radius_nm        = radius_nm * missionx::meter2nm;
@@ -722,9 +723,9 @@ missionx::Trigger::isInPhysicalArea(Point& pObject)
     if (pCenter.pointState == mx_point_state::point_undefined) // v3.0.213.7
       this->calcCenterOfArea();
 
-    bResult = isPointInRadiusArea(this->pCenter, (float)radius_nm, pObject); // v3.0.207.1
+    bResult = isPointInRadiusArea(this->pCenter, static_cast<float> (radius_nm), pObject); // v3.0.207.1
   }
-  else if (mxconst::get_TRIG_TYPE_SCRIPT().compare(trigType) == 0) // trigger based on script has no physical area
+  else if (mxconst::get_TRIG_TYPE_SCRIPT() == trigType) // trigger based on script has no physical area
   {
     bResult = true;
   } // end area type checks
@@ -751,10 +752,10 @@ missionx::Trigger::isInElevationArea(Point& pObject)
 
   const std::string trigType = Utils::readAttrib(this->node, mxconst::get_ATTRIB_TYPE(), ""); // v3.0.241.1
   
-  if ( ( (int)(mxconst::get_TRIG_TYPE_SCRIPT().compare(trigType) == 0 )  // always in elevation since all tests need to be done in script.
-       + (int)( mxconst::get_TRIG_TYPE_CAMERA().compare(trigType) == 0 ) // always in elevation since all tests need to be done in script.
-       + (int)(this->trigElevType == missionx::mx_trigger_elev_type_enum::not_defined) 
-       + (int)(this->trigElevType == missionx::mx_trigger_elev_type_enum::on_ground)
+  if ( ( static_cast<int> (mxconst::get_TRIG_TYPE_SCRIPT ().compare (trigType) == 0)  // always in elevation since all tests need to be done in script.
+       + static_cast<int> (mxconst::get_TRIG_TYPE_CAMERA ().compare (trigType) == 0) // always in elevation since all tests need to be done in script.
+       + static_cast<int> (this->trigElevType == missionx::mx_trigger_elev_type_enum::not_defined)
+       + static_cast<int> (this->trigElevType == missionx::mx_trigger_elev_type_enum::on_ground)
        ) > 0
     )
   {
@@ -790,7 +791,7 @@ missionx::Trigger::isInElevationArea(Point& pObject)
 
         double distanceBetweenPlaneAndSlopeProjectile_nm                   = Utils::calcDistanceBetween2Points_nm(slopeProjectilePoint.getLat(), slopeProjectilePoint.getLon(), planePoint.getLat(), planePoint.getLon());
         double distanceInFeet                                              = distanceBetweenPlaneAndSlopeProjectile_nm * nm2meter * meter2feet;
-        double expectedSlopeElevAtPlaneLocation_fromProjectilePoint_inFeet = Utils::calcElevBetween2Points_withGivenAngle_InFeet((float)distanceInFeet, (float)angle_of_projectile_3d);
+        double expectedSlopeElevAtPlaneLocation_fromProjectilePoint_inFeet = Utils::calcElevBetween2Points_withGivenAngle_InFeet(static_cast<float> (distanceInFeet), static_cast<float> (angle_of_projectile_3d));
 
         if (expectedSlopeElevAtPlaneLocation_fromProjectilePoint_inFeet >= planePoint.getElevationInFeet())
           return true; // in Elevation
@@ -829,9 +830,9 @@ missionx::Trigger::isOnGround(Point& pObject)
 
   const std::string trigType = Utils::readAttrib(this->node, mxconst::get_ATTRIB_TYPE(), ""); // v3.0.241.1
 
-  if ( ((int)(mxconst::get_TRIG_TYPE_SCRIPT().compare(trigType) == 0)
-      + (int)(mxconst::get_TRIG_TYPE_CAMERA().compare(trigType) == 0) 
-      + (int)(this->trigElevType == missionx::mx_trigger_elev_type_enum::not_defined)
+  if ( (static_cast<int> (mxconst::get_TRIG_TYPE_SCRIPT ().compare (trigType) == 0)
+      + static_cast<int> (mxconst::get_TRIG_TYPE_CAMERA ().compare (trigType) == 0)
+      + static_cast<int> (this->trigElevType == missionx::mx_trigger_elev_type_enum::not_defined)
        ) > 0
      )
   {
@@ -863,10 +864,10 @@ missionx::Trigger::storeCoreAttribAsProperties()
 
   this->setNodeProperty<bool>(mxconst::get_PROP_SCRIPT_COND_MET_B(), this->bScriptCondMet); // v3.0.241.1 update both property and XML node if we want
 
-  enumVal = (int)this->trigState;
+  enumVal = static_cast<int> (this->trigState);
   this->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), enumVal); // v3.0.241.1 update both property and XML node if we want
 
-  enumVal = (int)this->trigElevType;
+  enumVal = static_cast<int> (this->trigElevType);
   this->setNodeProperty<int>(mxconst::get_PROP_TRIG_ELEV_TYPE(), enumVal); // v3.0.241.1 update both property and XML node if we want
 }
 
@@ -909,7 +910,7 @@ missionx::Trigger::applyPropertiesToLocal()
   this->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), val); // v3.0.241.1 update both property and XML node if we want
 
   this->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), val); 
-  this->trigState = (mx_trigger_state_enum)val;
+  this->trigState = static_cast<mx_trigger_state_enum> (val);
 
 
   ///// Handle TYPE of ELEVATION. Is it onGround, inAir or None  /////
@@ -934,19 +935,19 @@ missionx::Trigger::applyPropertiesToLocal()
   }
   else // if not on ground, read volume info
   {
-    val             = Utils::readNodeNumericAttrib<int>(this->node, mxconst::get_PROP_TRIG_ELEV_TYPE(), (int)mx_trigger_elev_type_enum::on_ground); // v3.303.11 set default to "on_ground"
-    int elevTypeInt = (int)this->trigElevType;
+    val             = Utils::readNodeNumericAttrib<int>(this->node, mxconst::get_PROP_TRIG_ELEV_TYPE(), static_cast<int> (mx_trigger_elev_type_enum::on_ground)); // v3.303.11 set default to "on_ground"
+    int elevTypeInt = static_cast<int> (this->trigElevType);
 
-    if (val != (int)this->trigElevType)
+    if (val != static_cast<int> (this->trigElevType))
     {
-      if (val < (int)this->trigElevType)
+      if (val < static_cast<int> (this->trigElevType))
         this->setNodeProperty<int>(mxconst::get_PROP_TRIG_ELEV_TYPE(), elevTypeInt);
       else
-        this->trigElevType = (mx_trigger_elev_type_enum)val;
+        this->trigElevType = static_cast<mx_trigger_elev_type_enum> (val);
     }
   }
 
-  this->setNodeProperty<int>(mxconst::get_PROP_TRIG_ELEV_TYPE(), (int)this->trigElevType); // v3.0.241.1 update both property and XML node if we want
+  this->setNodeProperty<int>(mxconst::get_PROP_TRIG_ELEV_TYPE(), static_cast<int> (this->trigElevType)); // v3.0.241.1 update both property and XML node if we want
 }
 
 
@@ -1023,8 +1024,8 @@ missionx::Trigger::getInfoToSeed()
   // the key will reflect the name to seed
   // (mxState),(mxType=trigger/script/undefined), (mxTaskActionName=trigger/script name), (mxTaskIsComplete=true|false), (mx_enabled=true|false),
   // (mx_script_conditions_met_b=true|false), (mxTaskHasBeenEvaluate=true|false), (mx_always_evaluate=true|false), (mx_mandatory=true|false)
-  seedProperties.setStringProperty(mxconst::get_MX_() + mxconst::get_EXT_mxState(), Trigger::translateTrigState((missionx::mx_trigger_state_enum)Utils::readNodeNumericAttrib<int>(this->node, mxconst::get_PROP_STATE_ENUM(), (int)missionx::mx_trigger_state_enum::never_triggered)));                    // cast twice, to int and then to enum
-  seedProperties.setStringProperty(mxconst::get_MX_() + mxconst::get_PROP_TRIG_ELEV_TYPE(), Trigger::translateTrigElevType((missionx::mx_trigger_elev_type_enum)Utils::readNodeNumericAttrib<int>(this->node, mxconst::get_PROP_TRIG_ELEV_TYPE(), (int)missionx::mx_trigger_elev_type_enum::not_defined))); // cast twice, to int and then to enum
+  seedProperties.setStringProperty(mxconst::get_MX_() + mxconst::get_EXT_mxState(), Trigger::translateTrigState(static_cast<missionx::mx_trigger_state_enum> (Utils::readNodeNumericAttrib<int> (this->node, mxconst::get_PROP_STATE_ENUM (), (int)missionx::mx_trigger_state_enum::never_triggered))));                    // cast twice, to int and then to enum
+  seedProperties.setStringProperty(mxconst::get_MX_() + mxconst::get_PROP_TRIG_ELEV_TYPE(), Trigger::translateTrigElevType(static_cast<missionx::mx_trigger_elev_type_enum> (Utils::readNodeNumericAttrib<int> (this->node, mxconst::get_PROP_TRIG_ELEV_TYPE (), (int)missionx::mx_trigger_elev_type_enum::not_defined)))); // cast twice, to int and then to enum
   seedProperties.setStringProperty(mxconst::get_MX_() + mxconst::get_ATTRIB_ELEV_LOWER_UPPER_FT(), Utils::readAttrib(this->xElevVol, mxconst::get_ATTRIB_ELEV_LOWER_UPPER_FT(), ""));
   seedProperties.setStringProperty(mxconst::get_MX_() + mxconst::get_ATTRIB_MESSAGE_NAME_WHEN_FIRED(), Utils::readAttrib(this->xOutcome, mxconst::get_ATTRIB_MESSAGE_NAME_WHEN_FIRED(), ""));
   seedProperties.setStringProperty(mxconst::get_MX_() + mxconst::get_ATTRIB_MESSAGE_NAME_WHEN_LEFT(), Utils::readAttrib(this->xOutcome, mxconst::get_ATTRIB_MESSAGE_NAME_WHEN_LEFT(), ""));
@@ -1070,7 +1071,7 @@ missionx::Trigger::calcCenterOfArea()
   if (!(pCenter.pointState == missionx::mx_point_state::point_undefined))
   {
     std::string trigger_pos = Utils::formatNumber<double>(pCenter.getLat(), 8) + "|" + Utils::formatNumber<double>(pCenter.getLon(), 8) + "|" + Utils::formatNumber<double>(pCenter.getElevationInFeet(), 2);
-    if (trigger_pos.length() > (size_t)2)
+    if (trigger_pos.length() > static_cast<size_t> (2))
     {
       this->setStringProperty(mxconst::get_ATTRIB_TARGET_POS(), trigger_pos);
 

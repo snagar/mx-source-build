@@ -723,6 +723,7 @@ RandomEngine::generateRandomMission ()
 
   // --------------- Special cases ------------------------------------
   /// Handle special template cases. "user_driven_mission_layer" or "option_external_fpln_layer" layers is handled later on
+  int nContentChilds_i = 0; // v25.08.1
   if (this->flag_rules_defined_by_user_ui)
   {
 
@@ -824,6 +825,20 @@ RandomEngine::generateRandomMission ()
       }
     }
   }
+  // <content> based template
+  else if (nContentChilds_i = this->xRootTemplate.getChildNode (mxconst::get_ELEMENT_CONTENT ().c_str ()).nChildNode ()
+    ; nContentChilds_i > 0)
+  {
+    if (!this->generateRandomMissionBasedOnContent (this->xRootTemplate))
+    {
+      missionx::RandomEngine::threadState.flagAbortThread = true;
+      return false;
+    }
+
+    flag_created_based_on_content_element = true;
+    flag_copy_leg_as_is_b                 = Utils::readBoolAttrib (this->xRootTemplate, mxconst::get_ATTRIB_COPY_LEG_AS_IS_B (), false);
+  }
+
 
   if (missionx::RandomEngine::threadState.flagAbortThread)
     return false;
@@ -837,45 +852,65 @@ RandomEngine::generateRandomMission ()
   this->setPlaneType (mxUtils::stringToLower (Utils::readAttrib (this->xRootTemplate, mxconst::get_ATTRIB_PLANE_TYPE (), mxconst::get_PLANE_TYPE_HELOS ()))); // v3.0.221.15 Default plane is Helicopter.
   Log::logDebugBO ("[DEBUG random airport] After <briefer_info> node.", true);
 
-  ///// We should read all tags and pick randomly from them.
-  ///// If content available then we will call "generateRandomMissionBasedOnContent()" function
-
-  // TODO: move this part of code as an "else" to "this->flag_rules_defined_by_user_ui" => row 827
-  { // added anonymous block to solve the cross compiling of nContentChilds_i with the "goto command conflict"
-    if (int nContentChilds_i = this->xRootTemplate.getChildNode (mxconst::get_ELEMENT_CONTENT ().c_str ()).nChildNode (); nContentChilds_i > 0)
+  if (!flag_surprise_me_b && nContentChilds_i == 0) // v25.08.1 split the "content" code and moved it before the call to "parse_3D_object_template_element"
+  {
+    // read briefer element before calling "readFlightLegs_directlyFromTemplate()"
+    if (missionx::RandomEngine::threadState.flagAbortThread)
+      return false;
+    else if (!prepareBrieferAndStartLocation ()) // main <briefer>
     {
-      if (!this->generateRandomMissionBasedOnContent (this->xRootTemplate))
-      {
-        missionx::RandomEngine::threadState.flagAbortThread = true;
-        return false;
-      }
-
-      flag_created_based_on_content_element = true;
-      flag_copy_leg_as_is_b                 = Utils::readBoolAttrib (this->xRootTemplate, mxconst::get_ATTRIB_COPY_LEG_AS_IS_B (), false);
+      missionx::RandomEngine::threadState.flagAbortThread = true;
+      return false;
     }
-    else if ( ! flag_surprise_me_b )
-      // else: readFlightLegs_directlyFromTemplate(). This is the "simple" template code, that reads flight legs sequentially
+
+    Log::logDebugBO ("[DEBUG random airport] After <briefer_and_start_location> node.", true);
+
+    // call "readFlightLegs_directlyFromTemplate()"
+    if (!readFlightLegs_directlyFromTemplate ()) // v3.0.217.8
     {
-
-      // read briefer element before calling "readFlightLegs_directlyFromTemplate()"
-      if (missionx::RandomEngine::threadState.flagAbortThread)
-        return false;
-      else if (!prepareBrieferAndStartLocation ()) // main <briefer>
-      {
-        missionx::RandomEngine::threadState.flagAbortThread = true;
-        return false;
-      }
-
-      Log::logDebugBO ("[DEBUG random airport] After <briefer_and_start_location> node.", true);
-
-      // call "readFlightLegs_directlyFromTemplate()"
-      if (!readFlightLegs_directlyFromTemplate ()) // v3.0.217.8
-      {
-        missionx::RandomEngine::threadState.flagAbortThread = true;
-        return false;
-      }
+      missionx::RandomEngine::threadState.flagAbortThread = true;
+      return false;
     }
   }
+
+  // We should read all tags and pick randomly from them.
+  // If content available then we will call "generateRandomMissionBasedOnContent()" function
+  // >>>  move this part of code as an "else" to "this->flag_rules_defined_by_user_ui" => row 827  <<<<
+  // { // added anonymous block to solve the cross compiling of nContentChilds_i with the "goto command conflict"
+  //   if (int nContentChilds_i = this->xRootTemplate.getChildNode (mxconst::get_ELEMENT_CONTENT ().c_str ()).nChildNode (); nContentChilds_i > 0)
+  //   {
+  //     if (!this->generateRandomMissionBasedOnContent (this->xRootTemplate))
+  //     {
+  //       missionx::RandomEngine::threadState.flagAbortThread = true;
+  //       return false;
+  //     }
+  //
+  //     flag_created_based_on_content_element = true;
+  //     flag_copy_leg_as_is_b                 = Utils::readBoolAttrib (this->xRootTemplate, mxconst::get_ATTRIB_COPY_LEG_AS_IS_B (), false);
+  //   }
+  //   else if ( ! flag_surprise_me_b )
+  //     // else: readFlightLegs_directlyFromTemplate(). This is the "simple" template code, that reads flight legs sequentially
+  //   {
+  //
+  //     // read briefer element before calling "readFlightLegs_directlyFromTemplate()"
+  //     if (missionx::RandomEngine::threadState.flagAbortThread)
+  //       return false;
+  //     else if (!prepareBrieferAndStartLocation ()) // main <briefer>
+  //     {
+  //       missionx::RandomEngine::threadState.flagAbortThread = true;
+  //       return false;
+  //     }
+  //
+  //     Log::logDebugBO ("[DEBUG random airport] After <briefer_and_start_location> node.", true);
+  //
+  //     // call "readFlightLegs_directlyFromTemplate()"
+  //     if (!readFlightLegs_directlyFromTemplate ()) // v3.0.217.8
+  //     {
+  //       missionx::RandomEngine::threadState.flagAbortThread = true;
+  //       return false;
+  //     }
+  //   }
+  // }
 
   // POST_MISSION_ACTIONS:
 post_mission_action:
@@ -1013,8 +1048,8 @@ post_mission_action:
   else
   {
     // v3.0.221.7 set xBriefer starting flight leg
-    IXMLNode xml_leg_node = this->xFlightLegs.getChildNode (mxconst::get_ELEMENT_LEG ().c_str ());
-    if (!xml_leg_node.isEmpty ())
+    if (IXMLNode xml_leg_node = this->xFlightLegs.getChildNode (mxconst::get_ELEMENT_LEG ().c_str ())
+      ; !xml_leg_node.isEmpty ())
     {
       std::string firstLegName = Utils::readAttrib (xml_leg_node, mxconst::get_ATTRIB_NAME (), "");
       if (firstLegName.empty ())
@@ -1590,8 +1625,7 @@ RandomEngine::parse_3D_object_template_element (IXMLNode &in_root_template_node,
   // 3. if no name has been provided then return "false", node is not valid.
   // We will use:  xDummyTopNode and x3DObjTemplate (holds pre-defined objects)
 
-  //int nChilds = x3DObjTemplate.nChildNode (mxconst::get_ELEMENT_OBJ3D ().c_str ());
-  int nChilds = in_3d_obj_template_node.nChildNode (mxconst::get_ELEMENT_OBJ3D ().c_str ());
+  const int nChilds = in_3d_obj_template_node.nChildNode (mxconst::get_ELEMENT_OBJ3D ().c_str ());
   for (int i1 = 0; i1 < nChilds; ++i1)
   {
     IXMLNode xObj3d_node_ptr = in_3d_obj_template_node.getChildNode (mxconst::get_ELEMENT_OBJ3D ().c_str (), i1);

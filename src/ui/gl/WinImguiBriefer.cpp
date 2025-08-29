@@ -3443,6 +3443,8 @@ WinImguiBriefer::draw_setup_layer ()
       Utils::xml_search_and_set_node_text (system_actions::pluginSetupOptions.node, mxconst::SETUP_PILOT_NAME, std::string (this->strct_setup_layer.buf_pilotName), this->mxcode.STRING, true);
       this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
     }
+    ImGui::SameLine ();
+    ImGui::TextColored (missionx::color::color_vec4_grey, "Press [enter] to register the name."); // v25.08.1
 
     ImGui::Spacing (); // v3.305.3 moved
 
