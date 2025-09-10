@@ -558,8 +558,9 @@ elseif (UNIX)
 
 endif ()
 
-
-find_library(OPENGL_LIBRARY NAMES OpenGL GL GLU OpenGL OpenGL32.lib GLUE32.lib ) # apt install freeglut3-dev
+# Old syntax
+#find_library(OPENGL_LIBRARY NAMES OpenGL GL GLU OpenGL OpenGL32.lib GLUE32.lib ) # apt install freeglut3-dev
+find_package(OpenGL REQUIRED)
 find_library(FMOD_LIBRARY NAMES fmod fmod_vc.lib)
 
 
@@ -601,10 +602,19 @@ if (WIN32)
   # Unlike OS X and Linux we build standard libraries statically since X-Plane does not provide them.
   if (MSVC)
     # Visual Studio includes many standard libraries already, just need to make sure OpenGL is linked
-    target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
-    target_link_libraries(${PROJECT_NAME} ${FMOD_LIBRARY})
-    target_link_libraries(${PROJECT_NAME} ${ZLIB_LIBRARY}) # needed by curl
-    target_link_libraries(${PROJECT_NAME} ${CURL_LIBRARY})
+    # Old syntax
+    # target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY}) # Maybe will work locally
+#    target_link_libraries(${PROJECT_NAME} ${FMOD_LIBRARY})
+#    target_link_libraries(${PROJECT_NAME} ${ZLIB_LIBRARY}) # needed by curl
+#    target_link_libraries(${PROJECT_NAME} ${CURL_LIBRARY})
+
+    target_link_libraries(${PROJECT_NAME}
+        PRIVATE
+        OpenGL::GL
+        ${FMOD_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${CURL_LIBRARY}
+
 #    target_link_libraries(${PROJECT_NAME} ${OPENSSL_LIBRARY})
   else ()
     target_link_libraries(${PROJECT_NAME} -static-libgcc -static-libstdc++ opengl32)
@@ -652,6 +662,7 @@ elseif (UNIX)
   # target_link_libraries(${PROJECT_NAME} -Wmultichar)  ## added to try and resolve IXMLParser library multichar warning, but it did not resolve it.
 
   target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
+#  target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL) # For Github runner
   target_link_libraries(${PROJECT_NAME} ${FMOD_LIBRARY})
   target_link_libraries(${PROJECT_NAME} ${CURL_LIBRARY}) # depends on your distro, you might need to add "libcurl.so" symlink to the real library name.
 #  target_link_libraries(${PROJECT_NAME} ${OPENSSL_LIBRARY})
