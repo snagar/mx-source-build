@@ -148,6 +148,7 @@ public:
   void  add_font_size_scale_buttons ();
   void  add_skewed_marker_checkbox (); // v3.0.253.6
   void  add_ui_start_mission_button (missionx::mx_window_actions inActionToExecute = mx_window_actions::ACTION_NONE);
+  void  add_ui_ils_vfr_search_airports_button (missionx::mx_window_actions inActionToExecute = mx_window_actions::ACTION_NONE);
   void  add_ui_abort_mission_creation_button (missionx::mx_window_actions inActionToExecute = mx_window_actions::ACTION_ABORT_RANDOM_ENGINE_RUN);
   void  add_ui_expose_all_gps_waypoints (missionx::mx_window_actions inActionToExecute = missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
   void  add_ui_suppress_distance_messages_checkbox_ui (missionx::mx_window_actions inActionToExecute = missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS); // v25.02.1
@@ -207,7 +208,7 @@ public:
     mx_layer_state_enum layer_state{ missionx::mx_layer_state_enum::not_initialized }; // v3.0.253.9
 
 
-    int            iRadioMissionTypePicked{ static_cast<int> (missionx::_mission_type::medevac) }; // which type of template user picked ?
+    int            iRadioMissionTypePicked{ static_cast<int> (missionx::mx_ui_mission_type::medevac) }; // which type of template user picked ?
     int            iMissionSubCategoryPicked{ -1 }; // v3.303.14 // v25.06.1 init -1 which is not valid
     mx_plane_types iRadioPlaneType{ missionx::mx_plane_types::plane_type_helos };
     bool           flag_narrow_helos_filtering{ false };
@@ -609,7 +610,7 @@ public:
     } mx_header_state;
 
     int                                      headerIndex{ 0 }; // v25.03.3. Used only with mapSetupHeaders
-    std::unordered_map<int, mx_header_state> mapSetupHeaders = { { headerIndex, mx_header_state ("General Settings", false) }, { ++headerIndex, mx_header_state ("Simbrief & flightplandatabase.com setup", false) }, { ++headerIndex, mx_header_state ("APT dat optimization", false) }, { ++headerIndex, mx_header_state ("TOOLS", false) }, { ++headerIndex, mx_header_state ("Normalize Mission Sound Volume", false) }, { ++headerIndex, mx_header_state ("OVERPASS Setup", false) }, { ++headerIndex, mx_header_state ("Medevac Setup", false) }, { ++headerIndex, mx_header_state ("External Flight Plan Setup", false) }, { ++headerIndex, mx_header_state ("Default Scoring", false) }, { ++headerIndex, mx_header_state ("Linux: Troubleshoot", false) }, { ++headerIndex, mx_header_state ("Designer: Unsaved Options", false) } };
+    std::unordered_map<int, mx_header_state> mapSetupHeaders = { { headerIndex, mx_header_state ("General Settings", false) }, { ++headerIndex, mx_header_state ("Simbrief & flightplandatabase.com setup", false) }, { ++headerIndex, mx_header_state ("APT data optimization", false) }, { ++headerIndex, mx_header_state ("TOOLS", false) }, { ++headerIndex, mx_header_state ("Normalize Mission Sound Volume", false) }, { ++headerIndex, mx_header_state ("OVERPASS Setup", false) }, { ++headerIndex, mx_header_state ("Medevac Setup", false) }, { ++headerIndex, mx_header_state ("External Flight Plan Setup", false) }, { ++headerIndex, mx_header_state ("Default Scoring", false) }, { ++headerIndex, mx_header_state ("Linux: Troubleshoot", false) }, { ++headerIndex, mx_header_state ("Designer: Unsaved Options", false) } };
 
   } mx_setup_layer;
   mx_setup_layer strct_setup_layer;
@@ -998,7 +999,15 @@ private:
   uiLayer_enum currentLayer{ missionx::uiLayer_enum::imgui_home_layer };
   uiLayer_enum prevBrieferLayer{ missionx::uiLayer_enum::imgui_home_layer };
 
-  const std::list<btn_info> listMainBtn = { { 0, missionx::uiLayer_enum::option_setup_layer, mxconst::get_BITMAP_BTN_SETUP_24X18 (), "Setup", "Setup Screen" }, { 1, missionx::uiLayer_enum::option_user_generates_a_mission_layer, mxconst::get_BITMAP_BTN_LAB_24X18 (), "Create", "Generate random mission" }, { 2, missionx::uiLayer_enum::option_generate_mission_from_a_template_layer, mxconst::get_BITMAP_BTN_PREPARE_MISSION_24X18 (), "Templates", "Generate a Mission based on predefined custom templates" }, { 3, missionx::uiLayer_enum::option_mission_list, mxconst::get_BITMAP_LOAD_MISSION (), "Load Mission", "Load a mission and fly it" }, { 4, missionx::uiLayer_enum::flight_leg_info, mxconst::get_BITMAP_BTN_FLY_MISSION_24X18 (), "Flight planning /\nFlight Progress", "Displays flight leg info when mission is active.\nPlan your Flight Plan (Can fetch data from Simbrief)" }, { 5, missionx::uiLayer_enum::option_external_fpln_layer, mxconst::get_BITMAP_BTN_WORLD_PATH_24X18 (), "External FPLN", "Build mission based on external flight plan\nUsing: flightplandatabase.com and Simbrief" }, { 6, missionx::uiLayer_enum::option_ils_layer, mxconst::get_BITMAP_BTN_NAV_24x18 (), "ILS Approaches /\nNAV data", "Search for airports around you\nthat have ILS approaches\n or search for nav data." }, { 7, missionx::uiLayer_enum::option_conv_fpln_to_mission, mxconst::get_BITMAP_BTN_CONVERT_FPLN_TO_MISSION_24X18 (), "Conv. FPLN", "Convert LittleNavMap FPLN to mission file." }
+  const std::list<btn_info> listMainBtn = { 
+    { 0, missionx::uiLayer_enum::option_setup_layer, mxconst::get_BITMAP_BTN_SETUP_24X18 (), "Setup", "Setup Screen" }, 
+    { 1, missionx::uiLayer_enum::option_user_generates_a_mission_layer, mxconst::get_BITMAP_BTN_LAB_24X18 (), "Create", "Generate random mission" }, 
+    { 2, missionx::uiLayer_enum::option_generate_mission_from_a_template_layer, mxconst::get_BITMAP_BTN_PREPARE_MISSION_24X18 (), "Templates", "Generate a Mission based on predefined custom templates" }, 
+    { 3, missionx::uiLayer_enum::option_mission_list, mxconst::get_BITMAP_LOAD_MISSION (), "Load Mission", "Load a mission and fly it" }, 
+    { 4, missionx::uiLayer_enum::flight_leg_info, mxconst::get_BITMAP_BTN_FLY_MISSION_24X18 (), "Flight planning /\nFlight Progress", "Displays flight leg info when mission is active.\nPlan your Flight Plan (Can fetch data from Simbrief)" }, 
+    { 5, missionx::uiLayer_enum::option_external_fpln_layer, mxconst::get_BITMAP_BTN_WORLD_PATH_24X18 (), "External FPLN", "Build mission based on external flight plan\nUsing: flightplandatabase.com and Simbrief" }, 
+    { 6, missionx::uiLayer_enum::option_ils_layer, mxconst::get_BITMAP_BTN_NAV_24x18 (), "* VFR/ILS Approaches \n* NAV data", "Search for airports around you\nthat have ILS approaches\n or search for nav data." }, 
+    { 7, missionx::uiLayer_enum::option_conv_fpln_to_mission, mxconst::get_BITMAP_BTN_CONVERT_FPLN_TO_MISSION_24X18 (), "Conv. FPLN", "Convert LittleNavMap FPLN to mission file." }
 
   };
 
@@ -1231,7 +1240,11 @@ private:
   std::vector<const char *> cargo_arr_copy; // will hold the copy of the original cargo_arr
   std::vector<std::string>  vecExternalCategories; // v24.05.1
 
-  std::unordered_map<int, std::vector<const char *>> mapMissionCategories = { { static_cast<int> (missionx::mx_mission_type::medevac), data_manager::strct_ui_share_data.medevac_arr }, { static_cast<int> (missionx::mx_mission_type::oil_rig), data_manager::strct_ui_share_data.oilrig_arr }, { static_cast<int> (missionx::mx_mission_type::cargo), data_manager::strct_ui_share_data.cargo_arr } };
+  std::unordered_map<int, std::vector<const char *>> mapMissionCategories = {
+    { static_cast<int> (missionx::mx_ui_mission_type::medevac), data_manager::strct_ui_share_data.medevac_arr },
+    { static_cast<int> (missionx::mx_ui_mission_type::oil_rig), data_manager::strct_ui_share_data.oilrig_arr },
+    { static_cast<int> (missionx::mx_ui_mission_type::cargo), data_manager::strct_ui_share_data.cargo_arr }
+  };
 
 
 

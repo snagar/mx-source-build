@@ -1695,8 +1695,7 @@ missionx::Mission::exec_apt_dat_optimization()
   {
     Log::logAttention("apt dat optimization is currently running. Please wait for it to finish first.");
     XPLMSpeakString("apt dat optimization is currently running. Please wait for it to finish first.");
-
-    missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::disable_aptdat_optimize_menu);
+  
   }
   else
   {
@@ -1722,16 +1721,18 @@ missionx::Mission::exec_apt_dat_optimization()
       this->optAptDat.set_database_pointers(&data_manager::db_xp_airports); // v3.0.241.10
     }
 
-    if (data_manager::init_xp_airport_db2()) // v3.0.255.3
+    if (data_manager::init_in_memory_xp_airport_db()) // v3.0.255.3 in memory sqlite
     {
       this->optAptDat.set_database_pointers2(&data_manager::db_cache); // v3.0.255.3
     }
 
     this->optAptDat.exec_optimize_aptdat_thread();
-    missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::disable_aptdat_optimize_menu);
+    
     // clear cached nav data
     // this->engine.resetCache(); // v24.12.2 deprecated, it does nothing.
   }
+
+  missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::disable_aptdat_optimize_menu);
 }
 
 // -------------------------------------
@@ -1789,7 +1790,8 @@ missionx::Mission::flc_threads()
       // reset thread
       if (missionx::OptimizeAptDat::aptState.flagThreadDoneWork)
       {
-        const std::string msg = "\t\t--- APT.DAT optimization finished (" + OptimizeAptDat::aptState.getDuration() + "s) ---";
+        //const std::string msg = "\t\t--- APT.DAT optimization finished (" + OptimizeAptDat::aptState.getDuration() + "s) ---";
+        const std::string msg = fmt::format("--- APT DATA optimization finished ({}s) ---{}", OptimizeAptDat::aptState.getDuration(), data_manager::post_optimization_outcome.empty ()? "":"\n" + data_manager::post_optimization_outcome);
 
         if (missionx::OptimizeAptDat::thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
           missionx::OptimizeAptDat::thread_ref.join();
@@ -1799,7 +1801,7 @@ missionx::Mission::flc_threads()
         missionx::data_manager::flag_apt_dat_optimization_is_running = false;
         missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::enable_aptdat_optimize_menu);
 
-        // v3.0.253.6 add progress message
+        // v3.0.253.6 add a progress message
         if (Mission::uiImGuiBriefer != nullptr)
           Mission::uiImGuiBriefer->setMessage(msg);
       }
@@ -3692,52 +3694,39 @@ missionx::Mission::drawCallback(const XPLMDrawingPhase& inPhase, const int inIsB
   missionx::dataref_param::set_dataref_values_into_xplane(data_manager::mapSharedParams[missionx::dref::DREF_SHARED_DRAW_ROTATION]);
 
   // Plane position
-#ifdef MAC
+  #ifdef MAC
   if ( this->drawPhase == inPhase || xplm_Phase_Window == inPhase || xplm_Phase_Objects == inPhase /*OpenGL*/ )
-#else
+  #else
   if ((this->drawPhase == inPhase /*What we set might not be Object/Modern phase*/) || (xplm_Phase_Objects == inPhase /*OpenGL*/) || (xplm_Phase_Modern3D == inPhase /*Vulkan/Metal*/))
-#endif // MAC
+  #endif // MAC
   {
     // Fix for GL lines not drawing correctly. Here is Sydney explanation: This is not a terrain probe problem, instead it's a reverse-y problem when running HDR. The problem here is that X-Plane doesn't correctly publish a reverse-y'd
     // projection matrix to the OpenGL fixed function pipeline, leading to the rendering being done upside down. You can actually get a correctly reverse-y aware projection matrix via datarefs. The following code would work if you don't
     // want to wait for 11.51
     // TODO: Although for what it's worth, you might not even want to use the modern 3D drawing callback at all. Opting into it is very expensive overlays can be drawn much cheaper in the 2D drawing phase. There actually is example code
     // for that available here: https://developer.x-plane.com/code-sample/coachmarks/
-#ifndef RELEASE
 
-#ifdef MAC
-    if (data_manager::xplane_ver_i < missionx::XP12_VERSION_NO ) //&& data_manager::xplane_using_modern_driver_b && this->drawPhase == inPhase) // v3.303.8 ignore in XP12
-#else
-    if (data_manager::xplane_ver_i < missionx::XP12_VERSION_NO  ) //&& (data_manager::xplane_using_modern_driver_b && (xplm_Phase_Modern3D == inPhase  || xplm_Phase_Objects == inPhase) ) ) // v3.303.8 ignore in XP12
-#endif // MAC
+    #ifndef RELEASE
+    if (data_manager::xplane_ver_i < missionx::XP12_VERSION_NO) //&& (data_manager::xplane_using_modern_driver_b && (xplm_Phase_Modern3D == inPhase  || xplm_Phase_Objects == inPhase) ) ) // v3.303.8 ignore in XP12
     {
-      //const static XPLMDataRef proj_matrix = this->drefConst.dref_projection_matrix_3d_arr;
+      // const static XPLMDataRef proj_matrix = this->drefConst.dref_projection_matrix_3d_arr;
+      GLfloat projection_arr[16];
+      XPLMGetDatavf (this->drefConst.dref_projection_matrix_3d_arr, projection_arr, 0, 16);
+      glMatrixMode (GL_PROJECTION);
+      glLoadMatrixf (projection_arr);
+
+      // Display Cue Info only in DEBUG mode (not sure if I should do that. I'll have to test performance differences)
+      if (missionx::Mission::displayCueInfo)
       {
-        GLfloat projection_arr[16];
-        XPLMGetDatavf(this->drefConst.dref_projection_matrix_3d_arr, projection_arr, 0, 16);
-
-        glMatrixMode(GL_PROJECTION);
-        glLoadMatrixf(projection_arr);
-      }
-
-    // Display Cue Info only in DEBUG mode (not sure if I should do that. I'll have to test performance differences)
-      if (data_manager::xplane_ver_i < missionx::XP12_VERSION_NO) // v3.303.8 ignore in XP12
-      {
-        if (this->displayCueInfo)
-        {
-          /* Reset the graphics state.  This turns off fog, texturing, lighting,
-           * alpha blending or testing and depth reading and writing, which
-           * guarantees that our axes will be seen no matter what. */
-          XPLMSetGraphicsState(0, 0, 0, 0, 0, 0, 0);
-          data_manager::drawCueInfo();
-          XPLMSetGraphicsState(0, 0, 0, 0, 0, 0, 0);
-
-        }
+        /* Reset the graphics state.  This turns off fog, texturing, lighting,
+         * alpha blending or testing and depth reading and writing, which
+         * guarantees that our axes will be seen no matter what. */
+        XPLMSetGraphicsState (0, 0, 0, 0, 0, 0, 0);
+        data_manager::drawCueInfo ();
+        XPLMSetGraphicsState (0, 0, 0, 0, 0, 0, 0);
       }
     } // draw only in XP11
-#endif
-
-
+    #endif
 
     // v3.0.207.1 // calculate all moving objects if not empty
     if (!data_manager::listDisplayMoving3dInstances.empty() &&
@@ -3773,13 +3762,7 @@ missionx::Mission::drawCallback(const XPLMDrawingPhase& inPhase, const int inIsB
       this->gatherStats_identify_takeoff_and_landings(); // v3.0.255.1
     }
 
-
-    if (data_manager::xplane_ver_i < missionx::XP12_VERSION_NO  )
-    {
-      glMatrixMode(GL_PROJECTION);
-      glPopMatrix();
-    }
-
+  
   } // end xplm_Phase_Objects
 
 
@@ -4255,7 +4238,7 @@ missionx::Mission::flcPRE()
       case missionx::mx_flc_pre_command::exec_apt_dat_optimization:
       {
         #ifndef RELEASE
-        missionx::Log::logMsg("[Missionx] Menu Optimize \"apt.dat\" files (should take 1-2min, depends on machine, runs in the background).");
+        missionx::Log::logMsg("[Missionx] Menu Optimize \"apt data\" files (should take 1-2min, depends on machine, runs in the background).");
         #endif
         exec_apt_dat_optimization();
       }
@@ -4341,7 +4324,7 @@ missionx::Mission::flcPRE()
           char outPathAndFile[2048]{ 0 };
           XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, outFileName, outPathAndFile); // we will only return the file name
 
-          const std::string acf_path_s                          = std::string(outPathAndFile);
+          const auto acf_path_s                          = std::string(outPathAndFile);
           missionx::data_manager::flag_abort_gather_acf_info_thread = false;
           missionx::data_manager::mFetchFutures.push_back(std::async(std::launch::async, missionx::data_manager::gather_custom_acf_datarefs_as_a_thread, acf_path_s, &missionx::data_manager::flag_gather_acf_info_thread_is_running, &missionx::data_manager::flag_abort_gather_acf_info_thread));
         }
@@ -4368,7 +4351,7 @@ missionx::Mission::flcPRE()
           char outPathAndFile[2048]{ 0 };
           XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, outFileName, outPathAndFile); // we will only return the file name
 
-          const std::string acf_path_s                          = std::string(outPathAndFile);
+          const auto acf_path_s                          = std::string(outPathAndFile);
           missionx::data_manager::flag_abort_gather_acf_info_thread = false;
           missionx::data_manager::mFetchFutures.push_back(std::async(std::launch::async, missionx::data_manager::gather_custom_acf_datarefs_as_a_thread, acf_path_s, &missionx::data_manager::flag_gather_acf_info_thread_is_running, &missionx::data_manager::flag_abort_gather_acf_info_thread));
         }
@@ -4509,7 +4492,7 @@ missionx::Mission::flcPRE()
           {
             Mission::uiImGuiBriefer->strct_user_create_layer.layer_state       = missionx::mx_layer_state_enum::failed_data_is_not_present;
             Mission::uiImGuiBriefer->strct_generate_template_layer.layer_state = missionx::mx_layer_state_enum::failed_data_is_not_present;
-            Mission::uiImGuiBriefer->setMessage("Failed to validate the presence of OPTIMIZED Database. Suggestion: Re-Run apt.dat optimization.");
+            Mission::uiImGuiBriefer->setMessage("Failed to validate the presence of OPTIMIZED Database. Suggestion: Re-Run apt data optimization.");
           }
         }
         else
@@ -4517,7 +4500,7 @@ missionx::Mission::flcPRE()
           // Failure to initiate the database
           Mission::uiImGuiBriefer->strct_user_create_layer.layer_state       = missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly;
           Mission::uiImGuiBriefer->strct_generate_template_layer.layer_state = missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly;
-          Mission::uiImGuiBriefer->setMessage("ERROR!!! Mission-X plugin failed to load/open the local database in {missionx/db} folder. Try to delete it and rerun apt.dat optimization.");
+          Mission::uiImGuiBriefer->setMessage("ERROR!!! Mission-X plugin failed to load/open the local database in {missionx/db} folder. Try to delete it and rerun apt data optimization.");
         }
       }
       break;
@@ -4582,7 +4565,7 @@ missionx::Mission::flcPRE()
           if (counter <= 0)
           {
             Mission::uiImGuiBriefer->strct_ils_layer.layer_state = missionx::mx_layer_state_enum::failed_data_is_not_present;
-            Mission::uiImGuiBriefer->setMessage("Failed to validate the presence of valid ILS data information. Suggestion: Re-Run apt.dat optimization.");
+            Mission::uiImGuiBriefer->setMessage("Failed to validate the presence of valid ILS data information. Suggestion: Re-Run apt data optimization.");
           }
           else
           {
@@ -4594,7 +4577,7 @@ missionx::Mission::flcPRE()
         {
           // Failure to initiate the database
           Mission::uiImGuiBriefer->strct_ils_layer.layer_state = missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly;
-          Mission::uiImGuiBriefer->setMessage("ERROR!!! Mission-X plugin failed to load/open the local database in {missionx/db} folder. Try to delete it and rerun apt.dat optimization.");
+          Mission::uiImGuiBriefer->setMessage("ERROR!!! Mission-X plugin failed to load/open the local database in {missionx/db} folder. Try to delete it and rerun apt data optimization.");
         }
       }
       break;
@@ -4667,7 +4650,7 @@ missionx::Mission::flcPRE()
 
           if (overrideLegName.empty() && flag_auto_position_plane)
             data_manager::briefer.positionPlane(missionx::data_manager::flag_setupForcePlanePositioningAtMissionStart, missionx::data_manager::flag_setupChangeHeadingEvenIfPlaneIn_20meter_radius);
-            // data_manager::briefer.positionPlane(missionx::data_manager::flag_setupForcePlanePositioningAtMissionStart, missionx::data_manager::flag_setupChangeHeadingEvenIfPlaneIn_20meter_radius, data_manager::xplane_ver_i);
+            // data_manager::briefer.positionPlane2(missionx::data_manager::flag_setupForcePlanePositioningAtMissionStart, missionx::data_manager::flag_setupChangeHeadingEvenIfPlaneIn_20meter_radius, data_manager::xplane_ver_i);
 
           // v3.303.12 apply weather from global settings
           if (!missionx::data_manager::mx_global_settings.xWeather_ptr.isEmpty())
@@ -4682,7 +4665,7 @@ missionx::Mission::flcPRE()
         else if (data_manager::missionState == mx_mission_state_enum::mission_loaded_from_savepoint)
         {
           // we force heading after mission was loaded in the hope to solve a bug where the plane always rotats to 180 deg
-          const float heading_psi_f = Utils::readNodeNumericAttrib<float>(data_manager::mx_global_settings.node, mxconst::get_ATTRIB_HEADING_PSI(), XPLMGetDataf(drefConst.dref_heading_psi_f) ); // v3.303.8.3
+          const auto heading_psi_f = Utils::readNodeNumericAttrib<float>(data_manager::mx_global_settings.node, mxconst::get_ATTRIB_HEADING_PSI(), XPLMGetDataf(drefConst.dref_heading_psi_f) ); // v3.303.8.3
           data_manager::briefer.setPlaneHeading(heading_psi_f);
 
           // v3.303.13 apply SAVED weather from global settings
@@ -4843,7 +4826,7 @@ missionx::Mission::flcPRE()
       break;
       case missionx::mx_flc_pre_command::disable_aptdat_optimize_menu:
       {
-        const std::string msg = "Processing - APT.DAT optimization (" + OptimizeAptDat::aptState.getDuration() + "s)";
+        const std::string msg = "Processing - APT DATA optimization (" + OptimizeAptDat::aptState.getDuration() + "s)";
         XPLMSetMenuItemName(this->missionMenuEntry, this->mx_menu.optimizeAptDatMenu, msg.c_str(), 0);
         XPLMEnableMenuItem(this->missionMenuEntry, this->mx_menu.optimizeAptDatMenu, false);
 
@@ -4856,7 +4839,7 @@ missionx::Mission::flcPRE()
       break;
       case missionx::mx_flc_pre_command::enable_aptdat_optimize_menu:
       {
-        std::string msg = "apt.dat optimization (run in the background: 1-2min)";
+        std::string msg = "apt data optimization (run in the background: 1-2min)";
         if (!OptimizeAptDat::aptState.duration_s.empty())
           msg += "(last run: " + OptimizeAptDat::aptState.duration_s + "s)";
 
@@ -5734,7 +5717,7 @@ missionx::Mission::flcPRE()
             bool bLock = true;
             data_manager::threadStateMetar.init();
             missionx::data_manager::mFetchFutures.push_back(
-              std::async(std::launch::async, missionx::data_manager::fetch_METAR, &missionx::Mission::uiImGuiBriefer->strct_ils_layer.mapNavaidData, &missionx::Mission::uiImGuiBriefer->strct_ils_layer.fetch_metar_state, &this->uiImGuiBriefer->strct_ils_layer.asyncMetarFetchMsg_s, &Mission::uiImGuiBriefer->asyncSecondMessageLine, &bLock));
+              std::async(std::launch::async, missionx::data_manager::fetch_METAR, &missionx::Mission::uiImGuiBriefer->strct_ils_layer.mapNavaidData, &missionx::Mission::uiImGuiBriefer->strct_ils_layer.fetch_metar_state, &missionx::Mission::uiImGuiBriefer->strct_ils_layer.asyncMetarFetchMsg_s, &Mission::uiImGuiBriefer->asyncSecondMessageLine, &bLock));
           }
         }
       }
@@ -5746,6 +5729,25 @@ missionx::Mission::flcPRE()
       case missionx::mx_flc_pre_command::load_briefer_textures:
       {
         missionx::data_manager::readPluginTextures ();
+      }
+      break;
+      case missionx::mx_flc_pre_command::get_metar_for_airport:
+      {
+        // v25.09.1 get METAR from X-Plane if a version is 12.x or newer
+        
+        using GetMetarPtr = void(*)(const char *id, XPLMFixedString150_t *outMETAR);
+        GetMetarPtr getMetar{};
+        if (data_manager::xplm_version >= 400)
+        {
+          getMetar = (GetMetarPtr) XPLMFindSymbol("XPLMGetMETARForAirport");
+          if (getMetar)
+          {
+            XPLMFixedString150_t strct_metar;
+            getMetar( data_manager::shared_navaid_between_threads.ID, &strct_metar );
+            data_manager::shared_navaid_between_threads.sMetar = mxUtils::trim ( std::string(strct_metar.buffer) );
+          }
+        }
+        data_manager::metar_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
       default:

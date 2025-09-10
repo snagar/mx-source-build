@@ -172,7 +172,7 @@ missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(thread_state* inThrea
 
         auto const lmbda_get_apt_dat_path = [](const std::string& inSceneryPack, const int inXplaneVersion, std::string inDefaultAptDatFile)
         {
-          if (inXplaneVersion < 12000)
+          if (inXplaneVersion < missionx::XP12_VERSION_NO)
           {
             return inSceneryPack + "Earth nav data/apt.dat"; // XP11
           }
@@ -216,6 +216,7 @@ missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(thread_state* inThrea
         auto end  = std::chrono::steady_clock::now();
         auto diff = end - start;
         duration  = std::chrono::duration<double, std::milli>(diff).count();
+        
         Log::logAttention("Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec), for: " + relative_apt_dat_path, true);
         #endif // !RELEASE
       }
@@ -355,13 +356,13 @@ missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(thread_state* inThrea
           missionx::OptimizeAptDat::sqlite_post_tables_copy(OptimizeAptDat::db_airports_xp_ptr);
         }
 
-        // clear memory sqlite cahced db
+        // clear memory sqlite cached db
         OptimizeAptDat::prepare_sqlite_db_tables(inThreadState, OptimizeAptDat::db_airports_cache_ptr); // Release memory with reconstructing all tables that hold the information
       }
 
 
       // v3.303.14 Fix airport ICAO names that are not the same as their metadata ones. We do not fix the xp_ap_metadata.icao field in order to keep the original values as a reference
-      // Must come after the in memory cach flush itself so it won't override this fix statement.
+      // Must come after the in memory cache flush itself so it won't override this fix statement.
       const std::string update_stmt_fix_xp_airports_icao = R"(
 update xp_airports
 set icao = (
@@ -433,6 +434,7 @@ where  xp_ap_metadata.icao not in (select t1.icao
       auto diff           = endThreadClock - startThreadClock;
       duration            = std::chrono::duration<double, std::milli>(diff).count();
 
+      missionx::data_manager::sqlite_test_db_validity (missionx::data_manager::db_xp_airports, true); // v25.09.1
       Log::logAttention("*** Finish Parsing and Loading APT.DAT + ILS data into the database. Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec)  ****", true);
     }
 

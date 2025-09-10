@@ -367,7 +367,7 @@ XPluginStart(char* outName, char* outSig, char* outDesc)
 
   if (missionx::data_manager::init_xp_airport_db()) // v3.0.255.3 The airport database is a key component in the Random Mission builder. We need to establish validity when plugin starts
   {
-    missionx::data_manager::sqlite_test_db_validity(missionx::data_manager::db_xp_airports); // v3.0.255.3
+    missionx::data_manager::sqlite_test_db_validity(missionx::data_manager::db_xp_airports); // v3.0.255.3    
   }
 
   // 24.12.2 Seed the std::rnd with current time

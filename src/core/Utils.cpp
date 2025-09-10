@@ -1408,6 +1408,9 @@ missionx::Utils::xml_get_node_randomly_by_name_IXMLNode (const IXMLNode & rootNo
 {
   IXMLNode result = IXMLNode::emptyIXMLNode;
 
+  if (rootNode.isEmpty ()) // v25.09.1 fix a crash if not based on OSM
+    return result;
+
   if (const int nChilds = (inTagToSearch.empty ()) ? rootNode.nChildNode () : rootNode.nChildNode (inTagToSearch.c_str ())
     ; nChilds > 0)
   {
@@ -2159,8 +2162,40 @@ missionx::Utils::xml_set_text(IXMLNode& node, const std::string &inDefaultValue)
 std::string
 missionx::Utils::xml_get_text (const ITCXMLNode & node, const std::string &inDefaultValue)
 {
+  if (node.isEmpty())
+    return inDefaultValue;
+
   const IXMLNode xNode = node.deepCopy();
   return Utils::xml_get_text(xNode, inDefaultValue);
+}
+
+// ----------------------------------------------------------------
+
+std::string
+Utils::xml_get_tag_name (const IXMLNode &node, const std::string &in_alternative_value)
+{
+  if (node.isEmpty())
+    return in_alternative_value;
+
+  return node.getName ();
+}
+
+// ----------------------------------------------------------------
+
+bool
+Utils::xml_set_tag_name (IXMLNode &node, const std::string &in_new_tag_name)
+{
+  if (!( node.isEmpty() + mxUtils::trim ( in_new_tag_name).empty () ) )
+  {
+    node.updateName (in_new_tag_name.c_str());
+    return true;
+  }
+  #ifndef RELEASE
+  else
+    Log::logMsg (fmt::format ("[{}] Node or new tag name are invalid. Node Empty: {}, new tag name: '{}'", __func__, node.isEmpty (), in_new_tag_name));
+  #endif
+
+  return false;
 }
 
 // ----------------------------------------------------------------
@@ -3056,80 +3091,78 @@ missionx::Utils::position_plane_in_ICAO(const std::string& inICAO)
   return true;
 }
 
-// bool
-// missionx::Utils::position_plane_in_ICAO(std::string inICAO, float lat, float lon, const float currentPlaneLat, const float currentPlanelon, const bool flag_FindNearestAirportIfIcaoIsNotValid)
-// {
-//   // [[maybe_unused]]
-//   // bool flag_positioned_plane_in_ICAO = false;
-//   #ifndef RELEASE
-//   constexpr std::string_view FAILED_POSITIONING_VU = "Plugin might fail to position plane. Please position the plane in the starting icao and then try again.";
-//   #endif
-//
-//
-//   if (const XPLMNavRef navRef = XPLMFindNavAid (nullptr, inICAO.c_str (), nullptr, nullptr, nullptr, xplm_Nav_Airport)
-//     ; navRef == XPLM_NAV_NOT_FOUND || inICAO.empty ())
-//   {
-//     Log::logMsg ("Failed to find airport with ICAO: " + inICAO);
-//     if (flag_FindNearestAirportIfIcaoIsNotValid)
-//     {
-//       #ifndef RELEASE
-//       Log::logMsg ("Search for nearest airport to target lat/lon");
-//       #endif // !RELEASE
-//       if (lat != 0.0f && lon != 0.0f)
-//       {
-//
-//         if (const XPLMNavRef local_navRef = XPLMFindNavAid (nullptr, nullptr, &lat, &lon, nullptr, xplm_Nav_Airport)
-//           ; local_navRef == XPLM_NAV_NOT_FOUND)
-//         {
-//           if (Utils::calcDistanceBetween2Points_nm (currentPlaneLat, currentPlanelon, lat, lon) > 100) // if target is more than 100nm from target
-//           {
-//             #ifndef RELEASE
-//             XPLMSpeakString (FAILED_POSITIONING_VU.data ());
-//             #endif // !RELEASE
-//             Log::logMsg ("Failed to find airport with ICAO: " + inICAO);
-//             return false;
-//           }
-//         }
-//         else
-//         {
-//           char ID[32]{ 0 };
-//           XPLMGetNavAidInfo (local_navRef, nullptr, &lat, &lon, nullptr, nullptr, nullptr, ID, nullptr, nullptr);
-//           inICAO = std::string (ID);
-//           if (inICAO.empty ())
-//           {
-//             #ifndef RELEASE
-//             XPLMSpeakString (FAILED_POSITIONING_VU.data ());
-//             #endif // !RELEASE
-//
-//             return false;
-//           }
-//           else
-//           {
-//             XPLMPlaceUserAtAirport (inICAO.c_str ());
-//           }
-//         }
-//       }
-//       else
-//       {
-//         Log::logMsg ("No alternative lat/lon provided so can't position plane. Fix the starting ICAO or provide a valid <location_adjust> lat/lon values. ");
-//         return false;
-//       }
-//     } // end flag_FindNearestAirportIfIcaoIsNotValid = true
-//     else
-//     {
-//       Log::logMsg ("No ICAO by the name: " + inICAO + " found, Fix the starting ICAO.");
-//       return false;
-//     }
-//   } // end XPLM_NAV_NOT_FOUND
-//   else
-//   {
-//     XPLMPlaceUserAtAirport (inICAO.c_str ()); // position plane in ICAO
-//   }
-//
-//
-//
-//   return true;
-// }
+bool
+missionx::Utils::position_plane_in_ICAO2(std::string inICAO, float lat, float lon, const float currentPlaneLat, const float currentPlanelon, const bool flag_FindNearestAirportIfIcaoIsNotValid)
+{
+  // [[maybe_unused]]
+  // bool flag_positioned_plane_in_ICAO = false;
+  #ifndef RELEASE
+  constexpr std::string_view FAILED_POSITIONING_VU = "Plugin might fail to position plane. Please position the plane in the starting icao and then try again.";
+  #endif
+
+
+  if (const XPLMNavRef navRef = XPLMFindNavAid (nullptr, inICAO.c_str (), nullptr, nullptr, nullptr, xplm_Nav_Airport)
+    ; navRef == XPLM_NAV_NOT_FOUND || inICAO.empty ())
+  {
+    Log::logMsg ("Failed to find airport with ICAO: " + inICAO);
+    if (flag_FindNearestAirportIfIcaoIsNotValid)
+    {
+      #ifndef RELEASE
+      Log::logMsg ("Search for nearest airport to target lat/lon");
+      #endif // !RELEASE
+      if (lat != 0.0f && lon != 0.0f)
+      {
+
+        if (const XPLMNavRef local_navRef = XPLMFindNavAid (nullptr, nullptr, &lat, &lon, nullptr, xplm_Nav_Airport)
+          ; local_navRef == XPLM_NAV_NOT_FOUND)
+        {
+          if (Utils::calcDistanceBetween2Points_nm (currentPlaneLat, currentPlanelon, lat, lon) > 100) // if target is more than 100nm from target
+          {
+            #ifndef RELEASE
+            XPLMSpeakString (FAILED_POSITIONING_VU.data ());
+            #endif // !RELEASE
+            Log::logMsg ("Failed to find airport with ICAO: " + inICAO);
+            return false;
+          }
+        }
+        else
+        {
+          char ID[32]{ 0 };
+          XPLMGetNavAidInfo (local_navRef, nullptr, &lat, &lon, nullptr, nullptr, nullptr, ID, nullptr, nullptr);
+          inICAO = std::string (ID);
+          if (inICAO.empty ())
+          {
+            #ifndef RELEASE
+            XPLMSpeakString (FAILED_POSITIONING_VU.data ());
+            #endif // !RELEASE
+
+            return false;
+          }
+          else
+          {
+            XPLMPlaceUserAtAirport (inICAO.c_str ());
+          }
+        }
+      }
+      else
+      {
+        Log::logMsg ("No alternative lat/lon provided so can't position plane. Fix the starting ICAO or provide a valid <location_adjust> lat/lon values. ");
+        return false;
+      }
+    } // end flag_FindNearestAirportIfIcaoIsNotValid = true
+    else
+    {
+      Log::logMsg ("No ICAO by the name: " + inICAO + " found, Fix the starting ICAO.");
+      return false;
+    }
+  } // end XPLM_NAV_NOT_FOUND
+  else
+  {
+    XPLMPlaceUserAtAirport (inICAO.c_str ()); // position plane in ICAO
+  }
+
+  return true;
+}
 
 
 // -------------------------------------------
@@ -3384,6 +3417,53 @@ missionx::Utils::getAndFixStartingDayValue(const std::string& inStarting_day)
   }
 
   return inStarting_day;
+}
+
+IXMLNode
+Utils::xml_merge_source_with_target_node (const IXMLNode &in_source, IXMLNode &out_target, const bool in_replace_existing)
+{
+  if (in_source.isEmpty() || out_target.isEmpty())
+    return out_target;
+
+  const auto nChild = in_source.nChildNode();
+  for (int iLoop = 0; iLoop < nChild; ++iLoop)
+  {
+    if (auto node = in_source.getChildNode(iLoop)
+      ; !node.isEmpty())
+    {
+      const auto tag = node.getName ();
+      auto target_subnode = out_target.getChildNode(tag);
+      if (in_replace_existing && !target_subnode.isEmpty())
+      {
+        target_subnode.deleteNodeContent ();
+        target_subnode = out_target.addChild (node.deepCopy());
+      }
+      else if (target_subnode.isEmpty()) // does not exists
+      {
+        target_subnode = out_target.addChild (node.deepCopy());
+      }
+    } // end source node is valid node
+  } // end iLoop
+
+  return out_target;
+}
+
+// -------------------------------------------
+
+IXMLNode
+Utils::xml_add_child_nodes (IXMLNode &inParent, const std::vector<std::string > &vec_tag_names)
+{
+  if (inParent.isEmpty())
+    return inParent;
+
+  for (const auto &v: vec_tag_names)
+  {
+    auto child = inParent.getChildNode (v.c_str ());
+    if (child.isEmpty ())
+      child = inParent.addChild (v.c_str ());
+  }
+
+  return inParent;
 }
 
 // -------------------------------------------

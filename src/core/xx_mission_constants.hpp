@@ -35,7 +35,7 @@ constexpr static const int MX_FEATURES_VERSION = 20250501; //20241212; //2023091
 #define SPECIAL_BUILD ""
 
 inline constexpr static auto PLUGIN_VER_MAJOR                  = "25"; // year
-inline constexpr static auto PLUGIN_VER_MINOR                  = "08"; // month
+inline constexpr static auto PLUGIN_VER_MINOR                  = "09"; // month
 inline constexpr static auto PLUGIN_VER_SUB                    = "1"; // sub-version
 inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
@@ -164,6 +164,40 @@ namespace enums
 //   loaded_from_savepoint = 1,
 //   loaded_from_random = 2
 // } mx_from_where_mission_was_loaded;
+
+
+typedef enum class rnd_user_picked_mission_type_enum
+  : int8_t
+{
+  undefined = 0,
+    medevac = 1,
+    osm_medevac,
+    oilrig_medevac,
+    osm_gen,
+    cargo,
+    oilrig_cargo
+} mx_user_picked_mission_type;
+
+
+typedef enum class rnd_task_type_enum : uint8_t
+{
+  undefined = 0,
+  medevac = 1,
+  cargo
+} mx_rnd_task_type;
+
+
+typedef enum class rnd_mission_phase_enum : uint8_t
+{
+  undefined = 0,
+  start = 1,
+  land_target,
+  land_extraction  // represent last location or the leg after the "land_target"
+} mx_rnd_mission_phase;
+
+
+
+
 
 typedef enum class mx_osm_regions_enum : uint8_t
 {
@@ -304,6 +338,20 @@ typedef struct BBox_struct {
   }
 
 } BBox;
+
+// v25.09.1
+typedef struct def_expected_location_data
+{
+  float nm_between_min  {-1.0f};
+  float nm_between_max  {-1.0f};
+  std::string error;
+  std::string location_type;
+  std::string location_properties_s;
+  std::string flight_leg_type_hover_land_or_start;
+  std::vector<std::string>           vecLocationValueSplit_vec;
+  std::map<std::string, std::string> mapLocationSplitValues;
+
+} strct_expected_location_data;
 
 }
 
@@ -826,14 +874,15 @@ typedef enum class _unitsOfMeasure
   nm  // nautical miles
 } mx_units_of_measure;
 
-typedef enum class _mission_type
+typedef enum class _ui_mission_type
   : int8_t
 {
   not_defined = -1,
   medevac = 0,
   cargo   = 1,
   oil_rig = 2
-} mx_mission_type;
+} mx_ui_mission_type;
+
 
 // v3.303.14
 typedef enum class _mission_subcategory_type

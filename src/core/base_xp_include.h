@@ -9,6 +9,7 @@
 
 // X-Plane includes
 
+#include "XPLMDefs.h"
 #include "XPLMDataAccess.h"
 #include "XPLMDisplay.h"
 #include "XPLMGraphics.h"

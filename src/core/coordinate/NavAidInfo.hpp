@@ -68,23 +68,33 @@ public:
   bool fpln_is_last_flight_leg {false};
   int fpln_seq{ -1 }; // v25.06.1 can hold a sequence number to be used with RandomEngin and Surprise Me flow.
   bool fpln_is_wet{ false };
+  bool fpln_navaid_was_already_prepared{ false }; // v25.09.1 Will be used with the new Oilrig function. The briefer navaid is setup by the gen_oilrig_targets() function.
   double fpln_slope{ 0.0 }; // holds the expected slope at the target area
 
+  // v25.09.1
+  missionx::enums::mx_rnd_task_type            fpln_task_type{ missionx::enums::mx_rnd_task_type::undefined }; // high level type of mission: medevac or cargo
+  missionx::enums::mx_user_picked_mission_type fpln_mission_type{ missionx::enums::mx_user_picked_mission_type::undefined }; // more detail mission type, medevac/oilrig_medevac/oilrig_cargo
+  missionx::enums::mx_rnd_mission_phase        fpln_mission_phase{ missionx::enums::mx_rnd_mission_phase::undefined }; // start/land_target/land_extraction
+
+  bool                                              fpln_is_oilrig{ false }; // v25.09.1
+
   // Valid values: "land_hover", "land". Used with the osm_gen.xml nodes. Each <q> node should have "wp_type" attribute that hints the plugin how to deal with the wp.
-  // "land_hover" will have two triggers based tasks that will allow you to either land or hover. "land" type will have one task based trigger, with smaller radius to land in.
+  // "land_hover" will have two triggers-based tasks that will allow you to either land or hover. "land" type will have one task based trigger, with smaller radius to land in.
   // As a rule of thumb, Odd sequence = "land_hover", while Even = "land". Example "seq=1" -> "land_hover", "seq=2" -> "land".
 
   double fpln_distance_between_prev_and_current_navaid{ 0.0f };
   double fpln_distance_to_next_navaid{ 0.0f };
-  std::string fpln_osm_wp_type;
+  std::string fpln_wp_type;
   std::string fpln_leg_name;
   IXMLNode fpln_xml_target_leg_node; // holds a pointer to the XML node that represent this navaid. Example: trigger node.
   IXMLNode fpln_xml_inv_node; // holds the target inventory information during random engine mission generation
   IXMLNode fpln_xml_osm_q_node; // holds original osm_query <q> node
   IXMLNode fpln_xml_way_node; // holds <way> node result
   IXMLNode fpln_xml_q_tag_header_node; // holds <{topic}> node without the childs, at first
-
   ///// End v25.06.1
+
+  // v25.09.1
+  std::string sMetar;
 
    missionx::NavAidInfo& operator= (const NavAidInfo &in_na)
    {
@@ -152,13 +162,22 @@ public:
      fpln_is_last_flight_leg    = in_na.fpln_is_last_flight_leg; // v25.06.1
      fpln_is_wet                = in_na.fpln_is_wet; // v25.06.1
      fpln_seq                   = in_na.fpln_seq; // v25.06.1
-     fpln_osm_wp_type           = in_na.fpln_osm_wp_type; // v25.06.1
+     fpln_wp_type           = in_na.fpln_wp_type; // v25.06.1
      fpln_leg_name              = in_na.fpln_leg_name; // v25.06.1
      fpln_xml_target_leg_node   = in_na.fpln_xml_target_leg_node.deepCopy (); // v25.06.1
      fpln_xml_osm_q_node        = in_na.fpln_xml_osm_q_node.deepCopy ();
      fpln_xml_inv_node          = in_na.fpln_xml_inv_node.deepCopy ();
      fpln_xml_way_node          = in_na.fpln_xml_way_node.deepCopy ();
      fpln_xml_q_tag_header_node = in_na.fpln_xml_q_tag_header_node.deepCopy ();
+     // v25.09.1
+     fpln_is_oilrig                   = in_na.fpln_is_oilrig; // v25.09.1
+     fpln_task_type                   = in_na.fpln_task_type; // v25.09.1
+     fpln_mission_type                = in_na.fpln_mission_type; // v25.09.1
+     fpln_mission_phase               = in_na.fpln_mission_phase; // v25.09.1
+     fpln_navaid_was_already_prepared = in_na.fpln_navaid_was_already_prepared; // v25.06.1
+
+     // used with Navaid info UI screen
+     sMetar = in_na.sMetar; // v25.09.1
 
      this->synchToPoint ();
    }
@@ -219,14 +238,23 @@ public:
 
     fpln_is_last_flight_leg = false; // v25.06.1
     fpln_is_wet             = false; // v25.06.1
+    fpln_is_oilrig          = false; // v25.09.1
     fpln_seq                = -1; // v25.06.1
-    fpln_osm_wp_type.clear (); // v25.06.1
+    fpln_wp_type.clear (); // v25.06.1
     fpln_leg_name.clear (); // v25.06.1
     fpln_xml_target_leg_node   = IXMLNode::emptyIXMLNode; // v25.06.1
     fpln_xml_osm_q_node        = IXMLNode::emptyIXMLNode; // v25.06.1
     fpln_xml_inv_node          = IXMLNode::emptyIXMLNode; // v25.06.1
     fpln_xml_way_node          = IXMLNode::emptyIXMLNode; // v25.06.1
     fpln_xml_q_tag_header_node = IXMLNode::emptyIXMLNode; // v25.06.1
+
+     fpln_navaid_was_already_prepared = false; // v25.09.1
+     fpln_task_type                   = missionx::enums::mx_rnd_task_type::undefined; // v25.09.1
+     fpln_mission_type                = missionx::enums::mx_user_picked_mission_type::undefined; // v25.09.1
+     fpln_mission_phase               = missionx::enums::mx_rnd_mission_phase::undefined; // v25.09.1
+     fpln_navaid_was_already_prepared = false;
+
+     sMetar.clear(); // v25.09.1
 
   }
 

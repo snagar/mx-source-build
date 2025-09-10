@@ -755,6 +755,9 @@ public:
   static std::string xml_get_text (const IXMLNode & node, const std::string &inDefaultValue = "");                // This function wraps the "IXMLNode.getText()" to solve unwanted crash when there is no <node>text</nod> available.
   static std::string xml_get_text (const ITCXMLNode & node, const std::string &inDefaultValue = "");              // This function wraps the "IXMLNode.getText()" to solve unwanted crash when there is no <node>text</nod> available.
 
+  static std::string xml_get_tag_name (const IXMLNode & node, const std::string &in_alternative_value = "n/a"); // v25.09.1
+  static bool xml_set_tag_name (IXMLNode & node, const std::string &in_new_tag_name); // v25.09.1
+
   // -------------------------------------------
 
   static void xml_delete_attribute(IXMLNode& node, const std::set<std::string>& inSetAttributes, const std::string &inTagName = "");
@@ -951,7 +954,7 @@ public:
 
   // -------------------------------------------
 
-  // static bool position_plane_in_ICAO(std::string inICAO, float lat, float lon, float currentPlaneLat, float currentPlanelon);
+  static bool position_plane_in_ICAO2(std::string inICAO, float lat, float lon, float currentPlaneLat, float currentPlanelon, bool flag_FindNearestAirportIfIcaoIsNotValid = false);
   static bool position_plane_in_ICAO(const std::string& inICAO);
 
   // -------------------------------------------
@@ -978,6 +981,8 @@ public:
 
   // -------------------------------------------
 
+  static IXMLNode xml_merge_source_with_target_node (const IXMLNode &in_source, IXMLNode& out_target, bool in_replace_existing = false); // v25.09.1
+  static IXMLNode xml_add_child_nodes (IXMLNode& inParent, const std::vector<std::string> &vec_tag_names); // v25.09.1
   static IXMLNode xml_add_child(IXMLNode& inParent, const std::string& inTagName, const std::string& inInitAttribName, const std::string& inInitAttribValue, const std::string& inTextValue = ""); // v3.305.3 used in load formatting
   static IXMLNode xml_add_child(IXMLNode &inParent, const std::string& inTagName, const std::string& inTextValue); // v3.305.3 Short version to concentrate on the Text part
   static IXMLNode xml_add_error_child(IXMLNode& inParent, const std::string& inTextValue, const std::string& inTagName = mxconst::get_ELEMENT_ERROR());                                                                           // v3.305.3 Short version to concentrate on the Text part

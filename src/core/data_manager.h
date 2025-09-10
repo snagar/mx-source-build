@@ -192,6 +192,7 @@ typedef struct _mx_nav_data_strct
   std::string sApDesc{ "" };
 
   std::string sMetar{ "" }; // fetched from flightplandatabase.com/weather/{icao}
+  std::string sTaf{ "" }; // fetched from flightplandatabase.com/weather/{icao}
 
   // Query 2 rw data
   std::unordered_map<std::string, mx_row2_strct> mapRunwayData;
@@ -239,6 +240,7 @@ typedef enum class _flc_commands
   get_terrain_elev_in_point,                                    // v25.06.1
   get_is_point_wet,                                             // v3.0.221.4
   get_and_guess_nav_aid_info_mainThread,                        // v25.04.2 used in Random Engine, when we try to add the "simbrief/fpln" waypoint route.
+  get_metar_for_airport,                                        // v25.09.1 Use the XPLM400 to get live weather metar data
   get_nav_aid_info_mainThread,                                  // v3.0.253.6
   get_nearest_nav_aid_to_custom_lat_lon_mainThread,             // v3.0.241.10 b2
   get_nearest_nav_aid_to_randomLastFlightLeg_mainThread,        // v3.0.221.4
@@ -815,10 +817,13 @@ public:
   //virtual ~data_manager();
 
   // XPLANE version
+  static int xplm_version;
   static int xplane_ver_i;
+  static XPLMHostApplicationID host_id;
   static int xplane_using_modern_driver_b;
   static std::string mission_file_supported_versions; // v24.12.2
-  // static std::vector<std::string> vecCurrentMissionFileSupportedVersions; // v24.12.2
+
+  static missionx::NavAidInfo shared_navaid_between_threads; // v25.09.1 Used with waitForPluginCallbackJob() and data_manager thread based functions.
 
   // missionx_conf node from missionx_conf.xml file
   static IXMLNode xMissionxProperties_node;
@@ -1158,7 +1163,7 @@ public:
   static missionx::dbase db_cache; // v3.0.255.3
   static missionx::dbase db_stats; // v3.0.255.1 holds active mission plane stats
   static bool            init_xp_airport_db();
-  static bool            init_xp_airport_db2();
+  static bool            init_in_memory_xp_airport_db();
   static bool            delete_db_file(const std::string & inPathAndFile); // v3.303.8.3
   static bool            init_stats_db(); // v3.0.255.1
   static bool            db_connect(missionx::dbase& db, const std::string& inPathToDbFile);
@@ -1170,7 +1175,7 @@ public:
   static std::vector<missionx::mx_ext_internet_fpln_strct>    tableExternalFPLN_vec;
   static std::map<int, missionx::mx_ext_internet_fpln_strct*> indexPointer_forExternalFPLN_tableVector; // index pointer to the vector tableExternalFPLN_vec
 
-  static void                           fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidData, missionx::mxFetchState_enum* outState, std::string* outStatusMessage, std::string* outErrorMsg, bool* lockThread);
+  static void                           fetch_METAR (std::unordered_map<int, mx_nav_data_strct> *mapNavaidData, missionx::mxFetchState_enum *outState, std::string *outStatusMessage, std::string *outErrorMsg, bool *lockThread);
   static IXMLNode                       jsonConvertedNode_xml; // holds the json converted data so we would use IXMLParser to read data safely
   static std::vector<std::future<void>> mFetchFutures;         //  holds async pointers
 
@@ -1222,10 +1227,12 @@ public:
   static bool get_are_there_missing_3D_object_files() { return flag_found_missing_3D_object_files; }
 
   // sqlite related functions
-  static void                                                        sqlite_test_db_validity(dbase& inDB, const bool isThreaded = false);
-  static void                                                        set_flag_rebuild_apt_dat(const bool inVal) { flag_rebuild_apt_dat = inVal; }
-  static bool                                                        get_flag_rebuild_apt_dat() { return flag_rebuild_apt_dat; }
-  static std::map<std::string, std::string>                          row_gather_db_data;
+  static void                               sqlite_test_db_validity (dbase &inDB, const bool isThreaded = false);
+  static std::string                        post_optimization_outcome; // v25.09.1
+  static void                               set_flag_rebuild_apt_dat (const bool inVal) { flag_rebuild_apt_dat = inVal; }
+  static bool                               get_flag_rebuild_apt_dat () { return flag_rebuild_apt_dat; }
+  static std::map<std::string, std::string> row_gather_db_data;
+
   static std::unordered_map<int, std::map<std::string, std::string>> reasultTable;
 
   // v3.0.255.4 add overpas error message variable to display to end user
@@ -1391,6 +1398,13 @@ public:
   // static std::map<int, missionx::NavAidInfo> fetch_targets_using_osm_queries_from_a_thread (missionx::base_thread::thread_state *inoutThreadState, const IXMLNode &in_root_node, missionx::structs::strct_osm_query &inout_osm_query);
   // The function will fetch OSM information from local cache folder or the web. Make sure to initialize the "cache_folder" in the "*q" parameter before calling this function.
   static void fetch_ways_and_target_node_from_overpass_thread (missionx::base_thread::thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
+
+
+  // A simple function to manage thread wait for main thread actions that needs to take place before it can continue. Default wait time is 500 milliseconds for 10 iteration (5 seconds)
+  // For every function call we need to handle failure cases (false returned).
+  // For every function call we need to use threadState.pipeProperties to set the attributes we want the main thread to handle.
+  static bool waitForPluginCallbackJob(missionx::base_thread::thread_state *out_state_ptr, missionx::mx_flc_pre_command inQueuedCommand, std::chrono::milliseconds inWaitTimeMilliseconds = std::chrono::milliseconds(500), int inLimitWaitCounter = 10);
+  static missionx::base_thread::thread_state metar_thread_state;
 
 
  private:

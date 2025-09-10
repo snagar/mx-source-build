@@ -42,7 +42,10 @@ bool              data_manager::ext_sm_init_success;
 bool              data_manager::ext_bas_open;
 #endif
 
-int data_manager::xplane_ver_i;                 // v3.0.241.5
+XPLMHostApplicationID data_manager::host_id; // v25.09.1
+int                   data_manager::xplm_version; // v25.09.1
+int                   data_manager::xplane_ver_i; // v3.0.241.5
+
 int data_manager::xplane_using_modern_driver_b; // v3.0.241.5
 
 int         data_manager::msgSeq;
@@ -853,7 +856,7 @@ std::map<int, std::unordered_map<std::string, std::string>> data_manager::mapWea
 ThreeStoppers                        data_manager::mxThreeStoppers;
 std::map<std::string, dataref_param> data_manager::mapInterpolDatarefs;
 
-std::vector<int> data_manager::vecMissionCategoriesCodes = { static_cast<int> (mx_mission_type::medevac), static_cast<int> (mx_mission_type::cargo), static_cast<int> (mx_mission_type::oil_rig) };
+std::vector<int> data_manager::vecMissionCategoriesCodes = { static_cast<int> (mx_ui_mission_type::medevac), static_cast<int> (mx_ui_mission_type::cargo), static_cast<int> (mx_ui_mission_type::oil_rig) };
 
 GatherStats                        data_manager::gather_stats;
 mx_enrout_stats_strct              data_manager::strct_currentLegStats4UIDisplay; // v3.303.14 holds current leg stats
@@ -889,7 +892,6 @@ dataref_param data_manager::dref_acf_station_max_kgs_f_arr;
 dataref_param data_manager::dref_m_stations_kgs_f_arr;
 std::string data_manager::mission_file_supported_versions; // v24.12.2
 
-
 // v25.03.1
 std::string missionx::data_manager::active_acf;
 std::string missionx::data_manager::prev_acf;
@@ -897,6 +899,10 @@ std::string missionx::data_manager::prev_acf;
 // v25.05.1
 missionx::data_manager::strct_ui_share_data_def missionx::data_manager::strct_ui_share_data;
 
+// v25.09.1
+missionx::NavAidInfo                missionx::data_manager::shared_navaid_between_threads;
+std::string                         missionx::data_manager::post_optimization_outcome;
+missionx::base_thread::thread_state missionx::data_manager::metar_thread_state;
 
 // -------------------------------------
 
@@ -2393,7 +2399,9 @@ data_manager::init_static()
 
   draw_script.clear();
 
-  xplane_ver_i                 = XPLMGetDatai(dc.dref_xplane_version_i);
+  XPLMGetVersions (&xplane_ver_i, &xplm_version, &host_id); // v25.09.1
+  xplane_ver_i = XPLMGetDatai (dc.dref_xplane_version_i);
+
   xplane_using_modern_driver_b = XPLMGetDatai(dc.dref_xplane_using_modern_driver_b);
 
   prop_userDefinedMission_ui.node.updateName(mxconst::get_ELEMENT_UI_PROPERTIES().c_str());
@@ -4950,7 +4958,7 @@ data_manager::init_xp_airport_db()
 // -------------------------------------
 
 bool
-data_manager::init_xp_airport_db2()
+data_manager::init_in_memory_xp_airport_db()
 {
   // file::memory:?cache=shared <=== https://sqlite.org/inmemorydb.html
   const std::string path_to_airports_db_s = "file::memory:?cache=shared"; // sqlite in memory database name should be ":memory:"
@@ -6041,114 +6049,149 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
     std::lock_guard<std::mutex> lock(s_thread_sync_mutex);
 
   bool flag_http_success = false;
-  bool bIsFirstTime      = true;
+  bool flag_got_metar = false;
 
-  const std::string authKey_s = Utils::getNodeText_type_6(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY(), "");
-  std::string       result_s;
-
-
-  // Loop over all Nav Aids and fetch their metar
+    // Loop over all Nav Aids and fetch their metar
   for (auto& nav : *mapNavaidData | std::views::values)
   {
-    long              httpStatus = 0;
-    std::string       q          = "/weather/" + nav.icao; // we need to add the ICAO
-    const std::string full_url_s = mxUtils::trim(fmt::format("https://{}:443{}", url_s, q));
-    Log::logMsgThread("url: " + full_url_s); // debug
 
-    // std::string err;
-    std::string cert_loc_s = mx_folders_properties.getStringAttributeValue(mxconst::get_PROP_MISSIONX_PATH(), ""); // v24.03.1
-
-    // Prepare cURL
-    int iCurlTry      = 0;
-    flag_http_success = false;
-    while ((iCurlTry < 3) && !(flag_http_success) && !threadStateMetar.flagAbortThread)
+    if (data_manager::xplm_version >= 400)
     {
-      iCurlTry++;
 
-      char errBuff[CURL_ERROR_SIZE]{ '\0' };
-      curl_easy_setopt(curl, CURLOPT_URL, full_url_s.c_str());
-      // curl_easy_setopt(data_manager::curl, CURLOPT_PORT, 443L);
-
-      // set authorization key if present
-      if (!authKey_s.empty())
+      // test against the nearest navaid
+      
+      data_manager::metar_thread_state.init ();
+      data_manager::shared_navaid_between_threads.init ();
+      data_manager::shared_navaid_between_threads.setID (nav.icao);
+      if (!missionx::data_manager::waitForPluginCallbackJob (&data_manager::metar_thread_state, missionx::mx_flc_pre_command::get_metar_for_airport, std::chrono::milliseconds (1000)))
       {
-        curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-        curl_easy_setopt(curl, CURLOPT_USERPWD, authKey_s.c_str());
+        Log::logMsgThread (fmt::format ("[{}] Failed to find Metar info for ICAO: {} from X-Plane.", __func__,  nav.icao ) );
       }
-      // setup agent
-      curl_easy_setopt(curl, CURLOPT_USERAGENT, APP_NAME);
-      curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 20L); // v24.06.1 /Timeout for server connection
-      curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);        // v24.06.1 overall work timeout - 60 seconds
-      curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 0L);        // CURLOPT_NOSIGNAL - skip all signal handling (values 0 or 1)
-
-      curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
-      curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-      // curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, onProgress); // simple function that manage cancel state
-
-      curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuff);
-
-      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_write);
-      curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result_s);
-      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-
-      // https://curl.haxx.se/docs/sslcerts.html
-      // curl_easy_setopt(curl, CURLOPT_CAINFO, cacert);
-
-      if (CURLcode res_curl = curl_easy_perform (curl);
-          CURLE_OK != res_curl)
+      else
       {
-        Log::logMsgThread("cURL error code while fetching JSON METAR information: " + Utils::formatNumber<int>(res_curl) + "\n");
+        if (!data_manager::shared_navaid_between_threads.sMetar.empty ())
+        {
+          flag_got_metar = true;
+          nav.sMetar = data_manager::shared_navaid_between_threads.sMetar;
+          (*outStatusMessage) = fmt::format( "Finished fetching METAR information for: {} from X-Plane.", nav.icao);
+        }
       }
 
-      std::string errBuff_s(errBuff);
-      curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpStatus);
-      if (httpStatus != 200 || !errBuff_s.empty())
-      {
-        outStatusMessage->append(fmt::format("CURL HTTP status: {} Error Buff: {}. {}:{}", std::to_string(httpStatus), errBuff_s, ((iCurlTry < 3) ? "Will try again in 5 sec" : "No Luck"), iCurlTry)); // v24.03.1
-        Log::logMsgThread((*outStatusMessage) + "\n");                                                                                                                                                  // debug
+    } // end if SDK >= 400
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(5000)); // sleep for 5 seconds
-        // goto CURL;
-      }
-      else // parse json
-      {
-        flag_http_success   = true;
-        (*outStatusMessage) = "cURL fetched JSON METAR success.";
-      }
-    } // end while loop
-
-    /////////////////////////////
-    ////// Handle Success //////
-
-    if (flag_http_success)
+    if (!flag_got_metar)
     {
-      int              counter = 0;
-      std::set<size_t> setHashIcaoName;
+      long              httpStatus = 0;
+      std::string       q          = "/weather/" + nav.icao; // we need to add the ICAO
+      const std::string full_url_s = mxUtils::trim (fmt::format ("https://{}:443{}", url_s, q));
+      Log::logMsgThread ("url: " + full_url_s); // debug
 
-      #ifndef RELEASE
-      std::string            last_toICAO_s;
-      std::string            last_toName_s;
-      std::map<size_t, bool> mapHashIcaoAndName;
+      const std::string authKey_s  = Utils::getNodeText_type_6 (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY (), "");
+      std::string       cert_loc_s = mx_folders_properties.getStringAttributeValue (mxconst::get_PROP_MISSIONX_PATH (), ""); // v24.03.1
+      std::string       result_s;
 
-      Log::logMsgThread(result_s);
-      #endif // !RELEASE
-
-      constexpr static auto KEY_METAR = "METAR";
-
-      try
+      // Prepare cURL
+      int iCurlTry      = 0;
+      flag_http_success = false;
+      while ((iCurlTry < 3) && !(flag_http_success) && !threadStateMetar.flagAbortThread)
       {
-        nlohmann::json js   = nlohmann::json::parse(result_s, nullptr, true);
-        nav.sMetar          = Utils::getJsonValue(js, KEY_METAR, "");
-        (*outStatusMessage) = "Finished fetching METAR information for: " + nav.icao;
-      }
-      catch (nlohmann::json::parse_error& ex)
+        iCurlTry++;
+
+        char errBuff[CURL_ERROR_SIZE]{ '\0' };
+        curl_easy_setopt (curl, CURLOPT_URL, full_url_s.c_str ());
+        // curl_easy_setopt(data_manager::curl, CURLOPT_PORT, 443L);
+
+        // set authorization key if present
+        if (!authKey_s.empty ())
+        {
+          curl_easy_setopt (curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+          curl_easy_setopt (curl, CURLOPT_USERPWD, authKey_s.c_str ());
+        }
+        // setup agent
+        curl_easy_setopt (curl, CURLOPT_USERAGENT, APP_NAME);
+        curl_easy_setopt (curl, CURLOPT_CONNECTTIMEOUT, 20L); // v24.06.1 /Timeout for server connection
+        curl_easy_setopt (curl, CURLOPT_TIMEOUT, 60L); // v24.06.1 overall work timeout - 60 seconds
+        curl_easy_setopt (curl, CURLOPT_NOSIGNAL, 0L); // CURLOPT_NOSIGNAL - skip all signal handling (values 0 or 1)
+
+        curl_easy_setopt (curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
+        curl_easy_setopt (curl, CURLOPT_NOPROGRESS, 0L);
+        // curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, onProgress); // simple function that manage cancel state
+
+        curl_easy_setopt (curl, CURLOPT_ERRORBUFFER, errBuff);
+
+        curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, my_write);
+        curl_easy_setopt (curl, CURLOPT_WRITEDATA, &result_s);
+        curl_easy_setopt (curl, CURLOPT_VERBOSE, 1L);
+
+        // https://curl.haxx.se/docs/sslcerts.html
+        // curl_easy_setopt(curl, CURLOPT_CAINFO, cacert);
+
+        if (CURLcode res_curl = curl_easy_perform (curl); CURLE_OK != res_curl)
+        {
+          Log::logMsgThread ("cURL error code while fetching JSON METAR information: " + Utils::formatNumber<int> (res_curl) + "\n");
+        }
+
+        std::string errBuff_s (errBuff);
+        curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &httpStatus);
+        if (httpStatus != 200 || !errBuff_s.empty ())
+        {
+          outStatusMessage->append (fmt::format ("CURL HTTP status: {} Error Buff: {}. {}:{}", std::to_string (httpStatus), errBuff_s, ((iCurlTry < 3) ? "Will try again in 5 sec" : "No Luck"), iCurlTry)); // v24.03.1
+          Log::logMsgThread ((*outStatusMessage) + "\n"); // debug
+
+          std::this_thread::sleep_for (std::chrono::milliseconds (5000)); // sleep for 5 seconds
+          // goto CURL;
+        }
+        else // parse json
+        {
+          flag_http_success   = true;
+          (*outStatusMessage) = "cURL fetched JSON METAR success.";
+        }
+      } // end while loop
+
+      /////////////////////////////
+      ////// Handle Success //////
+
+      if (flag_http_success)
       {
-        Log::logMsgThread(fmt::format("{}.\n== JSON: ==>\n{}\n<== END JSON ==", ex.what(), result_s));
-        (*outErrorMsg) = ex.what();
-      }
-    } // end if http success
-  }   // end loop over all Nav Aids
+        int              counter = 0;
+        std::set<size_t> setHashIcaoName;
+
+        #ifndef RELEASE
+        std::string            last_toICAO_s;
+        std::string            last_toName_s;
+        std::map<size_t, bool> mapHashIcaoAndName;
+
+        Log::logMsgThread (result_s);
+        #endif // !RELEASE
+
+        constexpr static auto KEY_METAR = "METAR";
+        constexpr static auto KEY_TAF   = "TAF";
+
+        try
+        {
+          size_t open_brace_count = std::ranges::count(result_s, '{');
+          if (open_brace_count > 1)
+          {
+            // Find the last occurrence of '{'
+            if (std::size_t pos = result_s.rfind('{')
+              ;pos != std::string::npos)
+              result_s = result_s.substr(pos);
+          }
+
+          nlohmann::json js   = nlohmann::json::parse (result_s, nullptr, true);
+          nav.sMetar          = Utils::getJsonValue (js, KEY_METAR, "");
+          nav.sTaf            = Utils::getJsonValue (js, KEY_TAF, "");
+          (*outStatusMessage) = "Finished fetching METAR information for: " + nav.icao;
+        }
+        catch (nlohmann::json::parse_error &ex)
+        {
+          Log::logMsgThread (fmt::format ("{}.\n== JSON: ==>\n{}\n<== END JSON ==", ex.what (), result_s));
+          (*outErrorMsg) = ex.what ();
+        }
+      } // end if http success
+    }
+  } // end loop over all Nav Aids
 
   if (threadStateMetar.flagAbortThread)
     (*outStatusMessage) = "Metar thread aborted.";
@@ -6188,6 +6231,8 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::thread_state
     long httpStatus = 0;
     if (curl)
     {
+      result_s.clear();
+
       char errBuff[CURL_ERROR_SIZE]{ '\0' };
       curl_easy_setopt(curl, CURLOPT_URL, full_url_s.c_str());
       // curl_easy_setopt(data_manager::curl, CURLOPT_PORT, 443L);
@@ -7155,14 +7200,16 @@ data_manager::sqlite_test_db_validity(dbase& inDB, const bool isThreaded)
         set_flag_rebuild_apt_dat(true);
 
       Log::logMsgThread("Feature version: " + val["feature_version"] + ", count_xp_airports: " + val["count_xp_airports"] + ", count_xp_ramps: " + val["count_xp_ramps"] + ", count_xp_loc: " + val["count_xp_loc"]);
+      data_manager::post_optimization_outcome = "Feature version: " + val["feature_version"] + ", count_xp_airports: " + val["count_xp_airports"] + ", count_xp_ramps: " + val["count_xp_ramps"] + ", count_xp_loc: " + val["count_xp_loc"];
     }
   }
 
   if (get_flag_rebuild_apt_dat())
   {
     queFlcActions.push(mx_flc_pre_command::exec_apt_dat_optimization); // v3.0.255.3
-    set_flag_rebuild_apt_dat(false);                                             // reset
+    set_flag_rebuild_apt_dat(false); // reset
   }
+
 }
 
 // -----------------------------------
@@ -8279,7 +8326,7 @@ data_manager::get_translate_of_mission_subcategory_code (const int in_missionCod
 
     switch (in_missionCodeType)
     {
-      case static_cast<int> (missionx::mx_mission_type::medevac):
+      case static_cast<int> (missionx::mx_ui_mission_type::medevac):
       {
         assert (in_mission_subcategory < data_manager::strct_ui_share_data.medevac_arr.size () && fmt::format ("[{}] subcategory index: '{}', is out of bound for medevac.", __func__, in_mission_subcategory).c_str ());
         const std::string code_text = data_manager::strct_ui_share_data.medevac_arr.at (in_mission_subcategory);
@@ -8289,14 +8336,14 @@ data_manager::get_translate_of_mission_subcategory_code (const int in_missionCod
         return mxconst::get_GENERATE_TYPE_MEDEVAC ();
       }
       break;
-      case static_cast<int> (missionx::mx_mission_type::cargo):
+      case static_cast<int> (missionx::mx_ui_mission_type::cargo):
       {
         assert (in_mission_subcategory < data_manager::strct_ui_share_data.cargo_arr.size () && fmt::format ("[{}] subcategory index: '{}', is out of bound for cargo.", __func__, in_mission_subcategory).c_str ());
         const std::string code_text = data_manager::strct_ui_share_data.cargo_arr.at (in_mission_subcategory);
         return mxconst::get_GENERATE_TYPE_CARGO ();
       }
       break;
-      case static_cast<int> (missionx::mx_mission_type::oil_rig):
+      case static_cast<int> (missionx::mx_ui_mission_type::oil_rig):
       {
         assert (in_mission_subcategory < data_manager::strct_ui_share_data.oilrig_arr.size () && fmt::format ("[{}] subcategory index: '{}', is out of bound for oilrig.", __func__, in_mission_subcategory).c_str ());
         const std::string code_text = data_manager::strct_ui_share_data.oilrig_arr.at (in_mission_subcategory);
@@ -8304,7 +8351,7 @@ data_manager::get_translate_of_mission_subcategory_code (const int in_missionCod
         if (mxUtils::stringToLower (code_text).find ("med") != std::string::npos)
           return mxconst::get_GENERATE_TYPE_OILRIG_MED ();
 
-        return mxconst::get_GENERATE_TYPE_OILRIG_MED ();
+        return mxconst::get_GENERATE_TYPE_OILRIG_CARGO ();
       }
       break;
       default:
@@ -8956,6 +9003,39 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
 
   q->end_time = std::chrono::steady_clock::now ();
 
+}
+
+// -------------------------------------
+
+bool
+data_manager::waitForPluginCallbackJob (missionx::base_thread::thread_state *out_state_ptr, missionx::mx_flc_pre_command inQueuedCommand, std::chrono::milliseconds inWaitTimeMilliseconds, int inLimitWaitCounter)
+{
+  if (out_state_ptr)
+  {
+    int waitCounter = 0;
+
+    out_state_ptr->thread_wait_state = missionx::mx_random_thread_wait_state_enum::waiting_for_plugin_callback_job; // set busy state
+    missionx::data_manager::queFlcActions.emplace (inQueuedCommand); // provide the queued command
+
+    std::this_thread::sleep_for (std::chrono::milliseconds (inWaitTimeMilliseconds));
+    // wait for the queued command to finish
+    //#ifndef RELEASE
+    //while (out_state_ptr->thread_wait_state < missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job && !out_state_ptr->flagAbortThread && out_state_ptr->flagIsActive)
+    //  #else
+    //while (out_state_ptr->thread_wait_state < missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job && (waitCounter < inLimitWaitCounter) && !out_state_ptr->flagAbortThread && out_state_ptr->flagIsActive)
+    //  #endif
+   while (out_state_ptr->thread_wait_state < missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job && (waitCounter < inLimitWaitCounter) && !out_state_ptr->flagAbortThread && out_state_ptr->flagIsActive)
+   {
+      ++waitCounter;
+      std::this_thread::sleep_for (std::chrono::milliseconds (inWaitTimeMilliseconds));
+    }
+
+    out_state_ptr->thread_wait_state = missionx::mx_random_thread_wait_state_enum::not_waiting; // reset state
+
+    if (waitCounter >= inLimitWaitCounter || out_state_ptr->flagAbortThread)
+      return false;
+  }
+  return true;
 }
 
 // -------------------------------------
