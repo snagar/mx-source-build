@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.30)
 
 ### https://cmake.org/cmake/help/latest/manual/cmake-commands.7.html
 ### Example1: https://github.com/krux02/minimal_cmake_example/blob/master/CMakeLists.txt
@@ -97,24 +97,24 @@ if (LINUX)
   include_directories("/usr/include/x86_64-linux-gnu/")
   include_directories("/usr/include/x86_64-linux-gnu/curl")
   include_directories("/usr/include/x86_64-linux-gnu/openssl")
-#  include_directories("/usr/lib/x86_64-linux-gnu")
+  #  include_directories("/usr/lib/x86_64-linux-gnu")
 
-#  # CURL include
-#  if (OS_NAME STREQUAL "Ubuntu" OR OS_NAME STREQUAL "Linuxmint")
-#    if (OS_VERSION_ID MATCHES "^22\\." OR OS_VERSION_ID MATCHES "^21\\.")
-#      message("INCLUDE: Ubuntu/Linuxmint version: ${OS_VERSION_ID}. Using curl 22.04 search path.")
-#      include_directories("${CMAKE_SOURCE_DIR}/libs/curl-v22.04/include")
-#    elseif (OS_VERSION_ID MATCHES "^24\\." OR OS_VERSION_ID MATCHES "^22\\.")
-#      message("INCLUDE: Ubuntu/Linuxmint version: ${OS_VERSION_ID}. Using default curl search path.")
-#      include_directories("${CMAKE_SOURCE_DIR}/libs/curl/include")
-#    else ()
-#      message(WARNING "INCLUDE: Unsupported Ubuntu version: ${OS_VERSION_ID}. Using default curl search path.")
-#      include_directories("${CMAKE_SOURCE_DIR}/libs/curl/include") # Default path
-#    endif ()
-#  else ()
-#    message(WARNING "INCLUDE: Unsupported OS: ${OS_NAME}. Using default curl search path.")
-#    include_directories("${CMAKE_SOURCE_DIR}/libs/curl/include") # Default path for other OSes
-#  endif ()
+  #  # CURL include
+  #  if (OS_NAME STREQUAL "Ubuntu" OR OS_NAME STREQUAL "Linuxmint")
+  #    if (OS_VERSION_ID MATCHES "^22\\." OR OS_VERSION_ID MATCHES "^21\\.")
+  #      message("INCLUDE: Ubuntu/Linuxmint version: ${OS_VERSION_ID}. Using curl 22.04 search path.")
+  #      include_directories("${CMAKE_SOURCE_DIR}/libs/curl-v22.04/include")
+  #    elseif (OS_VERSION_ID MATCHES "^24\\." OR OS_VERSION_ID MATCHES "^22\\.")
+  #      message("INCLUDE: Ubuntu/Linuxmint version: ${OS_VERSION_ID}. Using default curl search path.")
+  #      include_directories("${CMAKE_SOURCE_DIR}/libs/curl/include")
+  #    else ()
+  #      message(WARNING "INCLUDE: Unsupported Ubuntu version: ${OS_VERSION_ID}. Using default curl search path.")
+  #      include_directories("${CMAKE_SOURCE_DIR}/libs/curl/include") # Default path
+  #    endif ()
+  #  else ()
+  #    message(WARNING "INCLUDE: Unsupported OS: ${OS_NAME}. Using default curl search path.")
+  #    include_directories("${CMAKE_SOURCE_DIR}/libs/curl/include") # Default path for other OSes
+  #  endif ()
 
 
 elseif (WIN32)
@@ -367,12 +367,56 @@ if(APPLE)
   list(APPEND FREETYPE_LIB_SRC     libs/freetype2/src/base/ftmac.c)
 endif()
 
+
+## Get Git Sha String
+# Check if Git is available
+find_package(Git QUIET)
+if(GIT_FOUND)
+  # Execute Git command to get the short SHA
+  execute_process(
+          COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          OUTPUT_VARIABLE GIT_SHA
+          OUTPUT_STRIP_TRAILING_WHITESPACE
+          ERROR_QUIET
+  )
+  if(NOT GIT_SHA)
+    set(GIT_SHA "")
+    message(WARNING "Could not get Git SHA. Setting to 'UNKNOWN'.")
+  endif()
+else()
+  set(GIT_SHA "NOT_A_GIT_REPOSITORY")
+  message(WARNING "Git not found. Setting Git SHA to 'NOT_A_GIT_REPOSITORY'.")
+endif()
+
+
+# Generate the sha.hpp file
+# https://cmake.org/cmake/help/v3.30/command/file.html
+file(WRITE "src/core/sha.hpp"
+"
+#ifndef SHA_HPP
+#define SHA_HPP
+
+#define GIT_SHA \"${GIT_SHA}\"
+
+#endif // SHA_HPP
+"
+)
+
+
+# Build the shared library
+set(DYNAMIC_SHA
+        "src/core/sha.hpp"
+   )
+
+
 ## Mission-X source files
 add_library(${PROJECT_NAME} SHARED
     ${BASE_SRC}
     ${IMGUI_SQLITE_STB_POLY_LIB_SRC}
     ${GLM_LIB_SRC}
     ${FREETYPE_LIB_SRC}
+    ${DYNAMIC_SHA}
 )
 
 #################################
@@ -381,10 +425,6 @@ add_library(${PROJECT_NAME} SHARED
 
 #if (NOT WIN32)
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
-#endif()
-
-#if (UNIX)
-#  target_compile_options(${PROJECT_NAME} PUBLIC "-std=c++20")
 #endif()
 
 if (APPLE)
@@ -480,32 +520,16 @@ endif ()
 ### Linker Directives
 #################################
 
-
-# Filter out libraries that in "anaconda" or "git" repository. The idea is to force OS libraries.
-#function(fn_filter_out_specific_folders validator_result_var item)
-#  message("Validating: ${item} :" ${item} )
-#
-#  if(item MATCHES "git")
-#    message("Found git in ${item} skipping")
-#    set(${validator_result_var} FALSE PARENT_SCOPE)
-#  endif()
-#  if(item MATCHES "anaconda")
-#    message("Found anaconda in ${item} skipping")
-#    set(${validator_result_var} FALSE PARENT_SCOPE)
-#  endif()
-#  message("Did not Found anaconda nor git in ${item} skipping")
-#endfunction()
-
-
-
 ## Link Third party libraries
 ### Specify library search locations.
 if (WIN32)
   message("Windows Libraries Path")
-  list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Win ")
+  list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Win")
   list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/win")
-  list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib")
   list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/fmod/lib/x64")
+  #  list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib")
+
+  message("Windows cURL library will use Windows own security libraries instead of OpenSSL.")
 elseif (APPLE)
   message("Apple Libraries Path")
   list(APPEND CMAKE_FRAMEWORK_PATH "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Mac")
@@ -528,63 +552,60 @@ elseif (UNIX)
   list(APPEND CMAKE_LIBRARY_PATH "/lib64") ## v24.06.1 Fedora
   list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/fmod/lib/x64")
 
+  #  list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/lin")
+  #  list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib")
+
+
 endif ()
 
-## OpenGL libraries
-#find_library(OPENGL_LIBRARY NAMES OpenGL GL GLU OpenGL OpenGL32.lib GLUE32.lib ) # apt install freeglut3-dev
-find_package(OpenGL REQUIRED)
-if(OPENGL_FOUND)
-  include_directories(${OPENGL_INCLUDE_DIR})
-  target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES})
-else()
-  message(FATAL_ERROR "OpenGL libraries not found!")
-endif()
 
-
+find_library(OPENGL_LIBRARY NAMES OpenGL GL GLU OpenGL OpenGL32.lib GLUE32.lib ) # apt install freeglut3-dev
 find_library(FMOD_LIBRARY NAMES fmod fmod_vc.lib)
+
 
 if (WIN32)
   find_library(FREETYPE2 NAMES freetype.lib)
 endif()
 
 
+
+
 if (NOT APPLE)
   if (WIN32)
     message ("Windows - search for cURL libs")
     ## find_package needs "package.cmake" file to be present, this is why we use the "find_library" function instead
-    find_library(OPENSSL_LIBRARY NAMES libssl.lib libcrypto.lib REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-    find_library(CURL_LIBRARY NAMES libcurl.lib)  # cURL
-
+#    find_library(OPENSSL_LIBRARY NAMES ssl crypto libssl.lib libcrypto.lib REQUIRED HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
+    find_library(CURL_LIBRARY NAMES curl libcurl.lib)  # cURL
+    find_library(ZLIB_LIBRARY NAMES zlib.lib)  # xlib library needed by cURL
   else()
     message ("Linux - search for cURL + OpenSSL libs")
     ## find_package needs "package.cmake" file to be present, this is why we use the "find_library" function instead
     find_library(OPENSSL_LIBRARY NAMES ssl crypto ) # HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
     find_library(CURL_LIBRARY    NAMES curl    ) # cURL
-
-    # Deprecated, works well without the filter
-    #    find_library(OPENSSL_LIBRARY NAMES ssl    validator fn_filter_out_specific_folders ) # HINT ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/lib)  #
-    #    find_library(OPENSSL_LIBRARY NAMES crypto validator fn_filter_out_specific_folders )
-    #    find_library(CURL_LIBRARY    NAMES curl   validator fn_filter_out_specific_folders ) # cURL
-
-
   endif()
 endif()
 
 ### Link X-Plane plugin system libraries. They are only provided for OS X and Windows.
 if (WIN32 OR APPLE)
-  find_library(XPLM_LIBRARY NAMES XPLM XPLM_64.lib XPWidgets XPWidgets_64.lib)
+  find_library(XPLM_LIBRARY NAMES XPLM_64.lib XPWidgets_64.lib XPLM XPWidgets)
   target_link_libraries(${PROJECT_NAME} ${XPLM_LIBRARY})
 endif ()
 
+# Link library for dynamic loading of shared objects on UNIX systems.
+#if (UNIX)
+#    find_library(DL_LIBRARY dl)
+#    target_link_libraries(${PROJECT_NAME} ${DL_LIBRARY})
+#endif ()
 
 if (WIN32)
   # Unlike OS X and Linux we build standard libraries statically since X-Plane does not provide them.
   if (MSVC)
     # Visual Studio includes many standard libraries already, just need to make sure OpenGL is linked
-    #  target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
+    target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
     target_link_libraries(${PROJECT_NAME} ${FMOD_LIBRARY})
+    target_link_libraries(${PROJECT_NAME} ${ZLIB_LIBRARY}) # needed by curl
     target_link_libraries(${PROJECT_NAME} ${CURL_LIBRARY})
-    target_link_libraries(${PROJECT_NAME} ${OPENSSL_LIBRARY})
+#    target_link_libraries(${PROJECT_NAME} ${OPENSSL_LIBRARY})
   else ()
     target_link_libraries(${PROJECT_NAME} -static-libgcc -static-libstdc++ opengl32)
     # MSYS2 for some reason always links against winpthread, so we have to work around it by statically linking the
@@ -603,7 +624,7 @@ elseif (APPLE)
   target_link_libraries(${PROJECT_NAME} "-framework Foundation") ##
   target_link_libraries(${PROJECT_NAME} "-framework Security") ##
 
-#  target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
+  target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
   target_link_libraries(${PROJECT_NAME} ${FMOD_LIBRARY})
 
   ## Deprecated since we are using MacOS internal shared "cURL" library
@@ -630,10 +651,10 @@ elseif (UNIX)
   target_link_libraries(${PROJECT_NAME} -Wl,-rpath,./Resources/plugins/missionx/libs/64) # needed for XP11, no FMOD library
   # target_link_libraries(${PROJECT_NAME} -Wmultichar)  ## added to try and resolve IXMLParser library multichar warning, but it did not resolve it.
 
-#  target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
+  target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARY})
   target_link_libraries(${PROJECT_NAME} ${FMOD_LIBRARY})
   target_link_libraries(${PROJECT_NAME} ${CURL_LIBRARY}) # depends on your distro, you might need to add "libcurl.so" symlink to the real library name.
-  target_link_libraries(${PROJECT_NAME} ${OPENSSL_LIBRARY})
+#  target_link_libraries(${PROJECT_NAME} ${OPENSSL_LIBRARY})
 endif ()
 
 
@@ -655,10 +676,10 @@ message("CMAKE_LIBRARY_PATH: " ${CMAKE_LIBRARY_PATH} )
 #message("CMAKE_PREFIX_PATH: " ${CMAKE_PREFIX_PATH})
 #message("CMAKE_CXX_STANDARD: " ${CMAKE_CXX_STANDARD})
 #message("CMAKE_SOURCE_DIR: " ${CMAKE_SOURCE_DIR})
-message("OPENGL_LIBRARIES:" ${OPENGL_LIBRARIES})
+message("OPENGL_LIBRARY:" ${OPENGL_LIBRARY})
 message("FMOD_LIBRARY:" ${FMOD_LIBRARY})
 message("CURL_LIBRARY:" ${CURL_LIBRARY})
-message("OPENSSL_LIBRARY:" ${OPENSSL_LIBRARY})
+#message("OPENSSL_LIBRARY:" ${OPENSSL_LIBRARY})
 #message("CMAKE_OSX_ARCHITECTURES:" ${CMAKE_OSX_ARCHITECTURES})
 #message("CMAKE_OSX_DEPLOYMENT_TARGET: " ${CMAKE_OSX_DEPLOYMENT_TARGET})
 #message("CMAKE_CXX_FLAGS_DEBUG: " ${CMAKE_CXX_FLAGS_DEBUG})
@@ -685,50 +706,50 @@ message("MissionX: CMAKE_CURRENT_BINARY_DIR: " ${CMAKE_CURRENT_BINARY_DIR})
 #)
 
 # Add a post-build command to log the end time
-#if (UNIX)
-#  if (APPLE)
-#    add_custom_command(
-#        TARGET ${PROJECT_NAME}  POST_BUILD
-#        COMMAND ${CMAKE_COMMAND} -E copy
-#        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
-#        ~/xp11/Resources/plugins/missionx/mac_x64/${PROJECT_NAME}.xpl
-#    )
-#  else() ## Linux
-#    message ("Linux post build commands read.") ## debug
-#
-#    ## xp 12.x Beta
-#    add_custom_command(
-#        TARGET ${PROJECT_NAME}  POST_BUILD
-#        COMMAND ${CMAKE_COMMAND} -E copy
-#        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
-#        ~/xp12b/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
-#    )
-#
-#    ## xp 11
-#    add_custom_command(
-#        TARGET ${PROJECT_NAME}  POST_BUILD
-#        COMMAND ${CMAKE_COMMAND} -E copy
-#        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
-#        ~/xp11/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
-#    )
-#
-#    ## xp 12 release
-#    add_custom_command(
-#        TARGET ${PROJECT_NAME}  POST_BUILD
-#        COMMAND ${CMAKE_COMMAND} -E copy
-#        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
-#        ~/xp12/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
-#    )
-#
-#  endif()
-#else () ## Win32
-#  ## xp 12 release
-#  add_custom_command(
-#      TARGET ${PROJECT_NAME}  POST_BUILD
-#      COMMAND ${CMAKE_COMMAND} -E copy
-#      ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
-#      C:/xp12/Resources/plugins/missionx/win_x64/${PROJECT_NAME}.xpl
-#  )
+if (UNIX)
+  if (APPLE)
+    add_custom_command(
+        TARGET ${PROJECT_NAME}  POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
+        ~/xp11/Resources/plugins/missionx/mac_x64/${PROJECT_NAME}.xpl
+    )
+  else() ## Linux
+    message ("Linux post build commands read.") ## debug
+
+    ## xp 12.x Beta
+    add_custom_command(
+        TARGET ${PROJECT_NAME}  POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
+        ~/xp12b/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
+    )
+
+    ## xp 11
+    add_custom_command(
+        TARGET ${PROJECT_NAME}  POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
+        ~/xp11/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
+    )
+
+    ## xp 12 release
+    add_custom_command(
+        TARGET ${PROJECT_NAME}  POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
+        ~/xp12/Resources/plugins/missionx/lin_x64/${PROJECT_NAME}.xpl
+    )
+
+  endif()
+else () ## Win32
+  ## xp 12 release
+  add_custom_command(
+      TARGET ${PROJECT_NAME}  POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy
+      ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.xpl
+      C:/xp12/Resources/plugins/missionx/win_x64/${PROJECT_NAME}.xpl
+  )
 
 
   #    add_custom_command(
@@ -736,5 +757,5 @@ message("MissionX: CMAKE_CURRENT_BINARY_DIR: " ${CMAKE_CURRENT_BINARY_DIR})
   #            COMMAND ${CMAKE_COMMAND} -E echo Build finished at: %DATE% %TIME% >> "${CMAKE_CURRENT_BINARY_DIR}/build_time.txt"
   #    )
 
-#endif()
+endif()
 
