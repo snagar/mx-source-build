@@ -563,7 +563,8 @@ endif ()
 find_package(OpenGL REQUIRED)
 if(OPENGL_FOUND)
   include_directories(${OPENGL_INCLUDE_DIR})
-  target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES})
+  # target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES})
+  target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL)
 else()
   message(FATAL_ERROR "OpenGL libraries not found!")
 endif()
@@ -610,7 +611,7 @@ if (WIN32)
 
     target_link_libraries(${PROJECT_NAME}
         PRIVATE
-        OpenGL::GL
+        #OpenGL::GL
         ${FMOD_LIBRARY}
         ${ZLIB_LIBRARY}
         ${CURL_LIBRARY}
@@ -687,7 +688,7 @@ message("CMAKE_LIBRARY_PATH: " ${CMAKE_LIBRARY_PATH} )
 #message("CMAKE_PREFIX_PATH: " ${CMAKE_PREFIX_PATH})
 #message("CMAKE_CXX_STANDARD: " ${CMAKE_CXX_STANDARD})
 #message("CMAKE_SOURCE_DIR: " ${CMAKE_SOURCE_DIR})
-message("OPENGL_LIBRARY:" ${OPENGL_LIBRARY})
+message("OPENGL_LIBRARY:" ${OPENGL_LIBRARIES})
 message("FMOD_LIBRARY:" ${FMOD_LIBRARY})
 message("CURL_LIBRARY:" ${CURL_LIBRARY})
 #message("OPENSSL_LIBRARY:" ${OPENSSL_LIBRARY})
