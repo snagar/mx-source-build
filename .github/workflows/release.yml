@@ -71,15 +71,15 @@ jobs:
           echo -e "\nGlobal Variable value for 'global-subversion-text' is: ${{ steps.strings.outputs.global-subversion-text }} "
   
   build-lin:
-    if: ( 1 == 2 )
+    # if: ( 1 == 2 )
     runs-on: ubuntu-22.04
     needs: [pre-build]
     strategy: # Set fail-fast too false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
       fail-fast: true
       matrix:
         os: [ubuntu-22.04]
-        build_type: [ Debug, Release ]
-        # build_type: [ Debug ]
+        # build_type: [ Debug, Release ]
+        build_type: [ Debug ]
         c_compiler: [gcc]
         #gcc_version: [11]
         include:
@@ -294,8 +294,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest]
-        # build_type: [ Debug, Release ]
-        build_type: [Debug]
+        build_type: [ Debug, Release ]
+        # build_type: [Debug]
         c_compiler: [cl]
         cpp_compiler: [cl]
     steps:
