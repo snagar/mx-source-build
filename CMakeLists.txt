@@ -368,31 +368,151 @@ else()
   endif()
 endif()
 
+
 # Dependencies
+#find_package(OpenGL REQUIRED)
+#find_library(FMOD_LIBRARY NAMES fmod fmod_vc.lib)
+#
+#if (WIN32)
+#  find_library(FREETYPE2 NAMES freetype.lib)
+#endif()
+#if (NOT APPLE)
+#  if (WIN32)
+#    find_library(CURL_LIBRARY NAMES curl libcurl.lib)
+#    find_library(ZLIB_LIBRARY NAMES zlib.lib)
+#  else()
+#    find_library(OPENSSL_LIBRARY NAMES ssl crypto)
+#    find_library(CURL_LIBRARY NAMES curl)
+#  endif()
+#endif()
+#if (WIN32 OR APPLE)
+#  find_library(XPLM_LIBRARY NAMES XPLM XPLM_64.lib XPWidgets XPWidgets_64.lib)
+#endif()
+
+##################################################
+# Dependencies
+##################################################
+
+## OpenGL libraries
+#find_library(OPENGL_LIBRARY NAMES OpenGL GL GLU OpenGL OpenGL32.lib GLUE32.lib ) # apt install freeglut3-dev
 find_package(OpenGL REQUIRED)
-find_library(FMOD_LIBRARY NAMES fmod fmod_vc.lib)
+if(OPENGL_FOUND)
+  include_directories(${OPENGL_INCLUDE_DIR})
+  # target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES})
+  target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL)
+else()
+  message(FATAL_ERROR "OpenGL libraries not found!")
+endif()
+
+
+
+# ==========================
+# FMOD
+# ==========================
+add_library(FMOD::FMOD SHARED IMPORTED)
+
 if (WIN32)
-  find_library(FREETYPE2 NAMES freetype.lib)
+  set_target_properties(FMOD::FMOD PROPERTIES
+          IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/fmod/lib/x64/fmod_vc.lib"
+#          IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libs/fmod/lib/x64/fmod.dll"
+          INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/fmod/inc"
+  )
+elseif (APPLE)
+  set_target_properties(FMOD::FMOD PROPERTIES
+          IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libs/fmod/lib/macos/libfmod.dylib"
+          INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/fmod/inc"
+  )
+elseif (UNIX)
+  set_target_properties(FMOD::FMOD PROPERTIES
+          IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libs/fmod/lib/linux/libfmod.so"
+          INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/fmod/inc"
+  )
 endif()
-if (NOT APPLE)
-  if (WIN32)
-    find_library(CURL_LIBRARY NAMES curl libcurl.lib)
-    find_library(ZLIB_LIBRARY NAMES zlib.lib)
-  else()
-    find_library(OPENSSL_LIBRARY NAMES ssl crypto)
-    find_library(CURL_LIBRARY NAMES curl)
-  endif()
+
+# ==========================
+# cURL + zlib
+# ==========================
+if (WIN32)
+  # ZLIB
+  add_library(ZLIB::ZLIB SHARED IMPORTED)
+  set_target_properties(ZLIB::ZLIB PROPERTIES
+          IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/win/zlib.lib"
+          IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/win/zlib1.dll"
+          INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/curl/include"
+  )
+
+  # cURL (depends on zlib)
+  add_library(CURL::libcurl SHARED IMPORTED)
+  set_target_properties(CURL::libcurl PROPERTIES
+          IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/win/libcurl.lib"
+          IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/win/libcurl.dll"
+          INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/curl/include"
+  )
+
+  # Make cURL link against zlib
+  target_link_libraries(CURL::libcurl INTERFACE ZLIB::ZLIB)
+
+else()
+  # On Linux/macOS use system cURL and zlib
+  find_package(CURL REQUIRED)
+  find_package(ZLIB REQUIRED)
+  add_library(CURL::libcurl ALIAS CURL::libcurl)
+  add_library(ZLIB::ZLIB ALIAS ZLIB::ZLIB)
 endif()
+
+
+# ==========================
+# X-Plane SDK
+# ==========================
 if (WIN32 OR APPLE)
-  find_library(XPLM_LIBRARY NAMES XPLM XPLM_64.lib XPWidgets XPWidgets_64.lib)
+  if (WIN32)
+    add_library(XPLM::XPLM SHARED IMPORTED)
+    set_target_properties(XPLM::XPLM PROPERTIES
+            IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Win/XPLM_64.lib"
+            INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/XPLM"
+    )
+
+    add_library(XPLM::XPWidgets SHARED IMPORTED)
+    set_target_properties(XPLM::XPWidgets PROPERTIES
+            IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Win/XPWidgets_64.lib"
+            INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Widgets"
+    )
+  endif () # end WIN32
+
+  if (APPLE)
+    add_library(XPLM::XPLM SHARED IMPORTED)
+    set_target_properties(XPLM::XPLM PROPERTIES
+            IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Mac/XPLM.framework"
+            INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/XPLM"
+    )
+
+    add_library(XPLM::XPWidgets SHARED IMPORTED)
+    set_target_properties(XPLM::XPWidgets PROPERTIES
+            IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Mac/XPWidgets.framework"
+            INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Widgets"
+    )
+  endif()  # end APPLE
+
+  ## Old code
+  # find_library(XPLM_LIBRARY NAMES XPLM XPLM_64.lib XPWidgets XPWidgets_64.lib)
+
 endif()
+
+
 
 # Linking by OS
 target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL)
 
 if (WIN32)
   if (MSVC)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${FMOD_LIBRARY} ${ZLIB_LIBRARY} ${CURL_LIBRARY} ${XPLM_LIBRARY})
+    #target_link_libraries(${PROJECT_NAME} PRIVATE ${FMOD_LIBRARY} ${ZLIB_LIBRARY} ${CURL_LIBRARY} ${XPLM_LIBRARY})
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+            FMOD::FMOD
+            CURL::libcurl
+            ZLIB::ZLIB
+            XPLM::XPLM
+            XPLM::XPWidgets
+    )
   else()
     target_link_libraries(${PROJECT_NAME} PRIVATE -static-libgcc -static-libstdc++ opengl32 -static)
   endif()
