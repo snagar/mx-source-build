@@ -539,6 +539,10 @@ elseif (APPLE)
     "-framework ApplicationServices"
     "-framework Foundation"
     "-framework Security"
+    # "-framework XPLM"
+    # "-framework XPWidgets"
+    XPLM::XPLM
+    XPLM::XPWidgets
     FMOD::FMOD
     CURL::libcurl
 #    ${FMOD_LIBRARY}
