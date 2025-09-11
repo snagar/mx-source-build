@@ -338,8 +338,10 @@ if (WIN32)
   target_compile_definitions(${PROJECT_NAME} PRIVATE IBM=1 _WIN32 _CONSOLE WIN32 _WINDOWS _WINDLL _MBCS _AFXDLL FMT_UNICODE=0)
 elseif (APPLE)
   target_compile_definitions(${PROJECT_NAME} PRIVATE MAC=1 APL=1 GL_SILENCE_DEPRECATION)
-elif (UNIX)
+elseif (UNIX)
   target_compile_definitions(${PROJECT_NAME} PRIVATE LIN=1)
+else()
+  message("Wrong os - specific")
 endif()
 
 if (${BUILD_TYPE_LOWERCASE} STREQUAL "debug")
@@ -419,12 +421,12 @@ if (WIN32)
   )
 elseif (APPLE)
   set_target_properties(FMOD::FMOD PROPERTIES
-          IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libs/fmod/lib/macos/libfmod.dylib"
+          IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libs/fmod/lib/x64/libfmod.dylib"
           INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/fmod/inc"
   )
 elseif (UNIX)
   set_target_properties(FMOD::FMOD PROPERTIES
-          IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libs/fmod/lib/linux/libfmod.so"
+          IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libs/fmod/lib/x64/libfmod.so"
           INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/fmod/inc"
   )
 endif()
@@ -477,9 +479,7 @@ if (WIN32 OR APPLE)
             IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Win/XPWidgets_64.lib"
             INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Widgets"
     )
-  endif () # end WIN32
-
-  if (APPLE)
+  elseif (APPLE)
     add_library(XPLM::XPLM SHARED IMPORTED)
     set_target_properties(XPLM::XPLM PROPERTIES
             IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Mac/XPLM.framework"
@@ -489,6 +489,18 @@ if (WIN32 OR APPLE)
     add_library(XPLM::XPWidgets SHARED IMPORTED)
     set_target_properties(XPLM::XPWidgets PROPERTIES
             IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Mac/XPWidgets.framework"
+            INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Widgets"
+    )
+  elseif (UNIX)
+    add_library(XPLM::XPLM SHARED IMPORTED)
+    set_target_properties(XPLM::XPLM PROPERTIES
+            IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Lin/XPLM_64.so"
+            INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/XPLM"
+    )
+
+    add_library(XPLM::XPWidgets SHARED IMPORTED)
+    set_target_properties(XPLM::XPWidgets PROPERTIES
+            IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Lin/XPWidgets_64.so"
             INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Widgets"
     )
   endif()  # end APPLE
@@ -516,6 +528,7 @@ if (WIN32)
   else()
     target_link_libraries(${PROJECT_NAME} PRIVATE -static-libgcc -static-libstdc++ opengl32 -static)
   endif()
+
 elseif (APPLE)
   target_link_libraries(${PROJECT_NAME} PRIVATE
     "-v -exported_symbols_list ${CMAKE_SOURCE_DIR}/cmake_build/${PROJECT_NAME}.sym_mac"
@@ -524,11 +537,13 @@ elseif (APPLE)
     "-framework ApplicationServices"
     "-framework Foundation"
     "-framework Security"
-    ${FMOD_LIBRARY}
-    ${XPLM_LIBRARY}
-    curl
+    FMOD::FMOD
+    CURL::libcurl
+#    ${FMOD_LIBRARY}
+#    ${XPLM_LIBRARY}
+#    curl
   )
-elif (UNIX)
+elseif (UNIX)
   target_link_libraries(${PROJECT_NAME} PRIVATE
     "-Wl,--version-script=${CMAKE_SOURCE_DIR}/cmake_build/${PROJECT_NAME}.sym"
     "-Wl,-rpath,./Resources/dlls/64"
@@ -541,8 +556,10 @@ elif (UNIX)
     "-Wl,-rpath,/lib/x86_64-linux-gnu"
     "-Wl,-rpath,/usr/lib/x86_64-linux-gnu"
     "-Wl,-rpath,./Resources/plugins/missionx/libs/64"
-    ${FMOD_LIBRARY}
-    ${CURL_LIBRARY}
+    FMOD::FMOD
+    CURL::libcurl
+#    ${FMOD_LIBRARY}
+#    ${CURL_LIBRARY}
   )
 endif()
 
