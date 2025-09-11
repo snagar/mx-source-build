@@ -458,8 +458,8 @@ else()
   # On Linux/macOS use system cURL and zlib
   find_package(CURL REQUIRED)
   find_package(ZLIB REQUIRED)
-  add_library(CURL::libcurl ALIAS CURL::libcurl)
-  add_library(ZLIB::ZLIB ALIAS ZLIB::ZLIB)
+#  add_library(CURL::libcurl ALIAS CURL::libcurl)
+#  add_library(ZLIB::ZLIB ALIAS ZLIB::ZLIB)
 endif()
 
 
