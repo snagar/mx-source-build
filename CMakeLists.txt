@@ -13,7 +13,7 @@ string(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_TYPE_LOWERCASE)
 # Platform setup
 if (LINUX)
   set(CMAKE_PREFIX_PATH "/usr/bin")
-elif(APPLE)
+elseif (APPLE)
   set(CMAKE_OSX_ARCHITECTURES arm64;x86_64)
   set(CMAKE_MACOSX_RPATH 1)
 endif()
@@ -315,7 +315,7 @@ if (LINUX)
           /usr/include/x86_64-linux-gnu/curl
           /usr/include/x86_64-linux-gnu/openssl
   )
-  elif (WIN32)
+elseif (WIN32)
   target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/include)
 endif()
 
