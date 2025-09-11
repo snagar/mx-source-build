@@ -479,17 +479,19 @@ if (WIN32 OR APPLE)
             IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Win/XPWidgets_64.lib"
             INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Widgets"
     )
-  elseif (APPLE)
-    add_library(XPLM::XPLM SHARED IMPORTED)
+  elseif(APPLE)
+    # XPLM framework
+    add_library(XPLM::XPLM INTERFACE IMPORTED)
     set_target_properties(XPLM::XPLM PROPERTIES
-            IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Mac/XPLM.framework"
             INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/XPLM"
+            INTERFACE_LINK_LIBRARIES "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Mac/XPLM.framework"
     )
 
-    add_library(XPLM::XPWidgets SHARED IMPORTED)
+    # XPWidgets framework
+    add_library(XPLM::XPWidgets INTERFACE IMPORTED)
     set_target_properties(XPLM::XPWidgets PROPERTIES
-            IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Mac/XPWidgets.framework"
             INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Widgets"
+            INTERFACE_LINK_LIBRARIES "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Mac/XPWidgets.framework"
     )
   elseif (UNIX)
     add_library(XPLM::XPLM SHARED IMPORTED)
