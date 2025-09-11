@@ -18,38 +18,7 @@ elif(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
 endif()
 
-# Includes
-target_include_directories(${PROJECT_NAME} PRIVATE
-  ${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/XPLM
-  ${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Widgets
-  ${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Wrappers
-  ${CMAKE_SOURCE_DIR}/libs/curl/include
-  ${CMAKE_SOURCE_DIR}/libs/fmod/inc
-  ${CMAKE_SOURCE_DIR}/libs/json/include
-  ${CMAKE_SOURCE_DIR}/libs/imgui4xp
-  ${CMAKE_SOURCE_DIR}/libs/imgui4xp/imgui
-  ${CMAKE_SOURCE_DIR}/libs/imgui4xpKHR
-  ${CMAKE_SOURCE_DIR}/libs/imgui4xp/imgWindow
-  ${CMAKE_SOURCE_DIR}/libs/imgui4xp/colors
-  ${CMAKE_SOURCE_DIR}/libs/sqlite/sqlite
-  ${CMAKE_SOURCE_DIR}/libs/stb
-  ${CMAKE_SOURCE_DIR}/libs/fmt/include
-  ${CMAKE_SOURCE_DIR}/libs/polyline-cpp/src
-  ${CMAKE_SOURCE_DIR}/src/ui/core
-  ${CMAKE_SOURCE_DIR}/libs/freetype2/include
-  ${CMAKE_SOURCE_DIR}/libs/brotil/include
-  ${CMAKE_SOURCE_DIR}/libs/glm
-)
 
-if (LINUX)
-  target_include_directories(${PROJECT_NAME} PRIVATE
-    /usr/include/x86_64-linux-gnu
-    /usr/include/x86_64-linux-gnu/curl
-    /usr/include/x86_64-linux-gnu/openssl
-  )
-elif (WIN32)
-  target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/include)
-endif()
 
 # Source groups
 set(BASE_SRC src/core/coordinate/NavAidInfo.hpp
@@ -305,7 +274,9 @@ endif()
 file(WRITE "src/core/sha.hpp" "#ifndef SHA_HPP\n#define SHA_HPP\n#define GIT_SHA \"${GIT_SHA}\"\n#endif\n")
 set(DYNAMIC_SHA src/core/sha.hpp)
 
-# Target definition
+# Target definition <== MUST come before target_include_directories because the modern CMake syntax
+#                       need to define a target object first on which it will define the needed metadata information
+#                       like the "target_include_directories" directive.
 add_library(${PROJECT_NAME} SHARED
   ${BASE_SRC}
   ${IMGUI_SQLITE_STB_POLY_LIB_SRC}
@@ -313,6 +284,42 @@ add_library(${PROJECT_NAME} SHARED
   ${FREETYPE_LIB_SRC}
   ${DYNAMIC_SHA}
 )
+
+
+# Includes
+target_include_directories(${PROJECT_NAME} PRIVATE
+        ${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/XPLM
+        ${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Widgets
+        ${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Wrappers
+        ${CMAKE_SOURCE_DIR}/libs/curl/include
+        ${CMAKE_SOURCE_DIR}/libs/fmod/inc
+        ${CMAKE_SOURCE_DIR}/libs/json/include
+        ${CMAKE_SOURCE_DIR}/libs/imgui4xp
+        ${CMAKE_SOURCE_DIR}/libs/imgui4xp/imgui
+        ${CMAKE_SOURCE_DIR}/libs/imgui4xpKHR
+        ${CMAKE_SOURCE_DIR}/libs/imgui4xp/imgWindow
+        ${CMAKE_SOURCE_DIR}/libs/imgui4xp/colors
+        ${CMAKE_SOURCE_DIR}/libs/sqlite/sqlite
+        ${CMAKE_SOURCE_DIR}/libs/stb
+        ${CMAKE_SOURCE_DIR}/libs/fmt/include
+        ${CMAKE_SOURCE_DIR}/libs/polyline-cpp/src
+        ${CMAKE_SOURCE_DIR}/src/ui/core
+        ${CMAKE_SOURCE_DIR}/libs/freetype2/include
+        ${CMAKE_SOURCE_DIR}/libs/brotil/include
+        ${CMAKE_SOURCE_DIR}/libs/glm
+)
+
+if (LINUX)
+  target_include_directories(${PROJECT_NAME} PRIVATE
+          /usr/include/x86_64-linux-gnu
+          /usr/include/x86_64-linux-gnu/curl
+          /usr/include/x86_64-linux-gnu/openssl
+  )
+  elif (WIN32)
+  target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/include)
+endif()
+
+
 
 # Compiler features
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" OUTPUT_NAME "${PROJECT_NAME}" SUFFIX ".xpl")
@@ -329,7 +336,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 # OS-specific definitions
 if (WIN32)
   target_compile_definitions(${PROJECT_NAME} PRIVATE IBM=1 _WIN32 _CONSOLE WIN32 _WINDOWS _WINDLL _MBCS _AFXDLL FMT_UNICODE=0)
-elif (APPLE)
+elseif (APPLE)
   target_compile_definitions(${PROJECT_NAME} PRIVATE MAC=1 APL=1 GL_SILENCE_DEPRECATION)
 elif (UNIX)
   target_compile_definitions(${PROJECT_NAME} PRIVATE LIN=1)
@@ -389,7 +396,7 @@ if (WIN32)
   else()
     target_link_libraries(${PROJECT_NAME} PRIVATE -static-libgcc -static-libstdc++ opengl32 -static)
   endif()
-elif (APPLE)
+elseif (APPLE)
   target_link_libraries(${PROJECT_NAME} PRIVATE
     "-v -exported_symbols_list ${CMAKE_SOURCE_DIR}/cmake_build/${PROJECT_NAME}.sym_mac"
     "-Wl,-rpath,./Resources/plugins/missionx/libs/64"
