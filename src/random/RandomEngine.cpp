@@ -471,7 +471,7 @@ RandomEngine::inject_files_into_xml (missionx::TemplateFileInfo *tempFile_ptr)
 
           // Write to new template working file ?
           // after finishing the loop check if xml_file_content_s different than original_xml_file_content_s
-          if ((xml_template_node_content_s != original_xml_template_node_content_s) * bDoneReplacement)
+          if ((xml_template_node_content_s != original_xml_template_node_content_s) && bDoneReplacement)
           {
             // write to tmp file
             fs::path output_file = tempFile_ptr->filePath + "/" + mxconst::get_TEMPLATE_INJECTED_FILE_NAME ();
@@ -7062,13 +7062,13 @@ RandomEngine::gen_post_briefer_desc (std::map<int, NavAidInfo> &in_osm_na_target
   // in_osm_na_targets[1] = First Target
 
   std::string cumulative_location_desc_s;
-  for (int i1=0; i1 < in_osm_na_targets.size () && in_osm_na_targets.contains (i1); i1++)
+  for (int i1=0; i1 < static_cast<int>(in_osm_na_targets.size ()) && in_osm_na_targets.contains (i1); i1++)
   {
     if (i1 == 0) // 0 = briefer
       continue;
 
     // cumulative_location_desc_s.append (in_osm_na_targets[i1].init_locDesc ()).append ( (i1 + 1 < in_osm_na_targets.size ()) ? ", " : ""   );
-    cumulative_location_desc_s.append (in_osm_na_targets[i1].get_loc_desc ()).append ( (i1 + 1 < in_osm_na_targets.size ()) ? ", " : ""   );
+    cumulative_location_desc_s.append (in_osm_na_targets[i1].get_loc_desc ()).append ( (i1 + 1 < static_cast<int>(in_osm_na_targets.size ()) ) ? ", " : ""   );
   }
 
   std::string briefer_desc = "Hello Pilot\n";
@@ -8553,7 +8553,7 @@ RandomEngine::gen_targets_using_osm_queries_from_a_thread (missionx::base_thread
         // Fetch the next target, SUBJECT "id" node based on "next_tag" values.
         for (size_t counter = 0; const auto &v_index : vec_shuffled_next_tag)
         {
-          assert (vec_shuffled_next_tag.size () > v_index && fmt::format ("[{}] Shuffled index is out of vector bounds. Split vector size: {}", __func__, vec_split_next_tag.size ()).c_str ());
+          assert ( static_cast<int>(vec_shuffled_next_tag.size ()) > v_index && fmt::format ("[{}] Shuffled index is out of vector bounds. Split vector size: {}", __func__, vec_split_next_tag.size ()).c_str ());
           counter++;
           const auto &picked_next_tag = vec_split_next_tag.at (v_index);
 
@@ -8997,7 +8997,7 @@ RandomEngine::prepare_medevac_surprise_me (IXMLNode &inRootTemplate, const IXMLN
       }
 
       // Add final flight plan to display in the ui
-      this->cumulative_location_desc_s += target_navaid.get_loc_desc () + ((osm_na_targets.size () - 1 == target_navaid.fpln_seq)? "" : ", ");
+      this->cumulative_location_desc_s += target_navaid.get_loc_desc () + (( static_cast<int>(osm_na_targets.size ()) - 1 == target_navaid.fpln_seq)? "" : ", ");
 
     } // end "osm_target" loop over all OSM Target NavAids and construct the base information needed for the mission file
 
@@ -9651,7 +9651,7 @@ RandomEngine::prepare_mission_based_on_oilrig2 (IXMLNode &inRootTemplate, std::s
       }
 
       // Add the final flight plan to display in the ui
-      this->cumulative_location_desc_s += target_navaid.get_loc_desc () + ((navaid_targets.size () - 1 == target_navaid.fpln_seq)? "" : ", ");
+      this->cumulative_location_desc_s += target_navaid.get_loc_desc () + (( static_cast<int>(navaid_targets.size ()) - 1 == target_navaid.fpln_seq)? "" : ", ");
 
     } // end "osm_target" loop over all OSM Target NavAids and construct the base information needed for the mission file
 

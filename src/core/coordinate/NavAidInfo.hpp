@@ -356,7 +356,7 @@ public:
   {
      std::string loc_desc;
      const bool  flag_navaid_has_unique_name = nav_aid_has_unique_name (); // v25.06.1 check if the name does not have "coordinate" or "leg" text in it.
-     if ((getID().empty () && getName().empty () || !flag_navaid_has_unique_name))
+     if ( (getID().empty() && getName().empty() ) || !flag_navaid_has_unique_name)
        this->loc_desc = fmt::format("{}: [{:.4f}, {:.4f}]", ((this->flag_nav_from_webosm) ? "osmweb": "coordinates"), this->lat, this->lon);
      else if (getID ().empty ())
        this->loc_desc = getName ();

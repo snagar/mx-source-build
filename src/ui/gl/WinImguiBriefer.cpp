@@ -2182,7 +2182,7 @@ WinImguiBriefer::print_scripts_ui_debug_info ()
             if (ImGui::Button (std::string ("Edit In Memory##btn").append (mxUtils::formatNumber<int> (treeId_i)).c_str ()))
             {
 
-              for (int i_count = 0; i_count < missionx::WinImguiBriefer::mx_flight_leg_info_layer::DEBUG_BUFF_SIZE_RSIZET - 1; ++i_count)
+              for (size_t i_count = 0; i_count < missionx::WinImguiBriefer::mx_flight_leg_info_layer::DEBUG_BUFF_SIZE_RSIZET - 1; ++i_count)
                 this->strct_flight_leg_info.online_debug_buff[i_count] = '\0';
 
 #ifdef IBM
@@ -2546,7 +2546,7 @@ WinImguiBriefer::add_ui_dynamic_options_buttons (const int &inout_picked_indx_lb
   for (const auto &[indx_lbl, lbl] : map_lbl_and_values )
   {
     // check if inout_picked_lbl == lbl
-    if (local_pick == indx_lbl || !flag_indx_lbl_exists && counter == 1)
+    if (local_pick == indx_lbl || (!flag_indx_lbl_exists && counter == 1) )
     {
       display_color        = picked_color;
       flag_indx_lbl_exists = true;
@@ -3145,7 +3145,7 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
 
           // v24.03.1 Sub Category Text
           // Store the label of the sub category, if the vector has the data
-          if (const auto vecToDisplay = this->mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]; vecToDisplay.size () > this->strct_user_create_layer.iMissionSubCategoryPicked)
+          if (const auto vecToDisplay = this->mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]; static_cast<int>( vecToDisplay.size () ) > this->strct_user_create_layer.iMissionSubCategoryPicked)
             missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_MISSION_SUBCATEGORY_LBL (), vecToDisplay.at (this->strct_user_create_layer.iMissionSubCategoryPicked));
 
           // v25.04.2 check layer and add route waypoints
@@ -5230,7 +5230,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
           // v24.03.1 Sub Category Text
           auto vecToDisplay = this->mapMissionCategories[this->strct_user_create_layer.iRadioMissionTypePicked];
           // Store the label of the sub category, if the vector has the data
-          if (vecToDisplay.size () >= this->strct_user_create_layer.iMissionSubCategoryPicked)
+          if ( static_cast<int>( vecToDisplay.size () ) >= this->strct_user_create_layer.iMissionSubCategoryPicked)
             missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_MISSION_SUBCATEGORY_LBL (), vecToDisplay.at (this->strct_user_create_layer.iMissionSubCategoryPicked));
 
 
@@ -6325,7 +6325,7 @@ WinImguiBriefer::child_draw_STORY_mode_leg_info ()
 
 
     ImGui::SameLine (vec2Window.x - 100.0f);
-    if (!this->strct_flight_leg_info.strct_story_mode.bPressedHistory && ImGui::Button (std::string ("Skip " + Utils::from_u8string (ICON_FA_FAST_FORWARD)).c_str ()) || missionx::data_manager::flag_setupAutoSkipStoryMessage)
+    if ( (!this->strct_flight_leg_info.strct_story_mode.bPressedHistory && ImGui::Button (std::string ("Skip " + Utils::from_u8string (ICON_FA_FAST_FORWARD)).c_str ()) ) || missionx::data_manager::flag_setupAutoSkipStoryMessage)
     {
       this->strct_flight_leg_info.strct_story_mode.iChar = Message::lineAction4ui.vals[mxconst::get_STORY_TEXT ()].length (); // this will cause the whole sentence to be displayed
     }
@@ -6638,15 +6638,22 @@ WinImguiBriefer::child_draw_inv_plane_xp12_move_item (Inventory &inout_copied_pl
     ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", " to move");
 
     // Quantity Slider
-    if (ImGui::Button ("-"))
-      this->strct_flight_leg_info.iSliderItemQuantity = (this->strct_flight_leg_info.iSliderItemQuantity - 1 >= 0) ? --this->strct_flight_leg_info.iSliderItemQuantity : this->strct_flight_leg_info.iSliderItemQuantity;
+    // if (ImGui::Button ("-"))
+    //   this->strct_flight_leg_info.iSliderItemQuantity = ( (this->strct_flight_leg_info.iSliderItemQuantity - 1 >= 0) ? --this->strct_flight_leg_info.iSliderItemQuantity : this->strct_flight_leg_info.iSliderItemQuantity );
+
+    if (ImGui::Button ("-") && (this->strct_flight_leg_info.iSliderItemQuantity - 1 >= 0) )
+      --this->strct_flight_leg_info.iSliderItemQuantity;
+
 
     ImGui::SameLine ();
     ImGui::SliderInt ("##SlideItemQuantity", &this->strct_flight_leg_info.iSliderItemQuantity, 0, max_quantity_i);
     ImGui::SameLine ();
 
-    if (ImGui::Button ("+"))
-      this->strct_flight_leg_info.iSliderItemQuantity = (this->strct_flight_leg_info.iSliderItemQuantity + 1 <= max_quantity_i) ? ++this->strct_flight_leg_info.iSliderItemQuantity : this->strct_flight_leg_info.iSliderItemQuantity;
+    // if (ImGui::Button ("+"))
+    //   this->strct_flight_leg_info.iSliderItemQuantity = ((this->strct_flight_leg_info.iSliderItemQuantity + 1 <= max_quantity_i) ? ++this->strct_flight_leg_info.iSliderItemQuantity : this->strct_flight_leg_info.iSliderItemQuantity );
+
+    if (ImGui::Button ("+") && (this->strct_flight_leg_info.iSliderItemQuantity + 1 <= max_quantity_i) )
+      ++this->strct_flight_leg_info.iSliderItemQuantity;
 
     ImGui::SameLine (0.0f, 5.0f);
     ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_orangered);
@@ -7110,7 +7117,7 @@ WinImguiBriefer::child_draw_inv_external_store (const ImVec2 &in_vec2_inv_child)
 
     // HANDLE BUTTON PRESSED __ONLY IF__ WE USE XP11 COMPATIBILITY CODE. THIS CODE MUST NOT RUN for XP12 Mode
     // auto outcome = (bPressedExternal) + (missionx::data_manager::xplane_ver_i < missionx::XP12_VERSION_NO);
-    if ((bPressedExternal) * (missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i == missionx::XP11_COMPATIBILITY))
+    if ((bPressedExternal) && (missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i == missionx::XP11_COMPATIBILITY))
     {
       if (int quantity_i = Utils::stringToNumber<int> (quantity_s); !(this->strct_flight_leg_info.externalInventoryName.empty ()) && quantity_i > 0)
       {
@@ -8787,7 +8794,7 @@ WinImguiBriefer::child_draw_ils_search2 ()
                   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), this->strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12 generate GPS waypoints
 
 
-                  if (const auto vecToDisplay = this->mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]; vecToDisplay.size () > this->strct_user_create_layer.iMissionSubCategoryPicked)
+                  if (const auto vecToDisplay = this->mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]; static_cast<int>(vecToDisplay.size ()) > this->strct_user_create_layer.iMissionSubCategoryPicked)
                     missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_MISSION_SUBCATEGORY_LBL (), vecToDisplay.at (this->strct_user_create_layer.iMissionSubCategoryPicked));
 
                   this->addAdvancedSettingsPropertiesBeforeGeneratingRandomMission (); // v3.303.14

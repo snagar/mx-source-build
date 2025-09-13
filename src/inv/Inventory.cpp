@@ -381,11 +381,11 @@ Inventory::get_item_exists(const IXMLNode& pNode, const std::string& inBarcodeNa
   bool      bFound  = false;
   const int nChilds = pNode.nChildNode();
 
-  for (int iLoop = 0; (iLoop < nChilds) * (!bFound); ++iLoop)
+  for (int iLoop = 0; (iLoop < nChilds) && (!bFound); ++iLoop)
   {
     const auto cNode = pNode.getChildNode (iLoop);
     if (const std::string node_name = cNode.getName ()
-      ; (missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY) * (node_name == mxconst::get_ELEMENT_STATION()) * (nLevel == 0) )
+      ; (missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY) && (node_name == mxconst::get_ELEMENT_STATION()) && (nLevel == 0) )
       bFound = this->get_item_exists(cNode, inBarcodeName, (nLevel + 1));
     else if (node_name == mxconst::get_ELEMENT_ITEM())
       bFound = (Utils::readNodeNumericAttrib<int>(cNode, mxconst::get_ATTRIB_QUANTITY(), 0) > 0);
@@ -405,7 +405,7 @@ Inventory::get_item_node_ptr(const std::string& barcode, const int &inStation_id
   if ( this->get_item_exists(this->node, barcode) )
   {
     // check if we are testing PLANE inventory, and we are in XP12 compatible mode (<station>)
-    if ((opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY) * (this->name == mxconst::get_ELEMENT_PLANE()))
+    if ((opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY) && (this->name == mxconst::get_ELEMENT_PLANE()))
     {
       // check if station exists
       if (mxUtils::isElementExists(this->mapStations, inStation_id))

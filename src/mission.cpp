@@ -5726,6 +5726,7 @@ missionx::Mission::flcPRE()
       {
         missionx::Mission::uiImGuiBriefer->execAction (missionx::mx_window_actions::ACTION_FETCH_FPLN_FROM_SIMBRIEF_SITE);
       }
+      break;
       case missionx::mx_flc_pre_command::load_briefer_textures:
       {
         missionx::data_manager::readPluginTextures ();
@@ -5734,7 +5735,8 @@ missionx::Mission::flcPRE()
       case missionx::mx_flc_pre_command::get_metar_for_airport:
       {
         // v25.09.1 get METAR from X-Plane if a version is 12.x or newer
-        
+
+        #ifndef MAC  // Using XPLM400 SDK
         using GetMetarPtr = void(*)(const char *id, XPLMFixedString150_t *outMETAR);
         GetMetarPtr getMetar{};
         if (data_manager::xplm_version >= 400)
@@ -5747,6 +5749,8 @@ missionx::Mission::flcPRE()
             data_manager::shared_navaid_between_threads.sMetar = mxUtils::trim ( std::string(strct_metar.buffer) );
           }
         }
+        #endif
+
         data_manager::metar_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
@@ -6103,7 +6107,7 @@ missionx::Mission::loadMission()
         + Utils::readAttrib(data_manager::xMainNode, mxconst::get_ATTRIB_NAME(), "")
         + mxconst::get_MX_FILE_SAVE_DREF_EXTENSION ();
 
-      if (missionx::data_manager::missionSavepointFilePath.empty () * missionx::data_manager::missionSavepointDrefFilePath.empty ())
+      if (missionx::data_manager::missionSavepointFilePath.empty () && missionx::data_manager::missionSavepointDrefFilePath.empty ())
         data_manager::missionState = missionx::mx_mission_state_enum::mission_undefined;
       else
         data_manager::missionState = missionx::mx_mission_state_enum::mission_loaded_from_the_original_file;

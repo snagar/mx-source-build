@@ -223,8 +223,8 @@ missionx::Briefer::positionPlane(const bool in_flag_setupForcePlanePositioning, 
   // Test id we have "ICAO" and we are not in "20m radius from starting location".
   // Test if the distance is greater than ~540nm or we don't have valid <location adjust> values for "local" latitude and longitude data.
   // Last, Test if target and plane are on a different side of the globe.
-  if (!ICAO.empty () * !flag_is_plane_in_20_meters_radius_from_starting_position
-    * ( (distance_plane_to_starting_location_in_meters > mxconst::MILION_METERS_D) + (p1.lat * p1.lon == 0) + target_lon_is_on_other_half_of_globe) )
+  if (!ICAO.empty () && !flag_is_plane_in_20_meters_radius_from_starting_position
+    && ( (distance_plane_to_starting_location_in_meters > mxconst::MILION_METERS_D) + (p1.lat * p1.lon == 0) + target_lon_is_on_other_half_of_globe) )
 
   {
     Utils::position_plane_in_ICAO (ICAO);

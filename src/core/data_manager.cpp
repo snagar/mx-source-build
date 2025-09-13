@@ -2045,7 +2045,7 @@ data_manager::prepare_flight_plan_for_XPLN11(std::deque<NavAidInfo>& inNavList)
       }
     }
 
-    if (!(b_isItAnAirport) * Utils::isStringIsValidArithmetic(icao))  // v3.0.303.2 use WPn(lat/lon) instead of just "lat/lon"
+    if (!(b_isItAnAirport) && Utils::isStringIsValidArithmetic(icao))  // v3.0.303.2 use WPn(lat/lon) instead of just "lat/lon"
       icao = (WP_S + mxUtils::formatNumber<size_t>(counter)); // if icao holds lat/lon string then use WPn name
 
 
@@ -3984,7 +3984,7 @@ data_manager::setGPS()
   {
     const bool bAutoLoad    = Utils::readBoolAttrib (data_manager::xmlGPS, mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), mxconst::DEFAULT_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B);
     const bool bGenerateGPS = Utils::readBoolAttrib (data_manager::xmlGPS, mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), false);
-    if ( !(bGenerateGPS * bAutoLoad) )
+    if ( !(bGenerateGPS && bAutoLoad) )
       return map_fms_entries; // exit the code in this function.
   }
 
@@ -8328,7 +8328,7 @@ data_manager::get_translate_of_mission_subcategory_code (const int in_missionCod
     {
       case static_cast<int> (missionx::mx_ui_mission_type::medevac):
       {
-        assert (in_mission_subcategory < data_manager::strct_ui_share_data.medevac_arr.size () && fmt::format ("[{}] subcategory index: '{}', is out of bound for medevac.", __func__, in_mission_subcategory).c_str ());
+        assert (in_mission_subcategory < static_cast<int>(data_manager::strct_ui_share_data.medevac_arr.size ()) && fmt::format ("[{}] subcategory index: '{}', is out of bound for medevac.", __func__, in_mission_subcategory).c_str ());
         const std::string code_text = data_manager::strct_ui_share_data.medevac_arr.at (in_mission_subcategory);
         if (mxUtils::stringToLower (code_text).find (mxconst::SEARCH_SURPRISE_ME_TEXT) != std::string::npos)
           Utils::xml_set_attribute_in_node <bool>(outMetaNode, mxconst::get_ATTRIB_SURPRISE_ME_SUB_CAT_B (), true, outMetaNode.getName () ); // special attribute that will affect how the mission will be built.
@@ -8338,14 +8338,14 @@ data_manager::get_translate_of_mission_subcategory_code (const int in_missionCod
       break;
       case static_cast<int> (missionx::mx_ui_mission_type::cargo):
       {
-        assert (in_mission_subcategory < data_manager::strct_ui_share_data.cargo_arr.size () && fmt::format ("[{}] subcategory index: '{}', is out of bound for cargo.", __func__, in_mission_subcategory).c_str ());
+        assert (in_mission_subcategory < static_cast<int>( data_manager::strct_ui_share_data.cargo_arr.size ()) && fmt::format ("[{}] subcategory index: '{}', is out of bound for cargo.", __func__, in_mission_subcategory).c_str ());
         const std::string code_text = data_manager::strct_ui_share_data.cargo_arr.at (in_mission_subcategory);
         return mxconst::get_GENERATE_TYPE_CARGO ();
       }
       break;
       case static_cast<int> (missionx::mx_ui_mission_type::oil_rig):
       {
-        assert (in_mission_subcategory < data_manager::strct_ui_share_data.oilrig_arr.size () && fmt::format ("[{}] subcategory index: '{}', is out of bound for oilrig.", __func__, in_mission_subcategory).c_str ());
+        assert (in_mission_subcategory < static_cast<int>(data_manager::strct_ui_share_data.oilrig_arr.size ()) && fmt::format ("[{}] subcategory index: '{}', is out of bound for oilrig.", __func__, in_mission_subcategory).c_str ());
         const std::string code_text = data_manager::strct_ui_share_data.oilrig_arr.at (in_mission_subcategory);
         // check if code_text has "med" in the cargo text
         if (mxUtils::stringToLower (code_text).find ("med") != std::string::npos)
@@ -8368,14 +8368,14 @@ data_manager::get_translate_of_mission_subcategory_code (const int in_missionCod
 // -------------------------------------
 
 void
-data_manager::addMessageToHistoryList(std::string inWho, std::string inText, mxVec4 inColor)
+data_manager::addMessageToHistoryList(const std::string& inWho, const std::string &inText, const mxVec4 inColor)
 {
 
   if (listOfMessageStoryMessages.size() > MAX_MX_PAD_MESSAGES)
     listOfMessageStoryMessages.pop_front();
 
   // const ImVec4 color(inColor.x, inColor.y, inColor.z, inColor.w);
-  listOfMessageStoryMessages.emplace_back(messageLine_strct(inWho, inText, inColor));
+  listOfMessageStoryMessages.emplace_back(inWho, inText, inColor);
 }
 
 
@@ -9143,7 +9143,7 @@ data_manager::set_trigger_state(const Trigger& inCallingTrig, const std::string&
   for (const auto& trig_name : vecTriggerNames)
   {
     // check if trigger exists and if we do not use the calling trigger name
-    if (mxUtils::isElementExists( mapTriggers, trig_name ) * (inCallingTrig.name != trig_name) )
+    if (mxUtils::isElementExists( mapTriggers, trig_name ) && (inCallingTrig.name != trig_name) )
     {
       switch (in_action)
       {

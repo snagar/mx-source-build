@@ -82,7 +82,7 @@ public:
   }
 
   //Point(const Point&) = default;
-  Point(const Point& inPoint) { 
+  Point(const Point& inPoint)  : mx_base_node(inPoint) {
 
     std::lock_guard<missionx::mutex> guard(mt_CalcDistBetweenPointsMutex);
 

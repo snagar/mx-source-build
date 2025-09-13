@@ -143,7 +143,7 @@ struct strct_osm_query {
 
   [[nodiscard]] auto get_elapsed_time() const
   {
-    if (this->start_time.time_since_epoch().count() * this->end_time.time_since_epoch().count() )
+    if (this->start_time.time_since_epoch().count() && this->end_time.time_since_epoch().count() )
     {
       const std::chrono::duration<double> elapsed = end_time - start_time;
       return elapsed.count();
@@ -1373,7 +1373,7 @@ public:
 
   // v3.305.2
   static std::list<missionx::messageLine_strct> listOfMessageStoryMessages;
-  static void                                   addMessageToHistoryList(std::string inWho, std::string inText,missionx::mxVec4 inColor );
+  static void                                   addMessageToHistoryList(const std::string& inWho, const std::string &inText,missionx::mxVec4 inColor );
 
   // v24.02.5
   static std::map<std::string, std::string> mapQueries;
