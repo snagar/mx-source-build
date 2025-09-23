@@ -2643,7 +2643,7 @@ RandomEngine::buildFlightLeg (int inFlightLegCounter, const IXMLNode &in_legNode
       }
       else // navaid is valid and not same as previous one
       {
-        newNavInfo.synchToPoint (); // v3.0.241.10 b3 // hopefully will solve the crash when creating GPS
+        newNavInfo.synchToPoint (true); // v25.09.2 force init desc // v3.0.241.10 b3 // hopefully will solve the crash when creating GPS
         xPoint = newNavInfo.node.deepCopy (); // v3.0.221.15 rc3.2
         if (xPoint.isEmpty ())
         {
@@ -2707,7 +2707,12 @@ RandomEngine::buildFlightLeg (int inFlightLegCounter, const IXMLNode &in_legNode
 
 
   // 1. Check SLOPE for LAND leg type and WATER body that will affect flight_leg_type. Then check special point directives like "template" attribute that should override the "flight leg" template
-  if ((flight_leg_type_hover_land_or_start != mxconst::get_FL_TEMPLATE_VAL_START ()) || (!this->flag_isLastFlightLeg))
+  if (flight_leg_type_hover_land_or_start == mxconst::get_FL_TEMPLATE_VAL_START () || this->flag_isLastFlightLeg)
+  {
+    // v25.09.2 [bug] <point> was not added to the target trigger.
+    const bool b_node_was_added = Utils::xml_add_node_to_element_IXMLNode (xLegTargetTrigger, xPoint, mxconst::get_ELEMENT_LOC_AND_ELEV_DATA ()); // Target point shared between all flight_leg_type
+  }
+  else //if ((flight_leg_type_hover_land_or_start != mxconst::get_FL_TEMPLATE_VAL_START ()) || (!this->flag_isLastFlightLeg))
   {
     // ---------------------------------------
     // 1. check SLOPE if no navaid name
@@ -2730,9 +2735,9 @@ RandomEngine::buildFlightLeg (int inFlightLegCounter, const IXMLNode &in_legNode
       if (expected_slope_at_target_location_d > missionx::data_manager::Max_Slope_To_Land_On)
       {
         flight_leg_type_hover_land_or_start = mxconst::get_FL_TEMPLATE_VAL_HOVER ();
-#ifndef RELEASE
+        #ifndef RELEASE
         Log::logMsgWarn (fmt::format ("[random asses slope] Changed <leg> type to Hover due to slope being larger than: {}. Found slope in landing area: {}", Utils::formatNumber<float> (missionx::data_manager::Max_Slope_To_Land_On), Utils::formatNumber<double> (expected_slope_at_target_location_d)), true);
-#endif
+        #endif
       }
 
       Log::logDebugBO ("[DEBUG buildFLightLeg] location: " + location_type + ", After slope decision", true);
@@ -2769,7 +2774,7 @@ RandomEngine::buildFlightLeg (int inFlightLegCounter, const IXMLNode &in_legNode
     if (!newNavInfo.flag_force_picked_same_point_template_as_flight_leg_template_type) // v3.0.223.2 if we already picked based on same template then is no room for this test
     {
       // read template type from point and apply to NavAid and Leg node
-      std::string pointTemplateType = Utils::stringToLower (Utils::readAttrib (xPoint, mxconst::get_ATTRIB_TEMPLATE (), EMPTY_STRING)); // v3.0.219.3 this will affect the flight leg type
+      std::string pointTemplateType = Utils::stringToLower (Utils::readAttrib (xPoint, mxconst::get_ATTRIB_TEMPLATE (), "")); // v3.0.219.3 this will affect the flight leg type
       if (!pointTemplateType.empty () && ((mxconst::get_FL_TEMPLATE_VAL_LAND () == pointTemplateType) || (mxconst::get_FL_TEMPLATE_VAL_HOVER () == pointTemplateType)) && flight_leg_type_hover_land_or_start != pointTemplateType) // v3.0.219.3 override <leg> type only if different from current leg type
       {
         #ifndef RELEASE
@@ -2783,7 +2788,7 @@ RandomEngine::buildFlightLeg (int inFlightLegCounter, const IXMLNode &in_legNode
     radius_mt = Utils::readAttrib (xPoint, mxconst::get_ATTRIB_RADIUS_MT (), radius_mt);
 
     // v25.02.1 add point to target trigger - moved before the LAND_HOVER and HOVER logic
-    Utils::xml_add_node_to_element_IXMLNode (xLegTargetTrigger, xPoint, mxconst::get_ELEMENT_LOC_AND_ELEV_DATA ()); // Target point shared between all flight_leg_type
+    const bool b_node_was_added = Utils::xml_add_node_to_element_IXMLNode (xLegTargetTrigger, xPoint, mxconst::get_ELEMENT_LOC_AND_ELEV_DATA ()); // Target point shared between all flight_leg_type
 
     // ---------------------------------------
     // Handle LAND_HOVER template
@@ -5188,7 +5193,7 @@ RandomEngine::get_target (NavAidInfo &outNewNavInfo, const IXMLNode &inLegFromTe
     }
 
     outNewNavInfo = this->listNavInfo.front ();
-    outNewNavInfo.synchToPoint ();
+    outNewNavInfo.synchToPoint (true); // v25.09.1 add force init description
     return true;
   }
   // If defined nothing then search for NEAR. Get nearest NavAid relative to last position if no location_value or location_tag_name were defined. Plane type is not relevant
@@ -5240,7 +5245,8 @@ RandomEngine::get_target (NavAidInfo &outNewNavInfo, const IXMLNode &inLegFromTe
 
     return true;
   }
-  else if (this->lastFlightLegNavInfo.lat != 0.0f && this->lastFlightLegNavInfo.lon != 0.0f)
+
+  if (this->lastFlightLegNavInfo.lat != 0.0f && this->lastFlightLegNavInfo.lon != 0.0f)
   {
     // check osm and UI template
     // DEBUG
