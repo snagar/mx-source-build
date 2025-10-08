@@ -1,4 +1,4 @@
-#include "../io/ListDir.h"
+ #include "../io/ListDir.h"
 
 
 #include <filesystem>
@@ -5707,46 +5707,84 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
       assert(data_manager::db_stats.mapStatements[stmt_uq_name] != nullptr);
 
       int seq = 0;
+      int seq_activity = 0;
       mission_stats_from_query.reset();
+
+      std::map<int, missionx::mx_row_stats_strct> map_stats_rows;
+      std::map<int, missionx::mx_row_stats_strct> map_activity_stats_rows;
+      std::vector <std::string> vec_activity_pacing = {"takeoff", "landing"};
 
       while (sqlite3_step(db_stats.mapStatements[stmt_uq_name]) == SQLITE_ROW)
       {
+        missionx::mx_row_stats_strct row;
 
         int i = 0;
-        mission_stats_from_query.vecSeq_d.emplace_back( static_cast<double> ( seq ) ); // 0 column line_id (seq) we will use internal numbering so we always start from ZERO
+        row.Seq_d = static_cast<double> ( seq );
+        mission_stats_from_query.vecSeq_d.emplace_back( row.Seq_d ); // 0 column line_id (seq) we will use internal numbering so we always start from ZERO
 
         const auto elev_mt = static_cast<double> ( sqlite3_column_int ( db_stats.mapStatements[stmt_uq_name], i ) );
         i++; // column 1 elevation in meters
         const auto elev_ft = elev_mt * meter2feet;
-        mission_stats_from_query.vecElev_mt_d.emplace_back(elev_mt); // 1 column Elevation meters
-        mission_stats_from_query.vecElev_ft_d.emplace_back(elev_ft); // store elevation as feet
+        row.Elev_mt_d = elev_mt;
+        row.Elev_ft_d = elev_ft;
+        mission_stats_from_query.vecElev_mt_d.emplace_back(row.Elev_mt_d); // 1 column Elevation meters
+        mission_stats_from_query.vecElev_ft_d.emplace_back(row.Elev_ft_d); // store elevation as feet
         // Min Max
         mxUtils::eval_min_max<double>(elev_ft, mission_stats_from_query.min_elev_ft, mission_stats_from_query.max_elev_ft);
 
         if (seq == 0)
           mission_stats_from_query.min_elev_ft = mission_stats_from_query.max_elev_ft = elev_ft;
 
-        mission_stats_from_query.vecFlaps_d.emplace_back( static_cast<double> ( sqlite3_column_int ( db_stats.mapStatements[stmt_uq_name], i ) ) );
+        row.Flaps_d = static_cast<double> ( sqlite3_column_int ( db_stats.mapStatements[stmt_uq_name], i ) );
+        mission_stats_from_query.vecFlaps_d.emplace_back( row.Flaps_d );
         i++; // 2 column flaps
-        mission_stats_from_query.vecDayInYear_d.emplace_back( static_cast<double> ( sqlite3_column_int ( db_stats.mapStatements[stmt_uq_name], i ) ) );
+        row.DayInYear_d = static_cast<double> ( sqlite3_column_int ( db_stats.mapStatements[stmt_uq_name], i ) );
+        mission_stats_from_query.vecDayInYear_d.emplace_back( row.DayInYear_d );
         i++; // 3 column day in year
-        mission_stats_from_query.vecLocalTime_sec_d.emplace_back(sqlite3_column_double(db_stats.mapStatements[stmt_uq_name], i));
+        row.LocalTime_sec_d = static_cast<double> ( sqlite3_column_int ( db_stats.mapStatements[stmt_uq_name], i ) );
+        mission_stats_from_query.vecLocalTime_sec_d.emplace_back(row.LocalTime_sec_d);
         i++; // 4 column local time in seconds
 
         const auto air_speed = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name], i);
         i++; // 5 column Air speed
-        mission_stats_from_query.vecAirSpeed_d.emplace_back(air_speed);
+        row.AirSpeed_d = air_speed;
+        mission_stats_from_query.vecAirSpeed_d.emplace_back(row.AirSpeed_d);
         // Min Max
         mxUtils::eval_min_max<double>(air_speed, mission_stats_from_query.min_airspeed, mission_stats_from_query.max_airspeed);
 
-        mission_stats_from_query.vecGroundSpeed_d.emplace_back(sqlite3_column_double(db_stats.mapStatements[stmt_uq_name], i));
+        row.GroundSpeed_d = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name], i);
+        mission_stats_from_query.vecGroundSpeed_d.emplace_back(row.GroundSpeed_d);
         i++; // 6 column ground speed
-        mission_stats_from_query.vecFaxil_d.emplace_back(sqlite3_column_double(db_stats.mapStatements[stmt_uq_name], i));
+        row.Faxil_d = static_cast<double> ( sqlite3_column_int ( db_stats.mapStatements[stmt_uq_name], i ) );
+        mission_stats_from_query.vecFaxil_d.emplace_back(row.Faxil_d);
         i++; // 7 column Faxil
-        mission_stats_from_query.vecRoll_d.emplace_back(sqlite3_column_double(db_stats.mapStatements[stmt_uq_name], i));
+        row.Roll_d = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name], i);
+        mission_stats_from_query.vecRoll_d.emplace_back(row.Roll_d);
         i++; // 8 column roll
-        mission_stats_from_query.vecActivity_s.emplace_back(reinterpret_cast<const char*>(sqlite3_column_text(db_stats.mapStatements[stmt_uq_name], i)));
+        row.Activity_s = std::string(reinterpret_cast<const char*>(sqlite3_column_text(db_stats.mapStatements[stmt_uq_name], i)));
+        mission_stats_from_query.vecActivity_s.emplace_back(row.Activity_s);
         i++; // 9. column Activity: takeoff / landing
+
+        // // v25.09.2
+        // row.dist_diff = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name], i);
+        // mission_stats_from_query.vec_dist_diff.emplace_back(row.dist_diff); // diff distance
+        // i++; // 10 column dist_diff,  distance difference
+        // row.time_diff = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name], i);
+        // mission_stats_from_query.vec_time_diff.emplace_back(row.time_diff); // diff time
+        // i++; // 11 column time_diff
+        //
+        // // v25.09.2
+        // Utils::addElementToMap (map_stats_rows, seq, row);
+        // // add only valid activities for pacing analyze, for later usage
+        // if ( Utils::isStringExistsInVec (vec_activity_pacing, row.Activity_s) )
+        // {
+        //   if (mxUtils::isElementExists(map_activity_stats_rows, seq_activity - 1))
+        //   {
+        //     row.dist_diff = Poin
+        //   }
+        //   map_activity_stats_rows[seq_activity] = row;
+        //   seq_activity++;
+        // }
 
         seq++;
       }
@@ -5755,6 +5793,9 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
         (*outStatusMessage) = "!!! No Stats Rows Found !!!"; // success message
       else
         (*outStatusMessage) = "Fetched: " + mxUtils::formatNumber<int>(seq) + " of statistics rows."; // success message
+
+      // mission_stats_from_query.map_flight_pacing[index] = fmt::format("Flight started at: {}", Utils::translate_seconds_to_time_of_day ( row.DayInYear_d, row.LocalTime_sec_d ) );
+
     }
     else
     {
@@ -5787,9 +5828,9 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
 
     const std::string stmt_uq_name3 = "query_min_max_stats_vu";
 
-#ifndef RELEASE
+    #ifndef RELEASE
     Log::logMsgThread("query min/max stats:" + query_min_max_stats);
-#endif // !RELEASE
+    #endif // !RELEASE
 
 
     if (db_stats.prepareNewStatement(stmt_uq_name3, query_min_max_stats))
@@ -5825,7 +5866,6 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
         iCol++;
       }
 
-
       // v3.303.9.1 use default scoring if there is none in the mission file
       if (mx_global_settings.xScoring_ptr.isEmpty())
         mx_global_settings.xScoring_ptr = Utils::xml_get_node_from_XSD_map_as_a_copy(mxconst::get_ELEMENT_SCORING());
@@ -5850,6 +5890,7 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
   }
 
 
+
   ///// v3.0.308.4.3
   mission_stats_from_query.vecLandingStatsResults = get_landing_stats_as_vec(); // v3.303.8.3 will get landing information + center line score
 
@@ -5866,20 +5907,43 @@ data_manager::get_landing_stats_as_vec()
   std::vector<mx_stats_data> vecActivity; // store stmt01 data
   // std::string                          icao_id_s;
 
-  // Fetch time passes between activities.First row will always be 0
-  // The query will convert days into seconds in order to have correct delta result between "current - previous" fields
+  // Fetch time passes between activities. The first row will always be 0
+  // The query will convert days into seconds to have a correct delta result between "current - previous" fields
   // columns return:  line_id, plane_lat, plane_lon, elev_mt, activity and time_passed (between activities)
-  const std::string stmt01 = R"(select line_id, plane_lat, plane_lon, activity
-           , case
-                  when v1.local_date_days >= v1.prev_date_days then ( v1.local_date_days_in_seconds + v1.local_time_sec ) - ( v1.prev_local_date_days_in_seconds + v1.prev_local_time_sec) -- should pick 99.9% of cases
-                  when v1.local_date_days < v1.prev_date_days  then ( (prev_local_date_days_in_seconds + 86400) + v1.local_time_sec ) - (v1.prev_local_date_days_in_seconds + v1.prev_local_time_sec) -- transition a year, very rare
-             else 0 end time_passed
-from (
-select line_id, local_date_days, local_date_days*86400 as local_date_days_in_seconds, local_time_sec, lat as plane_lat, lon as plane_lon, elev as elev_mt, gforce_normal, gforce_axil, vvi_fpm_pilot, activity, lag(local_date_days) over (order by line_id) as prev_date_days, (lag(local_date_days) over (order by line_id) * 86400)  as prev_local_date_days_in_seconds, lag (local_time_sec) over (order by line_id) as prev_local_time_sec
+//   const std::string stmt01 = R"(select line_id, plane_lat, plane_lon, activity
+//            , case
+//                   when v1.local_date_days >= v1.prev_date_days then ( v1.local_date_days_in_seconds + v1.local_time_sec ) - ( v1.prev_local_date_days_in_seconds + v1.prev_local_time_sec) -- should pick 99.9% of cases
+//                   when v1.local_date_days < v1.prev_date_days  then ( (prev_local_date_days_in_seconds + 86400) + v1.local_time_sec ) - (v1.prev_local_date_days_in_seconds + v1.prev_local_time_sec) -- transition a year, very rare
+//              else 0 end time_passed
+// from (
+// select line_id, local_date_days, local_date_days*86400 as local_date_days_in_seconds, local_time_sec, lat as plane_lat, lon as plane_lon, elev as elev_mt, gforce_normal, gforce_axil, vvi_fpm_pilot, activity, lag(local_date_days) over (order by line_id) as prev_date_days, (lag(local_date_days) over (order by line_id) * 86400)  as prev_local_date_days_in_seconds, lag (local_time_sec) over (order by line_id) as prev_local_time_sec
+// from stats
+// where (stats.activity != "" and stats.activity is not null)
+// ) v1
+// )";
+
+
+
+  // Gather pacing info
+  const std::string stmt01 = R"(select line_id, lat as plane_lat, lon as plane_lon, activity
+, local_date_days, local_time_sec
+, case when airspeed < 0.0 then 0.0 else airspeed end as airspeed
+, groundspeed, roll
+, IFNULL( mx_calc_distance( lat, lon, IFNULL(lag(lat) over (order by line_id), lat), IFNULL(lag(lon) over (order by line_id), lon), 6370880), 0.0) as dist_diff
+, CASE WHEN local_date_days >= IFNULL(lag (local_date_days) over (order by line_id), -1)
+       THEN IFNULL( (local_date_days * 86400 + local_time_sec) - (lag (local_date_days) over (order by line_id) * 86400 + lag (local_time_sec) over (order by line_id)), 0.0)
+            ELSE IFNULL( ( (local_date_days + 365) * 86400 + local_time_sec) - (lag (local_date_days) over (order by line_id) * 86400 + lag (local_time_sec) over (order by line_id)), 0.0)
+       END as diff_time
+, date_time as os_date_time
+, IFNULL ( ( julianday(date_time) - julianday( lag (date_time) over (order by line_id) ) ) * 86400.0, 0.0) as os_date_time_pacing
+, IFNULL ( ( julianday( lead (date_time) over (order by line_id) ) - julianday(date_time) ) * 86400.0, 0.0) as lead_os_date_time_pacing
 from stats
-where (stats.activity != "" and stats.activity is not null)
-) v1
+where 1 = 1
+and activity is not null
+and activity in ('takeoff', 'landing')
+order by line_id
 )";
+
 
 
   #ifndef RELEASE
@@ -5894,9 +5958,12 @@ where (stats.activity != "" and stats.activity is not null)
   // Q1: gather activity data from stats db
   if (db_stats.prepareNewStatement(unique_name_s01, stmt01))
   {
-    mx_stats_data prev_landing_data;
+    std::map<int, mx_stats_data> map_landing_data;
+
 
     // Loop over all activities that are "landing" and gather airport and runway information (drill down)
+    bool b_found_bounce = false;
+    int index = 1;
     while (db_stats.step(db_stats.mapStatements[unique_name_s01]) == SQLITE_ROW) // fetch 1 row))
     {
       mx_stats_data data;
@@ -5910,14 +5977,82 @@ where (stats.activity != "" and stats.activity is not null)
       iCol01++;
       data.activity_s = mxUtils::stringToLower(std::string(reinterpret_cast<const char*>(sqlite3_column_text(db_stats.mapStatements[unique_name_s01], iCol01)))); // takeoff or landing
       iCol01++;
-      data.time_passed = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      // v25.09.2
+      data.local_date_days = sqlite3_column_int(db_stats.mapStatements[unique_name_s01], iCol01);
+      iCol01++;
+      data.local_time_sec = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      iCol01++;
+      data.airspeed = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      iCol01++;
+      data.groundspeed = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      iCol01++;
+      data.roll = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      iCol01++;
+      data.diff_distance_meters = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      iCol01++;
+      data.diff_time_sec = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      iCol01++;
+      data.os_date_fmt = mxUtils::stringToLower(std::string(reinterpret_cast<const char*>(sqlite3_column_text(db_stats.mapStatements[unique_name_s01], iCol01)))); // takeoff or landing
+      iCol01++;
+      data.os_date_fmt_time_pacing = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      iCol01++;
+      data.lead_os_date_time_pacing = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
       iCol01++;
 
       data.bInitialized = true;
 
-      if (data.time_passed == 0.0) // first activity, probably takeoff, since there is no time passed information between activities
-        continue;
-      else if (mxconst::get_STATS_LANDING() == data.activity_s) // landing stats ?
+      map_landing_data[index] = data;
+      index++;
+    } // end Q1 - gather landing data
+
+    mx_stats_data *bounce_data_pointer = nullptr;
+    for (auto& [seq, data] : map_landing_data)
+    {
+
+      // BOUNCE DETECTION
+      if ( b_found_bounce || mxconst::get_STATS_TAKEOFF() == data.activity_s )
+      {
+        // detect bounce
+        if ( mxUtils::isElementExists (map_landing_data, seq - 1) && data.diff_time_sec < 60.0  )
+        {
+          b_found_bounce = true;
+          data.bounce = 1;
+
+          if ( mxconst::get_STATS_TAKEOFF() == data.activity_s )
+          {
+            if (!vecActivity.empty ())
+            {
+              data.icao = vecActivity.back ().icao;
+              data.runway_s = vecActivity.back ().runway_s;
+            }
+            vecActivity.emplace_back(data);
+          }
+
+          if (bounce_data_pointer == nullptr && !vecActivity.empty () && vecActivity.size () > 1) // one time until next reset
+            bounce_data_pointer =  &vecActivity[vecActivity.size () - 2];
+
+          if (bounce_data_pointer)
+          {
+            bounce_data_pointer->score_centerLine=0.0;
+            bounce_data_pointer->did_landing_contained_bounce=true;
+            // add bounce only if lead > 0 and <= 60 seconds
+            if ( mxUtils::mx_between <double>( data.lead_os_date_time_pacing,0.0, 60.0, enums::mx_between_types::gt_min_eqles_max) )
+              bounce_data_pointer->bounce += 1;
+          }
+
+          // skip only if it is not a landing activity. Landing activity should gather the data too
+          if ( mxconst::get_STATS_LANDING() != data.activity_s )
+            continue; // skip the line that is part of the bounce
+        }
+        else
+        {
+          // reset state
+          b_found_bounce = false;
+          bounce_data_pointer = nullptr;
+        }
+      }
+
+      if (mxconst::get_STATS_LANDING() == data.activity_s) // landing stats ?
       {
         assert(data_manager::db_xp_airports.db && "db_xp_airports was not initialized correctly. Notify developer or try to restart X-Plane.");
 
@@ -5931,9 +6066,9 @@ where (stats.activity != "" and stats.activity is not null)
           }
         }
 
-        // -- Q3 fetch distance from center of rw, if plane landed
+        // -- Q3 fetch distance from the center of the rw, if plane landed
         // -- Neads plane position.
-        // -- We added special case where there are no boundary, we will only use ICAO.
+        // -- We added a special case where there are no boundary, we will only use ICAO.
         // -- This should be ok because even in duplicate ICAO cases, the query won't retrieve runways that the plane is not inside their boundary
         std::string stmt03 = R"(select xp_rw.rw_no_1 || '-' || xp_rw.rw_no_2 as runway
 , mx_get_shortest_distance_to_rw_vector ( {}, {}, xp_rw.rw_no_1_lat, xp_rw.rw_no_1_lon, xp_rw.rw_no_2_lat, xp_rw.rw_no_2_lon) as distance_from_center
@@ -5961,7 +6096,7 @@ where is_plane_on_rw = 1
         Log::logMsg("stmt03: " + stmt03);
         #endif // !RELEASE
 
-        // Q3 fetch touchdown relative to center of rw data
+        // Q3 fetch touchdown relative to the center of the runway data
         const std::string unique_name_s03 = "fetch_plane_relative_to_center";
         if (db_xp_airports.prepareNewStatement(unique_name_s03, stmt03))
         {
@@ -5983,10 +6118,10 @@ where is_plane_on_rw = 1
 
         vecActivity.emplace_back(data);
 
-        prev_landing_data = data; // there is no real use with the "prev_landing_data" parameter
-      }                           // end landing activity stats
+      }// end landing activity stats
 
-    } // end Q1: loop over all rows
+    } // end loop over all rows
+
   }   // End Q1 prepare statement
 
   return vecActivity; // landing_stats;

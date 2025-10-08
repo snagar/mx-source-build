@@ -441,8 +441,8 @@ missionx::dataref_param::fill_IntArrayIntoVector(int* inOut_Array, std::vector<i
 
   if (inFlagManuallyPreparedVector)
   { // fill array float with the vector custom data
-    auto counterSize = (this->arraySize <= outVecToFill.size()) ? this->arraySize : outVecToFill.size();
-    for (auto i = (size_t)0; i < counterSize; ++i)
+    auto counterSize = (this->arraySize <= static_cast<int>( outVecToFill.size()) ) ? this->arraySize : outVecToFill.size();
+    for (auto i = static_cast<size_t> (0); i < counterSize; ++i)
     {
       inOut_Array[i] = outVecToFill.at(i);
       outStrArrayValue.append(Utils::formatNumber<int>(inOut_Array[i]));
@@ -479,8 +479,8 @@ missionx::dataref_param::fill_FloatArrayIntoVector(float* inOut_Array, std::vect
 
   if (inFlagManuallyPreparedTheOutVector_notTheTargetVector)
   { // fill array float with the vector custom data
-    auto counterSize = (this->arraySize <= outVecToFill.size()) ? this->arraySize : outVecToFill.size();
-    for (auto i = (size_t)0; i < counterSize; ++i)
+    const auto counterSize = (this->arraySize <= static_cast<int>(outVecToFill.size()) ) ? this->arraySize : outVecToFill.size();
+    for (auto i = static_cast<size_t> (0); i < counterSize; ++i)
     {
       inOut_Array[i] = outVecToFill.at(i);
       outStrArrayValue.append(Utils::formatNumber<float>(inOut_Array[i]));
@@ -527,13 +527,13 @@ missionx::dataref_param::flc_interpolation(bool& outDrefWasChanged)
           this->progress_array_interpolation_values<float>(this->strctInterData, this->strctInterData.vecLastInterValues_f);
           this->out_vecArrayFloatValues = this->strctInterData.vecLastInterValues_f;
 
-#ifndef RELEASE
-          std::string debugOutput{ "" };
+          #ifndef RELEASE
+          std::string debugOutput;
           for (const auto& v : this->out_vecArrayFloatValues)
             debugOutput.append(mxUtils::formatNumber<float>(v, 4)).append( "," );
 
           Log::logMsg("Key: " + this->key + " [" + debugOutput + "]");
-#endif // !RELEASE
+          #endif // !RELEASE
 
 
           if (this->setTargetArray<xplmType_FloatArray, float>(estimatedArraySize_i, this->strctInterData.arrayValuesAsString, false, ","))
@@ -546,13 +546,13 @@ missionx::dataref_param::flc_interpolation(bool& outDrefWasChanged)
           // the cycle logic is in set_array_interpolation_values
           this->progress_array_interpolation_values<int>(this->strctInterData, this->strctInterData.vecLastInterValues_f);
           
-#ifndef RELEASE
-          std::string debugOutput{ "" };
+          #ifndef RELEASE
+          std::string debugOutput;
           for (const auto& v : this->strctInterData.vecLastInterValues_f)
-            debugOutput.append(mxUtils::formatNumber<int>((int)v)).append(",");
+            debugOutput.append( fmt::format("{}, ",  v) );
 
           Log::logMsg("Key: " + this->key + " [" + debugOutput + "]");
-#endif // !RELEASE
+          #endif // !RELEASE
 
           if (this->setTargetArray<xplmType_IntArray, int>(this->arraySize, this->strctInterData.arrayValuesAsString, false, ","))
             dataref_param::set_dataref_values_into_xplane(*this);
@@ -582,10 +582,10 @@ missionx::dataref_param::flc_interpolation(bool& outDrefWasChanged)
       if (this->strctInterData.seconds_to_run_i <= 0)
         this->strctInterData.timerToRun.setEnd();
       else
-        missionx::Timer::start(this->strctInterData.timerToRun, (float)this->strctInterData.seconds_to_run_i);
+        missionx::Timer::start(this->strctInterData.timerToRun, static_cast<float> (this->strctInterData.seconds_to_run_i));
 
       #ifndef RELEASE
-        Log::logMsg("Interpolated dataref: " + this->name + " [" + this->getParamStringValue() + "]\n"); // debug
+      Log::logMsg("Interpolated dataref: " + this->name + " [" + this->getParamStringValue() + "]\n"); // debug
       #endif // !RELEASE
 
 
@@ -595,7 +595,7 @@ missionx::dataref_param::flc_interpolation(bool& outDrefWasChanged)
         if (this->strctInterData.seconds_to_run_i <= 0)
           this->strctInterData.timerToRun.setEnd();
         else 
-          missionx::Timer::start(this->strctInterData.timerToRun, (float)this->strctInterData.seconds_to_run_i);
+          missionx::Timer::start(this->strctInterData.timerToRun, static_cast<float> (this->strctInterData.seconds_to_run_i));
     }
   }
     
@@ -648,7 +648,7 @@ missionx::dataref_param::initInterpolation(const unsigned int inInterpolateEvery
       double v_d = 0.0;
 
       std::vector<double> vecTargetValues = Utils::splitStringToNumbers<double>(inTargetValue, ",");
-      if (vecTargetValues.size() > 0)
+      if (!vecTargetValues.empty())
         v_d = vecTargetValues.at(0);
 
       this->strctInterData.flagIsValid = this->initScalarInterpolation(inInterpolateEvery_n_Seconds, inCycles, v_d);  
@@ -682,7 +682,7 @@ missionx::dataref_param::initScalarInterpolation(const unsigned int inInterpolat
     this->strctInterData.last_value_d = this->strctInterData.starting_scalar_value_d;  //this->getValue<double>();
     this->strctInterData.target_value_d = inTargetValue;
     this->strctInterData.timerToRun.reset();
-    missionx::Timer::start(this->strctInterData.timerToRun, (float)inInterpolateEvery_n_Seconds);
+    missionx::Timer::start(this->strctInterData.timerToRun, static_cast<float> (inInterpolateEvery_n_Seconds));
   }
 
   return true;
@@ -700,7 +700,8 @@ missionx::dataref_param::initArrayInterpolation(const unsigned int inInterpolate
     if (this->dataRefType == xplmType_FloatArray)
       this->strctInterData.vecLastInterValues_f = this->out_vecArrayFloatValues;
     else if (this->dataRefType == xplmType_IntArray)
-      std::for_each(this->out_vecArrayIntValues.begin(), this->out_vecArrayIntValues.end(), [&](auto iVal) { this->strctInterData.vecLastInterValues_f.emplace_back((float)iVal); });
+      std::ranges::for_each(this->out_vecArrayIntValues, [&](auto iVal) { this->strctInterData.vecLastInterValues_f.emplace_back(static_cast<float> (iVal)); });
+      // std::for_each(this->out_vecArrayIntValues.begin(), this->out_vecArrayIntValues.end(), [&](auto iVal) { this->strctInterData.vecLastInterValues_f.emplace_back(static_cast<float> (iVal)); });
     else
     {
       Log::logMsg(std::string(__func__) + ", dataref array dataype is not supported for: " + this->getName());
@@ -713,7 +714,7 @@ missionx::dataref_param::initArrayInterpolation(const unsigned int inInterpolate
     this->init_array_interpolation_operation<float>(this->strctInterData, this->strctInterData.vecLastInterValues_f, inTargetValuesAsString, inCycles);
 
     this->strctInterData.timerToRun.reset();
-    missionx::Timer::start(this->strctInterData.timerToRun, (float)inInterpolateEvery_n_Seconds);
+    missionx::Timer::start(this->strctInterData.timerToRun, static_cast<float> (inInterpolateEvery_n_Seconds));
 
   }
 }
@@ -730,8 +731,8 @@ missionx::dataref_param::debugArrayInterpolationValuesAfterInitialization(const 
 
   for (int iLoop = 1; iLoop <= this->strctInterData.for_how_many_cycles_i; ++iLoop)
   {
-    float loopCycle_f = (float)iLoop;
-    int counter = 0;
+    const auto loopCycle_f = static_cast<float> (iLoop);
+    int        counter     = 0;
 
     auto iterStartingValues    = this->strctInterData.vecLastInterValues_f.cbegin();
     auto iterEndStartingValues = this->strctInterData.vecLastInterValues_f.cend();
@@ -752,14 +753,14 @@ missionx::dataref_param::debugArrayInterpolationValuesAfterInitialization(const 
         if (this->dataRefType == xplmType_IntArray)
           delta_s += "," + mxUtils::formatNumber<float>(std::round(((*iterDelta) * loopCycle_f) + (*iterStartingValues))); // round value to int like number
         else
-          delta_s += "," + mxUtils::formatNumber<float>((float)((*iterDelta) * loopCycle_f) + (float)(*iterStartingValues)); // float
+          delta_s += "," + mxUtils::formatNumber<float>((float)((*iterDelta) * loopCycle_f) + static_cast<float> (*iterStartingValues)); // float
       }
       else
       {
         if (this->dataRefType == xplmType_IntArray)
           delta_s += mxUtils::formatNumber<float>(std::round(((*iterDelta) * loopCycle_f) + (*iterStartingValues))); // round value to int like number
         else
-          delta_s += mxUtils::formatNumber<float>((float)((*iterDelta) * loopCycle_f) + (float)(*iterStartingValues)); // float
+          delta_s += mxUtils::formatNumber<float>((float)((*iterDelta) * loopCycle_f) + static_cast<float> (*iterStartingValues)); // float
       }
 
       ++iterDelta;
@@ -786,12 +787,12 @@ missionx::dataref_param::readDatarefValue_into_missionx_plugin()
     {
       case xplmType_Int:
       {
-        this->setValue((double)XPLMGetDatai(this->dataRefId));
+        this->setValue(static_cast<double> (XPLMGetDatai (this->dataRefId)));
       }
       break;
       case xplmType_Float:
       {
-        this->setValue((double)XPLMGetDataf(this->dataRefId));
+        this->setValue(static_cast<double> (XPLMGetDataf (this->dataRefId)));
       }
       break;
       case (xplmType_Double):
@@ -805,7 +806,7 @@ missionx::dataref_param::readDatarefValue_into_missionx_plugin()
         if (flag_paramReadyToBeUsed && this->flag_designerPickedOneElement )
         {
           XPLMGetDatavi(this->dataRefId, target_IntArray, 0, this->arraySize);
-          this->setValue((double)target_IntArray[this->arrayElementPickedTranslation]);
+          this->setValue(static_cast<double> (target_IntArray[this->arrayElementPickedTranslation]));
         }
         else if (flag_paramReadyToBeUsed && !this->flag_designerPickedOneElement ) // if we picked array and it is not one element
         {
@@ -818,7 +819,7 @@ missionx::dataref_param::readDatarefValue_into_missionx_plugin()
         if (flag_paramReadyToBeUsed && this->flag_designerPickedOneElement )
         {
           XPLMGetDatavf(this->dataRefId, target_FloatArray, 0, this->arraySize);
-          this->setValue((double)target_FloatArray[this->arrayElementPickedTranslation]);
+          this->setValue(static_cast<double> (target_FloatArray[this->arrayElementPickedTranslation]));
         }
         else if (flag_paramReadyToBeUsed && !this->flag_designerPickedOneElement)
         {
@@ -833,9 +834,11 @@ missionx::dataref_param::readDatarefValue_into_missionx_plugin()
       {
         if (flag_paramReadyToBeUsed)
         {
+          this->arraySize = XPLMGetDatab (this->dataRefId, NULL, 0, 0); // v25.09.2 find size of string
           XPLMGetDatab(this->dataRefId, target_CharArray, 0, this->arraySize);
-          this->setParamStringValue(std::string(target_CharArray));
-          //this->setStringProperty(this->getName(), std::string(target_CharArray)); // moved into setParamStringValue()
+
+          if (this->arraySize && target_CharArray != NULL )
+            this->setParamStringValue(std::string(target_CharArray));          
         }
       }
       break;
@@ -879,14 +882,17 @@ missionx::dataref_param::readArrayDatarefIntoLocalArray()
         else
         {
           // initialize with first value from vector
-          this->setValue((double)out_vecArrayFloatValues.at(0));
+          this->setValue(static_cast<double> (out_vecArrayFloatValues.at (0)));
         }
       }
       break;
       case (xplmType_Data): // v3.0.255.1
       {
-        XPLMGetDatab(this->dataRefId, this->target_CharArray, 0, this->arraySize);
-        this->setStringProperty(this->getName(), std::string(this->target_CharArray));
+        this->arraySize = XPLMGetDatab (this->dataRefId, NULL, 0, 0); // v25.09.2 find size of string
+        XPLMGetDatab (this->dataRefId, this->target_CharArray, 0, this->arraySize);
+
+        if (this->arraySize && target_CharArray != NULL)
+          this->setStringProperty (this->getName (), std::string (this->target_CharArray));
       }
       break;
       default:
@@ -988,7 +994,7 @@ missionx::dataref_param::saveInterpolationCheckpoint(IXMLNode& inDrefNode)
 
   this->strctInterData.timerToRun.saveCheckpoint(inDrefNode);
   // force "timer_set" state so "START_MISSION()" will correctly start the timer.
-  this->strctInterData.timerToRun.node.updateAttribute(mxUtils::formatNumber<int>((int)mx_timer_state::timer_is_set).c_str(), mxconst::get_ATTRIB_TIMER_STATE().c_str(), mxconst::get_ATTRIB_TIMER_STATE().c_str());
+  this->strctInterData.timerToRun.node.updateAttribute(mxUtils::formatNumber<int>(static_cast<int> (mx_timer_state::timer_is_set)).c_str(), mxconst::get_ATTRIB_TIMER_STATE().c_str(), mxconst::get_ATTRIB_TIMER_STATE().c_str());
 
   int nCounter = inDrefNode.nChildNode(mxconst::get_ELEMENT_TIMER().c_str());
   
@@ -1022,7 +1028,7 @@ missionx::dataref_param::initInterpolationDataFromSaveFile()
       std::string delta_array_s = this->getStringAttributeValue(mxconst::PROP_DELTA_ARRAY_F, "");
       auto        vecNumbers    = Utils::splitStringToNumbers<float>(delta_array_s, ",");
 
-      int         estimatedArraySize_i = (int)vecNumbers.size();
+      int         estimatedArraySize_i = static_cast<int> (vecNumbers.size ());
       
       std::for_each(vecNumbers.begin(), vecNumbers.end(), [&](const auto& v) { this->strctInterData.delta_array.push_back(v); }); // copy all elements from vector A to B
       //for (const auto& v : vecNumbers) this->strctInterData.delta_array.push_back(v);
@@ -1031,7 +1037,7 @@ missionx::dataref_param::initInterpolationDataFromSaveFile()
       if (this->dataRefType == xplmType_IntArray)
       {
         for (const auto& v : this->out_vecArrayIntValues)
-          this->strctInterData.vecLastInterValues_f.push_back((float)v);
+          this->strctInterData.vecLastInterValues_f.push_back(static_cast<float> (v));
       }
       else
       {
@@ -1087,7 +1093,7 @@ missionx::dataref_param::set_dataref_values_into_xplane(dataref_param& inDref, c
       {
         std::string       err;
         const std::string val = inDref.getParamStringValue();
-        XPLMSetDatab(inDref.dataRefId, (void*)val.data(), 0, (int)val.length());
+        XPLMSetDatab(inDref.dataRefId, (void*)val.data(), 0, static_cast<int> (val.length ()));
       }
       break;
       case xplmType_Float:
@@ -1112,7 +1118,7 @@ missionx::dataref_param::set_dataref_values_into_xplane(dataref_param& inDref, c
         if (!inDref.flag_individual_value_copy_inTheArray) // v3.303.12 no need if we are using the new implementation
         {
 
-          for (auto i1 = (size_t)0; i1 < vecSize; ++i1)
+          for (auto i1 = static_cast<size_t> (0); i1 < vecSize; ++i1)
           {
             inDref.out_vecArrayIntValues.at(i1) = inDref.getValue<int>();
           }
@@ -1127,7 +1133,7 @@ missionx::dataref_param::set_dataref_values_into_xplane(dataref_param& inDref, c
         }
         else if (inDref.flag_designerPickedAllElement_inTheArray) // v3.0.221.10 assign value to all array based on one value
         {
-          XPLMSetDatavi(inDref.dataRefId, iValuesArray, 0, (int)inDref.out_vecArrayIntValues.size());
+          XPLMSetDatavi(inDref.dataRefId, iValuesArray, 0, static_cast<int> (inDref.out_vecArrayIntValues.size ()));
         }
         else // assign value to specific value in array index
         {
@@ -1156,7 +1162,7 @@ missionx::dataref_param::set_dataref_values_into_xplane(dataref_param& inDref, c
         auto vecSize = inDref.out_vecArrayFloatValues.size();
         if (!inDref.flag_individual_value_copy_inTheArray)
         {
-          for (auto i1 = (size_t)0; i1 < vecSize; ++i1)
+          for (auto i1 = static_cast<size_t> (0); i1 < vecSize; ++i1)
           {
             inDref.out_vecArrayFloatValues.at(i1) = inDref.getValue<float>() * inDref.flag_designerPickedOneElement + inDref.getValue<float>() * inDref.flag_designerPickedAllElement_inTheArray + inDref.target_FloatArray[i1] * inDref.flag_individual_value_copy_inTheArray;
           }
@@ -1170,7 +1176,7 @@ missionx::dataref_param::set_dataref_values_into_xplane(dataref_param& inDref, c
         }
         else if (inDref.flag_designerPickedAllElement_inTheArray ) // v3.0.221.10 assign value to all array based on one value
         {
-          XPLMSetDatavf(inDref.dataRefId, fValuesArray, 0, (int)inDref.out_vecArrayFloatValues.size());
+          XPLMSetDatavf(inDref.dataRefId, fValuesArray, 0, static_cast<int> (inDref.out_vecArrayFloatValues.size ()));
         }
         else // assign value of specific array value
         {

@@ -76,7 +76,7 @@ public:
   missionx::enums::mx_user_picked_mission_type fpln_mission_type{ missionx::enums::mx_user_picked_mission_type::undefined }; // more detail mission type, medevac/oilrig_medevac/oilrig_cargo
   missionx::enums::mx_rnd_mission_phase        fpln_mission_phase{ missionx::enums::mx_rnd_mission_phase::undefined }; // start/land_target/land_extraction
 
-  bool                                              fpln_is_oilrig{ false }; // v25.09.1
+  bool fpln_is_oilrig{ false }; // v25.09.1
 
   // Valid values: "land_hover", "land". Used with the osm_gen.xml nodes. Each <q> node should have "wp_type" attribute that hints the plugin how to deal with the wp.
   // "land_hover" will have two triggers-based tasks that will allow you to either land or hover. "land" type will have one task based trigger, with smaller radius to land in.
@@ -86,15 +86,18 @@ public:
   double fpln_distance_to_next_navaid{ 0.0f };
   std::string fpln_wp_type;
   std::string fpln_leg_name;
-  IXMLNode fpln_xml_target_leg_node; // holds a pointer to the XML node that represent this navaid. Example: trigger node.
+  IXMLNode fpln_xml_target_leg_node; // holds a pointer to the XML node that represents this navaid. Example: trigger node.
   IXMLNode fpln_xml_inv_node; // holds the target inventory information during random engine mission generation
-  IXMLNode fpln_xml_osm_q_node; // holds original osm_query <q> node
+  IXMLNode fpln_xml_osm_q_or_raw_tmpl_node; // holds original osm_query <q> node or from <template> file.
   IXMLNode fpln_xml_way_node; // holds <way> node result
   IXMLNode fpln_xml_q_tag_header_node; // holds <{topic}> node without the childs, at first
   ///// End v25.06.1
 
   // v25.09.1
   std::string sMetar;
+  // v25.09.2
+  missionx::structs::strct_expected_location_data fpln_expected_location_data;
+  bool fpln_copy_as_is_b {false}; // set of flight legs that will be stored in fpln_xml_target_leg_node and we will have to add them to the final mission leg list
 
    missionx::NavAidInfo& operator= (const NavAidInfo &in_na)
    {
@@ -159,16 +162,16 @@ public:
      bearing_to_current_target   = in_na.bearing_to_current_target;
      bearing_back_to_prev_target = in_na.bearing_back_to_prev_target;
 
-     fpln_is_last_flight_leg    = in_na.fpln_is_last_flight_leg; // v25.06.1
-     fpln_is_wet                = in_na.fpln_is_wet; // v25.06.1
-     fpln_seq                   = in_na.fpln_seq; // v25.06.1
-     fpln_wp_type           = in_na.fpln_wp_type; // v25.06.1
-     fpln_leg_name              = in_na.fpln_leg_name; // v25.06.1
-     fpln_xml_target_leg_node   = in_na.fpln_xml_target_leg_node.deepCopy (); // v25.06.1
-     fpln_xml_osm_q_node        = in_na.fpln_xml_osm_q_node.deepCopy ();
-     fpln_xml_inv_node          = in_na.fpln_xml_inv_node.deepCopy ();
-     fpln_xml_way_node          = in_na.fpln_xml_way_node.deepCopy ();
-     fpln_xml_q_tag_header_node = in_na.fpln_xml_q_tag_header_node.deepCopy ();
+     fpln_is_last_flight_leg         = in_na.fpln_is_last_flight_leg; // v25.06.1
+     fpln_is_wet                     = in_na.fpln_is_wet; // v25.06.1
+     fpln_seq                        = in_na.fpln_seq; // v25.06.1
+     fpln_wp_type                    = in_na.fpln_wp_type; // v25.06.1
+     fpln_leg_name                   = in_na.fpln_leg_name; // v25.06.1
+     fpln_xml_target_leg_node        = in_na.fpln_xml_target_leg_node.deepCopy (); // v25.06.1
+     fpln_xml_osm_q_or_raw_tmpl_node = in_na.fpln_xml_osm_q_or_raw_tmpl_node.deepCopy ();
+     fpln_xml_inv_node               = in_na.fpln_xml_inv_node.deepCopy ();
+     fpln_xml_way_node               = in_na.fpln_xml_way_node.deepCopy ();
+     fpln_xml_q_tag_header_node      = in_na.fpln_xml_q_tag_header_node.deepCopy ();
      // v25.09.1
      fpln_is_oilrig                   = in_na.fpln_is_oilrig; // v25.09.1
      fpln_task_type                   = in_na.fpln_task_type; // v25.09.1
@@ -178,6 +181,9 @@ public:
 
      // used with Navaid info UI screen
      sMetar = in_na.sMetar; // v25.09.1
+
+     fpln_expected_location_data = in_na.fpln_expected_location_data; // v25.09.2
+     fpln_copy_as_is_b = in_na.fpln_copy_as_is_b;
 
      this->synchToPoint ();
    }
@@ -243,7 +249,7 @@ public:
     fpln_wp_type.clear (); // v25.06.1
     fpln_leg_name.clear (); // v25.06.1
     fpln_xml_target_leg_node   = IXMLNode::emptyIXMLNode; // v25.06.1
-    fpln_xml_osm_q_node        = IXMLNode::emptyIXMLNode; // v25.06.1
+    fpln_xml_osm_q_or_raw_tmpl_node        = IXMLNode::emptyIXMLNode; // v25.06.1
     fpln_xml_inv_node          = IXMLNode::emptyIXMLNode; // v25.06.1
     fpln_xml_way_node          = IXMLNode::emptyIXMLNode; // v25.06.1
     fpln_xml_q_tag_header_node = IXMLNode::emptyIXMLNode; // v25.06.1
@@ -256,6 +262,15 @@ public:
 
      sMetar.clear(); // v25.09.1
 
+     fpln_expected_location_data.reset(); // v25.09.2
+     fpln_copy_as_is_b = false; // v25.09.2
+  }
+
+  // -----------------------------------
+  
+  bool is_lat_lon_valid()
+  {
+    return ( this->lat * this->lon != 0.0f );
   }
 
   // -----------------------------------
@@ -314,6 +329,8 @@ public:
 
   std::string get_latLon() { return this->getLat() + "," + this->getLon(); }
 
+  std::string get_latLon_short() { return fmt::format("{:.3f},{:.3f}", lat, lon); } // v25.09.2
+
   std::string get_latLon_name() { return this->getLat() + ", " + this->getLon() + " ( " + this->getName() + " )"; }
 
   std::string getHeading_s() { return Utils::formatNumber<float>(this->heading, 2); }
@@ -354,10 +371,14 @@ public:
   // std::string init_locDesc()
   void init_locDesc()
   {
-     std::string loc_desc;
      const bool  flag_navaid_has_unique_name = nav_aid_has_unique_name (); // v25.06.1 check if the name does not have "coordinate" or "leg" text in it.
      if ( (getID().empty() && getName().empty() ) || !flag_navaid_has_unique_name)
-       this->loc_desc = fmt::format("{}: [{:.4f}, {:.4f}]", ((this->flag_nav_from_webosm) ? "osmweb": "coordinates"), this->lat, this->lon);
+     {
+       if (this->is_lat_lon_valid ())
+         this->loc_desc = fmt::format("{}: [{:.4f}, {:.4f}]", ((this->flag_nav_from_webosm) ? "osmweb": "coordinates"), this->lat, this->lon);
+       else
+         this->loc_desc = "Check the GPS for navigation guidance.";
+     }
      else if (getID ().empty ())
        this->loc_desc = getName ();
      else
@@ -368,8 +389,6 @@ public:
        const float height_ft = height_mt * missionx::meter2feet;
        this->loc_desc.append ( fmt::format (" (elevation: ~{}ft)", Utils::formatNumber<float> (height_ft, 0) ) );
      }
-
-     // return this->loc_desc; // v25.06.1 removed returned value
   }
 
 
@@ -605,6 +624,201 @@ public:
 
     p.setNodeStringProperty( mxconst::get_PROP_IS_WET(), (this->fpln_is_wet)?"yes" : "");  // v25.06.1
   }
+
+static missionx::structs::strct_expected_location_data
+parse_expected_location (const IXMLNode &in_xml_leg_from_template, const std::string &custom_error_message, const bool is_last_leg)
+{
+  missionx::structs::strct_expected_location_data data;
+
+  //// PARSE EXPECTED LOCATION  ////
+  IXMLNode xExpectedLocation = in_xml_leg_from_template.getChildNode (mxconst::get_ELEMENT_EXPECTED_LOCATION ().c_str ()).deepCopy (); // xLegFromTemplate.getChildNode (mxconst::get_ELEMENT_EXPECTED_LOCATION ().c_str ());
+  if (xExpectedLocation.isEmpty ())
+  {
+    data.error = fmt::format("[{}] Failed to find: {}, while parsing {}. Please fix template.", __func__, mxconst::get_ELEMENT_EXPECTED_LOCATION (), custom_error_message);
+    return data;
+  }
+
+  data.flag_force_template_distances_b = Utils::readBoolAttrib (xExpectedLocation, mxconst::get_ATTRIB_FORCE_TEMPLATE_DISTANCES_B (), false); // will be used in get_target() function to disable the "expected distance setup option".
+
+  // if (location_type_s.empty())
+  if (Utils::readAttrib (xExpectedLocation, mxconst::get_ATTRIB_LOCATION_TYPE (), "").empty ())
+  {
+    data.error = fmt::format ("[{}] {} node is empty.", __func__, mxconst::get_ELEMENT_EXPECTED_LOCATION ());
+    return data;
+  }
+
+  data.location_type       = Utils::readAttrib (xExpectedLocation, mxconst::get_ATTRIB_LOCATION_TYPE (), "");
+  data.location_properties_s = Utils::readAttrib (xExpectedLocation, mxconst::get_ATTRIB_LOCATION_PROPERTIES (), mxconst::get_ATTRIB_LOCATION_VALUE (),  "", true);
+
+  // location properties format can be: "{number}|{ramp type}|{min-max},..."
+  // mapLocationValueOptions: {name},{value}.
+  std::map<int, std::string> mapLocationValueOptions; // v3.0.221.7 will hold the complex options used by "|".
+  std::string                location_value_min_max_distance_s, location_value_tag_name_s, location_value_poi_s; // v3.0.221.7 @Daikan used in Random airport pick. "location_value_tag_name_s" will be used to hold element name to search in template.
+
+  ///////////// CHECK if LOCATION TYPE needs to be Randomized ////////////////
+  // support for multi-location vecTypeValues type to pick
+  if (data.location_type.find (mxconst::get_COMMA_DELIMITER ()) != std::string::npos)
+  {
+    std::vector<std::string> vecTypes      = mxUtils::split_v2 (data.location_type, mxconst::get_COMMA_DELIMITER ());
+    std::vector<std::string> vecTypesProperties = mxUtils::split_v2 (data.location_properties_s, mxconst::get_COMMA_DELIMITER ());
+    int                      picked        = 0;
+
+    int       nTypes       = static_cast<int> (vecTypes.size ());
+    const int nTypesProperties = static_cast<int> (vecTypesProperties.size ());
+
+    Log::logDebugBO ("[DEBUG pick <leg> type & value] vecTypes: " + Utils::formatNumber<size_t> (vecTypes.size ()) + ", values:" + Utils::formatNumber<size_t> (vecTypesProperties.size ()), true);
+
+    if (nTypes == 0)
+    {
+      data.error = "Found a location type with wrong definition. Check type properties. aborting !!!";
+      return data;
+    }
+
+    if (nTypes == 1)
+    {
+      data.location_type = vecTypes.at (0);
+      picked        = 0; // meaning first choice
+    }
+    else // random pick type
+    {
+      picked = Utils::getRandomIntNumber (0, nTypes - 1);
+      if (picked > nTypes) // just in case
+        picked = nTypes - 1;
+
+      data.location_type = vecTypes.at (picked);
+    }
+
+    //// pick the property with the same pick index. picked can't be bigger than the number of types
+    if (nTypesProperties >= nTypes || (picked < (nTypesProperties - 1)))
+      data.location_properties_s = vecTypesProperties.at (picked);
+    else if (nTypes >= 1 && nTypesProperties == 1) // if we have few Types but only 1 location_value_nm_s, then it is shared between all of them
+      data.location_properties_s = vecTypesProperties.front ();
+    else
+      data.location_properties_s.clear ();
+
+    if (data.location_properties_s == "_") // if special character that represents empty
+      data.location_properties_s.clear ();
+  }
+
+  // The Random Engine needs the "location_properties_s" and "type" to find suitable target.
+  // we will prepare all data that is necessary : string or container, and the code will have to pick the correct option from the "data" struct.
+  data.flight_leg_type_hover_land_or_start = mxUtils::stringToLower (Utils::readAttrib (in_xml_leg_from_template, mxconst::get_ATTRIB_TEMPLATE (), EMPTY_STRING));
+  // std::string       flight_leg_type_hover_land_or_start = data.flight_leg_type_hover_land_or_start;
+  ///////////// CHECK if Flight Leg TYPE needs to be Randomized ////////////////
+  if (data.flight_leg_type_hover_land_or_start.empty ())
+  {
+    data.reset ();
+    data.error = "Found a <leg> template without type definition. skipping.";
+    return data;
+  }
+
+  // support for "multi Leg type" to pick from
+  if (data.flight_leg_type_hover_land_or_start.find (mxconst::get_COMMA_DELIMITER ()) != std::string::npos) // mxconst::get_COMMA_DELIMITER() = ","
+  {
+    const std::vector<std::string> vecTypes = mxUtils::split_v2 (data.flight_leg_type_hover_land_or_start, mxconst::get_COMMA_DELIMITER ()); // mxconst::get_COMMA_DELIMITER() = ","
+    if (const int nTypes = static_cast<int> (vecTypes.size ())
+      ; nTypes == 0)
+    {
+      data.reset ();
+      data.error = "Found a <leg> template without type definition. skipping.";
+      return data;
+    }
+    else if (nTypes == 1)
+    {
+      data.flight_leg_type_hover_land_or_start = vecTypes.at (0);
+    }
+    else // random pick type
+    {
+      int picked = Utils::getRandomIntNumber (0, nTypes - 1);
+      if (picked > nTypes)
+        picked = nTypes - 1;
+
+      data.flight_leg_type_hover_land_or_start = vecTypes.at (picked);
+    }
+  }
+
+  if ((mxconst::get_FL_TEMPLATE_VAL_START () == data.flight_leg_type_hover_land_or_start) || (data.location_type == mxconst::get_FL_TEMPLATE_VAL_START ())) // v3.0.221.15 consolidate if logic to one  // v3.0.221.7
+  {
+    data.flight_leg_type_hover_land_or_start = mxconst::get_FL_TEMPLATE_VAL_START ();
+    data.location_type                       = mxconst::get_FL_TEMPLATE_VAL_START ();
+    data.location_properties_s               = mxconst::get_FL_TEMPLATE_VAL_START ();
+    data.mapLocationSplitValues.clear ();
+    data.vecLocationValueSplit_vec.clear ();
+  }
+  ////////// Check if has special instructions like: "nm=20|ramp=H|nm_between=10-20|tag={some name}"
+  else if (!data.location_properties_s.empty ())
+  {
+    //// v3.0.221.7 replace old logic with new more readable one
+    // split between numbers and characters
+    data.vecLocationValueSplit_vec = mxUtils::split_v2 (data.location_properties_s, mxconst::get_PIPE_DELIMITER ()); // "|"
+
+    for (const auto &v : data.vecLocationValueSplit_vec)
+    {
+      std::vector<std::string> vecSplit = mxUtils::split_v2 (v, "=");
+      if (auto size_i = vecSplit.size ()
+        ; size_i == 1) // NO backwards compatibility.
+      {
+        std::string attribName = Utils::stringToLower (vecSplit.at (0));
+        Log::logMsgErr (fmt::format ("[{}] Found location Property without explicit formating: {}={}. Skipping this directive.", __func__, attribName, "{missing value}" ) , true);
+      }
+      else if (size_i > 1)
+      {
+        std::string        attribName  = Utils::stringToLower (vecSplit.at (0));
+        const std::string &attribValue = vecSplit.at (1);
+        Utils::addElementToMap (data.mapLocationSplitValues, attribName, attribValue);
+      }
+      else
+        data.location_properties_s.clear ();
+    } // end loop over split location_properties
+
+    data.location_properties_s.clear ();
+
+    // prepare local variables according to the split information
+    const std::string local_location_value_min_max_distance_s = mxUtils::getValueFromElement (data.mapLocationSplitValues, std::string ("nm_between"), std::string (""));
+    if (!local_location_value_min_max_distance_s.empty ()) // min-max
+    {
+      const std::vector<double> vecMinMax = Utils::splitStringToNumbers<double> (local_location_value_min_max_distance_s, "-, ");
+      for (size_t i1 = 0; i1 < vecMinMax.size (); ++i1)
+      {
+        switch (i1)
+        {
+          case 0:
+            data.nm_between_min = static_cast<float>(vecMinMax.at(i1));
+            data.mapLocationSplitValues["min_distance_nm"] = fmt::format("{:.2f}", vecMinMax.at(i1) );
+            break;
+          case 1:
+            data.nm_between_max = static_cast<float>(vecMinMax.at(i1));
+            data.mapLocationSplitValues["max_distance_nm"] = fmt::format("{:.2f}", vecMinMax.at(i1) );
+            break;
+          default:
+            break;
+        } // end switch
+      }
+
+      // Validate and fix if min > max
+      if (data.nm_between_min >=0 && data.nm_between_max >=0 )
+      {
+        if (data.nm_between_min > data.nm_between_max)
+          std::swap(data.nm_between_min, data.nm_between_max);
+      }
+    } // end "nm_between"
+
+    // prepare local variables according to the split information
+    if (Utils::isElementExists (data.mapLocationSplitValues, "nm")) // represent distance in nm
+      data.location_properties_s = data.mapLocationSplitValues["nm"];
+
+    // replace "_" with empty string
+    if (data.location_properties_s == "_") // if special character that represent empty
+      data.location_properties_s.clear ();
+
+  }
+
+  Log::logDebugBO ("[DEBUG pick template <leg> type] type picked: " + data.location_type, true);
+  Log::logDebugBO ("[DEBUG random location info] location_value_nm_s=" + data.location_properties_s, true);
+
+  return data;
+}
+
 };
 
 }

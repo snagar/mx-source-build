@@ -111,7 +111,8 @@ missionx::mx_base_node::getNodeStringProperty(const std::string& inAttribName, c
 {
   if (in_getTextFromContainerAndThenFromNode && mxUtils::isElementExists(this->mapText, inAttribName))
     return this->mapText[inAttribName];
-  else if (!this->node.isEmpty())
+
+  if (!this->node.isEmpty())
     return Utils::readAttrib(this->node, inAttribName, attribDefaultValue);
   
   return attribDefaultValue;

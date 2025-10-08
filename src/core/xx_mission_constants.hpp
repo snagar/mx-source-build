@@ -36,7 +36,7 @@ constexpr static const int MX_FEATURES_VERSION = 20250501; //20241212; //2023091
 
 inline constexpr static auto PLUGIN_VER_MAJOR                  = "25"; // year
 inline constexpr static auto PLUGIN_VER_MINOR                  = "09"; // month
-inline constexpr static auto PLUGIN_VER_SUB                    = "1.1"; // sub-version
+inline constexpr static auto PLUGIN_VER_SUB                    = "2-base"; // sub-version
 inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 
@@ -150,6 +150,7 @@ constexpr static int PICKED_GLOBE = 1;
 constexpr static int PICKED_HALF_GLOBE = 2;
 constexpr static int PICKED_QUARTER_GLOBE = 3;
 constexpr static int PICKED_LOCAL_REGION_GLOBE = 4;
+constexpr static int PICKED_IN_MY_AREA = 5; // v25.09.2 dsf +/- 1 relative to plane
 
 
 #endif
@@ -342,14 +343,42 @@ typedef struct BBox_struct {
 // v25.09.1
 typedef struct def_expected_location_data
 {
+  bool flag_force_template_distances_b;
+
   float nm_between_min  {-1.0f};
   float nm_between_max  {-1.0f};
   std::string error;
   std::string location_type;
   std::string location_properties_s;
   std::string flight_leg_type_hover_land_or_start;
+
+  // holds the description of the target example from <briefer_and_start_location> node
+  std::string desc;
+
   std::vector<std::string>           vecLocationValueSplit_vec;
   std::map<std::string, std::string> mapLocationSplitValues;
+
+  def_expected_location_data()
+  {
+    flag_force_template_distances_b = false;
+    nm_between_min = -1.0f;
+    nm_between_max = -1.0f;
+    error.clear ();
+    location_type.clear ();
+    location_properties_s.clear ();
+    flight_leg_type_hover_land_or_start.clear ();
+
+    desc.clear ();
+
+    vecLocationValueSplit_vec.clear();
+    mapLocationSplitValues.clear();
+
+  }
+
+  void reset()
+  {
+    def_expected_location_data ();
+  }
 
 } strct_expected_location_data;
 
@@ -990,22 +1019,36 @@ typedef struct _latLonDouble
 } mxVec2d;
 
 
-
-  typedef struct _stats_tmp_data
+typedef struct _stats_tmp_data
 {
-  bool        bInitialized{ false };
-  int         line_id{ -1 };
-  int         icao_id{ -1 };
-  double      time_passed{ 0.0 };
-  double      distance_from_center_of_rw_d{ 0.0 };
-  double      score_centerLine{ 0.0 }; // how good between 0.0 and 1.0
+  bool   bInitialized{ false };
+  int    line_id{ -1 };
+  int    icao_id{ -1 };
+  // double time_passed{ 0.0 };
+  double distance_from_center_of_rw_d{ 0.0 };
+  double score_centerLine{ 0.0 }; // how good between 0.0 and 1.0
+  bool   did_landing_contained_bounce{ false };
 
-  mxVec2d     plane;               // position of plane
+  int bounce {0};
+  int local_date_days {-1};
+  double local_time_sec {-1.0};
+  double airspeed {0.0};
+  double groundspeed {0.0};
+  double roll {0.0};
+  double diff_distance_meters {0.0}; // v25.09.2
+  double diff_time_sec {0.0}; // v25.09.2
 
-  std::string activity_s{ "" }; // takeoff landing
+  double os_date_fmt_time_pacing; // v25.09.2
+  double lead_os_date_time_pacing; // v25.09.2
+  std::string os_date_fmt; // v25.09.2
+
+  mxVec2d plane; // position of plane
+
+  std::string activity_s; // takeoff landing
   std::string icao{ "N/A" };
   std::string runway_s{ "N/A" };
 
+  std::string data_description_s; // v25.09.2
 } mx_stats_data;
 
 
@@ -1215,6 +1258,24 @@ typedef struct _leg_enrout_stats_strct
 
 } mx_enrout_stats_strct;
 
+typedef struct mx_row_stats_strct_header // v3.0.255.1
+{
+  double      Seq_d; // line_id used by the plugin to distinguish between the rows
+  double      Elev_mt_d;
+  double      Elev_ft_d;
+  double      Flaps_d;
+  double      DayInYear_d;     // day in year
+  double      LocalTime_sec_d; // local time from midnight
+  double      AirSpeed_d;      //
+  double      GroundSpeed_d;   //
+  double      Faxil_d;         //
+  double      Roll_d;          //
+  std::string Activity_s;      // takeoff and landing, in most cases the value is empty
+  double      dist_diff;      // v25.09.2 distance diff
+  double      time_diff;      // v25.09.2 distance diff
+
+} mx_row_stats_strct;
+
 
 typedef struct _mission_stats_strct // v3.0.255.1
 {
@@ -1229,6 +1290,10 @@ typedef struct _mission_stats_strct // v3.0.255.1
   std::vector<double>      vecFaxil_d;         //
   std::vector<double>      vecRoll_d;          //
   std::vector<std::string> vecActivity_s;      // takeoff and landing, in most cases the value is empty
+  std::vector<double> vec_dist_diff;      // v25.09.2 distance diff
+  std::vector<double> vec_time_diff;      // v25.09.2 distance diff
+
+  std::map<int, std::string> map_flight_pacing; // v25.09.2
 
   double      min_elev_ft{ 0.0 }, max_elev_ft{ 0.0 }, min_airspeed{ 0.0 }, max_airspeed{ 0.0 };
   double      time_flew_sec_d{ 0.0 };
@@ -1265,6 +1330,8 @@ typedef struct _mission_stats_strct // v3.0.255.1
     vecFaxil_d.clear();
     vecRoll_d.clear();
     vecActivity_s.clear();
+    vec_dist_diff.clear();
+    vec_time_diff.clear();
 
     min_elev_ft = max_elev_ft = -4000.0;
     min_airspeed = max_airspeed = 0.0;

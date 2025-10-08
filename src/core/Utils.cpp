@@ -51,7 +51,7 @@ TimerFunc::TimerFunc (const std::string &inFilename, const std::string &inSource
 
   std::snprintf(buf_filename, sizeof(buf_filename), "%-*.*s", static_cast<int32_t> (TimerFunc::FILENAME_WIDTH_CHAR) - 1, static_cast<int32_t> (TimerFunc::FILENAME_WIDTH_CHAR) - 1, this->sourceFileName.c_str());
   std::snprintf(buf_funcName, sizeof(buf_funcName), "%-*.*s", static_cast<int32_t> (TimerFunc::FUNCNAME_WIDTH_CHAR) - 1, static_cast<int32_t> (TimerFunc::FUNCNAME_WIDTH_CHAR) - 1, this->sourceFuncName.c_str());
-  std::snprintf(buff_seq, sizeof(buff_seq) - static_cast<size_t> (1), "%loop2", this->seq);
+  std::snprintf(buff_seq, sizeof(buff_seq) - static_cast<size_t> (1), "%dop2", this->seq);
 
   const std::string info_buff = std::string(buf_filename) + "\t:" + buf_funcName + "(" + buff_seq + ")\t: \t\t\t" + info;
 
@@ -87,35 +87,35 @@ TimerFunc::~TimerFunc()
 void
 TimerFunc::stop() const
 {
-  const auto endTimePoint  = std::chrono::high_resolution_clock::now();
-  auto       durationMicro = std::chrono::duration_cast<std::chrono::microseconds> (endTimePoint - m_startTimepoint).count ();
-  const auto durationMilli = durationMicro * 0.001;
-  const auto durationSec   = durationMilli * 0.001;
+  // const auto endTimePoint  = std::chrono::high_resolution_clock::now();
+  // auto       durationMicro = std::chrono::duration_cast<std::chrono::microseconds> (endTimePoint - m_startTimepoint).count ();
+  // const auto durationMilli = durationMicro * 0.001;
+  // const auto durationSec   = durationMilli * 0.001;
 
 
-  // https://en.cppreference.com/w/cpp/io/c/fprintf
-  char buf_filename[TimerFunc::FILENAME_WIDTH_CHAR];
-  char buf_funcName[TimerFunc::FUNCNAME_WIDTH_CHAR];
-  char buf_duration_mcs[23];
-  char buff_seq[11];
-
-  #ifndef RELEASE
-  auto sizeDebug = sizeof(buf_duration_mcs);
-  #endif
-
-  std::snprintf(buf_filename, sizeof(buf_filename), "%-*.*s", static_cast<int32_t> (TimerFunc::FILENAME_WIDTH_CHAR) - 1, static_cast<int32_t> (TimerFunc::FILENAME_WIDTH_CHAR) - 1, this->sourceFileName.c_str());
-  std::snprintf(buf_funcName, sizeof(buf_funcName), "%-*.*s", static_cast<int32_t> (TimerFunc::FUNCNAME_WIDTH_CHAR) - 1, static_cast<int32_t> (TimerFunc::FUNCNAME_WIDTH_CHAR) - 1, this->sourceFuncName.c_str());
-  std::snprintf(buff_seq, sizeof(buff_seq) - static_cast<size_t> (1), "%loop2", this->seq);
-
-  #if defined LIN
-  std::snprintf(buf_duration_mcs, sizeof(char) * sizeof(buf_duration_mcs) - static_cast<size_t> (1), "%*ld", 10, durationMicro);
-  #else
-  std::snprintf(buf_duration_mcs, sizeof(buf_duration_mcs) - (size_t)1, "%*lld", 10, durationMicro);
-  #endif // !IBM
-
-
-  const std::string duration_s = std::string(buf_filename) + "\t:" + buf_funcName + "(" + buff_seq + ")\t: " + buf_duration_mcs + "mcs, " + mxUtils::formatNumber<double>(durationMilli, 4) + "ms, " + mxUtils::formatNumber<double>(durationSec, 4) + "sec";
-  Log::logMsg(duration_s, isThread);
+  // // https://en.cppreference.com/w/cpp/io/c/fprintf
+  // char buf_filename[TimerFunc::FILENAME_WIDTH_CHAR];
+  // char buf_funcName[TimerFunc::FUNCNAME_WIDTH_CHAR];
+  // char buf_duration_mcs[23];
+  // char buff_seq[11];
+  //
+  // #ifndef RELEASE
+  // auto sizeDebug = sizeof(buf_duration_mcs);
+  // #endif
+  //
+  // std::snprintf(buf_filename, sizeof(buf_filename), "%-*.*s", static_cast<int32_t> (TimerFunc::FILENAME_WIDTH_CHAR) - 1, static_cast<int32_t> (TimerFunc::FILENAME_WIDTH_CHAR) - 1, this->sourceFileName.c_str());
+  // std::snprintf(buf_funcName, sizeof(buf_funcName), "%-*.*s", static_cast<int32_t> (TimerFunc::FUNCNAME_WIDTH_CHAR) - 1, static_cast<int32_t> (TimerFunc::FUNCNAME_WIDTH_CHAR) - 1, this->sourceFuncName.c_str());
+  // std::snprintf(buff_seq, sizeof(buff_seq) - static_cast<size_t> (1), "%loop2", this->seq);
+  //
+  // #if defined LIN
+  // std::snprintf(buf_duration_mcs, sizeof(char) * sizeof(buf_duration_mcs) - static_cast<size_t> (1), "%*ld", 10, durationMicro);
+  // #else
+  // std::snprintf(buf_duration_mcs, sizeof(buf_duration_mcs) - (size_t)1, "%*lld", 10, durationMicro);
+  // #endif // !IBM
+  //
+  //
+  // const std::string duration_s = std::string(buf_filename) + "\t:" + buf_funcName + "(" + buff_seq + ")\t: " + buf_duration_mcs + "mcs, " + mxUtils::formatNumber<double>(durationMilli, 4) + "ms, " + mxUtils::formatNumber<double>(durationSec, 4) + "sec";
+  // Log::logMsg(duration_s, isThread);
 }
 
 } // missionx namespace
@@ -209,19 +209,35 @@ missionx::Utils::convertToNm (const float & v, const mx_units_of_measure from)
 
 // -------------------------------------------
 
-// FMOD_RESULT
-// missionx::Utils::check_fmod_result (const FMOD_RESULT result)
-// {
-//   if (result != FMOD_OK)
-//   {
-//     std::string err(FMOD_ErrorString(result));
-//     err = "FMOD error! (code: " + Utils::formatNumber<int>(result) + ") " + err + mxconst::get_UNIX_EOL();
-//     Log::logMsgErr(err);
-//   }
-//   // return FmodErrorCheck(result);
-//
-//   return result;
-// }
+std::string
+Utils::translate_seconds_to_time_of_day (const int day_of_year, const int seconds_in_day)
+{
+  // Base time: Jan 1, 2000 (arbitrary non-leap year)
+  std::tm tm_time{};
+  tm_time.tm_year = 2000 - 1900; // years since 1900
+  tm_time.tm_mday = 1;           // Jan 1
+  tm_time.tm_mon  = 0;           // January
+  tm_time.tm_hour = 0;
+  tm_time.tm_min  = 0;
+  tm_time.tm_sec  = 0;
+
+  // Convert to time_t
+  const std::time_t base = std::mktime(&tm_time);
+
+  // Add day and seconds offsets
+  const std::time_t t = base + (day_of_year - 1) * 24 * 3600 + seconds_in_day;
+
+  // Convert back to broken-down time
+  std::tm* result = std::localtime(&t);
+
+  // Format string with fmt
+  return fmt::format("{}/{} {:02}:{:02}:{:02}",
+                     result->tm_mon + 1,
+                     result->tm_mday,
+                     result->tm_hour,
+                     result->tm_min,
+                     result->tm_sec);
+}
 
 
 // -------------------------------------------
@@ -1274,7 +1290,8 @@ missionx::Utils::xml_search_and_set_attribute_in_IXMLNode(IXMLNode& inNode, cons
       const std::string attribName       = inNode.getAttributeName(i1);
 
       // check if we can change the attribute value based on "attribute name" and the "tag name".
-      if ((inAttribName == attribName) * (inModifyByElementName.empty () + (!inModifyByElementName.empty () * flag_node_name_and_search_element_name_are_the_same)))
+      // if ((inAttribName == attribName) * (inModifyByElementName.empty () + (!inModifyByElementName.empty () * flag_node_name_and_search_element_name_are_the_same)))
+      if ( (inAttribName == attribName) && (inModifyByElementName.empty () || (!inModifyByElementName.empty () && flag_node_name_and_search_element_name_are_the_same) ) )
       {
         inNode.updateAttribute(attribValue.c_str(), inAttribName.c_str(), i1);
         return true;
@@ -1547,7 +1564,7 @@ missionx::Utils::xml_delete_empty_nodes(IXMLNode& rootNode /*, std::deque<IXMLNo
     const std::string lat = Utils::readAttrib(rootNode, mxconst::get_ATTRIB_LAT(), "");
     const std::string lon = Utils::readAttrib (rootNode, mxconst::get_ATTRIB_LONG(), "");
 
-    if (lat.empty() * lon.empty())
+    if (lat.empty() && lon.empty())
     {
       rootNode.deleteNodeContent(); // DELETE Node
     }
@@ -2036,7 +2053,7 @@ missionx::Utils::xml_get_attrib_value_based_on_other_attrib_presence (const IXML
 
     // loop over all nodes attributes and search for the base attribute name=value
     const int nAttributes = in_node.nAttribute ();
-    for (int loop2 = 0; loop2 < nAttributes && !(flag_found_requested_attrib_value * flag_found_requested_attrib_value); ++loop2)
+    for (int loop2 = 0; loop2 < nAttributes && !(flag_found_requested_attrib_value && flag_found_requested_attrib_value); ++loop2)
     {
       if (const IXMLAttr base_attrib = in_node.getAttribute (loop2); in_attrib_to_base_our_search == base_attrib.sName && in_attrib_value_we_search == base_attrib.sValue)
         flag_found_base_attrib_name_and_its_value = true;
@@ -2048,7 +2065,7 @@ missionx::Utils::xml_get_attrib_value_based_on_other_attrib_presence (const IXML
     }
 
     // did we find the <tag> and both attributes ?
-    if (flag_found_requested_attrib_value * flag_found_base_attrib_name_and_its_value)
+    if (flag_found_requested_attrib_value && flag_found_base_attrib_name_and_its_value)
       return real_value_to_return;
 
   } // end loop1
@@ -2598,6 +2615,23 @@ Utils::xml_get_text_or_cdata_text (const IXMLNode &inNode, const std::string &de
     return Utils::xml_read_cdata_node (inNode, default_value);
 
   return text;
+}
+
+// -------------------------------------------
+
+std::string
+Utils::xml_get_cdata_or_text (const IXMLNode &inNode, const std::string &default_value)
+{
+  if (inNode.isEmpty())
+    return default_value;
+
+  std::string text = Utils::xml_read_cdata_node (inNode, "");
+
+  if (text.empty())
+    return mxUtils::trim ( Utils::xml_get_text(inNode, default_value) );
+
+  return text;
+
 }
 
 

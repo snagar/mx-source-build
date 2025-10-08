@@ -4264,7 +4264,7 @@ missionx::Mission::flcPRE()
         {
           missionx::data_manager::mapGenerateMissionTemplateFilesLocator.clear();
 
-          // v3.0.241.9 extract and remove the special BLANK Tempalte from the real template maps
+          // v3.0.241.9 extract and remove the special BLANK Template from the real template maps
           if (Utils::isElementExists(missionx::data_manager::mapGenerateMissionTemplateFiles, mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI()))
           {
             data_manager::user_driven_template_info = missionx::data_manager::mapGenerateMissionTemplateFiles[mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI()];
@@ -4373,8 +4373,8 @@ missionx::Mission::flcPRE()
 
         assert(Mission::uiImGuiBriefer && "uiImGuiBriefer was NOT initialized. Fix initialization in plugin.cpp");
 
-        if (Utils::isElementExists(missionx::data_manager::mapGenerateMissionTemplateFiles, Mission::uiImGuiBriefer->selectedTemplateKey) ||
-            (Mission::uiImGuiBriefer->selectedTemplateKey) == mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI())
+        if (Utils::isElementExists(missionx::data_manager::mapGenerateMissionTemplateFiles, Mission::uiImGuiBriefer->selectedTemplateKey)
+                                  || (Mission::uiImGuiBriefer->selectedTemplateKey) == mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI())
         {
           if (Mission::uiImGuiBriefer->selectedTemplateKey == mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI())
           {
@@ -4398,9 +4398,6 @@ missionx::Mission::flcPRE()
             engine.working_tempFile_ptr          = &missionx::data_manager::mapGenerateMissionTemplateFiles[Mission::uiImGuiBriefer->selectedTemplateKey];
             engine.flag_rules_defined_by_user_ui = false;
           }
-
-          //engine.working_tempFile_ptr->user_pickedReplaceOptions_i = Mission::uiImGuiBriefer->strct_generate_template_layer.user_pick_from_replaceOptions_combo_i; // v3.0.255.4 store user pick option. If it -1 then plugin will ignore it
-          //engine.working_tempFile_ptr->mapUserOptionsPicked = Mission::uiImGuiBriefer->strct_generate_template_layer.mapReplaceOption_ui; // v24.12.2 store multi options picked by user.
 
           if (engine.exec_generate_mission_thread(Mission::uiImGuiBriefer->selectedTemplateKey))
           {
@@ -4861,15 +4858,15 @@ missionx::Mission::flcPRE()
       break;
       case missionx::mx_flc_pre_command::convert_icao_to_xml_point:
       {
-        if (this->engine.shared_navaid_info.parentNode_ptr.isEmpty())
+        if (RandomEngine::shared_navaid_info.parentNode_ptr.isEmpty())
           break;
 
         // loop over all <icao> and convert to <point>
-        int nChilds = this->engine.shared_navaid_info.parentNode_ptr.nChildNode(mxconst::get_ELEMENT_ICAO().c_str());
+        int nChilds = RandomEngine::shared_navaid_info.parentNode_ptr.nChildNode(mxconst::get_ELEMENT_ICAO().c_str());
 
         for (int i1 = 0; i1 < nChilds; ++i1)
         {
-          IXMLNode icaoNode = this->engine.shared_navaid_info.parentNode_ptr.getChildNode(mxconst::get_ELEMENT_ICAO().c_str(), i1); // we always take first element since we delete the node after handling it.
+          IXMLNode icaoNode = RandomEngine::shared_navaid_info.parentNode_ptr.getChildNode(mxconst::get_ELEMENT_ICAO().c_str(), i1); // we always take first element since we delete the node after handling it.
           if (icaoNode.isEmpty())
             continue;
 
@@ -4898,16 +4895,16 @@ missionx::Mission::flcPRE()
           this->engine.filterAndPickRampBasedOnPlaneType(navAid, err, missionx::mxFilterRampType::airport_ramp); // this can cause performance issues
 
           // Add point element
-          IXMLNode p = this->engine.shared_navaid_info.parentNode_ptr.addChild(navAid.node.deepCopy());
+          IXMLNode p = RandomEngine::shared_navaid_info.parentNode_ptr.addChild(navAid.node.deepCopy());
           if (p.isEmpty())
-            Log::logAttention(std::string("\t[convert_icao_to_xml_point] Failed to add point to element: ") + this->engine.shared_navaid_info.parentNode_ptr.getName());
+            Log::logAttention(std::string("\t[convert_icao_to_xml_point] Failed to add point to element: ") + RandomEngine::shared_navaid_info.parentNode_ptr.getName());
         }
 
         // remove all <icao> childs - to be on the safe side
         for (int i1 = (nChilds - 1); i1 >= 0; --i1)
-          this->engine.shared_navaid_info.parentNode_ptr.getChildNode(mxconst::get_ELEMENT_ICAO().c_str(), i1).deleteNodeContent();
+          RandomEngine::shared_navaid_info.parentNode_ptr.getChildNode(mxconst::get_ELEMENT_ICAO().c_str(), i1).deleteNodeContent();
 
-        nChilds = this->engine.shared_navaid_info.parentNode_ptr.nChildNode(mxconst::get_ELEMENT_ICAO().c_str());
+        nChilds = RandomEngine::shared_navaid_info.parentNode_ptr.nChildNode(mxconst::get_ELEMENT_ICAO().c_str());
 
         missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
@@ -4980,20 +4977,20 @@ missionx::Mission::flcPRE()
         #endif
 
         // v25.05.1 use of shared_navaid_info.navAid.navRef instead of local variable
-        this->engine.shared_navaid_info.navAid.navRef = XPLMFindNavAid (nullptr, nullptr, &this->engine.lastFlightLegNavInfo.lat, &this->engine.lastFlightLegNavInfo.lon, nullptr, xplm_Nav_Airport);
-        if (this->engine.shared_navaid_info.navAid.navRef != XPLM_NAV_NOT_FOUND)
+        RandomEngine::shared_navaid_info.navAid.navRef = XPLMFindNavAid (nullptr, nullptr, &this->engine.lastFlightLegNavInfo.lat, &this->engine.lastFlightLegNavInfo.lon, nullptr, xplm_Nav_Airport);
+        if (RandomEngine::shared_navaid_info.navAid.navRef != XPLM_NAV_NOT_FOUND)
         {
-          XPLMGetNavAidInfo(this->engine.shared_navaid_info.navAid.navRef,
-                            &this->engine.shared_navaid_info.navAid.navType,
-                            &this->engine.shared_navaid_info.navAid.lat,
-                            &this->engine.shared_navaid_info.navAid.lon,
-                            &this->engine.shared_navaid_info.navAid.height_mt,
-                            &this->engine.shared_navaid_info.navAid.freq,
-                            &this->engine.shared_navaid_info.navAid.heading,
-                            this->engine.shared_navaid_info.navAid.ID,
-                            this->engine.shared_navaid_info.navAid.name,
+          XPLMGetNavAidInfo(RandomEngine::shared_navaid_info.navAid.navRef,
+                            &RandomEngine::shared_navaid_info.navAid.navType,
+                            &RandomEngine::shared_navaid_info.navAid.lat,
+                            &RandomEngine::shared_navaid_info.navAid.lon,
+                            &RandomEngine::shared_navaid_info.navAid.height_mt,
+                            &RandomEngine::shared_navaid_info.navAid.freq,
+                            &RandomEngine::shared_navaid_info.navAid.heading,
+                            RandomEngine::shared_navaid_info.navAid.ID,
+                            RandomEngine::shared_navaid_info.navAid.name,
                             nullptr);
-                            // &this->engine.shared_navaid_info.navAid.inRegion);
+                            // &RandomEngine::shared_navaid_info.navAid.inRegion);
         }
 
         missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
@@ -5015,20 +5012,20 @@ missionx::Mission::flcPRE()
         #endif
 
         // v25.05.1 use of shared_navaid_info.navAid.navRef instead of local variable
-        this->engine.shared_navaid_info.navAid.navRef = XPLMFindNavAid (nullptr, nullptr, &this->engine.shared_navaid_info.navAid.lat, &this->engine.shared_navaid_info.navAid.lon, nullptr, xplm_Nav_Airport);
-        if (this->engine.shared_navaid_info.navAid.navRef != XPLM_NAV_NOT_FOUND)
+        missionx::RandomEngine::shared_navaid_info.navAid.navRef = XPLMFindNavAid (nullptr, nullptr, &RandomEngine::shared_navaid_info.navAid.lat, &RandomEngine::shared_navaid_info.navAid.lon, nullptr, xplm_Nav_Airport);
+        if (RandomEngine::shared_navaid_info.navAid.navRef != XPLM_NAV_NOT_FOUND)
         {
-          XPLMGetNavAidInfo(this->engine.shared_navaid_info.navAid.navRef,
-                            &this->engine.shared_navaid_info.navAid.navType,
-                            &this->engine.shared_navaid_info.navAid.lat,
-                            &this->engine.shared_navaid_info.navAid.lon,
-                            &this->engine.shared_navaid_info.navAid.height_mt,
-                            &this->engine.shared_navaid_info.navAid.freq,
-                            &this->engine.shared_navaid_info.navAid.heading,
-                            this->engine.shared_navaid_info.navAid.ID,
-                            this->engine.shared_navaid_info.navAid.name,
+          XPLMGetNavAidInfo(RandomEngine::shared_navaid_info.navAid.navRef,
+                            &RandomEngine::shared_navaid_info.navAid.navType,
+                            &RandomEngine::shared_navaid_info.navAid.lat,
+                            &RandomEngine::shared_navaid_info.navAid.lon,
+                            &RandomEngine::shared_navaid_info.navAid.height_mt,
+                            &RandomEngine::shared_navaid_info.navAid.freq,
+                            &RandomEngine::shared_navaid_info.navAid.heading,
+                            RandomEngine::shared_navaid_info.navAid.ID,
+                            RandomEngine::shared_navaid_info.navAid.name,
                             nullptr);
-                            // &this->engine.shared_navaid_info.navAid.inRegion);
+                            // &RandomEngine::shared_navaid_info.navAid.inRegion);
         }
 
         missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
@@ -5049,7 +5046,7 @@ missionx::Mission::flcPRE()
         auto startClock = std::chrono::steady_clock::now();
         #endif
 
-        this->engine.shared_navaid_info.navAid = data_manager::getICAO_info(this->engine.shared_navaid_info.navAid.getID());
+        RandomEngine::shared_navaid_info.navAid = data_manager::getICAO_info(RandomEngine::shared_navaid_info.navAid.getID());
 
         missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
 
@@ -5070,7 +5067,7 @@ missionx::Mission::flcPRE()
         auto startClock = std::chrono::steady_clock::now();
         #endif
 
-        this->engine.shared_navaid_info.navAid = data_manager::get_and_guess_nav_info (this->engine.shared_navaid_info.navAid.getID (), this->engine.shared_navaid_info.navAid.p);
+        RandomEngine::shared_navaid_info.navAid = data_manager::get_and_guess_nav_info (RandomEngine::shared_navaid_info.navAid.getID (), RandomEngine::shared_navaid_info.navAid.p);
         missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
 
         #ifndef RELEASE

@@ -82,13 +82,21 @@ GatherStats::setDb(dbase* inDb, const std::string &missionState_s)
 
       db->execute_stmt(sqlStmt);
 
+      // sqlStmt = "CREATE TABLE if not exists stats "
+      //           "( line_id INTEGER, vvi_fpm_pilot FLOAT, flap_ratio FLOAT, local_date_days INT, local_time_sec FLOAT, lat DOUBLE, "
+      //           " lon DOUBLE, elev DOUBLE, agl FLOAT, airspeed FLOAT, groundspeed FLOAT, vh_ind FLOAT, faxil_gear FLOAT,"
+      //           " brakes_L FLOAT, brakes_R FLOAT,"
+      //           " gforce_normal FLOAT, gforce_axil FLOAT, fnrml_total_nw FLOAT, AoA FLOAT, pitch FLOAT, roll FLOAT, heading_mag FLOAT, "
+      //           " heading_no_mag FLOAT, activity TEXT "
+      //           " ,onground_any INT, onground_all INT ,vh_ind_fpm FLOAT, Qrad FLOAT, Q FLOAT, m_total FLOAT )"; // v3.303.14 added m_total v3.303.8.3 added onground_any, onground_all, vvi_ind_fpm_f, Qrad_f, Q_f, y_agl_f
+
       sqlStmt = "CREATE TABLE if not exists stats "
                 "( line_id INTEGER, vvi_fpm_pilot FLOAT, flap_ratio FLOAT, local_date_days INT, local_time_sec FLOAT, lat DOUBLE, "
                 " lon DOUBLE, elev DOUBLE, agl FLOAT, airspeed FLOAT, groundspeed FLOAT, vh_ind FLOAT, faxil_gear FLOAT,"
                 " brakes_L FLOAT, brakes_R FLOAT,"
                 " gforce_normal FLOAT, gforce_axil FLOAT, fnrml_total_nw FLOAT, AoA FLOAT, pitch FLOAT, roll FLOAT, heading_mag FLOAT, "
                 " heading_no_mag FLOAT, activity TEXT "
-                " ,onground_any INT, onground_all INT ,vh_ind_fpm FLOAT, Qrad FLOAT, Q FLOAT, m_total FLOAT )"; // v3.303.14 added m_total v3.303.8.3 added onground_any, onground_all, vvi_ind_fpm_f, Qrad_f, Q_f, y_agl_f
+                " ,onground_any INT, onground_all INT ,vh_ind_fpm FLOAT, Qrad FLOAT, Q FLOAT, m_total FLOAT, date_time TEXT DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')) )"; // v25.09.2 added date_time // v3.303.14 added m_total v3.303.8.3 added onground_any, onground_all, vvi_ind_fpm_f, Qrad_f, Q_f, y_agl_f
 
       if (!db->execute_stmt(sqlStmt))
       {
@@ -137,7 +145,7 @@ CREATE VIEW stats_summary AS
               "gforce_normal, gforce_axil, fnrml_total_nw, AoA, pitch, roll, heading_mag, "  // 7
               "heading_no_mag, activity, "                                                  // 2
               "onground_any, onground_all, vh_ind_fpm, Qrad, Q, m_total  ) "                // 7
-              " values (?, ?, ?, ?, ?, ?,  ?, ?, ?, ?, ?, ?, ?,  ?, ?,  ?, ?, ?, ?, ?, ?, ?,  ?, ?,  ?, ?, ?, ?, ?, ?);"; // total 30 cols
+              " values (?, ?, ?, ?, ?, ?,  ?, ?, ?, ?, ?, ?, ?,  ?, ?,  ?, ?, ?, ?, ?, ?, ?,  ?, ?,  ?, ?, ?, ?, ?, ?);"; // total 30 cols. The date_time columns will be added automatically
 
     if (!db->prepareNewStatement(INS_SQL, sqlStmt))
     {

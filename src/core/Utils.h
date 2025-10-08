@@ -89,7 +89,6 @@ private:
 
 
   static std::string xml_read_cdata_node (const ITCXMLNode &inNode, const std::string &default_value);
-  static std::string xml_read_cdata_node (const IXMLNode &inNode, std::string default_value);
 
 
 public:
@@ -140,6 +139,10 @@ public:
   static float convertToNm (const float & v, mx_units_of_measure from);
 
   // static FMOD_RESULT check_fmod_result(FMOD_RESULT result);
+
+
+  static std::string translate_seconds_to_time_of_day(int day_of_year, int seconds_in_day);
+
 
 
   // TEMPLATES
@@ -334,29 +337,29 @@ public:
   // -------------------------------------------
   //
   // thread safe function (same as calcDistanceBetween2Points_nm)
-  double static calcDistanceBetween2Points_nm_ts(const double              gFromLat,
-                                              const double              gFromLong,
-                                              const double              gTargetLat,
-                                              const double              gTargetLong,
-                                              const mx_units_of_measure inReturnInUnits = mx_units_of_measure::nm); // calculate distance between 2 points but thread safe
+  double static calcDistanceBetween2Points_nm_ts(double              gFromLat,
+                                              double              gFromLong,
+                                              double              gTargetLat,
+                                              double              gTargetLong,
+                                              mx_units_of_measure inReturnInUnits = mx_units_of_measure::nm); // calculate distance between 2 points but thread safe
 
   // -------------------------------------------
-  double static calcDistanceBetween2Points_nm(const double              gFromLat,
-                                              const double              gFromLong,
-                                              const double              gTargetLat,
-                                              const double              gTargetLong,
-                                              const mx_units_of_measure inReturnInUnits = mx_units_of_measure::nm); // calculate distance between 2 points in Nauticle Miles
+  double static calcDistanceBetween2Points_nm(double              gFromLat,
+                                              double              gFromLong,
+                                              double              gTargetLat,
+                                              double              gTargetLong,
+                                              mx_units_of_measure inReturnInUnits = mx_units_of_measure::nm); // calculate distance between 2 points in Nauticle Miles
 
   // -------------------------------------------
-  double static calcBearingBetween2Points(const double gFromLat, const double gFromLong, const double gTargetLat, const double gTargetLong);
+  double static calcBearingBetween2Points (double gFromLat, double gFromLong, double gTargetLat, double gTargetLong);
 
   // -------------------------------------------
   // provide two points and elevation between them. Function will retrieve the slope angle
-  double static calcSlopeBetween2PointsWithGivenElevation(const double gFromLat, const double gFromLong, const double gTargetLat, const double gTargetLong, const double relativeElevInFeet);
+  double static calcSlopeBetween2PointsWithGivenElevation (double gFromLat, double gFromLong, double gTargetLat, double gTargetLong, double relativeElevInFeet);
 
   // -------------------------------------------
 
-  float static calcElevBetween2Points_withGivenAngle_InFeet(const float distanceBetweenPointsInFeet, const float slopeAngle);
+  float static calcElevBetween2Points_withGivenAngle_InFeet (float distanceBetweenPointsInFeet, float slopeAngle);
 
   // -------------------------------------------
   /**
@@ -790,7 +793,8 @@ public:
   static bool xml_update_message_text(IXMLNode &pNode, const std::string& inMsgName, const std::string &inText); // v3.0.301
   // -------------------------------------------
 
-  static std::string convert_string_to_24_min_numbers (const std::string &inTimeIn24Hfortmat, int& outHour, int& outMinutes, int& outCycles); // returns error string. Format: HH24:MIN:Cycles
+  // returns error string.
+  static std::string convert_string_to_24_min_numbers (const std::string &inTimeIn24Hfortmat, int& outHour, int& outMinutes, int& outCycles); // Format: HH24:MIN:Cycles
 
   // -------------------------------------------
 
@@ -804,6 +808,7 @@ public:
   // static std::string xml_read_cdata_node (const ITCXMLNode &inNode, const std::string &default_value);
   // static std::string xml_read_cdata_node (const IXMLNode &inNode, std::string default_value);
   static std::string xml_get_text_or_cdata_text (const IXMLNode &inNode, const std::string &default_value); // v25.06.1
+  static std::string xml_get_cdata_or_text (const IXMLNode &inNode, const std::string &default_value); // v25.09.2
 
   // -------------------------------------------
   //=================================================================
@@ -995,6 +1000,7 @@ public:
   // v25.06.1 Copy all sub nodes from source to target. Delete target sub nodes with same name.
   static void xml_copy_or_replace_sub_nodes (IXMLNode &inout_parent_node, const IXMLNode &in_source_node, bool b_delete_exist_parent_sub_node = true, const std::vector<std::string> *in_exclude_nodes = nullptr, const std::vector<std::string> *in_include_nodes = nullptr);
 
+  static std::string xml_read_cdata_node (const IXMLNode &inNode, std::string default_value);
 
   // -------------------------------------------
 

@@ -241,6 +241,7 @@ public:
       ,{ missionx::PICKED_HALF_GLOBE, " Half Globe " }
       ,{ missionx::PICKED_QUARTER_GLOBE, " Quarter Globe " }
       ,{ missionx::PICKED_LOCAL_REGION_GLOBE, " Local Region " }
+      ,{ missionx::PICKED_IN_MY_AREA, " In My Area " }
     };
     // Filter runway by type
     bool                                     flag_pick_any_rw{ true };

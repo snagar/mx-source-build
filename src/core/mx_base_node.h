@@ -24,7 +24,7 @@ public:
   mx_base_node (mx_base_node &&other) noexcept
     : missionx::mxUtils (std::move (other))
     , name (std::move (other.name))
-    , node (std::move (other.node))
+    , node (other.node)
     , mapText (std::move (other.mapText))
     // , mx_const (std::move (other.mx_const))
   {

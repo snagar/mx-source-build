@@ -1709,6 +1709,16 @@ WinImguiBriefer::generate_mission_date_based_on_user_preference (int &out_iClock
 void
 WinImguiBriefer::addAdvancedSettingsPropertiesBeforeGeneratingRandomMission ()
 {
+
+  // v25.09.2 Make sure that once you hit the generate button, and you picked x-plane time, we re-read X-Plane clock, especially if the sim is not in pause state
+  if (this->adv_settings_strct.iRadioRandomDateTime_pick == missionx::mx_ui_random_date_time_type::xplane_day_and_time)
+  {
+    this->adv_settings_strct.iClockDayOfYearPicked = dataref_manager::getLocalDateDays (); // strct_user_create_layer.iClockDayOfYearPicked
+    this->adv_settings_strct.iClockHourPicked      = dataref_manager::getLocalHour (); // strct_user_create_layer.iClockHourPicked
+    this->adv_settings_strct.iClockMinutesPicked   = dataref_manager::getLocalMinutes (); // How many minutes passed since the start of the hour
+  }
+
+
   // v3.303.14 added advance weather/time settings
   missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_STARTING_DAY (), this->clockDayOfYear_arr[this->adv_settings_strct.iClockDayOfYearPicked]);
   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_STARTING_HOUR (), mxUtils::stringToNumber<int> (this->clockHours_arr[this->adv_settings_strct.iClockHourPicked]));
@@ -2584,7 +2594,7 @@ WinImguiBriefer::callNavData (std::string_view inICAO, bool bNavigatingFromOther
 #ifdef IBM
     strncpy_s (this->strct_ils_layer.buf1, sizeof this->strct_ils_layer.buf1, inICAO.data (), sizeof this->strct_ils_layer.buf1);
 #else
-    strncpy (this->strct_ils_layer.buf1, inICAO.data (), sizeof this->strct_ils_layer.buf1);
+    strncpy (this->strct_ils_layer.buf1, inICAO.data (), sizeof (this->strct_ils_layer.buf1) - 1);
 #endif
     this->strct_ils_layer.flagForceNavDataTab = true;
 
@@ -4854,9 +4864,18 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
 
         if (bPickedOilRigMission)
         {
-          missionx::WinImguiBriefer::HelpMarker (R"(Best used with the "mx_osm_oilrigs" custom scenery for full world cover.)", missionx::color::color_vec4_aqua);
+          missionx::WinImguiBriefer::HelpMarker (R"(Best used with the "OSM Offshore Oil-Rigs" custom scenery for full world coverage.
+
+Filter options:
+---------------
+* "In My Area": You search Oil-Rigs in radius of ~200nm from your location.
+
+* "Local Region": Search an Oil Rig in a larger area relative to the plane. It will re-position the plane at mission start.
+
+* "Quarter/Half or full Globe: Broaden the search to a much larger area. It will re-position the plane at mission start.
+)", missionx::color::color_vec4_aqua);
           ImGui::SameLine ();
-          ImGui::TextColored (missionx::color::color_vec4_yellow, "Pick region to search for Oilrig:");
+          ImGui::TextColored (missionx::color::color_vec4_yellow, "Pick region to search for Oil-Rig:");
           missionx::data_manager::ui_oilrig_globe_part_i = add_ui_dynamic_options_buttons (missionx::data_manager::ui_oilrig_globe_part_i, this->strct_user_create_layer.map_pick_oilrig_globe_part);
           ImGui::NewLine ();
         }
@@ -5542,9 +5561,9 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                   }
                   // v24.12.2
 
-#ifndef RELEASE
+                  #ifndef RELEASE
                   Log::logMsg ("Picked: " + this->strct_generate_template_layer.last_picked_template_key); // debug
-#endif
+                  #endif
                 }
               }
               ImGui::PopID ();
@@ -5634,7 +5653,6 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
       // ------- Buttons
       // -------------------
 
-      // ImGui::NewLine();
       ImGui::BeginGroup ();
 
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
@@ -5656,7 +5674,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
         }
         ImGui::PopStyleColor ();
 
-        ImVec2 center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f); // center of screen
+        const ImVec2 center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f); // center of screen
         ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
         ImGui::SetNextWindowSize (ImVec2 (480.0f, 300.0f));
 
@@ -5670,9 +5688,6 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
             ImGui::Spacing (); // v3.303.14.2 added default weight to the generate screen
             ImGui::Checkbox ("Add default base weights.\n(Not advisable for planes > GAs)", &this->adv_settings_strct.flag_add_default_weight_settings);
             ImGui::Spacing ();
-
-            // this->add_ui_pick_subcategories (this->mapMissionCategories[static_cast<int> (missionx::mx_mission_type::cargo)]);
-            // ImGui::Spacing ();
 
             this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
             ImGui::Spacing ();
@@ -5733,10 +5748,6 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                   }
                   break;
                 }
-
-                // if (const auto vecToDisplay = this->mapMissionCategories[static_cast<int> (missionx::mx_mission_type::cargo)]; vecToDisplay.size () > this->strct_user_create_layer.iMissionSubCategoryPicked)
-                //   missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_MISSION_SUBCATEGORY_LBL (), vecToDisplay.at (this->strct_user_create_layer.iMissionSubCategoryPicked));
-                // this->addAdvancedSettingsPropertiesBeforeGeneratingRandomMission (); // TODO: Consider if to use the advance settings
 
                 // Prepare and call ACTION_GENERATE_RANDOM_MISSION
                 missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), this->strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12 generate GPS waypoints
@@ -7331,25 +7342,39 @@ WinImguiBriefer::child_flight_leg_info_draw_end_summary ()
       ImGui::Separator ();
       for (auto &land : missionx::data_manager::mission_stats_from_query.vecLandingStatsResults)
       {
+        const bool flag_bounced_row = this->mxStartUiDisableState (land.bounce == 1 && !land.did_landing_contained_bounce);
+        {
+          ImGui::Text ("%s", fmt::format("{}", (flag_bounced_row)? fmt::format ("\t{:>10}", "[" + land.activity_s + "]") : "Landed in: " ).c_str());
+          ImGui::SameLine ();
+          ImGui::TextColored (missionx::color::color_vec4_green, "%s", land.icao.c_str ());
 
-        ImGui::Text ("Landed in: ");
-        ImGui::SameLine ();
-        ImGui::TextColored (missionx::color::color_vec4_green, "%s", land.icao.c_str ());
+          ImGui::SameLine ();
+          ImGui::Text ("%s", ", Runway: ");
+          ImGui::SameLine ();
+          ImGui::TextColored (missionx::color::color_vec4_lightblue, "%s", land.runway_s.c_str ());
 
-        ImGui::SameLine ();
-        ImGui::Text (", Runway: ");
-        ImGui::SameLine ();
-        ImGui::TextColored (missionx::color::color_vec4_lightblue, "%s", land.runway_s.c_str ());
+          ImGui::SameLine ();
+          ImGui::Text ("%s", ", Accuracy from center: ");
+          ImGui::SameLine ();
+          ImGui::TextColored (missionx::color::color_vec4_beige, "%s", mxUtils::formatNumber<double> (land.distance_from_center_of_rw_d, 2).c_str ());
 
-        ImGui::SameLine ();
-        ImGui::Text (", Accuracy from center: ");
-        ImGui::SameLine ();
-        ImGui::TextColored (missionx::color::color_vec4_beige, "%s", mxUtils::formatNumber<double> (land.distance_from_center_of_rw_d, 2).c_str ());
+          // skip score for bounced data
+          if (!flag_bounced_row)
+          {
+            ImGui::SameLine ();
+            ImGui::Text ("%s", " => Score: ");
+            ImGui::SameLine ();
+            ImGui::TextColored (missionx::color::color_vec4_white, "%s", mxUtils::formatNumber<double> (land.score_centerLine, 4).c_str ());
 
-        ImGui::SameLine ();
-        ImGui::Text (" => Score: ");
-        ImGui::SameLine ();
-        ImGui::TextColored (missionx::color::color_vec4_white, "%s", mxUtils::formatNumber<double> (land.score_centerLine, 4).c_str ());
+            if (land.did_landing_contained_bounce)
+            {
+              ImGui::SameLine ();
+              // ImGui::TextColored (missionx::color::color_vec4_orange, "%s", fmt::format("(bounced: {} time{})", land.bounce, (land.bounce == 1)? "" : "s").c_str ());
+              ImGui::TextColored (missionx::color::color_vec4_orange, "%s", "(bounced)");
+            }
+          } // end if to display score + bounce info
+        } // end enabled/disabled block
+        this->mxEndUiDisableState (flag_bounced_row);
       }
       ImGui::Separator ();
 
@@ -10654,7 +10679,6 @@ WinImguiBriefer::add_landing_rate_ui (const missionx::mx_enrout_stats_strct &inS
 void
 WinImguiBriefer::add_ui_stats_child (const bool isEmbedded)
 {
-  constexpr float fTitleHeight      = 30.0f;
   const auto      strctCurrentStats = missionx::data_manager::gather_stats.get_stats_object ();
   const auto      fuel_usage_kg     = missionx::dataref_manager::getDataRefValue<float> ("sim/cockpit2/fuel/fuel_totalizer_sum_kg");
 
@@ -10663,6 +10687,7 @@ WinImguiBriefer::add_ui_stats_child (const bool isEmbedded)
 
   if (!isEmbedded)
   {
+    constexpr float fTitleHeight      = 30.0f;
     ImGui::BeginChild ("stats_flight_legs", ImVec2 (0.0f, ImGui::GetWindowHeight () - imvec2_flight_info_top_area_size.y - this->fTopToolbarPadding_f - this->fBottomToolbarPadding_f - fTitleHeight), ImGuiChildFlags_Borders);
   }
 
@@ -10676,7 +10701,8 @@ WinImguiBriefer::add_ui_stats_child (const bool isEmbedded)
     if (data_manager::strct_currentLegStats4UIDisplay.fTouchDown_landing_rate_vh_ind_fpm != 0.0f)
     {
       const auto pctTdWeight_f = data_manager::strct_currentLegStats4UIDisplay.fTouchDownWeight / data_manager::strct_currentLegStats4UIDisplay.fTouchDown_acf_m_max;
-      ImGui::TextColored (missionx::color::color_vec4_white, "Touch Down Weight: %6.2f\tPlane Max Weight: %3.2f\tScore: %3.0f points.", data_manager::strct_currentLegStats4UIDisplay.fTouchDownWeight, data_manager::strct_currentLegStats4UIDisplay.fTouchDown_acf_m_max, pctTdWeight_f * 100.0f);
+      //ImGui::TextColored (missionx::color::color_vec4_white, "Touch Down Weight: %6.2f\tPlane Max Weight: %3.2f\tScore: %3.0f points.", data_manager::strct_currentLegStats4UIDisplay.fTouchDownWeight, data_manager::strct_currentLegStats4UIDisplay.fTouchDown_acf_m_max, pctTdWeight_f * 100.0f);
+      ImGui::TextColored (missionx::color::color_vec4_white, "Touch Down Weight: %6.2f\tPlane Max Weight: %3.2f", data_manager::strct_currentLegStats4UIDisplay.fTouchDownWeight, data_manager::strct_currentLegStats4UIDisplay.fTouchDown_acf_m_max); // v25.09.2 removed weight scoring
       add_landing_rate_ui (data_manager::strct_currentLegStats4UIDisplay);
     }
     this->mxUiReleaseLastFont ();
@@ -10693,7 +10719,8 @@ WinImguiBriefer::add_ui_stats_child (const bool isEmbedded)
     ImGui::TextColored (missionx::color::color_vec4_white, "Overall Distance flew: %10.2f nm\tLeg Flew: %5.2f", stats.fCumulativeDistanceFlew_beforeCurrentLeg + stats.fDistanceFlew, stats.fDistanceFlew);
     ImGui::TextColored (missionx::color::color_vec4_grey, "Start Fuel: %5.2f\tEnd Fuel: %5.2f\tFuel Consumed: %5.2f", stats.fStartingFuel, stats.fEndFuel, stats.fStartingFuel - stats.fEndFuel);
     ImGui::TextColored (missionx::color::color_vec4_white, "Start Payload: %6.2f\tEnd Payload: %6.2f", stats.fStartingPayload, stats.fEndPayload);
-    ImGui::TextColored (missionx::color::color_vec4_white, "Touch Down Weight: %6.2f\tPlane Max Weight: %3.0f\tScore: %3.0f points.", stats.fTouchDownWeight, stats.fTouchDown_acf_m_max, pctTdWeight_f * 100.0f);
+    //ImGui::TextColored (missionx::color::color_vec4_white, "Touch Down Weight: %6.2f\tPlane Max Weight: %3.0f\tScore: %3.0f points.", stats.fTouchDownWeight, stats.fTouchDown_acf_m_max, pctTdWeight_f * 100.0f);
+    ImGui::TextColored (missionx::color::color_vec4_white, "Touch Down Weight: %6.2f\tPlane Max Weight: %3.0f", stats.fTouchDownWeight, stats.fTouchDown_acf_m_max); // v25.09.2 removed weight scoring
 
     add_landing_rate_ui (stats);
 
@@ -10833,8 +10860,8 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
     ImGui::BeginChild ("##MainAdvancedSettingTabWindow", ImVec2 (-5.0f, -35.0f)); // v3.305.1
 
     // start TABs
-    ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
-    if (ImGui::BeginTabBar ("AdvancedWeatherAndTimeSettings", tab_bar_flags))
+    if (constexpr ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None
+      ; ImGui::BeginTabBar ("AdvancedWeatherAndTimeSettings", tab_bar_flags))
     {
       if (ImGui::BeginTabItem ("Date and Time"))
       {
@@ -11172,7 +11199,9 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
     ImGui::SameLine (0.0f, 20.0f);
     ImGui::SetCursorPosY (ImGui::GetCursorPos ().y + 5.0f);
     ImGui::TextColored (missionx::color::color_vec4_lightgoldenrodyellow, "Picked Day: %i, %i:%i", out_iClockDayOfYearPicked, out_iClockHourPicked, out_iClockMinutesPicked);
-    this->mx_add_tooltip (missionx::color::color_vec4_lightyellow, "Day of Year and Hour");
+    // v25.09.2
+    const std::string_view time_comment_vu = (this->adv_settings_strct.iRadioRandomDateTime_pick == missionx::mx_ui_random_date_time_type::xplane_day_and_time)? "\nTime will be re-read once [generate] button is pressed." : "";
+    this->mx_add_tooltip (missionx::color::color_vec4_lightyellow, fmt::format("Day of Year, Hour and Minutes{}.", time_comment_vu) );
     ImGui::EndGroup ();
 
     ////// End Popup //////

@@ -550,8 +550,6 @@ missionx::read_mission_file::readFlightPlanElements(std::map<std::string, missio
                                                     std::map<std::string, missionx::base_script>& inMapScripts,
                                                     std::string&                                  inScriptFolder)
 {
-  ITCXMLNode xFlightPlan;
-  ITCXMLNode xLeg;
 
   int nChilds1 = 0;
 
@@ -575,8 +573,7 @@ missionx::read_mission_file::readFlightPlanElements(std::map<std::string, missio
 
     for (int g1 = 0; g1 < nLegs; ++g1)
     {
-      xFlightPlan = xParent.getChildNode(main_element_name.c_str(), g1);
-
+      ITCXMLNode xFlightPlan = xParent.getChildNode(main_element_name.c_str(), g1);
       if (xFlightPlan.isEmpty())
       {
         Log::logMsgWarn("Found an empty <" + main_element_name + "> element. Skipping...");
@@ -595,14 +592,12 @@ missionx::read_mission_file::readFlightPlanElements(std::map<std::string, missio
           read_mission_file::initOK = false;
           read_mission_file::errMsg = "No <" + child_element_name + "> element defined.";
           addError(errMsg);
-
-          // return
           continue; // v3.0.221.15rc4
         }
 
         for (int i1 = 0; i1 < nChilds1; i1++)
         {
-          xLeg = xFlightPlan.getChildNode(child_element_name.c_str(), i1);
+          ITCXMLNode xLeg = xFlightPlan.getChildNode(child_element_name.c_str(), i1);
           if (xLeg.isEmpty())
             continue;
 
@@ -618,7 +613,7 @@ missionx::read_mission_file::readFlightPlanElements(std::map<std::string, missio
           ///// END PARSE <leg> NODE
 
           ///// READ commands /////
-          // v3.0.221.9 read command strings. aeach command must be part of <commands> element, just like datarefs. If a command is not in the commands list, then it will be ignored and we will move to the next one.
+          // v3.0.221.9 read command strings. Each command must be part of <commands> element, just like datarefs. If a command is not in the commands list, then it will be ignored and we will move to the next one.
           IXMLNode xFireCommandsAtLegStart = leg.node.getChildNode(mxconst::get_ELEMENT_FIRE_COMMANDS_AT_LEG_START().c_str()); // v3.0.221.15rc5 support leg
           if (xFireCommandsAtLegStart.isEmpty())                                                                         // compatibility to goal
             xFireCommandsAtLegStart = leg.node.getChildNode(mxconst::get_ELEMENT_FIRE_COMMANDS_AT_GOAL_START().c_str());
@@ -643,8 +638,8 @@ missionx::read_mission_file::readFlightPlanElements(std::map<std::string, missio
 
           if (!xFireCommandsAtLegEnd.isEmpty())
           {
-            std::string commands        = Utils::readAttrib(xFireCommandsAtLegEnd, mxconst::get_ATTRIB_COMMANDS(), EMPTY_STRING);
-            leg.listCommandsAtTheEndOfTheFlightLeg = missionx::data_manager::parseStringToCommandRef(commands);
+            std::string local_commands             = Utils::readAttrib (xFireCommandsAtLegEnd, mxconst::get_ATTRIB_COMMANDS (), EMPTY_STRING);
+            leg.listCommandsAtTheEndOfTheFlightLeg = missionx::data_manager::parseStringToCommandRef (local_commands);
           }
           // end of v3.0.221.9 commands
 
