@@ -533,7 +533,7 @@ private:
   // v25.09.2
   // Will only parse the template "leg" from a template file.
   // Internally will also parse the <expected_location>.
-  static missionx::NavAidInfo                gen_parse_template_leg (missionx::base_thread::thread_state *inoutThreadState, const IXMLNode &xTemplateNode, const IXMLNode &xml_leg_node_from_template, strct_shared_random_airport_info &inout_shared_navaid, std::map<int, missionx::NavAidInfo> &in_mission_targets, int &in_leg_counter, bool is_last_flight_leg, std::string &outErr);
+  static missionx::NavAidInfo                gen_parse_template_leg (missionx::base_thread::thread_state *inoutThreadState, const IXMLNode &xTemplateNode, const IXMLNode &xml_leg_node_from_template, strct_shared_random_airport_info &inout_shared_navaid, std::map<int, missionx::NavAidInfo> &in_mission_targets, const int &in_leg_counter, bool is_last_flight_leg, std::string &outErr);
   static std::map<int, missionx::NavAidInfo> gen_get_content_targets (missionx::base_thread::thread_state *inoutThreadState, const IXMLNode &in_template_node, const IXMLNode &in_content_node, strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr);
   static std::map<int, missionx::NavAidInfo> gen_get_generic_template_targets (missionx::base_thread::thread_state *inoutThreadState, const IXMLNode &in_template_node, strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr);
   missionx::mx_return                        gen_prepare_random_mission_based_on_content (IXMLNode &xTemplateNode); // v25.09.2
