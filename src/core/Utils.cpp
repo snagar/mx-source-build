@@ -2518,7 +2518,7 @@ missionx::Utils::convert_string_to_24_min_numbers (const std::string &inTimeIn24
 IXMLNode
 missionx::Utils::xml_get_or_create_node_ptr(IXMLNode& pNode, const std::string &tagChildNodeName_s, const std::string &with_attrib_name, const std::string &with_attrib_value)
 {
-  assert(!pNode.isEmpty()); // crash if node is empty
+  assert(!pNode.isEmpty() && "Source XML Node can't be empty!"); // crash if node is empty
 
   auto lmbda_get_node_ptr = [&]() {
     if (with_attrib_name.empty())
@@ -3624,6 +3624,20 @@ Utils::xml_copy_or_replace_sub_nodes (IXMLNode &inout_parent_node, const IXMLNod
 
 }
 
+
+// -------------------------------------------
+
+std::vector<IXMLNode>
+Utils::clone_xml_vector (std::vector<IXMLNode> in_vec)
+{
+  std::vector<IXMLNode> vec_target;
+  vec_target.reserve (in_vec.size ());
+
+  for (auto& n : in_vec)
+    vec_target.push_back(n.deepCopy ());
+
+  return vec_target;
+}
 
 // -------------------------------------------
 
