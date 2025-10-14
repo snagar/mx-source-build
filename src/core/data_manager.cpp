@@ -2025,7 +2025,7 @@ data_manager::prepare_flight_plan_for_XPLN11(std::deque<NavAidInfo>& inNavList)
       // Copy back original position
       navInfo.lat = navPos.lat;
       navInfo.lon = navPos.lon;
-      if (navInfo.flag_navDataFetchedFromDB && navInfo.navRef != XPLM_NAV_NOT_FOUND) // did we found nav aid in a boundary in a valid ICAO ?
+      if (navInfo.flag_fetched_from_db && navInfo.navRef != XPLM_NAV_NOT_FOUND) // did we found nav aid in a boundary in a valid ICAO ?
       {
         icao            = navInfo.getID();
         b_isItAnAirport = true;
@@ -6821,14 +6821,10 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outE
   //// Fetch information
   std::string err;
   {
-    // #ifdef USE_CURL
-
 
     // sleep before calling overpass
     std::this_thread::sleep_for (std::chrono::seconds(2)); // v25.06.1 not overwhelm the overpass server
 
-
-    // curl_global_init(CURL_GLOBAL_DEFAULT); // DO NOT USE
     long httpStatus = 0;
     if (curl)
     {
@@ -6840,6 +6836,8 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outE
       curl_easy_setopt(curl, CURLOPT_URL, in_url_s.c_str());
       // curl_easy_setopt(data_manager::curl, CURLOPT_PORT, 443L);
       curl_easy_setopt(curl, CURLOPT_USERAGENT, APP_NAME);
+      curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 20L); // v25.09.2 /Timeout for server connection
+      curl_easy_setopt(curl, CURLOPT_TIMEOUT, 45L); // v25.09.2 added timeout
 
       // ignore SSL - important for Windows
       curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
@@ -6849,7 +6847,7 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outE
 
       curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuff);
 
-      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_write); // <==== THIS IS WHERE WE HANDLE THE RESPOND DATA
+      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_write); // <==== THIS IS WHERE WE HANDLE THE RESPONSE DATA
       curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result_s);
       curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
       // https://curl.haxx.se/docs/sslcerts.html
@@ -6908,15 +6906,15 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outE
 NavAidInfo
 data_manager::getPlaneAirportOrNearestICAO(const bool& inOnlySearchInDatabase, const double& inLat, const double& inLon, const bool inIsThread)
 {
-  // The following function will first try to figure out if the plane inside one of the airports boundary which is stored in the SQLITE database.
-  // If not then it will fall back to the original code, by using the XPSDK.
+  // The following function will first try to figure out if the plane inside one of the airport boundary which is stored in the SQLITE database.
+  // If not then it will fall back to the original code by using the XPSDK.
   bool flagFoundPlaneInAirportArea{ false }; // v3.303.8.3
 
 
   NavAidInfo navAid;
   navAid.navRef       = XPLM_NAV_NOT_FOUND;
   Point planePosition = dataref_manager::getPlanePointLocationThreadSafe();
-  // v3.303.8.3 add the option to receive plane location relative to pre-defined location and not to current plane position.
+  // v3.303.8.3 add the option to receive plane location relative to a pre-defined location and not to the current plane position.
   if (inLat * inLon != 0.0)
   {
     planePosition.setLat(inLat);
@@ -6950,7 +6948,7 @@ where is_plane_in_boundary = 1
 )";
 
 //  NO Need to create fake boundaries, if an airport does not have a boundary, then it might be an inactive airport.
-//  We could try and use "distance" instead, but that is good only to edge cases.
+//  We could try and use "distance" instead, but that is good, only in edge cases.
 //
 //
 //   Consider replacing the query with fake boundaries for Empty/Null "boundary" field:
@@ -7022,15 +7020,15 @@ where is_plane_in_boundary = 1
         navAid.icao_id = sqlite3_column_int(db_xp_airports.mapStatements[stmt_uq_name], iCol); // icao_id
         ++iCol;                                                                                              // we do not read boundary field
 
-        navAid.flag_navDataFetchedFromDB = true; // v24.03.1
+        navAid.flag_fetched_from_db = true; // v24.03.1
       }                                          // end if sql fetched at least one row (we will only pick the first row
 
 
-    } // end if prepare statement succeeded.
+    } // end if the prepare statement succeeded.
 
-  } // end airport search using sqlite boundary query
+  } // end airport search using SQLite boundary query
 
-  // v25.06.1 if we did not find lat/lon from database
+  // v25.06.1 if we did not find lat/lon in the database
   if (navAid.lat * navAid.lon == 0.0)
   {
     navAid.lat = static_cast<float> (inLat);
@@ -7052,7 +7050,7 @@ where is_plane_in_boundary = 1
       navAid.navRef = XPLMFindNavAid(nullptr, navAid.ID, &navAid.lat, &navAid.lon, nullptr, xplm_Nav_Airport); // we are still using XPlane library to re-fetch information but this time we set the ICAO and lat/lon beforehand
     else
     {
-      navAid.flag_navDataFetchedFromDB                = false; // v24.03.1
+      navAid.flag_fetched_from_db                = false; // v24.03.1
       navAid.flag_navDataFetchedFromXPLMGetNavAidInfo = true;  // v24.03.1
       navAid.navRef                                   = XPLMFindNavAid(nullptr, nullptr, &posVec2.x, &posVec2.y, nullptr, xplm_Nav_Airport);
     }

@@ -894,8 +894,9 @@ public:
       return defaultValueIfNotExists;
     else
     {
-      const std::string text       = Utils::xml_get_text(node, mxconst::get_NO_SETUP_TEXT());
-      switch (int val_type_i = Utils::readNodeNumericAttrib<int> (node, mxconst::get_ATTRIB_TYPE(), -1))
+      const std::string text       = Utils::xml_get_text (node, mxconst::get_NO_SETUP_TEXT ());
+      const int         val_type_i = Utils::readNodeNumericAttrib<int> (node, mxconst::get_ATTRIB_TYPE (), -1);
+      switch (val_type_i)
       {
         case 1: // bool
         {
@@ -1083,6 +1084,7 @@ public:
   // -------------------------------------------
   // -------------------------------------------
 
+  static std::vector<IXMLNode> clone_xml_vector (std::vector<IXMLNode> in_vec);
 
   // -------------------------------------------
 

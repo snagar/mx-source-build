@@ -23,8 +23,11 @@ private:
 public:
   bool flag_is_skewed; // v3.0.241.8 we use this flag when we have skewdPointNode that is different than our "node" or "Point p"
   bool flag_is_brieferOrStartLocation; // v3.303.10
-  bool flag_navDataFetchedFromDB; // v24.03.1
+  bool flag_is_same_as_start_location; // v29.09.2 used when "location type" or "template" are equal "start".
+  bool flag_fetched_from_db; // v24.03.1
+  bool flag_fetched_from_webosm{ false };
   bool flag_navDataFetchedFromXPLMGetNavAidInfo; // v24.03.1
+  bool flag_picked_random_lat_long; // v3.0.219.14 used when we want to flag special case of random coordinate. Can help with deciding if a template is medevac or not, and if you need heli or not.
 
   XPLMNavRef  navRef;                      // XPSDK type
   XPLMNavType navType{ xplm_Nav_Unknown }; // XPSDK type
@@ -37,16 +40,16 @@ public:
   float lat, lon, height_mt, heading;
 
   missionx::Point p;                  // will hold lat/long/elev/heading_psi
+  missionx::mxVec2d skewed_location;
+
   IXMLNode        xml_skewdPointNode; // will hold the skewed lat/long/elev/heading_psi, to calculate during "inject Message function"
   IXMLNode        xml_osm_around;     // v3.0.253.4 holds street around locations
-  bool            flag_nav_from_webosm{ false };
   std::string     ways_around; // v3.0.253.4
 
   int         icao_id{ 0 }; // v3.303.8.3 holds icao_id from xp_airports sqlite DB
   std::string loc_desc, template_type, err;
   std::string flightLegName;
   std::string radius_mt_suggested_s;                                             // used in RandomEngine when we pick data from apt.dat or not. If from apt.dat then we should use ~40mt if not then empty and it wil default to 500mt
-  bool        flag_picked_random_lat_long;                                       // v3.0.219.14 used when we want to flag special case of random coordinate. Can help with deciding if a template is medevac or not, and if you need heli or not.
   IXMLNode    xLegFromTemplate;                                                  // v3.0.221.2 holds template flight <leg> node.
   bool        flag_force_picked_same_point_template_as_flight_leg_template_type; // v3.0.221.15rc4
   bool flag_is_custom_scenery{ false }; // v3.0.253.6 used with apt.dat information when we want to pick airports around the plane, we can use the cached data to flag navaid as custom scenery based and therefore maybe to prefer it over generic one
@@ -65,10 +68,10 @@ public:
   float bearing_back_to_prev_target{ 0.0f }; // holds the bearing to the previous target. If bearing_relative_from_prev_target=10 degrease then bearing_back_to_prev_target=10+180
 
   // v25.06.1 ////////////////
-  bool fpln_is_last_flight_leg {false};
-  int fpln_seq{ -1 }; // v25.06.1 can hold a sequence number to be used with RandomEngin and Surprise Me flow.
-  bool fpln_is_wet{ false };
-  bool fpln_navaid_was_already_prepared{ false }; // v25.09.1 Will be used with the new Oilrig function. The briefer navaid is setup by the gen_oilrig_targets() function.
+  bool   fpln_is_last_flight_leg{ false };
+  int    fpln_seq{ -1 }; // v25.06.1 can hold a sequence number to be used with RandomEngin and Surprise Me flow.
+  bool   fpln_is_wet{ false };
+  bool   fpln_navaid_was_already_prepared{ false }; // v25.09.1 Will be used with the new Oilrig function. The briefer navaid is setup by the gen_oilrig_targets() function.
   double fpln_slope{ 0.0 }; // holds the expected slope at the target area
 
   // v25.09.1
@@ -84,7 +87,7 @@ public:
 
   double fpln_distance_between_prev_and_current_navaid{ 0.0f };
   double fpln_distance_to_next_navaid{ 0.0f };
-  std::string fpln_wp_type;
+  std::string fpln_wp_template_type;
   std::string fpln_leg_name;
   IXMLNode fpln_xml_target_leg_node; // holds a pointer to the XML node that represents this navaid. Example: trigger node.
   IXMLNode fpln_xml_inv_node; // holds the target inventory information during random engine mission generation
@@ -96,8 +99,16 @@ public:
   // v25.09.1
   std::string sMetar;
   // v25.09.2
+  std::string fpln_msg_text; // will be used to store flight leg message text, like the briefer's starting description that will be shown in the first leg.
+
   missionx::structs::strct_expected_location_data fpln_expected_location_data;
-  bool fpln_copy_as_is_b {false}; // set of flight legs that will be stored in fpln_xml_target_leg_node and we will have to add them to the final mission leg list
+  bool fpln_copy_as_is_b {false}; // NOT IMPLEMENTED YET set of flight legs that will be stored in fpln_xml_target_leg_node and we will have to add them to the final mission leg list
+
+  // used during <leg> creation
+  std::vector<IXMLNode> fpln_leg_vec_trigger_nodes;
+  std::vector<IXMLNode> fpln_leg_vec_task_nodes;
+  IXMLNode              fpln_leg_objective_node;
+
 
    missionx::NavAidInfo& operator= (const NavAidInfo &in_na)
    {
@@ -121,8 +132,11 @@ public:
 
      flag_is_skewed                           = in_na.flag_is_skewed;
      flag_is_brieferOrStartLocation           = in_na.flag_is_brieferOrStartLocation;
-     flag_navDataFetchedFromDB                = in_na.flag_navDataFetchedFromDB;
+     flag_is_same_as_start_location           = in_na.flag_is_same_as_start_location;
+     flag_fetched_from_db                     = in_na.flag_fetched_from_db;
+     flag_fetched_from_webosm                 = in_na.flag_fetched_from_webosm;
      flag_navDataFetchedFromXPLMGetNavAidInfo = in_na.flag_navDataFetchedFromXPLMGetNavAidInfo;
+     flag_picked_random_lat_long              = in_na.flag_picked_random_lat_long;
 
      navRef  = in_na.navRef;
      navType = in_na.navType;
@@ -136,9 +150,9 @@ public:
      heading                  = in_na.heading;
 
      p                    = in_na.p;
+     skewed_location      = in_na.skewed_location; // v25.09.2
      xml_skewdPointNode   = in_na.xml_skewdPointNode.deepCopy ();
      xml_osm_around       = in_na.xml_osm_around.deepCopy ();
-     flag_nav_from_webosm = in_na.flag_nav_from_webosm;
      ways_around          = in_na.ways_around;
      icao_id              = in_na.icao_id;
 
@@ -150,7 +164,6 @@ public:
      radius_mt_suggested_s = in_na.radius_mt_suggested_s;
 
 
-     flag_picked_random_lat_long                                       = in_na.flag_picked_random_lat_long;
      xLegFromTemplate                                                  = in_na.xLegFromTemplate;
      flag_force_picked_same_point_template_as_flight_leg_template_type = in_na.flag_force_picked_same_point_template_as_flight_leg_template_type;
 
@@ -165,7 +178,7 @@ public:
      fpln_is_last_flight_leg         = in_na.fpln_is_last_flight_leg; // v25.06.1
      fpln_is_wet                     = in_na.fpln_is_wet; // v25.06.1
      fpln_seq                        = in_na.fpln_seq; // v25.06.1
-     fpln_wp_type                    = in_na.fpln_wp_type; // v25.06.1
+     fpln_wp_template_type                    = in_na.fpln_wp_template_type; // v25.06.1
      fpln_leg_name                   = in_na.fpln_leg_name; // v25.06.1
      fpln_xml_target_leg_node        = in_na.fpln_xml_target_leg_node.deepCopy (); // v25.06.1
      fpln_xml_osm_q_or_raw_tmpl_node = in_na.fpln_xml_osm_q_or_raw_tmpl_node.deepCopy ();
@@ -182,8 +195,16 @@ public:
      // used with Navaid info UI screen
      sMetar = in_na.sMetar; // v25.09.1
 
-     fpln_expected_location_data = in_na.fpln_expected_location_data; // v25.09.2
+     // v25.09.2
+     fpln_msg_text = in_na.fpln_msg_text;
+
+     fpln_expected_location_data = in_na.fpln_expected_location_data;
      fpln_copy_as_is_b = in_na.fpln_copy_as_is_b;
+
+     fpln_leg_vec_trigger_nodes = Utils::clone_xml_vector (in_na.fpln_leg_vec_trigger_nodes);
+     fpln_leg_vec_task_nodes    = Utils::clone_xml_vector (in_na.fpln_leg_vec_task_nodes);
+     fpln_leg_objective_node    = in_na.fpln_leg_objective_node.deepCopy ();
+
 
      this->synchToPoint ();
    }
@@ -223,10 +244,10 @@ public:
     flightLegName.clear();
 
     radius_mt_suggested_s.clear();
-    flag_picked_random_lat_long                                       = false;                    // v3.0.219.14
     xLegFromTemplate                                                  = IXMLNode::emptyIXMLNode; // v3.0.221.2
     flag_force_picked_same_point_template_as_flight_leg_template_type = false;                    // v3.0.221.15rc4
 
+    skewed_location    = { 0.0, 0.0 };
     xml_skewdPointNode = IXMLNode::emptyIXMLNode; // v3.0.241.8
     xml_osm_around     = IXMLNode::emptyIXMLNode; // v3.0.253.4
     flag_is_skewed     = false;
@@ -234,19 +255,19 @@ public:
     bearing_next              = 0.0f;
     bearing_to_current_target = 0.0f;
 
-    flag_nav_from_webosm   = false;
-    flag_is_custom_scenery = false;
-
-    flag_is_brieferOrStartLocation = false;
-
-    flag_navDataFetchedFromDB = false; // v24.03.1
+    flag_fetched_from_webosm                 = false;
+    flag_is_custom_scenery                   = false;
+    flag_is_brieferOrStartLocation           = false;
+    flag_is_same_as_start_location           = false;
+    flag_fetched_from_db                     = false; // v24.03.1
     flag_navDataFetchedFromXPLMGetNavAidInfo = false; // v24.03.1
+    flag_picked_random_lat_long              = false; // v3.0.219.14
 
     fpln_is_last_flight_leg = false; // v25.06.1
     fpln_is_wet             = false; // v25.06.1
     fpln_is_oilrig          = false; // v25.09.1
     fpln_seq                = -1; // v25.06.1
-    fpln_wp_type.clear (); // v25.06.1
+    fpln_wp_template_type.clear (); // v25.06.1
     fpln_leg_name.clear (); // v25.06.1
     fpln_xml_target_leg_node   = IXMLNode::emptyIXMLNode; // v25.06.1
     fpln_xml_osm_q_or_raw_tmpl_node        = IXMLNode::emptyIXMLNode; // v25.06.1
@@ -262,8 +283,14 @@ public:
 
      sMetar.clear(); // v25.09.1
 
-     fpln_expected_location_data.reset(); // v25.09.2
-     fpln_copy_as_is_b = false; // v25.09.2
+     // v25.09.2
+     fpln_msg_text.clear();
+     fpln_copy_as_is_b = false;
+     fpln_expected_location_data.reset();
+     fpln_leg_vec_trigger_nodes.clear ();
+     fpln_leg_vec_task_nodes.clear ();
+     fpln_leg_objective_node = IXMLNode::emptyIXMLNode;
+
   }
 
   // -----------------------------------
@@ -272,6 +299,17 @@ public:
   {
     return ( this->lat * this->lon != 0.0f );
   }
+
+  // -----------------------------------
+
+  bool is_navaid_valid (std::string &outErr) // v25.09.2
+   {
+     outErr.clear();
+     if (! is_lat_lon_valid () )
+       outErr.append ( fmt::format ("Navaid: {} ({}), has invalid coordinates.\n", this->fpln_seq, this->get_loc_desc ()) );
+
+      return outErr.empty();
+   }
 
   // -----------------------------------
 
@@ -331,6 +369,8 @@ public:
 
   std::string get_latLon_short() { return fmt::format("{:.3f},{:.3f}", lat, lon); } // v25.09.2
 
+  std::string get_skewed_desc() { return fmt::format("{:.3f},{:.3f}", skewed_location.lat, skewed_location.lon); } // v25.09.2
+
   std::string get_latLon_name() { return this->getLat() + ", " + this->getLon() + " ( " + this->getName() + " )"; }
 
   std::string getHeading_s() { return Utils::formatNumber<float>(this->heading, 2); }
@@ -375,9 +415,10 @@ public:
      if ( (getID().empty() && getName().empty() ) || !flag_navaid_has_unique_name)
      {
        if (this->is_lat_lon_valid ())
-         this->loc_desc = fmt::format("{}: [{:.4f}, {:.4f}]", ((this->flag_nav_from_webosm) ? "osmweb": "coordinates"), this->lat, this->lon);
+         this->loc_desc = fmt::format("{}: [{:.4f}, {:.4f}]", ((this->flag_fetched_from_webosm) ? "osmweb": "coordinates"), this->lat, this->lon);
        else
-         this->loc_desc = "Check the GPS for navigation guidance.";
+         this->loc_desc = "Navaid might be invalid.";
+         // this->loc_desc = "Check the GPS for navigation guidance.";
      }
      else if (getID ().empty ())
        this->loc_desc = getName ();
@@ -401,7 +442,7 @@ public:
     if (this->getID ().empty() && (this->getName ().empty() || mxconst::get_COORDINATES_IN_THE_GPS_S() == name || !flag_navaid_has_unique_name))
     {
       if (this->loc_desc.empty() || !flag_navaid_has_unique_name) // v3.0.241.10 b3 extended to have better description
-        loc_desc_short = fmt::format("{}: [{:.4f}, {:.4f}]", ((this->flag_nav_from_webosm) ? "osmweb": "coordinates"), this->lat, this->lon);
+        loc_desc_short = fmt::format("{}: [{:.4f}, {:.4f}]", ((this->flag_fetched_from_webosm) ? "osmweb": "coordinates"), this->lat, this->lon);
         // loc_desc_short = ((this->flag_nav_from_webosm) ? "osmweb: (" : "XY: (") + Utils::formatNumber<float>(this->lat, 4) + ", " + Utils::formatNumber<float>(this->lon, 4) + ")"; // v3.0.253.6 added flag_nav_from_webosm check to better display origin of data
       else
         loc_desc_short = fmt::format("{} ({:.4f}, {:.4f})", this->loc_desc, this->lat, this->lon);
@@ -569,12 +610,12 @@ public:
     if (this->node.isEmpty())
       return;
 
-    this->init_locDesc ();
+    // this->init_locDesc ();
 
     // bool flag_found = false;
     this->lat       = static_cast<float> (Utils::readNumericAttrib (this->node, mxconst::get_ATTRIB_LAT (), 0.0));
     this->lon       = static_cast<float> (Utils::readNumericAttrib (this->node, mxconst::get_ATTRIB_LONG (), 0.0));
-    float elev_ft   = static_cast<float> (Utils::readNumericAttrib (this->node, mxconst::get_ATTRIB_ELEV_FT (), 0.0));
+    const float elev_ft   = static_cast<float> (Utils::readNumericAttrib (this->node, mxconst::get_ATTRIB_ELEV_FT (), 0.0));
     this->height_mt = (float)(elev_ft * missionx::feet2meter);
 
     this->heading       = static_cast<float> (Utils::readNumericAttrib (this->node, mxconst::get_ATTRIB_HEADING_PSI (), 0.0));
@@ -623,6 +664,8 @@ public:
       p.setNodeProperty<bool>(mxconst::get_ATTRIB_IS_BRIEFER_OR_START_LOCATION_B(), this->flag_is_brieferOrStartLocation);
 
     p.setNodeStringProperty( mxconst::get_PROP_IS_WET(), (this->fpln_is_wet)?"yes" : "");  // v25.06.1
+
+    this->init_locDesc ();
   }
 
 static missionx::structs::strct_expected_location_data
@@ -817,6 +860,27 @@ parse_expected_location (const IXMLNode &in_xml_leg_from_template, const std::st
   Log::logDebugBO ("[DEBUG random location info] location_value_nm_s=" + data.location_properties_s, true);
 
   return data;
+}
+
+void copy_target_nav_data_only (missionx::NavAidInfo &in_navaid)
+{
+  this->lat       = in_navaid.lat;
+  this->lon       = in_navaid.lon;
+  this->navRef    = in_navaid.navRef;
+  this->heading   = in_navaid.heading;
+  this->height_mt = in_navaid.height_mt;
+
+  this->flag_fetched_from_db                     = in_navaid.flag_fetched_from_db;
+  this->flag_fetched_from_webosm                 = in_navaid.flag_fetched_from_webosm;
+  this->flag_navDataFetchedFromXPLMGetNavAidInfo = in_navaid.flag_navDataFetchedFromXPLMGetNavAidInfo;
+  this->flag_picked_random_lat_long              = in_navaid.flag_picked_random_lat_long;
+
+  if (!in_navaid.getID ().empty () && this->getNavAidName ().empty ())
+    this->setID (in_navaid.getID ());
+  if (!in_navaid.getName ().empty () && this->getNavAidName ().empty ())
+    this->setName (in_navaid.getName ());
+
+  this->synchToPoint (true);
 }
 
 };

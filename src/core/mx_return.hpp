@@ -37,6 +37,7 @@ public:
     return *this;
   }
 
+
   mx_return()
   {
     result    = false;
@@ -53,8 +54,8 @@ public:
     infoMsges.clear();
   }
 
-  int getErrIndex() { return errIndex; }
-  int getInfoIndex() { return infoIndex; }
+  int getErrIndex() const { return errIndex; }
+  int getInfoIndex() const { return infoIndex; }
 
   int addErrMsg(const std::string& inText, const bool inSetResultAsFail = false)
   {

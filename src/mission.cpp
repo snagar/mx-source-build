@@ -5040,6 +5040,14 @@ missionx::Mission::flcPRE()
         #endif
       }
       break;
+      case missionx::mx_flc_pre_command::get_icao_plane_is_in_its_boundaries_based_on_custom_lat_lon: // v25.09.2
+      {
+        // use of shared_navaid_info.navAid to search if a plane is in an airport boundary.
+        missionx::RandomEngine::shared_navaid_info.navAid = data_manager::getPlaneAirportOrNearestICAO(true, RandomEngine::shared_navaid_info.navAid.lat, RandomEngine::shared_navaid_info.navAid.lon, false);
+
+        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+      }
+      break;
       case missionx::mx_flc_pre_command::get_nav_aid_info_mainThread: // v3.0.241.10 b2 use this option to see if for example: osm location is correct, especially for helipads
       {
         #ifndef RELEASE

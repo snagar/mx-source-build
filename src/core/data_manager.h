@@ -242,6 +242,7 @@ typedef enum class _flc_commands
   get_and_guess_nav_aid_info_mainThread,                        // v25.04.2 used in Random Engine, when we try to add the "simbrief/fpln" waypoint route.
   get_metar_for_airport,                                        // v25.09.1 Use the XPLM400 to get live weather metar data
   get_nav_aid_info_mainThread,                                  // v3.0.253.6
+  get_icao_plane_is_in_its_boundaries_based_on_custom_lat_lon,  // v25.09.2 Find the ICAO a plane is in, if it is in its boundaries
   get_nearest_nav_aid_to_custom_lat_lon_mainThread,             // v3.0.241.10 b2
   get_nearest_nav_aid_to_randomLastFlightLeg_mainThread,        // v3.0.221.4
   guess_waypoints_from_external_fpln_site,                      // v3.0.255.2
