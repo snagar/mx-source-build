@@ -280,8 +280,8 @@ public:
   bool        flag_generatedRandomFile_success{ false }; // we use this flag to ditinguish when engine ran and finish generating a mission based on RandomEngin. We can then display the correct output in the UI
 
   // Template Key
-  std::string selectedTemplateKey{ "" }; // deprecated, use: strct_generate_template_layer.selectedTemplateKey instead      // used when user picks custom or generate their own template (empty template file name)
-  std::string lastSelectedTemplateKey{ "" }; // First initialized in: "mission::flc_thread" after successfull mission generate task. The "selectedTemplateKey" is copied over and cleared. It is als being used for determining when to display
+  // std::string selectedTemplateKey{ "" }; // deprecated, use: strct_generate_template_layer.selectedTemplateKey instead      // used when user picks custom or generate their own template (empty template file name)
+  // std::string lastSelectedTemplateKey{ "" }; // deprecated, use: strct_generate_template_layer.last_picked_template_key // First initialized in: "mission::flc_thread" after successfull mission generate task. The "selectedTemplateKey" is copied over and cleared. It is als being used for determining when to display
                                              // [start] button. It also used when clicking the "start mission" button after successful mission generator
 
   // MEMBERS //
@@ -944,16 +944,17 @@ public:
   // ----- Custom Template Layer -----
   typedef struct _generate_template_layer
   {
-    bool                bFinished_loading_templates{ false };
+    bool bFinished_loading_templates{ false };
+
     mx_layer_state_enum layer_state{ missionx::mx_layer_state_enum::not_initialized }; // v3.0.253.9
 
     int    user_pick_from_replaceOptions_combo_i{ mxconst::INT_UNDEFINED };
     ImVec2 vec2_replace_options_size{ 150.f, 20.0f }; // v3.0.255.4.1
 
     std::vector<const char *> vecReplaceOptions_char{}; // v3.0.255.4 will store pointers to the <replace_options> element from the TemplateInfo
-    // std::unordered_map<int, mx_ui_option_info> mapReplaceOption_ui{};    // v24.12.2 will store ui information regarding the template <option>. key "0", will store the "old" <opt> without <option> node. This will help in keeping compatibility.
 
     std::string last_picked_template_key;
+    std::string selectedTemplateKey; // v25.09.2
   } mx_generate_template_layer;
   mx_generate_template_layer strct_generate_template_layer;
 

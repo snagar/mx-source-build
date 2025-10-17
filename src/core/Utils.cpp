@@ -1331,15 +1331,13 @@ missionx::Utils::xml_copy_nodes_from_one_parent_to_another_IXMLNode(IXMLNode& ou
 {
   if (outTargetNode.isEmpty() + inSourceNode.isEmpty())
     return false;
-  else
-  {
-    const auto nChilds = (nameOfChildTag.empty()) ? inSourceNode.nChildNode() : inSourceNode.nChildNode(nameOfChildTag.c_str());
-    for (int i1=0; i1 < nChilds; ++i1)
-    {
-      auto node_ptr =  (nameOfChildTag.empty())? inSourceNode.getChildNode(i1): inSourceNode.getChildNode(nameOfChildTag.c_str(), i1);
-      outTargetNode.addChild((bIsDeepCopy) ? node_ptr.deepCopy() : node_ptr);
 
-    }
+  const auto nChilds = (nameOfChildTag.empty()) ? inSourceNode.nChildNode() : inSourceNode.nChildNode(nameOfChildTag.c_str());
+  for (int i1=0; i1 < nChilds; ++i1)
+  {
+    auto node_ptr =  (nameOfChildTag.empty())? inSourceNode.getChildNode(i1): inSourceNode.getChildNode(nameOfChildTag.c_str(), i1);
+    outTargetNode.addChild((bIsDeepCopy) ? node_ptr.deepCopy() : node_ptr);
+
   }
 
   return true;

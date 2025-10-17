@@ -61,20 +61,20 @@ public:
   // from data_manager
   static int  msgSeq;
   static bool addMessageToQueue(const std::string& inMessageName, const std::string& inTrackedName, std::string& outErr);
-  static void addTextAsNewMessageToQueue(std::string msgName, std::string msgText, std::string inTrackName = EMPTY_STRING, bool muteNarator = false, bool hideText = false, bool inEnabled = true, int inOverrideDisplayTextSecond = 0);
+  static void addTextAsNewMessageToQueue(std::string msgName, const std::string& msgText, std::string inTrackName = EMPTY_STRING, bool muteNarator = false, bool hideText = false, bool inEnabled = true, int inOverrideDisplayTextSecond = 0);
   // get Message name to search mapScriptMxPads, we assume that channel type is "pad",
-  static bool setMessageChannel(std::string msgName, missionx::mx_message_channel_type_enum inChannelType, std::string inSoundFile, float inSecondsToplay, std::string& outErr, int inSoundVol = 30);
+  static bool setMessageChannel(const std::string& msgName, missionx::mx_message_channel_type_enum inChannelType, const std::string& inSoundFile, float inSecondsToplay, std::string& outErr, int inSoundVol = 30);
 
 
   // Will dispatch the message to COMM or 3D Text
-  static bool addMessage(missionx::Message inMsg, std::string inTrackedName, std::string& outErr);
+  static bool addMessage(missionx::Message inMsg, const std::string &inTrackedName, std::string& outErr);
 
   // NON STATIC
   static void flc(); // main flight loop callback
   static void flc_comm();
   static void flc_msg_pool();
   static void progressMessage(Message* msg, int& inMsgInQueue_i); // receive MSG class and message in queue from listPoolMsg. Only the first one should be broadcast and not the second one even if it is ready.
-  static void postMessage(Message* msg);
+  static void postMessage(const Message* msg);
   static void fade_bg_channel(const std::string &inMessageName_s, const double& inSecondsUntilFadeOut_f); // v3.305.3
 
 

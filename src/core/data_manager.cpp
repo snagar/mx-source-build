@@ -223,8 +223,8 @@ int                      data_manager::overpass_user_picked_combo_i;            
 int                      data_manager::overpass_last_url_indx_used_i{ mxconst::INT_UNDEFINED }; // v3.0.255.4.1
                                                                                                           // #ifdef USE_CURL
 CURL*       data_manager::curl = nullptr;
-std::string data_manager::curl_result_s{ "" };
-std::string data_manager::overpass_fetch_err{ "" }; // v3.0.255.4
+std::string data_manager::curl_result_s;
+std::string data_manager::overpass_fetch_err; // v3.0.255.4
 
 float data_manager::Max_Slope_To_Land_On{ mxconst::DEFAULT_MAX_SLOPE_TO_LAND_ON };
 
@@ -873,7 +873,7 @@ data_manager::mx_opt_leg_triggers_strct missionx::data_manager::optimize_leg_tri
 #endif // USE_TRIGGER_OPTIMIZATION // v3.305.2
 
 // v3.305.4
-XPLMMapLayerID data_manager::g_layer             = NULL;
+XPLMMapLayerID data_manager::g_layer             = nullptr;
 int            data_manager::s_num_cached_coords = 0;
 float          data_manager::s_cached_x_coords[MAX_COORDS];
 float          data_manager::s_cached_y_coords[MAX_COORDS];
@@ -922,14 +922,10 @@ callback_sqlite_data(void* data, int argc, char** argv, char** azColName)
 {
   data_manager::row_gather_db_data.clear();
   for (int i = 0; i < argc; i++)
-  {
-
     data_manager::row_gather_db_data[azColName[i]] = argv[i] ? argv[i] : "";
-  }
 
   data_manager::reasultTable[static_cast<int> ( data_manager::reasultTable.size () )] = data_manager::row_gather_db_data;
   data_manager::row_gather_db_data.clear();
-
 
   return 0;
 };
@@ -976,27 +972,27 @@ data_manager::gatherFlightLegEndStatsAndStoreInVector()
 // -------------------------------------
 
 std::string
-data_manager::get_fail_timer_title_formated_for_imgui(const std::string& in_default_title, const std::string prefix_to_foramted_string)
+data_manager::get_fail_timer_title_formated_for_imgui(const std::string& in_default_title, const std::string& prefix_to_formated_string)
 {
   if (lowestFailTimerName_s.empty())
     return in_default_title;
 
-  auto remaining_time = mapFailureTimers[lowestFailTimerName_s].getRemainingTime();
-  auto days           = static_cast<int> ( remaining_time / SECONDS_IN_1DAY );
-  auto hours          = static_cast<int> ( remaining_time / SECONDS_IN_1HOUR_3600 );
-  auto minutes        = static_cast<int> ( ( remaining_time - ( hours * SECONDS_IN_1HOUR_3600 ) ) / SECONDS_IN_1MINUTE );
-  auto seconds        = static_cast<int> ( remaining_time - ( hours * SECONDS_IN_1HOUR_3600 + minutes * SECONDS_IN_1MINUTE ) );
+  const auto remaining_time = mapFailureTimers[lowestFailTimerName_s].getRemainingTime();
+  const auto days           = static_cast<int> ( remaining_time / SECONDS_IN_1DAY );
+  const auto hours          = static_cast<int> ( remaining_time / SECONDS_IN_1HOUR_3600 );
+  const auto minutes        = static_cast<int> ( (remaining_time - ( hours * SECONDS_IN_1HOUR_3600 )) / SECONDS_IN_1MINUTE );
+  const auto seconds        = static_cast<int> ( remaining_time - ( hours * SECONDS_IN_1HOUR_3600 + minutes * SECONDS_IN_1MINUTE ) );
 
   if (days > 0)
-    return prefix_to_foramted_string + mxUtils::formatNumber<int>(days) + ":" + mxUtils::formatNumber<int>(hours) + ":" + mxUtils::formatNumber<int>(minutes) + ":" + mxUtils::formatNumber<int>(seconds) + "(d:h:m:s)";
+    return prefix_to_formated_string + mxUtils::formatNumber<int>(days) + ":" + mxUtils::formatNumber<int>(hours) + ":" + mxUtils::formatNumber<int>(minutes) + ":" + mxUtils::formatNumber<int>(seconds) + "(d:h:m:s)";
 
-  return prefix_to_foramted_string + mxUtils::formatNumber<int>(hours) + ":" + mxUtils::formatNumber<int>(minutes) + ":" + mxUtils::formatNumber<int>(seconds) + "(h:m:s)";
+  return prefix_to_formated_string + mxUtils::formatNumber<int>(hours) + ":" + mxUtils::formatNumber<int>(minutes) + ":" + mxUtils::formatNumber<int>(seconds) + "(h:m:s)";
 }
 
 // -------------------------------------
 
 std::string
-data_manager::get_fail_timer_in_formated_text(const std::string prefix_to_foramted_string)
+data_manager::get_fail_timer_in_formated_text(const std::string& prefix_to_foramted_string)
 {
   if (lowestFailTimerName_s.empty())
     return "";
@@ -1056,8 +1052,8 @@ data_manager::set_local_time(int inHours, int inMinutes, int inDayOfYear_0_364, 
   if (inDayOfYear_0_364 != -1) // -1 = undefined, same day.
     XPLMSetDatai(dc.dref_local_date_days_i, (inDayOfYear_0_364));
 
-  float new_local_time_in_seconds               = static_cast<float> ( inHours * SECONDS_IN_1HOUR_3600 + inMinutes * SECONDS_IN_1MINUTE );
-  float delta_between_currentLocal_and_newLocal = new_local_time_in_seconds - local_time_sec_f; // we want to minus to add later to zulu
+  const auto  new_local_time_in_seconds               = static_cast<float> (inHours * SECONDS_IN_1HOUR_3600 + inMinutes * SECONDS_IN_1MINUTE);
+  const float delta_between_currentLocal_and_newLocal = new_local_time_in_seconds - local_time_sec_f; // we want to minus to add later to zulu
 
   // set the new time
   XPLMSetDataf(dc.dref_zulu_time_sec_f, zulu_time_sec_f + delta_between_currentLocal_and_newLocal); // set zulu time to reflect the local time
@@ -1139,7 +1135,7 @@ data_manager::seedAdHocParams(const std::string& inParams_s, mxProperties& inSmP
     if (vecNameValue.size() > 1)
     {
       const std::string name = mxUtils::stringToLower(vecNameValue.at(0));
-      const std::string valu = vecNameValue.at(1);
+      const std::string& valu = vecNameValue.at(1);
 
       // check if name starts with "in"
       if (name.find("in") != 0)
@@ -1369,7 +1365,8 @@ data_manager::clearRandomTemplateTextures()
   mapGenerateMissionTemplateFilesLocator.clear(); // clear locator for layer set
   for (auto& img : mapGenerateMissionTemplateFiles)
   {
-    glDeleteTextures(1, (const GLuint*)&img.second.imageFile.gTexture); // v3.0.217.2
+    // glDeleteTextures(1, (const GLuint*)&img.second.imageFile.gTexture); // v3.0.217.2
+    glDeleteTextures(1, reinterpret_cast<const GLuint *> (&img.second.imageFile.gTexture)); // v3.0.217.2
   }
   mapGenerateMissionTemplateFiles.clear();
 }
@@ -1709,7 +1706,7 @@ data_manager::prepare_choice_options(const std::string& inChoiceName)
 // -------------------------------------
 
 bool
-data_manager::is_choice_name_exists(std::string& inChoiceName)
+data_manager::is_choice_name_exists(const std::string& inChoiceName)
 {
   #ifndef RELEASE
   const IXMLNode xNode = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode(xmlChoices,  mxconst::get_ELEMENT_CHOICE(),  mxconst::get_ATTRIB_NAME(), inChoiceName, false); // debug
@@ -2504,11 +2501,11 @@ data_manager::read_element_mapping(const std::string& inFile)
 Point
 data_manager::getCameraLocationTerrainInfo()
 {
-  double gHeading, groundElev_mt; // holds plane position
-  double x, y, z;
+  // holds plane position
+  double y,    z;
   double outX, outY, outZ;
-  x = y = z = 0.0;
-  outX = outY = outZ         = 0.0;
+  double x                   = y    = z    = 0.0;
+  outX                       = outY = outZ = 0.0;
   XPLMDataRef gHeadingPsiRef = nullptr; // heading - true north
 
 
@@ -2520,11 +2517,11 @@ data_manager::getCameraLocationTerrainInfo()
   outZ *= meter2feet; // v24.03.2 fix elevation to be feet and not meter
   Point           p = Point(outX, outY, outZ);
   XPLMProbeResult outResult;
-  groundElev_mt = Point::getTerrainElevInMeter_FromPoint(p, outResult);
+  double          groundElev_mt = Point::getTerrainElevInMeter_FromPoint(p, outResult);
   p.setElevationMt(groundElev_mt);
 
   // read longitude/latitude info
-  gHeading = XPLMGetDataf(gHeadingPsiRef);
+  double gHeading = XPLMGetDataf(gHeadingPsiRef);
   p.setHeading ( gHeading );
 
   const std::string formatedOutput = "CAMERA VIEW: <point lat=" + mxconst::get_QM() + Utils::formatNumber<double>(p.getLat(), 8) + mxconst::get_QM() + " long=" + mxconst::get_QM() + Utils::formatNumber<double>(p.getLon(), 8) + mxconst::get_QM() + " elev_ft=" + mxconst::get_QM() + Utils::formatNumber<double>(p.getElevationInFeet(), 2) + mxconst::get_QM() +
@@ -2579,7 +2576,7 @@ data_manager::validateObjective(Objective& inObj, std::string& outError, std::st
         const auto txt = fmt::format("found UNDEFINED STATE task: '{}'.", cTaskName); // v3.305.3
         Utils::xml_add_error_child(cLogNode, txt);                                    // v3.305.3
 
-        outError += "In Objective: \"" + objName + "\", " + txt;
+        outError += fmt::format(R"(In Objective: "{}", {})", objName, txt);
         continue; // skip this task
       }
 
@@ -2605,7 +2602,7 @@ data_manager::validateObjective(Objective& inObj, std::string& outError, std::st
         {
           mapTriggers[trigName].isLinked = true;
           mapTriggers[trigName].setNodeProperty<bool>(mxconst::get_PROP_IS_LINKED(), mapTriggers[trigName].isLinked); // store state for "save/load checkpoint
-          const std::string_view linked_name_vu = "[" + cTaskName + "]";
+          const std::string linked_name_vu = "[" + cTaskName + "]";
           if (mapTriggers[trigName].linkedTo.find ( linked_name_vu ) == std::string::npos)
           {
             mapTriggers[trigName].linkedTo += linked_name_vu; //"[" + cTaskName + "]";
@@ -2657,7 +2654,7 @@ data_manager::validateObjective(Objective& inObj, std::string& outError, std::st
             // inObj.mapTasks[cTaskName].errReason += "Script: " + mxconst::get_QM() + scriptName + mxconst::get_QM() + ", is not valid. Please fix it. In task: " + mxconst::get_QM() + cTaskName + mxconst::get_QM() + ", marked as undefined.";
 
             const std::string txt = fmt::format("Script: '{}', is not valid. Please fix it. In task: '{}', it was marked as undefined.", scriptName, cTaskName); // v3.305.3
-            Utils::xml_add_error_child(cLogNode, txt.data());                                                                                                    // v3.305.3
+            Utils::xml_add_error_child(cLogNode, txt);                                                                                                    // v3.305.3
 
             inObj.mapTasks[cTaskName].errReason += txt;
 
@@ -2751,7 +2748,7 @@ data_manager::validateFlightLegs(std::string& outError, std::string& outMsg)
       flagAllLegsAreValid = false; // invalidate Flight Legs
 
       // v3.305.3
-      const std::string txt = fmt::format("Flight Leg: \"{}\", has attribute '{}' with the value: \"{}\" which does not exists. Please fix leg settings.", legName, mxconst::get_ATTRIB_NEXT_LEG(), nextLeg);
+      const std::string txt = fmt::format(R"(Flight Leg: "{}", has attribute '{}' with the value: "{}" which does not exists. Please fix leg settings.)", legName, mxconst::get_ATTRIB_NEXT_LEG(), nextLeg);
       Utils::xml_add_warning_child(cLogNode, txt);
 
       outMsg += txt;
@@ -2760,7 +2757,7 @@ data_manager::validateFlightLegs(std::string& outError, std::string& outMsg)
     bool foundMandatoryObjective = false;
     if (!leg.getIsDummyLeg())
     {
-      // v3.0.241.1 loop over all objectives list in Leg and remove those that are not in mapObjectives (meaning: not valid)
+      // v3.0.241.1 loop over all objective list in Leg and remove those that are not in mapObjectives (meaning: not valid)
       #ifdef IBM
       for (auto it = leg.listObjectivesInFlightLeg.begin(); it != leg.listObjectivesInFlightLeg.end();)
       #else
@@ -2788,7 +2785,7 @@ data_manager::validateFlightLegs(std::string& outError, std::string& outMsg)
       // Loop over all objectives and check if one of them is mandatory
       for (auto& iterObj : leg.listObjectivesInFlightLeg)
       {
-        const std::string objName = iterObj; // string - for readability
+        const std::string& objName = iterObj; // string - for readability
 
         // Objective obj;
         if (Utils::isElementExists(mapObjectives, objName))
@@ -2873,10 +2870,10 @@ data_manager::validateFlightLegs(std::string& outError, std::string& outMsg)
         flagAllLegsAreValid = false; // v3.303.14
       }
 
-      // try to figure target position
-      bool flag_mandatory_task_found = false;
+      // try to figure a target position
       if (foundMandatoryObjective && target_pos.empty())
       {
+        bool flag_mandatory_task_found = false;
         // loop over all objectives and their tasks. Find the first objective that has a mandatory task that is based on trigger and the trigger pCenter is defined (pCenter.pointState != missionx::mx_point_state::point_undefined)
         for (const auto& objectiveName : leg.listObjectivesInFlightLeg)
         {
@@ -3051,7 +3048,7 @@ data_manager::prepare_new_mission_folders ( const GLobalSettings & in_xmlGlobalS
 // -------------------------------------
 
 void
-data_manager::addDataref(dataref_param inDref)
+data_manager::addDataref(const dataref_param& inDref)
 {
   mapDref.insert(make_pair(inDref.getName(), inDref));
 }
@@ -3650,7 +3647,7 @@ data_manager::flc_cue(cue_actions_enum inAction)
       bool hasMinMaxElevationValues = false;
 
       // Check if trigger is based on RADIUS
-      if ((mxconst::get_TRIG_TYPE_RAD().compare(trigType) == 0 || mxconst::get_TRIG_TYPE_CAMERA().compare(trigType) == 0) && !mapTriggers[trigName].deqPoints.empty())
+      if ((mxconst::get_TRIG_TYPE_RAD() == trigType || mxconst::get_TRIG_TYPE_CAMERA() == trigType) && !mapTriggers[trigName].deqPoints.empty())
       {
 
         Point pCenter = mapTriggers[trigName].deqPoints.front(); // retrieve first point from dequeue
@@ -3690,7 +3687,7 @@ data_manager::flc_cue(cue_actions_enum inAction)
         std::list<Point> listUpperPoints;
 
         CueInfo::prepareProbe();
-        for (auto p : cue.vecPoints)
+        for (const auto& p : cue.vecPoints)
         {
           Point pUpper = p; // clone p
           pUpper.setElevationFt(attrib_elev_ft_upper);
@@ -3713,7 +3710,7 @@ data_manager::flc_cue(cue_actions_enum inAction)
 
         if (!listUpperPoints.empty())
         {
-          for (auto p : listUpperPoints)
+          for (const auto& p : listUpperPoints)
             cue.vecPoints.push_back(p);
         }
 
@@ -3898,7 +3895,7 @@ data_manager::drawCueInfoOn2DMap(const float* inMapBoundsLeftTopRightBottom, con
   float x, y;
   for (auto& cue_ptr : mapFlightLegs[currentLegName].listCueInfoToDisplayInFlightLeg) //
   {
-    bool calculated = false;
+    // bool calculated = false;
     if (cue_ptr.canBeRendered)
     {
       switch (cue_ptr.cueType)
@@ -3912,17 +3909,17 @@ data_manager::drawCueInfoOn2DMap(const float* inMapBoundsLeftTopRightBottom, con
             glLineWidth(2.0);
           glBegin(GL_LINE_LOOP);
 
-          auto itEnd   = cue_ptr.vecPoints.end();
+          // auto itEnd   = cue_ptr.vecPoints.end();
           int  counter = 0;
 
           for (auto& point : cue_ptr.vecPoints)
           {
-            if (counter == 0) // v3.0.231.2 added starting directional color to assist designer figure which way he/she positioned the plane - clockwise or counter clock wize.
+            if (counter == 0) // v3.0.231.2 added starting directional color to help designers figure out which way he/she positioned the plane - clockwise or counter clock wize.
             {
               const CueInfo::struct_color tmpC = cue_ptr.color;
               cue_ptr.color.setToRed();
               glColor3f(cue_ptr.color.R, cue_ptr.color.G, cue_ptr.color.B); // draw GL as RED
-              cue_ptr.color.setRGB(tmpC.R, tmpC.G, tmpC.B); // return to default color
+              cue_ptr.color.setRGB(tmpC.R, tmpC.G, tmpC.B); // return to the default color
             }
             else if (counter == 1)
               glColor3f(cue_ptr.color.R, cue_ptr.color.G, cue_ptr.color.B);
@@ -3970,7 +3967,7 @@ data_manager::drawCueInfoOn2DMap(const float* inMapBoundsLeftTopRightBottom, con
 std::map<int, missionx::NavAidInfo>
 data_manager::setGPS()
 {
-  bool              flag_found      = false;
+  // bool              flag_found      = false;
   const bool        bUseGPS         = (xmlLoadedFMS.isEmpty ()) ? true : false; // v25.04.2 decide if to use GPS or FMS, we will use the bool value to decide if to read the auto_load option or not.
   const IXMLNode    xFMS_ptr        = (bUseGPS) ? xmlGPS : xmlLoadedFMS; // pick the FMS element or GPS dependent on availability in the mission/checkpoint file.
   const std::string mission_state_s = Utils::readAttrib (mx_global_settings.node, mxconst::get_PROP_MISSION_STATE (), ""); // empty value means new mission and not loaded checkpoint
@@ -3990,7 +3987,7 @@ data_manager::setGPS()
 
   // v3.0.303.2
   const auto nodeLocationAdjust_ptr = xMainNode.getChildNodeByPath ((mxconst::get_ELEMENT_BRIEFER () + "/" + mxconst::get_ELEMENT_LOCATION_ADJUST ()).c_str ());
-  const bool b_locationTypeIsPlane  = mxconst::get_ELEMENT_PLANE () == Utils::readAttrib (nodeLocationAdjust_ptr, mxconst::get_ATTRIB_LOCATION_TYPE (), "");
+  // const bool b_locationTypeIsPlane  = mxconst::get_ELEMENT_PLANE () == Utils::readAttrib (nodeLocationAdjust_ptr, mxconst::get_ATTRIB_LOCATION_TYPE (), "");
   // clear GPS
   clearFMSEntries(); // v3.0.253.7
 
@@ -4003,7 +4000,7 @@ data_manager::setGPS()
 
   for (int i1 = 0; i1 < nChilds; ++i1)
   {
-    flag_found = false;
+    // flag_found = false;
 
     NavAidInfo navInfo;
     IXMLNode cNode_ptr = xFMS_ptr.getChildNode(mxconst::get_ELEMENT_POINT().c_str(), i1); // .deepCopy(); // v3.0.219.7 copy of GPS point
@@ -4144,7 +4141,7 @@ data_manager::parseStringToCommandRef(const std::string& inCommandsAsString)
     BindCommand newCommand;
 
     std::vector<std::string> vecCmdSplit = mxUtils::split_v2(command, ":");
-    switch ( int vecSize = static_cast<int> ( vecCmdSplit.size () ) )
+    switch ( static_cast<int> ( vecCmdSplit.size () ) )
     {
       case 2:
       {
@@ -4384,9 +4381,8 @@ data_manager::setSharedDatarefData()
   {
     int      task_type_i   = 0;
     int      need_to_hover = 0;
-    IXMLNode xml_legSpeciallNode_ptr;
 
-    xml_legSpeciallNode_ptr = mapFlightLegs[currentLegName].xmlSpecialDirectives_ptr;
+    IXMLNode xml_legSpeciallNode_ptr = mapFlightLegs[currentLegName].xmlSpecialDirectives_ptr;
     if (!xml_legSpeciallNode_ptr.isEmpty())
     {
       // Need to hover
@@ -4813,11 +4809,11 @@ data_manager::parse_leg_DisplayObjects(Waypoint& leg)
           }
           else
           {
-            switch ((*propIter).second)
+            switch (propIter->second)
             {
               case mx_property_type::MX_STRING:
               {
-                instProp.setStringProperty((*propIter).first, val);
+                instProp.setStringProperty(propIter->first, val);
               }
               break;
               case mx_property_type::MX_DOUBLE:
@@ -4825,7 +4821,7 @@ data_manager::parse_leg_DisplayObjects(Waypoint& leg)
                 if (!val.empty()) // v3.303.11
                 {
                   auto val_n = Utils::stringToNumber<double>(val);
-                  instProp.setNodeProperty<double>((*propIter).first, val_n);
+                  instProp.setNodeProperty<double>(propIter->first, val_n);
                 }
               }
               break;
@@ -4834,7 +4830,7 @@ data_manager::parse_leg_DisplayObjects(Waypoint& leg)
                 if (!val.empty()) // v3.303.11
                 {
                   int val_n = Utils::stringToNumber<int>(val);
-                  instProp.setNodeProperty<int>((*propIter).first, val_n);
+                  instProp.setNodeProperty<int>(propIter->first, val_n);
                 }
               }
               break;
@@ -5707,7 +5703,7 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
       assert(data_manager::db_stats.mapStatements[stmt_uq_name] != nullptr);
 
       int seq = 0;
-      int seq_activity = 0;
+      // int seq_activity = 0;
       mission_stats_from_query.reset();
 
       std::map<int, missionx::mx_row_stats_strct> map_stats_rows;
@@ -6161,7 +6157,7 @@ data_manager::deleteCueFromListCueInfoToDisplayInFlightLeg(const std::string& na
 
 
 void
-data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidData, mxFetchState_enum* outState, std::string* outStatusMessage, std::string* outErrorMsg, bool* lockThread)
+data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidData, mxFetchState_enum* outState, std::string* outStatusMessage, std::string* outErrorMsg, const bool* lockThread)
 {
   // We will need to loop over all navaids in the "mapNavaidData" and fetch their METAR.
 
@@ -6289,7 +6285,7 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
 
       if (flag_http_success)
       {
-        int              counter = 0;
+        // int              counter = 0;
         std::set<size_t> setHashIcaoName;
 
         #ifndef RELEASE
@@ -6355,7 +6351,7 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::thread_state
   }
 
   bool flag_http_success = false;
-  bool bIsFirstTime      = true;
+  // bool bIsFirstTime      = true;
 
   const std::string full_url_s = fmt::format ("https://www.simbrief.com/api/xml.fetcher.php?userid={}", in_pilot_id);
 
@@ -6601,7 +6597,7 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::thread_state*
   indexPointer_forExternalFPLN_tableVector.clear();
   tableExternalFPLN_vec.clear();
 
-  const auto lmbda_build_q = [](bool& isFirstTime, std::string q, std::string attrib, std::string val = "")
+  const auto lmbda_build_q = [](bool& isFirstTime, std::string q, const std::string& attrib, const std::string& val = "")
   {
     if (!val.empty())
     {
@@ -6751,7 +6747,7 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::thread_state*
       else // exclude waypoints in filter hash
         hashIcaoAndAirportName = std::hash<std::string>{}(mxUtils::stringToLower(fpln.toICAO_s + fpln.toName_s));
 
-      if (bUserAskedToRemoveDuplicateICAO && (setHashIcaoName.find(hashIcaoAndAirportName) != setHashIcaoName.cend()))
+      if (bUserAskedToRemoveDuplicateICAO && (setHashIcaoName.contains(hashIcaoAndAirportName)))
         continue; // skip current fpln
 
       setHashIcaoName.insert(hashIcaoAndAirportName); // insert hash
@@ -7301,7 +7297,7 @@ data_manager::validate_display_object_file_existence(const std::string& inMissio
 
 
 void
-data_manager::sqlite_test_db_validity(dbase& inDB, const bool isThreaded)
+data_manager::sqlite_test_db_validity(const dbase& inDB, const bool isThreaded)
 {
   char *zErrMsg = nullptr;
 
@@ -7383,11 +7379,11 @@ data_manager::read_and_parse_littleNavMap_fpln(const std::string& inPathAndFile)
   // Read Little Nav Map flight plan
   Log::logMsg("[Load] Reading Flight Plan: " + inPathAndFile); // debug
   IXMLDomParser iDom;
-  ITCXMLNode    xMainNode = iDom.openFileHelper(inPathAndFile.c_str(), mxconst::get_ELEMENT_LNM_LittleNavmap().c_str(), &errMsg);
+  ITCXMLNode    x_main_node = iDom.openFileHelper(inPathAndFile.c_str(), mxconst::get_ELEMENT_LNM_LittleNavmap().c_str(), &errMsg);
 
   if (errMsg.empty()) // we find main node
   {
-    IXMLNode xFlightplan = xMainNode.getChildNode(mxconst::get_ELEMENT_LNM_Flightplan().c_str()).deepCopy();
+    IXMLNode xFlightplan = x_main_node.getChildNode(mxconst::get_ELEMENT_LNM_Flightplan().c_str()).deepCopy();
 
     if (xFlightplan.isEmpty())
     {
@@ -7471,7 +7467,7 @@ data_manager::init_littlenavmap_missionInfo(IXMLNode& inNode)
 // -----------------------------------
 
 void
-data_manager::add_advanceSettingsDateTime_and_Weather_to_node(IXMLNode& xGlobalSettings, IXMLNode& inPropNode, const std::string& inCurrentWeatherDatarefs_s)
+data_manager::add_advanceSettingsDateTime_and_Weather_to_node(IXMLNode& xGlobalSettings, const IXMLNode& inPropNode, const std::string& inCurrentWeatherDatarefs_s)
 {
   // v3.303.8
   // Global Settings starting hour from user preferred settings - if was defined
@@ -7624,7 +7620,7 @@ data_manager::generate_missionx_mission_file_from_convert_screen(mx_base_node   
 
   // v3.305.1 add global_settings
   // auto xGlobalSettings = Utils::xml_get_node_from_XSD_map_as_acopy(mxconst::get_GLOBAL_SETTINGS().c_str());
-  auto xGlobalSettings = (!inout_xGlobalSettingsFromConversionFile.isEmpty() && !inGenerateNewGlobalSettingsNode_b) ? inout_xGlobalSettingsFromConversionFile.deepCopy() : Utils::xml_get_node_from_XSD_map_as_a_copy(mxconst::get_GLOBAL_SETTINGS().c_str());
+  auto xGlobalSettings = (!inout_xGlobalSettingsFromConversionFile.isEmpty() && !inGenerateNewGlobalSettingsNode_b) ? inout_xGlobalSettingsFromConversionFile.deepCopy() : Utils::xml_get_node_from_XSD_map_as_a_copy(mxconst::get_GLOBAL_SETTINGS());
   root.addChild(xGlobalSettings);
   Utils::add_xml_comment(root);
 
@@ -8047,7 +8043,7 @@ data_manager::generate_missionx_mission_file_from_convert_screen(mx_base_node   
 // -----------------------------------
 
 std::string
-data_manager::getPoint_as_stringFromPlaneCamera(const std::string& inDatarefStringLat, const std::string inDatarefStringLon, char origin_c)
+data_manager::getPoint_as_stringFromPlaneCamera(const std::string& inDatarefStringLat, const std::string& inDatarefStringLon, char origin_c)
 {
 
   double            elevFt_d = 0.0;
@@ -8067,9 +8063,9 @@ data_manager::getPoint_as_stringFromPlaneCamera(const std::string& inDatarefStri
   }
   else
   {
-    dataref_manager dm;
+    // dataref_manager dm;
     // plane elevation in meters
-    elevFt_d = dm.getElevation();
+    elevFt_d = missionx::dataref_manager::getElevation();
   }
 
   elevFt_d = elevFt_d * meter2feet; // convert to feet
@@ -8114,7 +8110,8 @@ data_manager::getPlane_or_Camera_position_as_Point(char origin_c)
   }
 
   z *= meter2feet; // v24.03.2 fix elevation to be feet and not meter
-  return Point(latVal, lonVal, z);
+  // return Point(latVal, lonVal, z);
+  return {latVal, lonVal, z}; // return Point
 }
 
 // -------------------------------------
@@ -8144,21 +8141,18 @@ data_manager::getImageSizeBasedOnBorders(float inWidth, float inHeight, float in
 // -------------------------------------
 
 void
-data_manager::gather_custom_acf_datarefs_as_a_thread(const std::string& inAcfPath, bool* bThreadIsRunning, bool* bAbortThread)
+data_manager::gather_custom_acf_datarefs_as_a_thread(const std::string& inAcfPath, bool* bThreadIsRunning, const bool* bAbortThread)
 {
   (*bThreadIsRunning)   = true;
   auto startThreadClock = std::chrono::steady_clock::now();
 
-
-  std::unordered_set<std::string> customDatarefSet;
-
   fs::path acf_file = inAcfPath;
   if (exists(acf_file) && is_regular_file(acf_file))
   {
+    std::unordered_set<std::string> customDatarefSet;
     customDatarefSet.clear();
 
     auto                            acfCustomDatarefSet = system_actions::search_datarefs_in_acf_file(acf_file.string());
-    std::unordered_set<std::string> objCustomDatarefs;
 
     if (*bAbortThread)
     {
@@ -8170,7 +8164,8 @@ data_manager::gather_custom_acf_datarefs_as_a_thread(const std::string& inAcfPat
     // std::string debugParentPath_s = acf_folder.string();
     if (is_directory(acf_folder))
     {
-      for (auto file : fs::recursive_directory_iterator(acf_folder))
+      std::unordered_set<std::string> objCustomDatarefs;
+      for (const auto& file : fs::recursive_directory_iterator(acf_folder))
       {
         if (*bAbortThread)
         {
@@ -8178,9 +8173,8 @@ data_manager::gather_custom_acf_datarefs_as_a_thread(const std::string& inAcfPat
           return;
         }
 
-        const auto ext = mxUtils::stringToLower(fs::path(file).extension().string()); // debug
-
-        if (is_regular_file(file) && ext.compare(".obj") == 0)
+        const auto ext = mxUtils::stringToLower(fs::path(file).extension().string());
+        if (is_regular_file(file) && ext == ".obj")
         {
 
           #ifndef RELEASE
@@ -8207,7 +8201,7 @@ data_manager::gather_custom_acf_datarefs_as_a_thread(const std::string& inAcfPat
       auto it    = customDatarefSet.begin();
       while (it != itEnd)
       {
-        if ((*it).find("sim/") == 0 || (*it).empty()) // if start with "sim/" delete
+        if (it->find("sim/") == 0 || it->empty()) // if start with "sim/" delete
         {
           it = customDatarefSet.erase(it);
         }
@@ -8215,15 +8209,11 @@ data_manager::gather_custom_acf_datarefs_as_a_thread(const std::string& inAcfPat
           ++it;
       }
 
-      // Add write to file code
-
-
+      // write to file
       const std::string writable{ "y" };
       const std::string cacheFile = acf_folder.string() + "/" + mxconst::get_FILE_CUSTOM_ACF_CACHED_DATAREFS_NAME();
 
       std::ofstream fout;
-
-
       fout.open(cacheFile.c_str(), std::ofstream::out);
       // check open success
       if (fout.fail() || fout.bad())
@@ -8232,7 +8222,7 @@ data_manager::gather_custom_acf_datarefs_as_a_thread(const std::string& inAcfPat
       }
       else
       {
-        // write all strings as line by line data sets
+        // write all strings as line-by-line data sets
         for (const auto& s : customDatarefSet)
           fout << s << "\n";
       }
@@ -8305,7 +8295,7 @@ data_manager::check_mandatory_item_move(const IXMLNode& item_node, const std::st
 
 
 std::string
-data_manager::getTitleOrNameFromNode(mx_base_node& inBaseNode)
+data_manager::getTitleOrNameFromNode(const mx_base_node& inBaseNode)
 {
 
   if (inBaseNode.node.isEmpty())
@@ -8364,8 +8354,8 @@ data_manager::do_datarefs_interpolation(const int inSeconds, const int inCycles,
     std::vector<std::string> vecDrefAndVal = mxUtils::split_v2(dref_w_val, "="); // we should get "dref name" and "value"
     if (vecDrefAndVal.size() > static_cast<size_t> ( 1 ) )                                        // if we have at least 2 values in vector, we pick only the first 2
     {
-      std::string name    = vecDrefAndVal.at(0);
-      std::string value_s = vecDrefAndVal.at(1);
+      const std::string& name    = vecDrefAndVal.at(0);
+      const std::string& value_s = vecDrefAndVal.at(1);
       if (!value_s.empty())
       {
         const std::string       key = Utils::replaceChar1WithChar2_v2(name, '.', "/");
@@ -8664,11 +8654,11 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::thread_
 
   inoutThreadState->flagIsActive       = true;
 
-  const auto lmbda_set_message =[&] (const std::string &inStatusMsg)
-  {
-    if (outStatusMessage)
-      (*outStatusMessage) = inStatusMsg;
-  };
+  // const auto lmbda_set_message =[&] (const std::string &inStatusMsg)
+  // {
+  //   if (outStatusMessage)
+  //     (*outStatusMessage) = inStatusMsg;
+  // };
 
   if (q == nullptr)
     return;
@@ -9184,13 +9174,13 @@ data_manager::apply_datarefs_based_on_string_parsing(const std::string& inDatare
     std::vector<std::string> vecDrefAndVal = mxUtils::split_v2(dref_w_val, inEqualSignChar); // we should get "dref name" and "value"
     if (vecDrefAndVal.size() > static_cast<size_t> ( 1 ) )                                                    // if we have at least 2 values in vector, we pick only the first 2
     {
-      std::string name    = vecDrefAndVal.at(0);
+      const std::string& name    = vecDrefAndVal.at(0);
       std::string value_s = vecDrefAndVal.at(1);
       if (!value_s.empty())
       {
         const std::string key = mxUtils::trim(Utils::replaceChar1WithChar2_v2(name, '.', "/")); // v3.305.1 added trim ti the  "key" parameter dew to the fact that it can have: "\n" in the key name.
         apply_dataref_based_on_key_value_strings(key, value_s);
-      } // end if attribute value is not empty
+      } // end if the attribute value is not empty
     }
   }
 
@@ -9200,7 +9190,7 @@ data_manager::apply_datarefs_based_on_string_parsing(const std::string& inDatare
 // -------------------------------------
 
 void
-data_manager::apply_datarefs_from_text_based_on_parent_node_and_tag_name(IXMLNode& inParentNode, const std::string& inTagName)
+data_manager::apply_datarefs_from_text_based_on_parent_node_and_tag_name(const IXMLNode& inParentNode, const std::string& inTagName)
 {
   if (!inParentNode.isEmpty())
   {
@@ -9303,7 +9293,7 @@ data_manager::set_trigger_state(const Trigger& inCallingTrig, const std::string&
 std::string
 data_manager::get_weather_state(const int& inCode)
 {
-  constexpr const static size_t MAX_LENGTH_BEFORE_BREAKING_LINE = (size_t)500;
+  constexpr const static auto MAX_LENGTH_BEFORE_BREAKING_LINE = static_cast<size_t> (500);
 
   std::string sWeatherDatarefAsText;
   std::string last_line_before_break_s;
@@ -9449,11 +9439,11 @@ data_manager::write_camera_position_to_log_file()
 {
   XPLMDataRef gHeadingPsiRef = XPLMFindDataRef("sim/graphics/view/view_heading");
 
-  double gHeading, groundElev_ft; // holds plane position
-  double x, y, z;
+  // holds plane position
+  double y,    z;
   double outX, outY, outZ;
-  x = y = z = 0.0;
-  outX = outY = outZ = 0.0;
+  double x = y    = z    = 0.0;
+  outX     = outY = outZ = 0.0;
 
   x = XPLMGetDataf(drefConst.dref_camera_view_x_f);
   y = XPLMGetDataf(drefConst.dref_camera_view_y_f);
@@ -9464,10 +9454,10 @@ data_manager::write_camera_position_to_log_file()
   outZ *= meter2feet; // v24.03.2 fix elevation to be feet and not meter
   Point           p = Point(outX, outY, outZ);
   XPLMProbeResult outResult;
-  groundElev_ft = Point::getTerrainElevInMeter_FromPoint(p, outResult) * meter2feet; //   getTerrainElevFromPoint(gLat, gLon, gElev, &outResult);
+  double          groundElev_ft = Point::getTerrainElevInMeter_FromPoint(p, outResult) * meter2feet; //   getTerrainElevFromPoint(gLat, gLon, gElev, &outResult);
 
   // read longitude/latitude info
-  gHeading = XPLMGetDataf(gHeadingPsiRef);
+  double gHeading = XPLMGetDataf(gHeadingPsiRef);
   p.setHeading(gHeading);
 
 
@@ -9533,6 +9523,8 @@ data_manager::apply_dataref_based_on_key_value_strings(const std::string& inKey,
           dataref_param::set_dataref_values_into_xplane(dref);
       }
       break;
+      default:
+        break;
     } // end switch
   }   // end if dref is valid
 
@@ -9598,7 +9590,7 @@ data_manager::get_inv_layout_based_on_mission_ver_and_compatibility_node ( const
 
 
 void
-data_manager::position_camera(XPLMCameraPosition_t& inCameraPos, float inLat, float inLon)
+data_manager::position_camera(const XPLMCameraPosition_t& inCameraPos, const float inLat, const float inLon)
 {
   if ((inLat * inLon) == 0.0f)
   {
@@ -9639,22 +9631,20 @@ TimeLapse::set_date_and_hours(const std::string& inDateAndTime, const bool inIgn
 {
   this->flag_ignorePauseMode = inIgnorePauseMode; // v3.305.1
 
-  std::map<int, std::string> mapTime; // 0 = day in year, 1 = hours, 2 = min
-  mapTime = Utils::splitStringToMap(inDateAndTime, mxconst::get_COLON());
+  // 0 = day in year, 1 = hours, 2 = min
+  std::map<int, std::string> mapTime = Utils::splitStringToMap(inDateAndTime, mxconst::get_COLON());
 
-  int         dayOfYear = -1;
-  int         hours     = -1;
-  int         minutes   = -1;
-  std::string val       = "";
+  std::string val;
 
   this->start_local_date_days_i = XPLMGetDatai(dc.dref_local_date_days_i);
   this->local_time_sec_f        = XPLMGetDataf(dc.dref_local_time_sec_f);
   this->zulu_time_sec_f         = XPLMGetDataf(dc.dref_zulu_time_sec_f);
 
-  // store day in year
+  // store day in the year
   if (Utils::isElementExists(mapTime, 0) && !mapTime[0].empty() && Utils::is_number(mapTime[0]))
   {
-    dayOfYear = Utils::stringToNumber<int>(mapTime[0]);
+    int dayOfYear = -1;
+    dayOfYear     = Utils::stringToNumber<int>(mapTime[0]);
     if (dayOfYear >= 0 && dayOfYear <= 364)
       futureDayOfYearAfterTimeLapse = dayOfYear;
     else
@@ -9664,7 +9654,8 @@ TimeLapse::set_date_and_hours(const std::string& inDateAndTime, const bool inIgn
   // set timelaps with new time and cycle 1
   if (Utils::isElementExists(mapTime, 1) && !mapTime[1].empty() && Utils::is_number(mapTime[1]))
   {
-    hours = Utils::stringToNumber<int>(mapTime[1]);
+    int minutes = -1;
+    const int hours   = Utils::stringToNumber<int>(mapTime[1]);
     if (Utils::isElementExists(mapTime, 2) && !mapTime[2].empty() && Utils::is_number(mapTime[2]))
       minutes = Utils::stringToNumber<int>(mapTime[2]);
 
@@ -9789,7 +9780,7 @@ TimeLapse::timelapse_to_local_hour(int inFutureLocalHour, int inFutureMinutes, i
 
   // calculate the future time. Make sure we do not pass next day and maybe even next year
 
-  float future_time_in_seconds = static_cast<float> ( ( inFutureLocalHour * 3600 ) + ( inFutureMinutes * 60 ) ); // convert hours and minutes to seconds from midnight. This represents the real hour in x-plane but in seconds and for local time. We need to find the delta for UTC.
+  auto future_time_in_seconds = static_cast<float> ( ( inFutureLocalHour * 3600 ) + ( inFutureMinutes * 60 ) ); // convert hours and minutes to seconds from midnight. This represents the real hour in x-plane but in seconds and for local time. We need to find the delta for UTC.
   float seconds_to_add         = 0.0f;
 
   // if future_time_in_seconds > local_time_sec_f then we are on same day
@@ -9893,7 +9884,7 @@ GLobalSettings::GLobalSettings()
 
 // -------------------------------------
 
-GLobalSettings::~GLobalSettings() {}
+GLobalSettings::~GLobalSettings() = default;
 
 // -------------------------------------
 

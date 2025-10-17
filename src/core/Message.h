@@ -94,8 +94,8 @@ private:
   std::string errMsg;
 
 public:
-  void setName(std::string inName);
-  void setTrackedName(std::string inTrackedName);
+  void setName(const std::string& inName);
+  void setTrackedName(const std::string& inTrackedName);
 
 
   Timer                           msgTimer; // holds the time the message is being displayed
@@ -141,12 +141,12 @@ public:
   std::deque<std::string>                       dqMsgLines; // v3.305.1
   
   static missionx::mx_line_action_strct lineAction4ui;
-  bool                                  parse_action(char action, std::string inLine); // Parse the action code "i/t/c/p" and stores in he Message::lineAction4ui.vals[] map.
+  bool                                  parse_action(char action, const std::string& inLine); // Parse the action code "i/t/c/p" and stores in he Message::lineAction4ui.vals[] map.
 
   // constructors / distractors
   Message();
   Message(std::string inMsgName, std::string msgText);
-  Message(std::string inMsgName, std::string msgText, std::string inTrackName, std::string muteNarator = mxconst::get_MX_FALSE(), std::string hideText = mxconst::get_MX_FALSE(), std::string inEnabled = mxconst::get_MX_TRUE(), std::string inOverrideDisplayTextSecond = "8"); // default to 8 seconds
+  Message(const std::string &inMsgName, const std::string &msgText, const std::string &inTrackName, const std::string &muteNarator = mxconst::get_MX_FALSE(), const std::string &hideText = mxconst::get_MX_FALSE(), const std::string &inEnabled = mxconst::get_MX_TRUE(), const std::string & inOverrideDisplayTextSecond = "8"); // default to 8 seconds
   //~Message();
 
   // xml related // v3.0.241.1
@@ -158,9 +158,9 @@ public:
 
   // property members
   std::string getMessage();
-  void        setMessage(std::string inMsg);
+  void        setMessage(const std::string& inMsg);
   void        setMessage(Message& inMsg);
-  void        set_mxpad_properties(std::string inLabel, std::string inLabelPlace, std::string inColor, std::string inImage = EMPTY_STRING);
+  void        set_mxpad_properties(const std::string& inLabel, const std::string &inLabelPlace, const std::string &inColor, const std::string& inImage = EMPTY_STRING);
 
   // Operators //////////
 
@@ -197,11 +197,11 @@ public:
   // other members
   void        flc();
   std::string to_string();
-  std::string translateMessageState(mx_message_state_enum mState); // v3.0.109
+  static std::string translateMessageState(mx_message_state_enum mState); // v3.0.109
 
   std::string getChannelNameWithType(missionx::mx_message_channel_type_enum inType); // If return EMPTY string, it means no channel by that type was found.
-  bool        releaseChannel(SoundFragment& sf, MxSound& sound);                     // v3.0.109
-  bool        removeChannel(std::string inName, MxSound& sound);                     // v3.0.109
+  static bool        releaseChannel(SoundFragment& sf, MxSound& sound);                     // v3.0.109
+  bool        removeChannel(const std::string& inName, MxSound& sound);                     // v3.0.109
 
   void setMessageText(std::string inText) { this->setStringProperty(mxconst::get_ATTRIB_MESSAGE(), inText); } // v3.0.211.1
 

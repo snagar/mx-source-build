@@ -670,6 +670,7 @@ ListDir::read_template_file(const std::string& inPath, const std::string& fileNa
     if (std::string short_desc_s = Utils::readAttrib(fileInfo.node, mxconst::get_ATTRIB_SHORT_DESC(), ""); !short_desc_s.empty())
     {
       fileInfo.prepareSentenceBasedOnString(short_desc_s); // v3.303.14
+      fileInfo.template_description = fileInfo.desc_from_vector_with_tabs_s; // v25.09.2
     }
 
     // validate a template image name is present

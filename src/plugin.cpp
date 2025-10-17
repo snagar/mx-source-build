@@ -371,9 +371,10 @@ XPluginStart(char* outName, char* outSig, char* outDesc)
   }
 
   // 24.12.2 Seed the std::rnd with current time
-  auto now = std::chrono::system_clock::now();
-  std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
-  std::srand(static_cast<unsigned>(std::time(&currentTime)));
+  // auto now = std::chrono::system_clock::now();
+  // std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
+  // std::srand(static_cast<unsigned>(std::time(&currentTime)));
+  // auto rng = mxUtils::create_random_engine();
 
 
   // v25.06.1 purge cache files
@@ -1118,7 +1119,7 @@ prep_cache(XPLMMapLayerID layer, const float* inTotalMapBoundsLeftTopRightBottom
       XPLMMapProject(projection, lat, lon, &x, &y);
       if (mxUtils::coord_in_rect(x, y, inTotalMapBoundsLeftTopRightBottom))
       {
-        constexpr int offset                                                 = 0;
+        // constexpr int offset                                                 = 0;
         data_manager::s_cached_x_coords[data_manager::s_num_cached_coords]   = x;
         data_manager::s_cached_y_coords[data_manager::s_num_cached_coords]   = y;
         data_manager::s_cached_lon_coords[data_manager::s_num_cached_coords] = static_cast<float>(lon); // + offset;
@@ -1192,9 +1193,8 @@ MyDataChangedCallback(void* inRefcon)
 bool
 setSharedDataRef(std::string inDataName, XPLMDataTypeID inDataType, XPLMDataChanged_f inNotificationFunc, double inValue)
 {
-  missionx::dataref_param dref;
   XPLMDataChanged_f       notificationFunc = MyDataChangedCallback;
-  if (!(inNotificationFunc == nullptr))
+  if (inNotificationFunc != nullptr)
     notificationFunc = inNotificationFunc;
 
   if (inDataName.empty())
@@ -1203,6 +1203,7 @@ setSharedDataRef(std::string inDataName, XPLMDataTypeID inDataType, XPLMDataChan
   int status = XPLMShareData(inDataName.c_str(), inDataType, notificationFunc, nullptr);
   if (status)
   {
+    missionx::dataref_param dref;
     dref.setName(inDataName);
     dref.setAndInitializeKey(inDataName); // will initialize the dataref param with reference to memory
     if (dref.flag_paramReadyToBeUsed)
@@ -1265,47 +1266,40 @@ MyKeySniffer(char inChar, XPLMKeyFlags inFlags, char inVirtualKey, void* inRefco
   //  (gFlags & xplm_DownFlag) ? 'D' : ' ',
   //  (gFlags & xplm_UpFlag) ? 'U' : ' ');
 
-  data_manager::mx_global_key_sniffer.keySnifferVirtualKey = inVirtualKey;
-  data_manager::mx_global_key_sniffer.keySnifferFlags      = inFlags;
-  data_manager::mx_global_key_sniffer.keySnifferChar       = inChar;
+  missionx::data_manager::mx_keySniffer::keySnifferVirtualKey = inVirtualKey;
+  missionx::data_manager::mx_keySniffer::keySnifferFlags      = inFlags;
+  missionx::data_manager::mx_keySniffer::keySnifferChar       = inChar;
 
-
-  switch (inVirtualKey)
+  if (inVirtualKey == XPLM_VK_ESCAPE)
   {
-    case XPLM_VK_ESCAPE:
+
+    if (missionx::Mission::uiImGuiBriefer && missionx::Mission::uiImGuiBriefer->GetVisible () && !(missionx::Mission::uiImGuiBriefer->IsInVR ())) // if briefer is visible and not in VR
     {
-
-      if (missionx::mission.uiImGuiBriefer && missionx::mission.uiImGuiBriefer->GetVisible() && !(missionx::mission.uiImGuiBriefer->IsInVR()))                                           // if briefer is visible and not in VR
+      switch (missionx::Mission::uiImGuiBriefer->getCurrentLayer ())
       {
-        switch (missionx::mission.uiImGuiBriefer->getCurrentLayer())
+        // we deliberately and explicitly list each briefer layer for fine grained control
+        case missionx::uiLayer_enum::imgui_home_layer: // v3.0.253.1
+        case missionx::uiLayer_enum::option_user_generates_a_mission_layer:
+        case missionx::uiLayer_enum::option_generate_mission_from_a_template_layer:
+        case missionx::uiLayer_enum::option_mission_list:
+        case missionx::uiLayer_enum::option_setup_layer:
+        case missionx::uiLayer_enum::option_external_fpln_layer:
+        case missionx::uiLayer_enum::flight_leg_info:
+        case missionx::uiLayer_enum::flight_leg_info_end_summary:
+        case missionx::uiLayer_enum::flight_leg_info_inventory:
+        case missionx::uiLayer_enum::flight_leg_info_map2d:
         {
-          // we deliberately and explicitly list each briefer layer for fine grained control
-          case missionx::uiLayer_enum::imgui_home_layer: // v3.0.253.1
-          case missionx::uiLayer_enum::option_user_generates_a_mission_layer:
-          case missionx::uiLayer_enum::option_generate_mission_from_a_template_layer:
-          case missionx::uiLayer_enum::option_mission_list:
-          case missionx::uiLayer_enum::option_setup_layer:
-          case missionx::uiLayer_enum::option_external_fpln_layer:
-          case missionx::uiLayer_enum::flight_leg_info:
-          case missionx::uiLayer_enum::flight_leg_info_end_summary:
-          case missionx::uiLayer_enum::flight_leg_info_inventory:
-          case missionx::uiLayer_enum::flight_leg_info_map2d:
-          {
-            missionx::mission.uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_TOGGLE_WINDOW);
-            return 0; // consume the action
-          }
-          break;
-          default:
-            break; // do nothing
+          missionx::Mission::uiImGuiBriefer->execAction (missionx::mx_window_actions::ACTION_TOGGLE_WINDOW);
+          return 0; // consume the action
+        }
+        break;
+        default:
+          break; // do nothing
 
-        } // end layer handling
-      } // end if window is visible and not in VR
+      } // end layer handling
+    } // end if window is visible and not in VR
 
-    }
-    break;
-    default:
-      break;
-  } // end key handling
+  } // end if "escape"
 
   /* Return 1 to pass the keystroke to plugin windows and X-Plane.
    * Returning 0 would consume the keystroke. */

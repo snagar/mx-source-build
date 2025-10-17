@@ -230,7 +230,7 @@ private:
 
   // Evaluate objectives tasks.
   // At the end of ALL evaluations, you must check mandatory tasks to decide if we can flag Objective as complete (though it might need to continue evaluation).
-  void flc_objective (std::string &inObjName, mxProperties &inSmPropSeedValues);
+  void flc_objective (const std::string &inObjName, mxProperties &inSmPropSeedValues);
   // Loop over task and its dependency.
   // return true if completed (include dependent tasks)
   bool flc_task (const std::string &inTaskName, Objective &obj, mxProperties &inSmPropSeedValues);
@@ -294,8 +294,8 @@ public:
   void stop_plugin (); // v3.0.149
 
   // v3.0.221.15rc3.4 tool to modify <points> in a file and set its template attribute based on terrain probe (hover/land)
-  bool read_and_update_xml_file_point_elements_base_on_terrain_probing (std::string inFileName);
-  int  parseAndModifyChildPoints (IXMLNode &inParent, int inLevel); // return how many elements processed
+  bool read_and_update_xml_file_point_elements_base_on_terrain_probing (const std::string& inFileName);
+  int  parseAndModifyChildPoints (const IXMLNode &inParent, int inLevel); // return how many elements processed
 };
 
 } // namespace

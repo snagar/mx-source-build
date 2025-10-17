@@ -10,6 +10,7 @@
 #include <variant>
 #include <string>
 #include <optional>
+#include <random>
 
 #ifdef APL
 #include <cstdlib>
@@ -595,7 +596,11 @@ public:
   static bool check_file_exists (const std::string& in_path);
   static bool check_folder_exists (const std::string& in_path);
 
-  static std::string eval_text(const bool in_has_value, const std::string &in_preferred_outcome, const std::string &in_fallback_outcome);
+  static std::string eval_text(bool in_has_value, const std::string &in_preferred_outcome, const std::string &in_fallback_outcome);
+
+  static std::mt19937 create_random_engine();
+
+
 };
 
 } // namespace missionx

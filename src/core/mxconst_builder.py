@@ -140,9 +140,11 @@ if __name__ == "__main__":
 
         # Use datetime.datetime.now() for more flexibility in formatting
         generated_time = datetime.datetime.now().strftime("%Y %b %d, %H:%M:%S")
+        script_name = os.path.basename(__file__)
         with open(header_file, "r") as infile, open("temp.h", "w") as outfile:
             for line in infile:
-                modified_line = line.replace("%generated%", generated_time)
+                modified_line = line.replace("%script_name%", script_name) # v25.09.2
+                modified_line = modified_line.replace("%generated%", generated_time)
                 outfile.write(modified_line)
         os.replace("temp.h", header_file)
 

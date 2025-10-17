@@ -787,7 +787,7 @@ missionx::Trigger::isInElevationArea(Point& pObject)
 
       if (this->node.isAttributeSet(mxconst::get_PROP_HAS_CALC_SLOPE().c_str())) // special case for slope
       {
-        int angle_of_projectile_3d = Utils::readNodeNumericAttrib<int>(this->node, mxconst::get_ATTRIB_SLOPE_ANGLE_3D(), 3); // default is angle of 3 degrees
+        int angle_of_projectile_3d = Utils::readNodeNumericAttrib<int>(this->node, mxconst::get_ATTRIB_SLOPE_ANGLE_3D(), 3); // default is an angle of 3 degrees
 
         double distanceBetweenPlaneAndSlopeProjectile_nm                   = Utils::calcDistanceBetween2Points_nm(slopeProjectilePoint.getLat(), slopeProjectilePoint.getLon(), planePoint.getLat(), planePoint.getLon());
         double distanceInFeet                                              = distanceBetweenPlaneAndSlopeProjectile_nm * nm2meter * meter2feet;
@@ -800,9 +800,9 @@ missionx::Trigger::isInElevationArea(Point& pObject)
     else
     {
       // check elevation volume
-      const double elev_ft_min = Utils::readNodeNumericAttrib<double>(this->node, mxconst::get_ATTRIB_ELEV_FT(), 0.0);
-      const double elev_ft_max = Utils::readNodeNumericAttrib<double>(this->node, mxconst::get_ATTRIB_ELEV_MAX_FT(), 0.0);
-      double       oElev       = pObject.getElevationInFeet();
+      const auto   elev_ft_min = Utils::readNodeNumericAttrib<double> (this->node, mxconst::get_ATTRIB_ELEV_FT (), 0.0);
+      const auto   elev_ft_max = Utils::readNodeNumericAttrib<double> (this->node, mxconst::get_ATTRIB_ELEV_MAX_FT (), 0.0);
+      const double oElev       = pObject.getElevationInFeet ();
 
       // check above
       if (this->trigElevType == mx_trigger_elev_type_enum::above)

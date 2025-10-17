@@ -2,6 +2,8 @@
 #include "../io/system_actions.h"
 #include <fmt/core.h>
 
+#include <utility>
+
 namespace missionx
 {
 
@@ -15,6 +17,10 @@ missionx::mx_line_action_strct                           Message::lineAction4ui;
 
 missionx::Message::Message(): mx_base_node()
 {
+  this->msgCounter = 0; // v25.09.2
+  this->mode = mx_msg_mode::mode_default; // v25.09.2
+  this->msgState = missionx::mx_message_state_enum::msg_not_broadcasted; // v25.09.2
+
   init();
 }
 
@@ -22,12 +28,16 @@ missionx::Message::Message(): mx_base_node()
 
 missionx::Message::Message(std::string inMsgName, std::string msgText)
 {
+  this->msgCounter = 0; // v25.09.2
+  this->mode = mx_msg_mode::mode_default; // v25.09.2
+  this->msgState = missionx::mx_message_state_enum::msg_not_broadcasted; // v25.09.2
+
   init(); // v3.0.241.2 already in Message::Message()
 
-  this->setName(inMsgName);
-  this->setMessageText(msgText); // v3.0.211.1
+  this->setName(std::move(inMsgName));
+  this->setMessageText(std::move(msgText)); // v3.0.211.1
 
-  this->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), (int)missionx::mx_message_state_enum::msg_not_broadcasted); // important for QMM
+  this->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), static_cast<int> (missionx::mx_message_state_enum::msg_not_broadcasted)); // important for QMM
 
   this->applyPropertiesToLocal();
 }
@@ -36,9 +46,13 @@ missionx::Message::Message(std::string inMsgName, std::string msgText)
 // -----------------------------------
 
 
-missionx::Message::Message(std::string inMsgName, std::string msgText, std::string inTrackName, std::string muteNarator, std::string hideText, std::string inEnabled, std::string inOverrideDisplayTextSecond)
+missionx::Message::Message(const std::string &inMsgName, const std::string& msgText, const std::string &inTrackName, const std::string &muteNarator, const std::string &hideText, const std::string &inEnabled, const std::string& inOverrideDisplayTextSecond)
 {
   std::string err;
+  this->msgCounter = 0; // v25.09.2
+  this->mode = mx_msg_mode::mode_default; // v25.09.2
+  this->msgState = missionx::mx_message_state_enum::msg_not_broadcasted; // v25.09.2
+
   init();
 
   this->setName(inMsgName);
@@ -72,7 +86,7 @@ missionx::Message::Message(std::string inMsgName, std::string msgText, std::stri
 // -----------------------------------
 
 void
-missionx::Message::setName(std::string inName)
+missionx::Message::setName(const std::string& inName)
 {
   this->name = inName;
   this->setNodeStringProperty(mxconst::get_ATTRIB_NAME(), inName);
@@ -81,7 +95,7 @@ missionx::Message::setName(std::string inName)
 // -----------------------------------
 
 void
-missionx::Message::setTrackedName(std::string inTrackedName)
+missionx::Message::setTrackedName(const std::string& inTrackedName)
 {
   this->setNodeStringProperty(mxconst::get_PROP_MESSAGE_TRACK_NAME(), inTrackedName); // v3.0.241.8
   this->trackName = inTrackedName;                                              // v3.0.241.8
@@ -90,7 +104,7 @@ missionx::Message::setTrackedName(std::string inTrackedName)
 // -----------------------------------
 
 bool
-missionx::Message::parse_action(char action, std::string inLine)
+missionx::Message::parse_action(char action, const std::string& inLine)
 {
 
   int pos = 3; // 3 is just after [i], but there should have been a space after it, although we do not force it.
@@ -122,7 +136,7 @@ missionx::Message::parse_action(char action, std::string inLine)
       info.token                        = mxUtils::stringToLower(mxUtils::trim(info.token));
 
       // Check for special command per line. ">","<"
-      // Example: ">t good morning", will print the text without punctuation timer.
+      // Example: ">t good morning", will print the text without a punctuation timer.
       if (info.token.max_size() > (size_t)1)
       {
         switch (info.token.front())
@@ -162,7 +176,7 @@ missionx::Message::parse_action(char action, std::string inLine)
       }
       else  // use default character data
       {
-        // define new N/A character = undefined one, with label: n/a and color white (the color we do not need to set, it is white in default - mxRGB)
+        // define a new n/a character = undefined one, with label: n/a and color white (the color we do not need to set, it is white in default - mxRGB)
         if (!mxUtils::isElementExists(this->mapCharacters, mxconst::get_STORY_DEFAULT_TITLE_NA()))
         {
           this->mapCharacters[mxconst::get_STORY_DEFAULT_TITLE_NA()].code  = mxconst::get_STORY_DEFAULT_TITLE_NA();
@@ -205,7 +219,7 @@ missionx::Message::parse_action(char action, std::string inLine)
 
     }
     break;
-    case mxconst::STORY_ACTION_HIDE: // hide main window
+    case mxconst::STORY_ACTION_HIDE: // hide the main window
     {
       // does nothing, we only call the hide as the last row of the message
     }
@@ -225,7 +239,7 @@ missionx::Message::parse_action(char action, std::string inLine)
 // -----------------------------------
 
 void
-missionx::Message::set_mxpad_properties(std::string inLabel, std::string inLabelPlace, std::string inColor, std::string inImage)
+missionx::Message::set_mxpad_properties(const std::string& inLabel, const std::string &inLabelPlace, const std::string &inColor, const std::string& inImage)
 {
   this->setNodeStringProperty(mxconst::get_ATTRIB_LABEL(), inLabel); 
   this->setNodeStringProperty(mxconst::get_ATTRIB_LABEL_PLACEMENT(), inLabelPlace); 
@@ -267,7 +281,8 @@ missionx::Message::parseCharacterAttribute()
         case 2:
           characterInfo.color = mxUtils::hexToNormalizedRgb(val);
           break;
-          
+        default: ;
+
       }; // end switch
 
       iCounter++;
@@ -295,7 +310,7 @@ missionx::Message::parseStoryMessage()
   std::deque<std::string> result;
   std::stringstream buffer;
   // auto text = Utils::xml_read_cdata_node(this->xml_nodeTextTrack_ptr, "");
-  auto text = Utils::xml_get_text_or_cdata_text(this->xml_nodeTextTrack_ptr, "");
+  const auto text = Utils::xml_get_text_or_cdata_text(this->xml_nodeTextTrack_ptr, "");
   buffer << text;
   std::string line;
 
@@ -322,11 +337,6 @@ missionx::Message::parse_node(const bool inConsumeWarnings)
 
   std::string mName = Utils::readAttrib(this->node, mxconst::get_ATTRIB_NAME(), "");
 
-// v3.305.3 no need, always MXPAD
-//#ifndef RELEASE
-//  std::string mIsMxPad = Utils::readAttrib(this->node, mxconst::get_PROP_IS_MXPAD_MESSAGE(), mxconst::get_MX_YES());
-//#endif
-
   // validation and setup
   if (mName.empty())
   {
@@ -338,11 +348,10 @@ missionx::Message::parse_node(const bool inConsumeWarnings)
   this->setName(mName);
 
   const std::string mode_s = mxUtils::stringToLower(Utils::readAttrib(this->node, mxconst::get_ATTRIB_MODE(), "")); // v3.305.1
-  if (mode_s.compare(mxconst::get_MESSAGE_MODE_STORY()) == 0)
+  if (mode_s == mxconst::get_MESSAGE_MODE_STORY())
     this->mode = missionx::mx_msg_mode::mode_story;
 
   // v3.0.241.1 moved special attribute code handling into node level: <message>
-
   int mixCount = this->node.nChildNode(mxconst::get_ELEMENT_MIX().c_str());
   for (int i3 = 0; i3 < mixCount; i3++)
   {
@@ -361,7 +370,7 @@ missionx::Message::parse_node(const bool inConsumeWarnings)
       continue;
     }
 
-    if (mxconst::get_CHANNEL_TYPE_TEXT().compare(mChannel) == 0)
+    if (mxconst::get_CHANNEL_TYPE_TEXT() == mChannel)
     { // Text is stored in the Message class
       this->xml_nodeTextTrack_ptr = xMix;
 
@@ -373,7 +382,7 @@ missionx::Message::parse_node(const bool inConsumeWarnings)
       // store mandatory attributes/information as properties for later use like "the text message"
       std::set<std::string> exceptionAttributeSet = { mxconst::get_ATTRIB_NAME(), mxconst::get_ATTRIB_MESSAGE_MIX_TRACK_TYPE(), mxconst::get_ATTRIB_MODE() }; // v3.305.1 added exclude "mode" attribute.
       Utils::xml_copy_node_attributes_excluding_black_list(xMix, this->node, &exceptionAttributeSet); // copy all text mix to the main message node.
-      this->setNodeProperty<bool>(mxconst::get_PROP_MESSAGE_HAS_TEXT_TRACK(), true);                        // internal indicator that we read a TEXT channel. This is important if to display empty text or not for "messages" without "text" channel.
+      this->setNodeProperty<bool>(mxconst::get_PROP_MESSAGE_HAS_TEXT_TRACK(), true);                        // an internal indicator that we read a TEXT channel. This is important if to display empty text or not for "messages" without a "text" channel.
 
       std::string mMessage = ((xMix.nClear() > 0) ? xMix.getClear().sValue : "");
       this->setMessage(mMessage); // will store in mx_base_node::mapText{} container
@@ -395,7 +404,7 @@ missionx::Message::parse_node(const bool inConsumeWarnings)
     {                             // Sound channels are stored in SoundFragment class, they need less attributes since they only represent sound files to play
 
       // skip the "comm" channel in story mode
-      if (this->mode == missionx::mx_msg_mode::mode_story && mChannel.compare(mxconst::get_CHANNEL_TYPE_COMM()) == 0)
+      if (this->mode == missionx::mx_msg_mode::mode_story && mChannel == mxconst::get_CHANNEL_TYPE_COMM())
         continue; 
 
 
@@ -404,7 +413,7 @@ missionx::Message::parse_node(const bool inConsumeWarnings)
 
       std::string mSoundFile             = Utils::readAttrib(xMix, mxconst::get_ATTRIB_SOUND_FILE(), "");
       std::string mSoundVol              = Utils::readAttrib(xMix, mxconst::get_ATTRIB_SOUND_VOL(), "0");
-      std::string mOverrideSecondsToPlay = Utils::readAttrib(xMix, mxconst::get_ATTRIB_MESSAGE_OVERRIDE_SECONDS_TO_PLAY(), "0"); // if zero, then plugin will try to calculate length based on text length
+      std::string mOverrideSecondsToPlay = Utils::readAttrib(xMix, mxconst::get_ATTRIB_MESSAGE_OVERRIDE_SECONDS_TO_PLAY(), "0"); // if zero, then the plugin will try to calculate length based on text length
 
       // validate if defined sound file name
       if (mSoundFile.empty() && !inConsumeWarnings)
@@ -415,7 +424,7 @@ missionx::Message::parse_node(const bool inConsumeWarnings)
         continue; // v3.0.241.9 this should not invalidate the message
       }
 
-      // Convert and validate volume to be between 0 and 100 !
+      // Convert and validate the volume to be between 0 and 100!
       unsigned int mixVolume = (mxUtils::is_number(mSoundVol)) ? mxUtils::stringToNumber<unsigned int>(mSoundVol) : 30;
       if (mixVolume < 1 || mixVolume > 100)
         mixVolume = 30;
@@ -426,18 +435,15 @@ missionx::Message::parse_node(const bool inConsumeWarnings)
 
       sf.setStringProperty(mxconst::get_ATTRIB_MESSAGE_MIX_TRACK_TYPE(), mChannel);
       sf.setStringProperty(mxconst::get_ATTRIB_SOUND_FILE(), mSoundFile);
-      sf.setNodeProperty<int>(mxconst::get_ATTRIB_SOUND_VOL(), (int)mixVolume);  // set volume // v3.0.241.1 added node support
-      sf.setNodeProperty<int>(mxconst::get_ATTRIB_ORIGINAL_SOUND_VOL(), (int)mixVolume); // v3.306.1b store original sound for future reference
+      sf.setNodeProperty<int>(mxconst::get_ATTRIB_SOUND_VOL(), static_cast<int> (mixVolume));  // set volume // v3.0.241.1 added node support
+      sf.setNodeProperty<int>(mxconst::get_ATTRIB_ORIGINAL_SOUND_VOL(), static_cast<int> (mixVolume)); // v3.306.1b store original sound for future reference
       sf.setNumberProperty(mxconst::get_ATTRIB_MESSAGE_OVERRIDE_SECONDS_TO_PLAY(), mOverrideSecondsToPlay);
 
       sf.setNodeStringProperty(mxconst::get_ATTRIB_PARENT_MESSAGE(), mName);  // v3.0.105 // holds the message name the channel was created for.
 
       // v3.0.303.6 parse ATTRIB_TRACK_INSTRUCTIONS
-      if (mxconst::get_CHANNEL_TYPE_BACKGROUND().compare(mChannel) == 0)
+      if (mxconst::get_CHANNEL_TYPE_BACKGROUND() == mChannel)
       {
-        // v3.306.1c deprecated
-        //sf.timer_type = mxUtils::translate_timer_time_to_enum( sf.getStringAttributeValue(mxconst::get_ATTRIB_TIMER_TYPE(), mxconst::get_PROP_TIMER_TYPE_XP()) );
-
         const std::string sInstructions = Utils::readAttrib(xMix, mxconst::get_ATTRIB_TRACK_INSTRUCTIONS(), "");
         // parse string track_instructions="sec|+|40|0,sec|-|30|10,sec|!|0|0"
         std::vector<std::string> vecTrackInstructions = mxUtils::split_v2(sInstructions, ",");
@@ -489,18 +495,6 @@ missionx::Message::parse_node(const bool inConsumeWarnings)
           }
         } // end loop over all directives
 
-        // v3.306.1 removed ATTRIB_TRACK_INSTRUCTIONS holding mName since it should hold the background <mix> directive string. It also screws the save file
-        //sf.setNodeStringProperty(mxconst::get_ATTRIB_TRACK_INSTRUCTIONS(), mName);  // v3.0.105 // holds the message name the channel was created for.
-
-        // Adding auto "stop" at the end could have been a good idea, unless we use "fade_bg_channel" or "post_script" to handle the way we want to stop the background sound file.
-        //if (!this->qSoundCommands.empty())
-        //{
-        //  auto        cmd = this->qSoundCommands.back();
-        //  std::string sCmd = mxUtils::stringToLower( std::string("") + cmd.command);
-        //  if (!(sCmd.compare("s") == 0))
-        //    this->addStopInstructionCommand();
-        //}
-
         sf.setInstructionsQueue(this->qSoundCommands);
       }        
 
@@ -530,13 +524,13 @@ missionx::Message::init()
 
   this->setBoolProperty(mxconst::get_ATTRIB_MESSAGE_MUTE_XPLANE_NARRATOR(), false);
   this->setBoolProperty(mxconst::get_ATTRIB_MESSAGE_HIDE_TEXT(), false);
-  this->setBoolProperty(mxconst::get_ATTRIB_ENABLED(), true); // do we really need this ?
+  this->setBoolProperty(mxconst::get_ATTRIB_ENABLED(), true); // do we really need this?
 
   this->setNumberProperty<int>(mxconst::get_PROP_COUNTER(), 0);
   this->setNumberProperty<int>(mxconst::get_ATTRIB_MESSAGE_OVERRIDE_SECONDS_TO_DISPLAY_TEXT(), 0);
   this->setNumberProperty<int>(mxconst::get_PROP_STATE_ENUM(), (int)missionx::mx_message_state_enum::msg_undefined);
 
-  // v3.0.109 // internal indicator that we read a TEXT channel. This is important if to display empty text or not for "messages" without "text" channel. If we read "text" channel even if its message is empty, we still call
+  // v3.0.109 // internal indicator that we read a TEXT channel. This is important if to display empty text or not for "messages" without a "text" channel. If we read the "text" channel even if its message is empty, we still call
   // "XPLMSpeakString" with empty string.
   this->setBoolProperty(mxconst::get_PROP_MESSAGE_HAS_TEXT_TRACK(), false);
   this->setBoolProperty(mxconst::get_PROP_IS_MXPAD_MESSAGE(), false); // v3.0.109
@@ -569,7 +563,8 @@ missionx::Message::getMessage()
 {
   std::string err;
 
-  const std::string message = this->getNodeStringProperty(mxconst::get_ATTRIB_MESSAGE(), "", true); // v3.303.1, the function will try to find the "text" in the the "mapText" container and if it is not there it will try to fetch it from the element.
+  // v3.303.1, the function will try to find the "text" in the "mapText" container, and if it is not there, it will try to fetch it from the element.
+  const std::string message = this->getNodeStringProperty(mxconst::get_ATTRIB_MESSAGE(), "", true);
   if (!err.empty())
     Log::logMsg(err);
 
@@ -579,7 +574,7 @@ missionx::Message::getMessage()
 // -----------------------------------
 
 void
-missionx::Message::setMessage(std::string inMsg)
+missionx::Message::setMessage(const std::string& inMsg)
 {
   this->setStringProperty(mxconst::get_ATTRIB_MESSAGE(), inMsg, false); // v3.303.11 Changed from ELEMENT_MESSAGE to ATTRIB_MESSAGE to be consistent with QMM
 }
@@ -613,15 +608,14 @@ missionx::Message::flc()
 std::string
 missionx::Message::to_string()
 {
-
-  std::string format = "\nMessage: " + mxconst::get_QM() + this->getName () + mxconst::get_QM() + ", Track Name: " + mxconst::get_QM() + this->trackName + mxconst::get_QM() + ", state: " + this->translateMessageState (this->msgState) + mxconst::get_UNIX_EOL();
+  std::string format = fmt::format(R"(\nMessage: "{}", Track Name: "{}", state: {}\n)", this->getName (), this->trackName, missionx::Message::translateMessageState (this->msgState) );
 
   if (!this->mapChannels.empty())
   {
     format += "@@@ sound files @@@\n";
-    for (auto sf : this->mapChannels)
+    for (auto val : this->mapChannels | std::views::values)
     {
-      format += sf.second.to_string();
+      format += val.to_string();
     }
     format += "@@@ end sound info @@@\n";
   }
@@ -679,17 +673,15 @@ std::string
 missionx::Message::getChannelNameWithType(missionx::mx_message_channel_type_enum inType)
 {
   std::string channelName;
-  channelName.clear();
 
-  for (auto sf : this->mapChannels)
+  for (const auto &val : this->mapChannels | std::views::values)
   {
-    if (inType == sf.second.channelType)
+    if (inType == val.channelType)
     {
-      channelName = sf.second.getName();
+      channelName = val.getName();
       break;
     }
   }
-
 
   return channelName;
 }
@@ -699,7 +691,6 @@ missionx::Message::getChannelNameWithType(missionx::mx_message_channel_type_enum
 bool
 missionx::Message::releaseChannel(SoundFragment& sf, MxSound& sound)
 {
-
   sound.stopAndReleaseChannel(sf);
 
   return true;
@@ -708,7 +699,7 @@ missionx::Message::releaseChannel(SoundFragment& sf, MxSound& sound)
 // -----------------------------------
 
 bool
-missionx::Message::removeChannel(std::string inName, MxSound& sound)
+missionx::Message::removeChannel(const std::string& inName, MxSound& sound)
 {
   if (mxUtils::isElementExists(mapChannels, inName))
   {
@@ -728,7 +719,7 @@ void
 missionx::Message::storeCoreAttribAsProperties()
 {
 
-  this->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), (int)this->msgState); 
+  this->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), static_cast<int> (this->msgState));
 
   this->setNodeProperty<int>(mxconst::get_PROP_COUNTER(), this->msgCounter); 
 
@@ -747,22 +738,21 @@ missionx::Message::applyPropertiesToLocal()
   std::string err;
   err.clear();
 
-  // v3.0.96 fix bug when creating new message and these attributes are not initialized. The message always repeat itself
-  if (this->node.getAttribute(mxconst::get_PROP_COUNTER().c_str()) == NULL)
+  // v3.0.96 fix bug when creating a new message, and these attributes are not initialized. The message always repeats itself
+  if (this->node.getAttribute(mxconst::get_PROP_COUNTER().c_str()) == nullptr)
     this->setNodeProperty<int>(mxconst::get_PROP_COUNTER(), 0); 
 
-  if (this->node.getAttribute(mxconst::get_PROP_MESSAGE_BROADCAST_FOR().c_str()) == NULL)
+  if (this->node.getAttribute(mxconst::get_PROP_MESSAGE_BROADCAST_FOR().c_str()) == nullptr)
     this->setNodeStringProperty(mxconst::get_PROP_MESSAGE_BROADCAST_FOR(), "");
 
-  this->msgCounter = (int)Utils::readNumericAttrib(this->node, mxconst::get_PROP_COUNTER(), 0.0);
+  this->msgCounter = static_cast<int> (Utils::readNumericAttrib (this->node, mxconst::get_PROP_COUNTER (), 0.0));
 
-  // v3.0.241.1 deprecated, since already been done few lines back using the: this->setNodeStringProperty
+  // v3.0.241.1 deprecated, since already been done a few lines back using the: this->setNodeStringProperty
   // read enum info
-  this->msgState = (mx_message_state_enum)Utils::readNodeNumericAttrib<int>(this->node, mxconst::get_PROP_STATE_ENUM(), (int)mx_message_state_enum::msg_undefined); // attribute is inititialized during runtime.
-  this->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), (int)this->msgState);
+  this->msgState = static_cast<mx_message_state_enum> (Utils::readNodeNumericAttrib<int> (this->node, mxconst::get_PROP_STATE_ENUM (), static_cast<int> (mx_message_state_enum::msg_undefined))); // attribute is initialized during runtime.
+  this->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), static_cast<int> (this->msgState));
 
   this->setNodeProperty<bool>(mxconst::get_PROP_IS_MXPAD_MESSAGE(), true);
-  //this->is_pad = true;
 
   this->setNodeStringProperty(mxconst::get_PROP_MESSAGE_TRACK_NAME(), this->trackName); // v3.0.241.8 adding tracked property for all messages, just in case
 }
@@ -784,9 +774,6 @@ missionx::Message::saveCheckpoint(IXMLNode& inParent)
 
 // -----------------------------------
 
-// -----------------------------------
-
-
 void
 missionx::Message::stopTimer()
 {
@@ -807,10 +794,11 @@ missionx::Message::get_and_filter_next_line(std::string& outAction, bool& outIsA
     std::string trimmedLine   = mxUtils::trim(line); 
     if (!trimmedLine.empty())
     {
-      char firstChar = trimmedLine.front();
+      const char firstChar = trimmedLine.front();
       for (const auto &c : mxconst::get_vecStoryPunctuation())
       {
-        if (std::string(c).compare(std::string("") + (firstChar)) == 0)
+        // if (std::string(c) == std::string("") + (firstChar))
+        if (std::string(c).empty () + (firstChar))
         {
           bStartsWithPunctuation = true;
           break;
@@ -818,39 +806,68 @@ missionx::Message::get_and_filter_next_line(std::string& outAction, bool& outIsA
       }
     }
 
-    outIsActionLine_b = std::any_of(begin(mxconst::get_vecStoryActions()),
-                                    end(mxconst::get_vecStoryActions()),
-                                    [&](std::string inAction)
-                                    { 
-                                      outAction = inAction;
+    const auto lmbda_get_is_action_line_b =[&]()
+    {
+      for (const auto &inAction : mxconst::get_vecStoryActions())
+      {
+        outAction = inAction;
+        if (bStartsWithPunctuation)
+        {
+          // find the first position where there is a character and not a white space
+          const std::string sClearedLine = mxUtils::trim(trimmedLine.substr(1));
+          #ifndef RELEASE
+          bool bResult = (sClearedLine.find(inAction) == 0);
+          #endif
 
-                                      if (bStartsWithPunctuation)
-                                      {
-                                        // find first position where there is a character and not a white space
-                                        std::string sClearedLine = mxUtils::trim(trimmedLine.substr(1));
-                                        #ifndef RELEASE
-                                        bool bResult = (line.find(inAction) == 0);
-                                        #endif 
+          if (sClearedLine.find(inAction) == 0)
+            return true;
+        }
 
-                                        return (sClearedLine.find(inAction) == 0);
-                                      }
-                                      
-                                      #ifndef RELEASE
-                                      bool bResult = (line.find(inAction) == 0);
-                                      #endif 
+        #ifndef RELEASE
+        bool bResult = (line.find(inAction) == 0);
+        #endif
+        if (line.find(inAction) == 0)
+          return true;
+      }
 
-                                      return (line.find(inAction) == 0);
-                                      
-                                    });
+      return false;
+    };
+
+    outIsActionLine_b = lmbda_get_is_action_line_b();
+
+    // outIsActionLine_b = std::any_of(begin(mxconst::get_vecStoryActions()),
+    //                                 end(mxconst::get_vecStoryActions()),
+    //                                 [&](std::string inAction)
+    //                                 {
+    //                                   outAction = inAction;
+    //
+    //                                   if (bStartsWithPunctuation)
+    //                                   {
+    //                                     // find first position where there is a character and not a white space
+    //                                     std::string sClearedLine = mxUtils::trim(trimmedLine.substr(1));
+    //                                     #ifndef RELEASE
+    //                                     bool bResult = (line.find(inAction) == 0);
+    //                                     #endif
+    //
+    //                                     return (sClearedLine.find(inAction) == 0);
+    //                                   }
+    //
+    //                                   #ifndef RELEASE
+    //                                   bool bResult = (line.find(inAction) == 0);
+    //                                   #endif
+    //
+    //                                   return (line.find(inAction) == 0);
+    //
+    //                                 });
 
     // if valid action, pop out
     this->dqMsgLines.pop_front();
     ++outLineCounter;
 
     // check if [h] action - hide is a special case to handle before it reaches the main logic code
-    if (outIsActionLine_b && outAction.compare("[h]") == 0)
+    if (outIsActionLine_b && outAction == "[h]")
     {
-      if (this->dqMsgLines.empty()) // if last line then return it since we will late convert the message to enum_mx_line_state::mainMessageEnded;
+      if (this->dqMsgLines.empty()) // if last line then return it since we will later convert the message to enum_mx_line_state::mainMessageEnded.
         return line;
 
       // consume line. We want to ignore all [h] actions that are not last in the message
@@ -860,25 +877,9 @@ missionx::Message::get_and_filter_next_line(std::string& outAction, bool& outIsA
     return line;
   } // end while loop
 
-  return std::string("");
-
-  
+  return "";
 }
 
-
-// -----------------------------------
-
-//void
-//missionx::Message::addStopInstructionCommand()
-//{
-//  missionx::mx_track_instructions_strct strctTrackInstructions;
-//  strctTrackInstructions.seconds_to_start_f = 0.0f;
-//  strctTrackInstructions.command            = 's';
-//
-//  this->qSoundCommands.push(strctTrackInstructions);
-//}
-
-// -----------------------------------
 // -----------------------------------
 
 missionx::mxProperties

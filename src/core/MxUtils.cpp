@@ -1078,6 +1078,14 @@ missionx::mxUtils::eval_text (const bool in_has_value, const std::string &in_pre
   return (in_has_value ? in_preferred_outcome : in_fallback_outcome);
 }
 
+std::mt19937
+missionx::mxUtils::create_random_engine ()
+{
+  std::random_device rd;  // non-deterministic seed (if supported)
+  std::mt19937 engine(rd());
+  return engine;
+}
+
 
 // ----------------------------------------------
 // ----------------------------------------------

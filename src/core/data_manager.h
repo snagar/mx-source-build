@@ -861,8 +861,8 @@ public:
   static std::map<std::string, missionx::Timer> mapFailureTimers;
   static std::string                            lowestFailTimerName_s;
   static std::string                            formated_fail_timer_as_text;
-  static std::string                            get_fail_timer_title_formated_for_imgui(const std::string& in_default_title, const std::string prefix_to_foramted_string = "");
-  static std::string                            get_fail_timer_in_formated_text(const std::string prefix_to_foramted_string = "");
+  static std::string                            get_fail_timer_title_formated_for_imgui(const std::string& in_default_title, const std::string& prefix_to_formated_string = "");
+  static std::string                            get_fail_timer_in_formated_text(const std::string& prefix_to_foramted_string = "");
 
   static missionx::mx_success_timer_info strct_success_timer_info; // v25.02.1
 
@@ -978,7 +978,7 @@ public:
   static IXMLNode         xmlChoices; // v3.0.231.1 store all Choice sets inside one <choices> element
   static missionx::Choice mxChoice;   // v3.0.231.1 stores last pick XML choice
   static bool             prepare_choice_options(const std::string& inChoiceName);
-  static bool             is_choice_name_exists(std::string& inChoiceName);
+  static bool             is_choice_name_exists(const std::string& inChoiceName);
 
   // RealityXP related
   static std::string                      write_fpln_to_external_folder(const std::map<int, missionx::NavAidInfo>& in_map_fms_entries); // v3.0.241.2 our first external utility is RealityXP.
@@ -1007,7 +1007,7 @@ public:
 
   static void prepare_new_mission_folders ( const missionx::GLobalSettings& in_xmlGlobalSettings); // Prepare mission folder files like sound,object,scripts,metar
 
-  static void addDataref(dataref_param inDref);
+  static void addDataref(const dataref_param& inDref);
 
   static void setAbortMission(const std::string& inReason);
 
@@ -1176,7 +1176,7 @@ public:
   static std::vector<missionx::mx_ext_internet_fpln_strct>    tableExternalFPLN_vec;
   static std::map<int, missionx::mx_ext_internet_fpln_strct*> indexPointer_forExternalFPLN_tableVector; // index pointer to the vector tableExternalFPLN_vec
 
-  static void                           fetch_METAR (std::unordered_map<int, mx_nav_data_strct> *mapNavaidData, missionx::mxFetchState_enum *outState, std::string *outStatusMessage, std::string *outErrorMsg, bool *lockThread);
+  static void                           fetch_METAR (std::unordered_map<int, mx_nav_data_strct> *mapNavaidData, missionx::mxFetchState_enum *outState, std::string *outStatusMessage, std::string *outErrorMsg, const bool *lockThread);
   static IXMLNode                       jsonConvertedNode_xml; // holds the json converted data so we would use IXMLParser to read data safely
   static std::vector<std::future<void>> mFetchFutures;         //  holds async pointers
 
@@ -1228,7 +1228,7 @@ public:
   static bool get_are_there_missing_3D_object_files() { return flag_found_missing_3D_object_files; }
 
   // sqlite related functions
-  static void                               sqlite_test_db_validity (dbase &inDB, const bool isThreaded = false);
+  static void                               sqlite_test_db_validity (const dbase &inDB, const bool isThreaded = false);
   static std::string                        post_optimization_outcome; // v25.09.1
   static void                               set_flag_rebuild_apt_dat (const bool inVal) { flag_rebuild_apt_dat = inVal; }
   static bool                               get_flag_rebuild_apt_dat () { return flag_rebuild_apt_dat; }
@@ -1263,11 +1263,11 @@ public:
   static strct_ui_share_data_def strct_ui_share_data;
 
 
-  static void add_advanceSettingsDateTime_and_Weather_to_node(IXMLNode &xGlobalSettings, IXMLNode & inPropNode, const std::string & inCurrentWeatherDatarefs_s);
+  static void add_advanceSettingsDateTime_and_Weather_to_node(IXMLNode &xGlobalSettings, const IXMLNode & inPropNode, const std::string & inCurrentWeatherDatarefs_s);
   static bool generate_missionx_mission_file_from_convert_screen(missionx::mx_base_node inPropNode, IXMLNode& inMainNode, IXMLNode& inGlobalSettingsFromConversionFile, std::map<int, missionx::mx_local_fpln_strct> in_map_tableOfParsedFpln, bool inStoreState_b, bool inGenerateNewGlobalSettingsNode);
 
   // Trigger UI specialized function members
-  static std::string     getPoint_as_stringFromPlaneCamera(const std::string& inDatarefStringLat, const std::string inDatarefStringLon, char origin_c = 'p'); // origin should be "p" for plane or "c" for camera
+  static std::string     getPoint_as_stringFromPlaneCamera(const std::string& inDatarefStringLat, const std::string& inDatarefStringLon, char origin_c = 'p'); // origin should be "p" for plane or "c" for camera
   static missionx::Point getPlane_or_Camera_position_as_Point(char origin_c = 'p');                                                                          // origin should be "p" for plane or "c" for camera
 
   // global non stored setup options
@@ -1289,7 +1289,7 @@ public:
   // v25.03.1
   static int get_inv_layout_based_on_mission_ver_and_compatibility_node(const std::string &in_mission_format_versions, const IXMLNode & in_compatibility_node, const bool &in_flag_setupUseXP11InventoryUI);
 
-  static void position_camera(XPLMCameraPosition_t &inCameraPos, float inLat, float inLon);
+  static void position_camera(const XPLMCameraPosition_t &inCameraPos, float inLat, float inLon);
   static void set_camera_poistion_loc_rule(int inIsLosingControl_i);
 
   static ImVec2 getImageSizeBasedOnBorders(float inWidth, float inHeight, float inBoundX, float inBoundY);
@@ -1298,7 +1298,7 @@ public:
   static bool flag_gather_acf_info_thread_is_running;
   static bool flag_abort_gather_acf_info_thread;
   static int  iGatherAcfTryCounter; // v3.303.13
-  static void gather_custom_acf_datarefs_as_a_thread(const std::string &inAcfPath, bool *bThreadIsRunning, bool *bAbortThread); // this function should run as a thread and use flag_gather_acf_info_thread_is_running to flag its activity We will call this function every mission start or plane change while mission is running.
+  static void gather_custom_acf_datarefs_as_a_thread(const std::string &inAcfPath, bool *bThreadIsRunning, const bool *bAbortThread); // this function should run as a thread and use flag_gather_acf_info_thread_is_running to flag its activity We will call this function every mission start or plane change while mission is running.
   // v24.12.2
   //static void gather_acf_cargo_data(Inventory &inoutPlaneInventory); // v24.12.2 this function will run in the main flight callback.
   // static void parse_max_weight_line(const std::string& line, std::map<int, float>& mapMaxWeight, int& outMaxStations); // v24.12.2
@@ -1310,12 +1310,12 @@ public:
   static missionx::mx_return     check_mandatory_item_move(const IXMLNode & item_node, const std::string & target_inventory_name ); // v24.12.2
 
   // v3.303.11
-  static std::string getTitleOrNameFromNode(mx_base_node& inBaseNode); // return title or name if they have value. Title has precedence.
+  static std::string getTitleOrNameFromNode(const mx_base_node& inBaseNode); // return title or name if they have value. Title has precedence.
 
   
   static void apply_dataref_based_on_key_value_strings(const std::string& inKey, std::string& inValue); // v3.303.12  
   static void apply_datarefs_based_on_string_parsing(const std::string& inDatarefs, const std::string& inBetweenDatarefsDelimiter = "|", const std::string& inEqualSignChar = "="); // v3.303.12  
-  static void apply_datarefs_from_text_based_on_parent_node_and_tag_name(IXMLNode& inParentNode, const std::string& inTagName);// v3.305.1 renamed   // specialized function to pick the "TEXT" clear value of an element and then call  
+  static void apply_datarefs_from_text_based_on_parent_node_and_tag_name(const IXMLNode& inParentNode, const std::string& inTagName);// v3.305.1 renamed   // specialized function to pick the "TEXT" clear value of an element and then call
   static void set_success_or_reset_tasks_state(const std::string& inObjName, const std::string& inTaskList, const missionx::enums::mx_action_from_trigger_enum& in_action, const std::string& inCurrentTask = ""); // v25.02.1 mainly used from triggers
   static void set_trigger_state(const missionx::Trigger &inCallingTrig, const std::string& inTrigList, const missionx::enums::mx_action_from_trigger_enum& in_action); // v25.02.1 mainly used from triggers
 

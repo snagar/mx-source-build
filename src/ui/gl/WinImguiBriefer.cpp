@@ -3178,7 +3178,7 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
 
           this->addAdvancedSettingsPropertiesBeforeGeneratingRandomMission ();
 
-          this->selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI ();
+          this->strct_generate_template_layer.selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI ();
           this->setMessage ("Generating mission is in progress, please wait...", 10);
 
           ImGui::CloseCurrentPopup ();
@@ -5233,7 +5233,7 @@ Filter options:
           if (bRerunRandomDateTime) // v3.303.10
             this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
 
-          this->selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI ();
+          this->strct_generate_template_layer.selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI ();
 
           IXMLNode node_ptr = missionx::data_manager::prop_userDefinedMission_ui.node;
 
@@ -5421,8 +5421,6 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
       //
       // Holds the vertical regions width, [0]=Left, [1]=Right
       constexpr static const float fLeftRegionSize = 300.0f;
-      constexpr const char        *names[]         = { "Templates", "Template Description" };
-
       constexpr float region_width_arr[] = { fLeftRegionSize, 0.0f };
 
       ImGui::PushID ("##VerticalScrolling");
@@ -5435,6 +5433,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
 
         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
         {
+          constexpr const char *names[] = { "Templates", "Template Description" };
           ImGui::TextColored (ImVec4 (1, 1, 0, 1), "%s", names[i]);
           if (i == 1)
           {
@@ -5453,7 +5452,6 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
           }
         }
         // Draw 2 regions
-        constexpr auto combo_label_s = "Select an Option";
 
         const ImGuiID child_id         = ImGui::GetID (i);
         const bool    child_is_visible = ImGui::BeginChild (child_id, ImVec2 (region_width_arr[i], win_size_vec2.y * 0.66f), ImGuiChildFlags_Borders);
@@ -5466,10 +5464,9 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
             for (const auto &key : data_manager::mapGenerateMissionTemplateFiles | std::views::keys)
             {
               int iStyle = 0;
-              // std::string key          = key; // key
               bool bSetKeyStyle = false;
 
-              if (!key.empty () && (this->selectedTemplateKey == key || this->strct_generate_template_layer.last_picked_template_key == key))
+              if (!key.empty () && (this->strct_generate_template_layer.selectedTemplateKey == key || this->strct_generate_template_layer.last_picked_template_key == key))
               {
                 bSetKeyStyle = true;
                 ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_green);
@@ -5485,8 +5482,11 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
               {
                 if (!key.empty () && data_manager::mapGenerateMissionTemplateFiles[key].imageFile.gTexture && ImGui::ImageButton ("##templateImg", data_manager::mapGenerateMissionTemplateFiles[key].imageFile.gTexture, ImVec2 (240.0f, 190.0f), this->uv0, this->uv1))
                 {
+                  constexpr auto combo_label_s = "Select an Option";
+
                   // prepare template briefer text so we will display it in the detailed region
-                  this->selectedTemplateKey                                    = key;
+                  // this->strct_generate_template_layer.selectedTemplateKey                                    = key;
+                  this->strct_generate_template_layer.selectedTemplateKey      = key;
                   this->strct_generate_template_layer.last_picked_template_key = key;
                   this->setMessage ("Picked Template: " + this->strct_generate_template_layer.last_picked_template_key);
 
@@ -5498,9 +5498,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                   size_t longestTextInVector_array_i = 0;
                   size_t indx                        = 0;
                   this->strct_generate_template_layer.vecReplaceOptions_char.clear ();
-                  // this->strct_generate_template_layer.mapReplaceOption_ui.clear(); // v24.12.2
 
-                  // this->strct_generate_template_layer.mapReplaceOption_ui[0]; // initialize <opt> key.
                   for (auto &v : pickedTemplateInfo_ptr->vecReplaceOptions_s)
                   {
                     this->strct_generate_template_layer.vecReplaceOptions_char.emplace_back (v.c_str ()); // store opt keyName
@@ -5514,9 +5512,6 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
 
                   pickedTemplateInfo_ptr->size_of_vecReplaceOptions_n                       = this->strct_generate_template_layer.vecReplaceOptions_char.size ();
                   this->strct_generate_template_layer.user_pick_from_replaceOptions_combo_i = (pickedTemplateInfo_ptr->size_of_vecReplaceOptions_n > 0) ? mxconst::INT_FIRST_0 : mxconst::INT_UNDEFINED; // reset user pick
-
-                  // this->mxUiGetContentWidth() returns the Image region not the description. the "30.f" is the space between the regions.
-                  // const float region_width_x = (region_width_arr[1] <= 0.0f) ? (win_size_vec2.x - this->mxUiGetContentWidth() - 30.0f) : region_width_arr[1];
 
                   // Calculate combo item length
                   if (this->strct_generate_template_layer.user_pick_from_replaceOptions_combo_i > mxconst::INT_UNDEFINED)
@@ -5540,7 +5535,6 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                   {
                     // store combo label based on the option name, or default label (seq_key_i < 0)
                     strctOptInfo.combo_label_s = (seq_key_i < 0) ? combo_label_s : strctOptInfo.name;
-
 
                     pickedTemplateInfo_ptr->mapOptionsInfo[seq_key_i].refresh_vecReplaceOptions_char ();
 
@@ -5577,7 +5571,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
           { // Display the "picked" template description and options, or the "generated template info"
             if (!this->strct_generate_template_layer.last_picked_template_key.empty ())
             {
-              // after generated mission from template, display the "info" text.
+              // after generated mission from the template, display the "info" text.
               if (this->flag_generatedRandomFile_success)
               {
                 const std::string fileName = (this->strct_generate_template_layer.last_picked_template_key.find (mxconst::get_XML_EXTENSION ()) == std::string::npos) ? this->strct_generate_template_layer.last_picked_template_key + mxconst::get_XML_EXTENSION () : this->strct_generate_template_layer.last_picked_template_key;
@@ -5633,10 +5627,9 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                 }
                 // v24.12.2 end multi options
 
-
-
+                // Display template mission info text
                 this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-                ImGui::TextWrapped ("%s", data_manager::mapGenerateMissionTemplateFiles[this->strct_generate_template_layer.last_picked_template_key].desc_from_vector_with_tabs_s.c_str ());
+                ImGui::TextWrapped ("%s", missionx::data_manager::mapGenerateMissionTemplateFiles[this->strct_generate_template_layer.last_picked_template_key].template_description.c_str ());
                 this->mxUiResetAllFontsToDefault ();
                 ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
               }
@@ -5662,7 +5655,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
       ImGui::SameLine ();
 
       ///// Display Generate or Start buttons
-      if (!this->selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running)
+      if (!this->strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running)
       {
         this->flag_generatedRandomFile_success = false; // this will also assist in hiding the "start" button since we are generating
         ImGui::SameLine (region_width_arr[0] + 10.0f);
@@ -5782,7 +5775,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
         ImGui::SameLine (region_width_arr[0] + 10.0f);
         this->add_ui_abort_mission_creation_button (); // Add Abort Random Engine
       }
-      else if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->flag_generatedRandomFile_success && this->selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
+      else if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->flag_generatedRandomFile_success && this->strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
       {
         ImGui::SameLine (region_width_arr[0] + 10.0f); // pad to the right so the button will better aligned with above frame.
         this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
@@ -8146,7 +8139,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
 
   this->mxEndUiDisableState (bEnableState); // v24.03.1 disable table until fetch is ended
 
-  if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->flag_generatedRandomFile_success && this->selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
+  if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->flag_generatedRandomFile_success && this->strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
   {
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
     this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
@@ -8306,7 +8299,7 @@ WinImguiBriefer::child_draw_ils_search2 ()
     ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_indigo);
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
     {
-      if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->flag_generatedRandomFile_success && this->selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
+      if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->flag_generatedRandomFile_success && this->strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
       {
         ImGui::SameLine (win_size_vec2.x * 0.5f + 130.0f);
         this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
@@ -8572,7 +8565,7 @@ WinImguiBriefer::child_draw_ils_search2 ()
   //     Airports Query Result Table
   //------------------------------------------------
 
-  const float fStartButtonHeight = (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->flag_generatedRandomFile_success && this->selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running) ? 25.0f : 0.0f;
+  const float fStartButtonHeight = (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->flag_generatedRandomFile_success && this->strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running) ? 25.0f : 0.0f;
 
   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
@@ -8825,7 +8818,7 @@ WinImguiBriefer::child_draw_ils_search2 ()
                   this->addAdvancedSettingsPropertiesBeforeGeneratingRandomMission (); // v3.303.14
 
 
-                  this->selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI ();
+                  this->strct_generate_template_layer.selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI ();
                   this->setMessage ("Generating mission is in progress, please wait...", 10);
 
                   ImGui::CloseCurrentPopup ();
@@ -12637,10 +12630,10 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
 #ifndef RELEASE
       missionx::Log::logDebugBO ("[imguiWinBriefer] Pressed Start Random Mission. Will call Load and Start Mission too."); // debug
 #endif
-      if (this->lastSelectedTemplateKey.find (mxconst::get_XML_EXTENSION ()) != std::string::npos)
+      if (this->strct_generate_template_layer.last_picked_template_key.find (mxconst::get_XML_EXTENSION ()) != std::string::npos)
         missionx::data_manager::selectedMissionKey = mxconst::get_RANDOM_MISSION_DATA_FILE_NAME ();
       else
-        missionx::data_manager::selectedMissionKey = this->lastSelectedTemplateKey + mxconst::get_XML_EXTENSION (); // lastSelectedTemplateKey holds the folder keyName so we ned to add the extension
+        missionx::data_manager::selectedMissionKey = this->strct_generate_template_layer.last_picked_template_key + mxconst::get_XML_EXTENSION (); // lastSelectedTemplateKey holds the folder keyName so we ned to add the extension
 
       missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::start_random_mission); // place action in Queue. Mission class will pick it and handle it.
 

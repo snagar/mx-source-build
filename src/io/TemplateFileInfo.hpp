@@ -38,8 +38,9 @@ public:
   std::string                                          filePath;
   std::string                                          fullFilePath;
   std::string                                          desc_from_vector_with_tabs_s;                    // v3.0.251.1 // holds the description with '\t' but without the "\n\r".
-  std::string                                          description;                                     // v3.0.251.1 will hold generated mission description (this is initialized by the plugin)
-  std::vector<std::string>                             vecSentences;                                    // holds template mission info "short_desc" as lines (this is defined by designer)
+  std::string                                          description;                                     // v3.0.251.1 will hold a generated mission description (the plugin initializes this)
+  std::string                                          template_description;                            // v25.09.2 holds the original template description. Won't be overridden.
+  std::vector<std::string>                             vecSentences;                                    // holds template mission info "short_desc" as lines (designer defines this)
   std::vector<std::string>                             vecImguiSentences;                               // holds template mission info "short_desc" as lines
   std::vector<std::string>                             vecReplaceOptions_s{};                           // v24.12.2 TODO: deprecate // v3.0.255.4 add <opt> support in <mission_info>, will allow designer to create different include txt file to inject into an XML file.
   std::map<int, missionx::mx_option_info>              mapOptionsInfo{};                                // v24.12.2 add <options> support in <mission_info>, will allow designer to create different include txt file to inject into an XML file.

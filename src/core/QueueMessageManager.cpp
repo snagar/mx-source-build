@@ -155,7 +155,7 @@ missionx::QueueMessageManager::addMessageToQueue(const std::string& inMessageNam
 // -----------------------------------
 
 void
-missionx::QueueMessageManager::addTextAsNewMessageToQueue(std::string msgName, std::string msgText, std::string inTrackName, bool muteNarator, bool hideText, bool inEnabled, int inOverrideDisplayTextSecond)
+missionx::QueueMessageManager::addTextAsNewMessageToQueue(std::string msgName, const std::string& msgText, std::string inTrackName, const bool muteNarator, const bool hideText, const bool inEnabled, const int inOverrideDisplayTextSecond)
 {
   if (msgText.empty())
     return; // skip action
@@ -189,11 +189,11 @@ missionx::QueueMessageManager::addTextAsNewMessageToQueue(std::string msgName, s
 
 // -----------------------------------
 bool
-missionx::QueueMessageManager::setMessageChannel(std::string msgName, missionx::mx_message_channel_type_enum inChannelType, std::string inSoundFile, float inSecondsToplay, std::string& outErr, int inSoundVol)
+missionx::QueueMessageManager::setMessageChannel(const std::string& msgName, const missionx::mx_message_channel_type_enum inChannelType, const std::string& inSoundFile, const float inSecondsToplay, std::string& outErr, const int inSoundVol)
 {
   // search message in mapMessages
-  // check if has channel with value "pad". Warn in log.
-  // create SoundFragment and assign it implace of the old one.
+  // check if it has a channel with the value "pad". Warn in log.
+  // create SoundFragment and assign it in place of the old one.
 
   outErr.clear();
   if (mxUtils::isElementExists(data_manager::mapMessages, msgName))
@@ -205,13 +205,13 @@ missionx::QueueMessageManager::setMessageChannel(std::string msgName, missionx::
     }
     else
     {
-      Log::logMsgWarn("[set channel]replacing existing channel. old Sound file:" + mxconst::get_QM() + data_manager::mapMessages[msgName].mapChannels[channelName].getSoundFile() + mxconst::get_QM() + ", with new sound: " + mxconst::get_QM() + inSoundFile + mxconst::get_QM());
-      // remove + release existing channel
+      Log::logMsgWarn( fmt::format(R"([set channel]replacing existing channel. old Sound file: "{}", with new sound: "{}")",data_manager::mapMessages[msgName].mapChannels[channelName].getSoundFile(), inSoundFile) );
+      // remove + release an existing channel
       data_manager::mapMessages[msgName].removeChannel(channelName, QueueMessageManager::sound);
     }
 
     // create the channel
-    SoundFragment newSf = SoundFragment(
+    auto newSf = SoundFragment(
       channelName,
       (inChannelType == mx_message_channel_type_enum::comm) ? mxconst::get_CHANNEL_TYPE_COMM() : mxconst::get_CHANNEL_TYPE_BACKGROUND(),
       inSoundFile,
@@ -256,7 +256,7 @@ missionx::QueueMessageManager::setMessageChannel(std::string msgName, missionx::
 
 
 bool
-missionx::QueueMessageManager::addMessage(missionx::Message inMsg, std::string inTrackedName, std::string& outErr)
+missionx::QueueMessageManager::addMessage(missionx::Message inMsg, const std::string &inTrackedName, std::string& outErr)
 {
   outErr.clear();
   inMsg.trackName = inTrackedName;
@@ -270,9 +270,9 @@ void
 missionx::QueueMessageManager::flc()
 {
 
-#ifdef TIMER_FUNC
-  missionx::TimerFunc timerFunc(std::string(__FILE__), std::string(__func__), false);
-#endif // TIMER_FUNC
+  #ifdef TIMER_FUNC
+  missionx::TimerFunc timerFunc (std::string (__FILE__), std::string (__func__), false);
+  #endif // TIMER_FUNC
 
   QueueMessageManager::muteSound = system_actions::pluginSetupOptions.getBoolValue(mxconst::get_OPT_MUTE_MX_SOUNDS(), false);
   QueueMessageManager::muteSound = false; // debug
@@ -290,13 +290,12 @@ missionx::QueueMessageManager::flc()
 
     return nullptr;
   };
-  auto* msgInstance_ptr     = lmbda_get_next_msg_ptr(QueueMessageManager::listPoolMsg, QueueMessageManager::listPadQueueMessages);
-  bool  flag_nextMsgIsStory = (msgInstance_ptr == nullptr) ? false : msgInstance_ptr->mode == missionx::mx_msg_mode::mode_story;
-  // end v3.305.1 check type of next/current message to determined if to pause or not
+  const auto* msgInstance_ptr     = lmbda_get_next_msg_ptr(QueueMessageManager::listPoolMsg, QueueMessageManager::listPadQueueMessages);
+  const bool  flag_nextMsgIsStory = (msgInstance_ptr == nullptr) ? false : msgInstance_ptr->mode == missionx::mx_msg_mode::mode_story;
+  // end v3.305.1 checks a type of next/current message to determine if to pause or not
 
-  // v3.0.207.3  Handle pause state
-  //if (missionx::dataref_manager::isSimPause() && missionx::Message::lineAction4ui.state == missionx::enum_mx_line_state::undefined) // v3.305.1 Added special condition so QMM will continue evaluation even if sim in pause mode // v3.0.207.3 skip Mission logic while in pause state
-  if (missionx::dataref_manager::isSimPause() && !(flag_nextMsgIsStory) ) // v3.305.1 Added special condition so QMM will continue evaluation even if sim in pause mode // v3.0.207.3 skip Mission logic while in pause state
+  // v3.0.207.3 Handle pause state
+  if (missionx::dataref_manager::isSimPause() && !(flag_nextMsgIsStory) ) // v3.305.1 Added special condition so QMM will continue evaluation even if sim in pause mode // v3.0.207.3 skips Mission logic while in the pause state
   {
     // try to pause all "sound"
     if (!missionx::QueueMessageManager::soundChannelsArePaused)
@@ -316,11 +315,11 @@ missionx::QueueMessageManager::flc()
     // check if currently we are broadcasting a COMM message.
     // if not, check comm queue
     // if not empty get FIFO and assign to broadcastCommMsg
-    // Check if message time is set, if not calculate message time to display/play
+    // Check if message time is set, if not, calculate message time to display/play
 
     // Sound flc(). We need to take into consideration Sound specific channel
     // In sound, we have 3 different sound fragments. One for "communication" message, one for "pad" message and one for "background" sound
-    // The SOUND class uses "Message" type to fetch the specific SoundFragment array information and handle it
+    // The SOUND class uses the "Message" type to fetch the specific SoundFragment array information and handle it
 
     flc_comm(); // adds queued messages to the "broadcast pool"
   }
@@ -341,7 +340,7 @@ missionx::QueueMessageManager::flc()
     auto it1 = listPoolMsg.begin();
     while (it1 != listPoolMsg.end())
     {
-      if ((*it1).getName().compare(key) == 0)
+      if ((*it1).getName() == key)
       {
         (*it1).reset();
         listPoolMsg.erase((it1));
@@ -359,7 +358,7 @@ missionx::QueueMessageManager::flc()
   for (auto& [key, sf] : QueueMessageManager::mapPlayingBackgroundSF)
   {
     if (missionx::Timer::wasEnded(sf.timerChannel, true) && sf.qSoundCommands.empty()) // v3.306.1 added qSoundCommand logic. We end only if all commands are done.
-      QueueMessageManager::listEraseBackgroundKeys.push_back(key); // name of originate message
+      QueueMessageManager::listEraseBackgroundKeys.push_back(key); // name of an originate message
     else
       QueueMessageManager::sound.flc(sf);        
   }
@@ -372,9 +371,7 @@ missionx::QueueMessageManager::flc()
 
     QueueMessageManager::sound.stopAndReleaseChannel(QueueMessageManager::mapPlayingBackgroundSF[key]);
     QueueMessageManager::mapPlayingBackgroundSF.erase(key);
-//#ifndef RELEASE
     Log::logMsg("[qmm] Erasing background sound message: " + key); // debug
-//#endif                                               
   }
 
 
@@ -384,7 +381,7 @@ missionx::QueueMessageManager::flc()
   const int  iNormalize_comm_val = Utils::getNodeText_type_1_5<int>(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_NORMALIZED_VOLUME(), mxconst::DEFAULT_SETUP_MISSION_VOLUME_I);
 
   if (bNormalizeComm)
-    QueueMessageManager::sound.setCommVolume(((float)iNormalize_comm_val) / 100.0f);
+    QueueMessageManager::sound.setCommVolume(static_cast<float> (iNormalize_comm_val) / 100.0f);
 
   QueueMessageManager::sound.update(); // important for Sound System cleanup and progress
 
@@ -401,7 +398,7 @@ missionx::QueueMessageManager::flc()
   // mxpad remove old messages if we exceed MAX_MX_PAD_MESSAGES
   if (QueueMessageManager::mxpad_messages.size() > missionx::MAX_MX_PAD_MESSAGES)
   {
-    QueueMessageManager::mxpad_messages.pop_front();            // pitmib v3.0.205.1
+    QueueMessageManager::mxpad_messages.pop_front(); // pitmib v3.0.205.1
   }
 }
 
@@ -433,7 +430,7 @@ missionx::QueueMessageManager::flc_comm()
       }
       else
         break; // exit while loop
-    }          // end while loop
+    } // end while loop
   }
 
 }
@@ -445,15 +442,12 @@ void
 missionx::QueueMessageManager::flc_msg_pool()
 { // loop over mapPoolMessage // working channels
   // handle each state change
-
   int counter = 0;
   for (auto& m : QueueMessageManager::listPoolMsg)
   {
     ++counter;
     QueueMessageManager::progressMessage(&m, counter);
-
-
-  } // end loop over message map
+  } // end loop over a message map
 }
 // end flc_msg_pool()
 
@@ -469,20 +463,19 @@ missionx::QueueMessageManager::progressMessage(Message* msgInstance, int& inMsgI
   if (key.empty())                                                          // v3.0.241.2 try to fallback to old code in cases we construct a message using: "fn_send_text_message"
     key = msgInstance->getName();
 
-#ifdef DEBUG_QMM
+  #ifdef DEBUG_QMM
   IXMLRenderer writer;
-  Log::logMsg("[qmm::progressMsg] Key: " + key + ", xml node: \n");
-  Log::logMsgNone(writer.getString(msg->node));
-  writer.clear();
-#endif // DEBUG_QMM
+  Log::logMsg ("[qmm::progressMsg] Key: " + key + ", xml node: \n");
+  Log::logMsgNone (writer.getString (msg->node));
+  writer.clear ();
+  #endif // DEBUG_QMM
 
   // first step - gather some info
-  const auto lmbda_message_has_comm_sf = [&](std::pair<std::string, missionx::SoundFragment> inSf) { return (inSf.second.channelType == mx_message_channel_type_enum::comm); }; // check if SoundFragment is "comm" channel type
-  const bool flag_message_has_comm_sf  = std::any_of(begin(msgInstance->mapChannels), end(msgInstance->mapChannels), lmbda_message_has_comm_sf);                                                // return true if at least one of the "mapChannels" returns true
-
+  const auto lmbda_message_has_comm_sf = [&](const std::pair<std::string, missionx::SoundFragment>& inSf) { return (inSf.second.channelType == mx_message_channel_type_enum::comm); }; // check if SoundFragment is a "comm" channel type
+  const bool flag_message_has_comm_sf  = std::ranges::any_of(msgInstance->mapChannels, lmbda_message_has_comm_sf); // return true if at least one of the "mapChannels" returns true
 
   // second step// msg_prepare_channels
-  if (msgInstance->msgState <= mx_message_state_enum::msg_prepare_channels) // if not finished prepare channel
+  if (msgInstance->msgState <= mx_message_state_enum::msg_prepare_channels) // if not finished prepare a channel
   {
     // check if we have any channels settings in message
     if (msgInstance->mapChannels.empty())
@@ -505,7 +498,7 @@ missionx::QueueMessageManager::progressMessage(Message* msgInstance, int& inMsgI
 
       } // end loop over channels and prepare them
 
-      // do we need to change state of Message
+      // do we need to change the state of Message?
 
       if (( counter > 0) || (counter >= msgInstance->mapChannels.size()) || sound.initSoundResult != FMOD_OK)
       {
@@ -514,33 +507,28 @@ missionx::QueueMessageManager::progressMessage(Message* msgInstance, int& inMsgI
       }
     }
 
+  } // end prepares channels
 
-  } // end prepare channels
 
-
-  // third step  // msg_channels_need_to_finish_loading
+  // the third step // msg_channels_need_to_finish_loading
   if (msgInstance->msgState == mx_message_state_enum::msg_channels_need_to_finish_loading)
   {
 
     if (msgInstance->mapChannels.empty())
     {
       msgInstance->msgState = mx_message_state_enum::msg_is_ready_to_be_played;
-      msgInstance->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), (int)msgInstance->msgState);
+      msgInstance->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), static_cast<int> (msgInstance->msgState));
     }
     else
     {
       size_t counter = 0;
       for (auto& [cKey, sf] : msgInstance->mapChannels)
       {
-        //std::string cKey = iter.first;
-
-        //SoundFragment* sf = &msgInstance->mapChannels[cKey];
-
         // v3.0.194 deprecate pad - changed to comm
         if ((sf.channelType != mx_message_channel_type_enum::comm) && (sf.channelType != mx_message_channel_type_enum::background)) // v3.0.223.6 added background test
           continue;
 
-        if (sf.areWeWaitingForSoundFileToLoad) // if file is still loading to memory
+        if (sf.areWeWaitingForSoundFileToLoad) // if a file is still loading to memory
         {
           // check file load state
           // FMOD_OPENSTATE state;
@@ -575,22 +563,16 @@ missionx::QueueMessageManager::progressMessage(Message* msgInstance, int& inMsgI
         msgInstance->msgState = mx_message_state_enum::msg_is_ready_to_be_played;
         msgInstance->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), (int)msgInstance->msgState);
       }
-
     } // end check message has channels to check
-
 
   } // end msg_channels_need_to_finish_loading
 
 
-
   //// BROADCAST //////////
   // fifth step - We can broadcast message
-  if (msgInstance->msgState == mx_message_state_enum::msg_is_ready_to_be_played && inMsgInQueue_i == 1 && !QueueMessageManager::soundChannelsArePaused /* handle pause state. We should not continue when in pause */ 
+  if (msgInstance->msgState == mx_message_state_enum::msg_is_ready_to_be_played && inMsgInQueue_i == 1 && !QueueMessageManager::soundChannelsArePaused // handle pause state. We should not continue when in pause
       && !QueueMessageManager::flag_message_is_broadcasting && !missionx::data_manager::timelapse.flag_isActive /*v3.0.223.1 wait for timelapse to end*/)
   {
-
-
-
     // Mode = default = simple text message
     switch (msgInstance->mode)
     {
@@ -611,25 +593,21 @@ missionx::QueueMessageManager::progressMessage(Message* msgInstance, int& inMsgI
       
     } // end switch message mode
 
-
   } // end msg_is_ready_to_be_played - call play
 
-
   // handle message timing (when it should flag as ended
-  if (msgInstance->msgState > mx_message_state_enum::msg_is_ready_to_be_played && msgInstance->msgState < mx_message_state_enum::msg_is_ready_for_post_message_actions) // msg_broadcast_once,  msg_broadcast_few_times
+  if (msgInstance->msgState > mx_message_state_enum::msg_is_ready_to_be_played && msgInstance->msgState < mx_message_state_enum::msg_is_ready_for_post_message_actions) // msg_broadcast_once, msg_broadcast_few_times
   {
-    QueueMessageManager::evalCommChannelProgress(msgInstance, flag_message_has_comm_sf, key); // v3.305.1 moved handling of comm channel to its own function
+    QueueMessageManager::evalCommChannelProgress(msgInstance, flag_message_has_comm_sf, key); // v3.305.1 moved handling of a comm channel to its own function
   }
 
   // v3.305.1
   if (msgInstance->msgState >= mx_message_state_enum::msg_is_ready_for_post_message_actions)
   {
-    if (!(msgInstance->msgState == missionx::mx_message_state_enum::msg_abort)) // v3.0.223.7 allow to abort a message without post actions. Used in ext_script::ext_abort_current_message
-      missionx::QueueMessageManager::postMessage(msgInstance);                  // v3.0.223.1 handle special message directives
+    if (msgInstance->msgState != missionx::mx_message_state_enum::msg_abort) // v3.0.223.7 allow aborting a message without post-actions. Used in ext_script::ext_abort_current_message
+      missionx::QueueMessageManager::postMessage(msgInstance); // v3.0.223.1 handle special message directives
 
-    QueueMessageManager::listEraseKeys.push_back(key); // line is relevant, since designer can change is_mxpad attribute from "yes" to "no"
-
-    // if (QueueMessageManager::flag_message_is_broadcasting) // v3.305.1 we always reset to false so why use "if" statement.
+    QueueMessageManager::listEraseKeys.push_back(key); // this line is relevant, since designer can change is_mxpad attribute from "yes" to "no"
     QueueMessageManager::flag_message_is_broadcasting = false;
   }
 
@@ -643,12 +621,9 @@ void
 missionx::QueueMessageManager::prepareMessageStory(Message* msg)
 {
   static int stLineCounter = 0;
-
-//#ifndef RELEASE
   static std::chrono::steady_clock::time_point startStoryMessageClock;
   if (Message::lineAction4ui.isInit)
     startStoryMessageClock = std::chrono::steady_clock::now();
-//#endif
 
   if (Message::lineAction4ui.isInit)
   {
@@ -658,8 +633,7 @@ missionx::QueueMessageManager::prepareMessageStory(Message* msg)
 
     //// Play sound files from all channels if present
     if (sound.initSoundResult == FMOD_OK)
-      QueueMessageManager::playSoundFilesFromAllChannels(msg, QueueMessageManager::SECONDS_PER_LINE * (float)msg->dqMsgLines.size()); // v3.305.1 moved handling of all channel to its own function
-
+      QueueMessageManager::playSoundFilesFromAllChannels(msg, QueueMessageManager::SECONDS_PER_LINE * static_cast<float> (msg->dqMsgLines.size ())); // v3.305.1 moved handling of all channels to its own function
   }
 
 
@@ -669,14 +643,13 @@ missionx::QueueMessageManager::prepareMessageStory(Message* msg)
     Message::lineAction4ui.state = missionx::enum_mx_line_state::init;
     Message::lineAction4ui.bIgnorePunctuationTiming = Utils::readBoolAttrib(msg->node, mxconst::get_ATTRIB_IGNORE_PUNCTUATIONS_B(), false);
 
-    std::string outAction_s = "";
+    std::string outAction_s;
     bool        bIsActionLine;
-    std::string line = msg->get_and_filter_next_line(outAction_s, bIsActionLine, stLineCounter); // v3.305.3 was: lmbda_get_and_filter_next_line(msg->dqMsgLines, outAction_s, bIsActionLine);
+    const std::string line = msg->get_and_filter_next_line(outAction_s, bIsActionLine, stLineCounter); // v3.305.3 was: lmbda_get_and_filter_next_line(msg->dqMsgLines, outAction_s, bIsActionLine);
 
     if ( (!msg->dqMsgLines.empty()) + (!line.empty()) )
     {
-      //msg->dqMsgLines.pop_front(); // removing last action from queue // already done in "lmbda" function
-      missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::open_story_layout); // open Briefer screen and in the flight leg so simmer immediately will see the Story message
+      missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::open_story_layout); // open the Briefer screen and in the flight leg so simmer immediately will see the Story message
     }
     else
     {
@@ -694,7 +667,7 @@ missionx::QueueMessageManager::prepareMessageStory(Message* msg)
     }
     else if (bIsActionLine)
     {
-      assert(outAction_s.length() > (size_t)2 && "Action must be 3 chars in length"); // at least 2 characters
+      assert(outAction_s.length() > static_cast<size_t> (2) && "Action must be 3 chars in length"); // at least 2 characters
 
       char action = outAction_s[1];
       switch (action)
@@ -715,7 +688,7 @@ missionx::QueueMessageManager::prepareMessageStory(Message* msg)
         break;
         case mxconst::STORY_ACTION_PAUSE:
         {
-          if (Message::lineAction4ui.bUserPressNextInTextActionMode) // do we need to skip this command ?
+          if (Message::lineAction4ui.bUserPressNextInTextActionMode) // do we need to skip this command?
           {
             Message::lineAction4ui.bUserPressNextInTextActionMode = false;
             Message::lineAction4ui.state                          = missionx::enum_mx_line_state::action_ended;
@@ -741,7 +714,7 @@ missionx::QueueMessageManager::prepareMessageStory(Message* msg)
           {
             Message::lineAction4ui.state = missionx::enum_mx_line_state::ready;
 
-            Message::lineAction4ui.actionCode = mxconst::STORY_ACTION_TEXT; // convert the action code to text, since [m] is a special case of TEXT message that also being displayed in the mxpad.
+            Message::lineAction4ui.actionCode = mxconst::STORY_ACTION_TEXT; // convert the action code to text, since [m] is a special case of a TEXT message that also being displayed in the mxpad.
 
             // add mxpad lines
             messageLine_strct mxPadline;
@@ -750,24 +723,14 @@ missionx::QueueMessageManager::prepareMessageStory(Message* msg)
             mxPadline.label_color    = mxconst::get_YELLOW();
             mxPadline.message_text   = Message::lineAction4ui.vals[mxconst::get_STORY_TEXT()]; // get the text line to display
 
-            if (missionx::mxvr::vr_display_missionx_in_vr_mode)
-            {
-              Utils::sentenceTokenizerWithBoundaries(mxPadline.textLines, mxPadline.message_text, mxconst::get_SPACE(), 55); // in VR
-            }
-            else
-            {
-              Utils::sentenceTokenizerWithBoundaries(mxPadline.textLines, mxPadline.message_text, mxconst::get_SPACE(), 55); // in 2D
-            }
+            Utils::sentenceTokenizerWithBoundaries(mxPadline.textLines, mxPadline.message_text, mxconst::get_SPACE(), 55); // both 2D and VR
             mxpad_messages.push_back(mxPadline);
-
           }
           else
           {
             Message::lineAction4ui.state = missionx::enum_mx_line_state::parsing_failure;
             missionx::Log::logMsgErr("[qmm] Message: " + msg->getName() + ", failed to parse story line: \n" + line + "\n<<\n");
           }
-
-
 
         }
         break;
@@ -786,7 +749,6 @@ missionx::QueueMessageManager::prepareMessageStory(Message* msg)
         {
           std::string err = fmt::format("Action '{}' is not supported.", action);
           XPLMDebugString(err.c_str());
-          //assert(false && err.c_str());
         }
 
       } // end switch
@@ -794,7 +756,7 @@ missionx::QueueMessageManager::prepareMessageStory(Message* msg)
     else if (Message::lineAction4ui.state != missionx::enum_mx_line_state::mainMessageEnded)
     {
       
-      Message::lineAction4ui.bUserPressNextInTextActionMode = false; // reset the user pause flag on new text message
+      Message::lineAction4ui.bUserPressNextInTextActionMode = false; // reset the user pause flag on a new text message
 
       // this is a text line -> implicit [t] action
       Message::lineAction4ui.state = missionx::enum_mx_line_state::parsing;
@@ -808,21 +770,18 @@ missionx::QueueMessageManager::prepareMessageStory(Message* msg)
         missionx::Log::logMsgErr("Message: " + msg->getName() + ", failed to parse story line: \n" + line + "\n<<\n");
       }
 
-    } // end if TEXT and not end of message
+    } // end if TEXT and not end of a message
 
-  } // if current story message line is not in progress
+  } // if the current story message line is not in progress
 
 
-  // Do we end the message ?
+  // Do we end the message?
   if (Message::lineAction4ui.state == missionx::enum_mx_line_state::mainMessageEnded)
   {
-//#ifndef RELEASE
-    auto end  = std::chrono::steady_clock::now();
-    auto diff = end - startStoryMessageClock;
-    auto duration  = std::chrono::duration<double, std::milli>(diff).count();
+    const auto end  = std::chrono::steady_clock::now();
+    const auto diff = end - startStoryMessageClock;
+    const auto duration  = std::chrono::duration<double, std::milli>(diff).count();
     Log::logAttention("Story Message Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec), for: " + msg->getName());
-//#endif // !RELEASE
-
 
 
     stLineCounter = 0;
@@ -845,13 +804,13 @@ missionx::QueueMessageManager::prepareMessageStory(Message* msg)
 void
 missionx::QueueMessageManager::prepareMessageText(Message* msg, bool flag_message_has_comm_sf)
 {
-  #ifndef RELEASE
-  int iDebug = 0;
-  if (iDebug) // we need to change the iDebug value using the debugger
-  {
-    XPLMDebugString(Utils::xml_get_node_content_as_text(msg->node).c_str() );
-  }
-  #endif 
+  // #ifndef RELEASE
+  // int iDebug = 0;
+  // if (iDebug) // we need to change the iDebug value using the debugger
+  // {
+  //   XPLMDebugString(Utils::xml_get_node_content_as_text(msg->node).c_str() );
+  // }
+  // #endif
 
 
   // broadcast TEXT after calculating message text timer
@@ -860,16 +819,15 @@ missionx::QueueMessageManager::prepareMessageText(Message* msg, bool flag_messag
   Utils::replaceCharsWithString(messageText, mxconst::get_WIN_EOL(), mxconst::get_SPACE()); // v3.0.191
 
 
-  bool muteNarator = Utils::readBoolAttrib(msg->node, mxconst::get_ATTRIB_MESSAGE_MUTE_XPLANE_NARRATOR(), false);
-  bool hideText    = Utils::readBoolAttrib(msg->node, mxconst::get_ATTRIB_MESSAGE_HIDE_TEXT(), false);
+  const bool muteNarator = Utils::readBoolAttrib(msg->node, mxconst::get_ATTRIB_MESSAGE_MUTE_XPLANE_NARRATOR(), false);
+  const bool hideText    = Utils::readBoolAttrib(msg->node, mxconst::get_ATTRIB_MESSAGE_HIDE_TEXT(), false);
 
-  float secondsToDisplayText_userDefine = Utils::readNodeNumericAttrib<float>(msg->node, mxconst::get_ATTRIB_MESSAGE_OVERRIDE_SECONDS_TO_DISPLAY_TEXT(), 0.0f);
-  float secondsCalcPerLine_userDefined  = Utils::readNodeNumericAttrib<float>(msg->node, mxconst::get_ATTRIB_MESSAGE_OVERRIDE_SECONDS_CALC_PER_LINE(), 0.0f);
-
+  auto secondsToDisplayText_userDefine = Utils::readNodeNumericAttrib<float>(msg->node, mxconst::get_ATTRIB_MESSAGE_OVERRIDE_SECONDS_TO_DISPLAY_TEXT(), 0.0f);
+  const auto secondsCalcPerLine_userDefined  = Utils::readNodeNumericAttrib<float>(msg->node, mxconst::get_ATTRIB_MESSAGE_OVERRIDE_SECONDS_CALC_PER_LINE(), 0.0f);
 
   msg->msgCounter++;
 
-  // If we support voice in message and this message is not muted and we want to display text message...
+  // If we support voice in a message, and this message is not muted, and we want to display a text message...
   {
     messageLine_strct mxPadline;
 
@@ -877,18 +835,10 @@ missionx::QueueMessageManager::prepareMessageText(Message* msg, bool flag_messag
     mxPadline.label_position = Utils::readAttrib(msg->node, mxconst::get_ATTRIB_LABEL_PLACEMENT(), "L");
     mxPadline.label_color    = Utils::readAttrib(msg->node, mxconst::get_ATTRIB_LABEL_COLOR(), mxconst::get_YELLOW());
 
-
     mxPadline.message_text = messageText;
 
     // v3.0.221.7 try to decrease the number of mxpad characters in VR
-    if (missionx::mxvr::vr_display_missionx_in_vr_mode)
-    {
-      Utils::sentenceTokenizerWithBoundaries(mxPadline.textLines, mxPadline.message_text, mxconst::get_SPACE(), 55); // in VR
-    }
-    else
-    {
-      Utils::sentenceTokenizerWithBoundaries(mxPadline.textLines, mxPadline.message_text, mxconst::get_SPACE(), 55); // in 2D
-    }
+    Utils::sentenceTokenizerWithBoundaries(mxPadline.textLines, mxPadline.message_text, mxconst::get_SPACE(), 55); // in 2D and VR
 
     const auto lmbda_get_seconds_to_display_text = [&]()
     {
@@ -912,18 +862,17 @@ missionx::QueueMessageManager::prepareMessageText(Message* msg, bool flag_messag
       // Draw text in 2D PAD
       Log::logDebugBO("[qmm] Broadcast PAD message: " + messageText);
 
-      // v3.0.192 add new mxpad text to mxpad display container
-      mxpad_messages.push_back(mxPadline);                     // display in MX-PAD window   // pitmib v3.0.205.1
+      // v3.0.192 add new mxpad text to the mxpad display container
+      mxpad_messages.push_back(mxPadline); // display in MX-PAD window   // pitmib v3.0.205.1
 
       // v3.0.213.7 allow mxpad text to be narrated if it does not have channels
       if (!muteNarator && !muteSound /*from Option screen */) // v3.0.223.6 removed channel test since all messages are mx-pad type
       {
-
         Log::logDebugBO("[qmm] Broadcast mxpad using narrator: " + messageText);
 
         XPLMSpeakString(messageText.c_str()); // plugin
         QueueMessageManager::flag_message_is_broadcasting = true;
-      } // end broadcast mxpad with narrator instead of channel
+      } // end broadcast mxpad with narrator instead of a channel
     }
   }
 
@@ -961,7 +910,7 @@ missionx::QueueMessageManager::prepareMessageText(Message* msg, bool flag_messag
 void
 missionx::QueueMessageManager::playSoundFilesFromAllChannels(Message* msg, float secondsToDisplayText_userDefine)
 {
-  // v3.0.303.6 read setup normailized volume and decide if to modify the sound channel
+  // v3.0.303.6 read setup normalized volume and decide if to modify the sound channel
   const bool bNormalize     = Utils::getNodeText_type_1_5<bool>(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_NORMALIZE_VOLUME_B(), false);
   const int  iNormalize_val = Utils::getNodeText_type_1_5<int>(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_NORMALIZED_VOLUME(), mxconst::DEFAULT_SETUP_MISSION_VOLUME_I);
 
@@ -979,21 +928,19 @@ missionx::QueueMessageManager::playSoundFilesFromAllChannels(Message* msg, float
           if (bNormalize && sf.volume > (float)iNormalize_val)
             sf.setVolume((float)iNormalize_val); // set the normalized volume
 
-
           QueueMessageManager::sound.playStreamFile(sf); // try to play stream
 
           if (QueueMessageManager::sound.isChannelPlaying(sf))
           {
-
             float secondsToPlay = secondsToDisplayText_userDefine; // instead of 0.0f
-            if (secondsToPlay <= 0.0f)                             // v3.0.190 if no overide text time was defined then fetch mixture play time.
+            if (secondsToPlay <= 0.0f) // v3.0.190 if no override text time was defined, then fetch mixture playtime.
               secondsToPlay = Utils::readNodeNumericAttrib<float>(sf.node, mxconst::get_ATTRIB_MESSAGE_OVERRIDE_SECONDS_TO_PLAY(), 0.0f);
 
-            // start timer, calculate if seconds to play is 0 (zero)
+            // start the timer, calculate if seconds to play is 0 (zero)
             if (secondsToPlay <= 0.0f)
             {
               // try to figure out the length of the file from sound
-              secondsToPlay = (float)QueueMessageManager::sound.getSoundFileLengthInSec(sf);
+              secondsToPlay = static_cast<float> (QueueMessageManager::sound.getSoundFileLengthInSec (sf));
 
               if (secondsToPlay <= 0) // make sure that we have something
                 secondsToPlay = 3.0f;
@@ -1002,7 +949,7 @@ missionx::QueueMessageManager::playSoundFilesFromAllChannels(Message* msg, float
             }
             sf.setNumberProperty(mxconst::get_ATTRIB_MESSAGE_OVERRIDE_SECONDS_TO_PLAY(), secondsToPlay);
             std::string timerName = sf.getName() + "_" + mxUtils::translateMessageChannelTypeToString(sf.channelType); // create timer name
-            Timer::start(sf.timerChannel, secondsToPlay, timerName);                                                   // start stopper
+            Timer::start(sf.timerChannel, secondsToPlay, timerName); // start stopper
           }
         }
       }
@@ -1018,16 +965,16 @@ missionx::QueueMessageManager::playSoundFilesFromAllChannels(Message* msg, float
 
           if (QueueMessageManager::sound.isChannelPlaying(background_sf))
           {
-            float secondsToPlay = Utils::readNodeNumericAttrib<float>(background_sf.node, mxconst::get_ATTRIB_MESSAGE_OVERRIDE_SECONDS_TO_PLAY(), 0.0f); // v3.0.223.6 "background" should always pick its own length and not from TEXT
+            auto secondsToPlay = Utils::readNodeNumericAttrib<float>(background_sf.node, mxconst::get_ATTRIB_MESSAGE_OVERRIDE_SECONDS_TO_PLAY(), 0.0f); // v3.0.223.6 "background" should always pick its own length and not from TEXT
             if (secondsToPlay <= 0.0f)
-              secondsToPlay = (float)QueueMessageManager::sound.getSoundFileLengthInSec(background_sf);
+              secondsToPlay = static_cast<float> (QueueMessageManager::sound.getSoundFileLengthInSec (background_sf));
 
             if (secondsToPlay <= 0.0f) // make sure that we have something
               secondsToPlay = (secondsToDisplayText_userDefine > 0.0f) ? secondsToDisplayText_userDefine : 3;
 
-            background_sf.setNumberProperty(mxconst::get_ATTRIB_MESSAGE_OVERRIDE_SECONDS_TO_PLAY(), secondsToPlay);                                         // v3.0.209.1 changed from sf->setIntProperty()
-            std::string timerName = background_sf.getName() + "_" + mxUtils::translateMessageChannelTypeToString(background_sf.channelType); // create timer name
-            Timer::start(background_sf.timerChannel, secondsToPlay, timerName);                                                              // start stopper
+            background_sf.setNumberProperty(mxconst::get_ATTRIB_MESSAGE_OVERRIDE_SECONDS_TO_PLAY(), secondsToPlay);
+            const std::string timerName = background_sf.getName() + "_" + mxUtils::translateMessageChannelTypeToString(background_sf.channelType); // create timer name
+            Timer::start(background_sf.timerChannel, secondsToPlay, timerName); // start stopper
 
             const std::string sBackgroundKey = Utils::readAttrib(background_sf.node, mxconst::get_ATTRIB_ORIGINATE_MESSAGE_NAME(), "");
             if (!sBackgroundKey.empty())
@@ -1050,8 +997,8 @@ missionx::QueueMessageManager::playSoundFilesFromAllChannels(Message* msg, float
 void
 missionx::QueueMessageManager::evalCommChannelProgress(Message* msg, const bool flag_message_has_comm_sf, const std::string& key)
 {
-  bool flag_timerEnded, flag_commChannelEndedPlaying; // hold timeout flag
-  flag_timerEnded = flag_commChannelEndedPlaying = false;
+  bool flag_commChannelEndedPlaying; // hold timeout flag
+  bool flag_timerEnded = flag_commChannelEndedPlaying = false;
 
   // Check TEXT channel
   if (Timer::wasEnded(msg->msgTimer, true) ) // + (msg->mode == mx_msg_mode::mode_story) ) // v3.305.1 Added story_mode exception, since it does not have internal timer
@@ -1060,8 +1007,8 @@ missionx::QueueMessageManager::evalCommChannelProgress(Message* msg, const bool 
   }
 
   // Check COMM channel
-  // loop over channels and check if comm channel ended. If channel is not "comm" then assume the timer of "background" channel is handled elsewhere
-  if (flag_message_has_comm_sf && sound.initSoundResult == FMOD_OK) // v24.03.2 added initSoundResult if FMOD sound failed to initialize we auto end the playback
+  // loop over channels and check if a comm channel ended. If a channel is not "comm", then assume the timer of the "background" channel is handled elsewhere
+  if (flag_message_has_comm_sf && sound.initSoundResult == FMOD_OK) // v24.03.2 added initSoundResult if FMOD sound failed to initialize, we auto end the playback
   {
     auto lmbda_message_comm_timer_ended = [](std::pair<const std::string, missionx::SoundFragment>& inIterSf)
     {
@@ -1069,12 +1016,12 @@ missionx::QueueMessageManager::evalCommChannelProgress(Message* msg, const bool 
       {
         if (Timer::wasEnded(inIterSf.second.timerChannel, true) || inIterSf.second.timerChannel.getState() == missionx::mx_timer_state::timer_not_set)
           return true;
-        else
-          return false;
+
+        return false;
       }
 
-      return true;                                                                                                              // for background or non "comm" channel types.
-    };                                                                                                                          // check if SoundFragment is "comm" channel type
+      return true; // for background or non "comm" channel types.
+    }; // check if SoundFragment is a "comm" channel type
     flag_commChannelEndedPlaying = std::all_of(begin(msg->mapChannels), end(msg->mapChannels), lmbda_message_comm_timer_ended); // return true if _all_ "mapChannels" returns true
   }
   else
@@ -1104,11 +1051,11 @@ missionx::QueueMessageManager::evalCommChannelProgress(Message* msg, const bool 
 // -----------------------------------
 
 void
-missionx::QueueMessageManager::postMessage(Message* msg)
+missionx::QueueMessageManager::postMessage(const Message* msg)
 {
   std::string err;
 
-  // v3.305.3 moved post_script before processing the other message attributes. // exec script after message broadcasted
+  // v3.305.3 moved post_script before processing the other message attributes. // exec script after a message broadcasted
   const std::string post_script_s = Utils::readAttrib(msg->node, mxconst::get_ATTRIB_POST_SCRIPT(), "");
   if (!post_script_s.empty())
   {
@@ -1117,7 +1064,7 @@ missionx::QueueMessageManager::postMessage(Message* msg)
     data_manager::smPropSeedValues.removeProperty(mxconst::get_EXT_MX_QM_MESSAGE()); // v3.0.223.1 remove the message name after script was executed
   }
 
-  // read from xml node and each time decide if we need next time option or not. First time found "wins". Order: ATTRIB_SET_DAY_HOURS, ATTRIB_TIMELAPSE_TO_LOCAL_HOURS, ATTRIB_ADD_MINUTES
+  // read from XML node and each time decides if we need the next time option or not. First time found "wins". Order: ATTRIB_SET_DAY_HOURS, ATTRIB_TIMELAPSE_TO_LOCAL_HOURS, ATTRIB_ADD_MINUTES
   const std::string nextLocalTime_s = Utils::readAttrib(msg->node, mxconst::get_ATTRIB_SET_DAY_HOURS(), "");
 
   if (!nextLocalTime_s.empty())
@@ -1140,15 +1087,15 @@ missionx::QueueMessageManager::postMessage(Message* msg)
     {
       if (!Utils::readAttrib(msg->node, mxconst::get_ATTRIB_ADD_MINUTES(), "").empty())
       {
-        const static float max_min_to_skip = 240.0f;
-        double             minutes_d       = Utils::readNodeNumericAttrib<double>(msg->node, mxconst::get_ATTRIB_ADD_MINUTES(), 0.0);
+        static constexpr float max_min_to_skip = 240.0f;
+        auto             minutes_d       = Utils::readNodeNumericAttrib<double>(msg->node, mxconst::get_ATTRIB_ADD_MINUTES(), 0.0);
         if (minutes_d > 1 && minutes_d <= max_min_to_skip)
         {
           int how_many_cycles_i = (int)((float)(mxconst::MAX_LAPS_I) * ((minutes_d / max_min_to_skip))); //
           if (how_many_cycles_i > mxconst::MAX_LAPS_I || minutes_d < 30.0)
             how_many_cycles_i = 1;
 
-          err = missionx::data_manager::timelapse.timelapse_add_minutes((int)minutes_d, how_many_cycles_i, (msg->mode == missionx::mx_msg_mode::mode_story));
+          err = missionx::data_manager::timelapse.timelapse_add_minutes(static_cast<int> (minutes_d), how_many_cycles_i, (msg->mode == missionx::mx_msg_mode::mode_story));
         }
         else if (minutes_d != 0 && (minutes_d > 240 || minutes_d < 1))
         {
@@ -1200,17 +1147,7 @@ missionx::QueueMessageManager::postMessage(Message* msg)
 
       ++i1;
     }
-    //for (int i1 = 0; i1 < vecBgRules.size() && i1 < 2; ++i1) // do not loop more than 2 values
-    //{
-    //  if (i1 == 0)
-    //  {
-    //    name = vecBgRules.at(0);
-    //  }
-    //  else if (i1 == 1)
-    //  {
-    //    seconds = ((mxUtils::is_digits(vecBgRules.at(1))) ? mxUtils::stringToNumber<double>(vecBgRules.at(1), 2) : mxconst::DEFAULT_SF_FADE_SECONDS_F);
-    //  }
-    //}
+
 
     #ifndef RELEASE
     Log::logMsg(fmt::format("[debug] Will fade bg channel: \"{}\", in {} seconds", name, seconds));
@@ -1220,7 +1157,7 @@ missionx::QueueMessageManager::postMessage(Message* msg)
   }
   
 
-  // check if has next_msg property with value and recursively call addMessageToQueueList().
+  // check if it has next_msg property with value and recursively call addMessageToQueueList().
   std::string next_msg_s = Utils::readAttrib(msg->node, mxconst::get_PROP_NEXT_MSG(), "");
   if (!next_msg_s.empty())
     missionx::QueueMessageManager::addMessageToQueue(next_msg_s, "", err);
@@ -1259,12 +1196,12 @@ missionx::QueueMessageManager::saveCheckpoint(IXMLNode& inParent)
   // create root MXPAD element
   Utils::xml_add_comment(inParent, " ===== MXPAD Data ===== "); // v3.303.8
 
-  IXMLNode xMxPad_data = inParent.addChild(mxconst::get_ELEMENT_MXPAD_DATA().c_str());
   {
+    IXMLNode xMxPad_data = inParent.addChild(mxconst::get_ELEMENT_MXPAD_DATA().c_str());
     // loop over Active MXPAD Messages
     IXMLNode xMxPadMessages = xMxPad_data.addChild(mxconst::get_ELEMENT_MXPAD_ACTIVE_MESSAGES().c_str());
 
-    // save all active MXPAD messages in MXPAD window
+    // save all active MXPAD messages in the MXPAD window
     for (auto &m : QueueMessageManager::mxpad_messages)
     {
 
@@ -1274,7 +1211,6 @@ missionx::QueueMessageManager::saveCheckpoint(IXMLNode& inParent)
       xMessage.addAttribute(mxconst::get_ATTRIB_LABEL_PLACEMENT().c_str(), m.label_position.c_str());
       xMessage.addClear(m.message_text.c_str());
     }
-
   }
 }
 
@@ -1286,11 +1222,13 @@ missionx::QueueMessageManager::loadCheckpoint(ITCXMLNode& inParent, std::deque<m
   outErr.clear();
   outMessages.clear();
 
-  ITCXMLNode xMessages = inParent.getChildNode(mxconst::get_ELEMENT_MXPAD_ACTIVE_MESSAGES().c_str());
-#ifndef RELEASE
-  std::string debugXMessages = missionx::data_manager::xmlRender.getString(xMessages);
-  missionx::data_manager::xmlRender.clear();
-#endif
+  const ITCXMLNode xMessages = inParent.getChildNode(mxconst::get_ELEMENT_MXPAD_ACTIVE_MESSAGES().c_str());
+
+  #ifndef RELEASE
+  std::string debugXMessages = missionx::data_manager::xmlRender.getString (xMessages);
+  missionx::data_manager::xmlRender.clear ();
+  #endif
+
   if (!xMessages.isEmpty())
   {
     //const missionx::mxconst mx_const; // v25.04.2
@@ -1328,7 +1266,7 @@ missionx::QueueMessageManager::addMessageToQueueList(missionx::Message& inMsgIns
   outErr.clear();
   std::string message = inMsgInstance.getMessage();
 
-  // Skip if same as last message
+  // Skip if same as the last message
   if (!listPadQueueMessages.empty())
   {
     missionx::Message lastMessage = listPadQueueMessages.back();
@@ -1362,7 +1300,7 @@ missionx::QueueMessageManager::addMessageToQueueList(missionx::Message& inMsgIns
 void
 missionx::QueueMessageManager::addMessageToTrackedMap(Message inMsg)
 {
-  // check if a tracked message with exact name is present. If so, then change counter and override the message string.
+  // check if a tracked message with an exact name is present. If so, then change the counter and override the message string.
   if (Utils::isElementExists(QueueMessageManager::mapTrackedMessages, inMsg.trackName))
   {
     inMsg.msgCounter += QueueMessageManager::mapTrackedMessages[inMsg.trackName].msgCounter; // will reflect cumulative
@@ -1418,8 +1356,6 @@ missionx::QueueMessageManager::stopAllPoolChannels()
     const std::string key = itMsgInstance.getName();
     for (auto& [chName, sf] : itMsgInstance.mapChannels)
     {
-      //if ((itMsgInstance.mapChannels[key].sound != nullptr) || (itMsgInstance.mapChannels[key].channel != nullptr))
-      //  QueueMessageManager::sound.stopAndReleaseChannel(itMsgInstance.mapChannels[key]);
       if ((sf.sound != nullptr) || (sf.channel != nullptr))
         QueueMessageManager::sound.stopAndReleaseChannel(sf);
     }
