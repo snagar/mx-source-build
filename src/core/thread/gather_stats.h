@@ -28,7 +28,7 @@ public:
 
   void init();
 
-  thread_state xxthread_state;
+  strct_thread_state xxthread_state;
 
   void flc();
 
@@ -169,7 +169,7 @@ public:
 
   //void clearQueueContainer(); // v3.303.8.3 deprecated - not in use
   bool thread_should_write_info {false};                 // a flag that assist in preventing the thread to start in certain circumstances.
-  bool exec_gather_thread(thread_state* xxthread_state); //, Plane::mx_struct_stats_gather inStats); // each statement will finish with reset()
+  bool exec_gather_thread(strct_thread_state* xxthread_state); //, Plane::mx_struct_stats_gather inStats); // each statement will finish with reset()
 
   /*******
    * line_seq & step_seq will allow us to group each step to its own set.

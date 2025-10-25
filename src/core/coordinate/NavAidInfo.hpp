@@ -306,7 +306,7 @@ public:
    {
      outErr.clear();
      if (! is_lat_lon_valid () )
-       outErr.append ( fmt::format ("Navaid: {} ({}), has invalid coordinates.\n", this->fpln_seq, this->get_loc_desc ()) );
+       outErr.append ( fmt::format ("Navaid: {} ({}), has invalid coordinates.\nlat: {}, lon: {}\n", this->fpln_seq, this->get_loc_desc (), this->lat, this->lon) );
 
       return outErr.empty();
    }

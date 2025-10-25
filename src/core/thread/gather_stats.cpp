@@ -288,7 +288,7 @@ GatherStats::init_seq_from_checkpoint_stats()
 
 // ----------------------------------------------------
 bool
-GatherStats::exec_gather_thread(thread_state* xxthread_state)
+GatherStats::exec_gather_thread(strct_thread_state* xxthread_state)
 {
   if (!db->db_is_open_and_ready)
     return false;

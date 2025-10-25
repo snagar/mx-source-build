@@ -80,7 +80,8 @@ struct strct_osm_query {
   std::string q_bbox; // holds only the selected area: SW,NW,NE or SE
   std::string q_all_bbox; // holds the full osm area and not just a specific area.
   std::string q_short_bbox_fmt; // short form of the bbox
-  std::string q_request;
+  std::string q_escaped_request;
+  std::string q_unescaped_request;
   IXMLNode    topic_q_node; // Hold the <q> region query count node.
   IXMLNode    xml_query_node_to_search_a_new_target; // Holds the <q> of the search way as target, query node
 
@@ -115,7 +116,8 @@ struct strct_osm_query {
     this->q_bbox= inStrct.q_bbox;
     this->q_all_bbox= inStrct.q_all_bbox;
     this->q_short_bbox_fmt= inStrct.q_short_bbox_fmt;
-    this->q_request= inStrct.q_request;
+    this->q_escaped_request= inStrct.q_escaped_request;
+    this->q_unescaped_request= inStrct.q_unescaped_request;
     this->topic_q_node= inStrct.topic_q_node.deepCopy();
     this->xml_query_node_to_search_a_new_target= inStrct.xml_query_node_to_search_a_new_target.deepCopy();
 
@@ -244,7 +246,7 @@ typedef enum class _flc_commands
   get_nav_aid_info_mainThread,                                  // v3.0.253.6
   get_icao_plane_is_in_its_boundaries_based_on_custom_lat_lon,  // v25.09.2 Find the ICAO a plane is in, if it is in its boundaries
   get_nearest_nav_aid_to_custom_lat_lon_mainThread,             // v3.0.241.10 b2
-  get_nearest_nav_aid_to_randomLastFlightLeg_mainThread,        // v3.0.221.4
+  // get_nearest_nav_aid_to_randomLastFlightLeg_mainThread,        // v3.0.221.4 // v25.10.1 DEPRECATED
   guess_waypoints_from_external_fpln_site,                      // v3.0.255.2
   handle_option_picked_from_choice,                             // v3.0.231.1
   hide_choice_window,                                           // v3.0.231.1
@@ -1180,8 +1182,8 @@ public:
   static IXMLNode                       jsonConvertedNode_xml; // holds the json converted data so we would use IXMLParser to read data safely
   static std::vector<std::future<void>> mFetchFutures;         //  holds async pointers
 
-  static void fetch_fpln_from_simbrief_site(missionx::base_thread::thread_state* inoutThreadState, const std::string &in_pilot_id, missionx::mxFetchState_enum* outState, std::string* outStatusMessage);
-  static void fetch_fpln_from_flightplandatabase_site(missionx::base_thread::thread_state* inoutThreadState, const IXMLNode& inUserPref, missionx::mxFetchState_enum* outState, std::string* outStatusMessage);
+  static void fetch_fpln_from_simbrief_site(missionx::base_thread::strct_thread_state* inoutThreadState, const std::string &in_pilot_id, missionx::mxFetchState_enum* outState, std::string* outStatusMessage);
+  static void fetch_fpln_from_flightplandatabase_site(missionx::base_thread::strct_thread_state* inoutThreadState, const IXMLNode& inUserPref, missionx::mxFetchState_enum* outState, std::string* outStatusMessage);
 
   static int                      overpass_counter_i;            // v3.0.255.4.1
   static std::vector<std::string> vecOverpassUrls;               // v3.0.255.4.1
@@ -1215,7 +1217,7 @@ public:
   static std::string load_error_message; // holds the ERROR string when trying to load a mission file or any file(?). Should display in the uiImguiBrifer window message footer line.
 
   // will fetch the closest ICAO to plane location. // v3.303.8.3 extended function by allowing snding custom position instead of getting the plane position. This is used with the stats table after the mission ended and not during flight.
-  static missionx::NavAidInfo getPlaneAirportOrNearestICAO(const bool& inOnlySearchInDatabase = false, const double& inLat = 0.0, const double& inLon = 0.0, bool inIsThread = false);  // v3.303.14 added inIsThread
+  static missionx::NavAidInfo get_plane_airport_or_nearest_icao(const bool& inOnlySearchInDatabase = false, const double& inLat = 0.0, const double& inLon = 0.0, bool inIsThread = false);  // v3.303.14 added inIsThread
   static missionx::NavAidInfo getICAO_info(const std::string& inICAO); // will fetch the closest ICAO to plane location
   static missionx::NavAidInfo get_and_guess_nav_info(const std::string& in_id_nav_name, const missionx::Point &prevPoint); // will fetch the closest guest navaid to a given coordinate
 
@@ -1280,6 +1282,7 @@ public:
   static bool flag_setupAutoSkipStoryMessage; // v3.305.3
   static bool flag_setupShowDebugMessageTab; // v3.305.4
   static bool flag_setupUseXP11InventoryUI; // v24.12.2 toggle between inventory ui layout (with stations, xp12, and without xp11).
+  static bool flag_setupUseDraw2DMapInReleaseMode; // v25.10.1 Can we draw 2D map cue in release
 
   static int  ui_ifr_or_vfr_i; // 0 = IFR and 1 = VFR
   static int  ui_oilrig_globe_part_i; // 1 = globe, 2 = Half globe, 3 = quarter globe, 4 = local_region
@@ -1336,12 +1339,12 @@ public:
 
   // v3.305.2
   #ifdef USE_TRIGGER_OPTIMIZATION // v3.305.2
-  static void optimizeLegTriggers_thread(base_thread::thread_state* outThreadState, missionx::Point* inRefPoint, std::map<std::string, missionx::Trigger> * inMapTriggers, std::list<std::string>* inListTriggersByDistance, std::list<std::string>* outListTriggers_ptr);
+  static void optimizeLegTriggers_thread(base_thread::strct_thread_state* outThreadState, missionx::Point* inRefPoint, std::map<std::string, missionx::Trigger> * inMapTriggers, std::list<std::string>* inListTriggersByDistance, std::list<std::string>* outListTriggers_ptr);
   
   typedef struct _mx_opt_leg_triggers_strct
   {
     missionx::Point           optLegTriggers_thread_planePos;
-    base_thread::thread_state optLegTriggers_thread_state;
+    base_thread::strct_thread_state optLegTriggers_thread_state;
     std::thread               optLegTriggers_thread_ref;
     bool                      optLegTriggers_thread_use_flag;
   } mx_opt_leg_triggers_strct;
@@ -1378,7 +1381,7 @@ public:
 
   // v24.02.5
   static std::map<std::string, std::string> mapQueries;
-  static missionx::base_thread::thread_state threadStateMetar;
+  static missionx::base_thread::strct_thread_state threadStateMetar;
 
   // v25.02.1 function will return "true" if "template load" was successful.
   static bool find_and_read_template_file(const std::string &inFileName);
@@ -1394,18 +1397,17 @@ public:
 
   // v25.06.1
   static void check_cache_folder (const std::string & in_cache_folder_name);
-  static void fetch_overpass_info_analyze_thread(missionx::base_thread::thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q, const std::map<missionx::enums::mx_osm_region, missionx::structs::BBox>& in_map_bbox);
-  // The get_targets_from_osm_queries() will pick a target from osm_gen.xml, and will gather subtarget information based on the "next_tag" element. Make sure to initialize the "inout_osm_query.cache_folder" before calling this function.
-  // static std::map<int, missionx::NavAidInfo> fetch_targets_using_osm_queries_from_a_thread (missionx::base_thread::thread_state *inoutThreadState, const IXMLNode &in_root_node, missionx::structs::strct_osm_query &inout_osm_query);
+  static void fetch_overpass_info_analyze_thread(missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q, const std::map<missionx::enums::mx_osm_region, missionx::structs::BBox>& in_map_bbox);
+
   // The function will fetch OSM information from local cache folder or the web. Make sure to initialize the "cache_folder" in the "*q" parameter before calling this function.
-  static void fetch_ways_and_target_node_from_overpass_thread (missionx::base_thread::thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
+  static void fetch_ways_and_target_node_from_overpass_thread (missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
 
 
   // A simple function to manage thread wait for main thread actions that needs to take place before it can continue. Default wait time is 500 milliseconds for 10 iteration (5 seconds)
   // For every function call we need to handle failure cases (false returned).
   // For every function call we need to use threadState.pipeProperties to set the attributes we want the main thread to handle.
-  static bool waitForPluginCallbackJob(missionx::base_thread::thread_state *out_state_ptr, missionx::mx_flc_pre_command inQueuedCommand, std::chrono::milliseconds inWaitTimeMilliseconds = std::chrono::milliseconds(500), int inLimitWaitCounter = 10);
-  static missionx::base_thread::thread_state metar_thread_state;
+  static bool waitForPluginCallbackJob(missionx::base_thread::strct_thread_state *out_state_ptr, missionx::mx_flc_pre_command inQueuedCommand, std::chrono::milliseconds inWaitTimeMilliseconds = std::chrono::milliseconds(500), int inLimitWaitCounter = 10);
+  static missionx::base_thread::strct_thread_state metar_thread_state;
 
 
  private:

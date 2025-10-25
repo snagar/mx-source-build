@@ -72,7 +72,7 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
   this->mWindow = this->GetWindowId ();
 
   // this->strct_user_create_layer.validate_sliders_values();
-  this->validate_sliders_values (missionx::mx_plane_types::plane_type_helos); // v24.12.1 validate based on helos distances constraints
+  this->validate_sliders_values (missionx::mx_plane_types_enum::plane_type_helos); // v24.12.1 validate based on helos distances constraints
 
   fDebugSlider = this->fDebugInitValue;
 
@@ -148,8 +148,8 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
     this->mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)] = data_manager::strct_ui_share_data.cargo_arr;
   }
 
-  strct_user_create_layer.dyn_slider1_lbl = "[" + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[missionx::mx_plane_types::plane_type_helos].from_slider_min, 0) + "..." + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[missionx::mx_plane_types::plane_type_helos].from_slider_max, 0) + "]";
-  strct_user_create_layer.dyn_slider2_lbl = "[" + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[missionx::mx_plane_types::plane_type_helos].to_slider_min, 0) + "..." + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[missionx::mx_plane_types::plane_type_helos].to_slider_max, 0) + "]";
+  strct_user_create_layer.dyn_slider1_lbl = "[" + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[missionx::mx_plane_types_enum::plane_type_helos].from_slider_min, 0) + "..." + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[missionx::mx_plane_types_enum::plane_type_helos].from_slider_max, 0) + "]";
+  strct_user_create_layer.dyn_slider2_lbl = "[" + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[missionx::mx_plane_types_enum::plane_type_helos].to_slider_min, 0) + "..." + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[missionx::mx_plane_types_enum::plane_type_helos].to_slider_max, 0) + "]";
 
 
   // v25.02.1
@@ -332,9 +332,9 @@ WinImguiBriefer::add_ui_ils_vfr_search_airports_button (missionx::mx_window_acti
     if (this->strct_ils_layer.from_icao.empty ())
     {
       #ifdef IBM
-      this->strct_ils_layer.navaid = data_manager::getPlaneAirportOrNearestICAO ();
+      this->strct_ils_layer.navaid = data_manager::get_plane_airport_or_nearest_icao ();
       #else
-      auto tempNav                 = data_manager::getPlaneAirportOrNearestICAO ();
+      auto tempNav                 = data_manager::get_plane_airport_or_nearest_icao ();
       this->strct_ils_layer.navaid = tempNav;
       #endif
     }
@@ -1114,7 +1114,7 @@ WinImguiBriefer::add_flight_planning ()
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
     ImGui::Spacing ();
 
-    if (!missionx::RandomEngine::threadState.flagIsActive)
+    if (!missionx::RandomEngine::random_thread_state.flagIsActive)
     {
       // this->add_ui_advance_settings_random_date_time_weather_and_weight_button(this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked);
 
@@ -1291,15 +1291,15 @@ WinImguiBriefer::flc ()
 
   if (Timer::wasEnded (this->timerMessage, true)) // message stopper should be based on OS time, since briefer pauses X-Plane while OS time continue ticking. Solve message never fades.
   {
-    if (RandomEngine::threadState.flagIsActive && !RandomEngine::threadState.flagThreadDoneWork) // v3.0.223.1 display better progress information to simmer.
+    if (RandomEngine::random_thread_state.flagIsActive && !RandomEngine::random_thread_state.flagThreadDoneWork) // v3.0.223.1 display better progress information to simmer.
     {
       std::string time_s = missionx::Timer::get_current_time_and_date ();
-      this->setMessage ("[" + time_s + "] Generate mission is still running... " + RandomEngine::threadState.getDuration () + "sec", 5);
+      this->setMessage (fmt::format ("[{}] Mission generation in progress...{}sec", time_s, RandomEngine::random_thread_state.getDuration ()), 5);
     }
     else if (this->strct_ext_layer.fetch_state == missionx::mxFetchState_enum::fetch_in_process && this->strct_ext_layer.threadState.flagIsActive) // v24.06.1 add timer progress to external FPLN
     {
       std::string time_s = missionx::Timer::get_current_time_and_date ();
-      this->setMessage ("[" + time_s + "] Data request is still in progress: " + this->strct_ext_layer.threadState.getDuration () + "sec", 5);
+      this->setMessage (fmt::format("[{}] Data request is still in progress: {}sec", time_s, this->strct_ext_layer.threadState.getDuration ()), 5);
     }
     else
     {
@@ -1570,7 +1570,7 @@ WinImguiBriefer::buildInterface ()
 } // buildInterface
 
 void
-WinImguiBriefer::validate_sliders_values (missionx::mx_plane_types inPlaneType)
+WinImguiBriefer::validate_sliders_values (missionx::mx_plane_types_enum inPlaneType)
 {
   if (this->strct_user_create_layer.dyn_sliderVal1 < this->mapListPlaneRadioLabel[inPlaneType].from_slider_min)
     this->strct_user_create_layer.dyn_sliderVal1 = this->mapListPlaneRadioLabel[inPlaneType].from_slider_min;
@@ -1778,7 +1778,7 @@ WinImguiBriefer::addAdvancedSettingsPropertiesBeforeGeneratingRandomMission ()
 
 
 void
-WinImguiBriefer::refresh_slider_data_based_on_plane_type (missionx::mx_plane_types inPlaneType)
+WinImguiBriefer::refresh_slider_data_based_on_plane_type (missionx::mx_plane_types_enum inPlaneType)
 {
   strct_user_create_layer.dyn_slider1_lbl = "[" + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[this->strct_user_create_layer.iRadioPlaneType].from_slider_min, 0) + "..." + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[this->strct_user_create_layer.iRadioPlaneType].from_slider_max, 0) + "]";
   strct_user_create_layer.dyn_slider2_lbl = "[" + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[this->strct_user_create_layer.iRadioPlaneType].to_slider_min, 0) + "..." + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[this->strct_user_create_layer.iRadioPlaneType].to_slider_max, 0) + "]";
@@ -2486,7 +2486,7 @@ WinImguiBriefer::add_ui_auto_load_checkbox (const missionx::mx_window_actions &i
 {
   ImGui::Spacing ();
   ImGui::SameLine (0.0f, 10.0f);
-  missionx::WinImguiBriefer::HelpMarker ("On mission start, the GPS waypoints will be loaded.\nThe setting will be saved into the preference file.", missionx::color::color_vec4_aqua);
+  missionx::WinImguiBriefer::HelpMarker ("On flight start, the GPS waypoints will be loaded.\nThe setting will be saved into the preference file.", missionx::color::color_vec4_aqua);
   ImGui::SameLine ();
   if (ImGui::Checkbox ("Auto Load Route.\n(not advisable for FMS)", &this->strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms)) // v25.04.2
   {
@@ -3057,7 +3057,7 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
 
       if (rowData.internal_id == picked_fpln_id_i)
       {
-        static int             plane_type_i = static_cast<int> (missionx::mx_plane_types::plane_type_props);
+        static int             plane_type_i = static_cast<int> (missionx::mx_plane_types_enum::plane_type_props);
         static constexpr float child_h      = 340.0;
         ImGui::BeginChild ("fpln_details_left_side", ImVec2 (modal_center.x - 5.0f, child_h), ImGuiChildFlags_Borders);
         {
@@ -3082,16 +3082,16 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
           ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow);
           ImGui::Text ("Pick your preferred plane:");
           ImGui::PopStyleColor ();
-          ImGui::RadioButton ("Heli", &plane_type_i, static_cast<int> (missionx::mx_plane_types::plane_type_helos));
+          ImGui::RadioButton ("Heli", &plane_type_i, static_cast<int> (missionx::mx_plane_types_enum::plane_type_helos));
           ImGui::SameLine ();
-          ImGui::RadioButton ("Props", &plane_type_i, static_cast<int> (missionx::mx_plane_types::plane_type_props));
+          ImGui::RadioButton ("Props", &plane_type_i, static_cast<int> (missionx::mx_plane_types_enum::plane_type_props));
           ImGui::SameLine ();
-          ImGui::RadioButton ("Floats", &plane_type_i, static_cast<int> (missionx::mx_plane_types::plane_type_ga_floats));
-          ImGui::RadioButton ("Turbo Prop", &plane_type_i, static_cast<int> (missionx::mx_plane_types::plane_type_turboprops));
+          ImGui::RadioButton ("Floats", &plane_type_i, static_cast<int> (missionx::mx_plane_types_enum::plane_type_ga_floats));
+          ImGui::RadioButton ("Turbo Prop", &plane_type_i, static_cast<int> (missionx::mx_plane_types_enum::plane_type_turboprops));
           ImGui::SameLine ();
-          ImGui::RadioButton ("Jet", &plane_type_i, static_cast<int> (missionx::mx_plane_types::plane_type_jets));
+          ImGui::RadioButton ("Jet", &plane_type_i, static_cast<int> (missionx::mx_plane_types_enum::plane_type_jets));
           ImGui::SameLine ();
-          ImGui::RadioButton ("Heavy", &plane_type_i, static_cast<int> (missionx::mx_plane_types::plane_type_heavy));
+          ImGui::RadioButton ("Heavy", &plane_type_i, static_cast<int> (missionx::mx_plane_types_enum::plane_type_heavy));
 
           ImGui::NewLine (); // v3.0.253.11
           if (this->getCurrentLayer () == missionx::uiLayer_enum::flight_leg_info) // v25.04.2
@@ -3510,9 +3510,9 @@ WinImguiBriefer::draw_setup_layer ()
     }
 
 
-#ifdef LIN
+    #ifdef LIN
     this->strct_setup_layer.iLinuxFlavor_val = Utils::getNodeText_type_1_5<int> (missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_LINUX_FLAVOR_CODE_I (), 0); // v3.303.8.1
-#endif
+    #endif
 
 
     this->strct_setup_layer.is_first_time = false;
@@ -4446,9 +4446,20 @@ Use at your own risk!!!
 
       ImGui::Separator (); // v3.305.1
       ImGui::NewLine (); // v3.305.1
+
+      // // v25.10.1
+      missionx::WinImguiBriefer::HelpMarker ("Force displaying 2D Map Cues in release mode.");
+      ImGui::SameLine ();
+      #ifndef RELEASE
+      missionx::data_manager::flag_setupUseDraw2DMapInReleaseMode = true; // force value
+      bool b_disable_force_2d_map_cues = this->mxStartUiDisableState (true);
+      #endif
+      ImGui::Checkbox ("Force 2D map cues", &missionx::data_manager::flag_setupUseDraw2DMapInReleaseMode);
+      #ifndef RELEASE
+      this->mxEndUiDisableState (b_disable_force_2d_map_cues);
+      #endif
+
     }
-
-
 
     this->mxUiReleaseLastFont (); // v3.305.1
   }
@@ -4697,7 +4708,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
         this->strct_user_create_layer.iRadioMissionTypePicked   = static_cast<int> (missionx::mx_ui_mission_type::medevac);
         this->strct_user_create_layer.iMissionSubCategoryPicked = 0; // reset sub category combo
         this->strct_user_create_layer.flag_use_web_osm          = true;
-        this->strct_user_create_layer.iRadioPlaneType           = missionx::mx_plane_types::plane_type_helos;
+        this->strct_user_create_layer.iRadioPlaneType           = missionx::mx_plane_types_enum::plane_type_helos;
 
         this->refresh_slider_data_based_on_plane_type (this->strct_user_create_layer.iRadioPlaneType); // v3.303.14
       }
@@ -4715,7 +4726,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
         this->strct_user_create_layer.iRadioMissionTypePicked   = static_cast<int> (missionx::mx_ui_mission_type::oil_rig);
         this->strct_user_create_layer.iMissionSubCategoryPicked = 0; // reset sub category combo
         this->strct_user_create_layer.flag_use_web_osm          = false;
-        this->strct_user_create_layer.iRadioPlaneType           = missionx::mx_plane_types::plane_type_helos;
+        this->strct_user_create_layer.iRadioPlaneType           = missionx::mx_plane_types_enum::plane_type_helos;
 
         this->refresh_slider_data_based_on_plane_type (this->strct_user_create_layer.iRadioPlaneType); // v3.303.14
       }
@@ -4800,7 +4811,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
         {
 
           // Filter out all plane types that are not Helos for Medevac and Oil Rig missions
-          if (this->strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_ui_mission_type::cargo) && planeTypeLabel.type != mx_plane_types::plane_type_helos)
+          if (this->strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_ui_mission_type::cargo) && planeTypeLabel.type != mx_plane_types_enum::plane_type_helos)
             continue;
 
           if (ImGui::RadioButton (planeTypeLabel.label.c_str (), this->strct_user_create_layer.iRadioPlaneType == planeTypeLabel.type))
@@ -4816,7 +4827,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
         // ------------------------
         // -- Helos only option to narrow ramp type
         // ------------------------
-        if (this->strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types::plane_type_helos)
+        if (this->strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos)
         {
           ImGui::NewLine ();
           ImGui::Checkbox ("Narrow helos ramp locations", &strct_user_create_layer.flag_narrow_helos_filtering);
@@ -5089,14 +5100,14 @@ Filter options:
         int iMaxLegsVal = 4;
         // calculate default number of flight legs per mission and plane type
         //if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types::plane_type_helos && strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::_mission_type::medevac)) || (this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_mission_type::oil_rig)))
-        if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types::plane_type_helos && bPickedMedevacMission) || (bPickedOilRigMission))
+        if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos && bPickedMedevacMission) || (bPickedOilRigMission))
         {
           iMinLegsVal                                = 2;
           iMaxLegsVal                                = 2;
           strct_user_create_layer.iNumberOfFlighLegs = iMinLegsVal; // we're automatically resetting the starting/picked legs to 2 and not 1
         }
         // v24.12.1 jets and heavies have only "one" flight leg.
-        else if (strct_user_create_layer.iRadioPlaneType > missionx::mx_plane_types::plane_type_turboprops && strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_ui_mission_type::cargo))
+        else if (strct_user_create_layer.iRadioPlaneType > missionx::mx_plane_types_enum::plane_type_turboprops && strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_ui_mission_type::cargo))
         {
           iMinLegsVal                                = 1;
           iMaxLegsVal                                = 1;
@@ -5104,7 +5115,7 @@ Filter options:
         }
 
         //if (this->strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_mission_type::medevac) && this->strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_mission_type::oil_rig) && strct_user_create_layer.iRadioPlaneType < missionx::mx_plane_types::plane_type_jets)
-        if (!bPickedMedevacMission && !bPickedOilRigMission && !bPickedMedevacSurpriseMeMission && strct_user_create_layer.iRadioPlaneType < missionx::mx_plane_types::plane_type_jets)
+        if (!bPickedMedevacMission && !bPickedOilRigMission && !bPickedMedevacSurpriseMeMission && strct_user_create_layer.iRadioPlaneType < missionx::mx_plane_types_enum::plane_type_jets)
         {
           ImGui::TextColored (missionx::color::color_vec4_yellow ,"How Many Flight Legs ? "); // between 2 and 4
 
@@ -5142,7 +5153,7 @@ Filter options:
         // -- Countdown
         // ------------------------
         //if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types::plane_type_helos && strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::_mission_type::medevac)) || (this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_mission_type::oil_rig)))
-        if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types::plane_type_helos && bPickedMedevacMission) || (bPickedOilRigMission))
+        if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos && bPickedMedevacMission) || (bPickedOilRigMission))
         {
           // ImGui::SameLine(0.0f, 100.0f);
           ImGui::Checkbox ("Add Countdown", &this->strct_setup_layer.bAddCountdown);
@@ -5262,7 +5273,7 @@ Filter options:
           missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_USE_OSM_CHECKBOX (), strct_user_create_layer.flag_use_osm);
           missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_USE_WEB_OSM_CHECKBOX (), strct_user_create_layer.flag_use_web_osm);
 
-          if (this->strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types::plane_type_helos) // v3.0.253.9.1 Add specific Helos properties based on user definitions and restrictions // v3.0.253.7 narrow helos ramp filtering,
+          if (this->strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos) // v3.0.253.9.1 Add specific Helos properties based on user definitions and restrictions // v3.0.253.7 narrow helos ramp filtering,
                                                                                                            // means to store mainly rw code 101 and airports that have [H] in them ignore ramp code 1300 that are for "helos"
           {
             missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_NARROW_HELOS_RAMP_SEARCH (), strct_user_create_layer.flag_narrow_helos_filtering); //, node_ptr, node_ptr.getName());
@@ -5284,7 +5295,7 @@ Filter options:
             int         counter{ 0 };
             std::string query;
             query.clear ();
-            if (this->strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types::plane_type_helos || this->strct_user_create_layer.flag_pick_any_rw)
+            if (this->strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos || this->strct_user_create_layer.flag_pick_any_rw)
               return query; // empty string no filter
 
             for (auto &[rw_type, b_picked] : this->strct_user_create_layer.map_filter_runways)
@@ -5327,7 +5338,7 @@ Filter options:
 
         ImGui::PopStyleColor (3);
       }
-      else if (missionx::RandomEngine::threadState.flagIsActive)
+      else if (missionx::RandomEngine::random_thread_state.flagIsActive)
       {
 
         missionx::WinImguiBriefer::HelpMarker ("Abort the background process.");
@@ -5770,7 +5781,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
         ImGui::PopStyleColor (); // black
         //////////////////////////////
       }
-      else if (missionx::RandomEngine::threadState.flagIsActive)
+      else if (missionx::RandomEngine::random_thread_state.flagIsActive)
       {
         ImGui::SameLine (region_width_arr[0] + 10.0f);
         this->add_ui_abort_mission_creation_button (); // Add Abort Random Engine
@@ -7760,7 +7771,7 @@ WinImguiBriefer::draw_child_ext_fpln_home_screen ()
       {
         if (this->strct_ext_layer.from_icao.empty ())
         {
-          NavAidInfo nNavAid = data_manager::getPlaneAirportOrNearestICAO ();
+          NavAidInfo nNavAid = data_manager::get_plane_airport_or_nearest_icao ();
           if (!nNavAid.getID ().empty ())
             std::memcpy (this->strct_ext_layer.buf_from_icao, nNavAid.ID, 10);
           // Change layer
@@ -7863,7 +7874,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
       ImGui::SameLine ();
       if (ImGui::Button ("From ICAO")) // first time initialization or manual ICAO fetch
       {
-        NavAidInfo nNavAid = data_manager::getPlaneAirportOrNearestICAO ();
+        NavAidInfo nNavAid = data_manager::get_plane_airport_or_nearest_icao ();
         if (!nNavAid.getID ().empty ())
           std::memcpy (this->strct_ext_layer.buf_from_icao, nNavAid.ID, 10);
 
@@ -7974,7 +7985,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
       // call fetch information data Try to use mutex and std::async
       IXMLNode node_ptr = missionx::data_manager::prop_userDefinedMission_ui.node;
       missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_MED_CARGO_OR_OILRIG (), static_cast<int> (mx_ui_mission_type::cargo));
-      missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_PLANE_TYPE_I (), static_cast<int> (missionx::mx_plane_types::plane_type_ga_floats));
+      missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_PLANE_TYPE_I (), static_cast<int> (missionx::mx_plane_types_enum::plane_type_ga_floats));
       missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_NO_OF_LEGS (), 0); // Ignore, set by the external site
       missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MIN_DISTANCE_SLIDER (), 0.0);
       missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MAX_DISTANCE_SLIDER (), this->strct_ext_layer.ga_range_max_slider_f);
@@ -8108,7 +8119,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
               // Generate mission from this after showing "are you sure" modal window
               IXMLNode node_ptr = missionx::data_manager::prop_userDefinedMission_ui.node;
               missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_MED_CARGO_OR_OILRIG (), static_cast<int> (missionx::mx_ui_mission_type::cargo)); //, node_ptr, node_ptr.getName());
-              missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_PLANE_TYPE_I (), static_cast<int> (missionx::mx_plane_types::plane_type_ga)); //, node_ptr, node_ptr.getName());
+              missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_PLANE_TYPE_I (), static_cast<int> (missionx::mx_plane_types_enum::plane_type_ga)); //, node_ptr, node_ptr.getName());
               missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_NO_OF_LEGS (), rowData.waypoints_i); //, node_ptr, node_ptr.getName());
               missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MIN_DISTANCE_SLIDER (), 0.0); //, node_ptr, node_ptr.getName());
               missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MAX_DISTANCE_SLIDER (), rowData.distnace_d); //, node_ptr, node_ptr.getName());
@@ -8346,9 +8357,9 @@ WinImguiBriefer::child_draw_ils_search2 ()
         if (ImGui::Button ("From ICAO") || this->strct_ils_layer.bFirstTime) // first time initialization or manual ICAO fetch
         {
           #ifdef IBM
-          this->strct_ils_layer.navaid = data_manager::getPlaneAirportOrNearestICAO ();
+          this->strct_ils_layer.navaid = data_manager::get_plane_airport_or_nearest_icao ();
           #else
-          auto tempNav                 = data_manager::getPlaneAirportOrNearestICAO ();
+          auto tempNav                 = data_manager::get_plane_airport_or_nearest_icao ();
           this->strct_ils_layer.navaid = tempNav;
           #endif
           if (!this->strct_ils_layer.navaid.getID ().empty ())
@@ -8750,7 +8761,7 @@ WinImguiBriefer::child_draw_ils_search2 ()
 
                 for (const auto &planeTypeLabel : this->mapListPlaneRadioLabel | std::views::values) // v24.12.1
                 {
-                  if (planeTypeLabel.type == mx_plane_types::plane_type_helos || planeTypeLabel.type == mx_plane_types::plane_type_ga_floats)
+                  if (planeTypeLabel.type == mx_plane_types_enum::plane_type_helos || planeTypeLabel.type == mx_plane_types_enum::plane_type_ga_floats)
                     continue;
 
                   ImGui::SameLine ();
@@ -12875,7 +12886,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
     break;
     case missionx::mx_window_actions::ACTION_ABORT_RANDOM_ENGINE_RUN:
     {
-      if (missionx::RandomEngine::threadState.flagIsActive)
+      if (missionx::RandomEngine::random_thread_state.flagIsActive)
       {
         // Call savepoint action
         this->setMessage ("Aborting, Please wait...", 5); // v3.0.160

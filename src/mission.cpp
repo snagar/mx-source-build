@@ -1802,17 +1802,17 @@ missionx::Mission::flc_threads()
 
   ///////////////////////////////
   //  Random Engine Thread
-  if (missionx::RandomEngine::threadState.flagAbortThread)
+  if (missionx::RandomEngine::random_thread_state.flagAbortThread)
   {
     if (RandomEngine::thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
       RandomEngine::thread_ref.join();
 
     missionx::data_manager::overpass_fetch_err.clear(); // v3.0.255.4 clear the cURL error
-    if (!this->engine.getErrorMsg().empty())
+    if (!missionx::RandomEngine::getErrorMsg().empty())
     {
-      Mission::uiImGuiBriefer->setMessage(this->engine.getErrorMsg(), 60);
+      Mission::uiImGuiBriefer->setMessage(missionx::RandomEngine::getErrorMsg(), 60);
     }
-    RandomEngine::threadState.init(); // init again to reset
+    RandomEngine::random_thread_state.init(); // init again to reset
 
     missionx::data_manager::flag_generate_engine_is_running = false;
 
@@ -1826,7 +1826,7 @@ missionx::Mission::flc_threads()
   }
   else
   {
-    if (RandomEngine::threadState.flagIsActive && !RandomEngine::threadState.flagThreadDoneWork)
+    if (RandomEngine::random_thread_state.flagIsActive && !RandomEngine::random_thread_state.flagThreadDoneWork)
     {
       missionx::data_manager::flag_generate_engine_is_running   = true;
       Mission::uiImGuiBriefer->flag_generatedRandomFile_success = false; // we should remove this flag, and only use "missionx::data_manager::flag_generate_engine_is_running"
@@ -1837,7 +1837,7 @@ missionx::Mission::flc_threads()
     {
 
       // reset thread
-      if (RandomEngine::threadState.flagThreadDoneWork)
+      if (RandomEngine::random_thread_state.flagThreadDoneWork)
       {
 
         missionx::data_manager::overpass_fetch_err.clear();   // v3.0.255.4 clear the cURL error
@@ -1846,7 +1846,7 @@ missionx::Mission::flc_threads()
         if (RandomEngine::thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
           RandomEngine::thread_ref.join();
 
-        RandomEngine::threadState.init();
+        RandomEngine::random_thread_state.init();
         missionx::data_manager::flag_generate_engine_is_running = false;
 
         Mission::uiImGuiBriefer->setMessage(fmt::format("Finished Generating mission file. [Destinations: {}] Based on \"{}\"", this->engine.get_num_of_flight_legs(), Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey ),  8);
@@ -3495,11 +3495,11 @@ missionx::Mission::flc_3d_objects(mxProperties& inSmPropSeedValues)
       linkedTaskIsActive = true; // dummy since there is no dependency on task state
 
 
-    ////////////////////////////////////////////////////////////////////////////
-    // If 3D Object exists and plane is in range and script conditions are true
+    //////////////////////////////////////////////////////////////////////////////////
+    // If 3D Object exists, and the plane is in range, and script conditions are true
     if (planeInDistance && instObj.isScriptCondMet && !reachedFlightLegToHide && linkedTaskIsActive && !hideInstance)
     {
-      // is instance in display set ?
+      // is an instance in a display set?
       if (instObj.isInDisplayList) // v3.0.207.1
       {
         instObj.mvStat.flag_wait_for_next_flc = false; // reset state
@@ -3509,10 +3509,10 @@ missionx::Mission::flc_3d_objects(mxProperties& inSmPropSeedValues)
           instObj.displayCoordinate, instObj.mvStat.probeResult); // v3.0.253.6 moved to flc_3d_object // v3.0.207.3
         continue;
       }
-      else // first time instance is added it will start in this part of the code to intialize the 3D Object
+      else // first time instance is added it will start in this part of the code to initialize the 3D Object
       {
         // Create an instance reference
-        instObj.create_instance();  // create instance from object reference
+        instObj.create_instance();  // create an instance from object reference
         if (instObj.g_instance_ref) // if instance was created then
         {
 
@@ -3521,7 +3521,7 @@ missionx::Mission::flc_3d_objects(mxProperties& inSmPropSeedValues)
             instObj.initPathCycle_new();
 
           // check if we need to probe terrain
-          if (instObj.displayCoordinate.getElevationInFeet() == 0.0) // do we need Terrain Probing ?
+          if (instObj.displayCoordinate.getElevationInFeet() == 0.0) // do we need Terrain Probing?
             instObj.calculate_real_elevation_to_DisplayCoordination();
           instObj.displayCoordinate.calcSimLocalData(); // calculate local coordination just in case
 
@@ -3552,54 +3552,50 @@ missionx::Mission::flc_3d_objects(mxProperties& inSmPropSeedValues)
   {
     data_manager::map3dInstances.erase(itName);
 
-#ifndef RELEASE
-    // v3.0.303.6 erase 3D instance cue from listCueInfoToDisplayInFlightLeg
-    missionx::data_manager::deleteCueFromListCueInfoToDisplayInFlightLeg(itName);
-#endif
+    // v25.10.1 // v3.0.303.6 erase 3D instance cue from listCueInfoToDisplayInFlightLeg
+    if (missionx::data_manager::flag_setupUseDraw2DMapInReleaseMode)
+      missionx::data_manager::deleteCueFromListCueInfoToDisplayInFlightLeg (itName);
   }
   eraseInstanceList.clear();
 
-  ///////////////////////////////////////////////////
-  // v3.0.303.6 Calculate cue for 3D Object instances
-
-#ifndef RELEASE
-  for (auto& [instName, obj] : data_manager::map3dInstances)
-  {
-    obj.prepareCueMetaData();
-    CueInfo cue = obj.getCopyOfCueInfo();
-    
-    if (cue.cueSeq <= 0)
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  // v3.0.303.6 Calculate cue for 3D Object instances. v25.10.1 added visibility in "release"
+  if (missionx::data_manager::flag_setupUseDraw2DMapInReleaseMode)
+    for (auto &[instance_name, obj] : data_manager::map3dInstances)
     {
-      ++missionx::data_manager::seqCueInfo;
-      cue.cueSeq = missionx::data_manager::seqCueInfo;
-      obj.getCueInfo_ptr().cueSeq = cue.cueSeq;
-    }
+      obj.prepareCueMetaData ();
+      CueInfo cue = obj.getCopyOfCueInfo ();
 
-    switch (obj.obj3dType)
-    {
-      case missionx::obj3d::obj3d_type::static_obj:
+      if (cue.cueSeq <= 0)
       {
-        if (!cue.wasCalculated) // static + moving
+        ++missionx::data_manager::seqCueInfo;
+        cue.cueSeq                   = missionx::data_manager::seqCueInfo;
+        obj.getCueInfo_ptr ().cueSeq = cue.cueSeq;
+      }
+
+      switch (obj.obj3dType)
+      {
+        case missionx::obj3d::obj3d_type::static_obj:
         {
-          missionx::Point pCenter = obj.getCurrentCoordination();
-          cue.calculateCircleFromPoint(pCenter, true, true, missionx::NUM_CIRCLE_POINTS_3D_OBJ);
-          obj.getCueInfo_ptr().wasCalculated = true;
-          data_manager::mapFlightLegs[data_manager::currentLegName].listCueInfoToDisplayInFlightLeg.push_back(cue);
+          if (!cue.wasCalculated) // static + moving
+          {
+            missionx::Point pCenter = obj.getCurrentCoordination ();
+            cue.calculateCircleFromPoint (pCenter, true, true, missionx::NUM_CIRCLE_POINTS_3D_OBJ);
+            obj.getCueInfo_ptr ().wasCalculated = true;
+            data_manager::mapFlightLegs[data_manager::currentLegName].listCueInfoToDisplayInFlightLeg.push_back (cue);
+          }
         }
-      }
-      break;      
-      case missionx::obj3d::obj3d_type::moving_obj:
-      {
-        missionx::data_manager::deleteCueFromListCueInfoToDisplayInFlightLeg(instName);
-        missionx::Point pCenter = obj.getCurrentCoordination();
-        cue.calculateCircleFromPoint(pCenter, true, true, missionx::NUM_CIRCLE_POINTS_3D_OBJ);
-        data_manager::mapFlightLegs[data_manager::currentLegName].listCueInfoToDisplayInFlightLeg.push_back(cue);
-      }
-      break;
-    } // end switch
-  } // end loop over all map3dInstances
-
-#endif // !RELEASE
+        break;
+        case missionx::obj3d::obj3d_type::moving_obj:
+        {
+          missionx::data_manager::deleteCueFromListCueInfoToDisplayInFlightLeg (instance_name);
+          missionx::Point pCenter = obj.getCurrentCoordination ();
+          cue.calculateCircleFromPoint (pCenter, true, true, missionx::NUM_CIRCLE_POINTS_3D_OBJ);
+          data_manager::mapFlightLegs[data_manager::currentLegName].listCueInfoToDisplayInFlightLeg.push_back (cue);
+        }
+        break;
+      } // end switch
+    } // end loop over all map3dInstances
 
 }
 
@@ -3779,6 +3775,8 @@ missionx::Mission::drawMarkings(XPLMMapLayerID layer, const float* inMapBoundsLe
 	  );
 
     data_manager::drawCueInfoOn2DMap(inMapBoundsLeftTopRightBottom, &projection);
+
+    XPLMSetGraphicsState (0, 0, 0, 0, 0, 0, 0);
   }
 }
 
@@ -4396,7 +4394,7 @@ missionx::Mission::flcPRE()
           else
           {
             Mission::uiImGuiBriefer->flag_generatedRandomFile_success = false; // it might be still running
-            Mission::uiImGuiBriefer->setMessage(engine.getErrorMsg(), 6);
+            Mission::uiImGuiBriefer->setMessage(missionx::RandomEngine::getErrorMsg(), 6);
           }
         }
       }
@@ -4892,7 +4890,7 @@ missionx::Mission::flcPRE()
 
         nChilds = RandomEngine::shared_navaid_info.parentNode_ptr.nChildNode(mxconst::get_ELEMENT_ICAO().c_str());
 
-        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
       case missionx::mx_flc_pre_command::guess_waypoints_from_external_fpln_site:
@@ -4922,7 +4920,7 @@ missionx::Mission::flcPRE()
         missionx::RandomEngine::shared_navaid_info.isWet = false;
         missionx::RandomEngine::shared_navaid_info.p.setElevationMt ( missionx::RandomEngine::shared_navaid_info.p.get_terrain_elev_mt_from_probe ());
 
-        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
       case missionx::mx_flc_pre_command::get_is_point_wet:
@@ -4930,22 +4928,22 @@ missionx::Mission::flcPRE()
         missionx::RandomEngine::shared_navaid_info.isWet = false;
         missionx::RandomEngine::shared_navaid_info.isWet = missionx::Point::probeIsWet(missionx::RandomEngine::shared_navaid_info.p, missionx::RandomEngine::shared_navaid_info.p.probe_result);
 
-        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
       case missionx::mx_flc_pre_command::calculate_slope_for_build_flight_leg_thread:
       {
         std::string err;
         NavAidInfo  navAidToCalcSlope;
-        navAidToCalcSlope.lat = missionx::RandomEngine::threadState.pipeProperties.getAttribNumericValue<float>(mxconst::get_ATTRIB_LAT(), 0.0f);
-        navAidToCalcSlope.lon = missionx::RandomEngine::threadState.pipeProperties.getAttribNumericValue<float>(mxconst::get_ATTRIB_LONG(), 0.0f);
+        navAidToCalcSlope.lat = missionx::RandomEngine::random_thread_state.pipeProperties.getAttribNumericValue<float>(mxconst::get_ATTRIB_LAT(), 0.0f);
+        navAidToCalcSlope.lon = missionx::RandomEngine::random_thread_state.pipeProperties.getAttribNumericValue<float>(mxconst::get_ATTRIB_LONG(), 0.0f);
         navAidToCalcSlope.p   = missionx::RandomEngine::shared_navaid_info.p; // v3.0.241.10 b3 replaced pipeProperties with Point p
         navAidToCalcSlope.syncPointToNav();
 
-        const auto slope = static_cast<double> (this->engine.calc_slope_at_point_mainThread (navAidToCalcSlope));
+        const auto slope = static_cast<double> (missionx::RandomEngine::calc_slope_at_point_mainThread (navAidToCalcSlope));
 
-        missionx::RandomEngine::threadState.pipeProperties.setNumberProperty(mxconst::get_ATTRIB_TERRAIN_SLOPE(), slope);
-        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::RandomEngine::random_thread_state.pipeProperties.setNumberProperty(mxconst::get_ATTRIB_TERRAIN_SLOPE(), slope);
+        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
       case missionx::mx_flc_pre_command::gather_random_airport_mainThread:
@@ -4956,41 +4954,41 @@ missionx::Mission::flcPRE()
 
       }
       break;
-      case missionx::mx_flc_pre_command::get_nearest_nav_aid_to_randomLastFlightLeg_mainThread:
-      {
-        #ifndef RELEASE
-        auto startClock = std::chrono::steady_clock::now();
-        #endif
-
-        // v25.05.1 use of shared_navaid_info.navAid.navRef instead of local variable
-        RandomEngine::shared_navaid_info.navAid.navRef = XPLMFindNavAid (nullptr, nullptr, &missionx::RandomEngine::lastFlightLegNavInfo.lat, &missionx::RandomEngine::lastFlightLegNavInfo.lon, nullptr, xplm_Nav_Airport);
-        if (RandomEngine::shared_navaid_info.navAid.navRef != XPLM_NAV_NOT_FOUND)
-        {
-          XPLMGetNavAidInfo(RandomEngine::shared_navaid_info.navAid.navRef,
-                            &RandomEngine::shared_navaid_info.navAid.navType,
-                            &RandomEngine::shared_navaid_info.navAid.lat,
-                            &RandomEngine::shared_navaid_info.navAid.lon,
-                            &RandomEngine::shared_navaid_info.navAid.height_mt,
-                            &RandomEngine::shared_navaid_info.navAid.freq,
-                            &RandomEngine::shared_navaid_info.navAid.heading,
-                            RandomEngine::shared_navaid_info.navAid.ID,
-                            RandomEngine::shared_navaid_info.navAid.name,
-                            nullptr);
-                            // &RandomEngine::shared_navaid_info.navAid.inRegion);
-        }
-
-        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
-
-
-        #ifndef RELEASE
-        const auto   endThreadClock = std::chrono::steady_clock::now();
-        const auto   diff           = endThreadClock - startClock;
-        const double duration       = std::chrono::duration<double, std::milli>(diff).count();
-
-        Log::logMsg("*** Finished get_nearest_nav_aid_to_coordinate_mainThread. Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec)  ****");
-        #endif
-      }
-      break;
+      // case missionx::mx_flc_pre_command::get_nearest_nav_aid_to_randomLastFlightLeg_mainThread:
+      // {
+      //   #ifndef RELEASE
+      //   auto startClock = std::chrono::steady_clock::now();
+      //   #endif
+      //
+      //   // v25.05.1 use of shared_navaid_info.navAid.navRef instead of local variable
+      //   RandomEngine::shared_navaid_info.navAid.navRef = XPLMFindNavAid (nullptr, nullptr, &missionx::RandomEngine::lastFlightLegNavInfo.lat, &missionx::RandomEngine::lastFlightLegNavInfo.lon, nullptr, xplm_Nav_Airport);
+      //   if (RandomEngine::shared_navaid_info.navAid.navRef != XPLM_NAV_NOT_FOUND)
+      //   {
+      //     XPLMGetNavAidInfo(RandomEngine::shared_navaid_info.navAid.navRef,
+      //                       &RandomEngine::shared_navaid_info.navAid.navType,
+      //                       &RandomEngine::shared_navaid_info.navAid.lat,
+      //                       &RandomEngine::shared_navaid_info.navAid.lon,
+      //                       &RandomEngine::shared_navaid_info.navAid.height_mt,
+      //                       &RandomEngine::shared_navaid_info.navAid.freq,
+      //                       &RandomEngine::shared_navaid_info.navAid.heading,
+      //                       RandomEngine::shared_navaid_info.navAid.ID,
+      //                       RandomEngine::shared_navaid_info.navAid.name,
+      //                       nullptr);
+      //                       // &RandomEngine::shared_navaid_info.navAid.inRegion);
+      //   }
+      //
+      //   missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+      //
+      //
+      //   #ifndef RELEASE
+      //   const auto   endThreadClock = std::chrono::steady_clock::now();
+      //   const auto   diff           = endThreadClock - startClock;
+      //   const double duration       = std::chrono::duration<double, std::milli>(diff).count();
+      //
+      //   Log::logMsg("*** Finished get_nearest_nav_aid_to_coordinate_mainThread. Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec)  ****");
+      //   #endif
+      // }
+      // break;
       case missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_lat_lon_mainThread: // v3.0.241.10 b2 use this option to see if for example: osm location is correct, especially for helipads
       {
         #ifndef RELEASE
@@ -5014,7 +5012,7 @@ missionx::Mission::flcPRE()
                             // &RandomEngine::shared_navaid_info.navAid.inRegion);
         }
 
-        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
 
 
         #ifndef RELEASE
@@ -5029,9 +5027,9 @@ missionx::Mission::flcPRE()
       case missionx::mx_flc_pre_command::get_icao_plane_is_in_its_boundaries_based_on_custom_lat_lon: // v25.09.2
       {
         // use of shared_navaid_info.navAid to search if a plane is in an airport boundary.
-        missionx::RandomEngine::shared_navaid_info.navAid = data_manager::getPlaneAirportOrNearestICAO(true, RandomEngine::shared_navaid_info.navAid.lat, RandomEngine::shared_navaid_info.navAid.lon, false);
+        missionx::RandomEngine::shared_navaid_info.navAid = data_manager::get_plane_airport_or_nearest_icao(true, RandomEngine::shared_navaid_info.navAid.lat, RandomEngine::shared_navaid_info.navAid.lon, false);
 
-        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
       case missionx::mx_flc_pre_command::get_nav_aid_info_mainThread: // v3.0.241.10 b2 use this option to see if for example: osm location is correct, especially for helipads
@@ -5042,7 +5040,7 @@ missionx::Mission::flcPRE()
 
         RandomEngine::shared_navaid_info.navAid = data_manager::getICAO_info(RandomEngine::shared_navaid_info.navAid.getID());
 
-        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
 
 
         #ifndef RELEASE
@@ -5062,7 +5060,7 @@ missionx::Mission::flcPRE()
         #endif
 
         RandomEngine::shared_navaid_info.navAid = data_manager::get_and_guess_nav_info (RandomEngine::shared_navaid_info.navAid.getID (), RandomEngine::shared_navaid_info.navAid.p);
-        missionx::RandomEngine::threadState.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
 
         #ifndef RELEASE
         const auto   endThreadClock = std::chrono::steady_clock::now();
@@ -5588,7 +5586,7 @@ missionx::Mission::flcPRE()
       case missionx::mx_flc_pre_command::get_current_weather_state_and_store_in_RandomEngine:
       {
         missionx::RandomEngine::current_weather_datarefs_s = missionx::data_manager::get_weather_state();
-        missionx::RandomEngine::threadState.thread_wait_state         = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::RandomEngine::random_thread_state.thread_wait_state         = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
       case missionx::mx_flc_pre_command::sound_abort_all_channels:
@@ -6325,7 +6323,7 @@ missionx::Mission::parseAndModifyChildPoints(const IXMLNode& inParent, int inLev
     na.lon = static_cast<float> (lon_d);
     na.synchToPoint();
 
-    const float slope_f = this->engine.calc_slope_at_point_mainThread(na);
+    const float slope_f = missionx::RandomEngine::calc_slope_at_point_mainThread(na);
     const bool  isWet   = missionx::Point::probeIsWet(na.p, na.p.probe_result);
 
     if (slope_f > missionx::data_manager::Max_Slope_To_Land_On || isWet)

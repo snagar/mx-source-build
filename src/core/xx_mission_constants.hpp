@@ -35,8 +35,8 @@ constexpr static const int MX_FEATURES_VERSION = 20250501; //20241212; //2023091
 #define SPECIAL_BUILD ""
 
 inline constexpr static auto PLUGIN_VER_MAJOR                  = "25"; // year
-inline constexpr static auto PLUGIN_VER_MINOR                  = "09"; // month
-inline constexpr static auto PLUGIN_VER_SUB                    = "2-beta-"; // sub-version
+inline constexpr static auto PLUGIN_VER_MINOR                  = "10"; // month
+inline constexpr static auto PLUGIN_VER_SUB                    = "1-beta-"; // sub-version
 inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 
@@ -840,7 +840,7 @@ public:
 };
 
 
-typedef enum class _mx_plane_type
+typedef enum class def_mx_plane_type_enum
   : uint8_t
 {
   plane_type_any = 0,
@@ -853,7 +853,7 @@ typedef enum class _mx_plane_type
   plane_type_jets,
   plane_type_heavy,
   plane_type_fighter
-} mx_plane_types;
+} mx_plane_types_enum;
 
 
 // v3.0.241.10 sqlite data types

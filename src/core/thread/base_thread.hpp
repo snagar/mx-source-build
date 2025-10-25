@@ -72,9 +72,9 @@ public:
       return duration_s;
     }
 
-  } thread_state;
+  } strct_thread_state;
 
-  std::thread thread_ref; // will hold pointer to the current running thread
+  std::thread thread_ref; // will hold a pointer to the current running thread
 };
 
 }

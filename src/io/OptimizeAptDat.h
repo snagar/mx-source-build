@@ -39,19 +39,19 @@ public:
 
   ///// APT DAT Thread /////
   static std::thread  thread_ref;
-  static thread_state aptState;
+  static strct_thread_state aptState;
   // members
   void exec_optimize_aptdat_thread();
-  bool read_and_parse_all_apt_dat_files(thread_state* inThreadState);
-  bool       parse_aptdat(thread_state* inThreadState, std::string& relative_apt_dat_path, const std::string scenery_pack_name, bool inReadCachedFile = false, const bool is_custom = false);
+  bool read_and_parse_all_apt_dat_files(strct_thread_state* inThreadState);
+  bool       parse_aptdat(strct_thread_state* inThreadState, std::string& relative_apt_dat_path, const std::string scenery_pack_name, bool inReadCachedFile = false, const bool is_custom = false);
 
 
   // sqlite members
   // void upload_data_to_sqlite(thread_state *inThreadState); // v3.0.255.3 Deprecated. Moved to parse_airport_to_sqlite
   // void prepare_working_sqlite_db(thread_state* inThreadState);
-  void        prepare_sqlite_db_tables(thread_state* inThreadState, missionx::dbase* inDB_ptr);
+  void        prepare_sqlite_db_tables(strct_thread_state* inThreadState, missionx::dbase* inDB_ptr);
   static void sqlite_post_tables_copy(missionx::dbase* inDB_ptr);
-  void        parse_airport_to_sqlite(thread_state* inThreadState, const std::string& airportCode, const missionx::mx_aptdat_cached_info& info, missionx::dbase& db, const std::string& scenery_pack_name); // v3.0.255.3
+  void        parse_airport_to_sqlite(strct_thread_state* inThreadState, const std::string& airportCode, const missionx::mx_aptdat_cached_info& info, missionx::dbase& db, const std::string& scenery_pack_name); // v3.0.255.3
 
   void stop_plugin();
   //// End Thread AptData ////////
@@ -60,7 +60,7 @@ public:
 private:
   int               icao_id_counter{ 0 };
   const std::string pathTemp = "d:/temp/inmemory.sqlite.db";
-  void upload_navdata_to_inMemory_db(thread_state* inThreadState, missionx::dbase& db);
+  void upload_navdata_to_inMemory_db(strct_thread_state* inThreadState, missionx::dbase& db);
 
   // Each row represent a fields names and their type.
   std::map<int, std::list<missionx::db_field>> table_col_name_type_mapping = {

@@ -103,7 +103,7 @@ public:
   dbase();
   virtual ~dbase();
 
-  thread_state xxthread_state;
+  strct_thread_state xxthread_state;
 
   std::string last_err{ "" };
 

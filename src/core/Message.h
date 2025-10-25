@@ -176,15 +176,20 @@ public:
     this->trackName    = inMsg.trackName;
     this->errMsg       = inMsg.errMsg;
 
-#ifdef APL
 
     this->mapChannels.clear();
     for (auto c : inMsg.mapChannels)
-      Utils::addElementToMap(this->mapChannels, c.first, c.second);
+        Utils::addElementToMap(this->mapChannels, c.first, c.second);
 
-#else
-    this->mapChannels = inMsg.mapChannels;
-#endif
+// #ifdef APL
+//
+//     this->mapChannels.clear();
+//     for (auto c : inMsg.mapChannels)
+//       Utils::addElementToMap(this->mapChannels, c.first, c.second);
+//
+// #else
+//     this->mapChannels = inMsg.mapChannels;
+// #endif
     //this->is_pad = inMsg.is_pad; // v3.0.110 fix bug when copying messages type pad
 
     storeCoreAttribAsProperties();

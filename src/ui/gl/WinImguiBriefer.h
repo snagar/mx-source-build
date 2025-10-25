@@ -210,7 +210,7 @@ public:
 
     int            iRadioMissionTypePicked{ static_cast<int> (missionx::mx_ui_mission_type::medevac) }; // which type of template user picked ?
     int            iMissionSubCategoryPicked{ -1 }; // v3.303.14 // v25.06.1 init -1 which is not valid
-    mx_plane_types iRadioPlaneType{ missionx::mx_plane_types::plane_type_helos };
+    mx_plane_types_enum iRadioPlaneType{ missionx::mx_plane_types_enum::plane_type_helos };
     bool           flag_narrow_helos_filtering{ false };
 
 
@@ -323,7 +323,7 @@ public:
     missionx::NavAidInfo navaid;
 
     int            iRadioTemplate_Med_or_Cargo{ 1 }; // template type should only be cargo
-    mx_plane_types iRadioPlaneType{ missionx::mx_plane_types::plane_type_props };
+    mx_plane_types_enum iRadioPlaneType{ missionx::mx_plane_types_enum::plane_type_props };
     // sliders
     float       ils_sliderVal1  = (float)mxconst::SLIDER_SHORTEST_MIN_ILS_SEARCH_RADIUS; // min distance
     float       ils_sliderVal2  = (float)mxconst::SLIDER_SHORTEST_MAX_ILS_SEARCH_RADIUS; // lowest ILS search radius. 250nm in v3.0.253.6
@@ -935,7 +935,7 @@ public:
 
     std::string asyncFetchMsg_s; // will get info from the async process
 
-    missionx::base_thread::thread_state threadState;
+    missionx::base_thread::strct_thread_state threadState;
   } mx_external_routes_layer;
   mx_external_routes_layer strct_ext_layer;
 
@@ -1015,7 +1015,7 @@ private:
 
   typedef struct _radio_plane_type
   {
-    missionx::mx_plane_types type;
+    missionx::mx_plane_types_enum type;
     std::string              label;
 
     float from_slider_min{ (float)mxconst::SLIDER_MIN_RND_DIST };
@@ -1025,7 +1025,7 @@ private:
 
     _radio_plane_type () {}
 
-    _radio_plane_type (missionx::mx_plane_types inType, std::string inLabel, float in_lower_slider_min, float in_upper_slider_min, float inMultiplyLowerMin = 1.2f, float inMultiplyUpperMin = 1.2f)
+    _radio_plane_type (missionx::mx_plane_types_enum inType, std::string inLabel, float in_lower_slider_min, float in_upper_slider_min, float inMultiplyLowerMin = 1.2f, float inMultiplyUpperMin = 1.2f)
     {
       type            = inType;
       label           = inLabel;
@@ -1038,9 +1038,9 @@ private:
   } radio_plane_type;
 
 
-  std::map<missionx::mx_plane_types, radio_plane_type> mapListPlaneRadioLabel = { { mx_plane_types::plane_type_helos, radio_plane_type (mx_plane_types::plane_type_helos, "Helos", (float)mxconst::SLIDER_MIN_RND_DIST, (float)((int)(mxconst::SLIDER_MAX_RND_DIST * 0.2)), 2.4f, 2.0f) }, { mx_plane_types::plane_type_props, radio_plane_type (mx_plane_types::plane_type_props, "GA (props)", (float)mxconst::SLIDER_MIN_RND_DIST, (float)(mxconst::SLIDER_MAX_RND_DIST), 10.5f, 4.0f) }, { mx_plane_types::plane_type_ga_floats, radio_plane_type (mx_plane_types::plane_type_ga_floats, "Floats", (float)mxconst::SLIDER_MIN_RND_DIST, (float)(mxconst::SLIDER_MAX_RND_DIST), 10.5f, 4.0f) }, { mx_plane_types::plane_type_turboprops, radio_plane_type (mx_plane_types::plane_type_turboprops, "Turbo Props", 15.0f, (float)((int)(mxconst::SLIDER_MAX_RND_DIST * 4.0)), 4.0f, 5.0f) }, { mx_plane_types::plane_type_jets, radio_plane_type (mx_plane_types::plane_type_jets, "Jets", 80.0f, (float)((int)(mxconst::SLIDER_MAX_RND_DIST * 4.0)), 40.0f, 40.0f) }, { mx_plane_types::plane_type_heavy, radio_plane_type (mx_plane_types::plane_type_heavy, "Heavies", 120.0f, (float)((int)(mxconst::SLIDER_MAX_RND_DIST * 10.0)), 40.0f, 30.0f) } };
+  std::map<missionx::mx_plane_types_enum, radio_plane_type> mapListPlaneRadioLabel = { { mx_plane_types_enum::plane_type_helos, radio_plane_type (mx_plane_types_enum::plane_type_helos, "Helos", (float)mxconst::SLIDER_MIN_RND_DIST, (float)((int)(mxconst::SLIDER_MAX_RND_DIST * 0.2)), 2.4f, 2.0f) }, { mx_plane_types_enum::plane_type_props, radio_plane_type (mx_plane_types_enum::plane_type_props, "GA (props)", (float)mxconst::SLIDER_MIN_RND_DIST, (float)(mxconst::SLIDER_MAX_RND_DIST), 10.5f, 4.0f) }, { mx_plane_types_enum::plane_type_ga_floats, radio_plane_type (mx_plane_types_enum::plane_type_ga_floats, "Floats", (float)mxconst::SLIDER_MIN_RND_DIST, (float)(mxconst::SLIDER_MAX_RND_DIST), 10.5f, 4.0f) }, { mx_plane_types_enum::plane_type_turboprops, radio_plane_type (mx_plane_types_enum::plane_type_turboprops, "Turbo Props", 15.0f, (float)((int)(mxconst::SLIDER_MAX_RND_DIST * 4.0)), 4.0f, 5.0f) }, { mx_plane_types_enum::plane_type_jets, radio_plane_type (mx_plane_types_enum::plane_type_jets, "Jets", 80.0f, (float)((int)(mxconst::SLIDER_MAX_RND_DIST * 4.0)), 40.0f, 40.0f) }, { mx_plane_types_enum::plane_type_heavy, radio_plane_type (mx_plane_types_enum::plane_type_heavy, "Heavies", 120.0f, (float)((int)(mxconst::SLIDER_MAX_RND_DIST * 10.0)), 40.0f, 30.0f) } };
 
-  void validate_sliders_values (missionx::mx_plane_types inPlaneType);
+  void validate_sliders_values (missionx::mx_plane_types_enum inPlaneType);
 
 
   ////// v3.303.10 random calendar
@@ -1368,7 +1368,7 @@ private:
   // bool                               flag_foundOilRigInArea{ false };
   // bool                               getOilRigInArea();
 
-  void refresh_slider_data_based_on_plane_type (missionx::mx_plane_types inPlaneType); // split the code so it will be simpler to call it from different logic locations.
+  void refresh_slider_data_based_on_plane_type (missionx::mx_plane_types_enum inPlaneType); // split the code so it will be simpler to call it from different logic locations.
 
   // v3.305.3
   void        print_tasks_ui_debug_info (missionx::Objective &inObj); // v3.305.2

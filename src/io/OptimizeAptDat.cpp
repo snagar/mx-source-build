@@ -29,7 +29,7 @@ namespace fs = std::filesystem;
 namespace missionx
 {
 
-base_thread::thread_state OptimizeAptDat::aptState;
+base_thread::strct_thread_state OptimizeAptDat::aptState;
 std::thread               OptimizeAptDat::thread_ref;
 
 missionx::dbase* OptimizeAptDat::db_airports_xp_ptr;
@@ -104,7 +104,7 @@ missionx::OptimizeAptDat::exec_optimize_aptdat_thread()
 // ---------------------------------------------------------
 
 bool
-missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(thread_state* inThreadState)
+missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(strct_thread_state* inThreadState)
 {
   ///////////////////////////////////////////////
   // REMEMBER that every new table needs respective copy command from memory db to the file db. Found at the end of "read_and_parse_all_apt_files() function.
@@ -458,7 +458,7 @@ where  xp_ap_metadata.icao not in (select t1.icao
 
 
 bool
-missionx::OptimizeAptDat::parse_aptdat(thread_state* inThreadState, std::string& relative_apt_dat_path, const std::string scenery_pack_name, bool inReadCachedFile, const bool is_custom)
+missionx::OptimizeAptDat::parse_aptdat(strct_thread_state* inThreadState, std::string& relative_apt_dat_path, const std::string scenery_pack_name, bool inReadCachedFile, const bool is_custom)
 {
   std::ifstream      file_aptDat;
   std::istringstream stringStream;
@@ -764,7 +764,7 @@ missionx::OptimizeAptDat::get_db_field_by_colName(std::list<missionx::db_field>&
 
 
 void
-missionx::OptimizeAptDat::prepare_sqlite_db_tables(thread_state* inThreadState, missionx::dbase* inDB_ptr)
+missionx::OptimizeAptDat::prepare_sqlite_db_tables(strct_thread_state* inThreadState, missionx::dbase* inDB_ptr)
 {
   ///////////////////////////////////////////////
   // REMEMBER that every new table needs respective copy command from memory db to the file db. Found at the end of "read_and_parse_all_apt_files() function.
@@ -929,7 +929,7 @@ missionx::OptimizeAptDat::sqlite_post_tables_copy(missionx::dbase* inDB_ptr)
 // ---------------------------------------------------------
 
 void
-missionx::OptimizeAptDat::parse_airport_to_sqlite(thread_state* inThreadState, const std::string& airportCode, const missionx::mx_aptdat_cached_info& info, missionx::dbase& db, const std::string& scenery_pack_name)
+missionx::OptimizeAptDat::parse_airport_to_sqlite(strct_thread_state* inThreadState, const std::string& airportCode, const missionx::mx_aptdat_cached_info& info, missionx::dbase& db, const std::string& scenery_pack_name)
 {
   ///////////////////////////////////////////////
   // REMEMBER that every new table needs respective copy command from memory db to the file db. Found at the end of "read_and_parse_all_apt_files() function.
@@ -1237,7 +1237,7 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(thread_state* inThreadState, c
 
 
 void
-missionx::OptimizeAptDat::upload_navdata_to_inMemory_db(thread_state* inThreadState, missionx::dbase& db)
+missionx::OptimizeAptDat::upload_navdata_to_inMemory_db(strct_thread_state* inThreadState, missionx::dbase& db)
 {
   std::string                        prep_stmt_key_s = "";
   std::map<std::string, std::string> map_key_value; // store values in readable key/value, unique to each code line
