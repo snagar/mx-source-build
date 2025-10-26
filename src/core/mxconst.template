@@ -242,6 +242,7 @@ const static ^std::string ^ATTRIB_TARGET_LAT                               ^ "ta
 const static ^std::string ^ATTRIB_TARGET_LON                               ^ "target_lon"; ^// v3.0.303 Store task lon in <leg >
 const static ^std::string ^ATTRIB_IS_DUMMY                                 ^ "is_dummy"; ^// v3.0.303_12 used with <leg> element. It will ignore all objective/tasks and triggers tests and will only execute: "pre/post scripts", "pre/post commands" and "<display_object{_xxx}>" elements consider to also evaluate linked triggers at <leg> level. Will always flagged as success after one cycle.
 const static ^std::string ^ATTRIB_DUMMY_LEG_ITERATIONS                     ^ "dummy_leg_iterations"; ^// v3.0.303_12 holds a counter, how many times the dummy leg was iterated. If larger than 2 then we can flag it is successfull and continue to next leg
+const static ^std::string ^ATTRIB_MISSION_TYPE                             ^ "mission_type"; ^// v25.10.1 define at "TEMPLATE" and "content" <list> level. Valid values: "cargo,medevac,passengers"
 
 
 const static ^std::string ^ELEMENT_METAR                                   ^ "metar"; ^// METAR
@@ -586,7 +587,7 @@ const static ^std::string^                EXT_mxCargoPosLon                     
 const static ^std::string^                QMM_DUMMY_MSG_NAME_PREFIX                              ^ "msg_"; ^// Queue Message Manager - QMM // used to construct new messages from code
 const static ^std::string^                ELEMENT_BASE_WEIGHTS_KG                                ^ "base_weights_kg"; ^// Base weights by designer // options // mute any sound, include narrator and fmod sounds
 const static ^std::string^                ATTRIB_PILOT                                           ^ "pilot"; ^// v3.0.213.4 pilot weight in kg
-const static ^std::string^                ATTRIB_PASSENGERS                                      ^ "passengers"; ^// v3.0.213.4 passengers weight in kg
+// const static ^std::string^                ATTRIB_PASSENGERS                                      ^ "passengers"; ^// v3.0.213.4 passengers weight in kg // v25.10.1 deprecated, not in use
 const static ^std::string^                ATTRIB_STORAGE                                         ^ "storage"; ^// v3.0.213.4 storage weight in kg
 const static ^std::string^                ELEMENT_POSITION                                       ^ "position"; ^// v3.0.223.1 Hidden parameter for now. Will skip plane repositioning at random start.
 const static ^std::string^                ATTRIB_AUTO_POSITION_PLANE                             ^ "auto_position_plane"; ^// v3.0.223.1 Hidden attribute. Boolean type. true^position plane (default), false^skip position plane.
@@ -765,6 +766,7 @@ const static ^std::string^                ATTRIB_DISP_FMS_ENTRY                 
 const static ^std::string^                GENERATE_TYPE_MEDEVAC                                  ^ "medevac";
 const static ^std::string^                GENERATE_TYPE_DELIVERY                                 ^ "delivery"; ^// v3.0.219.6
 const static ^std::string^                GENERATE_TYPE_CARGO                                    ^ "cargo"; ^// v3.303.14
+const static ^std::string^                GENERATE_TYPE_PASSENGER                                ^ "passenger"; ^// v25.10.1 used in conjunction to "task type": "med_cargo_oilrig". Useful with templates and not with "user generate mission screen".
 const static ^std::string^                GENERATE_TYPE_OILRIG_MED                               ^ "oilrig_med"; ^// v3.303.14
 const static ^std::string^                GENERATE_TYPE_OILRIG_CARGO                             ^ "oilrig_cargo"; ^// v3.303.14
 const static ^std::string^                ELEMENT_CARGO                                          ^ "cargo"; ^// v24.05.1 used when reading external cargo xml data file

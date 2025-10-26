@@ -11,6 +11,7 @@
 #include <string>
 #include <optional>
 #include <random>
+// #include <concepts>
 
 #ifdef APL
 #include <cstdlib>
@@ -215,25 +216,6 @@ public:
   static std::string format (const std::string & inText, std::map<int, std::string> & inArgs); // v24.05.2
   static int         calc_minutes_from_seconds(const int &in_seconds_from_midnight); // v25.04.2
 
-
-
-  /// <summary>
-  ///
-  /// evaluate if a string holds a boolean value, example:
-  /// "true,false,yes,no.y,n"
-  /// </summary>
-  /// <param name="inTestValue"> holds the string to test as boolean value</param>
-  /// <param name="outStringEvalResult_asBool">returns the string boolean evaluation: true or false, dependent on the string itself.
-  ///   Will return false, if function is evaluated to false (be careful).
-  ///   You have to be careful with the returned value, since there is a third option which is not supported by boolean: not true and not false. This happens when the string is not a boolean value and therefore not supported.
-  ///   You have to check the "function" returned value if the string represents a bool value and only then use the returned value by "outStringResult_asBool".
-  ///   The outcome will be "false" for strings who are not bool values, and that could be awkward.
-  /// </param>
-  /// <returns>
-  ///   returns true if the string represents a bool value
-  ///   returns false if the string does not represents a bool value.
-  ///   The parameter "outStringEvalResult_asBool" will hold the parsed boolean value. This is the real boolean returned value you need to check if the function returns "true".
-  /// </returns>
   static bool isStringBool(std::string inTestValue, bool& outStringEvalResult_asBool);
   // -------------------------------------------
   // v3.0.255.1
@@ -250,6 +232,9 @@ public:
 
   static std::string                  translateMessageChannelTypeToString(mx_message_channel_type_enum mType);
   static mx_message_channel_type_enum translateMessageTypeToEnum(std::string& inType);
+
+  static enums::mx_rnd_task_type translate_mission_type_to_task_type(const std::string& inType); // v25.10.1
+  static missionx::mx_ui_mission_type translate_mission_type_to_med_cargo_or_oilrig_task_type(const std::string& inType); // v25.10.1
 
   static std::string emptyReplace(std::string inValue, std::string inReplaceWith);
 
@@ -517,6 +502,45 @@ public:
   }
   // -------------------------------------------
 
+  // v25.10.1 make sure that inVal1 is smaller than inVal2
+  template<typename T>
+  static void mx_eval_min_max(T &inVal1, T &inVal2)
+  {
+    static_assert(std::is_arithmetic_v<T>, "T must be a numeric type");
+
+    if (inVal1 > inVal2)
+    {
+      std::swap(inVal1, inVal2);
+    }
+  }
+  // -------------------------------------------
+  // v25.10.1 make sure that inVal1 is smaller than inVal2, use a rule to calculate minVal1 if they are equal.
+  template<typename T>
+  static void mx_eval_min_always_smaller_than_max(T &inVal1, T &inVal2, const T &in_percent_smaller = 0.5)
+  {
+    static_assert(std::is_arithmetic_v<T>, "T must be a numeric type");
+
+    const T tmp_val = mx_min(inVal1, inVal2);
+
+    if (inVal1 > inVal2)
+    {
+      std::swap(inVal1, inVal2);
+    }
+
+    // handle equal cases
+    if (inVal1 == inVal2 && inVal1 > 0.0)
+    {
+      inVal1 *= in_percent_smaller;
+    }
+
+    if (inVal1 == inVal2 && inVal1 < 0.0)
+    {
+      inVal2 *= in_percent_smaller;
+    }
+
+  }
+  // -------------------------------------------
+
   // Test if value is "equal or greater" than Min and "equal or lower" than max
   template<typename T>
   static bool mx_between(const T in_value_to_test, const T inLow, T inMax, const missionx::enums::mx_between_types inType)
@@ -599,7 +623,6 @@ public:
   static std::string eval_text(bool in_has_value, const std::string &in_preferred_outcome, const std::string &in_fallback_outcome);
 
   static std::mt19937 create_random_engine();
-
 
 };
 

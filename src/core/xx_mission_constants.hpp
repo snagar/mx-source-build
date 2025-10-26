@@ -36,7 +36,7 @@ constexpr static const int MX_FEATURES_VERSION = 20250501; //20241212; //2023091
 
 inline constexpr static auto PLUGIN_VER_MAJOR                  = "25"; // year
 inline constexpr static auto PLUGIN_VER_MINOR                  = "10"; // month
-inline constexpr static auto PLUGIN_VER_SUB                    = "1-beta-"; // sub-version
+inline constexpr static auto PLUGIN_VER_SUB                    = "1-beta"; // sub-version
 inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 
@@ -184,7 +184,8 @@ typedef enum class rnd_task_type_enum : uint8_t
 {
   undefined = 0,
   medevac = 1,
-  cargo
+  cargo,
+  passenger
 } mx_rnd_task_type;
 
 
@@ -355,8 +356,8 @@ typedef struct def_expected_location_data
   // holds the description of the target example from <briefer_and_start_location> node
   std::string desc;
 
-  std::vector<std::string>           vecLocationValueSplit_vec;
-  std::map<std::string, std::string> mapLocationSplitValues;
+  std::vector<std::string>           vecLocationPropertiesSplit_vec;
+  std::map<std::string, std::string> mapLocationSplitPropertiesValues;
 
   def_expected_location_data()
   {
@@ -370,8 +371,8 @@ typedef struct def_expected_location_data
 
     desc.clear ();
 
-    vecLocationValueSplit_vec.clear();
-    mapLocationSplitValues.clear();
+    vecLocationPropertiesSplit_vec.clear();
+    mapLocationSplitPropertiesValues.clear();
 
   }
 
@@ -906,7 +907,7 @@ typedef enum class _unitsOfMeasure
 typedef enum class _ui_mission_type
   : int8_t
 {
-  not_defined = -1,
+  undefined = -1,
   medevac = 0,
   cargo   = 1,
   oil_rig = 2

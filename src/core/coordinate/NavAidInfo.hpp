@@ -365,9 +365,11 @@ public:
 
   std::string getLon() { return Utils::formatNumber<float>(this->lon, 9); }
 
-  std::string get_latLon() { return this->getLat() + "," + this->getLon(); }
+  std::string get_latLon() { return fmt::format("{:.8f},{:.8f}", lat, lon); }
 
-  std::string get_latLon_short() { return fmt::format("{:.3f},{:.3f}", lat, lon); } // v25.09.2
+  std::string get_latLon_short() { return fmt::format("{:.5f},{:.5f}", lat, lon); }
+
+  std::string get_latLon_shortest() { return fmt::format("{:.3f},{:.3f}", lat, lon); } // v25.09.2
 
   std::string get_skewed_desc() { return fmt::format("{:.3f},{:.3f}", skewed_location.lat, skewed_location.lon); } // v25.09.2
 
@@ -785,17 +787,17 @@ parse_expected_location (const IXMLNode &in_xml_leg_from_template, const std::st
     data.flight_leg_type_hover_land_or_start = mxconst::get_FL_TEMPLATE_VAL_START ();
     data.location_type                       = mxconst::get_FL_TEMPLATE_VAL_START ();
     data.location_properties_s               = mxconst::get_FL_TEMPLATE_VAL_START ();
-    data.mapLocationSplitValues.clear ();
-    data.vecLocationValueSplit_vec.clear ();
+    data.mapLocationSplitPropertiesValues.clear ();
+    data.vecLocationPropertiesSplit_vec.clear ();
   }
   ////////// Check if has special instructions like: "nm=20|ramp=H|nm_between=10-20|tag={some name}"
   else if (!data.location_properties_s.empty ())
   {
     //// v3.0.221.7 replace old logic with new more readable one
     // split between numbers and characters
-    data.vecLocationValueSplit_vec = mxUtils::split_v2 (data.location_properties_s, mxconst::get_PIPE_DELIMITER ()); // "|"
+    data.vecLocationPropertiesSplit_vec = mxUtils::split_v2 (data.location_properties_s, mxconst::get_PIPE_DELIMITER ()); // "|"
 
-    for (const auto &v : data.vecLocationValueSplit_vec)
+    for (const auto &v : data.vecLocationPropertiesSplit_vec)
     {
       std::vector<std::string> vecSplit = mxUtils::split_v2 (v, "=");
       if (auto size_i = vecSplit.size ()
@@ -808,7 +810,7 @@ parse_expected_location (const IXMLNode &in_xml_leg_from_template, const std::st
       {
         std::string        attribName  = Utils::stringToLower (vecSplit.at (0));
         const std::string &attribValue = vecSplit.at (1);
-        Utils::addElementToMap (data.mapLocationSplitValues, attribName, attribValue);
+        Utils::addElementToMap (data.mapLocationSplitPropertiesValues, attribName, attribValue);
       }
       else
         data.location_properties_s.clear ();
@@ -817,7 +819,7 @@ parse_expected_location (const IXMLNode &in_xml_leg_from_template, const std::st
     data.location_properties_s.clear ();
 
     // prepare local variables according to the split information
-    const std::string local_location_value_min_max_distance_s = mxUtils::getValueFromElement (data.mapLocationSplitValues, std::string ("nm_between"), std::string (""));
+    const std::string local_location_value_min_max_distance_s = mxUtils::getValueFromElement (data.mapLocationSplitPropertiesValues, std::string ("nm_between"), std::string (""));
     if (!local_location_value_min_max_distance_s.empty ()) // min-max
     {
       const std::vector<double> vecMinMax = Utils::splitStringToNumbers<double> (local_location_value_min_max_distance_s, "-, ");
@@ -827,11 +829,11 @@ parse_expected_location (const IXMLNode &in_xml_leg_from_template, const std::st
         {
           case 0:
             data.nm_between_min = static_cast<float>(vecMinMax.at(i1));
-            data.mapLocationSplitValues["min_distance_nm"] = fmt::format("{:.2f}", vecMinMax.at(i1) );
+            data.mapLocationSplitPropertiesValues["min_distance_nm"] = fmt::format("{:.2f}", vecMinMax.at(i1) );
             break;
           case 1:
             data.nm_between_max = static_cast<float>(vecMinMax.at(i1));
-            data.mapLocationSplitValues["max_distance_nm"] = fmt::format("{:.2f}", vecMinMax.at(i1) );
+            data.mapLocationSplitPropertiesValues["max_distance_nm"] = fmt::format("{:.2f}", vecMinMax.at(i1) );
             break;
           default:
             break;
@@ -847,8 +849,8 @@ parse_expected_location (const IXMLNode &in_xml_leg_from_template, const std::st
     } // end "nm_between"
 
     // prepare local variables according to the split information
-    if (Utils::isElementExists (data.mapLocationSplitValues, "nm")) // represent distance in nm
-      data.location_properties_s = data.mapLocationSplitValues["nm"];
+    if (Utils::isElementExists (data.mapLocationSplitPropertiesValues, "nm")) // represent distance in nm
+      data.location_properties_s = data.mapLocationSplitPropertiesValues["nm"];
 
     // replace "_" with empty string
     if (data.location_properties_s == "_") // if special character that represent empty

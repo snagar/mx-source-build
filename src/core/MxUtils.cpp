@@ -293,6 +293,23 @@ missionx::mxUtils::calc_minutes_from_seconds (const int &in_seconds_from_midnigh
 bool
 missionx::mxUtils::isStringBool(std::string inTestValue, bool& outStringEvalResult_asBool)
 {
+  /// <summary>
+  ///
+  /// evaluate if a string holds a boolean value, example:
+  /// "true,false,yes,no.y,n"
+  /// </summary>
+  /// <param name="inTestValue"> holds the string to test as boolean value</param>
+  /// <param name="outStringEvalResult_asBool">returns the string boolean evaluation: true or false, dependent on the string itself.
+  ///   Will return false, if function is evaluated to false (be careful).
+  ///   You have to be careful with the returned value, since there is a third option which is not supported by boolean: not true and not false. This happens when the string is not a boolean value and therefore not supported.
+  ///   You have to check the "function" returned value if the string represents a bool value and only then use the returned value by "outStringResult_asBool".
+  ///   The outcome will be "false" for strings who are not bool values, and that could be awkward.
+  /// </param>
+  /// <returns>
+  ///   returns true if the string represents a bool value
+  ///   returns false if the string does not represents a bool value.
+  ///   The parameter "outStringEvalResult_asBool" will hold the parsed boolean value. This is the real boolean returned value you need to check if the function returns "true".
+  /// </returns>
   const std::string inValue = stringToLower(inTestValue);
 
   if (inValue.length() == 1)
@@ -517,6 +534,38 @@ missionx::mxUtils::translateMessageTypeToEnum(std::string& inType)
 
 
   return missionx::mx_message_channel_type_enum::no_type;
+}
+
+// ----------------------------------------------
+
+missionx::enums::mx_rnd_task_type
+missionx::mxUtils::translate_mission_type_to_task_type (const std::string &inType)
+{
+  if (inType == mxconst::get_GENERATE_TYPE_MEDEVAC ())
+    return missionx::enums::mx_rnd_task_type::medevac;
+
+  if (inType == mxconst::get_GENERATE_TYPE_CARGO ())
+    return missionx::enums::mx_rnd_task_type::cargo;
+
+  if (inType == mxconst::get_GENERATE_TYPE_PASSENGER ())
+    return missionx::enums::mx_rnd_task_type::passenger;
+
+  return missionx::enums::mx_rnd_task_type::undefined;
+}
+
+missionx::mx_ui_mission_type
+missionx::mxUtils::translate_mission_type_to_med_cargo_or_oilrig_task_type (const std::string &inType)
+{
+  if (inType == mxconst::get_GENERATE_TYPE_MEDEVAC ())
+    return missionx::mx_ui_mission_type::medevac;
+
+  if (inType == mxconst::get_GENERATE_TYPE_CARGO ())
+    return missionx::mx_ui_mission_type::cargo;
+
+  if (inType == mxconst::get_GENERATE_TYPE_PASSENGER ())
+    return missionx::mx_ui_mission_type::cargo;
+
+  return missionx::mx_ui_mission_type::undefined;
 }
 
 // ----------------------------------------------
