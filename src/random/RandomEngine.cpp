@@ -643,7 +643,7 @@ RandomEngine::generateRandomMission ()
       //////////////////////////////////////
       // Write debug XML to files  /////////
       IXMLRenderer  xmlWriter;
-      IXMLErrorInfo errInfo = xmlWriter.writeToFile (xTemplateNode, "/tmp/debug_missionx_template.xml", "ASCII"); // "ISO-8859-1");
+      IXMLErrorInfo errInfo = xmlWriter.writeToFile (xRootTemplate, "/tmp/debug_missionx_template.xml", "ASCII"); // "ISO-8859-1");
       errInfo = xmlWriter.writeToFile (data_manager::xmlMappingNode, "/tmp/debug_missionx_mapping.xml", "ASCII"); // "ISO-8859-1");
       #endif
       #endif
@@ -1270,7 +1270,7 @@ RandomEngine::gen_parse_template_leg (missionx::base_thread::strct_thread_state 
 
 
     // handle XY, OSM or OSMWEB
-    if (mxUtils::isElementExists (in_mission_targets, in_leg_counter - 1))
+    if (in_mission_targets.contains (in_leg_counter - 1) )
     {
       auto result = gen_target_base_on_xy_osm_or_osmweb_types (na, RandomEngine::template_plane_type_enum, na.fpln_expected_location_data.mapLocationSplitPropertiesValues, targetProp, &in_mission_targets[in_leg_counter - 1]);
       if (!result && !na.err.empty ())
@@ -1647,13 +1647,12 @@ RandomEngine::gen_content_option_01_random_mission_from_content (IXMLNode &xTemp
     // gen_add_3d_objects_for_surprise_me_base_on_predefined_attributes (target_navaid, target_navaid.fpln_xml_target_leg_node, xTemplateNode, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
     gen_3d_add_display_object_sets_instances_to_leg (target_navaid, target_navaid.fpln_xml_target_leg_node, xTemplateNode, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
 
-    // add <display_object> from the template custom leg node. Should be a subnode.
-    gen_parse_and_add_all_display_objects_in_node (__func__, target_navaid, target_navaid.fpln_xml_osm_q_or_raw_tmpl_node, target_navaid.fpln_xml_target_leg_node, xTemplateNode, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
-
-
     // add 3D display objects around the landing
     if (!target_navaid.flag_is_skewed)
-      gen_3d_hint_objects_for_land_and_hover (target_navaid, target_navaid.fpln_xml_target_leg_node, next_navaid_ptr);
+    {
+      if (target_navaid.fpln_task_type < enums::mx_rnd_task_type::cargo)
+        gen_3d_hint_objects_for_land_and_hover (target_navaid, target_navaid.fpln_xml_target_leg_node, next_navaid_ptr);
+    }
 
     gen_3d_parse_instances_in_leg (target_navaid.fpln_xml_target_leg_node, target_navaid);
 
@@ -1802,6 +1801,10 @@ RandomEngine::gen_content_option_02_copy_as_is (IXMLNode &xTemplateNode, IXMLNod
     return out_func_result;
   }
 
+  // add attributes needed to briefer like the mandatory "starting location"
+  std::set<std::string> set_of_attribute_to_copy = {mxconst::get_ATTRIB_STARTING_LEG (), mxconst::get_ATTRIB_STARTING_ICAO ()};
+  Utils::xml_copy_specific_attributes_using_white_list (x_briefer_and_start_location_node, na_briefer.fpln_xml_target_leg_node, &set_of_attribute_to_copy, false);
+
   if (!location_adjust_desc.empty ())
     Utils::xml_add_cdata (na_briefer.fpln_xml_target_leg_node, location_adjust_desc);
 
@@ -1897,7 +1900,6 @@ RandomEngine::gen_content_option_02_copy_as_is (IXMLNode &xTemplateNode, IXMLNod
   vecNodes = Utils::xml_get_all_nodes_pointer_with_tagName (content_root_node, mxconst::get_ELEMENT_FLIGHT_PLAN ());
   for (auto &node_fp : vecNodes)
     this->xDummyTopNode.addChild (node_fp.deepCopy()); // add all <flight_plan> directly to the dummy top node (which represent the final mission node).
-    // Utils::xml_copy_nodes_from_one_parent_to_another_IXMLNode (this->xFlightLegs, node_fp, mxconst::get_ELEMENT_LEG (), true);
 
   // add any leg in the root content template
   vecNodes.clear ();
@@ -1922,8 +1924,6 @@ RandomEngine::gen_content_option_02_copy_as_is (IXMLNode &xTemplateNode, IXMLNod
   Log::logMsgThread (fmt::format ("GPS:\n{}\n", Utils::xml_get_node_content_as_text (this->xGPS)));
   Log::logMsgThread (fmt::format ("-------------- END <CONTENT_MISSION> RESULTS - {} --------------", __func__));
   #endif // !RELEASE
-
-  // } // End if the target container is not empty
 
   return out_func_result = true;
 }
@@ -1962,9 +1962,9 @@ RandomEngine::gen_get_generic_template_targets (missionx::base_thread::strct_thr
   // ----------------------
   for (int i1 = 0; i1 < nChilds && !(missionx::RandomEngine::random_thread_state.flagAbortThread); ++i1)
   {
-    IXMLNode xFlightLegFromTemplate = in_template_node.getChildNode (mxconst::get_ELEMENT_LEG ().c_str (), i1).deepCopy ();
+    IXMLNode x_leg_node = in_template_node.getChildNode (mxconst::get_ELEMENT_LEG ().c_str (), i1).deepCopy ();
     int leg_counter = static_cast<int>( target_navaids.size () );
-    auto na = gen_parse_template_leg (&RandomEngine::random_thread_state, in_template_node, xFlightLegFromTemplate, RandomEngine::shared_navaid_info, target_navaids, leg_counter, (i1 + 1 == nChilds), outErr);
+    auto na = gen_parse_template_leg (&RandomEngine::random_thread_state, in_template_node, x_leg_node, RandomEngine::shared_navaid_info, target_navaids, leg_counter, (i1 + 1 == nChilds), outErr);
 
     // check abort
     if (missionx::RandomEngine::random_thread_state.flagAbortThread)
@@ -1984,7 +1984,7 @@ RandomEngine::gen_get_generic_template_targets (missionx::base_thread::strct_thr
       return target_navaids;
     }
 
-    na.fpln_xml_osm_q_or_raw_tmpl_node = xFlightLegFromTemplate.deepCopy ();
+    na.fpln_xml_osm_q_or_raw_tmpl_node = x_leg_node.deepCopy ();
 
     target_navaids[static_cast<int> (target_navaids.size ())] = na; // The "zero" is kept for the briefer.
 
@@ -2113,18 +2113,18 @@ RandomEngine::gen_prepare_random_mission_based_on_leg_nodes_in_template (IXMLNod
     // add 3D leg hints
     if (!target_navaid.flag_is_skewed)
     {
-      auto next_leg_ptr = (navaid_targets.contains (indx+1))? &navaid_targets[indx+1] : nullptr;
-      gen_3d_hint_objects_for_land_and_hover (target_navaid, target_navaid.fpln_xml_target_leg_node, next_leg_ptr);
+      if (target_navaid.fpln_task_type < enums::mx_rnd_task_type::cargo) // meaning is medevac
+      {
+        auto next_leg_ptr = (navaid_targets.contains (indx+1))? &navaid_targets[indx+1] : nullptr;
+        gen_3d_hint_objects_for_land_and_hover (target_navaid, target_navaid.fpln_xml_target_leg_node, next_leg_ptr);
+      }
     }
-
 
     // add 3D display objects around the landing
     // v25.09.2 add support for <display_object_set>
     gen_3d_add_display_object_sets_instances_to_leg (target_navaid, target_navaid.fpln_xml_target_leg_node, in_xTemplateNode, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
 
-    // add <display_object> from the template custom leg node. Should be a subnode.
-    gen_parse_and_add_all_display_objects_in_node (__func__, target_navaid, target_navaid.fpln_xml_osm_q_or_raw_tmpl_node, target_navaid.fpln_xml_target_leg_node, in_xTemplateNode, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
-
+    // prepare the 3D instances
     gen_3d_parse_instances_in_leg (target_navaid.fpln_xml_target_leg_node, target_navaid);
 
 
@@ -4537,9 +4537,6 @@ RandomEngine::gen_prepare_mission_based_on_databaseflightplan_site (IXMLNode &in
     // add support for <display_object_set>
     gen_3d_add_display_object_sets_instances_to_leg (target_navaid, target_navaid.fpln_xml_target_leg_node, in_xTemplateNode, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
 
-    // add <display_object> from the template custom leg node. Should be a subnode.
-    gen_parse_and_add_all_display_objects_in_node (__func__, target_navaid, target_navaid.fpln_xml_osm_q_or_raw_tmpl_node, target_navaid.fpln_xml_target_leg_node, in_xTemplateNode, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
-
     gen_3d_parse_instances_in_leg (target_navaid.fpln_xml_target_leg_node, target_navaid);
 
     target_navaid.synchToPoint ();
@@ -4825,13 +4822,6 @@ RandomEngine::gen_prepare_mission_based_on_ils_search (IXMLNode &in_xTemplateNod
 
     // add 3d marker
     gen_add_3d_marker_to_current_target (target_navaid.fpln_xml_target_leg_node, target_navaid);
-
-    // add 3D display objects around the landing
-    // add support for <display_object_set>
-    gen_3d_add_display_object_sets_instances_to_leg (target_navaid, target_navaid.fpln_xml_target_leg_node, in_xTemplateNode, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
-
-    // add <display_object> from the template custom leg node. Should be a subnode.
-    gen_parse_and_add_all_display_objects_in_node (__func__, target_navaid, target_navaid.fpln_xml_osm_q_or_raw_tmpl_node, target_navaid.fpln_xml_target_leg_node, in_xTemplateNode, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
 
     gen_3d_parse_instances_in_leg (target_navaid.fpln_xml_target_leg_node, target_navaid);
 
@@ -5450,14 +5440,6 @@ RandomEngine::gen_prepare_mission_based_on_user_fpln_or_simbrief (IXMLNode &in_x
     // add 3d marker
     gen_add_3d_marker_to_current_target (target_navaid.fpln_xml_target_leg_node, target_navaid);
 
-
-    // add 3D display objects around the landing
-    // add support for <display_object_set>
-    gen_3d_add_display_object_sets_instances_to_leg (target_navaid, target_navaid.fpln_xml_target_leg_node, in_xTemplateNode, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
-
-    // add <display_object> from the template custom leg node. Should be a subnode.
-    gen_parse_and_add_all_display_objects_in_node (__func__, target_navaid, target_navaid.fpln_xml_osm_q_or_raw_tmpl_node, target_navaid.fpln_xml_target_leg_node, in_xTemplateNode, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
-
     gen_3d_parse_instances_in_leg (target_navaid.fpln_xml_target_leg_node, target_navaid);
 
     target_navaid.synchToPoint ();
@@ -5969,11 +5951,23 @@ RandomEngine::gen_leg_node (const std::string &prefix_name, const std::string &p
   if (inTargetNavAid == nullptr)
     return IXMLNode::emptyIXMLNode;
 
+  #ifndef RELEASE
+  bool isEmpty = inTargetNavAid->fpln_xml_osm_q_or_raw_tmpl_node.isEmpty (); // debug
+  #endif
+
+
   // v25.09.1 extended leg_node to either use existing <leg> or create one. Can handle Oilrig and OSM Surprise me missions.
   IXMLNode leg_node = missionx::data_manager::xmlMappingNode.getChildNode (mxconst::get_ELEMENT_LEG ().c_str ()).deepCopy ();
   if ( ! inTargetNavAid->fpln_xml_target_leg_node.isEmpty () )
     // leg_node will point to the "fpln_xml_target_leg_node"
     leg_node = Utils::xml_merge_source_with_target_node ( leg_node, inTargetNavAid->fpln_xml_target_leg_node );
+  // OSM SURPRISE ME ONLY: copy all subnodes nodes from the <q> if present
+  else if (!(inTargetNavAid->fpln_xml_osm_q_or_raw_tmpl_node.isEmpty ()))
+  {
+    // exclude <inventory> and <desc> nodes. <desc> node will be picked in gen_leg_description() function.
+    const std::vector<std::string> in_exclude_nodes = {mxconst::get_ELEMENT_INVENTORY (), mxconst::get_ELEMENT_DESC ()};
+    Utils::xml_copy_or_replace_sub_nodes (leg_node, inTargetNavAid->fpln_xml_osm_q_or_raw_tmpl_node, true, &in_exclude_nodes);
+  }
 
   // Make sure that the base <leg> sub-nodes are present:
   Utils::xml_add_child_nodes (leg_node, {"start_leg_message", "link_to_objective", "desc", "post_leg_message"});
@@ -5995,15 +5989,6 @@ RandomEngine::gen_leg_node (const std::string &prefix_name, const std::string &p
   if (in_attrib_list)
     Utils::xml_search_and_set_attributes_in_node (leg_node, (*in_attrib_list));
 
-  // OSM SURPRISE ME ONLY: copy all subnodes nodes from the <q> if present
-  bool isEmpty = inTargetNavAid->fpln_xml_osm_q_or_raw_tmpl_node.isEmpty ();
-
-  if (!(inTargetNavAid->fpln_xml_osm_q_or_raw_tmpl_node.isEmpty ()))
-  {
-    // exclude <inventory> and <desc> nodes. <desc> node will be picked in gen_leg_description() function.
-    const std::vector<std::string> in_exclude_nodes = {mxconst::get_ELEMENT_INVENTORY (), mxconst::get_ELEMENT_DESC ()};
-    Utils::xml_copy_or_replace_sub_nodes (leg_node, inTargetNavAid->fpln_xml_osm_q_or_raw_tmpl_node, true, &in_exclude_nodes);
-  }
 
   return leg_node.deepCopy ();
 }
@@ -8331,16 +8316,8 @@ RandomEngine::gen_prepare_medevac_surprise_me (IXMLNode &inRootTemplate, const I
     //-------------------------
     // Calculate distances, bearing and initialize the "next_leg" or "starting_leg" of the <leg>/<briefer> nodes
     //-------------------------
-    // lambda to return next Navaid pointer
-    auto lmbda_get_next_navaid_as_ptr = [&](const int local_index) -> missionx::NavAidInfo *
-    {
-      if (navaid_targets.contains (local_index + 1))
-        return &navaid_targets[local_index + 1];
 
-      return nullptr;
-    };
-
-    auto next_navaid_ptr = lmbda_get_next_navaid_as_ptr (indx);
+    auto next_navaid_ptr = navaid_targets.contains (indx+1)? &navaid_targets[indx+1] : nullptr ;
 
     // add start messages
     gen_leg_start_messages (this->seq_messages, target_navaid, navaid_targets, this->xMessages, flag_one_of_the_targets_above_water);
@@ -8575,19 +8552,10 @@ RandomEngine::gen_prepare_mission_based_on_oilrig (IXMLNode &inRootTemplate)
     // // add hint messages related to the target land/hover actions
     // gen_messages_when_reaching_target_leg (this->seq_triggers, this->seq_messages, target_navaid, this->xMessages, this->xTriggers, xTriggerTargetLand, xTriggerTargetHover);
 
-    // add 3D object sets if they were defined at <leg> or <desc> level
-    // gen_add_3d_objects_for_surprise_me_base_on_predefined_attributes (target_navaid, target_navaid.fpln_xml_target_leg_node, inRootTemplate, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
 
     // add 3D display objects around the landing
     // v25.09.2 add support for <display_object_set>
     gen_3d_add_display_object_sets_instances_to_leg (target_navaid, target_navaid.fpln_xml_target_leg_node, inRootTemplate, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
-
-    // In cases of Oil-Rig missions, ignore custom display objects. Only use "3d object sets"
-    // add <display_object> from the template custom leg node. Should be a subnode.
-    // gen_parse_and_add_all_display_objects_in_node (__func__, target_navaid.fpln_xml_osm_q_or_raw_tmpl_node, target_navaid.fpln_xml_target_leg_node, inRootTemplate, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
-
-    // if (!target_navaid.flag_is_skewed)
-    //   gen_3d_hint_objects_for_land_and_hover (target_navaid, target_navaid.fpln_xml_target_leg_node, next_navaid_ptr);
 
     gen_3d_parse_instances_in_leg (target_navaid.fpln_xml_target_leg_node, target_navaid);
 

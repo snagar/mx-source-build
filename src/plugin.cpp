@@ -1076,6 +1076,9 @@ toggleAutoSkipInStoryModeCommandHandler (XPLMCommandRef inCommand, XPLMCommandPh
 void
 prep_cache (XPLMMapLayerID layer, const float *inTotalMapBoundsLeftTopRightBottom, XPLMMapProjectionID projection, void *inRefcon)
 {
+  if (inTotalMapBoundsLeftTopRightBottom == nullptr)
+    return;
+
   // We're simply going to cache the locations, in *map* coordinates, of all the places we want to draw.
   data_manager::s_num_cached_coords = 0;
   for (int lon = -180; lon < 180; ++lon)
