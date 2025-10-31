@@ -6948,9 +6948,12 @@ RandomEngine::gen_2nm_message (int &seq_trig, int &seq_msg, NavAidInfo &inout_ta
     if (inout_target_na.flag_is_skewed)
       return fmt::format ("You are nearing the search area. [{}]. The target should be somewhere around the suggested location.", inout_target_na.get_skewed_desc ());
 
-    return fmt::format ("You are nearing {}.\n{}", inout_target_na.get_loc_desc (),
-                                                          (flag_wp_type_is_land_hover)? "Look for a landing spot near the target. Alternatively, you may hover above it." : "Prepare for landing."
-                       );
+    // if we have a unique target location description, we should use it, or else, we will use a generic message.
+    const std::string target_description = (inout_target_na.nav_aid_has_unique_name ())? fmt::format ("You are nearing {}", inout_target_na.get_loc_desc () )
+                                                                                            : "You are nearing the target location." ;
+
+    return fmt::format ("{}\t{}", target_description,
+                        (flag_wp_type_is_land_hover) ? "Look for a landing spot near the target. Alternatively, you may hover above it." : "Prepare for landing." );
 
   };
   const std::string message_text = lmbda_get_message_text(); // v25.09.2 return regular or skewed related text
@@ -6973,7 +6976,7 @@ RandomEngine::gen_2nm_message (int &seq_trig, int &seq_msg, NavAidInfo &inout_ta
   };
   Utils::xml_search_and_set_attributes_in_node (mix_subnode, lsAttrib_mix_text); // set base properties
 
-  // create <message> based on template for "land" hover" and "entering physical area"
+  // create <message> based on a template for "land" hover" and "entering physical area"
   IXMLNode msg_2m_land_node = msg_template_node.deepCopy ();
   Utils::xml_set_attribute_in_node_asString (msg_2m_land_node, mxconst::get_ATTRIB_NAME (), message_name, msg_2m_land_node.getName ());
 
@@ -7071,6 +7074,10 @@ RandomEngine::gen_parse_and_add_all_display_objects_in_node (const std::string &
 void
 RandomEngine::gen_3d_hint_objects_for_land_and_hover (const NavAidInfo &inout_target_na, IXMLNode &inout_leg_node, const NavAidInfo *next_navaid_ptr)
 {
+  // skip, if it is the last leg
+  if (inout_target_na.fpln_is_last_flight_leg)
+    return;
+
   // generate 3D hint for landing
 
   // store stats as int

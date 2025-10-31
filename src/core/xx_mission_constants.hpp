@@ -36,7 +36,7 @@ constexpr static const int MX_FEATURES_VERSION = 20250501; //20241212; //2023091
 
 inline constexpr static auto PLUGIN_VER_MAJOR                  = "25"; // year
 inline constexpr static auto PLUGIN_VER_MINOR                  = "10"; // month
-inline constexpr static auto PLUGIN_VER_SUB                    = "1-beta"; // sub-version
+inline constexpr static auto PLUGIN_VER_SUB                    = "1-beta-"; // sub-version
 inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 
@@ -329,8 +329,8 @@ typedef struct node_attribute_key_value_struct
 
 // Structure for a bounding box
 typedef struct BBox_struct {
-  double minLat, minLon;
-  double maxLat, maxLon;
+  double minLat {0.0}, minLon {0.0};
+  double maxLat {0.0}, maxLon {0.0};
 
   [[nodiscard]] std::string get_bbox() const {
     return  fmt::format("{}, {}, {}, {}", minLat, minLon, maxLat, maxLon);

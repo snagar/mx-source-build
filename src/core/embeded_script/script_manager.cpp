@@ -639,7 +639,7 @@ missionx::script_manager::seedByProperty(mxProperties& prop)
   vecMbValues.clear();
   for (size_t i = 0; i < n; ++i)
   {
-    mb_value_t mbVal; //
+    mb_value_t mbVal = {MB_DT_UNKNOWN, {0} }; //
     vecMbValues.push_back(mbVal);
   }
 

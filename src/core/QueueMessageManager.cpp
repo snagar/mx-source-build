@@ -481,7 +481,7 @@ missionx::QueueMessageManager::progressMessage(Message* msgInstance, int& inMsgI
     if (msgInstance->mapChannels.empty())
     {
       msgInstance->msgState = mx_message_state_enum::msg_is_ready_to_be_played;
-      msgInstance->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), (int)msgInstance->msgState); 
+      msgInstance->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), static_cast<int> (msgInstance->msgState));
     }
     else
     {
@@ -503,7 +503,7 @@ missionx::QueueMessageManager::progressMessage(Message* msgInstance, int& inMsgI
       if (( counter > 0) || (counter >= msgInstance->mapChannels.size()) || sound.initSoundResult != FMOD_OK)
       {
         msgInstance->msgState = mx_message_state_enum::msg_channels_need_to_finish_loading;
-        msgInstance->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), (int)msgInstance->msgState);
+        msgInstance->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), static_cast<int> (msgInstance->msgState));
       }
     }
 
@@ -543,12 +543,12 @@ missionx::QueueMessageManager::progressMessage(Message* msgInstance, int& inMsgI
             }
             else if (fmod_file_state != FMOD_OPENSTATE_ERROR) // v3.305.4 solve racing issue with file taking time to load, it should not be ERRORED automatically.
             {
-              Log::logMsg(fmt::format("[{}] Waiting for file: {}, to open. FMOD Open State: {}", __func__, sound.fileToPlay_fullPath, (int)fmod_file_state));
+              Log::logMsg(fmt::format("[{}] Waiting for file: {}, to open. FMOD Open State: {}", __func__, sound.fileToPlay_fullPath, static_cast<int> (fmod_file_state)));
               continue;
             }
             else
             {
-              Log::logMsg(fmt::format("[{}] Failed to open sound file: {}. FMOD Open State: {}", __func__, sound.fileToPlay_fullPath, (int)fmod_file_state));
+              Log::logMsg(fmt::format("[{}] Failed to open sound file: {}. FMOD Open State: {}", __func__, sound.fileToPlay_fullPath, static_cast<int> (fmod_file_state)));
               counter++;
               sf.isSoundFileReadyToBePlayed = false;
               sf.openState                  = FMOD_OPENSTATE_ERROR;
@@ -561,7 +561,7 @@ missionx::QueueMessageManager::progressMessage(Message* msgInstance, int& inMsgI
       if ((counter > 1) || (counter >= msgInstance->mapChannels.size()) || sound.initSoundResult != FMOD_OK )
       {
         msgInstance->msgState = mx_message_state_enum::msg_is_ready_to_be_played;
-        msgInstance->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), (int)msgInstance->msgState);
+        msgInstance->setNodeProperty<int>(mxconst::get_PROP_STATE_ENUM(), static_cast<int> (msgInstance->msgState));
       }
     } // end check message has channels to check
 
@@ -870,7 +870,9 @@ missionx::QueueMessageManager::prepareMessageText(Message* msg, bool flag_messag
       {
         Log::logDebugBO("[qmm] Broadcast mxpad using narrator: " + messageText);
 
-        XPLMSpeakString(messageText.c_str()); // plugin
+        // v25.10.1 strip all "\n" from text
+        const std::string sanitize_text = mxUtils::sanitize_text (messageText, "\n\r",' ');
+        XPLMSpeakString(sanitize_text.c_str()); // plugin
         QueueMessageManager::flag_message_is_broadcasting = true;
       } // end broadcast mxpad with narrator instead of a channel
     }
@@ -924,9 +926,9 @@ missionx::QueueMessageManager::playSoundFilesFromAllChannels(Message* msg, float
       {
         if (sf.isSoundFileReadyToBePlayed && sf.sound != nullptr && msg->mode == missionx::mx_msg_mode::mode_default) // v3.305.1 added message mode type must be default and not story
         {
-          // v3.0.303.6 read setup normailized volume and decide if to modify the sound channel
-          if (bNormalize && sf.volume > (float)iNormalize_val)
-            sf.setVolume((float)iNormalize_val); // set the normalized volume
+          // v3.0.303.6 read setup normalized volume and decide if to modify the sound channel
+          if (bNormalize && sf.volume > static_cast<float> (iNormalize_val))
+            sf.setVolume(static_cast<float> (iNormalize_val)); // set the normalized volume
 
           QueueMessageManager::sound.playStreamFile(sf); // try to play stream
 
@@ -1091,7 +1093,7 @@ missionx::QueueMessageManager::postMessage(const Message* msg)
         auto             minutes_d       = Utils::readNodeNumericAttrib<double>(msg->node, mxconst::get_ATTRIB_ADD_MINUTES(), 0.0);
         if (minutes_d > 1 && minutes_d <= max_min_to_skip)
         {
-          int how_many_cycles_i = (int)((float)(mxconst::MAX_LAPS_I) * ((minutes_d / max_min_to_skip))); //
+          int how_many_cycles_i = static_cast<int> ((float)(mxconst::MAX_LAPS_I) * ((minutes_d / max_min_to_skip))); //
           if (how_many_cycles_i > mxconst::MAX_LAPS_I || minutes_d < 30.0)
             how_many_cycles_i = 1;
 
@@ -1177,7 +1179,7 @@ missionx::QueueMessageManager::fade_bg_channel(const std::string& inMessageName_
     fadeCommand.seconds_to_start_f = 0.0f; // immediate
     fadeCommand.command            = '-';  // decrease command
     fadeCommand.new_volume         = 0;    // expected volume to decrease to
-    fadeCommand.transition_time_f  = (inSecondsUntilFadeOut_d <= 0.0) ? mxconst::DEFAULT_SF_FADE_SECONDS_F : (float)inSecondsUntilFadeOut_d; // Use used fade steps or plugin default
+    fadeCommand.transition_time_f  = (inSecondsUntilFadeOut_d <= 0.0) ? mxconst::DEFAULT_SF_FADE_SECONDS_F : static_cast<float> (inSecondsUntilFadeOut_d); // Use used fade steps or plugin default
 
 
     mxUtils::purgeQueueContainer(missionx::QueueMessageManager::mapPlayingBackgroundSF[inMessageName_s].qSoundCommands);
