@@ -626,7 +626,7 @@ MissionMenuHandler (void *inMenuRef, void *inItemRef)
 {
   // Main Menu Dispatcher that calls the function that creates each Widget
 
-  switch (static_cast<Mission::mx_menuIdRefs> (reinterpret_cast<intptr_t> (inItemRef)))
+    switch (static_cast<Mission::mx_menuIdRefs> (reinterpret_cast<intptr_t> (inItemRef)))
   {
     case Mission::mx_menuIdRefs::MENU_TOGGLE_MISSIONX_BRIEFER:
     {

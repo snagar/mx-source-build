@@ -82,23 +82,19 @@ public:
   static strct_shared_random_airport_info shared_navaid_info;
 
 private:
-  // key=types value: string translation in lower case    
-  static mx_plane_types_enum template_plane_type_enum; // holds the enum type. we can then use mapPlaneEnumToStringTypes to translate to string value
-
-  static std::string                   translatePlaneTypeToString (mx_plane_types_enum in_plane_type);
-  static missionx::mx_plane_types_enum translatePlaneTypeToEnum (const std::string &in_plane_type);
-
+  bool                       flag_found;
 
   std::string pathToRandomRootFolder;
   std::string pathToRandomBrieferFolder;
 
-  bool                       flag_found;
+  // key=types value: string translation in lower case
+  static mx_plane_types_enum template_plane_type_enum; // holds the enum type. we can then use mapPlaneEnumToStringTypes to translate to string value
+  static std::string                   translatePlaneTypeToString (mx_plane_types_enum in_plane_type);
+  static missionx::mx_plane_types_enum translatePlaneTypeToEnum (const std::string &in_plane_type);
+
   std::string                randomPlaneType; // v3.0.221.11
-  static bool                is_plane_type_valid (const std::string &in_plane_type); // v25.09.2
   mx_plane_types_enum        setPlaneType (std::string inPlaneType);
   void                       setPlaneType (mx_plane_types_enum inPlaneType);
-  static uint8_t             getPlaneType ();
-  static mx_plane_types_enum getPlaneType_enum ();
 
   static std::string errMsg;
 
@@ -148,43 +144,20 @@ private:
 
   static std::list<missionx::NavAidInfo> listNavInfo; // v3.0.219.6 // del ?
 
-  // std::map<std::string, int> mapFlightPlanOrder_si; // del? // assist in constructing next goal. We add goal name and sequence numbering every time we add to "xFlightLegs"
-  // std::map<int, std::string> mapFLightPlanOrder_is; // del? // assist in constructing next goal. We add sequence numbering and then the goal name.
-
   //// hidden function members
   static void setError(const std::string& inMsg);
 
-  // static missionx::mxVec2d del_get_skewed_target_position (const missionx::Point &p); // del// v25.09.2 will return a skewed position in the ~0.5-3.0nm away from target.
   static IXMLNode gen_get_skewed_target_position (const IXMLNode &inRealTargetPositionPoint); // will return a skewed position in the ~0.5-3.0nm away from target.
-  // static bool     parse_display_object_element (IXMLNode &inFlightLegNode, IXMLNode &inDisplayNode, IXMLNode &in_xRootTemplate, IXMLNode &x3DObjTemplate, double &expected_slope_at_target_location_d, std::string &inout_err); // check xml tag <display_object> for specific random attributes.
   static bool     parse_display_object_element (missionx::NavAidInfo *in_target_nav_ptr, IXMLNode &inFlightLegNode, IXMLNode &inDisplayNode, IXMLNode &in_xRootTemplate, IXMLNode &x3DObjTemplate, double &expected_slope_at_target_location_d, std::string &inout_err); // check xml tag <display_object> for specific random attributes.
   // del ?
   // static void     parse_3D_object_template_element (const IXMLNode &in_root_template_node, const IXMLNode &in_3d_obj_template_node, std::string &inout_err); // check xml tag <object_template> for specific random attributes.
 
 
   bool gen_read_mission_info_element();
-  // bool prepareBrieferAndStartLocation();   // del      // assist in constructing a briefer element. Mission description will be fetched from "elementBrieferInfoProperties" which was initialized in "readMissionInfoElement()"
-  // bool readFlightLegs_directlyFromTemplate(); // del // assist in constructing <leg> elements.
-
   bool flag_isLastFlightLeg;                  // v3.0.219.11 specifically for slope test in location_type="xy" and template_type="medevac". In last goal we skip this test, since we expect to land
 
   static IXMLNode get_content_story (const IXMLNode &xTemplateNode /*, std::string inTemplateType*/); // v3.0.219.14 Will try to parse and pick a background content story
 
-  // del both functions
-  // bool            extract_flight_leg_set (IXMLNode &inNodeTemplate, const IXMLNode &inSetNode, int &inCounter); // v3.0.219.14 Will try to parse and pick a background content story
-  // bool            build_and_add_flight_leg_from_node (const IXMLNode &inNode, int &inCounter); // v3.0.219.14 Will try to parse and pick a background content story
-
-  // bool        generateRandomMissionBasedOnContent (IXMLNode &xTemplateNode); // del // v3.0.219.13
-
-
-  // IXMLNode buildFlightLeg(int inFlightLegCounter, const IXMLNode& in_legNodeFromTemplate); // del
-
-  // void fill_up_next_leg_attrib_after_flight_plan_was_generated(); // del
-
-
-  // static bool setInstanceProperties(IXMLNode& pNode, missionx::NavAidInfo& inTargetNavInfo, IXMLNode &inDummyTopNode, const bool &flag_isLastFlightLeg); // del
-  // void injectMissionTypeFeatures(); // del
-  // void injectMessagesWhileFlyingToDestination(); // del
 
   typedef enum _inv_source
   {
@@ -192,16 +165,9 @@ private:
     trigger = 2
   } mxInvSource;
 
-  // void addInventory (const std::string &inFlightLegName, const IXMLNode &inSourceNode, mxInvSource inSource = mxInvSource::trigger);
-
-  // std::set<std::string> setInventories;
-
-  // void check_validity_of_display_object_elements(const std::string &inSavePath, const IXMLNode parent, IXMLNode& nodeBriefer); // deprecated since we do not use. It was moved the data_manager class.
   bool writeTargetFile();
 
   // do a 360 swipe and pick Airports every 10deg and in distances of 10/20/30..Nth nautical miles. Store airport data in a map of <int, NavAidInfo>
-  //void getRandomAirport_localThread(missionx::NavAidInfo& outNavAid, std::string inLocationType = EMPTY_STRING, std::string inRestrictRampType = missionx::EMPTY_STRING); // v3.0.221.15 rc3.5
-
   double expected_slope_at_target_location_d;
 
   static bool gen_get_is_navaid_in_a_valid_distance (const double &currentDistanceToTarget, const double &in_location_value_d, const double &in_location_minDistance_d, const double &in_location_maxDistance_d);
@@ -223,21 +189,22 @@ private:
   std::string briefer_starting_location_desc; // v25.05.1
 
   static std::map<int, NavAidInfo> gen_get_databaseflightplan_site_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr); // v25.10.1
-  missionx::mx_return gen_prepare_mission_based_on_databaseflightplan_site(IXMLNode& in_xTemplateNode); // v25.10.1
+  missionx::mx_return gen_prepare_mission_based_on_databaseflightplan_site(IXMLNode& in_xTemplateNode, IXMLNode & inout_meta_node); // v25.10.1
   // bool prepare_mission_based_on_external_fpln(IXMLNode& pNode); // v3.0.253.1 // NEED TO CONVERT // DEPRECATED
 
   static std::map<int, NavAidInfo> gen_get_ils_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr); // v25.10.1
-  missionx::mx_return gen_prepare_mission_based_on_ils_search (IXMLNode &pNode); // v25.10.1
+  missionx::mx_return gen_prepare_mission_based_on_ils_search (IXMLNode &pNode, IXMLNode & inout_meta_node); // v25.10.1
   // bool prepare_mission_based_on_ils_search(IXMLNode& pNode);    // v3.0.253.6 // NEED TO CONVERT // DEPRECATED
 
   void add_waypoints_for_fpln_or_simbrief(IXMLNode& pNode); // v25.04.2 // NEED TO CONVERT
   static std::map<int, NavAidInfo> gen_get_user_fpln_or_simbrief_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr); // v25.10.1
-  missionx::mx_return gen_prepare_mission_based_on_user_fpln_or_simbrief (IXMLNode &in_xTemplateNode); // v25.10.1
+  missionx::mx_return gen_prepare_mission_based_on_user_fpln_or_simbrief (IXMLNode &in_xTemplateNode, IXMLNode & inout_meta_node); // v25.10.1
   // bool prepare_mission_based_on_user_fpln_or_simbrief (IXMLNode &pNode); // v25.03.3 // v25.10.1 DEPRECATED
   // end v25.06.1
-  mx_return gen_prepare_mission_based_on_oilrig (IXMLNode &inRootTemplate); // v25.09.2
+  mx_return gen_prepare_mission_based_on_oilrig (IXMLNode &inRootTemplate, IXMLNode & inout_meta_node); // v25.09.2
   // mx_return gen_prepare_mission_based_on_oilrig2 (IXMLNode &pNode, std::string &outErr); // v25.09.1
 
+  static missionx::mx_plane_types_enum gen_parse_plane_type (missionx::mx_base_node &in_user_property_ui_node, IXMLNode & inout_parent_node, IXMLNode & inout_meta_node );
 
 public:
   RandomEngine();
@@ -255,6 +222,10 @@ public:
   // static bool flag_picked_from_osm_database; // del // v25.09.2 deprecated since we never use it
 
   // members exposing private parameters
+  static bool                is_plane_type_valid (const std::string &in_plane_type); // v25.09.2
+  static uint8_t             getPlaneType ();
+  static mx_plane_types_enum getPlaneType_enum ();
+
   static std::string getErrorMsg() { return missionx::RandomEngine::errMsg; }
 
   IXMLNode getBrieferNode() const
@@ -270,8 +241,7 @@ public:
   static std::thread  thread_ref;
   static strct_thread_state random_thread_state;
 
-  static std::map<XPLMNavRef, missionx::NavAidInfo> mapNavAidsFromMainThread;                           // v3.0.221.4 holds nav aid data from main plugin thread so thread will process it later in the background
-  // std::map<std::string, XPLMNavRef>          map_customScenery_XPLMNavRef_NavAidsFromMainThread; // v3.0.253.6 holds navaids name and reference to Navaids that are also custom based (from Custom Scenery)
+  static std::map<XPLMNavRef, missionx::NavAidInfo> mapNavAidsFromMainThread; // v3.0.221.4 holds nav aid data from main plugin thread so thread will process it later in the background
 
   bool        exec_generate_mission_thread (const std::string &inKey);
   static void stop_plugin ();
@@ -295,6 +265,11 @@ public:
 
   // gather NavAid information from main plugin thread
   // void gatherRandomAirport_mainThread(const Point& inPoint, float inMaxDistance_nm, int inExcludeAngle = -1, float inStartFromDistance_nm = 0.0f);
+
+  //// v25.10.2 Find Filter
+  static missionx::mx_return gen_get_ramp_based_on_plane_type (missionx::NavAidInfo &     inout_target_navaid
+                                                               , const mx_plane_types_enum &in_plane_type_enum_to_search
+                                                               , const missionx::mxFilterRampType &inRampFilterType);
 
   //// v3.0.253.7 made public
   static bool filterAndPickRampBasedOnPlaneType (missionx::NavAidInfo &           navAid,
@@ -542,7 +517,7 @@ private:
   missionx::mx_return                        gen_content_option_01_random_mission_from_content (IXMLNode &xTemplateNode, IXMLNode & xContent); // v25.09.2
   missionx::mx_return                        gen_content_option_02_copy_as_is (IXMLNode &xTemplateNode, IXMLNode & xContent); // v25.09.2
   missionx::mx_return                        gen_prepare_random_mission_based_on_leg_nodes_in_template (IXMLNode &in_xTemplateNode); // v25.09.2 - this represents the original way we constructed a random mission
-  void                                       gen_create_all_leg_nodes_based_on_navaid_targets (std::map<int, NavAidInfo> &navaid_targets);
+  void                                       gen_create_all_leg_nodes_based_on_navaid_targets (std::map<int, NavAidInfo> &navaid_targets, bool in_only_2_legs = false);
 
   static std::string gen_get_cumulative_fpln_desc (std::map<int, NavAidInfo> &navaid_targets);
   // conduct basic validations to figure out if all navaids are valid and how many are valid

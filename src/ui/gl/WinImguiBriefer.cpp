@@ -3174,6 +3174,7 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
           {
             if (auto node = missionx::data_manager::prop_userDefinedMission_ui.getChild (mxconst::get_PROP_ADD_ROUTE_WAYPOINTS ()); !node.isEmpty ())
               node.deleteNodeContent ();
+            missionx::data_manager::prop_userDefinedMission_ui.addChildText (mxconst::get_PROP_ADD_ROUTE_WAYPOINTS (), "false"); // v25.10.2
           }
 
           this->addAdvancedSettingsPropertiesBeforeGeneratingRandomMission ();

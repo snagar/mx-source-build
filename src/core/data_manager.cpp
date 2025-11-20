@@ -8448,6 +8448,9 @@ data_manager::get_translate_of_mission_subcategory_code (const int in_missionCod
   // We will focus only on the "in_missionCodeType" and a "key word" in the picked sub category.
   // We will remove the "data_manager::mapMissionCategoriesCodes" from the code.
 
+  if (in_mission_subcategory < 0)
+    in_mission_subcategory = 0;
+
   if (mxUtils::isElementExistsInVec<int> (data_manager::vecMissionCategoriesCodes, in_missionCodeType))
   {
     outMetaNode.updateAttribute ( "", mxconst::get_ATTRIB_SURPRISE_ME_SUB_CAT_B ().c_str (), mxconst::get_ATTRIB_SURPRISE_ME_SUB_CAT_B ().c_str ());

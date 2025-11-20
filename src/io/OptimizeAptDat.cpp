@@ -838,21 +838,42 @@ SELECT t1.icao_id,
        , t1.boundary           
   FROM xp_airports t1)");
 
+//     inDB_ptr->execute_stmt(R"(create view ramps_vu as
+// SELECT icao_id, icao, ramp_lat as lat, ramp_lon as lon, ramp_heading_true heading, ramp_uq_name as name, for_planes
+//      -- All the last "OR" logic in each case statements is for compatibility with old scenery files codes and format. We try to guess the ramp type
+//      , case when (instr( lower(IFNULL(for_planes,'')), 'helos') > 0) or (instr( lower(IFNULL(ramp_uq_name,'')), 'heli') > 0) then 1  else 0 END as helos
+//      , case when instr( lower(IFNULL(for_planes,'')), 'props') > 0 or  (instr( lower(IFNULL(ramp_uq_name,'')), 'general') > 0) then 1 else 0 END as props
+//      , case when instr( lower(IFNULL(for_planes,'')), 'turboprops') > 0 or  (instr( lower(IFNULL(ramp_uq_name,'')), 'apron') > 0) then 1 else 0 END as turboprops
+//      , case when instr( lower(IFNULL(for_planes,'')), 'heavy') > 0 or (instr( lower(IFNULL(for_planes,'')), 'jet') > 0) or (instr( lower(IFNULL(ramp_uq_name,'')), 'apron') > 0) then 1 else 0 END as jet_n_heavy
+//      , case when instr( lower(IFNULL(for_planes,'')), 'fighter') > 0 then 1 else 0 END as fighters
+//      , 1 as which_table
+// FROM xp_ap_ramps t1
+// union
+// SELECT icao_id, icao, lat, lon, 0 as heading, name, "helos" as for_planes, 1 as helos, 0 as props, 0 as turboprops, 0 as jet_n_heavy, 0 as fighters, 2 as which_table
+// FROM xp_helipads t1
+// ORDER BY icao_id
+// )");
+
+
     inDB_ptr->execute_stmt(R"(create view ramps_vu as
 SELECT icao_id, icao, ramp_lat as lat, ramp_lon as lon, ramp_heading_true heading, ramp_uq_name as name, for_planes
      -- All the last "OR" logic in each case statements is for compatibility with old scenery files codes and format. We try to guess the ramp type
-     , case when (instr( lower(IFNULL(for_planes,'')), 'helos') > 0) or (instr( lower(IFNULL(ramp_uq_name,'')), 'heli') > 0) then 1  else 0 END as helos  
+     , case when (instr( lower(IFNULL(for_planes,'')), 'helos') > 0) or (instr( lower(IFNULL(ramp_uq_name,'')), 'heli') > 0) then 1  else 0 END as helos
      , case when instr( lower(IFNULL(for_planes,'')), 'props') > 0 or  (instr( lower(IFNULL(ramp_uq_name,'')), 'general') > 0) then 1 else 0 END as props
-     , case when instr( lower(IFNULL(for_planes,'')), 'turboprops') > 0 or  (instr( lower(IFNULL(ramp_uq_name,'')), 'apron') > 0) then 1 else 0 END as turboprops
-     , case when instr( lower(IFNULL(for_planes,'')), 'heavy') > 0 or (instr( lower(IFNULL(for_planes,'')), 'jet') > 0) or (instr( lower(IFNULL(ramp_uq_name,'')), 'apron') > 0) then 1 else 0 END as jet_n_heavy
+     , case when instr( lower(IFNULL(for_planes,'')), 'turboprops') > 0 then 1 else 0 END as turboprops
+     , case when instr( lower(IFNULL(for_planes,'')), 'jet') > 0 then 1 else 0 END as jet
+     , case when instr( lower(IFNULL(for_planes,'')), 'heavy') > 0  then 1 else 0 END as heavy
      , case when instr( lower(IFNULL(for_planes,'')), 'fighter') > 0 then 1 else 0 END as fighters
+     , case when instr( lower(IFNULL(ramp_uq_name,'')), 'apron') > 0 then 1 else 0 END as apron
+     , case when instr( lower(IFNULL(ramp_uq_name,'')), 'term') > 0 then 1 else 0 END as terminal
      , 1 as which_table
 FROM xp_ap_ramps t1
 union
-SELECT icao_id, icao, lat, lon, 0 as heading, name, "helos" as for_planes, 1 as helos, 0 as props, 0 as turboprops, 0 as jet_n_heavy, 0 as fighters, 2 as which_table
+SELECT icao_id, icao, lat, lon, 0 as heading, name, "helos" as for_planes, 1 as helos, 0 as props, 0 as turboprops, 0 as jet, 0 as heavy, 0 as fighters, 0 as apron, 0 as terminal, 2 as which_table
 FROM xp_helipads t1
 ORDER BY icao_id
 )");
+
 
     inDB_ptr->execute_stmt("CREATE UNIQUE INDEX icao_apName_n1 on xp_airports (icao, ap_name)");
     inDB_ptr->execute_stmt("CREATE INDEX ap_type_n2 on xp_airports (ap_type)");

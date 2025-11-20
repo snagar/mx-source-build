@@ -47,15 +47,29 @@ public:
     infoMsges.clear();
   }
 
-  mx_return(bool inInitResult)
+
+  mx_return(const bool inInitResult)
   {
     this->result = inInitResult;
     errMsges.clear();
     infoMsges.clear();
   }
 
-  int getErrIndex() const { return errIndex; }
-  int getInfoIndex() const { return infoIndex; }
+
+  void reset()
+  {
+    result = false;
+    string_value.clear();
+
+    errMsges.clear();
+    infoMsges.clear();
+
+    errIndex  = 0;
+    infoIndex = 0;
+  }
+
+  [[nodiscard]] int getErrIndex() const { return errIndex; }
+  [[nodiscard]] int getInfoIndex() const { return infoIndex; }
 
   int addErrMsg(const std::string& inText, const bool inSetResultAsFail = false)
   {
@@ -93,6 +107,11 @@ public:
       text.append(fmt::format("{}: {}", key, value));
 
     return text;
+  }
+
+  std::string getErrorsAndInfoAsText()
+  {
+    return getErrorsAsText() + "\n" + getInfoAsText();
   }
 };
 

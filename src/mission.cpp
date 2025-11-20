@@ -1133,13 +1133,14 @@ missionx::Mission::START_MISSION()
       Mission::uiImGuiMxpad->setWasHiddenByAutoHideOption(false);
 
 
+    data_manager::clearFMSEntries(); // v3.0.253.7
+
     // then check global GPS
     std::map<int, missionx::NavAidInfo> map_fms_entries; // v25.05.1
     if (Utils::getNodeText_type_1_5<bool>(system_actions::pluginSetupOptions.node, mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE(), true) == false &&
         mission_state_s.empty()) // if to reveal 1 by one then first check if there is GPS element in LEG if not then check global GPS
     {
-      data_manager::clearFMSEntries(); // v3.0.253.7
-     
+      // data_manager::clearFMSEntries(); // v3.0.253.7
       if ( 
           (!data_manager::xmlGPS.isEmpty () && data_manager::xmlGPS.nChildNode (mxconst::get_ELEMENT_POINT ().c_str ()) > 1 
             && data_manager::mapFlightLegs[data_manager::currentLegName].xGPS.isEmpty ()
@@ -4875,8 +4876,9 @@ missionx::Mission::flcPRE()
           navAid.synchToPoint();
 
           // v3.0.253.7 try to pick ramp
-          std::string err;
-          missionx::RandomEngine::filterAndPickRampBasedOnPlaneType(navAid, err, missionx::mxFilterRampType::airport_ramp); // this can cause performance issues
+          missionx::mx_return err;
+          // missionx::RandomEngine::filterAndPickRampBasedOnPlaneType(navAid, err, missionx::mxFilterRampType::airport_ramp); // this can cause performance issues
+          err = missionx::RandomEngine::gen_get_ramp_based_on_plane_type(navAid, RandomEngine::getPlaneType_enum (), missionx::mxFilterRampType::airport_ramp); // this can cause performance issues
 
           // Add point element
           IXMLNode p = RandomEngine::shared_navaid_info.parentNode_ptr.addChild(navAid.node.deepCopy());
