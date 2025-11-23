@@ -922,20 +922,6 @@ my_write(void* buffer, const size_t size, size_t nmemb, void* param)
 
 // -------------------------------------
 
-int
-callback_sqlite_data(void* data, int argc, char** argv, char** azColName)
-{
-  data_manager::row_gather_db_data.clear();
-  for (int i = 0; i < argc; i++)
-    data_manager::row_gather_db_data[azColName[i]] = argv[i] ? argv[i] : "";
-
-  data_manager::reasultTable[static_cast<int> ( data_manager::reasultTable.size () )] = data_manager::row_gather_db_data;
-  data_manager::row_gather_db_data.clear();
-
-  return 0;
-};
-
-
 
 } // namespace missionx
 
@@ -946,6 +932,21 @@ callback_sqlite_data(void* data, int argc, char** argv, char** azColName)
 // -------------------------------------
 
 // missionx::data_manager::~data_manager() {}
+
+
+int
+data_manager::callback_sqlite_data (void *data, int argc, char **argv, char **azColName)
+{
+  data_manager::row_gather_db_data.clear ();
+  for (int i = 0; i < argc; i++)
+    data_manager::row_gather_db_data[azColName[i]] = argv[i] ? argv[i] : "";
+
+  data_manager::reasultTable[static_cast<int> (data_manager::reasultTable.size ())] = data_manager::row_gather_db_data;
+  data_manager::row_gather_db_data.clear ();
+
+  return 0;
+};
+
 
 
 // -------------------------------------
@@ -6950,30 +6951,6 @@ where is_plane_in_boundary = 1
 
 //  NO Need to create fake boundaries, if an airport does not have a boundary, then it might be an inactive airport.
 //  We could try and use "distance" instead, but that is good, only in edge cases.
-//
-//
-//   Consider replacing the query with fake boundaries for Empty/Null "boundary" field:
-//   from
-//   (
-//   select xp_airports.icao_id, xp_airports.icao, xp_airports.ap_name, xp_airports.ap_lat, xp_airports.ap_lon, xp_airports.ap_elev
-//   ,  case when trim(IFNULL(xp_airports.boundary, '')) = '' then
-//               mx_get_point_based_on_bearing_and_length_in_meters(xp_airports.ap_lat, xp_airports.ap_lon, 90.0, 50.0 ) || '|' ||
-//               mx_get_point_based_on_bearing_and_length_in_meters(xp_airports.ap_lat, xp_airports.ap_lon, 180.0, 50.0 ) || '|' ||
-//               mx_get_point_based_on_bearing_and_length_in_meters(xp_airports.ap_lat, xp_airports.ap_lon, 270.0, 50.0 ) || '|' ||
-//               mx_get_point_based_on_bearing_and_length_in_meters(xp_airports.ap_lat, xp_airports.ap_lon, 0.0, 50.0 )
-//           else
-//           xp_airports.boundary
-//       end
-//         boundary
-// from xp_airports
-// where xp_airports.boundary is not null
-// and ( trunc(xp_airports.ap_lat) between trunc( 52.4823770 - 1.0) and  trunc( 52.4823770 + 1.0) )
-// and ( trunc(xp_airports.ap_lon) between trunc( 13.3955518 - 1.0) and  trunc( 13.3955518 + 1.0) )
-// ) v1
-// where 1 =1
-// and is_plane_in_boundary = 1
-
-
 
 
   std::map<int, std::string> mapArgs = { { 1, planePosition.getLat_s() }, { 2, planePosition.getLon_s() } }; // v24.05.2
@@ -7310,7 +7287,7 @@ data_manager::sqlite_test_db_validity(const dbase& inDB, const bool isThreaded)
 
 
   reasultTable.clear();
-  int rc = sqlite3_exec(inDB.db, sql.data(), &callback_sqlite_data, nullptr, &zErrMsg);
+  int rc = sqlite3_exec(inDB.db, sql.data(), &data_manager::callback_sqlite_data, nullptr, &zErrMsg);
   if (rc != SQLITE_OK)
   {
     set_flag_rebuild_apt_dat(true);
@@ -9239,7 +9216,9 @@ data_manager::waitForPluginCallbackJob (missionx::base_thread::strct_thread_stat
   return true;
 }
 
-// -------------------------------------
+
+
+ // -------------------------------------
 
 
 void

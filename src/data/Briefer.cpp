@@ -1,5 +1,7 @@
 #include "Briefer.hpp"
 #include "../core/dataref_manager.h" // v3.303.14 moved from header
+#include "../core/data_manager.h"
+#include "../core/coordinate/NavAidInfo.hpp"
 
 namespace missionx
 {
@@ -180,6 +182,16 @@ missionx::Briefer::positionPlane2(const bool inflag_setupForcePlanePositioning, 
 void
 missionx::Briefer::positionPlane(const bool in_flag_setupForcePlanePositioning, const bool in_flag_setupChangeHeadingEvenIfPlaneIn_20meter_radius)
 {
+  /*
+   * 1. Get plane position
+   * 2. Get target position
+   * 3. Get distance between plane and target
+   * 4. Is target on the other side or half of the globe ?
+   * 5. Is target position inside and airport ?
+   * 5.1 if not inside an airport than which ICAO is the closest ?
+   * 6. Decide how to position the plane.
+   */
+
   std::string err;
   err.clear();
 
@@ -190,47 +202,54 @@ missionx::Briefer::positionPlane(const bool in_flag_setupForcePlanePositioning, 
 
   // reading mission briefer location information
   const std::string ICAO            = Utils::readAttrib (this->node, mxconst::get_ATTRIB_STARTING_ICAO (), ""); // v3.0.241.1
-  const int position_pref_i = Utils::readNodeNumericAttrib<int>(this->node, mxconst::get_ATTRIB_POSITION_PREF(), 11); // v3.0.301 B4 if value is empty, then default will be xp11
+  const int position_pref_i = Utils::readNodeNumericAttrib<int>(this->node, mxconst::get_ATTRIB_POSITION_PREF(), 11); // v3.0.301 B4 if the value is empty, then default will be xp11
 
   // read <location_adjust>
   const IXMLNode location_adjust_node = this->node.getChildNode (mxconst::get_ELEMENT_LOCATION_ADJUST ().c_str ());
 
-  const auto lat1            = Utils::readNodeNumericAttrib<double> (location_adjust_node, mxconst::get_ATTRIB_LAT (), 0.0); // v3.0.241.1
-  const auto lon1            = Utils::readNodeNumericAttrib<double> (location_adjust_node, mxconst::get_ATTRIB_LONG (), 0.0); // v3.0.241.1
-  const auto elev_ft         = Utils::readNodeNumericAttrib<double> (location_adjust_node, mxconst::get_ATTRIB_ELEV_FT (), 0.0); // v3.0.241.1
+  const auto lat1            = Utils::readNodeNumericAttrib<float> (location_adjust_node, mxconst::get_ATTRIB_LAT (), 0.0f); // v3.0.241.1
+  const auto lon1            = Utils::readNodeNumericAttrib<float> (location_adjust_node, mxconst::get_ATTRIB_LONG (), 0.0f); // v3.0.241.1
+  const auto elev_ft         = Utils::readNodeNumericAttrib<float> (location_adjust_node, mxconst::get_ATTRIB_ELEV_FT (), 0.0f); // v3.0.241.1
   const auto heading_psi_f   = Utils::readNodeNumericAttrib<float> (location_adjust_node, mxconst::get_ATTRIB_HEADING_PSI (), plane.heading );
   const auto startingSpeed   = Utils::readNodeNumericAttrib<double> (location_adjust_node, mxconst::get_ATTRIB_STARTING_SPEED_MT_SEC (), 0.0); // v3.0.241.1
   const bool force_heading_b = Utils::readBoolAttrib (location_adjust_node, mxconst::get_ATTRIB_FORCE_HEADING_B (), false); // v3.0.301 B4
 
-  
-  missionx::Point p1;
-  p1.resetData ();
-  p1.setLat (lat1);
-  p1.setLon (lon1);
-  p1.setElevationFt (elev_ft); // in feet will be translated automatically to meters too
-  p1.setHeading (heading_psi_f); // store current plane heading. this might not be the final heading
-  p1.calcSimLocalData ();
+  missionx::NavAidInfo na;
+
+  na.lat = lat1;
+  na.lon = lon1;
+  na.height_mt = elev_ft * missionx::feet2meter;
+  na.heading = heading_psi_f;
+  na.synchToPoint ();
+
+  auto guess_target_icao = missionx::data_manager::get_plane_airport_or_nearest_icao (false, na.lat, na.lon, false);
+  guess_target_icao.synchToPoint ();
+  const auto distance_between_guess_icao_and_start_position = guess_target_icao.p - na.p;
 
   // calculate plane distance to location_adjust position
-  auto distance_plane_to_starting_location_in_meters = plane.calcDistanceBetween2Points (p1, missionx::mx_units_of_measure::meter);
+  auto distance_plane_to_starting_location_in_meters = plane.calcDistanceBetween2Points (na.p, missionx::mx_units_of_measure::meter);
   // Evaluate distance to starting location
   bool flag_is_plane_in_20_meters_radius_from_starting_position = (distance_plane_to_starting_location_in_meters <= mxconst::TWNENTY_METERS_D);
 
   // Are the "target and plane" on different sides of the globe ?
-  auto target_lon_is_on_other_half_of_globe = (p1.lon * plane.lon < 0.0);
+  auto target_lon_is_on_other_half_of_globe = (na.lon * plane.lon < 0.0);
 
-  // Should we use the ICAO attribute ?
+  // Should we use the ICAO attribute?
   // Test id we have "ICAO" and we are not in "20m radius from starting location".
   // Test if the distance is greater than ~540nm or we don't have valid <location adjust> values for "local" latitude and longitude data.
   // Last, Test if target and plane are on a different side of the globe.
-  if (!ICAO.empty () && !flag_is_plane_in_20_meters_radius_from_starting_position
-    && ( (distance_plane_to_starting_location_in_meters > mxconst::MILION_METERS_D) + (p1.lat * p1.lon == 0) + target_lon_is_on_other_half_of_globe) )
+  if ((!ICAO.empty () || !guess_target_icao.getID ().empty () )&& !flag_is_plane_in_20_meters_radius_from_starting_position
+    && ( (distance_plane_to_starting_location_in_meters > mxconst::MIN_POSITION_DISTANCE_D) + (na.lat * na.lon == 0) + target_lon_is_on_other_half_of_globe) )
 
   {
-    Utils::position_plane_in_ICAO (ICAO);
+    if (!ICAO.empty ())
+      Utils::position_plane_in_ICAO (ICAO);
+    else if (!guess_target_icao.getID().empty ()) // v25.10.2
+      Utils::position_plane_in_ICAO (guess_target_icao.getID());
+
     // re-evaluate distance after positioning based on ICAO.
     plane                                         = missionx::dataref_manager::getCurrentPlanePointLocation ();
-    distance_plane_to_starting_location_in_meters = plane.calcDistanceBetween2Points (p1, missionx::mx_units_of_measure::meter);
+    distance_plane_to_starting_location_in_meters = plane.calcDistanceBetween2Points (na.p, missionx::mx_units_of_measure::meter);
   }
 
   // Re-evaluate distance to starting location
@@ -240,13 +259,11 @@ missionx::Briefer::positionPlane(const bool in_flag_setupForcePlanePositioning, 
   // Check if lat/lon are not 0.0, if plane is not close to starting location and if the user did not force positioning of the plane
   if (  ( lat1 * lon1 * ( !(flag_is_plane_in_20_meters_radius_from_starting_position) + in_flag_setupForcePlanePositioning) ) != 0.0)
   {
-    // if (p1.getElevationInMeters () == 0.0)
-    {
-      XPLMProbeResult       probeResult;
-      [[maybe_unused]] auto probedElevInWorldCoordinates_mt = missionx::Point::getTerrainElevInMeter_FromPoint (p1, probeResult); // the function "getTerrainElevInMeter_FromPoint()" already set p1 elevation value, so we don't need to reassign it
-    }
+    // probe for target elevation
+    XPLMProbeResult       probeResult;
+    [[maybe_unused]] auto probedElevInWorldCoordinates_mt = missionx::Point::getTerrainElevInMeter_FromPoint (na.p, probeResult); // the function "getTerrainElevInMeter_FromPoint()" already set p1 elevation value, so we don't need to reassign it
     // After ICAO positioning, this time using Latitude and Longitude for fine positioning inside the ICAO airport
-    XPLMPlaceUserAtLocation (p1.getLat (), p1.getLon (), static_cast<float> (p1.getElevationInMeters ()), heading_psi_f, static_cast<float> (startingSpeed));
+    XPLMPlaceUserAtLocation (na.p.getLat (), na.p.getLon (), static_cast<float> (na.p.getElevationInMeters ()), heading_psi_f, static_cast<float> (startingSpeed));
   }
 
     // else

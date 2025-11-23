@@ -336,11 +336,11 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 # OS-specific definitions
 if (WIN32)
-  target_compile_definitions(${PROJECT_NAME} PRIVATE IBM=1 _WIN32 _CONSOLE WIN32 _WINDOWS _WINDLL _MBCS _AFXDLL FMT_UNICODE=0)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE IBM=1 _WIN32 _CONSOLE WIN32 _WINDOWS _WINDLL _MBCS _AFXDLL FMT_UNICODE=0 GLEW_STATIC)
 elseif (APPLE)
   target_compile_definitions(${PROJECT_NAME} PRIVATE MAC=1 APL=1 GL_SILENCE_DEPRECATION)
 elseif (UNIX)
-  target_compile_definitions(${PROJECT_NAME} PRIVATE LIN=1)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE LIN=1 GLEW_STATIC)
 else()
   message("Wrong os - specific")
 endif()

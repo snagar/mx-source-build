@@ -1,9 +1,6 @@
 #include "BitmapReader.h"
 #include <filesystem>
 
-// #include <GL/gl.h>
-// #include <GL/glew.h>
-
 namespace fs = std::filesystem;
 
 /**************

@@ -87,7 +87,7 @@ const static ^std::string ^PIPE_DELIMITER                ^ "|";
 
 
 constexpr ^double ^TWNENTY_METERS_D                              ^ 20.0; ^// v3.0.241.10 b3 - used in position plane. This is the threshold distance in meters that will be converted to NM
-constexpr ^double ^MILION_METERS_D                               ^ 1000000.0; ^// v25.08.1, represents ~539.9568 nautical miles
+constexpr ^double ^MIN_POSITION_DISTANCE_D                       ^ 500000.0; ^// v25.08.1 // v25.10.2 represents ~268 nautical miles
 constexpr ^double ^MIN_ACCEPTABLE_DISTANCE_TO_GUESS_WP_TYPE_NM_D ^ 1.0;  ^// v3.0.255.2 - used in guessing waypoint type.
 
 

@@ -57,7 +57,7 @@ public:
   typedef struct _ramp_data // v3.0.253.1 added ramp specific info. lat.lon/heading will be kept in the main NavAid class.
   {
     std::string gate{ "" };
-    std::string jets{ "" };    // who can park here
+    std::string ramp_for_planes{ "" };    // who can park here
     std::string uq_name{ "" }; // unique name for this ramp
   } navAidRamp;
   navAidRamp ramp_info;
@@ -168,7 +168,7 @@ public:
      flag_force_picked_same_point_template_as_flight_leg_template_type = in_na.flag_force_picked_same_point_template_as_flight_leg_template_type;
 
      ramp_info.gate    = in_na.ramp_info.gate;
-     ramp_info.jets    = in_na.ramp_info.jets;
+     ramp_info.ramp_for_planes    = in_na.ramp_info.ramp_for_planes;
      ramp_info.uq_name = in_na.ramp_info.uq_name;
 
      bearing_next                = in_na.bearing_next;
@@ -393,7 +393,7 @@ public:
 
   std::string getRampInfo()
    {
-     return fmt::format("Gate Type: {}, For planes: {}, ramp name: {}", this->ramp_info.gate, this->ramp_info.jets, this->ramp_info.uq_name);
+     return fmt::format("Gate Type: {}, For planes: {}, ramp name: {}", this->ramp_info.gate, this->ramp_info.ramp_for_planes, this->ramp_info.uq_name);
    }
 
   std::string get_loc_desc() const

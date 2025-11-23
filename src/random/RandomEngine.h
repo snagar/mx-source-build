@@ -488,7 +488,7 @@ private:
   static void     gen_add_3d_marker_to_current_target (IXMLNode &inout_leg_node, missionx::NavAidInfo &in_target_navaid); // adds a marker - <display_object>, above the target.
   static void     gen_leg_start_messages (int &seq, NavAidInfo &inout_target_na, std::map<int, NavAidInfo> &navaid_targets, IXMLNode &inout_xml_messages, const bool &flag_one_of_targets_is_above_water_body); // adds simple messages between flight legs.
   static void     gen_messages_when_reaching_target_leg (int &seq_trig, int &seq_msg, NavAidInfo &inout_target_na, IXMLNode &in_metadata_node, IXMLNode &inout_xml_messages, IXMLNode &inout_xml_triggers, const IXMLNode &in_xml_land_trigger, const IXMLNode &in_xml_hover_trigger); // add "you reached the target area" message. Add as trigger
-  static void     gen_2nm_message (int &seq_trig, int &seq_msg, NavAidInfo &inout_target_na, IXMLNode &inout_xml_messages, IXMLNode &inout_xml_triggers, const IXMLNode &in_xml_land_trigger);
+  static void     gen_2nm_to_N_nm_message (int &seq_trig, int &seq_msg, NavAidInfo &inout_target_na, IXMLNode &inout_xml_messages, IXMLNode &inout_xml_triggers, const IXMLNode &in_xml_land_trigger);
   // static void     gen_parse_and_add_all_display_objects_in_node (const std::string &in_which_func_called, const IXMLNode &in_source_node, IXMLNode &inout_target_node, IXMLNode &in_template_node, IXMLNode &inout_x3DObjTemplate, double &in_expected_slope_at_target_location_d);
   static void     gen_parse_and_add_all_display_objects_in_node (const std::string &in_which_func_called, missionx::NavAidInfo &in_target_navaid, IXMLNode &in_source_node, IXMLNode &inout_target_node, IXMLNode &in_template_node, IXMLNode &inout_x3DObjTemplate, double &in_expected_slope_at_target_location_d);
   static void     gen_3d_hint_objects_for_land_and_hover (const NavAidInfo &inout_target_na, IXMLNode &inout_leg_node, const NavAidInfo *next_navaid_ptr); // Add 3D hint objects
@@ -523,6 +523,11 @@ private:
   // conduct basic validations to figure out if all navaids are valid and how many are valid
   static missionx::mx_return gen_validate_navaids (std::map<int, NavAidInfo> &navaid_targets, int &inout_valid_navaids);
   static IXMLNode gen_set_and_get_start_cold_and_dark (IXMLNode &xTemplateNode, NavAidInfo &navaid);
+
+  // v25.10.2
+  // Will return true if function finds airport data. out_rw_count and out_longest_rw should return a value greater than zero (0).
+  static bool gen_get_rw_metadata (const std::string &in_icao, int &out_rw_count, float &out_longest_rw);
+
 
 public:
 

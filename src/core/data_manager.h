@@ -1410,10 +1410,12 @@ public:
   static missionx::base_thread::strct_thread_state metar_thread_state;
 
 
+  static int callback_sqlite_data (void *data, int argc, char **argv, char **azColName);
+
  private:
   static bool flag_found_missing_3D_object_files;
   static bool flag_rebuild_apt_dat;
-  
+
 }; // end class
 
 }
