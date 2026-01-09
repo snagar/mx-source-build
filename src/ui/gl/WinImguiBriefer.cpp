@@ -8346,7 +8346,7 @@ WinImguiBriefer::child_draw_ils_search2 ()
         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
         {
           ImGui::SameLine ();
-          if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).c_str (), "Clear##ClearFromICAO")) // should have been ImGui::ButtonTooltip
+          if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).c_str (), "Clear From ICAO")) // should have been ImGui::ButtonTooltip
           {
             this->strct_ils_layer.from_icao.clear ();
             memset (this->strct_ils_layer.buf1, 0, sizeof this->strct_ils_layer.buf1);
@@ -8387,11 +8387,13 @@ WinImguiBriefer::child_draw_ils_search2 ()
         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
         {
           ImGui::SameLine ();
-          if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).c_str (), "Clear##ClearToICAO")) // should have been ImGui::ButtonTooltip
+          ImGui::PushID ("##ClearICAO"); // v25.12.1 fix button do not respond to clicks
+          if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).c_str (), "Clear to ICAO"))
           {
             this->strct_ils_layer.to_icao.clear ();
             memset (this->strct_ils_layer.buf2, 0, sizeof this->strct_ils_layer.buf2);
           }
+          ImGui::PopID ();
         }
         this->mxUiReleaseLastFont ();
         ImGui::SameLine ();
@@ -8400,11 +8402,10 @@ WinImguiBriefer::child_draw_ils_search2 ()
         if (this->strct_ils_layer.to_icao.length () < 2) // v3.24.1 We can ignore distance only
           this->strct_ils_layer.flagIgnoreDistanceFilter = false;
 
-        ImGui::SameLine (0.0f, 5.0f);
+        // ImGui::SameLine (0.0f, 5.0f); // v25.12.1 removed
         missionx::WinImguiBriefer::HelpMarker ("You must enter Two or more search characters to enable the option to ignore 'precise distance' filter.\nThe search result will be limited to 250 rows.");
-
-        const bool bICAO_isEmpty = this->mxStartUiDisableState (this->strct_ils_layer.to_icao.empty ()); // v24.03.1 disable line ?
         ImGui::SameLine ();
+        const bool bICAO_isEmpty = this->mxStartUiDisableState (this->strct_ils_layer.to_icao.length() < 2); // v24.03.1 disable line ?
         ImGui::Checkbox ("Ignore Dist.", &this->strct_ils_layer.flagIgnoreDistanceFilter);
         this->mxEndUiDisableState (bICAO_isEmpty); // v24.03.1 disable line ?
 
