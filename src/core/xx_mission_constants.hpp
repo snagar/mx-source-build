@@ -35,8 +35,8 @@ constexpr static const int MX_FEATURES_VERSION = 20250501; //20241212; //2023091
 #define SPECIAL_BUILD ""
 
 inline constexpr static auto PLUGIN_VER_MAJOR                  = "25"; // year
-inline constexpr static auto PLUGIN_VER_MINOR                  = "10"; // month
-inline constexpr static auto PLUGIN_VER_SUB                    = "2"; // sub-version
+inline constexpr static auto PLUGIN_VER_MINOR                  = "12"; // month
+inline constexpr static auto PLUGIN_VER_SUB                    = "1_base"; // sub-version
 inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 
@@ -310,81 +310,6 @@ static const std::map <missionx::enums::mx_note_longField_enum, const char*> trn
 }
 
 
-// v25.06.1 add structs namespace
-namespace structs
-{
-typedef struct node_attribute_key_value_struct
-{
-  std::string tag;
-  std::string attrib_name;
-  std::string attrib_value;
-
-  node_attribute_key_value_struct (const std::string &inTag, const std::string &inName, const std::string &inValue) 
-  {
-    tag = inTag;
-    attrib_name = inName;
-    attrib_value = inValue;
-  }
-} strct_node_attribute_key_value;
-
-// Structure for a bounding box
-typedef struct BBox_struct {
-  double minLat {0.0}, minLon {0.0};
-  double maxLat {0.0}, maxLon {0.0};
-
-  [[nodiscard]] std::string get_bbox() const {
-    return  fmt::format("{}, {}, {}, {}", minLat, minLon, maxLat, maxLon);
-  }
-  [[nodiscard]] std::string get_bbox_short() const {
-    return  fmt::format("{:.5},{:.6},{:.5},{:.6}", minLat, minLon, maxLat, maxLon);
-  }
-
-} BBox;
-
-// v25.09.1
-typedef struct def_expected_location_data
-{
-  bool flag_force_template_distances_b;
-
-  float nm_between_min  {-1.0f};
-  float nm_between_max  {-1.0f};
-  std::string error;
-  std::string location_type;
-  std::string location_properties_s;
-  std::string flight_leg_type_hover_land_or_start;
-
-  // holds the description of the target example from <briefer_and_start_location> node
-  std::string desc;
-
-  std::vector<std::string>           vecLocationPropertiesSplit_vec;
-  std::map<std::string, std::string> mapLocationSplitPropertiesValues;
-
-  def_expected_location_data()
-  {
-    flag_force_template_distances_b = false;
-    nm_between_min = -1.0f;
-    nm_between_max = -1.0f;
-    error.clear ();
-    location_type.clear ();
-    location_properties_s.clear ();
-    flight_leg_type_hover_land_or_start.clear ();
-
-    desc.clear ();
-
-    vecLocationPropertiesSplit_vec.clear();
-    mapLocationSplitPropertiesValues.clear();
-
-  }
-
-  void reset()
-  {
-    def_expected_location_data ();
-  }
-
-} strct_expected_location_data;
-
-}
-
 typedef struct _mxVec3
 {
   float x, y, z;
@@ -615,7 +540,8 @@ typedef enum class _mx_property_type
   MX_INT     = 3,
   MX_FLOAT   = 4,
   MX_DOUBLE  = 5,
-  MX_STRING  = 6
+  MX_STRING  = 6,
+  MX_LONG    = 7, // v25.12.1
 } mx_property_type; // v3.0.217.2 moved from mxProperty
 
 // v3.305.1 TODO: should we deprecate this type ?
@@ -627,6 +553,7 @@ typedef struct _mx_property_type_as_string_code
   const std::string FLOAT{ "4" };
   const std::string DOUBLE{ "5" };
   const std::string STRING{ "6" };
+  const std::string LONG{ "7" };
 } mx_property_type_as_string_code;
 
 
@@ -1393,6 +1320,80 @@ namespace conv
 
   };
 
+  // v25.06.1 add structs namespace
+  namespace structs
+  {
+    typedef struct node_attribute_key_value_struct
+    {
+      std::string tag;
+      std::string attrib_name;
+      std::string attrib_value;
+
+      node_attribute_key_value_struct (const std::string &inTag, const std::string &inName, const std::string &inValue)
+      {
+        tag = inTag;
+        attrib_name = inName;
+        attrib_value = inValue;
+      }
+    } strct_node_attribute_key_value;
+
+    // Structure for a bounding box
+    typedef struct BBox_struct {
+      double minLat {0.0}, minLon {0.0};
+      double maxLat {0.0}, maxLon {0.0};
+
+      [[nodiscard]] std::string get_bbox() const {
+        return  fmt::format("{}, {}, {}, {}", minLat, minLon, maxLat, maxLon);
+      }
+      [[nodiscard]] std::string get_bbox_short() const {
+        return  fmt::format("{:.5},{:.6},{:.5},{:.6}", minLat, minLon, maxLat, maxLon);
+      }
+
+    } BBox;
+
+    // v25.09.1
+    typedef struct def_expected_location_data
+    {
+      bool flag_force_template_distances_b;
+
+      float nm_between_min  {-1.0f};
+      float nm_between_max  {-1.0f};
+      std::string error;
+      std::string location_type;
+      std::string location_properties_s;
+      std::string flight_leg_type_hover_land_or_start;
+
+      // holds the description of the target example from <briefer_and_start_location> node
+      std::string desc;
+
+      std::vector<std::string>           vecLocationPropertiesSplit_vec;
+      std::map<std::string, std::string> mapLocationSplitPropertiesValues;
+
+      def_expected_location_data()
+      {
+        flag_force_template_distances_b = false;
+        nm_between_min = -1.0f;
+        nm_between_max = -1.0f;
+        error.clear ();
+        location_type.clear ();
+        location_properties_s.clear ();
+        flight_leg_type_hover_land_or_start.clear ();
+
+        desc.clear ();
+
+        vecLocationPropertiesSplit_vec.clear();
+        mapLocationSplitPropertiesValues.clear();
+
+      }
+
+      void reset()
+      {
+        def_expected_location_data ();
+      }
+
+    } strct_expected_location_data;
+
+  } // namespace structs
 
 } // end missionx namespace
 

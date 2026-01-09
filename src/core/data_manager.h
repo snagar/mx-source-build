@@ -65,101 +65,124 @@ namespace missionx
 // v25.06.1 added the structs namespace
 namespace structs
 {
-struct strct_osm_query {
-  const std::string BBOX_STR = "{{bbox}}";
-  const std::string ALL_BBOX_STR = "{{all_bbox}}";
-  bool flag_data_respond_was_valid = false; // indicator of the cached/http request state.
-  int total_way_count = 0;
-  std::string id;
-  std::string sanitized_id;
-  std::string sanitized_bbox;
-  std::string cache_folder;
+  // struct strct_curl_param
+  // {
+  //   int curl_code = 0; // store ::CURLCode
+  //   mx_property_type param_type {mx_property_type::MX_UNKNOWN};
+  //   std::string param_value_str {""};
+  // };
+  //
+  //
+  // struct strct_curl_result
+  // {
+  //   int         request_code = 0;
+  //   std::string result_text {""};
+  //   IXMLNode    result_node{IXMLNode::emptyIXMLNode};
+  //
+  //   strct_curl_result () {}
+  //
+  // };
 
-  // used to build the overpass query
-  std::string q_text;
-  std::string q_bbox; // holds only the selected area: SW,NW,NE or SE
-  std::string q_all_bbox; // holds the full osm area and not just a specific area.
-  std::string q_short_bbox_fmt; // short form of the bbox
-  std::string q_escaped_request;
-  std::string q_unescaped_request;
-  IXMLNode    topic_q_node; // Hold the <q> region query count node.
-  IXMLNode    xml_query_node_to_search_a_new_target; // Holds the <q> of the search way as target, query node
-
-  // Holds the overpass respond data
-  IXMLNode xml_q_tags_header_node; // should hold the <tags> root element
-  IXMLNode xml_target_way_element {IXMLNode::emptyIXMLNode}; // should hold the subject query way result
-  IXMLNode xml_target_nd_node {IXMLNode::emptyIXMLNode}; // should hold the subject way node result
-
-  std::unordered_map<std::string, std::string> osm_queries;
-  
-  std::chrono::time_point<std::chrono::steady_clock> start_time;
-  std::chrono::time_point<std::chrono::steady_clock> end_time;
-  double duration{};
-
-  strct_osm_query()
+  struct strct_osm_query
   {
-    total_way_count = 0;
-    IXMLDomParser parser;
-    xml_q_tags_header_node = parser.parseString("<region_tags></region_tags>").deepCopy();
-  }
+    const std::string BBOX_STR = "{{bbox}}";
+    const std::string ALL_BBOX_STR = "{{all_bbox}}";
+    bool flag_data_respond_was_valid = false; // indicator of the cached/http request state.
+    int total_way_count = 0;
 
-  void clone (const strct_osm_query &inStrct)
-  {
-    this->total_way_count = inStrct.total_way_count;
-    this->id= inStrct.id;
-    this->sanitized_id= inStrct.sanitized_id;
-    this->sanitized_bbox= inStrct.sanitized_bbox;
-    this->cache_folder= inStrct.cache_folder;
+    double target_node_estimate_vector = 0.0; // v25.12.1 try to figure the vector of the target node, for 3D placement
+
+    std::string id;
+    std::string sanitized_id;
+    std::string sanitized_bbox;
+    std::string cache_folder;
 
     // used to build the overpass query
-    this->q_text= inStrct.q_text;
-    this->q_bbox= inStrct.q_bbox;
-    this->q_all_bbox= inStrct.q_all_bbox;
-    this->q_short_bbox_fmt= inStrct.q_short_bbox_fmt;
-    this->q_escaped_request= inStrct.q_escaped_request;
-    this->q_unescaped_request= inStrct.q_unescaped_request;
-    this->topic_q_node= inStrct.topic_q_node.deepCopy();
-    this->xml_query_node_to_search_a_new_target= inStrct.xml_query_node_to_search_a_new_target.deepCopy();
+    std::string q_text;
+    std::string q_bbox; // holds only the selected area: SW,NW,NE or SE
+    std::string q_all_bbox; // holds the full osm area and not just a specific area.
+    std::string q_short_bbox_fmt; // short form of the bbox
+    std::string q_escaped_request;
+    std::string q_unescaped_request;
+    IXMLNode topic_q_node; // Hold the <q> region query count node.
+    IXMLNode xml_query_node_to_search_a_new_target; // Holds the <q> of the search way as target, query node
 
     // Holds the overpass respond data
-    this->xml_q_tags_header_node= inStrct.xml_q_tags_header_node.deepCopy();
-    this->xml_target_way_element= inStrct.xml_target_way_element.deepCopy();
-    this->xml_target_nd_node= inStrct.xml_target_nd_node.deepCopy();
+    IXMLNode xml_q_tags_header_node; // should hold the <tags> root element
+    IXMLNode xml_target_way_element{IXMLNode::emptyIXMLNode}; // should hold the subject query way result
+    IXMLNode xml_target_nd_node{IXMLNode::emptyIXMLNode}; // should hold the subject way node result
+    IXMLNode xml_next_node_to_find_vector{IXMLNode::emptyIXMLNode}; // 25.12.1 should hold the next <nd> information so we could calculate bearing
 
-    this->osm_queries.clear();
-    std::for_each (inStrct.osm_queries.begin(), inStrct.osm_queries.end(), [&](const auto &pair)
+    std::unordered_map<std::string, std::string> osm_queries;
+
+    std::chrono::time_point<std::chrono::steady_clock> start_time;
+    std::chrono::time_point<std::chrono::steady_clock> end_time;
+    double duration{};
+
+    strct_osm_query()
     {
-      this->osm_queries.insert(pair);
-    }
-    );
-
-    this->duration = inStrct.duration;
-  }
-
-  strct_osm_query & operator=(const strct_osm_query & inStruct)
-  {
-    clone (inStruct);
-    return *this;
-  }
-
-
-  [[nodiscard]] auto get_elapsed_time() const
-  {
-    if (this->start_time.time_since_epoch().count() && this->end_time.time_since_epoch().count() )
-    {
-      const std::chrono::duration<double> elapsed = end_time - start_time;
-      return elapsed.count();
+      total_way_count = 0;
+      IXMLDomParser parser;
+      xml_q_tags_header_node = parser.parseString("<region_tags></region_tags>").deepCopy();
     }
 
-    return -1.0;
-  }
+    void clone(const strct_osm_query& inStrct)
+    {
+      this->total_way_count = inStrct.total_way_count;
+      this->id = inStrct.id;
+      this->sanitized_id = inStrct.sanitized_id;
+      this->sanitized_bbox = inStrct.sanitized_bbox;
+      this->cache_folder = inStrct.cache_folder;
 
-  void calculate_elapsed_time()
-  {
-    this->duration = this->get_elapsed_time();
-  }
+      // used to build the overpass query
+      this->q_text = inStrct.q_text;
+      this->q_bbox = inStrct.q_bbox;
+      this->q_all_bbox = inStrct.q_all_bbox;
+      this->q_short_bbox_fmt = inStrct.q_short_bbox_fmt;
+      this->q_escaped_request = inStrct.q_escaped_request;
+      this->q_unescaped_request = inStrct.q_unescaped_request;
+      this->topic_q_node = inStrct.topic_q_node.deepCopy();
+      this->xml_query_node_to_search_a_new_target = inStrct.xml_query_node_to_search_a_new_target.deepCopy();
 
-};
+      // Holds the overpass respond data
+      this->xml_q_tags_header_node = inStrct.xml_q_tags_header_node.deepCopy();
+      this->xml_target_way_element = inStrct.xml_target_way_element.deepCopy();
+      this->xml_target_nd_node = inStrct.xml_target_nd_node.deepCopy();
+      this->xml_next_node_to_find_vector = inStrct.xml_next_node_to_find_vector.deepCopy();
+
+      this->osm_queries.clear();
+      std::for_each(inStrct.osm_queries.begin(), inStrct.osm_queries.end(), [&](const auto& pair)
+                    {
+                      this->osm_queries.insert(pair);
+                    }
+      );
+
+      this->duration = inStrct.duration;
+    }
+
+    strct_osm_query& operator=(const strct_osm_query& inStruct)
+    {
+      clone(inStruct);
+      return *this;
+    }
+
+
+    [[nodiscard]] auto get_elapsed_time() const
+    {
+      if (this->start_time.time_since_epoch().count() && this->end_time.time_since_epoch().count())
+      {
+        const std::chrono::duration<double> elapsed = end_time - start_time;
+        return elapsed.count();
+      }
+
+      return -1.0;
+    }
+
+    void calculate_elapsed_time()
+    {
+      this->duration = this->get_elapsed_time();
+    }
+  };
 }
 
 
@@ -1189,7 +1212,8 @@ public:
   static std::vector<std::string> vecOverpassUrls;               // v3.0.255.4.1
   static int                      overpass_user_picked_combo_i;  // v3.0.255.4.1
   static int                      overpass_last_url_indx_used_i; // v3.0.255.4.1
-  static std::string              fetch_overpass_info(const std::string& in_url_s, std::string& outError); // This function is part of the RandomEngine class call, which is threaded already.
+  static std::string              fetch_overpass_info(const std::string& in_url_s, std::string& outError, const std::string & in_separate_data_from_utl = ""); // This function is part of the RandomEngine class call, which is threaded already.
+  static std::string              fetch_overpass_info2(const std::string& in_url_s, std::string& outError); // This function is part of the RandomEngine class call, which is threaded already.
 
   // v25.06.1 Use the sqlite db information to find the nearest navaid
   static void fetch_nearest_osm_navaid_from_sqlite (missionx::NavAidInfo *inFrom_navaid, missionx::NavAidInfo *out_navaid);
@@ -1399,8 +1423,12 @@ public:
   static void check_cache_folder (const std::string & in_cache_folder_name);
   static void fetch_overpass_info_analyze_thread(missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q, const std::map<missionx::enums::mx_osm_region, missionx::structs::BBox>& in_map_bbox);
 
+  // 25.12.1 The function should be called from a thread. It should initialize the curl object and fetch OSM data
+  // static missionx::structs::strct_curl_result fetch_overpass_data (std::unordered_map<int, missionx::structs::strct_curl_param> &curl_data_map, const std::string & in_base_url, const std::string & in_url_query);
+
   // The function will fetch OSM information from local cache folder or the web. Make sure to initialize the "cache_folder" in the "*q" parameter before calling this function.
   static void fetch_ways_and_target_node_from_overpass_thread (missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
+  static void fetch_ways_and_target_node_from_overpass_thread2 (missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
 
 
   // A simple function to manage thread wait for main thread actions that needs to take place before it can continue. Default wait time is 500 milliseconds for 10 iteration (5 seconds)
@@ -1415,6 +1443,9 @@ public:
  private:
   static bool flag_found_missing_3D_object_files;
   static bool flag_rebuild_apt_dat;
+  // v25.10.2
+  // static std::unordered_map<int, std::map<std::string, std::string>> resultTable_rw_metadata;
+  // int callback_gather_runway_metadata_db (void *data, const int argc, char **argv, char **azColName);
 
 }; // end class
 

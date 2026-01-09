@@ -97,13 +97,13 @@ public:
   std::string expressionToParse_s = "";
   const char* expressionToParse;
 
-  void setExpression(std::string inExprestion)
+  void setExpression(const std::string &inExprestion)
   {
     expressionToParse_s = inExprestion;
     expressionToParse   = expressionToParse_s.c_str();
   }
 
-  calc(std::string& inExp) { setExpression(inExp);  }
+  calc(const std::string& inExp) { setExpression(inExp);  }
   ~calc(){}
 
   double calculateExpression() { return expression(); }
@@ -376,13 +376,10 @@ public:
       std::istringstream isNum(num);
       isNum >> n;
 
-      // is >> std::setprecision(precision) >> std::setiosflags(ios::fixed) >> n;
-
-
       return n;
     }
 
-    return (N)0;
+    return static_cast<N>(0);
   }
 
 

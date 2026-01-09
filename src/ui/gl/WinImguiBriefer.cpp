@@ -1204,14 +1204,6 @@ WinImguiBriefer::flc ()
     this->SetWindowPositioningMode (xplm_WindowPositionFree);
   }
 
-  //if (this->GetVisible()) // v25.09.1
-  //{
-  //  if (!missionx::data_manager::post_optimization_outcome.empty())
-  //  {
-  //    this->setMessage (data_manager::post_optimization_outcome);      
-  //    data_manager::post_optimization_outcome.clear ();
-  //  }
-  //}
 
   // Force showing Mission-X window during story mode. We use the
   if (!this->GetVisible () && this->strct_flight_leg_info.internal_child_layer == missionx::uiLayer_enum::flight_leg_info_story_mode && data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running && this->currentLayer == missionx::uiLayer_enum::flight_leg_info && Message::lineAction4ui.state > missionx::enum_mx_line_state::undefined && Message::lineAction4ui.state < missionx::enum_mx_line_state::mainMessageEnded)
@@ -1368,8 +1360,8 @@ WinImguiBriefer::flc ()
   {
     if (!this->strct_ext_layer.asyncFetchMsg_s.empty ())
     {
-      std::string restart_suggestion_message       = (this->strct_ext_layer.asyncFetchMsg_s.find ("Protocol https not supported") == std::string::npos) ? "" : ". Suggest to reload all plugins, it might solve the issue.";
-      this->strct_ext_layer.bDisplayPluginsRestart = (restart_suggestion_message.empty ()) ? false : true;
+      const std::string restart_suggestion_message       = (this->strct_ext_layer.asyncFetchMsg_s.find ("Protocol https not supported") == std::string::npos) ? "" : ". Suggest to reload all plugins, it might solve the issue.";
+      this->strct_ext_layer.bDisplayPluginsRestart = (!(restart_suggestion_message.empty ()));
 
       this->setMessage (this->strct_ext_layer.asyncFetchMsg_s + restart_suggestion_message);
       this->strct_ext_layer.asyncFetchMsg_s.clear ();
@@ -1412,20 +1404,20 @@ WinImguiBriefer::flc ()
 } // flc
 
 // ------------ contains --------------
-bool
-WinImguiBriefer::tableDataTy::contains (const std::string &s) const
-{
-  // try finding s in all our texts
-  for (const std::string &t : { reg, model, typecode, owner })
-  {
-    std::string l = t;
-    if (mxUtils::stringToUpper (l).find (s) != std::string::npos)
-      return true;
-  }
-
-  // not found
-  return false;
-}
+// bool
+// WinImguiBriefer::tableDataTy::contains (const std::string &s) const
+// {
+//   // try finding s in all our texts
+//   for (const std::string &t : { reg, model, typecode, owner })
+//   {
+//     std::string l = t;
+//     if (mxUtils::stringToUpper (l).find (s) != std::string::npos)
+//       return true;
+//   }
+//
+//   // not found
+//   return false;
+// }
 
 
 
@@ -4747,6 +4739,11 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
       {
         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
         ImGui::TextColored (missionx::color::color_vec4_aqua, "You can test this category, it is still a Work.In.Progress.");
+        // v25.12.1
+        ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_yellow);
+        ImGui::TextWrapped("%s", "All locations in the mission are based on OpenStreetMap data, including extraction and drop-off locations, which may not be positioned exactly at the helipad. This is the current limitation until a better solution is implemented. Enjoy.");
+        ImGui::PopStyleColor(1);
+
         this->mxUiReleaseLastFont ();
       }
 
@@ -4880,14 +4877,14 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
 
 Filter options:
 ---------------
-* "In My Area": You search Oil-Rigs in radius of ~200nm from your location.
+* "In My Area": Searches for oil rigs within a radius of approximately 200 NM from your current location.
 
-* "Local Region": Search an Oil Rig in a larger area relative to the plane. It will re-position the plane at mission start.
+* "Local Region": Searches for an oil rig within a larger area relative to the aircraft. The aircraft will be repositioned at mission start.
 
-* "Quarter/Half or full Globe: Broaden the search to a much larger area. It will re-position the plane at mission start.
+* "Quarter/Half/Full Globe: Broadens the search to a much larger geographic area. The aircraft will be repositioned at mission start.
 )", missionx::color::color_vec4_aqua);
           ImGui::SameLine ();
-          ImGui::TextColored (missionx::color::color_vec4_yellow, "Pick region to search for Oil-Rig:");
+          ImGui::TextColored (missionx::color::color_vec4_yellow, "Choose a region to search for oil rigs.:");
           missionx::data_manager::ui_oilrig_globe_part_i = add_ui_dynamic_options_buttons (missionx::data_manager::ui_oilrig_globe_part_i, this->strct_user_create_layer.map_pick_oilrig_globe_part);
           ImGui::NewLine ();
         }
@@ -7938,7 +7935,10 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
     {
       missionx::WinImguiBriefer::HelpMarker ("Zero value means any range.\nMax manual range is 9000nm\nIf you receive Error 500, try to limit the range.");
       ImGui::SameLine ();
-      ImGui::DragFloat ("Range (Zero = any range)", &this->strct_ext_layer.ga_range_max_slider_f, ga_steps, ga_range_begin, ga_range_end, "Max Range: %.0f nm (Limit range if you get error 500)");
+      // ImGui::DragFloat ("Range (Zero = any range)", &this->strct_ext_layer.ga_range_max_slider_f, ga_steps, ga_range_begin, ga_range_end, "Max Range: %.0f nm (Limit range if you get error 500)");
+      ImGui::DragFloat ("", &this->strct_ext_layer.ga_range_max_slider_f, ga_steps, ga_range_begin, ga_range_end, "Max Range: %.0f nm");
+      ImGui::SameLine ();
+      ImGui::TextColored (missionx::color::color_vec4_aqua, "%.0f - %.0f", ((this->strct_ext_layer.ga_range_max_slider_f-300.0f <= 0.0f)? 0.0f: (this->strct_ext_layer.ga_range_max_slider_f - 300.0f)), this->strct_ext_layer.ga_range_max_slider_f );
 
       missionx::WinImguiBriefer::HelpMarker ("How many rows to retrieve. Default 20, Max 100");
       ImGui::SameLine ();
@@ -7988,7 +7988,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
       missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_MED_CARGO_OR_OILRIG (), static_cast<int> (mx_ui_mission_type::cargo));
       missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_PLANE_TYPE_I (), static_cast<int> (missionx::mx_plane_types_enum::plane_type_ga_floats));
       missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_NO_OF_LEGS (), 0); // Ignore, set by the external site
-      missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MIN_DISTANCE_SLIDER (), 0.0);
+      missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MIN_DISTANCE_SLIDER (), (this->strct_ext_layer.ga_range_max_slider_f-300.0f < 0.0f)? 0.0f : this->strct_ext_layer.ga_range_max_slider_f - 300.0f);
       missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MAX_DISTANCE_SLIDER (), this->strct_ext_layer.ga_range_max_slider_f);
       missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_USE_OSM_CHECKBOX (), false); // not OSM but external site
 
@@ -12710,9 +12710,12 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
     break;
     case missionx::mx_window_actions::ACTION_GUESS_WAYPOINTS:
     {
-      this->setMessage ("Analyzing Fetched Data... Please Wait.", 5); // v24.06.1
+      if (!data_manager::tableExternalFPLN_vec.empty ()) // v25.12.1
+        this->setMessage ("Analyzing Fetched Data... Please Wait.", 5); // v24.06.1
+
       this->strct_ext_layer.fetch_state = missionx::mxFetchState_enum::fetch_guess_wp;
       missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::guess_waypoints_from_external_fpln_site); //
+
     }
     break;
     case missionx::mx_window_actions::ACTION_TOGGLE_MAP:

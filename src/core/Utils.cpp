@@ -682,6 +682,20 @@ missionx::Utils::getShuffledIndexVector (const int &inNumbersInVector)
   return shuffled_indx_vec;
 }
 
+// -------------------------------------------
+
+
+std::string Utils::get_shuffled_value_from_string_value(const std::string& in_value_to_split)
+{
+  if (in_value_to_split.empty ())
+    return "";
+
+  std::vector<std::string> vec_split_values;
+  const auto vec_shuffled_set_index = Utils::splitStringAndGetShuffledIndexVector(in_value_to_split, ",", vec_split_values );
+
+  return (vec_split_values.empty())? "" : vec_split_values.at(vec_shuffled_set_index.front()); // return shuffled value
+}
+
 
 // -------------------------------------------
 // Extract base string from a string. Good to extract file name without the extension "[file].exe", for example.

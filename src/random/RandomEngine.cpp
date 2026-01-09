@@ -7423,7 +7423,7 @@ RandomEngine::gen_2nm_to_N_nm_message (int &seq_trig, int &seq_msg, NavAidInfo &
 // -----------------------------------
 
 void
-RandomEngine::gen_parse_and_add_all_display_objects_in_node (const std::string &in_which_func_called, missionx::NavAidInfo &in_target_navaid, IXMLNode &in_source_node, IXMLNode &inout_target_node, IXMLNode &in_template_node, IXMLNode &inout_x3DObjTemplate, double &in_expected_slope_at_target_location_d)
+RandomEngine::gen_parse_and_add_all_display_objects_in_node (const std::string &in_which_func_called, missionx::NavAidInfo &in_target_navaid, const IXMLNode &in_source_node, IXMLNode &inout_target_node, IXMLNode &in_template_node, IXMLNode &inout_x3DObjTemplate, double &in_expected_slope_at_target_location_d)
 {
   const int nDisplayObjects = in_source_node.nChildNode ();
   for (int i1 = 0; i1 < nDisplayObjects; ++i1)
@@ -7527,8 +7527,9 @@ RandomEngine::gen_add_3d_objects_for_surprise_me_base_on_predefined_attributes (
   {
     none = 0,
     header = 1,
-    desc = 2,
-    display_object_set = 3 // compatible with a regular template
+    q_node = 2,
+    desc = 3,
+    display_object_set = 4, // compatible with a regular template
   };
   struct set_3d_strct
   {
@@ -7549,6 +7550,10 @@ RandomEngine::gen_add_3d_objects_for_surprise_me_base_on_predefined_attributes (
   map_3d_set_attributes[enum_set_3d_source::header].random_tag     = Utils::readAttrib (inout_target_na.fpln_xml_q_tag_header_node, mxconst::get_ATTRIB_RANDOM_TAG (), "");
   map_3d_set_attributes[enum_set_3d_source::header].set_name       = Utils::readAttrib (inout_target_na.fpln_xml_q_tag_header_node, mxconst::get_ATTRIB_SET_NAME (), "");
   map_3d_set_attributes[enum_set_3d_source::header].slope_set_name = Utils::readAttrib (inout_target_na.fpln_xml_q_tag_header_node, mxconst::get_ATTRIB_SLOPE_SET_NAME (), "");
+  // read 3D set related attributes from osm target <q> node
+  map_3d_set_attributes[enum_set_3d_source::q_node].random_tag     = Utils::readAttrib (inout_target_na.fpln_xml_osm_q_or_raw_tmpl_node , mxconst::get_ATTRIB_RANDOM_TAG (), "");
+  map_3d_set_attributes[enum_set_3d_source::q_node].set_name       = Utils::readAttrib (inout_target_na.fpln_xml_osm_q_or_raw_tmpl_node, mxconst::get_ATTRIB_SET_NAME (), "");
+  map_3d_set_attributes[enum_set_3d_source::q_node].slope_set_name = Utils::readAttrib (inout_target_na.fpln_xml_osm_q_or_raw_tmpl_node, mxconst::get_ATTRIB_SLOPE_SET_NAME (), "");
   // read the same from the <desc> sub-element of <leg>.
   map_3d_set_attributes[enum_set_3d_source::desc].random_tag     = Utils::readAttrib (xml_desc_ptr, mxconst::get_ATTRIB_RANDOM_TAG (), "");
   map_3d_set_attributes[enum_set_3d_source::desc].set_name       = Utils::readAttrib (xml_desc_ptr, mxconst::get_ATTRIB_SET_NAME (), "");
@@ -7558,31 +7563,46 @@ RandomEngine::gen_add_3d_objects_for_surprise_me_base_on_predefined_attributes (
   map_3d_set_attributes[enum_set_3d_source::display_object_set].set_name       = Utils::readAttrib (inout_leg_node, mxconst::get_ATTRIB_SET_NAME (), "");
   map_3d_set_attributes[enum_set_3d_source::display_object_set].slope_set_name = Utils::readAttrib (inout_leg_node, mxconst::get_ATTRIB_SLOPE_SET_NAME (), "");
 
-  const auto lmbda_which_3d_set_to_pick_from =[] (std::unordered_map<enum_set_3d_source, set_3d_strct>& map_3d_set_attributes)
+  const auto lmbda_which_3d_set_to_pick_from =[&] ()
   {
     // v25.09.1 backwards compatibility with <display_object_set> nodes.
     if (!map_3d_set_attributes[enum_set_3d_source::display_object_set].random_tag.empty ())
       return enum_set_3d_source::display_object_set;
 
-    if (map_3d_set_attributes[enum_set_3d_source::desc].random_tag.empty () && !map_3d_set_attributes[enum_set_3d_source::header].random_tag.empty ())
-      return enum_set_3d_source::header;
-
-    if (!map_3d_set_attributes[enum_set_3d_source::desc].random_tag.empty ())
+    if (!map_3d_set_attributes[enum_set_3d_source::desc].random_tag.empty () && !map_3d_set_attributes[enum_set_3d_source::desc].set_name.empty ())
       return enum_set_3d_source::desc;
 
+    // v25.12.1
+    if (!map_3d_set_attributes[enum_set_3d_source::q_node].random_tag.empty () && !map_3d_set_attributes[enum_set_3d_source::q_node].set_name.empty ())
+      return enum_set_3d_source::q_node;
+
+    if (!map_3d_set_attributes[enum_set_3d_source::header].random_tag.empty () && !map_3d_set_attributes[enum_set_3d_source::header].set_name.empty ())
+      return enum_set_3d_source::header;
+
+    // fallback
     return enum_set_3d_source::none;
   };
 
-  const enum_set_3d_source picked_3d_set_source = lmbda_which_3d_set_to_pick_from (map_3d_set_attributes);
+  const enum_set_3d_source picked_3d_set_source = lmbda_which_3d_set_to_pick_from ();
+
   if (picked_3d_set_source != enum_set_3d_source::none)
   {
-    std::string set_name_to_pick = map_3d_set_attributes[picked_3d_set_source].set_name;
+    // random pick one of the values in each attribute "random_tag", "set_name" and "slope_set_name"
+    // random pick "random_tag"
+    const std::string random_tag_node_name = Utils::get_shuffled_value_from_string_value (map_3d_set_attributes[picked_3d_set_source].random_tag);
+
+    // random pick "set_name"
+    std::string set_name_node_to_pick = Utils::get_shuffled_value_from_string_value (map_3d_set_attributes[picked_3d_set_source].set_name);
+
+    // random pick "slope_set_name"
+    const std::string slope_set_node_to_pick = Utils::get_shuffled_value_from_string_value (map_3d_set_attributes[picked_3d_set_source].slope_set_name);
+
     // check slope and use a slope set if it has value.
-    if (inout_target_na.fpln_slope > (missionx::data_manager::Max_Slope_To_Land_On * 3.0f) && !map_3d_set_attributes[picked_3d_set_source].slope_set_name.empty () )
-      set_name_to_pick = map_3d_set_attributes[picked_3d_set_source].slope_set_name;
+    if (inout_target_na.fpln_slope > (missionx::data_manager::Max_Slope_To_Land_On * 3.0f) && !slope_set_node_to_pick.empty () )
+      set_name_node_to_pick = slope_set_node_to_pick; //map_3d_set_attributes[picked_3d_set_source].slope_set_name;
 
     #ifndef RELEASE
-    Log::logMsgThread ( fmt::format ("[{}] Search 3D set_name: {}", __func__, set_name_to_pick) );
+    Log::logMsgThread ( fmt::format ("[{}] Search 3D set_name: {}", __func__, set_name_node_to_pick) );
     #endif
 
 
@@ -7592,30 +7612,29 @@ RandomEngine::gen_add_3d_objects_for_surprise_me_base_on_predefined_attributes (
     // Add all <display_object> elements
     ///////////////////////////////////////
 
-    if (const IXMLNode xTag = in_template_node.getChildNode (map_3d_set_attributes[picked_3d_set_source].random_tag.c_str ())
+    if (const IXMLNode xTag = in_template_node.getChildNode (random_tag_node_name.c_str ())
       ; !xTag.isEmpty ())
     {
       int nSubNodes = 0;
       // check child tag
-      if (set_name_to_pick.empty ())
+      if (set_name_node_to_pick.empty ())
         nSubNodes = xTag.nChildNode ();
       else
-        nSubNodes = xTag.nChildNode (set_name_to_pick.c_str ());
+        nSubNodes = xTag.nChildNode (set_name_node_to_pick.c_str ());
 
       // Pick a <dub-node>
       if (nSubNodes > 0)
       {
         IXMLNode  cTagNode;
         const int randomChild_i = Utils::getRandomIntNumber (0, nSubNodes - 1);
-        if (set_name_to_pick.empty ())
+        if (set_name_node_to_pick.empty ())
           cTagNode = xTag.getChildNode (randomChild_i);
         else
-          cTagNode = xTag.getChildNode (set_name_to_pick.c_str (), randomChild_i);
+          cTagNode = xTag.getChildNode (set_name_node_to_pick.c_str (), randomChild_i);
 
         if (!cTagNode.isEmpty ())
         {
           Utils::xml_add_comment ( inout_leg_node, " >>> Display Objects <<< ");
-          // lmbda_add_all_display_object_xxx_elements (__func__, cTagNode, inout_leg_node);
           RandomEngine::gen_parse_and_add_all_display_objects_in_node (__func__, inout_target_na, cTagNode, inout_leg_node, in_template_node, inout_x3DObjTemplate, in_expected_slope_at_target_location_d);
 
           #ifndef RELEASE
@@ -7732,24 +7751,40 @@ RandomEngine::gen_3d_parse_instances_in_leg (IXMLNode &legNode_ptr, missionx::Na
     // special validation and initialization of <display_object> element only
     if (tagName == mxconst::get_ELEMENT_DISPLAY_OBJECT ())
     {
-      std::string replaceLat                  = Utils::readAttrib (xNode, mxconst::get_ATTRIB_REPLACE_LAT (), "");
-      std::string replaceLon                  = Utils::readAttrib (xNode, mxconst::get_ATTRIB_REPLACE_LONG (), "");
-      std::string replaceElev_ft              = Utils::readAttrib (xNode, mxconst::get_ATTRIB_REPLACE_ELEV_FT (), "");
+      std::string replaceLat = Utils::readAttrib(xNode, mxconst::get_ATTRIB_REPLACE_LAT(), "");
+      std::string replaceLon = Utils::readAttrib(xNode, mxconst::get_ATTRIB_REPLACE_LONG(), "");
+      std::string replaceElev_ft = Utils::readAttrib(xNode, mxconst::get_ATTRIB_REPLACE_ELEV_FT(), "");
+      const std::string replacePitch = Utils::readAttrib(xNode, mxconst::get_ATTRIB_REPLACE_PITCH(), "");
+      const std::string replaceRoll = Utils::readAttrib(xNode, mxconst::get_ATTRIB_REPLACE_ROLE(), "");
+
       int         replaceElevAboveGround_ft_i = Utils::readNodeNumericAttrib<int> (xNode, mxconst::get_ATTRIB_REPLACE_ELEV_ABOVE_GROUND_FT (), 0);
 
 
       // v3.0.219.1 calculate 3D object location relative to the target
       std::string relative_pos_bearing_deg_distance_mt = Utils::readAttrib (xNode, mxconst::get_ATTRIB_RELATIVE_POS_BEARING_DEG_DISTANCE_MT (), "");
-      if (const std::vector<int> vecRelativePos = Utils::splitStringToNumbers<int> (relative_pos_bearing_deg_distance_mt, mxconst::get_PIPE_DELIMITER ()); vecRelativePos.size () > 1)
+
+      // if (const std::vector<int> vecRelativePos = Utils::splitStringToNumbers<int> (relative_pos_bearing_deg_distance_mt, mxconst::get_PIPE_DELIMITER ())
+
+      // v25.12.1 we read the "relative_pos_bearing_deg_distance_mt" attribute as a complex string of "two" variables that we will convert to numbers.
+      if (const auto relative_pos_list = Utils::splitStringToList (relative_pos_bearing_deg_distance_mt, mxconst::get_PIPE_DELIMITER ())
+        ; relative_pos_list.size () > 1)
       {
         double newLat, newLon, trigLat, trigLon, newBearing;
         newLat = newLon = trigLat = trigLon = newBearing = 0.0;
 
-        if (in_target_navaid.lat != 0.0 && in_target_navaid.lon != 0.0)
+        if (in_target_navaid.lat * in_target_navaid.lon != 0.0)
         {
+          // v25.12.1 add {vec} support
+          // bearing calculation
+          auto degrees_s = mxUtils::replaceAll(relative_pos_list.front(), "{vec}", fmt::format("{}", in_target_navaid.fpln_target_node_estimate_vector));
+          auto calc_expression = calc(degrees_s);
+          auto calced_bearing_exp = calc_expression.calculateExpression();
+          auto distance_in_meters = mxUtils::stringToNumber<double> (relative_pos_list.back(), 4);
+          // end v25.12.1
+
           // calculate new targetLat/long
-          auto distance_nm = static_cast<double> (vecRelativePos.at (1)) * meter2nm;
-          auto bearing     = static_cast<float> (vecRelativePos.at (0));
+          auto distance_nm = distance_in_meters * meter2nm;
+          auto bearing     = static_cast<float> (calced_bearing_exp);
           Utils::calcPointBasedOnDistanceAndBearing_2DPlane (newLat, newLon, in_target_navaid.lat, in_target_navaid.lon, bearing, distance_nm);
 
           // set the new target Lat/long in instance replace point data
@@ -7768,7 +7803,7 @@ RandomEngine::gen_3d_parse_instances_in_leg (IXMLNode &legNode_ptr, missionx::Na
 
         // end calculating relative location to target of 3D object
       }
-      else if ( !relative_pos_bearing_deg_distance_mt.empty () || vecRelativePos.size () == 1 ) // [regression bug fix] reset relative value so the plugin won't re-calculate it again when parsing the instance node.
+      else if ( !relative_pos_bearing_deg_distance_mt.empty () || relative_pos_list.size () == 1 ) // [regression bug fix] reset relative value so the plugin won't re-calculate it again when parsing the instance node.
       {
         xNode.updateAttribute (relative_pos_bearing_deg_distance_mt.c_str (), mxconst::get_ATTRIB_DEBUG_RELATIVE_POS ().c_str (), mxconst::get_ATTRIB_DEBUG_RELATIVE_POS ().c_str ()); // Keep the value in a debug attribute
         const std::set<std::string> set_attrib_to_del = {mxconst::get_ATTRIB_RELATIVE_POS_BEARING_DEG_DISTANCE_MT ()};
@@ -7786,7 +7821,23 @@ RandomEngine::gen_3d_parse_instances_in_leg (IXMLNode &legNode_ptr, missionx::Na
         // set default above ground only if "replace_elev_ft" does not exist and the attribute "replace_elev_above_ground_ft" exists
         if (replaceElev_ft.empty () && replaceElevAboveGround_ft_i != 0)
           Utils::xml_search_and_set_attribute_in_IXMLNode (xNode, mxconst::get_ATTRIB_REPLACE_ELEV_ABOVE_GROUND_FT (), fmt::format("{}", replaceElevAboveGround_ft_i), mxconst::get_ELEMENT_DISPLAY_OBJECT ()); //
+      } // end bearing calculation with or without {vec}
+
+      // v25.12.1 Calculate object 3D heading
+      std::string replace_heading_psi = Utils::readAttrib (xNode, mxconst::get_ATTRIB_REPLACE_HEADING_PSI (), "");
+      if (!mxUtils::trim(replace_heading_psi).empty() && mxUtils::is_number(replace_heading_psi) )
+      {
+        const auto heading_psi_expression_s = mxUtils::replaceAll(replace_heading_psi, "{vec}", fmt::format("{}", in_target_navaid.fpln_target_node_estimate_vector));
+        auto calc_heading_expression = calc(heading_psi_expression_s);
+        auto heading_psi_d = (calc_heading_expression.calculateExpression());
+
+        Utils::xml_set_attribute_in_node <double>(xNode, mxconst::get_ATTRIB_REPLACE_HEADING_PSI (), heading_psi_d, xNode.getName ());
       }
+
+      // add any custom pitch/role. TODO: consider using copy attributes except
+      Utils::xml_set_attribute_in_node_asString(xNode, mxconst::get_ATTRIB_REPLACE_PITCH(), replacePitch, xNode.getName ());
+      Utils::xml_set_attribute_in_node_asString(xNode, mxconst::get_ATTRIB_REPLACE_ROLE(), replaceRoll, xNode.getName ());
+      // end v25.12.1
 
       // Skew location: place target instances not in their exact locations based on the SETUP screen.
       const bool flag_display_target_markers_away_from_target = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET (), false);
@@ -8356,6 +8407,8 @@ RandomEngine::gen_get_targets_using_osm_queries_from_a_thread (missionx::base_th
       target_navaid.fpln_wp_template_type           = Utils::readAttrib (inout_osm_query.xml_query_node_to_search_a_new_target, "wp_type", "");
       target_navaid.fpln_xml_osm_q_or_raw_tmpl_node = inout_osm_query.xml_query_node_to_search_a_new_target.deepCopy ();
       target_navaid.fpln_xml_way_node               = inout_osm_query.xml_target_way_element.deepCopy ();
+      target_navaid.fpln_xml_next_node_to_find_vector = inout_osm_query.xml_next_node_to_find_vector.deepCopy();
+      target_navaid.fpln_target_node_estimate_vector  = inout_osm_query.target_node_estimate_vector;
 
       // v25.06.1 clear the <header> node. This is the root node of the current < q > sub-node
       Utils::xml_delete_all_subnodes (inout_osm_query.xml_q_tags_header_node, "", true);
@@ -8523,6 +8576,8 @@ RandomEngine::gen_prepare_medevac_surprise_me (IXMLNode &inRootTemplate, const I
 
   // use "custom_osm_gen.xml" or original "osm_gen.xml" file.
   const std::string xml_filename = (mxUtils::check_file_exists (osm_gen_custom_xml_filename))? osm_gen_custom_xml_filename : osm_gen_xml_filename;
+
+  Log::logMsgThread( fmt::format("[{}] Will read xml file: '{}'", __func__, xml_filename) );
 
   // check [abort]
   if (RandomEngine::random_thread_state.flagAbortThread)

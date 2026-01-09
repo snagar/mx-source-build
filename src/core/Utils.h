@@ -403,6 +403,10 @@ public:
 
   // -------------------------------------------
 
+  std::string static get_shuffled_value_from_string_value (const std::string & in_value_to_split);
+
+  // -------------------------------------------
+
   // Extract base string from a string. Good to extract file name without the extension "[file].exe", for example.
   static std::string extractBaseFromString(const std::string& inFullFileName, const std::string &delimiter = ".", std::string* outRestOfString = nullptr);
 

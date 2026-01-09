@@ -109,6 +109,10 @@ public:
   std::vector<IXMLNode> fpln_leg_vec_task_nodes;
   IXMLNode              fpln_leg_objective_node;
 
+  // v25.12.1 store guess/estimate vector data between two nodes in <way> to assist with 3D positioning.
+  IXMLNode fpln_xml_next_node_to_find_vector; // keep history of the original node. We already calculated the vector.
+  double   fpln_target_node_estimate_vector{0.0}; // holds the estimate vector.
+
 
    missionx::NavAidInfo& operator= (const NavAidInfo &in_na)
    {
@@ -205,6 +209,9 @@ public:
      fpln_leg_vec_task_nodes    = Utils::clone_xml_vector (in_na.fpln_leg_vec_task_nodes);
      fpln_leg_objective_node    = in_na.fpln_leg_objective_node.deepCopy ();
 
+      // v25.12.1
+     fpln_target_node_estimate_vector = in_na.fpln_target_node_estimate_vector;
+     fpln_xml_next_node_to_find_vector = in_na.fpln_xml_next_node_to_find_vector.deepCopy ();
 
      this->synchToPoint ();
    }
@@ -290,6 +297,11 @@ public:
      fpln_leg_vec_trigger_nodes.clear ();
      fpln_leg_vec_task_nodes.clear ();
      fpln_leg_objective_node = IXMLNode::emptyIXMLNode;
+
+     // v25.12.1
+     fpln_target_node_estimate_vector = 0.0;
+     fpln_xml_next_node_to_find_vector = IXMLNode::emptyIXMLNode;
+
 
   }
 

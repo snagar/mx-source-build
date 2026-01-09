@@ -379,6 +379,10 @@ const static ^std::string ^ELEMENT_DISPLAY_OBJECT_NEAR_PLANE               ^ "di
 const static ^std::string ^ATTRIB_REPLACE_LAT                              ^ "replace_lat"; ^// v3.0.217.6
 const static ^std::string ^ATTRIB_REPLACE_LONG                             ^ "replace_long"; ^// v3.0.217.6
 const static ^std::string ^ATTRIB_REPLACE_ELEV_FT                          ^ "replace_elev_ft"; ^//  v3.0.217.6
+const static ^std::string ^ATTRIB_REPLACE_HEADING_PSI                      ^ "replace_heading_psi"; ^//  v25.12.1
+const static ^std::string ^ATTRIB_REPLACE_PITCH                            ^ "replace_pitch"; ^//  v25.12.1
+const static ^std::string ^ATTRIB_REPLACE_ROLE                             ^ "replace_role"; ^//  v25.12.1
+const static ^std::string ^ATTRIB_REPLACE_KEEP_UNTIL_LEG                   ^ "replace_keep_until_leg"; ^//  v25.12.1
 const static ^std::string ^ATTRIB_REPLACE_ELEV_ABOVE_GROUND_FT             ^ "replace_elev_above_ground_ft"; ^//  v3.0.217.6
 const static ^std::string ^ATTRIB_REPLACE_DISTANCE_TO_DISPLAY_NM           ^ "replace_distance_to_display_nm"; ^//  v3.0.303.3
 const static ^std::string ^ATTRIB_INSTANCE_NAME                            ^ "instance_name"; ^// unique name for 3D object template
