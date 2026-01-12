@@ -148,6 +148,7 @@ public:
   void  add_font_size_scale_buttons ();
   void  add_skewed_marker_checkbox (); // v3.0.253.6
   void  add_ui_start_mission_button (missionx::mx_window_actions inActionToExecute = mx_window_actions::ACTION_NONE);
+  void  add_ui_warning_messages_button ();
   void  add_ui_ils_vfr_search_airports_button (missionx::mx_window_actions inActionToExecute = mx_window_actions::ACTION_NONE);
   void  add_ui_abort_mission_creation_button (missionx::mx_window_actions inActionToExecute = mx_window_actions::ACTION_ABORT_RANDOM_ENGINE_RUN);
   void  add_ui_expose_all_gps_waypoints (missionx::mx_window_actions inActionToExecute = missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
@@ -1137,13 +1138,13 @@ private:
   ImVec2      imvec2_main_pick_mission_area_size = ImVec2 (0.0f, 350.0f);
 
   void draw_top_toolbar (); // were we place the HOME button and layer name
+  void popup_draw_load_warnings (std::string_view inPopupWindowName); // v26.1.1
   void popup_draw_quit_mission (std::string_view inPopupWindowName); // v3.303.8.3
   void draw_popup_extra_data_ext_fpln (std::string_view inPopupWindowName ); // v25.06.1
   void draw_popup_generate_mission_based_on_ext_fpln (std::string_view inPopupWindowName, const missionx::mx_ext_internet_fpln_strct &rowData, const int &picked_fpln_id_i = 0); // v25.03.3
   void draw_conv_popup_which_global_settings_to_save (std::string_view inPopupWindowName); // v3.303.8.3
   void draw_globals_online_edit_popup (std::string_view inPopupWindowName, char inType, std::string inKey, std::string inVal); // v3.303.8.3
   void draw_script_online_edit_popup (std::string_view inPopupWindowName, bool &outSave); // v3.303.8.3
-  // void popup_draw_authorization_key(std::string_view inPopupWindowName); // v3.303.8.3 // v25.03.3 deprecated. Exposed in setup and in page.
   void draw_setup_layer ();
   void draw_home_layer ();
   void draw_dynamic_mission_creation_screen ();
@@ -1163,8 +1164,7 @@ private:
   void draw_child_ext_fpln_home_screen ();
   void draw_child_ext_fpln_db_site_screen ();
   void draw_ils_screen (); // v3.0.253.6
-  // void child_draw_ils_search (); // v25.04.1
-  void child_draw_ils_search2 (); // v25.08.1
+  void child_draw_ils_search (); // v25.08.1
   void child_draw_nav_search (); // v24.02.5
   void draw_about_layer ();
   void draw_conv_main_fpln_to_mission_window (); // v3.0.301
@@ -1172,6 +1172,7 @@ private:
   void add_ui_stats_child (bool isEmbedded = false); // v3.303.14  isEmbedded means that we don't want the BeginChild definition inside the function we will use and external BeginChild
 
   const std::string LBL_START_MISSION              = ">> Start Mission <<";
+  const std::string LBL_LOAD_WARNINGS              = "!! Show Warnings !!"; // v26.1.1
   const std::string LBL_ABORT_THREAD_LABEL         = "!! Abort !!";
   const std::string FPLN_MORE_DETAILS              = "More Flight Plan Details";
   const std::string GENERATE_QUESTION              = "Generate Mission From Flight Plan?";
@@ -1188,6 +1189,7 @@ private:
   const std::string POPUP_ONLINE_SCRIPT_EDIT       = "Script Online Edit"; // v3.305.3
   const std::string POPUP_ONLINE_GLOBALS_EDIT      = "Globals Online Edit"; // v3.305.3
   const std::string POPUP_FPLN_EXTRA_DATA          = "FPLN Extra Data"; // v25.06.1
+  const std::string POPUP_LOAD_WARNINGS            = "LOAD Warnings"; // v26.01.1
 
 
 #ifndef RELEASE

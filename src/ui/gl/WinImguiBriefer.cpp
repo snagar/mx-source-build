@@ -274,6 +274,30 @@ WinImguiBriefer::add_ui_start_mission_button (missionx::mx_window_actions inActi
 
 // --------------------------
 
+void WinImguiBriefer::add_ui_warning_messages_button()
+{
+  if ( ! missionx::data_manager::lst_of_failed_3d_obj_to_load.empty() )
+  {
+    ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
+    ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_aliceblue);
+    {
+      ImGui::SameLine (0.0f, 25.0f);
+      if (ImGui::Button (this->LBL_LOAD_WARNINGS.c_str ()))
+      {
+        // open popup
+        ImGui::OpenPopup (POPUP_LOAD_WARNINGS.c_str ());
+      }
+      ImGui::PushStyleColor (ImGuiCol_ChildBg, missionx::color::color_vec4_black);
+      popup_draw_load_warnings (POPUP_LOAD_WARNINGS);
+      ImGui::PopStyleColor ();
+    }
+    ImGui::PopStyleColor (2);
+
+  }
+}
+
+// --------------------------
+
 void
 WinImguiBriefer::add_ui_ils_vfr_search_airports_button (missionx::mx_window_actions inActionToExecute)
 {
@@ -2921,6 +2945,62 @@ WinImguiBriefer::draw_top_toolbar ()
   ImGui::EndChild ();
 }
 
+// ------------ popup_draw_load_warnings
+
+void WinImguiBriefer::popup_draw_load_warnings(std::string_view inPopupWindowName)
+{
+  const ImVec2 center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f);
+  ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
+
+  ImGui::PushStyleColor (ImGuiCol_ChildBg, missionx::color::color_vec4_black);
+  {
+    if (ImGui::BeginPopupModal (inPopupWindowName.data (), nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+    {
+      ImGui::BeginGroup();
+      {
+        if (ImGui::Button(">> Close <<"))
+          ImGui::CloseCurrentPopup ();
+
+        ImGui::TextColored(missionx::color::color_vec4_yellow, "%s", "The complete data shown below can be found in the missionx.log file.\nThe warnings may point to missing or incorrect physical or virtual file implementations,\nor to a missing library dependency.");
+        ImGui::Separator ();
+      }
+      ImGui::EndGroup();
+
+      ImGui::BeginGroup();
+      ImGui::BeginChild ("Warnings during mission validation##MissionWarnings", ImVec2 (600.0f, 300.0f), ImGuiChildFlags_None);
+      {
+
+        bool is_even_line = false;
+
+        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
+
+        for (const auto &txt: missionx::data_manager::lst_of_failed_3d_obj_to_load)
+        {
+          if (is_even_line)
+            ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_white);
+          else
+            ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_gray);
+
+          ImGui::TextWrapped ("> %s", txt.c_str());
+
+          ImGui::PopStyleColor();
+
+          is_even_line ^= 1;
+        } // end loop over all
+
+        this->mxUiReleaseLastFont ();
+
+      }
+      ImGui::EndChild ();
+
+      ImGui::EndGroup(); // end warning list
+
+      ImGui::EndPopup ();
+    } // end BeginPopupModal
+  }
+  ImGui::PopStyleColor ();
+}
+
 
 // ------------ popup_draw_quit_mission
 
@@ -5229,7 +5309,7 @@ Filter options:
         ImGui::SameLine ();
 
         this->flag_generatedRandomFile_success = false;
-        constexpr auto lbl                     = "Generate a Mission Based on User Preferences";
+        //constexpr auto lbl                     = "Generate a Mission Based on User Preferences";
 
         // -----------------------
         // DISPLAY GENERATE BUTTON
@@ -5237,7 +5317,7 @@ Filter options:
         ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
         ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_orange);
         ImGui::PushStyleColor (ImGuiCol_ButtonActive, missionx::color::color_vec4_azure);
-        if (ImGui::Button (lbl))
+        if (ImGui::Button ("Generate a Mission Based on User Preferences"))
         {
           if (bRerunRandomDateTime) // v3.303.10
             this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
@@ -5346,8 +5426,10 @@ Filter options:
 
       if (!this->asyncSecondMessageLine.empty ())
       {
-        ImGui::SameLine ((mxUiGetContentWidth () * 0.75f) - (ImGui::CalcTextSize (this->LBL_START_MISSION.c_str ()).x * 0.5f));
+        ImGui::SameLine ((mxUiGetContentWidth () * 0.60f) - (ImGui::CalcTextSize (this->LBL_START_MISSION.c_str ()).x * 0.5f));
         this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
+
+        this->add_ui_warning_messages_button (); // v26.1.1. Also change the "start" button position to clear space for the warning button.
       }
 
       ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
@@ -5788,6 +5870,8 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
       {
         ImGui::SameLine (region_width_arr[0] + 10.0f); // pad to the right so the button will better aligned with above frame.
         this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
+
+        this->add_ui_warning_messages_button ();
       }
       ImGui::EndGroup ();
       // ImGui::NewLine(); // v3.305.1 deprecated
@@ -7533,9 +7617,9 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
                   // v3.0.251.b2 fix cases when pick different missions but [start mission] button is not reset to [load mission]
                   if (data_manager::missionState > missionx::mx_mission_state_enum::mission_undefined)
                     data_manager::missionState = missionx::mx_mission_state_enum::mission_undefined;
-#ifndef RELEASE
+                  #ifndef RELEASE
                   Log::logMsg ("Picked: " + this->strct_pick_layer.last_picked_key); // debug
-#endif
+                  #endif
                 }
               }
               ImGui::PopID (); // v3.303.14
@@ -7699,6 +7783,8 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
       else if (data_manager::missionState == missionx::mx_mission_state_enum::mission_loaded_from_the_original_file || data_manager::missionState == missionx::mx_mission_state_enum::mission_loaded_from_savepoint) // mission loaded state is decided in Mission class
       {
         this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_MISSION);
+
+        add_ui_warning_messages_button(); // v26.1.1
       }
 
       this->mxUiReleaseLastFont ();
@@ -8191,7 +8277,7 @@ WinImguiBriefer::draw_ils_screen ()
       {
         if (ImGui::BeginTabItem ("ILS Search"))
         {
-          this->child_draw_ils_search2 ();
+          this->child_draw_ils_search ();
 
           ImGui::EndTabItem ();
         }
@@ -8252,7 +8338,7 @@ WinImguiBriefer::draw_ils_screen ()
 
 
 void
-WinImguiBriefer::child_draw_ils_search2 ()
+WinImguiBriefer::child_draw_ils_search ()
 {
 
   constexpr static auto  elevVerticalTreeNodeName = "Elev. slider";
@@ -9226,17 +9312,17 @@ Other option is to add this information after generating the mission file, if yo
 
       this->setMessage ("<xpdata> information was stored");
 
-#ifndef RELEASE
+      #ifndef RELEASE
       Log::logMsg ("Valid <xpdata>:\n" + xpdata_s);
-#endif // !RELEASE
+      #endif // !RELEASE
     }
     else
     {
       std::string err_s = std::string (IXMLPullParser::getErrorMessage (parse_result_strct.errorCode)) + " [line/col:" + mxUtils::formatNumber<long long> (parse_result_strct.nLine) + "/" + mxUtils::formatNumber<int> (parse_result_strct.nColumn) + "]";
       this->setMessage (err_s);
-#ifndef RELEASE
+      #ifndef RELEASE
       Log::logMsg (err_s);
-#endif // !RELEASE
+      #endif // !RELEASE
 
       Log::logMsg ("Not valid <xpdata>:\n" + xpdata_s);
     }
@@ -11306,7 +11392,6 @@ WinImguiBriefer::add_missing_3d_files_message ()
 {
   if (missionx::data_manager::get_are_there_missing_3D_object_files ())
   {
-
     ImGui::Image (data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_WARN_SMALL_32x28 ()].gTexture, ImVec2 (16.0f, 14.0f));
     ImGui::SameLine ();
     ImGui::Text ("There might be missing 3D files. Check missionx.log file for more information.");

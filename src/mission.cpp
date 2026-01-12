@@ -1029,6 +1029,7 @@ missionx::Mission::START_MISSION()
   Log::printHeaderToLog(fmt::format("===> STARTING MISSION: {} <===", missionx::data_manager::selectedMissionKey));
 
   Utils::seqTimerFunc = 0; // v3.305.2
+  missionx::data_manager::lst_of_failed_3d_obj_to_load.clear(); // v26.1.1
 
   std::string err;
   err.clear();
@@ -6071,6 +6072,8 @@ missionx::Mission::stopMission()
 void
 missionx::Mission::loadMission()
 {
+  missionx::data_manager::lst_of_failed_3d_obj_to_load.clear(); // v26.1.1
+
   missionx::Log::logMsg("[Mission-X] Try to load Mission.");
   // std::string err; // v25.03.1 deprecated
 
@@ -6085,7 +6088,6 @@ missionx::Mission::loadMission()
 
     if (read_mission_file::load_mission_file ( pathToMissionFile, pathToMissionRootFolder ) )
     {
-      // data_manager::missionState = missionx::mx_mission_state_enum::mission_loaded_from_the_original_file; // v25.03.1
       missionx::QueueMessageManager::sound.release(); // release Sound resources. Will initialize during "START_MISSION" phase.
 
       // Prepare mission filename for savepoint and dataref
@@ -6103,8 +6105,6 @@ missionx::Mission::loadMission()
       else
         data_manager::missionState = missionx::mx_mission_state_enum::mission_loaded_from_the_original_file;
     }
-
-    // Log::logMsgNone(err);
 
     if (data_manager::missionState == missionx::mx_mission_state_enum::mission_loaded_from_the_original_file)
     {

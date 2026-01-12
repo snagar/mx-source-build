@@ -909,6 +909,9 @@ missionx::NavAidInfo                missionx::data_manager::shared_navaid_betwee
 std::string                         missionx::data_manager::post_optimization_outcome;
 missionx::base_thread::strct_thread_state missionx::data_manager::metar_thread_state;
 
+// v26.01.1
+  std::list<std::string> missionx::data_manager::lst_of_failed_3d_obj_to_load;
+
 // -------------------------------------
 
 size_t
@@ -2412,6 +2415,8 @@ data_manager::init_static()
   listOfMessageStoryMessages.clear();
 
   mapQueries.clear();
+
+  lst_of_failed_3d_obj_to_load.clear(); // v26.01.1
 }
 
 // -------------------------------------
@@ -4252,6 +4257,7 @@ data_manager::pluginStop()
 void
 data_manager::loadAll3dObjectFiles()
 {
+  data_manager::lst_of_failed_3d_obj_to_load.clear();
 
   std::string objName;
   objName.clear();
@@ -4285,13 +4291,15 @@ data_manager::loadAll3dObjectFiles()
       }
     }
 
-
-
     if (obj.g_object_ref) // debug
       Log::logMsg("Loaded: " + ((isVirtual) ? "Virtual File: " + obj.file_and_path : "File: " + obj.file_and_path));
     else
+    {
       Log::logMsg("Failed Loading: " + obj.file_and_path);
-  }
+      data_manager::lst_of_failed_3d_obj_to_load.emplace_back(obj.file_and_path); // v26.01.1
+    }
+
+  } // end loop over all files
 
   // v3.303.11 look up and set all instances that were loaded from savepoint
   if (mx_global_settings.flag_loadedFromSavepoint)
@@ -7260,7 +7268,6 @@ data_manager::validate_display_object_file_existence(const std::string& inMissio
 
   std::lock_guard<std::mutex> lock(s_thread_sync_mutex); // make sure function is thread safe (I think)
 
-
   int                                err_counter_i = 0;
   std::map<std::string, std::string> mapFilesAndErrors; // map holds the file_name as key and if there is any issue with the existence of the file it will hold the error
   outErr.clear();
@@ -7270,9 +7277,10 @@ data_manager::validate_display_object_file_existence(const std::string& inMissio
   const std::string missionPackageFolder = missionFilePath + "../"; // example from: "{xp11}/Custom Scenery/missionx/random/briefer" to "{xp11}/Custom Scenery/missionx/random". This is the default file locations for sound and 3D files if global settings does not hold anything.
 
   int legs_i = parentOfLegNodes_ptr.nChildNode(mxconst::get_ELEMENT_LEG().c_str());
+  data_manager::lst_of_failed_3d_obj_to_load.clear(); // v26.1.1
+
   for (int i2 = 0; i2 < legs_i; ++i2)
   {
-
     const auto leg = parentOfLegNodes_ptr.getChildNode(mxconst::get_ELEMENT_LEG().c_str(), i2);
     if (!leg.isEmpty())
     {
@@ -7366,7 +7374,8 @@ data_manager::validate_display_object_file_existence(const std::string& inMissio
               if (objectFile3D.empty()) // we did not find virtual file
               {
                 ++err_counter_i;
-                err = fmt::format("[Validate 3D file] Not valid File: \"{}\", is not a valid virtual file. Copy the correct value from the library: EXPORT VIRTUAL PHYSICAL. See: https://developer.x-plane.com/article/library-library-txt-file-format-specification/", file_name);
+                // err = fmt::format("[Validate 3D file] Not valid File: \"{}\", is not a valid virtual file. Copy the correct value from the library: EXPORT VIRTUAL PHYSICAL. See: https://developer.x-plane.com/article/library-library-txt-file-format-specification/", file_name);
+                err = fmt::format("File: \"{}\", is NOT a valid virtual file. Copy the correct value from the library.txt file", file_name);
                 Log::logMsgThread(err);
               }
             }
@@ -7375,17 +7384,19 @@ data_manager::validate_display_object_file_existence(const std::string& inMissio
             {
               ++err_counter_i;
               if (!exists (file))
-                err = "Not Found File: " + file.string ();
+                err = "File NOT Found: " + file.string ();
               else if (!fs::directory_entry (file).is_regular_file ())
-                err = "Not a File: " + file.string () + " is a folder and not a file";
+                err = "Not a File ! " + file.string () + " is a folder.";
               else
-                err = "Not valid File: " + file.string () + " is of wrong type";
+                err = "Not a valid File: " + file.string () + " is of wrong type";
 
               Log::logMsgThread ("[Validate 3D file] " + err);
             }
 
             if (err.empty())
               Log::logMsgThread("[Validate 3D file] Found " + ((is_virtual_file) ? "Virtual File: " + file_name : "File: " + objectFile3D));
+            else
+              data_manager::lst_of_failed_3d_obj_to_load.emplace_back(err); // v26.1.1 add the error to the error list
 
             Utils::addElementToMap(mapFilesAndErrors, file_name, err);
 

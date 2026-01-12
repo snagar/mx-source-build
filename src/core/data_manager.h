@@ -1275,6 +1275,9 @@ public:
   ///// SHARED functions and data with the UI screens
   //////////////////////////////////////////////////////////////////
 
+  // v26.01.1 failed 3D object to load. Will use after loading a mission file.
+  static std::list<std::string> lst_of_failed_3d_obj_to_load;
+
   // From which layer we called random engine
   static void                   setGenerateLayerFrom (missionx::uiLayer_enum inLayerName) { data_manager::generate_from_layer = inLayerName; }
   static missionx::uiLayer_enum getGeneratedFromLayer () { return data_manager::generate_from_layer; }
