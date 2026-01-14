@@ -1277,6 +1277,7 @@ public:
 
   // v26.01.1 failed 3D object to load. Will use after loading a mission file.
   static std::list<std::string> lst_of_failed_3d_obj_to_load;
+  static std::list<std::string> lst_of_errors_and_warnings_during_mission_validation;
 
   // From which layer we called random engine
   static void                   setGenerateLayerFrom (missionx::uiLayer_enum inLayerName) { data_manager::generate_from_layer = inLayerName; }

@@ -911,6 +911,7 @@ missionx::base_thread::strct_thread_state missionx::data_manager::metar_thread_s
 
 // v26.01.1
   std::list<std::string> missionx::data_manager::lst_of_failed_3d_obj_to_load;
+  std::list<std::string> missionx::data_manager::lst_of_errors_and_warnings_during_mission_validation;
 
 // -------------------------------------
 
@@ -2417,6 +2418,7 @@ data_manager::init_static()
   mapQueries.clear();
 
   lst_of_failed_3d_obj_to_load.clear(); // v26.01.1
+  lst_of_errors_and_warnings_during_mission_validation.clear (); // v26.01.1
 }
 
 // -------------------------------------
@@ -4762,7 +4764,7 @@ data_manager::parse_leg_DisplayObjects(Waypoint& leg)
       if (obj3d_name.empty() || !mxUtils::isElementExists(map3dObj, obj3d_name))
       {
         // v3.305.3
-        const std::string txt = fmt::format("Found <display_object>: '{}' without 3d template name or template name not exists. Skipping instance...", obj3d_name);
+        const std::string txt = fmt::format("Found <display_object>: '{}' without <object_templates> reference node. Skipping instance.", obj3d_name);
         Utils::xml_add_warning_child(cLogNode, txt);
 
         addLoadErr(txt);
@@ -4773,7 +4775,7 @@ data_manager::parse_leg_DisplayObjects(Waypoint& leg)
       else if (instance_name.empty())
       {
         // v3.305.3
-        const std::string txt = fmt::format("Found <display_object> without instance name, check: '{}'. Skipping instance...", obj3d_name);
+        const std::string txt = fmt::format("Found <display_object> without instance name, check: '{}'. Skipping instance.", obj3d_name);
         Utils::xml_add_warning_child(cLogNode, txt);
 
         addLoadErr(txt);

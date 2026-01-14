@@ -276,7 +276,7 @@ WinImguiBriefer::add_ui_start_mission_button (missionx::mx_window_actions inActi
 
 void WinImguiBriefer::add_ui_warning_messages_button()
 {
-  if ( ! missionx::data_manager::lst_of_failed_3d_obj_to_load.empty() )
+  if ( ! missionx::data_manager::lst_of_failed_3d_obj_to_load.empty() || ! missionx::data_manager::lst_of_errors_and_warnings_during_mission_validation.empty() )
   {
     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
     ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_aliceblue);
@@ -2976,6 +2976,27 @@ void WinImguiBriefer::popup_draw_load_warnings(std::string_view inPopupWindowNam
 
         for (const auto &txt: missionx::data_manager::lst_of_failed_3d_obj_to_load)
         {
+          if (is_even_line)
+            ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_white);
+          else
+            ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_gray);
+
+          ImGui::TextWrapped ("> %s", txt.c_str());
+
+          ImGui::PopStyleColor();
+
+          is_even_line ^= 1;
+        } // end loop over all
+
+        ImGui::Spacing ();
+        ImGui::Separator ();
+        ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", "Other Warnings / Errors ");
+        ImGui::Separator ();
+
+        is_even_line = false;
+        for (const auto &txt: missionx::data_manager::lst_of_errors_and_warnings_during_mission_validation)
+        {
+          
           if (is_even_line)
             ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_white);
           else

@@ -43,6 +43,8 @@ public:
   Log();
   virtual ~Log();
 
+  static std::deque<std::string> *get_deq_error_container_ptr () { return &deq_LoadMissionFileErrors; }
+
   static void        add_missionLoadError(const std::string& inMsg);                         // v3.0.241.1
   static void        clear_deq_LoadMissionFileErrors();                               // v3.0.241.1
   static std::string print_deq_LoadMissionFileErrors(bool inClearAfterPrint = false); // v3.0.241.1

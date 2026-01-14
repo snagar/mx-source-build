@@ -1178,6 +1178,7 @@ missionx::read_mission_file::load_mission_file(const std::string& inPathAndFileN
 
   read_mission_file::vecErrors.clear();
   data_manager::lstLoadErrors.clear(); // v3.305.3
+  missionx::data_manager::lst_of_errors_and_warnings_during_mission_validation.clear (); // v26.01.1
 
   /////////////
   dummy_top_node = IXMLNode::emptyIXMLNode;
@@ -1302,6 +1303,7 @@ missionx::read_mission_file::load_mission_file(const std::string& inPathAndFileN
 
 
       // VALIDATIONS
+
       initOK = post_load_validations(xMainNode_local.deepCopy(), inPathAndFileName); // v3.0.255.3 added xMainNode
       if (missionx::read_mission_file::initOK)
       {
@@ -1313,6 +1315,10 @@ missionx::read_mission_file::load_mission_file(const std::string& inPathAndFileN
       //// print errors ////
       if (Log::get_deq_errors_container_size())
       {
+        // v26.1.1 store messages to show in the UI
+        for (auto msg : (*Log::get_deq_error_container_ptr ()))
+          missionx::data_manager::lst_of_errors_and_warnings_during_mission_validation.emplace_back (msg);
+
         Log::printHeaderToLog("Summary of errors/warnings of mission");
         Log::logMsg(Log::print_deq_LoadMissionFileErrors(true));
       }
@@ -1321,7 +1327,14 @@ missionx::read_mission_file::load_mission_file(const std::string& inPathAndFileN
       if (!data_manager::lstLoadErrors.empty())
       {
         Log::printHeaderToLog("Other Errors/Warnings:");
-        std::ranges::for_each ( data_manager::lstLoadErrors, [](const std::string& s) { Log::logMsgNone(s); }); // v3.305.3
+
+        // v26.1.1
+        for (const auto &msg : data_manager::lstLoadErrors)
+        {
+          missionx::data_manager::lst_of_errors_and_warnings_during_mission_validation.emplace_back (msg);
+          Log::logMsgNone (msg);
+        }
+
       }
 
       #ifndef RELEASE
@@ -1332,7 +1345,7 @@ missionx::read_mission_file::load_mission_file(const std::string& inPathAndFileN
 
     } // if XML file was loaded and no errors found
     else
-    {
+    {     
       missionx::data_manager::load_error_message = errMsg; // v3.0.251.1
       Log::logMsg("Failed to load XML file ");             // debug
       Log::logMsg(errMsg);

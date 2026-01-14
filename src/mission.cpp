@@ -6073,6 +6073,7 @@ void
 missionx::Mission::loadMission()
 {
   missionx::data_manager::lst_of_failed_3d_obj_to_load.clear(); // v26.1.1
+  missionx::data_manager::lst_of_errors_and_warnings_during_mission_validation.clear (); // v26.1.1
 
   missionx::Log::logMsg("[Mission-X] Try to load Mission.");
   // std::string err; // v25.03.1 deprecated
