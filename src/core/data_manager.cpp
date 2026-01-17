@@ -35,6 +35,8 @@ IXMLNode data_manager::xMissionxProperties_node;
 const std::string              data_manager::plugin_sig = "missionx_snagar.dev";
 std::vector<std::future<void>> mImageLoadFutures; // we use future<void> since out function returns void.
 
+std::filesystem::path missionx::data_manager::ca_path = fmt::format( "{}cacert.pem", Utils::getPluginDirectoryWithSep()); // v26.01.1
+
 script_manager data_manager::sm;
 #ifdef APL
 mb_interpreter_t* data_manager::bas;
@@ -6367,8 +6369,6 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
   }
 
   bool flag_http_success = false;
-  // bool bIsFirstTime      = true;
-
   const std::string full_url_s = fmt::format ("https://www.simbrief.com/api/xml.fetcher.php?userid={}", in_pilot_id);
 
   //// Fetch information
@@ -6380,57 +6380,63 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
     {
       result_s.clear();
 
-      char errBuff[CURL_ERROR_SIZE]{ '\0' };
-      curl_easy_setopt(curl, CURLOPT_URL, full_url_s.c_str());
-      // curl_easy_setopt(data_manager::curl, CURLOPT_PORT, 443L);
-
-      // set authorization key if present
-      // if (!authKey_s.empty())
-      // {
-      //   curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-      //   curl_easy_setopt(curl, CURLOPT_USERPWD, authKey_s.c_str());
-      // }
-      // setup agent
-      curl_easy_setopt(curl, CURLOPT_USERAGENT, APP_NAME);
-      curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 20L); // v24.06.1 /Timeout for server connection
-      curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);        // v24.06.1 overall work timeout - 60 seconds
-      curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 0L);        // CURLOPT_NOSIGNAL - skip all signal handling (values 0 or 1)
-
-      curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
-      curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-      // curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, onProgress); // simple function that manage cancel state
-
-      curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuff);
-
-      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_write);
-      curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result_s);
-      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-
-      // https://curl.haxx.se/docs/sslcerts.html
-      // curl_easy_setopt(curl, CURLOPT_CAINFO, cacert);
-
-
-      if (CURLcode res_curl = curl_easy_perform(curl) // execute the REQUEST
-          ; CURLE_OK != res_curl)
+      // try up to three times
+      for (int loop01 = 0; loop01 < 3 && !flag_http_success; ++loop01 )
       {
-        Log::logMsgThread("cURL error code: " + Utils::formatNumber<int>(res_curl) + "\n");
-      }
-      std::string errBuff_s(errBuff);
-      curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpStatus);
-      if (httpStatus != 200 || !errBuff_s.empty())
-      {
-        outStatusMessage->append(std::string("cURL HTTP status: ") + std::to_string(httpStatus) + ". Error Buff: " + errBuff_s);
-
         #ifndef RELEASE
-        Log::logMsgThread((*outStatusMessage)); // debug
+        Log::logMsgThread (fmt::format("\nSimbrief URL: {}\n", full_url_s) ); // debug
+        Log::logMsgThread (fmt::format("\ncacert path: {}\n", data_manager::ca_path.string()) ); // debug
         #endif
-      }
-      else // parse json
-      {
-        flag_http_success   = true;
-        (*outStatusMessage) = "cURL fetch success.";
-      }
+
+        char errBuff[CURL_ERROR_SIZE]{ '\0' };
+        curl_easy_setopt(curl, CURLOPT_URL, full_url_s.c_str());
+
+        // https://curl.haxx.se/docs/sslcerts.html
+        if (std::filesystem::exists (data_manager::ca_path) && std::filesystem::is_regular_file(ca_path)) // v26.01.1
+          curl_easy_setopt(curl, CURLOPT_CAINFO, data_manager::ca_path.string().c_str());
+
+        // setup agent
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, APP_NAME);
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 20L); // v24.06.1 /Timeout for server connection
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);        // v24.06.1 overall work timeout - 60 seconds
+        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 0L);        // CURLOPT_NOSIGNAL - skip all signal handling (values 0 or 1)
+
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); // v26.01.1 fallback if SSL fails
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L); // v26.01.1 fallback if SSL fails
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+
+        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuff);
+
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_write);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result_s);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+
+
+
+        if (CURLcode res_curl = curl_easy_perform(curl) // execute the REQUEST
+            ; CURLE_OK != res_curl)
+        {
+          Log::logMsgThread("cURL error code: " + Utils::formatNumber<int>(res_curl) + "\n");
+        }
+        std::string errBuff_s(errBuff);
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpStatus);
+        if (httpStatus != 200 || !errBuff_s.empty())
+        {
+          outStatusMessage->append(std::string("cURL HTTP status: ") + std::to_string(httpStatus) + ". Error Buff: " + errBuff_s);
+
+          #ifndef RELEASE
+          Log::logMsgThread((*outStatusMessage)); // debug
+          #endif
+
+          std::this_thread::sleep_for (std::chrono::seconds(2)); // v26.01.1 wait for 2 seconds
+        }
+        else // parse json
+        {
+          flag_http_success   = true;
+          (*outStatusMessage) = "cURL fetch success.";
+        }
+      } // end internal fetch loop. Try few times before giving up.
 
     } // end data_manager::curl - handling cURL
 
@@ -6559,6 +6565,9 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
 
     #ifndef RELEASE
     Log::logMsgThread("Curl Result: " + result_s);
+
+    Log::logMsgThread (fmt::format("\nSimbrief URL: {}\n", full_url_s) ); // debug
+    Log::logMsgThread (fmt::format("\ncacert path: {}\n", data_manager::ca_path.string()) ); // debug
     #endif
 
   }
@@ -6665,7 +6674,10 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
       httpStatus = 0;
       char errBuff[CURL_ERROR_SIZE]{ '\0' };
       curl_easy_setopt (curl, CURLOPT_URL, full_url_s.c_str());
-      // curl_easy_setopt(data_manager::curl, CURLOPT_PORT, 443L);
+
+      // https://curl.haxx.se/docs/sslcerts.html
+      if (std::filesystem::exists (data_manager::ca_path) && std::filesystem::is_regular_file(ca_path)) // v26.01.1
+        curl_easy_setopt(curl, CURLOPT_CAINFO, data_manager::ca_path.string().c_str());
 
       // set authorization key if present
       if (!authKey_s.empty ())
@@ -6680,9 +6692,9 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
       curl_easy_setopt (curl, CURLOPT_NOSIGNAL, 0L); // CURLOPT_NOSIGNAL - skip all signal handling (values 0 or 1)
 
       curl_easy_setopt (curl, CURLOPT_FOLLOWLOCATION, 1L);
-      curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
+      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); // v26.01.1 fallback if SSL fails
+      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L); // v26.01.1 fallback if SSL fails
       curl_easy_setopt (curl, CURLOPT_NOPROGRESS, 0L);
-      // curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, onProgress); // simple function that manage cancel state
 
       curl_easy_setopt (curl, CURLOPT_ERRORBUFFER, errBuff);
 
@@ -6859,53 +6871,60 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outE
   //// Fetch information
   std::string err;
   {
-
-    // sleep before calling overpass
-    std::this_thread::sleep_for (std::chrono::seconds(2)); // v25.06.1 not overwhelm the overpass server
-
     long httpStatus = 0;
     if (curl)
     {
-      overpass_counter_i++; // counter
-      Log::logMsgThread("[overpass] Overpass Calls: " + mxUtils::formatNumber<int>(overpass_counter_i));
-
-      char errBuff[CURL_ERROR_SIZE] = "\0"; // v3.305.3
-
-      curl_easy_setopt(curl, CURLOPT_URL, in_url_s.c_str());
-      // curl_easy_setopt(data_manager::curl, CURLOPT_PORT, 443L);
-      curl_easy_setopt(curl, CURLOPT_USERAGENT, APP_NAME);
-      curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 20L); // v25.09.2 /Timeout for server connection
-      curl_easy_setopt(curl, CURLOPT_TIMEOUT, 45L); // v25.09.2 added timeout
-
-      // ignore SSL - important for Windows
-      curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
-      curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-      // curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, onProgress); // simple function that manage cancel state
-
-      curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuff);
-
-      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_write); // <==== THIS IS WHERE WE HANDLE THE RESPONSE DATA
-      curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result_s);
-      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-      // https://curl.haxx.se/docs/sslcerts.html
-      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, FALSE);
-
-      // v25.12.1
-      if (!in_separate_data_from_utl.empty())
-        curl_easy_setopt (curl, CURLOPT_POSTFIELDS, in_separate_data_from_utl.c_str());
-
-
-      // https://curl.haxx.se/docs/sslcerts.html
-      // curl_easy_setopt(curl, CURLOPT_CAINFO, cacert);
-      CURLcode res_curl = curl_easy_perform(curl); // execute the REQUEST
-
-      if (CURLE_OK != res_curl)
+      std::string errBuff_s;
+      CURLcode res_curl = CURLE_FAILED_INIT;
+      constexpr int C_MAX_LOOP = 3;
+      for (int v_loop01 = 0; v_loop01 < C_MAX_LOOP && (CURLE_OK != res_curl); ++v_loop01)
       {
-        Log::logMsgThread("CURL error code: " + Utils::formatNumber<int>(res_curl) + "\n");
+        // sleep before calling overpass
+        std::this_thread::sleep_for (std::chrono::seconds(2)); // v25.06.1 not overwhelm the overpass server
+
+        overpass_counter_i++; // counter
+        Log::logMsgThread("[overpass] Overpass Calls: " + mxUtils::formatNumber<int>(overpass_counter_i));
+
+        char errBuff[CURL_ERROR_SIZE] = "\0"; // v3.305.3
+
+        curl_easy_setopt(curl, CURLOPT_URL, in_url_s.c_str());
+
+        // https://curl.haxx.se/docs/sslcerts.html
+        if (std::filesystem::exists (data_manager::ca_path) && std::filesystem::is_regular_file(ca_path)) // v26.01.1
+          curl_easy_setopt(curl, CURLOPT_CAINFO, data_manager::ca_path.string().c_str());
+
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, APP_NAME);
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 20L); // v25.09.2 /Timeout for server connection
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 45L); // v25.09.2 added timeout
+
+        // ignore SSL - important for Windows
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); // v26.01.1 fallback if SSL fails
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L); // v26.01.1 fallback if SSL fails
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+
+        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuff);
+
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_write); // <==== THIS IS WHERE WE HANDLE THE RESPONSE DATA
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result_s);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+
+        // v25.12.1
+        if (!in_separate_data_from_utl.empty())
+          curl_easy_setopt (curl, CURLOPT_POSTFIELDS, in_separate_data_from_utl.c_str());
+
+        // https://curl.haxx.se/docs/sslcerts.html
+        res_curl = curl_easy_perform(curl); // execute the REQUEST
+
+        if (CURLE_OK != res_curl)
+        {
+          Log::logMsgThread("CURL error code: " + Utils::formatNumber<int>(res_curl) + "\n");
+        }
+
+        errBuff_s = errBuff; // v3.305.3
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpStatus);
       }
-      std::string errBuff_s = errBuff; // v3.305.3
-      curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpStatus);
+
 
       if (httpStatus != 200 || !errBuff_s.empty())
       {
@@ -6930,102 +6949,6 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outE
           Log::logMsgThread (fmt::format ("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", in_url_s, in_separate_data_from_utl, result_s));
           Log::logMsgThread (fmt::format ("\tCurl error: \n\t{}\n", curl_easy_strerror (res_curl)));
         }
-
-        #ifndef RELEASE
-        Log::logMsgThread(outError); // debug
-        #endif
-      }
-      else
-      {
-        outError.clear();
-      }
-
-    } // end data_manager::curl - handling cURL
-
-    // #endif
-  } // end CURL handling if HTTPLIB failed
-
-  overpass_fetch_err = outError; // v3.0.255.4 overpass_fetch_err will get the error. This will clear the last error message overpass_fetch_err had.
-
-  return result_s;
-}
-
-// -------------------------------------
-
-std::string
-data_manager::fetch_overpass_info2(const std::string& in_url_s, std::string& outError)
-{
-  std::lock_guard<std::mutex> lock (s_thread_sync_mutex);
-
-  std::string result_s;
-  outError.clear();
-
-  const std::string url_site = (in_url_s.find('?') != std::string::npos) ? in_url_s.substr(0, in_url_s.find('?')) : "";
-  const std::string q        = (in_url_s.find('?') != std::string::npos) ? in_url_s.substr(in_url_s.find('?') + 1) : "";
-
-  //// Fetch information
-  std::string err;
-  {
-
-    // sleep before calling overpass
-    std::this_thread::sleep_for (std::chrono::seconds(2)); // v25.06.1 not overwhelm the overpass server
-
-    long httpStatus = 0;
-    if (curl)
-    {
-      overpass_counter_i++; // counter
-      Log::logMsgThread("[overpass] Overpass Calls: " + mxUtils::formatNumber<int>(overpass_counter_i));
-
-      char errBuff[CURL_ERROR_SIZE] = "\0"; // v3.305.3
-
-      curl_easy_setopt(curl, CURLOPT_URL, in_url_s.c_str());
-      // curl_easy_setopt(data_manager::curl, CURLOPT_PORT, 443L);
-      curl_easy_setopt(curl, CURLOPT_USERAGENT, APP_NAME);
-      curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 20L); // v25.09.2 /Timeout for server connection
-      curl_easy_setopt(curl, CURLOPT_TIMEOUT, 45L); // v25.09.2 added timeout
-
-      // ignore SSL - important for Windows
-      curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
-      curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-      // curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, onProgress); // simple function that manage cancel state
-
-      curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuff);
-
-      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_write); // <==== THIS IS WHERE WE HANDLE THE RESPONSE DATA
-      curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result_s);
-      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-      // https://curl.haxx.se/docs/sslcerts.html
-      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, FALSE);
-
-      // https://curl.haxx.se/docs/sslcerts.html
-      // curl_easy_setopt(curl, CURLOPT_CAINFO, cacert);
-      CURLcode res_curl = curl_easy_perform(curl); // execute the REQUEST
-
-      if (CURLE_OK != res_curl)
-      {
-        Log::logMsgThread("CURL error code: " + Utils::formatNumber<int>(res_curl) + "\n");
-      }
-      std::string errBuff_s = errBuff; // v3.305.3
-      curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpStatus);
-
-      if (httpStatus != 200 || !errBuff_s.empty())
-      {
-        //outError.append(std::string("CURL HTTP status: ") + std::to_string(httpStatus) + ((errBuff_s.empty()) ? "" : fmt::format(". Error Buff: {}", errBuff_s) ) ); // v3.0.255.4 added logic to display "Error Buff" only if there is a string value in it
-        outError.append (fmt::format ("CURL HTTP status: {} {}", std::to_string (httpStatus), ((errBuff_s.empty()) ? "" : fmt::format (". Error Buff: {}", errBuff_s)))); // v3.0.255.4 added logic to display "Error Buff" only if there is a string value in it
-
-        switch (httpStatus)
-        {
-          case 504: // "504 Gateway Time-out"
-            outError.append(": Overpass Gateway Time-out.");
-            break;
-          case 429: // "429 Too many requests"
-            outError.append(": Too many requests.");
-            break;
-          default:
-            break;
-        }
-
 
         #ifndef RELEASE
         Log::logMsgThread(outError); // debug

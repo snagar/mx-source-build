@@ -849,6 +849,7 @@ public:
   static int xplane_using_modern_driver_b;
   static std::string mission_file_supported_versions; // v24.12.2
 
+  static std::filesystem::path ca_path;
   static missionx::NavAidInfo shared_navaid_between_threads; // v25.09.1 Used with waitForPluginCallbackJob() and data_manager thread based functions.
 
   // missionx_conf node from missionx_conf.xml file
