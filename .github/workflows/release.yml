@@ -111,7 +111,7 @@ jobs:
           set -x
           sudo apt update
           sudo apt-get -y install libarchive-zip-perl freeglut3-dev g++ libopenal1 libssl-dev libcurl4-openssl-dev
-#          sudo apt install -y gcc-14 g++-14 # sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100 # sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
+          # sudo apt install -y gcc-14 g++-14 # sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100 # sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
           gcc --version
           g++ --version
           
