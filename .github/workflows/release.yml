@@ -72,19 +72,19 @@ jobs:
   
   build-lin:
     #if: ( 1 == 2 )
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [pre-build]
     strategy: # Set fail-fast too false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
       fail-fast: true
       matrix:
-        os: [ubuntu-latest]
-        #build_type: [ Debug, Release ]
+        os: [ubuntu-22.04]
+        build_type: [ Debug, Release ]
         #build_type: [ Debug ]
-        build_type: [ Release ]
+        #build_type: [ Release ]
         c_compiler: [gcc]
         #gcc_version: [11]
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             c_compiler: gcc
             cpp_compiler: g++
     steps:
@@ -111,9 +111,7 @@ jobs:
           set -x
           sudo apt update
           sudo apt-get -y install libarchive-zip-perl freeglut3-dev g++ libopenal1 libssl-dev libcurl4-openssl-dev
-          sudo apt install -y gcc-14 g++-14
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
+#          sudo apt install -y gcc-14 g++-14 # sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100 # sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
           gcc --version
           g++ --version
           
@@ -123,7 +121,6 @@ jobs:
           fi
           
           uname -a
-          
 
       - name: Check Linux Stats
         shell: bash
@@ -192,7 +189,7 @@ jobs:
   
 
   build-osx:
-    if: ( 1 == 2 )
+    #if: ( 1 == 2 )
     runs-on: macos-14
     needs: [pre-build]
     strategy:
@@ -296,7 +293,7 @@ jobs:
   
 
   build-win:
-    if: ( 1 == 2 )
+    #if: ( 1 == 2 )
     runs-on: windows-latest
     needs: [pre-build]
     strategy:
