@@ -79,7 +79,8 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         #build_type: [ Debug, Release ]
-        build_type: [ Debug ]
+        #build_type: [ Debug ]
+        build_type: [ Release ]
         c_compiler: [gcc]
         #gcc_version: [11]
         include:
