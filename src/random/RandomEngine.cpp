@@ -958,15 +958,15 @@ RandomEngine::parse_display_object_element (const missionx::NavAidInfo *in_targe
 
   if (flag_isFlightLegInWater && !randomWaterTag.empty ()) // v3.0.219.10 switch between terrain random object and water tag object
   {
-    #ifndef RELEASE
-    Log::logMsgThread (fmt::format("[{}] Replaced randomTag with the water Tag: {}, for display object name: {}", __func__, randomWaterTag, attrib_name_value) );
-    #endif // !RELEASE
+    // #ifndef RELEASE
+    // Log::logMsgThread (fmt::format("[{}] Replaced randomTag with the water Tag: {}, for display object name: {}", __func__, randomWaterTag, attrib_name_value) );
+    // #endif // !RELEASE
 
     randomTag = randomWaterTag;
   }
 
   bool is_random_obj3d = false;
-  const auto lmbda_get_3d_object = [&] (bool &out_is_random, const std::string &in_func_name = __func__ ) -> IXMLNode
+  const auto lmbda_get_3d_object = [&] (bool &out_is_random, const std::string &in_func_name  ) -> IXMLNode
   {
     out_is_random = false;
     IXMLNode obj3d_node;
@@ -1004,12 +1004,12 @@ RandomEngine::parse_display_object_element (const missionx::NavAidInfo *in_targe
     return obj3d_node;
   };
 
-  auto obj3d_node = lmbda_get_3d_object( is_random_obj3d, __func__);
+  auto obj3d_node = lmbda_get_3d_object( is_random_obj3d, "parse_display_object_element");
 
   // validate 3d object
   if (obj3d_node.isEmpty ())
   {
-    inout_err = fmt::format( "[{}] Found <display_element> without attribute name or random_tag.", __func__ );
+    inout_err = fmt::format( "[parse_display_object_element] Found <display_element> without attribute name or random_tag." );
     return false;
   }
 
@@ -1049,9 +1049,6 @@ RandomEngine::parse_display_object_element (const missionx::NavAidInfo *in_targe
 
   return true;
 }
-
-
-// -----------------------------------
 
 // -----------------------------------
 
@@ -1227,7 +1224,6 @@ RandomEngine::parse_display_object_element (const missionx::NavAidInfo *in_targe
 //
 //   return true;
 // }
-//
 
 // -----------------------------------
 

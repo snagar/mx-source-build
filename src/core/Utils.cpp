@@ -1918,6 +1918,10 @@ missionx::Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode(I
   // Check if parent node itself is the correct node
   // check attributes
   const int nAttributes = pNode.nAttribute();
+  #ifndef RELEASE
+  [[maybe_unused]]
+  std::string attrib_value;
+  #endif
 
   for (int iLoop = 0; iLoop < nAttributes; ++iLoop)  // loop over all attributes regardless their name
   {
@@ -1926,7 +1930,12 @@ missionx::Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode(I
     {
       // We separate the filter logic to correctly handle cases where we just want to search the "first attribute" vs "any attribute with name 'x' and value 'y' "
       if (inAttribValue == attrib.sValue)
+      {
+        #ifndef RELEASE
+        attrib_value = attrib.sValue;
+        #endif
         return (flag_returnCopy) ? pNode.deepCopy() : pNode;
+      }
     }
     else
     {

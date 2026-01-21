@@ -149,7 +149,6 @@ private:
 
   static IXMLNode gen_get_skewed_target_position (const IXMLNode &inRealTargetPositionPoint); // will return a skewed position in the ~0.5-3.0nm away from target.
   static bool     parse_display_object_element (const missionx::NavAidInfo *in_target_nav_ptr, const IXMLNode &inFlightLegNode, IXMLNode &inDisplayNode, const IXMLNode &in_xRootTemplate, IXMLNode &x3DObjTemplate, const double &expected_slope_at_target_location_d, std::string &inout_err); // check xml tag <display_object> for specific random attributes.
-  // static bool     parse_display_object_element2 (missionx::NavAidInfo *in_target_nav_ptr, IXMLNode &inFlightLegNode, IXMLNode &inDisplayNode, IXMLNode & in_xRootTemplate, IXMLNode & x3DObjTemplate, double &expected_slope_at_target_location_d, std::string & inout_err);
 
 
   bool gen_read_mission_info_element();
