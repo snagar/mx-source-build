@@ -1020,7 +1020,7 @@ RandomEngine::parse_display_object_element (const missionx::NavAidInfo *in_targe
   final_name = obj3d_name_s;
 
   // // search for 3D Object with same name
-  IXMLNode xObj3d_same_name_in_objectTemplate = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, mxconst::get_ELEMENT_OBJ3D (), mxconst::get_ATTRIB_NAME (), obj3d_name_s, false);
+  IXMLNode xObj3d_same_name_in_objectTemplate = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, mxconst::get_ELEMENT_OBJ3D (), mxconst::get_ATTRIB_NAME (), final_name, false);
   // IXMLNode xObj3d_same_file_name_in_objectTemplate = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, mxconst::get_ELEMENT_OBJ3D (), mxconst::get_ATTRIB_FILE_NAME (), obj3d_file_name_s, false);
   //
   // if (xObj3d_same_file_name_in_objectTemplate.isEmpty())
