@@ -774,6 +774,7 @@ public:
 
   // -------------------------------------------
   // Returns the pointer to the XML node after it deletes all sub-nodes with certain tag name. If 'inSubNodeName' is empty, then delete all sub-nodes. It will check only the root level.
+  static bool xml_delete_subnode(IXMLNode& pNode, const std::string &inSubNodeName, const std::string &in_attrib, const std::string &in_value);
   static int xml_delete_all_subnodes(IXMLNode& pNode, const std::string &inSubNodeName = "", bool inDelClear_b = false);
   static int xml_delete_all_subnodes_except(IXMLNode& pNode, const std::string &inSubNodeName = "", bool inDelClear_b = false, const std::string& exceptElementWithTagAndAttribAndValue = "" ); // delete all sub-nodes with certain tag name. If empty then delete all subnodes
 

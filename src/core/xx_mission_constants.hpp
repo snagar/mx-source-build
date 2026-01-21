@@ -36,7 +36,7 @@ constexpr static const int MX_FEATURES_VERSION = 20250501; //20241212; //2023091
 
 inline constexpr static auto PLUGIN_VER_MAJOR                  = "26"; // year
 inline constexpr static auto PLUGIN_VER_MINOR                  = "01"; // month
-inline constexpr static auto PLUGIN_VER_SUB                    = "2"; // sub-version
+inline constexpr static auto PLUGIN_VER_SUB                    = "3"; // sub-version
 inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 
@@ -509,6 +509,7 @@ typedef enum class _mxWindowActions
   ACTION_FETCH_NAV_INFORMATION,                               // v24025
   ACTION_FETCH_MISSION_STATS,                                 // v3.0.255.1
   ACTION_ABORT_RANDOM_ENGINE_RUN,                             // v3.0.253.6
+  ACTION_ABORT_EXTERNAL_DBFPLN_FETCH,                         // v26.01.3
   ACTION_SAVE_USER_SETUP_OPTIONS,                             // v3.0.255.4.2
   ACTION_GENERATE_MISSION_FROM_LNM_FPLN,                      // v3.0.301
   ACTION_GENERATE_RANDOM_DATE_TIME,                           // v3.303.10

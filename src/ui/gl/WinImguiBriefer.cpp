@@ -1343,6 +1343,18 @@ WinImguiBriefer::flc ()
           this->countdown_success_textColorVec4 = missionx::color::color_vec4_deepskyblue;
       }
     }
+    else 
+    {
+      // v26.01.3
+      if (this->currentLayer == missionx::uiLayer_enum::option_external_fpln_layer)
+      {
+        if (this->strct_ext_layer.from_icao.empty () && this->strct_ext_layer.buf_from_icao[0] != '\0') 
+          this->strct_ext_layer.from_icao = std::string (this->strct_ext_layer.buf_from_icao);
+
+        if (this->strct_ext_layer.to_icao.empty () && this->strct_ext_layer.buf_to_icao[0] != '\0')
+          this->strct_ext_layer.to_icao = std::string (this->strct_ext_layer.buf_to_icao);
+      }
+    }
   }
 
   if (this->nextWinPosMode >= 0)
@@ -8081,7 +8093,10 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
   // ------------ Buttons -----------------------
 
   //  Display button only if we are not processing the fetch
-  if ((this->strct_ext_layer.fetch_state != missionx::mxFetchState_enum::fetch_in_process && this->strct_ext_layer.fetch_state != missionx::mxFetchState_enum::fetch_ended && this->strct_ext_layer.fetch_state != missionx::mxFetchState_enum::fetch_guess_wp) && (!this->strct_ext_layer.from_icao.empty () || !this->strct_ext_layer.to_icao.empty ()))
+  // if ((this->strct_ext_layer.fetch_state != missionx::mxFetchState_enum::fetch_in_process && this->strct_ext_layer.fetch_state != missionx::mxFetchState_enum::fetch_ended && this->strct_ext_layer.fetch_state != missionx::mxFetchState_enum::fetch_guess_wp) && (!this->strct_ext_layer.from_icao.empty () || !this->strct_ext_layer.to_icao.empty ()))
+
+  const bool are_we_processing_the_fetch = mxUtils::mx_between <int>(static_cast<int>( this->strct_ext_layer.fetch_state ), static_cast<int>(missionx::mxFetchState_enum::fetch_in_process), static_cast<int>( missionx::mxFetchState_enum::fetch_guess_wp), missionx::enums::mx_between_types::both_can_be_equal);
+  if ( are_we_processing_the_fetch == false && (!this->strct_ext_layer.from_icao.empty () || !this->strct_ext_layer.to_icao.empty ()))
   {
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
 
@@ -8258,7 +8273,24 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
 
   this->mxEndUiDisableState (bEnableState); // v24.03.1 disable table until fetch is ended
 
-  if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->flag_generatedRandomFile_success && this->strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
+  // ----------------------
+  // -- Abort BUTTON
+  // ----------------------
+  if (are_we_processing_the_fetch)
+  {
+    this->add_ui_abort_mission_creation_button(mx_window_actions::ACTION_ABORT_EXTERNAL_DBFPLN_FETCH);
+  }
+
+  // ----------------------
+  // -- START BUTTON
+  // ----------------------
+
+  // if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->strct_ext_layer.fetch_state == missionx::mxFetchState_enum::fetch_not_started && this->flag_generatedRandomFile_success && this->strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
+  if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running
+      && are_we_processing_the_fetch == false // v26.01.3
+      && this->flag_generatedRandomFile_success
+      && this->strct_generate_template_layer.selectedTemplateKey.empty ()
+      && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
   {
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
     this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
@@ -12686,6 +12718,11 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
         missionx::data_manager::mFetchFutures.push_back (std::async (std::launch::async, missionx::data_manager::fetch_fpln_from_flightplandatabase_site, &this->strct_ext_layer.threadState, missionx::data_manager::prop_userDefinedMission_ui.node, &this->strct_ext_layer.fetch_state, &this->strct_ext_layer.asyncFetchMsg_s));
         this->setMessage ("Fetching information from 'external site', may take up to one minute.", 8); // v24.06.1
       }
+    }
+    break;
+    case mx_window_actions::ACTION_ABORT_EXTERNAL_DBFPLN_FETCH: // v26.01.3
+    {
+      this->strct_ext_layer.threadState.flagAbortThread = true; // abort the function: "data_manager::fetch_fpln_from_flightplandatabase_site()"
     }
     break;
     case missionx::mx_window_actions::ACTION_FETCH_ILS_AIRPORTS:

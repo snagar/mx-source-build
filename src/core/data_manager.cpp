@@ -4763,10 +4763,10 @@ data_manager::parse_leg_DisplayObjects(Waypoint& leg)
       std::string obj3d_name    = Utils::readAttrib(instProp.node,  mxconst::get_ATTRIB_NAME(), "");
       std::string link_task     = Utils::readAttrib(instProp.node, mxconst::get_ATTRIB_LINK_TASK(), "");
 
-      if (obj3d_name.empty() || !mxUtils::isElementExists(map3dObj, obj3d_name))
+      if ( obj3d_name.empty() ||  !map3dObj.contains(obj3d_name) )
       {
         // v3.305.3
-        const std::string txt = fmt::format("Found <display_object>: '{}' without <object_templates> reference node. Skipping instance.", obj3d_name);
+        const std::string txt = fmt::format("The <display_object>: '{}' is missing a reference node in the <object_templates> root node. Skipping instance.", obj3d_name);
         Utils::xml_add_warning_child(cLogNode, txt);
 
         addLoadErr(txt);
@@ -6285,7 +6285,7 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
         curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &httpStatus);
         if (httpStatus != 200 || !errBuff_s.empty ())
         {
-          outStatusMessage->append (fmt::format ("CURL HTTP status: {} Error Buff: {}. {}:{}", std::to_string (httpStatus), errBuff_s, ((iCurlTry < 3) ? "Will try again in 5 sec" : "No Luck"), iCurlTry)); // v24.03.1
+          outStatusMessage->append (fmt::format ("CURL HTTP status: {}. {}. {}:{}", std::to_string (httpStatus), errBuff_s, ((iCurlTry < 3) ? "Will try again in 5 sec" : "No Luck"), iCurlTry)); // v24.03.1
           Log::logMsgThread ((*outStatusMessage) + "\n"); // debug
 
           std::this_thread::sleep_for (std::chrono::milliseconds (5000)); // sleep for 5 seconds
@@ -6423,7 +6423,7 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpStatus);
         if (httpStatus != 200 || !errBuff_s.empty())
         {
-          outStatusMessage->append(std::string("cURL HTTP status: ") + std::to_string(httpStatus) + ". Error Buff: " + errBuff_s);
+          outStatusMessage->append(std::string("cURL HTTP status: ") + std::to_string(httpStatus) + ". " + errBuff_s);
 
           #ifndef RELEASE
           Log::logMsgThread((*outStatusMessage)); // debug
@@ -6710,10 +6710,6 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
       const auto path_s = fmt::format ("{}/{}", cert_loc_s, "cacert.pem");
       curl_easy_setopt (curl, CURLOPT_CAINFO, path_s.c_str ());
 
-      // OR disable cacerts
-      // curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-      // curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-
       (*outState)       = mxFetchState_enum::fetch_in_process;
       CURLcode res_curl = curl_easy_perform (curl); // execute the REQUEST
 
@@ -6726,7 +6722,24 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
       curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &httpStatus);
       if (httpStatus != 200 || !errBuff_s.empty ())
       {
-        (*outStatusMessage) = fmt::format ("Try {}/{}: cURL HTTP status: {}. Error Buff: {}", (loop_counter + 1), max_loop, httpStatus, result_s);
+        std::string msg;
+        switch (httpStatus)
+        {
+          case 503:
+          case 522:
+            msg = fmt::format ("Try {}/{}: cURL HTTP status: {}. Error: {}", (loop_counter + 1), max_loop, httpStatus, "Site might be unavailable.");
+          break;
+          case 500:
+            msg = fmt::format ("Try {}/{}: cURL HTTP status: {}. Error: {}", (loop_counter + 1), max_loop, httpStatus, "Remote internal server error.");
+          break;
+          case 504:
+            msg = fmt::format ("Try {}/{}: cURL HTTP status: {}. Error: {}", (loop_counter + 1), max_loop, httpStatus, "Gateway Timeout.");
+          break;
+          default:
+            msg = fmt::format ("Try {}/{}: cURL HTTP status: {}. {}", (loop_counter + 1), max_loop, httpStatus, result_s);
+          break;
+        }
+        (*outStatusMessage) = msg;
         result_s.clear();
 
         #ifndef RELEASE
@@ -6743,6 +6756,14 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
       }
 
       loop_counter++;
+
+      // ABORT CHECK
+      if (inoutThreadState && inoutThreadState->flagAbortThread)
+      {
+        flag_http_success = false;
+        loop_counter = max_loop + 1;
+      }
+
     } // end while loop
     // #endif // USE_CURL
 
@@ -6846,9 +6867,7 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
 
   (*outState) = mxFetchState_enum::fetch_ended; // once we change the state, the UI can show/hide the relevant layers/widgets
 
-  // #ifndef RELEASE
   Log::logMsgThread (fmt::format("[{}] Finished curl job", __func__) ) ;
-  // #endif
 
 }
 
@@ -6929,7 +6948,7 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outE
       if (httpStatus != 200 || !errBuff_s.empty())
       {
         //outError.append(std::string("CURL HTTP status: ") + std::to_string(httpStatus) + ((errBuff_s.empty()) ? "" : fmt::format(". Error Buff: {}", errBuff_s) ) ); // v3.0.255.4 added logic to display "Error Buff" only if there is a string value in it
-        outError.append (fmt::format ("CURL HTTP status: {} {}", std::to_string (httpStatus), ((errBuff_s.empty()) ? "" : fmt::format (". Error Buff: {}", errBuff_s)))); // v3.0.255.4 added logic to display "Error Buff" only if there is a string value in it
+        outError.append (fmt::format ("CURL HTTP status: {} {}", std::to_string (httpStatus), ((errBuff_s.empty()) ? "" : fmt::format (". {}", errBuff_s)))); // v3.0.255.4 added logic to display "Error Buff" only if there is a string value in it
 
         switch (httpStatus)
         {

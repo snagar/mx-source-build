@@ -1430,16 +1430,16 @@ IXMLNode missionx::Utils::xml_get_node_ptr_randomly_by_attrib_and_value (const I
 
   // -------------------------------------------
 
-// IXMLNode
-// missionx::Utils::xml_get_node_randomly_by_name_IXMLNode (const IXMLNode & rootNode, const std::string &inTagToSearch, std::string& outErr, const bool flag_removePicked /*default false*/)
 IXMLNode
 missionx::Utils::xml_get_node_randomly_by_name_IXMLNode (const IXMLNode & rootNode, const std::string &inTagToSearch, const bool flag_removePicked /*default false*/)
 {
+  // Pick random node based on tag name if given, or random node if tag was not given.
   IXMLNode result = IXMLNode::emptyIXMLNode;
 
   if (rootNode.isEmpty ()) // v25.09.1 fix a crash if not based on OSM
     return result;
 
+  // nChilds value is direct result if we provided "inTagToSearch" 
   if (const int nChilds = (inTagToSearch.empty ()) ? rootNode.nChildNode () : rootNode.nChildNode (inTagToSearch.c_str ())
     ; nChilds > 0)
   {
@@ -2324,6 +2324,24 @@ missionx::Utils::xml_add_comment(IXMLNode& node, const std::string &inCommentStr
   }
 }
 
+
+// -------------------------------------------
+
+bool
+Utils::xml_delete_subnode(IXMLNode& pNode, const std::string& inSubNodeName, const std::string& in_attrib, const std::string& in_value)
+{
+  if (pNode.isEmpty())
+    return false;
+
+  auto node = Utils::xml_get_node_pointer_from_node_tree_by_attrib_name_and_value_IXMLNode(pNode, inSubNodeName, in_attrib, in_value, true);
+  if (node.isEmpty())
+    return false;
+
+  node.deleteNodeContent();
+
+  return true;
+}
+
 // -------------------------------------------
 
 int missionx::Utils::xml_delete_all_subnodes(IXMLNode& pNode, const std::string &inSubNodeName, const bool inDelClear_b)
@@ -3037,7 +3055,7 @@ void
 missionx::Utils::load_cb(const char* real_path, void* ref)
 {
   auto* dest = static_cast<XPLMObjectRef *> (ref);
-  if (*dest == nullptr)
+  if (dest && *dest == nullptr)
   {
     *dest = XPLMLoadObject(real_path);
   }

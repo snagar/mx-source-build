@@ -906,7 +906,7 @@ RandomEngine::gen_get_skewed_target_position (const IXMLNode &inRealTargetPositi
 
 
 bool
-RandomEngine::parse_display_object_element (missionx::NavAidInfo *in_target_nav_ptr, IXMLNode &inFlightLegNode, IXMLNode &inDisplayNode, IXMLNode & in_xRootTemplate, IXMLNode & x3DObjTemplate, double &expected_slope_at_target_location_d, std::string & inout_err)
+RandomEngine::parse_display_object_element (const missionx::NavAidInfo *in_target_nav_ptr, const IXMLNode &inFlightLegNode, IXMLNode &inDisplayNode, const IXMLNode & in_xRootTemplate, IXMLNode & x3DObjTemplate, const double &expected_slope_at_target_location_d, std::string & inout_err)
 {
   // 1. Check if <display_object> tag has random_object attribute. If so it will pick one and add to the <object_templates>
   // 2. If random element is not valid, or we failed to find then use: name="".
@@ -919,17 +919,17 @@ RandomEngine::parse_display_object_element (missionx::NavAidInfo *in_target_nav_
   bool flag_foundValidRandomNode = false;
 
   // v3.0.219.10 read information regarding flight leg in water.
-  bool flag_isFlightLegInWater = (in_target_nav_ptr!=nullptr)? in_target_nav_ptr->fpln_is_wet : Utils::readBoolAttrib (inFlightLegNode, mxconst::get_PROP_IS_WET (), false);
-  // std::string attribIsLegInWater     = Utils::xml_get_attribute_value(inFlightLegNode, mxconst::get_PROP_IS_WET(), flag_found);
-  // if (!attribIsLegInWater.empty() && mxconst::get_MX_TRUE().compare(attribIsLegInWater) == 0)
-  //   flag_isFlightLegInWater = true;
+  const bool flag_isFlightLegInWater = (in_target_nav_ptr!=nullptr)? in_target_nav_ptr->fpln_is_wet : Utils::readBoolAttrib (inFlightLegNode, mxconst::get_PROP_IS_WET (), false);
 
-  std::string name                   = Utils::readAttrib (inDisplayNode, mxconst::get_ATTRIB_NAME (), "");
+  std::string attrib_name_value      = Utils::readAttrib (inDisplayNode, mxconst::get_ATTRIB_NAME (), "");
   std::string randomTag              = Utils::readAttrib (inDisplayNode, mxconst::get_ATTRIB_RANDOM_TAG (), "");
-  std::string file_name              = Utils::readAttrib (inDisplayNode, mxconst::get_ATTRIB_FILE_NAME (), "");
+  std::string attrib_file_name_value = Utils::readAttrib (inDisplayNode, mxconst::get_ATTRIB_FILE_NAME (), "");
   std::string randomWaterTag         = Utils::readAttrib (inDisplayNode, mxconst::get_ATTRIB_RANDOM_WATER_TAG (), "");
-  std::string optional_attrib        = Utils::readAttrib (inDisplayNode, mxconst::get_ATTRIB_OPTIONAL (), EMPTY_STRING);
+  std::string optional_attrib        = Utils::readAttrib (inDisplayNode, mxconst::get_ATTRIB_OPTIONAL (), "");
+
+  std::string leg_name = Utils::readAttrib(inFlightLegNode, mxconst::get_ATTRIB_NAME(), "dummy_");
   auto        limit_to_terrain_slope = Utils::readNodeNumericAttrib<float> (inDisplayNode, mxconst::get_ATTRIB_LIMIT_TO_TERRAIN_SLOPE (), 100.0f);
+  auto final_name                    = attrib_name_value;
 
 
   // check if optional was defined and skip object if was not random picked
@@ -951,7 +951,7 @@ RandomEngine::parse_display_object_element (missionx::NavAidInfo *in_target_nav_
   // check if object creation is limited by a terrain slope
   if (limit_to_terrain_slope < 100 && expected_slope_at_target_location_d > limit_to_terrain_slope) // v3.0.219.12+
   {
-    Log::logMsg ("3D Object: " + name + ", rejected due to terrain slope.", true); // v3.0.219.12+
+    Log::logMsg ("3D Object: " + attrib_name_value + ", rejected due to terrain slope.", true); // v3.0.219.12+
     return false;
   }
 
@@ -959,103 +959,267 @@ RandomEngine::parse_display_object_element (missionx::NavAidInfo *in_target_nav_
   if (flag_isFlightLegInWater && !randomWaterTag.empty ()) // v3.0.219.10 switch between terrain random object and water tag object
   {
     #ifndef RELEASE
-    Log::logMsgThread (fmt::format("[{}] Replaced randomTag with the water Tag: {}, for display object name: {}", __func__, randomWaterTag, name) );
+    Log::logMsgThread (fmt::format("[{}] Replaced randomTag with the water Tag: {}, for display object name: {}", __func__, randomWaterTag, attrib_name_value) );
     #endif // !RELEASE
 
     randomTag = randomWaterTag;
   }
 
-
-  if (!randomTag.empty ())
+  bool is_random_obj3d = false;
+  const auto lmbda_get_3d_object = [&] (bool &out_is_random, const std::string &in_func_name = __func__ ) -> IXMLNode
   {
-    IXMLNode tagNode = Utils::xml_get_node_from_node_tree_IXMLNode (in_xRootTemplate, randomTag, false);
-    if (!tagNode.isEmpty ())
+    out_is_random = false;
+    IXMLNode obj3d_node;
+    if (!randomTag.empty ())
     {
-      // IXMLNode rNode = Utils::xml_get_node_randomly_by_name_IXMLNode (tagNode, mxconst::get_ELEMENT_OBJ3D (), RandomEngine::errMsg, false); // return deepCopy
-      IXMLNode rNode = Utils::xml_get_node_randomly_by_name_IXMLNode (tagNode, mxconst::get_ELEMENT_OBJ3D (), false); // return deepCopy
-      // RandomEngine::errMsg.clear ();
-
-      // check if rNode already exists
-      std::string rNodeAttribName     = Utils::readAttrib (rNode, mxconst::get_ATTRIB_NAME (), "");
-      std::string rNodeAttribFileName = Utils::readAttrib (rNode, mxconst::get_ATTRIB_FILE_NAME (), "");
-      if (!rNodeAttribName.empty () && !rNodeAttribFileName.empty ())
+      IXMLNode tagNode = Utils::xml_get_node_from_node_tree_IXMLNode (in_xRootTemplate, randomTag, false);
+      if (!tagNode.isEmpty ())
       {
-        // set <display_object> name attribute with the random name
-        Utils::xml_search_and_set_attribute_in_IXMLNode (inDisplayNode, mxconst::get_ATTRIB_FILE_NAME (), rNodeAttribFileName, TAG_NAME);
-        flag_foundValidRandomNode = true;
+        obj3d_node = Utils::xml_get_node_randomly_by_name_IXMLNode (tagNode, mxconst::get_ELEMENT_OBJ3D (), false); // return deepCopy
 
-        // check 3D Object is also in <object_template>
-        bool     flag_objWithSameName_found_in_objectTemplate = false;
-        IXMLNode xObj3d_same_name_in_template                 = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, mxconst::get_ELEMENT_OBJ3D (), mxconst::get_ATTRIB_NAME (), rNodeAttribName, false);
-        flag_objWithSameName_found_in_objectTemplate          = (xObj3d_same_name_in_template.isEmpty ()) ? false : true;
-
-        std::string newName = rNodeAttribName;
-
-        IXMLNode xObj3d_with_same_filename_in_objectTemplate_ptr = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, mxconst::get_ELEMENT_OBJ3D (), mxconst::get_ATTRIB_FILE_NAME (), rNodeAttribFileName, false);
-
-        // if we fail to find a template object with the same file name, we should check:
-        // if random node mxconst::get_ATTRIB_NAME() was found in object_template
-        // if not then we can just add the 3d object with the random element mxconst::get_ATTRIB_NAME()
-        // but if we found an object with same name as the random element, then we should construct a new name using: "display_name + random_attrib_name + random real number and also set it to our "display_object" element
-        if (xObj3d_with_same_filename_in_objectTemplate_ptr.isEmpty ()) // if no object with such name was found
+        // check if rNode already exists
+        std::string rNode_attribName     = Utils::readAttrib (obj3d_node, mxconst::get_ATTRIB_NAME (), "");
+        std::string rNode_attribFileName = Utils::readAttrib (obj3d_node, mxconst::get_ATTRIB_FILE_NAME (), "");
+        assert (!obj3d_node.isEmpty() && !rNode_attribName.empty () && !rNode_attribFileName.empty () && fmt::format ("[{}] Random 3D Object must have valid 'name' and 'file_name' attribute values.", in_func_name).c_str ());
+        if (!rNode_attribName.empty () && !rNode_attribFileName.empty ())
         {
-
-          if (flag_objWithSameName_found_in_objectTemplate)
-          {
-            newName = name + "_" + rNodeAttribName + Utils::formatNumber<double> (Utils::getRandomRealNumber (1.0, 10.0), 4);
-            rNode.updateAttribute (newName.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
-          }
-
-          x3DObjTemplate.addChild (rNode);
-          Utils::xml_search_and_set_attribute_in_IXMLNode (inDisplayNode, mxconst::get_ATTRIB_NAME (), newName, TAG_NAME); // we want the display_object name attribute to be the same as the one in the object_template name
+          out_is_random = true;
+          return obj3d_node.deepCopy ();
         }
-        else // found object with same file name in the object_template
-        {
-          newName = xObj3d_with_same_filename_in_objectTemplate_ptr.getAttribute (mxconst::get_ATTRIB_NAME ().c_str ());
-          Utils::xml_search_and_set_attribute_in_IXMLNode (inDisplayNode, mxconst::get_ATTRIB_NAME (), newName, TAG_NAME); //
-        }
-
-        return true; // finish random pick
       }
     }
-  }
-  else if (!file_name.empty () && !name.empty ()) // v3.0.255.1
-  {
-    std::string leg_name        = Utils::readAttrib (inFlightLegNode, mxconst::get_ATTRIB_NAME (), "dummy_");
-    std::string new_object_name = (name.empty ()) ? leg_name + Utils::formatNumber<double> (Utils::getRandomRealNumber (1.0, 10.0), 4) : name;
 
-    // Create temporary <obj3d> node.
-    IXMLNode new_obj3d_p = inDisplayNode.addChild (mxconst::get_ELEMENT_OBJ3D ().c_str ()); //  inDisplayNode.deepCopy();
-
-    std::set<std::string> setAttribToCopy = { mxconst::get_ATTRIB_NAME (), mxconst::get_ATTRIB_FILE_NAME (), mxconst::get_ATTRIB_IS_VIRTUAL_B () }; // v3.0.255.4 added ATTRIB_IS_VIRTUAL_B
-    Utils::xml_copy_specific_attributes_using_white_list (inDisplayNode, new_obj3d_p, &setAttribToCopy);
-
-    // search for 3D Object with same name
-    IXMLNode xObj3d_same_name_in_objectTemplate = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, mxconst::get_ELEMENT_OBJ3D (), mxconst::get_ATTRIB_NAME (), new_object_name, false);
-    if (xObj3d_same_name_in_objectTemplate.isEmpty ())
+    if (!attrib_file_name_value.empty() && !attrib_name_value.empty())
     {
-      new_obj3d_p.updateAttribute (new_object_name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
-      x3DObjTemplate.addChild (new_obj3d_p.deepCopy ());
+      // Create temporary <obj3d> subnode under <display_object>.
+      // <display_object... >
+      //   <obj3d   />
+      obj3d_node = inDisplayNode.addChild(mxconst::get_ELEMENT_OBJ3D().c_str()); //  inDisplayNode.deepCopy();
+      assert(!obj3d_node.isEmpty () && fmt::format ("[{}] New 3D Node fail to be created.", in_func_name).c_str ());
+      // Copy key attributes to the new 3D Object node
+      std::set<std::string> setAttribToCopy = { mxconst::get_ATTRIB_NAME(), mxconst::get_ATTRIB_FILE_NAME(), mxconst::get_ATTRIB_IS_VIRTUAL_B() }; // v3.0.255.4 added ATTRIB_IS_VIRTUAL_B
+      Utils::xml_copy_specific_attributes_using_white_list(inDisplayNode, obj3d_node, &setAttribToCopy);
     }
-    inDisplayNode.updateAttribute (new_object_name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
 
-    new_obj3d_p.deleteNodeContent ();
-  }
+    return obj3d_node;
+  };
 
+  auto obj3d_node = lmbda_get_3d_object( is_random_obj3d, __func__);
 
-  // Check if the original name was set or not (validation)
-  if (!flag_foundValidRandomNode)
+  // validate 3d object
+  if (obj3d_node.isEmpty ())
   {
-    if (name.empty ())
-    {
-      inout_err = "[random parse display] Found <display_element> with no attribute name or random_tag.";
-      return false;
-    }
+    inout_err = fmt::format( "[{}] Found <display_element> without attribute name or random_tag.", __func__ );
+    return false;
   }
 
+  // Do cross-check for existing template obj3d with same name or file_name
+  auto obj3d_name_s = Utils::readAttrib(obj3d_node, mxconst::get_ATTRIB_NAME(), "");
+  auto obj3d_file_name_s = Utils::readAttrib(obj3d_node, mxconst::get_ATTRIB_FILE_NAME(), "");
+
+  final_name = obj3d_name_s;
+
+  // search for 3D Object with same name
+  IXMLNode xObj3d_same_name_in_objectTemplate = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, mxconst::get_ELEMENT_OBJ3D (), mxconst::get_ATTRIB_NAME (), obj3d_name_s, false);
+  IXMLNode xObj3d_same_file_name_in_objectTemplate = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, mxconst::get_ELEMENT_OBJ3D (), mxconst::get_ATTRIB_FILE_NAME (), obj3d_file_name_s, false);
+
+  if (xObj3d_same_file_name_in_objectTemplate.isEmpty())
+  {
+    if (!xObj3d_same_name_in_objectTemplate.isEmpty())
+    {
+      final_name += fmt::format( "_{}", Utils::getRandomRealNumber (1.0, 10.0), 4 );
+      obj3d_node.updateAttribute (final_name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
+    }
+    obj3d_node = x3DObjTemplate.addChild (obj3d_node);
+  }
+  else // if obj3d with same filename exists, update the <display_object name="" > attribute
+  {
+    //  3D object exists in object_template, we _only_ need to update the <display_object>
+    final_name = Utils::readAttrib (xObj3d_same_file_name_in_objectTemplate, mxconst::get_ATTRIB_NAME (), "");
+    assert (!final_name.empty () && fmt::format ("[{}:{}] Existing 3D Template Object must have valid name attribute.", __func__, __LINE__).c_str ());
+    Log::logMsgThread (fmt::format ("[{}] The 3D object: {} was found in the <object_template>. Updating the <display_object> name attribute too: {}.", __func__, attrib_name_value, final_name));
+  }
+
+  // If all is valid: update <display_name> with the correct template <obj3d> name attribute.
+  inDisplayNode.updateAttribute (final_name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
 
   return true;
 }
+
+// -----------------------------------
+
+// bool
+// RandomEngine::parse_display_object_element2 (missionx::NavAidInfo *in_target_nav_ptr, IXMLNode &inFlightLegNode, IXMLNode &inDisplayNode, IXMLNode & in_xRootTemplate, IXMLNode & x3DObjTemplate, double &expected_slope_at_target_location_d, std::string & inout_err)
+// {
+//   // 1. Check if <display_object> tag has random_object attribute. If so it will pick one and add to the <object_templates>
+//   // 2. If random element is not valid, or we failed to find then use: name="".
+//   // 3. if no name has been provided then return "false", node is not valid.
+//   // We will use:  xDummyTopNode and x3DObjTemplate (holds pre-defined objects)
+//
+//   inout_err.clear (); // v25.06.1
+//   const std::string TAG_NAME = inDisplayNode.getName ();
+//
+//   bool flag_foundValidRandomNode = false;
+//
+//   // v3.0.219.10 read information regarding flight leg in water.
+//   bool flag_isFlightLegInWater = (in_target_nav_ptr!=nullptr)? in_target_nav_ptr->fpln_is_wet : Utils::readBoolAttrib (inFlightLegNode, mxconst::get_PROP_IS_WET (), false);
+//
+//   std::string name                   = Utils::readAttrib (inDisplayNode, mxconst::get_ATTRIB_NAME (), "");
+//   std::string randomTag              = Utils::readAttrib (inDisplayNode, mxconst::get_ATTRIB_RANDOM_TAG (), "");
+//   std::string file_name              = Utils::readAttrib (inDisplayNode, mxconst::get_ATTRIB_FILE_NAME (), "");
+//   std::string randomWaterTag         = Utils::readAttrib (inDisplayNode, mxconst::get_ATTRIB_RANDOM_WATER_TAG (), "");
+//   std::string optional_attrib        = Utils::readAttrib (inDisplayNode, mxconst::get_ATTRIB_OPTIONAL (), EMPTY_STRING);
+//   auto        limit_to_terrain_slope = Utils::readNodeNumericAttrib<float> (inDisplayNode, mxconst::get_ATTRIB_LIMIT_TO_TERRAIN_SLOPE (), 100.0f);
+//
+//
+//   // check if optional was defined and skip object if was not random picked
+//   optional_attrib = Utils::replaceChar1WithChar2_v2 (optional_attrib, '%', ""); // v3.0.219.12+ removes any % from string before handling it
+//   if (!optional_attrib.empty () && Utils::is_digits (optional_attrib))
+//   {
+//     int percent = Utils::stringToNumber<int> (optional_attrib);
+//     if (percent < 0)
+//       percent = 1;
+//     if (percent > 100)
+//       percent = 99;
+//
+//     int result = Utils::getRandomIntNumber (0, 100);
+//     if (result > percent) // meaning missed
+//       return false;
+//   }
+//
+//
+//   // check if object creation is limited by a terrain slope
+//   if (limit_to_terrain_slope < 100 && expected_slope_at_target_location_d > limit_to_terrain_slope) // v3.0.219.12+
+//   {
+//     Log::logMsg ("3D Object: " + name + ", rejected due to terrain slope.", true); // v3.0.219.12+
+//     return false;
+//   }
+//
+//
+//   if (flag_isFlightLegInWater && !randomWaterTag.empty ()) // v3.0.219.10 switch between terrain random object and water tag object
+//   {
+//     #ifndef RELEASE
+//     Log::logMsgThread (fmt::format("[{}] Replaced randomTag with the water Tag: {}, for display object name: {}", __func__, randomWaterTag, name) );
+//     #endif // !RELEASE
+//
+//     randomTag = randomWaterTag;
+//   }
+//
+//
+//   if (!randomTag.empty ())
+//   {
+//     IXMLNode tagNode = Utils::xml_get_node_from_node_tree_IXMLNode (in_xRootTemplate, randomTag, false);
+//     if (!tagNode.isEmpty ())
+//     {
+//       IXMLNode rNode = Utils::xml_get_node_randomly_by_name_IXMLNode (tagNode, mxconst::get_ELEMENT_OBJ3D (), false); // return deepCopy
+//
+//       // check if rNode already exists
+//       std::string rNode_attribName     = Utils::readAttrib (rNode, mxconst::get_ATTRIB_NAME (), "");
+//       std::string rNode_attribFileName = Utils::readAttrib (rNode, mxconst::get_ATTRIB_FILE_NAME (), "");
+//       if (!rNode_attribName.empty () && !rNode_attribFileName.empty ())
+//       {
+//         // set <display_object> name attribute with the random name
+//         Utils::xml_search_and_set_attribute_in_IXMLNode (inDisplayNode, mxconst::get_ATTRIB_FILE_NAME (), rNode_attribFileName, TAG_NAME);
+//         flag_foundValidRandomNode = true;
+//
+//         // check 3D Object is also in <object_template>
+//         // Check using the attrib name":
+//         bool     flag_objWithSameName_found_in_objectTemplate = false;
+//         IXMLNode xObj3d_same_name_in_template                 = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, rNode.getName (), mxconst::get_ATTRIB_NAME (), rNode_attribName, false);
+//         flag_objWithSameName_found_in_objectTemplate          = (xObj3d_same_name_in_template.isEmpty ()) ? false : true;
+//
+//         std::string newName = rNode_attribName;
+//
+//         // Check using the attrib filename":
+//         IXMLNode xObj3d_with_same_filename_in_objectTemplate_ptr = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, rNode.getName (), mxconst::get_ATTRIB_FILE_NAME (), rNode_attribFileName, false);
+//
+//         // if we fail to find a template object with the same file name, we should check:
+//         // if random node mxconst::get_ATTRIB_NAME() was found in object_template
+//         // if not then we can just add the 3d object with the random element mxconst::get_ATTRIB_NAME()
+//         // but if we found an object with same name as the random element, then we should construct a new name using: "display_name + random_attrib_name + random real number and also set it to our "display_object" element
+//         if (xObj3d_with_same_filename_in_objectTemplate_ptr.isEmpty ()) // if no object with such name was found
+//         {
+//
+//           if (flag_objWithSameName_found_in_objectTemplate)
+//           {
+//             newName = name + "_" + rNode_attribName + Utils::formatNumber<double> (Utils::getRandomRealNumber (1.0, 10.0), 4);
+//             rNode.updateAttribute (newName.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
+//           }
+//
+//           x3DObjTemplate.addChild (rNode);
+//           Utils::xml_search_and_set_attribute_in_IXMLNode (inDisplayNode, mxconst::get_ATTRIB_NAME (), newName, TAG_NAME); // we want the display_object name attribute to be the same as the one in the object_template name
+//         }
+//         else // found object with same file name in the object_template
+//         {
+//           newName = xObj3d_with_same_filename_in_objectTemplate_ptr.getAttribute (mxconst::get_ATTRIB_NAME ().c_str ());
+//           Utils::xml_search_and_set_attribute_in_IXMLNode (inDisplayNode, mxconst::get_ATTRIB_NAME (), newName, TAG_NAME); //
+//         }
+//
+//         return true; // finish random pick
+//       }
+//
+//       // Check if the original name was set or not (validation)
+//       if (!flag_foundValidRandomNode)
+//       {
+//         if (name.empty ())
+//         {
+//           inout_err = "[random parse display] Found <display_element> with no attribute name or random_tag.";
+//           return false;
+//         }
+//       }
+//
+//
+//     }
+//   }
+//   else if (!file_name.empty () && !name.empty ()) // v3.0.255.1
+//   {
+//     std::string leg_name        = Utils::readAttrib (inFlightLegNode, mxconst::get_ATTRIB_NAME (), "dummy_");
+//     std::string final_name = name; // v26.01.3 init
+//
+//     // Create temporary <obj3d> node under <display_object>.
+//     // <display_object... >
+//     //   <obj3d   />
+//     IXMLNode new_obj3d_p = inDisplayNode.addChild (mxconst::get_ELEMENT_OBJ3D ().c_str ()); //  inDisplayNode.deepCopy();
+//     assert (!new_obj3d_p.isEmpty () && fmt::format ("[{}] New 3D Node fail to be created.", __func__).c_str ());
+//
+//
+//     std::set<std::string> setAttribToCopy = { mxconst::get_ATTRIB_NAME (), mxconst::get_ATTRIB_FILE_NAME (), mxconst::get_ATTRIB_IS_VIRTUAL_B () }; // v3.0.255.4 added ATTRIB_IS_VIRTUAL_B
+//     Utils::xml_copy_specific_attributes_using_white_list (inDisplayNode, new_obj3d_p, &setAttribToCopy);
+//
+//     // search for 3D Object with same name
+//     IXMLNode xObj3d_same_name_in_objectTemplate = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, mxconst::get_ELEMENT_OBJ3D (), mxconst::get_ATTRIB_NAME (), name, false);
+//     IXMLNode xObj3d_same_file_name_in_objectTemplate = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, mxconst::get_ELEMENT_OBJ3D (), mxconst::get_ATTRIB_FILE_NAME (), file_name, false);
+//
+//     if (xObj3d_same_file_name_in_objectTemplate.isEmpty())
+//     {
+//       if (xObj3d_same_name_in_objectTemplate.isEmpty())
+//       {
+//         new_obj3d_p.updateAttribute (name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
+//       }
+//       else
+//       {
+//         final_name = name + "_" + leg_name + Utils::formatNumber<double> (Utils::getRandomRealNumber (1.0, 10.0), 4);
+//         new_obj3d_p.updateAttribute (final_name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
+//       }
+//       new_obj3d_p = x3DObjTemplate.addChild (new_obj3d_p);
+//     }
+//     else // if obj3d with same filename exists, update the <display_object name="" > attribute
+//     {
+//       final_name = Utils::readAttrib (xObj3d_same_file_name_in_objectTemplate, mxconst::get_ATTRIB_NAME (), "");
+//       assert (!final_name.empty () && fmt::format ("[{}] Existing 3D Template Object must have valid name attribute.", __func__).c_str ());
+//
+//       inDisplayNode.updateAttribute (final_name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
+//       Log::logMsgThread (fmt::format ("[{}] The 3D object: {} was found in the <object_template>. Checking same file_name too: {}.", __func__, name, file_name));
+//
+//     }
+//
+//     inDisplayNode.updateAttribute (final_name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
+//
+//   }
+//
+//
+//   return true;
+// }
 
 // -----------------------------------
 
@@ -2118,6 +2282,7 @@ RandomEngine::gen_prepare_random_mission_based_on_leg_nodes_in_template (IXMLNod
     // add 3D display objects around the landing
     // v25.09.2 add support for <display_object_set>
     gen_3d_add_display_object_sets_instances_to_leg (target_navaid, target_navaid.fpln_xml_target_leg_node, in_xTemplateNode, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
+
 
     // prepare the 3D instances
     gen_3d_parse_instances_in_leg (target_navaid.fpln_xml_target_leg_node, target_navaid);
@@ -7425,38 +7590,63 @@ RandomEngine::gen_2nm_to_N_nm_message (int &seq_trig, int &seq_msg, NavAidInfo &
 void
 RandomEngine::gen_parse_and_add_all_display_objects_in_node (const std::string &in_which_func_called, missionx::NavAidInfo &in_target_navaid, const IXMLNode &in_source_node, IXMLNode &inout_target_node, IXMLNode &in_template_node, IXMLNode &inout_x3DObjTemplate, double &in_expected_slope_at_target_location_d)
 {
+  struct node_info_to_del_strct
+  {
+    std::string tag_name;
+    std::string name_value;
+  };
   const int nDisplayObjects = in_source_node.nChildNode ();
+  std::list <node_info_to_del_strct> lst_nodes_names_to_delete; // v26.01.3
+
   for (int i1 = 0; i1 < nDisplayObjects; ++i1)
   {
+    node_info_to_del_strct node_info;
+
     // get sub-node
     auto x_display_node = in_source_node.getChildNode (i1).deepCopy ();
     if (x_display_node.isEmpty ())
       continue;
 
     // filter out sub-nodes that are not <display_xxx> elements
-    std::string tag = x_display_node.getName ();
-    if (tag != mxconst::get_ELEMENT_DISPLAY_OBJECT () && tag != mxconst::get_ELEMENT_DISPLAY_OBJECT_NEAR_PLANE ())
+    node_info.tag_name = x_display_node.getName ();
+    node_info.name_value = Utils::readAttrib( x_display_node, mxconst::get_ATTRIB_NAME(), "");
+
+    if (node_info.tag_name != mxconst::get_ELEMENT_DISPLAY_OBJECT () && node_info.tag_name != mxconst::get_ELEMENT_DISPLAY_OBJECT_NEAR_PLANE ())
       continue; // skip elements that are not <display_object> not <display_object_near_plane
 
-    #ifndef RELEASE
-    Log::logMsgThread (fmt::format ("[{}]Adding 3D display_objects from: {}:{}", in_which_func_called, tag, Utils::readAttrib (x_display_node, mxconst::get_ATTRIB_NAME (), "") ) );
-    #endif
 
-    // if (std::string err
-    //   ; RandomEngine::parse_display_object_element (in_source_node, cNode, in_template_node, inout_x3DObjTemplate, in_expected_slope_at_target_location_d, err)) // v25.06.1 extended function signature // v3.0.219.1 handle <display_object> options like: optional, random_water or limit_to_terrain_slope
     if (std::string err
       ; RandomEngine::parse_display_object_element (&in_target_navaid, inout_target_node, x_display_node, in_template_node, inout_x3DObjTemplate, in_expected_slope_at_target_location_d, err)) // v25.06.1 extended function signature // v3.0.219.1 handle <display_object> options like: optional, random_water or limit_to_terrain_slope
     {
-      if (tag == mxconst::get_ELEMENT_DISPLAY_OBJECT_NEAR_PLANE ())
+      if (node_info.tag_name == mxconst::get_ELEMENT_DISPLAY_OBJECT_NEAR_PLANE ())
       {
         //  Force replace_lat or replace_long with fake values to be on the safe side
         x_display_node.updateAttribute ("1.0", mxconst::get_ATTRIB_REPLACE_LAT ().c_str (), mxconst::get_ATTRIB_REPLACE_LAT ().c_str ());
         x_display_node.updateAttribute ("1.0", mxconst::get_ATTRIB_REPLACE_LONG ().c_str (), mxconst::get_ATTRIB_REPLACE_LONG ().c_str ());
       }
 
+      // v26.01.3 added special test, since in some cases the target and source nodes are the same
+      if (&in_source_node == &inout_target_node)
+        lst_nodes_names_to_delete.push_back(node_info);
+
       inout_target_node.addChild (x_display_node.deepCopy (), inout_target_node.nChildNode ());
+
+      #ifndef RELEASE
+      Log::logMsgThread (fmt::format ("[{}]Adding 3D display_objects from: {}:{}", in_which_func_called, node_info.tag_name, Utils::readAttrib (x_display_node, mxconst::get_ATTRIB_NAME (), "")));
+      #endif
+
     }
-  }
+    else 
+    {
+      #ifndef RELEASE
+      Log::logMsgThread (fmt::format ("[{}]Failed Adding 3D display_object: {}:{}:{}", in_which_func_called, node_info.tag_name, Utils::readAttrib (x_display_node, mxconst::get_ATTRIB_NAME (), ""), Utils::readAttrib (x_display_node, mxconst::get_ATTRIB_RANDOM_TAG (), "")));
+      #endif
+    }
+  } // end loop
+
+  for (const auto & node_to_delete: lst_nodes_names_to_delete)
+    Utils::xml_delete_subnode(inout_target_node, node_to_delete.tag_name, mxconst::get_ATTRIB_NAME(), node_to_delete.name_value);
+
 
 }
 
@@ -7615,37 +7805,18 @@ RandomEngine::gen_add_3d_objects_for_surprise_me_base_on_predefined_attributes (
     if (const IXMLNode xTag = in_template_node.getChildNode (random_tag_node_name.c_str ())
       ; !xTag.isEmpty ())
     {
-      int nSubNodes = 0;
-      // check child tag
-      if (set_name_node_to_pick.empty ())
-        nSubNodes = xTag.nChildNode ();
-      else
-        nSubNodes = xTag.nChildNode (set_name_node_to_pick.c_str ());
-
-      // Pick a <dub-node>
-      if (nSubNodes > 0)
+      const auto cTagNode = Utils::xml_get_node_randomly_by_name_IXMLNode (xTag, set_name_node_to_pick);
+      if (!cTagNode.isEmpty ())
       {
-        IXMLNode  cTagNode;
-        const int randomChild_i = Utils::getRandomIntNumber (0, nSubNodes - 1);
-        if (set_name_node_to_pick.empty ())
-          cTagNode = xTag.getChildNode (randomChild_i);
-        else
-          cTagNode = xTag.getChildNode (set_name_node_to_pick.c_str (), randomChild_i);
+        Utils::xml_add_comment ( inout_leg_node, " >>> Display Objects <<< ");
+        RandomEngine::gen_parse_and_add_all_display_objects_in_node (__func__, inout_target_na, cTagNode, inout_leg_node, in_template_node, inout_x3DObjTemplate, in_expected_slope_at_target_location_d);
 
-        if (!cTagNode.isEmpty ())
-        {
-          Utils::xml_add_comment ( inout_leg_node, " >>> Display Objects <<< ");
-          RandomEngine::gen_parse_and_add_all_display_objects_in_node (__func__, inout_target_na, cTagNode, inout_leg_node, in_template_node, inout_x3DObjTemplate, in_expected_slope_at_target_location_d);
-
-          #ifndef RELEASE
-          const int nDisplayObjects = cTagNode.nChildNode (mxconst::get_ELEMENT_DISPLAY_OBJECT ().c_str ()) + cTagNode.nChildNode (mxconst::get_ELEMENT_DISPLAY_OBJECT_NEAR_PLANE ().c_str ());
-          if (nDisplayObjects == 0)
-            Log::logMsgThread (fmt::format("[{}] Failed to find a valid display set: {} . Will try to search for <display_object> instead.", __func__, cTagNode.getName () ) );
-          #endif
-
-        } // end if the template tag name was found
-
-      } // end if nChilds > 0
+        #ifndef RELEASE
+        const int nDisplayObjects = cTagNode.nChildNode (mxconst::get_ELEMENT_DISPLAY_OBJECT ().c_str ()) + cTagNode.nChildNode (mxconst::get_ELEMENT_DISPLAY_OBJECT_NEAR_PLANE ().c_str ());
+        if (nDisplayObjects == 0)
+          Log::logMsgThread (fmt::format("[{}] Failed to find a valid display set: {} . Will try to search for <display_object> instead.", __func__, cTagNode.getName ()));
+        #endif
+      }
 
     } // end if xTag is not Empty
 
@@ -7660,6 +7831,10 @@ RandomEngine::gen_add_3d_objects_for_surprise_me_base_on_predefined_attributes (
 bool
 RandomEngine::gen_3d_add_display_object_sets_instances_to_leg (NavAidInfo &inout_target_na, IXMLNode &inout_leg_node, IXMLNode &in_template_node, IXMLNode &inout_x3DObjTemplate, double &in_expected_slope_at_target_location_d)
 {
+  // v26.01.3 first parse simple <display_object> and <display_object_near_plane>
+  RandomEngine::gen_parse_and_add_all_display_objects_in_node (__func__, inout_target_na, inout_leg_node, inout_leg_node, in_template_node, inout_x3DObjTemplate, in_expected_slope_at_target_location_d);
+
+  // Find and configure any <display_object_set>
   const int nChilds = inout_leg_node.nChildNode (); // get all children
   for (int i1 = 0; i1 < nChilds; ++i1)
   {
@@ -7677,7 +7852,7 @@ RandomEngine::gen_3d_add_display_object_sets_instances_to_leg (NavAidInfo &inout
     std::string set_name_to_pick = Utils::readAttrib (xNode, mxconst::get_ATTRIB_SET_NAME (), "");
 
     //////////////////////////////////////////
-    // ADD DISPLAY_OBJECT
+    // ADD DISPLAY_OBJECT from SET
     // Find the correct "set"
     // Add all <display_object> elements
     ///////////////////////////////////////
@@ -7685,22 +7860,7 @@ RandomEngine::gen_3d_add_display_object_sets_instances_to_leg (NavAidInfo &inout
     if (const IXMLNode xTag = Utils::xml_get_node_randomly_by_name_IXMLNode (in_template_node, random_set_to_pick_from)
       ; !xTag.isEmpty ())
     {
-      int nSubNodes = 0;
-      // check child tag
-      if (set_name_to_pick.empty ())
-        nSubNodes = xTag.nChildNode ();
-      else
-        nSubNodes = xTag.nChildNode (set_name_to_pick.c_str ());
-
-      // Pick a <sub-node>
-      if (nSubNodes > 0)
-      {
-        IXMLNode  cTagNode;
-        const int randomChild_i = Utils::getRandomIntNumber (0, nSubNodes - 1);
-        if (set_name_to_pick.empty ())
-          cTagNode = xTag.getChildNode (randomChild_i);
-        else
-          cTagNode = xTag.getChildNode (set_name_to_pick.c_str (), randomChild_i);
+        const auto cTagNode = Utils::xml_get_node_randomly_by_name_IXMLNode (xTag, set_name_to_pick);
 
         if (!cTagNode.isEmpty ())
         {
@@ -7710,12 +7870,12 @@ RandomEngine::gen_3d_add_display_object_sets_instances_to_leg (NavAidInfo &inout
           #ifndef RELEASE
           const int nDisplayObjects = cTagNode.nChildNode (mxconst::get_ELEMENT_DISPLAY_OBJECT ().c_str ()) + cTagNode.nChildNode (mxconst::get_ELEMENT_DISPLAY_OBJECT_NEAR_PLANE ().c_str ());
           if (nDisplayObjects == 0)
-            Log::logMsgThread (fmt::format("[{}] Failed to find a valid display set: {} . Will try to search for <display_object> instead.", __func__, cTagNode.getName () ) );
+            Log::logMsgThread (fmt::format("[{}] Failed to find a valid display set: {} .", __func__, cTagNode.getName () ) );
           #endif
 
         } // end if the template tag name was found
 
-      } // end if nChilds > 0
+      //} // end if nChilds > 0
 
     } // end if xTag is not Empty
 
@@ -7743,9 +7903,12 @@ RandomEngine::gen_3d_parse_instances_in_leg (IXMLNode &legNode_ptr, missionx::Na
     if (tagName != mxconst::get_ELEMENT_DISPLAY_OBJECT () && tagName != mxconst::get_ELEMENT_DISPLAY_OBJECT_NEAR_PLANE ())
       continue;
 
+    // --------
+    /// - Set Instance Attribute
     std::string obj3d_name = Utils::readAttrib (xNode, mxconst::get_ATTRIB_NAME (), "");
+    const std::string sanitized_leg_name = mxUtils::sanitize_text(Utils::readAttrib (legNode_ptr, mxconst::get_ATTRIB_NAME (), ""), " /\t\n\r\f\\");
+    const std::string instName = fmt::format("{}_{}_{}", obj3d_name, sanitized_leg_name, i1);
 
-    std::string instName = obj3d_name + "_" + Utils::readAttrib (legNode_ptr, mxconst::get_ATTRIB_NAME (), "") + "_" + Utils::formatNumber<int> (i1);
     Utils::xml_set_attribute_in_node_asString (xNode, mxconst::get_ATTRIB_INSTANCE_NAME (), instName, xNode.getName ());
 
     // special validation and initialization of <display_object> element only
@@ -7757,13 +7920,10 @@ RandomEngine::gen_3d_parse_instances_in_leg (IXMLNode &legNode_ptr, missionx::Na
       const std::string replacePitch = Utils::readAttrib(xNode, mxconst::get_ATTRIB_REPLACE_PITCH(), "");
       const std::string replaceRoll = Utils::readAttrib(xNode, mxconst::get_ATTRIB_REPLACE_ROLE(), "");
 
-      int         replaceElevAboveGround_ft_i = Utils::readNodeNumericAttrib<int> (xNode, mxconst::get_ATTRIB_REPLACE_ELEV_ABOVE_GROUND_FT (), 0);
-
+      int replaceElevAboveGround_ft_i = Utils::readNodeNumericAttrib<int> (xNode, mxconst::get_ATTRIB_REPLACE_ELEV_ABOVE_GROUND_FT (), 0);
 
       // v3.0.219.1 calculate 3D object location relative to the target
       std::string relative_pos_bearing_deg_distance_mt = Utils::readAttrib (xNode, mxconst::get_ATTRIB_RELATIVE_POS_BEARING_DEG_DISTANCE_MT (), "");
-
-      // if (const std::vector<int> vecRelativePos = Utils::splitStringToNumbers<int> (relative_pos_bearing_deg_distance_mt, mxconst::get_PIPE_DELIMITER ())
 
       // v25.12.1 we read the "relative_pos_bearing_deg_distance_mt" attribute as a complex string of "two" variables that we will convert to numbers.
       if (const auto relative_pos_list = Utils::splitStringToList (relative_pos_bearing_deg_distance_mt, mxconst::get_PIPE_DELIMITER ())
