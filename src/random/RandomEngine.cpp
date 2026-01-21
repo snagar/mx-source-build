@@ -947,7 +947,6 @@ RandomEngine::parse_display_object_element (const missionx::NavAidInfo *in_targe
       return false;
   }
 
-
   // check if object creation is limited by a terrain slope
   if (limit_to_terrain_slope < 100 && expected_slope_at_target_location_d > limit_to_terrain_slope) // v3.0.219.12+
   {
@@ -955,18 +954,18 @@ RandomEngine::parse_display_object_element (const missionx::NavAidInfo *in_targe
     return false;
   }
 
-
-  if (flag_isFlightLegInWater && !randomWaterTag.empty ()) // v3.0.219.10 switch between terrain random object and water tag object
+  // v3.0.219.10 switch between terrain random object and water tag object
+  if (flag_isFlightLegInWater && !randomWaterTag.empty ())
   {
-    #ifndef RELEASE
-    Log::logMsgThread (fmt::format("[{}] Replaced randomTag with the water Tag: {}, for display object name: {}", __func__, randomWaterTag, attrib_name_value) );
-    #endif // !RELEASE
+    // #ifndef RELEASE
+    // Log::logMsgThread (fmt::format("[{}] Replaced randomTag with the water Tag: {}, for display object name: {}", __func__, randomWaterTag, attrib_name_value) );
+    // #endif // !RELEASE
 
     randomTag = randomWaterTag;
   }
 
   bool is_random_obj3d = false;
-  const auto lmbda_get_3d_object = [&] (bool &out_is_random, const std::string &in_func_name = __func__ ) -> IXMLNode
+  const auto lmbda_get_3d_object = [&] (bool &out_is_random, const std::string &in_func_name ) -> IXMLNode
   {
     out_is_random = false;
     IXMLNode obj3d_node;
@@ -1004,12 +1003,12 @@ RandomEngine::parse_display_object_element (const missionx::NavAidInfo *in_targe
     return obj3d_node;
   };
 
-  auto obj3d_node = lmbda_get_3d_object( is_random_obj3d, __func__);
+  auto obj3d_node = lmbda_get_3d_object( is_random_obj3d, "parse_display_object_element");
 
   // validate 3d object
   if (obj3d_node.isEmpty ())
   {
-    inout_err = fmt::format( "[{}] Found <display_element> without attribute name or random_tag.", __func__ );
+    inout_err = "[parse_display_object_element] Found <display_element> without attribute name or random_tag.";
     return false;
   }
 
@@ -1020,7 +1019,8 @@ RandomEngine::parse_display_object_element (const missionx::NavAidInfo *in_targe
   final_name = obj3d_name_s;
 
   // // search for 3D Object with same name
-  IXMLNode xObj3d_same_name_in_objectTemplate = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, mxconst::get_ELEMENT_OBJ3D (), mxconst::get_ATTRIB_NAME (), final_name, false);
+  IXMLNode xObj3d_same_name_in_objectTemplate = x3DObjTemplate.getChildNodeWithAttribute (mxconst::get_ELEMENT_OBJ3D ().c_str (), mxconst::get_ATTRIB_NAME ().c_str (), obj3d_name_s.c_str ());
+  // IXMLNode xObj3d_same_name_in_objectTemplate = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, mxconst::get_ELEMENT_OBJ3D (), mxconst::get_ATTRIB_NAME (), final_name, false);
   // IXMLNode xObj3d_same_file_name_in_objectTemplate = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, mxconst::get_ELEMENT_OBJ3D (), mxconst::get_ATTRIB_FILE_NAME (), obj3d_file_name_s, false);
   //
   // if (xObj3d_same_file_name_in_objectTemplate.isEmpty())
