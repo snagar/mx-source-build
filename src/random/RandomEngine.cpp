@@ -1019,26 +1019,26 @@ RandomEngine::parse_display_object_element (const missionx::NavAidInfo *in_targe
 
   final_name = obj3d_name_s;
 
-  // search for 3D Object with same name
-  IXMLNode xObj3d_same_name_in_objectTemplate = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, mxconst::get_ELEMENT_OBJ3D (), mxconst::get_ATTRIB_NAME (), obj3d_name_s, false);
-  IXMLNode xObj3d_same_file_name_in_objectTemplate = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, mxconst::get_ELEMENT_OBJ3D (), mxconst::get_ATTRIB_FILE_NAME (), obj3d_file_name_s, false);
-
-  if (xObj3d_same_file_name_in_objectTemplate.isEmpty())
-  {
-    if (!xObj3d_same_name_in_objectTemplate.isEmpty())
-    {
-      final_name += fmt::format( "_{}", Utils::getRandomRealNumber (1.0, 10.0), 4 );
-      obj3d_node.updateAttribute (final_name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
-    }
-    obj3d_node = x3DObjTemplate.addChild (obj3d_node);
-  }
-  else // if obj3d with same filename exists, update the <display_object name="" > attribute
-  {
-    //  3D object exists in object_template, we _only_ need to update the <display_object>
-    final_name = Utils::readAttrib (xObj3d_same_file_name_in_objectTemplate, mxconst::get_ATTRIB_NAME (), "");
-    assert (!final_name.empty () && fmt::format ("[{}:{}] Existing 3D Template Object must have valid name attribute.", __func__, __LINE__).c_str ());
-    Log::logMsgThread (fmt::format ("[{}] The 3D object: {} was found in the <object_template>. Updating the <display_object> name attribute too: {}.", __func__, attrib_name_value, final_name));
-  }
+  // // search for 3D Object with same name
+  // IXMLNode xObj3d_same_name_in_objectTemplate = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, mxconst::get_ELEMENT_OBJ3D (), mxconst::get_ATTRIB_NAME (), obj3d_name_s, false);
+  // IXMLNode xObj3d_same_file_name_in_objectTemplate = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (x3DObjTemplate, mxconst::get_ELEMENT_OBJ3D (), mxconst::get_ATTRIB_FILE_NAME (), obj3d_file_name_s, false);
+  //
+  // if (xObj3d_same_file_name_in_objectTemplate.isEmpty())
+  // {
+  //   if (!xObj3d_same_name_in_objectTemplate.isEmpty())
+  //   {
+  //     final_name += fmt::format( "_{}", Utils::getRandomRealNumber (1.0, 10.0), 4 );
+  //     obj3d_node.updateAttribute (final_name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
+  //   }
+  //   obj3d_node = x3DObjTemplate.addChild (obj3d_node);
+  // }
+  // else // if obj3d with same filename exists, update the <display_object name="" > attribute
+  // {
+  //   //  3D object exists in object_template, we _only_ need to update the <display_object>
+  //   final_name = Utils::readAttrib (xObj3d_same_file_name_in_objectTemplate, mxconst::get_ATTRIB_NAME (), "");
+  //   assert (!final_name.empty () && fmt::format ("[{}:{}] Existing 3D Template Object must have valid name attribute.", __func__, __LINE__).c_str ());
+  //   Log::logMsgThread (fmt::format ("[{}] The 3D object: {} was found in the <object_template>. Updating the <display_object> name attribute too: {}.", __func__, attrib_name_value, final_name));
+  // }
 
   // If all is valid: update <display_name> with the correct template <obj3d> name attribute.
   inDisplayNode.updateAttribute (final_name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
