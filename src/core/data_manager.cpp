@@ -6381,8 +6381,12 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
       result_s.clear();
 
       // try up to three times
-      for (int loop01 = 0; loop01 < 3 && !flag_http_success; ++loop01 )
+      std::string msg;
+      constexpr static int MAX_TRIES = 3;
+      for (int loop01 = 0; loop01 < MAX_TRIES && !flag_http_success; ++loop01)
       {
+        msg.clear();
+
         #ifndef RELEASE
         Log::logMsgThread (fmt::format("\nSimbrief URL: {}\n", full_url_s) ); // debug
         Log::logMsgThread (fmt::format("\ncacert path: {}\n", data_manager::ca_path.string()) ); // debug
@@ -6391,20 +6395,28 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
         char errBuff[CURL_ERROR_SIZE]{ '\0' };
         curl_easy_setopt(curl, CURLOPT_URL, full_url_s.c_str());
 
-        // https://curl.haxx.se/docs/sslcerts.html
-        if (std::filesystem::exists (data_manager::ca_path) && std::filesystem::is_regular_file(ca_path)) // v26.01.1
-          curl_easy_setopt(curl, CURLOPT_CAINFO, data_manager::ca_path.string().c_str());
-
         // setup agent
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, APP_NAME);
+        //curl_easy_setopt(curl, CURLOPT_USERAGENT, APP_NAME);
+        curl_easy_setopt (curl, CURLOPT_USERAGENT, "MissionX/1.0");
+
         curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 20L); // v24.06.1 /Timeout for server connection
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);        // v24.06.1 overall work timeout - 60 seconds
-        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 0L);        // CURLOPT_NOSIGNAL - skip all signal handling (values 0 or 1)
+        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);        // CURLOPT_NOSIGNAL - skip all signal handling (values 0 or 1)
 
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); // v26.01.1 fallback if SSL fails
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L); // v26.01.1 fallback if SSL fails
-        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+
+        // Conditional SSL integration
+        curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, 0L); // v26.01.1 fallback if SSL fails
+        curl_easy_setopt (curl, CURLOPT_SSL_VERIFYHOST, 0L); // v26.01.1 fallback if SSL fails
+
+        // https://curl.haxx.se/docs/sslcerts.html
+        if (loop01 == 0 && std ::filesystem::exists (data_manager::ca_path) && std::filesystem::is_regular_file (ca_path)) // v26.01.1
+        {
+          curl_easy_setopt (curl, CURLOPT_CAINFO, data_manager::ca_path.string ().c_str ());
+          curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, 1L); // v26.01.4 force SSL
+          curl_easy_setopt (curl, CURLOPT_SSL_VERIFYHOST, 2L); // v26.01.4 force SSL
+        }
+        curl_easy_setopt (curl, CURLOPT_NOPROGRESS, 0L);
 
         curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuff);
 
@@ -6412,30 +6424,33 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result_s);
         curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
-
-
         if (CURLcode res_curl = curl_easy_perform(curl) // execute the REQUEST
             ; CURLE_OK != res_curl)
         {
-          Log::logMsgThread("cURL error code: " + Utils::formatNumber<int>(res_curl) + "\n");
+          msg = fmt::format ("cURL error code: {}\n", Utils::formatNumber<int> (res_curl));
+          Log::logMsgThread(msg);
+          
         }
         std::string errBuff_s(errBuff);
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpStatus);
         if (httpStatus != 200 || !errBuff_s.empty())
         {
-          outStatusMessage->append(std::string("cURL HTTP status: ") + std::to_string(httpStatus) + ". " + errBuff_s);
-
-          #ifndef RELEASE
-          Log::logMsgThread((*outStatusMessage)); // debug
-          #endif
-
-          std::this_thread::sleep_for (std::chrono::seconds(2)); // v26.01.1 wait for 2 seconds
+          msg = fmt::format("cURL HTTP status: {}. {}", std::to_string(httpStatus), errBuff_s);
         }
         else // parse json
         {
           flag_http_success   = true;
           (*outStatusMessage) = "cURL fetch success.";
         }
+
+        if (!msg.empty ())
+          (*outStatusMessage) = fmt::format("Try {}/{}. {}", loop01 + 1, MAX_TRIES, msg);
+
+        Log::logMsgThread ((*outStatusMessage)); // debug
+
+        // Wait for 2 seconds
+        std::this_thread::sleep_for (std::chrono::seconds (2)); // v26.01.1 wait for 2 seconds
+
       } // end internal fetch loop. Try few times before giving up.
 
     } // end data_manager::curl - handling cURL
@@ -6595,6 +6610,8 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
 void
 data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_state* inoutThreadState, const IXMLNode& inUserPref, mxFetchState_enum* outState, std::string* outStatusMessage)
 {
+  assert(outStatusMessage && fmt::format("[{}] outStatusMessage must have a valid pointer.", __func__).c_str()); // v26.01.4
+
   outStatusMessage->clear();
   std::lock_guard<std::mutex> lock(s_thread_sync_mutex);
 
@@ -6664,6 +6681,7 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
   std::string err;
   std::string cert_loc_s = mx_folders_properties.getAttribStringValue(mxconst::get_PROP_MISSIONX_PATH(), "", err);
 
+  std::string msg;
   long httpStatus = 0;
   constexpr int max_loop = 3;
   int loop_counter = 0;
@@ -6722,15 +6740,16 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
       curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &httpStatus);
       if (httpStatus != 200 || !errBuff_s.empty ())
       {
-        std::string msg;
         switch (httpStatus)
         {
           case 503:
           case 522:
-            msg = fmt::format ("Try {}/{}: cURL HTTP status: {}. Error: {}", (loop_counter + 1), max_loop, httpStatus, "Site might be unavailable.");
+            msg = fmt::format ("cURL HTTP status: {}. Error: {}", httpStatus, "Site might be unavailable.");
+            loop_counter = max_loop;
           break;
           case 500:
-            msg = fmt::format ("Try {}/{}: cURL HTTP status: {}. Error: {}", (loop_counter + 1), max_loop, httpStatus, "Remote internal server error.");
+            msg = fmt::format ("cURL HTTP status: {}. Error: {}", httpStatus, "Remote internal server error.");
+            loop_counter = max_loop;
           break;
           case 504:
             msg = fmt::format ("Try {}/{}: cURL HTTP status: {}. Error: {}", (loop_counter + 1), max_loop, httpStatus, "Gateway Timeout.");
@@ -6739,7 +6758,7 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
             msg = fmt::format ("Try {}/{}: cURL HTTP status: {}. {}", (loop_counter + 1), max_loop, httpStatus, result_s);
           break;
         }
-        (*outStatusMessage) = msg;
+        // (*outStatusMessage) = msg;
         result_s.clear();
 
         #ifndef RELEASE
@@ -6768,6 +6787,10 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
     // #endif // USE_CURL
 
   } // end data_manager::curl - handling cURL
+
+  if (!msg.empty())
+    (*outStatusMessage) = msg;
+
 
   //// Parse result
   if (flag_http_success)
@@ -6898,6 +6921,7 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outE
       constexpr int C_MAX_LOOP = 3;
       for (int v_loop01 = 0; v_loop01 < C_MAX_LOOP && (CURLE_OK != res_curl); ++v_loop01)
       {
+        errBuff_s.clear();
         // sleep before calling overpass
         std::this_thread::sleep_for (std::chrono::seconds(2)); // v25.06.1 not overwhelm the overpass server
 
@@ -6940,7 +6964,7 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, std::string& outE
           Log::logMsgThread("CURL error code: " + Utils::formatNumber<int>(res_curl) + "\n");
         }
 
-        errBuff_s = errBuff; // v3.305.3
+        errBuff_s = std::string(errBuff); // v3.305.3
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpStatus);
       }
 
@@ -7398,8 +7422,8 @@ data_manager::sqlite_test_db_validity(const dbase& inDB, const bool isThreaded)
       if (MX_FEATURES_VERSION != feature_version)
         set_flag_rebuild_apt_dat(true);
 
-      Log::logMsgThread("Feature version: " + val["feature_version"] + ", count_xp_airports: " + val["count_xp_airports"] + ", count_xp_ramps: " + val["count_xp_ramps"] + ", count_xp_loc: " + val["count_xp_loc"]);
-      data_manager::post_optimization_outcome = "Feature version: " + val["feature_version"] + ", count_xp_airports: " + val["count_xp_airports"] + ", count_xp_ramps: " + val["count_xp_ramps"] + ", count_xp_loc: " + val["count_xp_loc"];
+      data_manager::post_optimization_outcome = "Feature version: " + val["feature_version"] + ", Airports: " + val["count_xp_airports"] + ", Ramps: " + val["count_xp_ramps"] + ", Localizers: " + val["count_xp_loc"];
+      Log::logMsgThread(data_manager::post_optimization_outcome );
     }
   }
 

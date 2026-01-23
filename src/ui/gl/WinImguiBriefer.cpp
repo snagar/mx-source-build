@@ -1392,14 +1392,11 @@ WinImguiBriefer::flc ()
     this->strct_ext_layer.fetch_state = missionx::mxFetchState_enum::fetch_not_started;
 
   // handle messages from async fetch external flight plan
-  if (this->currentLayer == missionx::uiLayer_enum::option_external_fpln_layer)
+  if (this->currentLayer == missionx::uiLayer_enum::option_external_fpln_layer || data_manager::getGeneratedFromLayer () == missionx::uiLayer_enum::flight_leg_info)
   {
     if (!this->strct_ext_layer.asyncFetchMsg_s.empty ())
     {
-      const std::string restart_suggestion_message       = (this->strct_ext_layer.asyncFetchMsg_s.find ("Protocol https not supported") == std::string::npos) ? "" : ". Suggest to reload all plugins, it might solve the issue.";
-      this->strct_ext_layer.bDisplayPluginsRestart = (!(restart_suggestion_message.empty ()));
-
-      this->setMessage (this->strct_ext_layer.asyncFetchMsg_s + restart_suggestion_message);
+      this->setMessage (this->strct_ext_layer.asyncFetchMsg_s);
       this->strct_ext_layer.asyncFetchMsg_s.clear ();
     }
   } // end handle messages from asynch fetch process
@@ -2837,34 +2834,7 @@ WinImguiBriefer::draw_top_toolbar ()
       break;
       case missionx::uiLayer_enum::option_external_fpln_layer:
       {
-        ImGui::Text ("Search Flight Plans");
-        // ImGui::SameLine(0.0f, 270.0f);
-        // ImGui::Text("flightplandatabase.com");
-
-        // ImGui::SameLine((win_width / 2.0f) - 70.0f);
-        // const std::string_view popupWindowName = "Authorization Key";
-        //
-        // this->mxUiReleaseLastFont(); // we release the font so we could use a different one later on
-        //
-        // if (this->strct_ext_layer.flag_flightplandatabase_auth_exists)
-        //     ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_Button, missionx::color::color_vec4_deepskyblue); // v24.06.1 set icon color if we have auth
-        // else
-        //     ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_Button, missionx::color::color_vec4_black);    // set default icon color
-        //
-        // ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_Text, missionx::color::color_vec4_antiquewhite); // set hover color
-        //
-        // this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
-        // if (ImgWindow::ButtonTooltip(mxUtils::from_u8string(ICON_FA_USER_LOCK).c_str(), popupWindowName.data()))
-        // {
-        //   ImGui::OpenPopup(popupWindowName.data());
-        // }
-        // this->mxUiReleaseLastFont();
-        //
-        // ImGui::PopStyleColor(2);
-        //
-        // this->mx_add_tooltip(missionx::color::color_vec4_white, "!!! Optional !!!\nEnter Authorization Key from flightplandatabase.com\nValid authorization key should grant you ~1500 requests per 24 hours.\nIf you do not have one than you are limited to 100 requests per 24 hours.");
-        //
-        // this->popup_draw_authorization_key(popupWindowName);
+        ImGui::Text ("Search Flight Plans");;
       }
       break;
       default:
@@ -7858,11 +7828,13 @@ WinImguiBriefer::draw_external_fpln_screen ()
     }
     break;
     default: // mx_ext_fpln_screen::ext_home
+      ImGui::BeginChild ("External Flight Plans", ImVec2 (0.0f, -50.0f), ImGuiChildFlags_None);
       draw_child_ext_fpln_home_screen ();
+      ImGui::EndChild ();
   }
 }
 
-
+// ------------------------------------------------
 
 void
 WinImguiBriefer::draw_child_ext_fpln_home_screen ()
@@ -12696,6 +12668,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
           this->strct_ext_layer.threadState.init ();
 
           this->strct_ext_layer.simbrief_called_layer = this->getCurrentLayer ();
+          missionx::data_manager::setGenerateLayerFrom (this->getCurrentLayer ()); // v26.01.4
           missionx::data_manager::mFetchFutures.push_back (std::async (std::launch::async, missionx::data_manager::fetch_fpln_from_simbrief_site, &this->strct_ext_layer.threadState, pilot_id_s, &this->strct_ext_layer.simbrief_fetch_state, &this->strct_ext_layer.asyncFetchMsg_s));
           this->setMessage ("Fetching information from 'Simbrief site', may take up to one minute.", 8);
         }
@@ -12936,7 +12909,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
       }
 
       // v24.12.2 Prepare inventory copies and check stations existence and create if they are not present
-      if (this->strct_flight_leg_info.internal_child_layer == missionx::uiLayer_enum::flight_leg_info_inventory)
+      if (this->strct_flight_leg_info.internal_child_layer == missionx::uiLayer_enum::flight_leg_info_inventory )
       {
         // Clone inventories nodes of PLANE and the external inventory.
         missionx::data_manager::prepareInventoryCopies (this->strct_flight_leg_info.externalInventoryName);
