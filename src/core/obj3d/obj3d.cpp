@@ -249,174 +249,177 @@ missionx::obj3d::parse_node()
   file_name          = Utils::readAttrib(this->node, mxconst::get_ATTRIB_FILE_NAME(), "");
   alternate_obj_file = Utils::readAttrib(this->node, mxconst::get_ATTRIB_ALTERNATE_OBJ_FILE(), "");
 
+  // if (name.find("policem") != std::string::npos)
+  // {
+  //   bool found = true;
+  // }
 
   if (name.empty() || file_name.empty())
   {
     Log::logMsgErr("[parse_node 3d obj] Found 3d element without name or file name. Skipping...");
     return false;
   }
+
+  this->name = name;
+  this->setStringProperty(mxconst::get_ATTRIB_FILE_NAME(), file_name);
+  this->setStringProperty(mxconst::get_ATTRIB_ALTERNATE_OBJ_FILE(), alternate_obj_file);
+
+  // new v3.0.241.1 decide if it is a moving 3D object or static one
+  const int xPathPointNodes = this->node.getChildNode(mxconst::get_ELEMENT_PATH().c_str()).nChildNode(mxconst::get_ELEMENT_POINT().c_str());
+  if (xPathPointNodes >= 1)
+  {
+    this->setNodeProperty<int> (mxconst::get_ATTRIB_OBJ3D_TYPE(), static_cast<int> (obj3d::obj3d_type::moving_obj));
+    this->obj3dType = obj3d::obj3d_type::moving_obj;
+  }
   else
   {
-    this->name = name;
-    this->setStringProperty(mxconst::get_ATTRIB_FILE_NAME(), file_name);
-    this->setStringProperty(mxconst::get_ATTRIB_ALTERNATE_OBJ_FILE(), alternate_obj_file);
+    this->setNodeProperty<int> (mxconst::get_ATTRIB_OBJ3D_TYPE(), static_cast<int> (obj3d::obj3d_type::static_obj));
+    this->obj3dType = obj3d::obj3d_type::static_obj;
+  }
 
-    // new v3.0.241.1 decide if it is a moving 3D object or static one
-    const int xPathPointNodes = this->node.getChildNode(mxconst::get_ELEMENT_PATH().c_str()).nChildNode(mxconst::get_ELEMENT_POINT().c_str());
-    if (xPathPointNodes >= 1)
+  const std::string instance_name = Utils::readAttrib(this->node, mxconst::get_ATTRIB_INSTANCE_NAME(), "");
+  if (!instance_name.empty())
+  {
+    // Read conditions element
+
+    // v3.0.241.10 b3 <displayObject> pointer // v3.0.303.2 fix by picking the correct sub <display_object> with attrib "instance_name" and not the first one. We can have multiple <display_object> for one <obj3d>
+    this->xDisplayObject_ptr = this->node.getChildNodeWithAttribute(mxconst::get_ELEMENT_DISPLAY_OBJECT().c_str(), mxconst::get_ATTRIB_INSTANCE_NAME().c_str(), instance_name.c_str());
+
+    this->xConditions = Utils::xml_get_or_create_node_ptr (this->node, mxconst::get_ELEMENT_CONDITIONS());
+
+    const std::string distance_to_display_s = Utils::readAttrib (this->xConditions, mxconst::get_ATTRIB_DISTANCE_TO_DISPLAY_NM(), "10"); // 10nm default distance to display 3D object
+    const std::string keep_until_leg_s = Utils::readAttrib (this->xConditions, mxconst::get_ATTRIB_KEEP_UNTIL_LEG(), mxconst::get_ATTRIB_KEEP_UNTIL_GOAL(), "", true); // compatible with leg
+    const std::string cond_script_s = Utils::readAttrib (this->xConditions, mxconst::get_ATTRIB_COND_SCRIPT(), "");
+
+    std::set<std::string> exceptionAttributeSet = { mxconst::get_ATTRIB_NAME(), mxconst::get_ATTRIB_FILE_NAME() };
+    Utils::xml_copy_node_attributes_excluding_black_list(this->xConditions, this->node, &exceptionAttributeSet);
+
+    // writing information from xConditions to xObj element
+    const auto distance_to_display_d = mxUtils::stringToNumber<double>(distance_to_display_s, distance_to_display_s.length()); // v3.303.11 fix length bug, was always 1 now it is the length of the string so text value "10" should have length of 2 and not 1
+    this->setNodeProperty<double>(mxconst::get_ATTRIB_DISTANCE_TO_DISPLAY_NM(), distance_to_display_d);
+    this->setNodeStringProperty(mxconst::get_ATTRIB_KEEP_UNTIL_LEG(), keep_until_leg_s);  // store in <obj3d > element
+    this->setNodeStringProperty(mxconst::get_ATTRIB_COND_SCRIPT(), cond_script_s);
+    // end Condition element
+
+    // moved path read before location, since in moving object we do not really need it
+    // read 3D PATH /////
+    this->xPath = this->node.getChildNode(mxconst::get_ELEMENT_PATH().c_str());
+    if (!xPath.isEmpty())
     {
-      this->setNodeProperty<int> (mxconst::get_ATTRIB_OBJ3D_TYPE(), static_cast<int> (obj3d::obj3d_type::moving_obj));
-      this->obj3dType = obj3d::obj3d_type::moving_obj;
+      // read cycle attribute
+      const bool flag_cycle = Utils::readBoolAttrib(xPath, mxconst::get_ATTRIB_CYCLE(), false);
+      this->setBoolProperty (mxconst::get_ATTRIB_CYCLE(), flag_cycle);
+
+      const int numPoint_in_Elements = xPath.nChildNode(mxconst::get_ELEMENT_POINT().c_str());
+      for (int i1 = 0; i1 < numPoint_in_Elements; i1++)
+      {
+        IXMLNode xPoint = this->xPath.getChildNode(mxconst::get_ELEMENT_POINT().c_str(), i1);
+        if (!xPoint.isEmpty())
+        {
+          missionx::Point p;
+          p.node = xPoint.deepCopy();
+          if (p.parse_node())
+            this->deqPoints.push_back(p);
+          else
+            Log::logMsgErr("[read 3d obj] Point: " + p.to_string_xy() + ", is not valid. Skipping to next coordination...");
+        }
+      } // end loop over points
+    }   // end xPath
+
+    // decide if static or moving object /////
+    if (this->deqPoints.empty()) // replaced path with deqPoints //v3.0.202 is this a static(default) or moving object. This test is not conclusive, in future we will check for scripts too.
+    {
+      this->setNodeProperty<int>(mxconst::get_ATTRIB_OBJ3D_TYPE(), static_cast<int> (obj3d::obj3d_type::static_obj));
+      this->obj3dType = obj3d::obj3d_type::static_obj;
     }
     else
     {
-      this->setNodeProperty<int> (mxconst::get_ATTRIB_OBJ3D_TYPE(), static_cast<int> (obj3d::obj3d_type::static_obj));
-      this->obj3dType = obj3d::obj3d_type::static_obj;
+      this->setNodeProperty<int>(mxconst::get_ATTRIB_OBJ3D_TYPE(), static_cast<int> (obj3d::obj3d_type::moving_obj));
+      this->obj3dType = obj3d::obj3d_type::moving_obj;
+
+      Utils::xml_copy_node_attributes(this->xLocation, this->deqPoints.front().node);
     }
 
-    const std::string instance_name = Utils::readAttrib(this->node, mxconst::get_ATTRIB_INSTANCE_NAME(), "");
-    if (!instance_name.empty())
+
+    // read location element for static 3D Objects + validate ///////
+    missionx::mx_location_3d_objects info;
+    // v3.0.241.10b3 copy attributes from display object to Obj3D
+    if (!this->xDisplayObject_ptr.isEmpty())
     {
-      // Read conditions element
+      info = Point::readLocationElement(xDisplayObject_ptr); // Read location information from the specific <display_object>
 
-      // v3.0.241.10 b3 <displayObject> pointer // v3.0.303.2 fix by picking the correct sub <display_object> with attrib "instance_name" and not the first one. We can have multiple <display_object> for one <obj3d>
-      this->xDisplayObject_ptr = this->node.getChildNodeWithAttribute(mxconst::get_ELEMENT_DISPLAY_OBJECT().c_str(), mxconst::get_ATTRIB_INSTANCE_NAME().c_str(), instance_name.c_str());
+      #ifndef RELEASE
+      Log::logMsgNone( Utils::xml_get_node_content_as_text(xDisplayObject_ptr));
+      #endif
+    }
+    if (this->obj3dType == obj3d::obj3d_type::static_obj)
+    {
 
-      this->xConditions = Utils::xml_get_or_create_node_ptr (this->node, mxconst::get_ELEMENT_CONDITIONS());
-
-      const std::string distance_to_display_s = Utils::readAttrib (this->xConditions, mxconst::get_ATTRIB_DISTANCE_TO_DISPLAY_NM(), "10"); // 10nm default distance to display 3D object
-      const std::string keep_until_leg_s = Utils::readAttrib (this->xConditions, mxconst::get_ATTRIB_KEEP_UNTIL_LEG(), mxconst::get_ATTRIB_KEEP_UNTIL_GOAL(), "", true); // compatible with leg
-      const std::string cond_script_s = Utils::readAttrib (this->xConditions, mxconst::get_ATTRIB_COND_SCRIPT(), "");
-
-      std::set<std::string> exceptionAttributeSet = { mxconst::get_ATTRIB_NAME(), mxconst::get_ATTRIB_FILE_NAME() };
-      Utils::xml_copy_node_attributes_excluding_black_list(this->xConditions, this->node, &exceptionAttributeSet);
-
-      // writing information from xConditions to xObj element
-      const auto distance_to_display_d = mxUtils::stringToNumber<double>(distance_to_display_s, distance_to_display_s.length()); // v3.303.11 fix length bug, was always 1 now it is the length of the string so text value "10" should have length of 2 and not 1
-      this->setNodeProperty<double>(mxconst::get_ATTRIB_DISTANCE_TO_DISPLAY_NM(), distance_to_display_d); 
-      this->setNodeStringProperty(mxconst::get_ATTRIB_KEEP_UNTIL_LEG(), keep_until_leg_s);  // store in <obj3d > element
-      this->setNodeStringProperty(mxconst::get_ATTRIB_COND_SCRIPT(), cond_script_s); 
-      // end Condition element
-
-      // moved path read before location, since in moving object we do not really need it
-      // read 3D PATH /////
-      this->xPath = this->node.getChildNode(mxconst::get_ELEMENT_PATH().c_str());
-      if (!xPath.isEmpty())
+      this->xLocation = this->node.getChildNode(mxconst::get_ELEMENT_LOCATION().c_str());
+      if (!this->xLocation.isEmpty()) // v3.0.217.5 added if element is valid
       {
-        // read cycle attribute
-        const bool flag_cycle = Utils::readBoolAttrib(xPath, mxconst::get_ATTRIB_CYCLE(), false);
-        this->setBoolProperty (mxconst::get_ATTRIB_CYCLE(), flag_cycle);
-
-        const int numPoint_in_Elements = xPath.nChildNode(mxconst::get_ELEMENT_POINT().c_str());
-        for (int i1 = 0; i1 < numPoint_in_Elements; i1++)
+        if (Utils::is_number(info.lat) && Utils::is_number(info.lon))
         {
-          IXMLNode xPoint = this->xPath.getChildNode(mxconst::get_ELEMENT_POINT().c_str(), i1);
-          if (!xPoint.isEmpty())
-          {
-            missionx::Point p;
-            p.node = xPoint.deepCopy();
-            if (p.parse_node())
-              this->deqPoints.push_back(p);
-            else
-              Log::logMsgErr("[read 3d obj] Point: " + p.to_string_xy() + ", is not valid. Skipping to next coordination...");
-          }
-        } // end loop over points
-      }   // end xPath
-
-      // decide if static or moving object /////
-      if (this->deqPoints.empty()) // replaced path with deqPoints //v3.0.202 is this a static(default) or moving object. This test is not conclusive, in future we will check for scripts too.
-      {
-        this->setNodeProperty<int>(mxconst::get_ATTRIB_OBJ3D_TYPE(), static_cast<int> (obj3d::obj3d_type::static_obj));
-        this->obj3dType = obj3d::obj3d_type::static_obj;
-      }
-      else
-      {
-        this->setNodeProperty<int>(mxconst::get_ATTRIB_OBJ3D_TYPE(), static_cast<int> (obj3d::obj3d_type::moving_obj));
-        this->obj3dType = obj3d::obj3d_type::moving_obj;
-
-        Utils::xml_copy_node_attributes(this->xLocation, this->deqPoints.front().node);
-      }
-
-
-      // read location element for static 3D Objects + validate ///////
-      missionx::mx_location_3d_objects info;
-      // v3.0.241.10b3 copy attributes from display object to Obj3D
-      if (!this->xDisplayObject_ptr.isEmpty())
-      {
-        info = Point::readLocationElement(xDisplayObject_ptr); // Read starting <location> element
-
-        #ifndef RELEASE
-        Log::logMsgNone( Utils::xml_get_node_content_as_text(xDisplayObject_ptr));
-        #endif
-      }
-      if (this->obj3dType == obj3d::obj3d_type::static_obj)
-      {
-
-        this->xLocation = this->node.getChildNode(mxconst::get_ELEMENT_LOCATION().c_str());
-        if (!this->xLocation.isEmpty()) // v3.0.217.5 added if element is valid
+          this->setNodeStringProperty(mxconst::get_ATTRIB_LAT(), info.lat);
+          this->setNodeStringProperty(mxconst::get_ATTRIB_LONG(), info.lon);
+        }
+        else
         {
-          if (Utils::is_number(info.lat) && Utils::is_number(info.lon))
-          {
-            this->setNodeStringProperty(mxconst::get_ATTRIB_LAT(), info.lat);
-            this->setNodeStringProperty(mxconst::get_ATTRIB_LONG(), info.lon); 
-          }
-          else
-          {
-            Log::logMsgErr("[read 3d obj] One of the coordination Lat/Lon might be malformed in 3D Object: " + mxconst::get_QM() + name + mxconst::get_QM() + ". Skipping...");
-            return false;
-          }
-        } // end location is valid
+          Log::logMsgErr("[read 3d obj] One of the coordination Lat/Lon might be malformed in 3D Object: " + mxconst::get_QM() + name + mxconst::get_QM() + ". Skipping...");
+          return false;
+        }
+      } // end location is valid
 
 
-        // Copy <display_object> attributes over to the Obj3D parent element
-        std::set<std::string> local_exceptionAttributeSet = { mxconst::get_ATTRIB_NAME(), mxconst::get_ATTRIB_FILE_NAME() };
+      // Copy <display_object> attributes over to the Obj3D parent element
+      std::set<std::string> local_exceptionAttributeSet = { mxconst::get_ATTRIB_NAME(), mxconst::get_ATTRIB_FILE_NAME() };
 
-        Utils::xml_copy_node_attributes_excluding_black_list(xDisplayObject_ptr, this->node, &local_exceptionAttributeSet);
-
-
-      } // end if 3D Object is static
+      Utils::xml_copy_node_attributes_excluding_black_list(xDisplayObject_ptr, this->node, &local_exceptionAttributeSet);
 
 
-      // read Tilt info
-      this->xTilt = Utils::xml_get_or_create_node(this->node, mxconst::get_ELEMENT_TILT(), false); // v3.0.241.10 b3 fix bug where we write to <tilt> but it was not defined
-
-      double pitch, roll;
-      double heading = pitch = roll = 0.0; // mxconst::get_ZERO();
-
-      if (!this->xTilt.isEmpty())
-      {
-        heading = Utils::readNodeNumericAttrib<double>(this->xTilt, mxconst::get_ATTRIB_HEADING_PSI(), 0.0);
-        if (!info.heading.empty() && mxUtils::is_number(info.heading))
-          heading = Utils::stringToNumber<double>(info.heading, 2);
+    } // end if 3D Object is static
 
 
-        pitch = Utils::readNodeNumericAttrib<double>(this->xTilt, mxconst::get_ATTRIB_PITCH(), 0.0);
-        if (!info.pitch.empty() && mxUtils::is_number(info.pitch))
-          pitch = Utils::stringToNumber<double>(info.pitch, 2);
+    // read Tilt info
+    this->xTilt = Utils::xml_get_or_create_node(this->node, mxconst::get_ELEMENT_TILT(), false); // v3.0.241.10 b3 fix bug where we write to <tilt> but it was not defined
 
-        roll = Utils::readNodeNumericAttrib<double>(this->xTilt, mxconst::get_ATTRIB_ROLL(), 0.0);
-        if (!info.roll.empty() && mxUtils::is_number(info.roll))
-          roll = Utils::stringToNumber<double>(info.roll, 2);
-      }
+    double pitch, roll;
+    double heading = pitch = roll = 0.0; // mxconst::get_ZERO();
 
-      // write to parent node
-      this->setNodeProperty<double>(mxconst::get_ATTRIB_HEADING_PSI(), heading); 
-      this->setNodeProperty<double>(mxconst::get_ATTRIB_PITCH(), pitch); 
-      this->setNodeProperty<double>(mxconst::get_ATTRIB_ROLL(), roll); 
-      // write to tilt node
-      this->setNodeProperty<double>(xTilt, mxconst::get_ATTRIB_HEADING_PSI(), heading, xTilt.getName());
-      this->setNodeProperty<double>(xTilt, mxconst::get_ATTRIB_PITCH(), pitch, xTilt.getName());
-      this->setNodeProperty<double>(xTilt, mxconst::get_ATTRIB_ROLL(), roll, xTilt.getName());
-
-      // add default value
-      this->setNodeProperty<bool>(mxconst::get_PROP_DISPLAY_DEFAULT_OBJECT_FILE_OVER_ALTERNATE(), true); // display default object file or "alternate" obj file
-
-      // v3.0.241.7 add missing  mxconst::get_ATTRIB_HIDE()
-      const bool hide_b = this->getHideObject();
-      this->setNodeProperty<bool>(mxconst::get_ATTRIB_HIDE(), hide_b); 
+    if (!this->xTilt.isEmpty())
+    {
+      heading = Utils::readNodeNumericAttrib<double>(this->xTilt, mxconst::get_ATTRIB_HEADING_PSI(), 0.0);
+      if (!info.heading.empty() && mxUtils::is_number(info.heading))
+        heading = Utils::stringToNumber<double>(info.heading, 4);
 
 
-      this->applyPropertiesToLocal();
+      pitch = Utils::readNodeNumericAttrib<double>(this->xTilt, mxconst::get_ATTRIB_PITCH(), 0.0);
+      if (!info.pitch.empty() && mxUtils::is_number(info.pitch))
+        pitch = Utils::stringToNumber<double>(info.pitch, 4);
+
+      roll = Utils::readNodeNumericAttrib<double>(this->xTilt, mxconst::get_ATTRIB_ROLL(), 0.0);
+      if (!info.roll.empty() && mxUtils::is_number(info.roll))
+        roll = Utils::stringToNumber<double>(info.roll, 4);
+    }
+
+    // write to parent node
+    this->setNodeProperty<double>(mxconst::get_ATTRIB_HEADING_PSI(), heading);
+    this->setNodeProperty<double>(mxconst::get_ATTRIB_PITCH(), pitch);
+    this->setNodeProperty<double>(mxconst::get_ATTRIB_ROLL(), roll);
+    // write to tilt node
+    this->setNodeProperty<double>(xTilt, mxconst::get_ATTRIB_HEADING_PSI(), heading, xTilt.getName());
+    this->setNodeProperty<double>(xTilt, mxconst::get_ATTRIB_PITCH(), pitch, xTilt.getName());
+    this->setNodeProperty<double>(xTilt, mxconst::get_ATTRIB_ROLL(), roll, xTilt.getName());
+
+    // add default value
+    this->setNodeProperty<bool>(mxconst::get_PROP_DISPLAY_DEFAULT_OBJECT_FILE_OVER_ALTERNATE(), true); // display default object file or "alternate" obj file
+
+    // v3.0.241.7 add missing  mxconst::get_ATTRIB_HIDE()
+    const bool hide_b = this->getHideObject();
+    this->setNodeProperty<bool>(mxconst::get_ATTRIB_HIDE(), hide_b);
+
+
+    this->applyPropertiesToLocal();
 
 //#ifndef RELEASE
 //      {
@@ -424,31 +427,30 @@ missionx::obj3d::parse_node()
 //        Log::logMsg("\nObject3D:" + this->getName() + "\n" + std::string(printXML.getString(this->node)) + "\n\n");
 //      }
 //#endif // !RELEASE
-      
-
-      /////// Instance data - from save point //////
-      this->xInstance = this->node.getChildNode(mxconst::get_PROP_INSTANCE_DATA_ELEMENT().c_str());
-      if (!xInstance.isEmpty())
-      {
-        Log::logDebugBO("This 3D Object element is an instanced one");
-
-        this->setNodeStringProperty(mxconst::get_ATTRIB_INSTANCE_NAME(), Utils::readAttrib(xInstance, mxconst::get_ATTRIB_NAME(), ""));  // v3.0.303.2 added support to store in xml node
-        this->setNodeProperty<int>(mxconst::get_PROP_CURRENT_POINT_NO(), Utils::readNodeNumericAttrib<int>(xInstance, mxconst::get_PROP_CURRENT_POINT_NO(), 0)); // v3.0.303.2 added support to store in xml node
-        this->setNodeProperty<bool>(mxconst::get_PROP_LOADED_FROM_CHECKPOINT(), Utils::readBoolAttrib(xInstance, mxconst::get_PROP_LOADED_FROM_CHECKPOINT(), true)); // v3.0.303.2 added support to store in xml node
-        this->setNodeProperty<bool>(mxconst::get_ATTRIB_DISPLAY_AT_POST_LEG_B(), Utils::readBoolAttrib(xInstance, mxconst::get_ATTRIB_DISPLAY_AT_POST_LEG_B(), false)); // v3.303.11 add the instance property "display_at_post_leg_b"
 
 
-        this->displayCoordinate.parse_savepoint_format_to_point(Utils::readAttrib(xInstance, mxconst::get_PROP_CURRENT_LOCATION(), ""));
-        this->mvStat.pointFrom.parse_savepoint_format_to_point(Utils::readAttrib(xInstance, mxconst::get_PROP_POINT_FROM(), ""));
-        this->mvStat.pointTo.parse_savepoint_format_to_point(Utils::readAttrib(xInstance, mxconst::get_PROP_POINT_TO(), ""));
-        this->mvStat.currentPointNo = Utils::readNodeNumericAttrib<int>(xInstance, mxconst::get_PROP_CURRENT_POINT_NO(), 0);
+    /////// Instance data - from save point //////
+    this->xInstance = this->node.getChildNode(mxconst::get_PROP_INSTANCE_DATA_ELEMENT().c_str());
+    if (!xInstance.isEmpty())
+    {
+      Log::logDebugBO("This 3D Object element is an instanced one");
 
-        this->mvStat.prevPoint = this->mvStat.pointFrom;
-      }
+      this->setNodeStringProperty(mxconst::get_ATTRIB_INSTANCE_NAME(), Utils::readAttrib(xInstance, mxconst::get_ATTRIB_NAME(), ""));  // v3.0.303.2 added support to store in xml node
+      this->setNodeProperty<int>(mxconst::get_PROP_CURRENT_POINT_NO(), Utils::readNodeNumericAttrib<int>(xInstance, mxconst::get_PROP_CURRENT_POINT_NO(), 0)); // v3.0.303.2 added support to store in xml node
+      this->setNodeProperty<bool>(mxconst::get_PROP_LOADED_FROM_CHECKPOINT(), Utils::readBoolAttrib(xInstance, mxconst::get_PROP_LOADED_FROM_CHECKPOINT(), true)); // v3.0.303.2 added support to store in xml node
+      this->setNodeProperty<bool>(mxconst::get_ATTRIB_DISPLAY_AT_POST_LEG_B(), Utils::readBoolAttrib(xInstance, mxconst::get_ATTRIB_DISPLAY_AT_POST_LEG_B(), false)); // v3.303.11 add the instance property "display_at_post_leg_b"
+
+
+      this->displayCoordinate.parse_savepoint_format_to_point(Utils::readAttrib(xInstance, mxconst::get_PROP_CURRENT_LOCATION(), ""));
+      this->mvStat.pointFrom.parse_savepoint_format_to_point(Utils::readAttrib(xInstance, mxconst::get_PROP_POINT_FROM(), ""));
+      this->mvStat.pointTo.parse_savepoint_format_to_point(Utils::readAttrib(xInstance, mxconst::get_PROP_POINT_TO(), ""));
+      this->mvStat.currentPointNo = Utils::readNodeNumericAttrib<int>(xInstance, mxconst::get_PROP_CURRENT_POINT_NO(), 0);
+
+      this->mvStat.prevPoint = this->mvStat.pointFrom;
     }
+  }
 
-
-  } // end if <object> element is valid
+   // end if <object> element is valid
 
   return true;
 }

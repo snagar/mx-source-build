@@ -460,8 +460,8 @@ private:
   } mx_inventory_track_strct;
   std::unordered_map<int, RandomEngine::mx_inventory_track_strct> map_osm_inventory_track;
 
-  mx_return                                              gen_prepare_medevac_surprise_me (IXMLNode &inRootTemplate, const IXMLNode &inoutMetaNode, const missionx::Point &in_plane_location); // v25.05.1
-  // mx_return                                              gen_prepare_medevac_surprise_me2 (IXMLNode &inRootTemplate, const IXMLNode &inoutMetaNode, const missionx::Point &in_plane_location); // v25.05.1
+  mx_return gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IXMLNode& inoutMetaNode, const missionx::Point& in_plane_location); // v25.05.1
+
   static std::vector<missionx::structs::strct_osm_query> gen_osm_analyse (mx_return &out_mx_return, const std::string &xmlFilename, const std::string &in_cache_folder, double centre_lat, double centre_lon, IXMLNode &outRootNode = IXMLNode::emptyIXMLNode);
   // The function returns "shuffled index vector" as a value, and initializes the "out_main_subject_node" and "analyzed_query" from inside the function to use later from the calling routine.
   static std::vector<int>                    gen_shuffled_q_from_osm_subject_node (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_root_node, const std::vector<missionx::structs::strct_osm_query> &vec_osm_queries, IXMLNode &out_main_subject_node, missionx::structs::strct_osm_query &analyzed_query);
@@ -526,6 +526,9 @@ private:
   // Will return true if function finds airport data. out_rw_count and out_longest_rw should return a value greater than zero (0).
   static bool gen_get_rw_metadata (const std::string &in_icao, int &out_rw_count, float &out_longest_rw);
 
+  #ifndef RELEASE_DEBUG
+  static void write_targets_to_file (const std::map<int, NavAidInfo>& navaid_targets);
+  #endif
 
 public:
 

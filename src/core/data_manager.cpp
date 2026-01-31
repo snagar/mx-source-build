@@ -4743,14 +4743,15 @@ data_manager::parse_leg_DisplayObjects(Waypoint& leg)
   for (int i2 = 0; i2 < nChilds2; ++i2)
   {
     mx_base_node instProp; // will hold specific properties for a 3D instance
-    instProp.node = leg.node.getChildNode(i2).deepCopy(); // v3.303.11 fetch all childs
+    instProp.node = leg.node.getChildNode(i2).deepCopy(); // v3.303.11 fetch next <display_node>
     if (!instProp.node.isEmpty())
     {
       const std::string tag_s = instProp.node.getName();
       // filter childs
       if (tag_s != mxconst::get_ELEMENT_DISPLAY_OBJECT() && tag_s != mxconst::get_ELEMENT_DISPLAY_OBJECT_NEAR_PLANE())
         continue;
-      else if (tag_s == mxconst::get_ELEMENT_DISPLAY_OBJECT_NEAR_PLANE()) // rename <display_object_near_plane> to <display_object> and force a fictive lat/long positioning
+
+      if (tag_s == mxconst::get_ELEMENT_DISPLAY_OBJECT_NEAR_PLANE()) // rename <display_object_near_plane> to <display_object> and force a fictive lat/long positioning
       {
         instProp.node.updateName(mxconst::get_ELEMENT_DISPLAY_OBJECT().c_str());
         // Force replace_lat / replace_long dummy values to be on the safe side
@@ -4758,7 +4759,7 @@ data_manager::parse_leg_DisplayObjects(Waypoint& leg)
         instProp.node.updateAttribute("1.0", mxconst::get_ATTRIB_REPLACE_LONG().c_str(), mxconst::get_ATTRIB_REPLACE_LONG().c_str());
       }
 
-
+      // read basic attribute data
       std::string instance_name = Utils::readAttrib(instProp.node, mxconst::get_ATTRIB_INSTANCE_NAME(), "");
       std::string obj3d_name    = Utils::readAttrib(instProp.node,  mxconst::get_ATTRIB_NAME(), "");
       std::string link_task     = Utils::readAttrib(instProp.node, mxconst::get_ATTRIB_LINK_TASK(), "");
@@ -4770,18 +4771,16 @@ data_manager::parse_leg_DisplayObjects(Waypoint& leg)
         Utils::xml_add_warning_child(cLogNode, txt);
 
         addLoadErr(txt);
-
-        // Log::logMsgErr(err_s);
         continue;
       }
-      else if (instance_name.empty())
+
+      if (instance_name.empty())
       {
         // v3.305.3
-        const std::string txt = fmt::format("Found <display_object> without instance name, check: '{}'. Skipping instance.", obj3d_name);
+        const std::string txt = fmt::format("[{}]Found <display_object> without instance name, check: '{}'. Skipping instance.", __func__, obj3d_name);
         Utils::xml_add_warning_child(cLogNode, txt);
 
         addLoadErr(txt);
-        // Log::logMsgErr(err_s);
         continue;
       }
 
@@ -4793,10 +4792,8 @@ data_manager::parse_leg_DisplayObjects(Waypoint& leg)
         instProp.setStringProperty(mxconst::get_ATTRIB_LINK_TASK(), vecLinkTask.at(1));
       }
 
-
       // read special Instance REPLACE attributes and store them
       int nAttrib = instProp.node.nAttribute(); // read number of attributes inside "display_object" element
-
       auto iterEnd = mapOfAllowedReplaceAttributesInDisplayObject.cend(); // hold the end of the map
 
       for (int i1 = 0; i1 < nAttrib; ++i1) // loop over attributes and search for the ones with "replace_" in them
@@ -4806,60 +4803,62 @@ data_manager::parse_leg_DisplayObjects(Waypoint& leg)
         const std::string val        = attrib.sValue;
         const std::string attribName = mxUtils::stringToLower(attrib.sName);
 
+        // #ifndef RELEASE
+        // if (attribName == mxconst::get_ATTRIB_REPLACE_HEADING_PSI())
+        //   bool b_found = true;
+        // #endif
+
         if (attribName.find(mxconst::get_PREFIX_REPLACE_()) == static_cast<size_t> ( 0 ) ) // v3.0.217.3 use "find" instead of "find_first_of". Fixed bug when replacing "replace_xxx" attribute. Also fixed in v3.0.215.7
         {
           if (attribName.length() <= mxconst::get_PREFIX_REPLACE_().length())
             continue; // attribute name is probably not valid to hold replace_xxx
 
-
           const std::string attribWithoutPrefix = attribName.substr(mxconst::get_PREFIX_REPLACE_().length());
           instProp.node.updateAttribute(attrib.sValue, attribWithoutPrefix.c_str(), attrib.sName); // v3.0.241.1 rename the "replace_" attribute with the real valid name. This way we should be able to use them later on
 
-          // search for the specific value in the map and if it was found then continue processing, if not then skip with log message.
+          // search for the specific value in the map and if it was found then continue processing. If not then skip with log message.
           const auto& propIter = mapOfAllowedReplaceAttributesInDisplayObject.find(attribWithoutPrefix);
           if (propIter == iterEnd)
           {
-
             // v3.305.3
             const std::string txt = fmt::format("Instance: '{}', Found unrecognized replacement attribute name: '{}'. Fix the attribute name or ask the developer to support it.", instance_name, attribWithoutPrefix);
             Utils::xml_add_warning_child(cLogNode, txt);
             continue;
           }
-          else
-          {
-            switch (propIter->second)
-            {
-              case mx_property_type::MX_STRING:
-              {
-                instProp.setStringProperty(propIter->first, val);
-              }
-              break;
-              case mx_property_type::MX_DOUBLE:
-              {
-                if (!val.empty()) // v3.303.11
-                {
-                  auto val_n = Utils::stringToNumber<double>(val);
-                  instProp.setNodeProperty<double>(propIter->first, val_n);
-                }
-              }
-              break;
-              case mx_property_type::MX_INT:
-              {
-                if (!val.empty()) // v3.303.11
-                {
-                  int val_n = Utils::stringToNumber<int>(val);
-                  instProp.setNodeProperty<int>(propIter->first, val_n);
-                }
-              }
-              break;
-              default:
-              {
-                // Log::logMsgWarn("Attribute: " + mxconst::get_QM() + attribWithoutPrefix + mxconst::get_QM() + ", is not a valid replace attribute. skipping...");
-              }
-              break;
-            } // end switch
-          }
 
+          // v26.01.5 DEPRECATED, I don't see the added value of the switch, seems duplicate coe, since we rename the attributes few lines above and keep the value itself.
+          // // set node value based on datatype.
+          // switch (propIter->second)
+          // {
+          //   case mx_property_type::MX_STRING:
+          //   {
+          //     instProp.setStringProperty(propIter->first, val);
+          //   }
+          //   break;
+          //   case mx_property_type::MX_DOUBLE:
+          //   {
+          //     if (!val.empty()) // v3.303.11
+          //     {
+          //       auto val_n = Utils::stringToNumber<double>(val);
+          //       instProp.setNodeProperty<double>(propIter->first, val_n);
+          //     }
+          //   }
+          //   break;
+          //   case mx_property_type::MX_INT:
+          //   {
+          //     if (!val.empty()) // v3.303.11
+          //     {
+          //       int val_n = Utils::stringToNumber<int>(val);
+          //       instProp.setNodeProperty<int>(propIter->first, val_n);
+          //     }
+          //   }
+          //   break;
+          //   default:
+          //   {
+          //     // Log::logMsgWarn("Attribute: " + mxconst::get_QM() + attribWithoutPrefix + mxconst::get_QM() + ", is not a valid replace attribute. skipping...");
+          //   }
+          //   break;
+          // } // end switch
 
         } // end if found prefix_
       }   // end loop over attributes
@@ -4886,11 +4885,20 @@ data_manager::parse_leg_DisplayObjects(Waypoint& leg)
       if (map3dObj[obj3d_name].node.getChildNodeWithAttribute(mxconst::get_ELEMENT_DISPLAY_OBJECT().c_str(), mxconst::get_ATTRIB_INSTANCE_NAME().c_str(), instance_name.c_str()).isEmpty())
         map3dObj[obj3d_name].node.addChild(instProp.node.deepCopy()); // add display objects element to the 3D Object as a future instance
 
+      #ifndef RELEASE
+      Log::logMsg(fmt::format("[{}] Added DisplayObject: {}\n", __func__, Utils::xml_get_node_content_as_text(instProp.node) ) );
+      #endif // !RELEASE
+
       // add instance to Flight Leg set
       Utils::addElementToMap(leg.list_displayInstances, instance_name, obj3d_name); // v3.305.1 converted list to a map
     }
 
   } // end loop <display_object>
+
+  // #ifndef RELEASE
+  // for (const auto& [key, obj3d] : map3dObj)
+  //   Log::logMsg(fmt::format("[{}] Stored Obj3D: {}\n", __func__, Utils::xml_get_node_content_as_text(obj3d.node) ) );
+  // #endif
 }
 
 // -------------------------------------

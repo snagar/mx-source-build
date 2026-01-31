@@ -1455,15 +1455,32 @@ missionx::Mission::initFlightLegDisplayObjects()
 
       // add logic that reads from the sub element of <obj3d> with and element that has instance_name=inst_name 
 
-#ifndef RELEASE
-      {
-        Log::logMsg("\n\nInstance Object3D:\n" + Utils::xml_get_node_content_as_text(instanced_obj3d.node) + "\n");
-      }
-#endif // !RELEASE
-
+      // #ifndef RELEASE
+      // // filter out land_hover makers
+      // bool printed = false;
+      // // if (instName.find("land") == std::string::npos)
+      // // {
+      // //   Log::logXPLMDebugString(fmt::format("\n\n[{}] Before Instance Object3D:\n{}\n", __func__, Utils::xml_get_node_content_as_text(instanced_obj3d.node) ) );
+      // //   printed = true;
+      // // }
+      // if (instName.find("policem") != std::string::npos)
+      // {
+      //   bool found = true;
+      //   Log::logXPLMDebugString(fmt::format("\n\n[{}] Before Instance Object3D:\n{}\n", __func__, Utils::xml_get_node_content_as_text(instanced_obj3d.node) ) );
+      // }
+      // #endif // !RELEASE
 
       if (instanced_obj3d.parse_node()) // prepare the copy
       {
+        // #ifndef RELEASE
+        // // filter out land_hover makers
+        // if (instName.find("land") == std::string::npos)
+        // {
+        //   Log::logXPLMDebugString(fmt::format("\n[{}] After Instance parsing Object3D:\n{}\n<-----\n", __func__, Utils::xml_get_node_content_as_text(instanced_obj3d.node) ) );
+        // }
+        // #endif // !RELEASE
+
+
         Utils::addElementToMap(data_manager::map3dInstances, instName, instanced_obj3d);
         // copy g_reference from 3D Object so instanced object will be created correctly
         data_manager::map3dInstances[instName].g_object_ref = data_manager::map3dObj[obj_template_name].g_object_ref;

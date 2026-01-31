@@ -1119,6 +1119,7 @@ public:
 
   // -----------------------------------
 
+  // This function does not store the current Point info locally at the node and Point level.
   static missionx::mx_location_3d_objects readLocationElement(ITCXMLNode& xNode)
   {
     IXMLNode xNode_local = xNode.deepCopy();
@@ -1127,6 +1128,7 @@ public:
 
   // -----------------------------------
 
+  // This function does not store the current Point info locally at the node and Point level.
   static missionx::mx_location_3d_objects readLocationElement(IXMLNode& xNode)
   {
     missionx::mx_location_3d_objects info;
@@ -1160,7 +1162,7 @@ public:
       return false;
     }
 
-    missionx::mx_location_3d_objects info = Point::readLocationElement(this->node); // this function reads the full scope of 3D Object location but it also shares same attributes as point
+    const missionx::mx_location_3d_objects info = Point::readLocationElement(this->node); // this function reads the full scope of 3D Object location, but it also shares same attributes as point
 
     // location validations
     if (Utils::is_number(info.lat) && Utils::is_number(info.lon))

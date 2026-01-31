@@ -381,7 +381,7 @@ const static ^std::string ^ATTRIB_REPLACE_LONG                             ^ "re
 const static ^std::string ^ATTRIB_REPLACE_ELEV_FT                          ^ "replace_elev_ft"; ^//  v3.0.217.6
 const static ^std::string ^ATTRIB_REPLACE_HEADING_PSI                      ^ "replace_heading_psi"; ^//  v25.12.1
 const static ^std::string ^ATTRIB_REPLACE_PITCH                            ^ "replace_pitch"; ^//  v25.12.1
-const static ^std::string ^ATTRIB_REPLACE_ROLE                             ^ "replace_role"; ^//  v25.12.1
+const static ^std::string ^ATTRIB_REPLACE_ROLL                             ^ "replace_roll"; ^//  v25.12.1 // v26.01.5 fixed wrong attrib name (role->roll)
 const static ^std::string ^ATTRIB_REPLACE_KEEP_UNTIL_LEG                   ^ "replace_keep_until_leg"; ^//  v25.12.1
 const static ^std::string ^ATTRIB_REPLACE_ELEV_ABOVE_GROUND_FT             ^ "replace_elev_above_ground_ft"; ^//  v3.0.217.6
 const static ^std::string ^ATTRIB_REPLACE_DISTANCE_TO_DISPLAY_NM           ^ "replace_distance_to_display_nm"; ^//  v3.0.303.3
@@ -1079,4 +1079,6 @@ constexpr static ^std::string_view ^        DEFAULT_LAND_OR_INV_RADIUS_MT       
 constexpr static ^std::string_view ^        DEFAULT_HOVER_RADIUS_MT               ^ "40"^// v25.06.1
 constexpr static ^std::string_view ^        DEFAULT_LAND_ONLY_RADIUS_MT           ^ "20"^// v25.06.1
 constexpr static ^std::string_view ^        DEFAULT_HOVER_VOL_HEIGHT_FOR_OSM_FT   ^ "328"^// v25.06.1
+
+constexpr static ^std::string_view ^        BLANK_3D_OBJ   ^ "blank"^// v26.01.5 Used with <display_object>. If above water, the plugin might use a "blank" obj3d to skip.
 
