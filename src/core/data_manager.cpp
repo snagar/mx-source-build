@@ -915,6 +915,10 @@ missionx::base_thread::strct_thread_state missionx::data_manager::metar_thread_s
   std::list<std::string> missionx::data_manager::lst_of_failed_3d_obj_to_load;
   std::list<std::string> missionx::data_manager::lst_of_errors_and_warnings_during_mission_validation;
 
+// v26.02.1 
+
+  missionx::structs::mx_clock_time_strct missionx::data_manager::shared_clock_time;
+
 // -------------------------------------
 
 size_t
@@ -1265,7 +1269,7 @@ data_manager::execScript(const std::string& inScriptName, mxProperties& inSmProp
 // -------------------------------------
 
 void
-data_manager::addInstanceNameToDisplayList(const std::string& instName) // v3.0.207.1
+data_manager::addInstanceNameToTheDisplayList(const std::string& instName) // v3.0.207.1
 {
   if (map3dInstances[instName].obj3dType == obj3d::obj3d_type::static_obj)
   {
@@ -6080,7 +6084,7 @@ order by line_id
 
         // Q2: fetch the airport (icao_id) the plane landed in
         {
-          if (auto navaid = get_plane_airport_or_nearest_icao(false, data.plane.lat, data.plane.lon);
+          if (auto navaid = get_plane_airport_or_nearest_icao(false, data.plane.lat, data.plane.lon, true);
               !navaid.getID().empty())
           {
             data.icao    = navaid.getID();
@@ -6395,11 +6399,6 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
       {
         msg.clear();
 
-        #ifndef RELEASE
-        Log::logMsgThread (fmt::format("\nSimbrief URL: {}\n", full_url_s) ); // debug
-        Log::logMsgThread (fmt::format("\ncacert path: {}\n", data_manager::ca_path.string()) ); // debug
-        #endif
-
         char errBuff[CURL_ERROR_SIZE]{ '\0' };
         curl_easy_setopt(curl, CURLOPT_URL, full_url_s.c_str());
 
@@ -6483,19 +6482,22 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
       auto node_general     = ofp_node.node.getChildNode (mxconst::get_ELEMENT_GENERAL().c_str ());
       auto node_origin      = ofp_node.node.getChildNode (mxconst::get_ELEMENT_ORIGIN().c_str ());
       auto node_destination = ofp_node.node.getChildNode (mxconst::get_ELEMENT_DESTINATION().c_str ());
+      auto node_alternate   = ofp_node.node.getChildNode (mxconst::get_ELEMENT_ALTERNATE().c_str ()); // v26.02.1
       auto node_fuel        = ofp_node.node.getChildNode ("fuel"); // v25.06.1 fetch fuel information
       auto node_navlog      = ofp_node.node.getChildNode ("navlog"); // v25.06.1 fetch TOC, top of climb, data
       auto node_weights     = ofp_node.node.getChildNode ("weights"); // v25.06.1 fetch TOC, top of climb, data
 
       if (!node_general.isEmpty ())
       {
+        auto icaoairln_node       = node_general.getChildNode (mxconst::get_ELEMENT_ICAO_AIRLINE().c_str ());
         auto flnum_node           = node_general.getChildNode (mxconst::get_ELEMENT_FLIGHT_NUMBER().c_str ());
         auto route_node           = node_general.getChildNode (mxconst::get_ELEMENT_ROUTE().c_str ());
         auto route_ifps_node      = node_general.getChildNode (mxconst::get_ELEMENT_ROUTE_IFPS().c_str ());
         auto route_navigraph_node = node_general.getChildNode (mxconst::get_ELEMENT_ROUTE_NAVIGRAPH().c_str ());
         auto cruise_profile_node  = node_general.getChildNode ("costindex"); // v25.06.1
 
-        fpln.flightNumber_s           = Utils::xml_get_text (flnum_node);
+        fpln.simbrief_icao_airline_s  = Utils::xml_get_text (icaoairln_node);
+        fpln.simbrief_flightNumber_s  = Utils::xml_get_text (flnum_node);
         fpln.simbrief_route           = Utils::xml_get_text (route_node);
         fpln.simbrief_route_ifps      = Utils::xml_get_text (route_ifps_node);
         fpln.simbrief_route_navigraph = Utils::xml_get_text (route_navigraph_node);
@@ -6528,6 +6530,12 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
 
         fpln.simbrief_to_rw = Utils::xml_get_text (plan_rwy_node);
         fpln.simbrief_to_trans_alt = Utils::xml_get_text (trans_alt_node);
+      }
+
+      if (!node_alternate.isEmpty ())
+      {
+        auto alternate_icao_node = node_alternate.getChildNode (mxconst::get_ELEMENT_ICAO_CODE().c_str ());
+        fpln.simbrief_alternate_icao_s = Utils::xml_get_text (alternate_icao_node);
       }
 
       if (!node_fuel.isEmpty ())
@@ -6570,13 +6578,22 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
         fpln.simbrief_takeoff_weight = Utils::xml_get_text (est_tow_node);
       }
 
-      fpln.more_info = fmt::format ("General:\n\t{:<10}: {:>8}\n\n"
+      fpln.more_info = fmt::format ("General:\n\tAirline/FlightNo: {}/{}, Cost Index: {}, Alternate: {}\n\n"
                                     "Weights:\n\t{:<10}: {:>8} kg\n\t{:<10}: {:>8} kg\n\t{:<10}: {:>8} ton\n\n"
                                     "Fuel:\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\n"
                                     "T O C:\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\n"
-                                    , "Cost Index", fpln.simbrief_costindex // <general>
+                                    // <general>
+                                    // , "Airline/FlightNo: "
+                                    , fpln.simbrief_icao_airline_s, fpln.simbrief_flightNumber_s
+                                    // , "Cost Index"
+                                    , fpln.simbrief_costindex
+                                    // , "Alter"
+                                    , fpln.simbrief_alternate_icao_s
+                                    // Weights
                                     , "Payload", fpln.simbrief_payload, "Est. TOW", fpln.simbrief_takeoff_weight, "Fuel", fmt::format("{:.1f}", mxUtils::stringToNumber<float>(fpln.simbrief_plan_ramp_block_fuel) / 1000.0f )  // <weights>
+                                    // Fuel
                                     , "Block Fuel", fpln.simbrief_plan_ramp_block_fuel, "Trip", fpln.simbrief_enroute_burn, "Reserve", fpln.simbrief_reserve  // <fuel>
+                                    // T.O.C
                                     , "Elev ft.", fpln.simbrief_toc_elev_ft, "Wind", fpln.simbrief_toc_wind, "W.ISA Dev", fpln.simbrief_toc_wind_ISA  // Top Of Climb
                                     , "OAT", fpln.simbrief_toc_wind_OAT
                                     , "Airway", ((fpln.simbrief_toc_via_airway.empty ())? "n/a": fpln.simbrief_toc_via_airway)
@@ -6588,12 +6605,14 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
 
     #ifndef RELEASE
     Log::logMsgThread("Curl Result: " + result_s);
-
-    Log::logMsgThread (fmt::format("\nSimbrief URL: {}\n", full_url_s) ); // debug
-    Log::logMsgThread (fmt::format("\ncacert path: {}\n", data_manager::ca_path.string()) ); // debug
     #endif
 
   }
+  #ifndef RELEASE
+  Log::logMsgThread (fmt::format("\nSimbrief URL: {}\n", full_url_s) ); // debug
+  Log::logMsgThread (fmt::format("\ncacert path: {}\n", data_manager::ca_path.string()) ); // debug
+  #endif
+
 
   if (data_manager::tableExternalFPLN_simbrief_vec.empty ())
     (*outStatusMessage) = "Failed to fetch Simbrief Flight Plan.";
@@ -6821,7 +6840,7 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
 
       fpln.distnace_d        = Utils::getJsonValue<double>(js, mx_fplndb_json_keys.Z_KEY_distance, nlohmann::detail::value_t::number_float, 0.0);
       fpln.encode_polyline_s = Utils::getJsonValue(js, mx_fplndb_json_keys.Z_KEY_encodedPolyline, "");
-      fpln.flightNumber_s    = Utils::getJsonValue(js, mx_fplndb_json_keys.Z_KEY_flightNumber, "");
+      fpln.simbrief_flightNumber_s    = Utils::getJsonValue(js, mx_fplndb_json_keys.Z_KEY_flightNumber, "");
       fpln.fromICAO_s        = Utils::getJsonValue(js, mx_fplndb_json_keys.Z_KEY_fromICAO, "");
       fpln.fromName_s        = Utils::getJsonValue(js, mx_fplndb_json_keys.Z_KEY_fromName, "");
       fpln.maxAltitude_i     = Utils::getJsonValue<int>(js, mx_fplndb_json_keys.Z_KEY_maxAltitude, nlohmann::detail::value_t::number_integer, 0);
@@ -7044,7 +7063,6 @@ data_manager::get_plane_airport_or_nearest_icao(const bool& inOnlySearchInDataba
       planePosition.get_terrain_elev_mt_from_probe();
   }
 
-
   ImVec2 posVec2( static_cast<float> ( planePosition.lat ), static_cast<float> ( planePosition.lon ) );
 
   // v3.303.8.3 Adding sqlite query
@@ -7139,22 +7157,22 @@ where is_plane_in_boundary = 1
 
     return navAid;
   }
+
+  // We can search icao using the XPSDK because we are not in a thread
+  if (flagFoundPlaneInAirportArea)
+    navAid.navRef = XPLMFindNavAid(nullptr, navAid.ID, &navAid.lat, &navAid.lon, nullptr, xplm_Nav_Airport); // we are still using XPlane library to re-fetch information but this time we set the ICAO and lat/lon beforehand
   else
   {
-    if (flagFoundPlaneInAirportArea)
-      navAid.navRef = XPLMFindNavAid(nullptr, navAid.ID, &navAid.lat, &navAid.lon, nullptr, xplm_Nav_Airport); // we are still using XPlane library to re-fetch information but this time we set the ICAO and lat/lon beforehand
-    else
-    {
-      navAid.flag_fetched_from_db                = false; // v24.03.1
-      navAid.flag_navDataFetchedFromXPLMGetNavAidInfo = true;  // v24.03.1
-      navAid.navRef                                   = XPLMFindNavAid(nullptr, nullptr, &posVec2.x, &posVec2.y, nullptr, xplm_Nav_Airport);
-    }
-
-    if (navAid.navRef != XPLM_NAV_NOT_FOUND) // fetch more information
-      XPLMGetNavAidInfo(navAid.navRef, &navAid.navType, &navAid.lat, &navAid.lon, &navAid.height_mt, &navAid.freq, &navAid.heading, navAid.ID, navAid.name, nullptr);
-    else
-      navAid.init();
+    navAid.flag_fetched_from_db                = false; // v24.03.1
+    navAid.flag_navDataFetchedFromXPLMGetNavAidInfo = true;  // v24.03.1
+    navAid.navRef                                   = XPLMFindNavAid(nullptr, nullptr, &posVec2.x, &posVec2.y, nullptr, xplm_Nav_Airport);
   }
+
+  if (navAid.navRef != XPLM_NAV_NOT_FOUND) // fetch more information
+    XPLMGetNavAidInfo(navAid.navRef, &navAid.navType, &navAid.lat, &navAid.lon, &navAid.height_mt, &navAid.freq, &navAid.heading, navAid.ID, navAid.name, nullptr);
+  else
+    navAid.init();
+
 
   return navAid;
 }

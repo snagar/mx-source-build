@@ -30,7 +30,7 @@ public:
 
 
   static XPLMDataTypeID dataRefType;
-  static XPLMDataRef    getDataRef(std::string inDrefName); // v2.1.0
+  static XPLMDataRef    getDataRef(const std::string& inDrefName); // v2.1.0
   static void           set_xplane_dataref_value(std::string full_name, double inValue);
 
   // get dataref value Template (for int, float, double only values )

@@ -385,6 +385,10 @@ public:
   static bool extractUnitsFromString(const std::string& inNumWithUnits, std::string& outNumber, std::string& outUnit);
 
   // -------------------------------------------
+  // v26.02.1 Wrap text at a specific character length. Takes into consideration word length.
+  static std::string wrap_text(const std::string& text, const size_t &max_width);
+
+  // -------------------------------------------
 
   std::map<int, std::string> static splitStringToMap(const std::string& inString, const std::string& delimateChars); // returns set of key,values. Key is seq number starting from 0... while value is string
 

@@ -497,7 +497,7 @@ RandomEngine::generateRandomMission()
   this->pathToRandomBrieferFolder = (RandomEngine::working_tempFile_ptr->missionFolderName.empty()) ? pathToRandomRootFolder + mxconst::get_FOLDER_SEPARATOR() + mxconst::get_FOLDER_RANDOM_MISSION_NAME() + mxconst::get_FOLDER_SEPARATOR() + mxconst::get_BRIEFER_FOLDER() : pathToRandomRootFolder + mxconst::get_FOLDER_SEPARATOR() + mxconst::get_BRIEFER_FOLDER(); // v3.0.241.10 b2 define the output folder of the template
 
   // store current plane coordinate
-  RandomEngine::planeLocation = missionx::dataref_manager::getCurrentPlanePointLocation();
+  RandomEngine::planeLocation = dataref_manager::getPlanePointLocationThreadSafe(); // v26.02.1 fix crash in xp v12.4.1.a1
 
 
   #ifndef RELEASE

@@ -13,6 +13,8 @@ namespace fs = std::filesystem;
 #include "core/QueueMessageManager.h"
 #include "io/ListDir.h"
 
+#include <fmt/chrono.h>
+
 namespace missionx
 {
 bool Mission::isMissionValid;
@@ -653,16 +655,6 @@ missionx::Mission::init()
     missionx::system_actions::store_plugin_options();
   }
 
-
-  // // v3.0.221.6
-  // if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_PAUSE_IN_VR()).isEmpty())
-  // {
-  //   // missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_AUTO_PAUSE_IN_VR(), mxconst::DEFAULT_AUTO_PAUSE_IN_VR);
-  //   missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_AUTO_PAUSE_IN_VR(), false); // v25.06.1 Always false
-  //   missionx::system_actions::store_plugin_options();
-  // }
-
-
   // v3.0.221.7
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISPLAY_MISSIONX_IN_VR()).isEmpty())
   {
@@ -804,6 +796,14 @@ missionx::Mission::init()
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_PROP_OSM_GEN_FILE()).isEmpty())
   {
     Utils::xml_search_and_set_node_text(system_actions::pluginSetupOptions.node, mxconst::get_PROP_OSM_GEN_FILE(), mxconst::DEFAULT_OSM_GEN_FILE.data (), mxUtils::formatNumber<int>(static_cast<int> (missionx::mx_property_type::MX_STRING)), true); // "6" = string type
+    missionx::system_actions::store_plugin_options();
+  }
+
+
+  // v25.06.2 ui clocks
+  if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISPLAY_UI_CLOCKS()).isEmpty())
+  {
+    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_DISPLAY_UI_CLOCKS(), true);
     missionx::system_actions::store_plugin_options();
   }
 
@@ -1565,8 +1565,15 @@ missionx::Mission::flc()
   // v3.0.219.9
   this->flc_threads(); // if we are optimizing the apt.dat files, this should monitor the thread and join it once it is finished its work
 
-  //// v3.0.217.8
-  //missionx::Log::flc();
+  
+  data_manager::shared_clock_time.xp_hours = dataref_manager::getLocalHour();
+  data_manager::shared_clock_time.xp_min   = dataref_manager::getLocalMinutes();
+  data_manager::shared_clock_time.xp_sec   = dataref_manager::getLocalTimeSec();
+  //auto        now                          = std::chrono::system_clock::now();
+  //std::time_t t                            = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  data_manager::shared_clock_time.os_time  = fmt::format("{:%H:%M}", fmt::localtime(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())));
+
+
 
   // display Visual Cues only if we are in Designer mode and Cue option is enabled
   if (Utils::readBoolAttrib(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_ENABLE_DESIGNER_MODE(), false) && Utils::readBoolAttrib(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISPLAY_VISUAL_CUES(), false))
@@ -3528,33 +3535,29 @@ missionx::Mission::flc_3d_objects(mxProperties& inSmPropSeedValues)
           instObj.displayCoordinate, instObj.mvStat.probeResult); // v3.0.253.6 moved to flc_3d_object // v3.0.207.3
         continue;
       }
-      else // first time instance is added it will start in this part of the code to initialize the 3D Object
+
+      // Create an instance reference
+      instObj.create_instance(); // create an instance from object reference
+      if (instObj.g_instance_ref) // if instance was created then
       {
-        // Create an instance reference
-        instObj.create_instance();  // create an instance from object reference
-        if (instObj.g_instance_ref) // if instance was created then
-        {
+        // v3.0.207.2 // for moving objects get_next_point() which represent the destination
+        if (instObj.obj3dType == obj3d::obj3d_type::moving_obj)
+          instObj.initPathCycle_new();
 
-          // v3.0.207.2 // for moving objects get_next_point() which represent the destination
-          if (instObj.obj3dType == obj3d::obj3d_type::moving_obj)
-            instObj.initPathCycle_new();
-
-          // check if we need to probe terrain
-          if (instObj.displayCoordinate.getElevationInFeet() == 0.0) // do we need Terrain Probing?
-            instObj.calculate_real_elevation_to_DisplayCoordination();
-          instObj.displayCoordinate.calcSimLocalData(); // calculate local coordination just in case
+        // check if we need to probe terrain
+        if (instObj.displayCoordinate.getElevationInFeet() == 0.0) // do we need Terrain Probing?
+          instObj.calculate_real_elevation_to_DisplayCoordination();
+        instObj.displayCoordinate.calcSimLocalData(); // calculate local coordination just in case
 
 
+        // add 3D Object to the relevant list (part of optimization)
+        missionx::data_manager::addInstanceNameToTheDisplayList(instName); // v3.0.207.1
 
-          // add 3D Object to the relevant list (part of optimization)
-          missionx::data_manager::addInstanceNameToDisplayList(instName); // v3.0.207.1
+        instObj.isInDisplayList = true; // v3.0.207.1 // set display flag //  removed function from older version
 
-          instObj.isInDisplayList = true; // v3.0.207.1 // set display flag //  removed function from older version
+        instObj.positionInstancedObject(); // prepare XPLMDrawInfo_t and call XPLMInstanceSetPosition()
+      } // end if instance is valid
 
-          instObj.positionInstancedObject(); // prepare XPLMDrawInfo_t and call XPLMInstanceSetPosition()
-
-        } // end if instance is valid
-      }
     }
     else // Destroy instance of 3D Object and remove from display list since it is not in range or condition failed
     {
@@ -3745,7 +3748,7 @@ missionx::Mission::drawCallback(const XPLMDrawingPhase& inPhase, const int inIsB
           missionx::data_manager::map3dInstances[instName].positionInstancedObject(); // v3.0.207.2
 
           if (!missionx::data_manager::map3dInstances[instName].mvStat.flag_wait_for_next_flc)
-            missionx::data_manager::map3dInstances[instName].checkAreWeThereYet(); // v3.0.253.6 are we their yet ?
+            missionx::data_manager::map3dInstances[instName].checkAreWeThereYet(); // v3.0.253.6 are we there yet ?
 
         }
       }
@@ -3756,7 +3759,7 @@ missionx::Mission::drawCallback(const XPLMDrawingPhase& inPhase, const int inIsB
       ++frameCounter;
       if (frameCounter % 4 == 0)
       {
-        missionx::data_manager::execScript(data_manager::draw_script, data_manager::smPropSeedValues, "[draw] Draw script is invalid. Aborting Mission"); //
+        missionx::data_manager::execScript(data_manager::draw_script, data_manager::smPropSeedValues, "[Mission::drawCallback] Draw script is invalid. Aborting Mission"); //
         frameCounter = 0;
       }
     }
@@ -5644,6 +5647,16 @@ missionx::Mission::flcPRE()
           missionx::system_actions::pluginSetupOptions.node.updateAttribute(mxUtils::formatNumber<int>(val).c_str(), mxconst::get_OPT_DISPLAY_VISUAL_CUES().c_str(), mxconst::get_OPT_DISPLAY_VISUAL_CUES().c_str()); // v3.303.8.3
 
           this->syncOptionsWithMenu();
+      }
+      break;
+      case missionx::mx_flc_pre_command::toggle_ui_clocks:
+      {
+          // v26.02.1
+          auto val =  missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_DISPLAY_UI_CLOCKS(), true);
+          val ^= 1;
+
+          missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_DISPLAY_UI_CLOCKS(), val);
+          missionx::system_actions::store_plugin_options();
       }
       break;
       case missionx::mx_flc_pre_command::save_notes_info:

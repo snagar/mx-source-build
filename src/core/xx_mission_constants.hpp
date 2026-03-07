@@ -35,8 +35,8 @@ constexpr static const int MX_FEATURES_VERSION = 20250501; //20241212; //2023091
 #define SPECIAL_BUILD ""
 
 inline constexpr static auto PLUGIN_VER_MAJOR                  = "26"; // year
-inline constexpr static auto PLUGIN_VER_MINOR                  = "01"; // month
-inline constexpr static auto PLUGIN_VER_SUB                    = "5"; // sub-version
+inline constexpr static auto PLUGIN_VER_MINOR                  = "02"; // month
+inline constexpr static auto PLUGIN_VER_SUB                    = "1"; // sub-version
 inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 
@@ -989,7 +989,9 @@ typedef struct _ext_internet_fpln_strct
   std::string toICAO_s;
   std::string fromName_s;
   std::string toName_s;
-  std::string flightNumber_s;
+  std::string simbrief_icao_airline_s; // v26.02.1
+  std::string simbrief_alternate_icao_s; // v26.02.1
+  std::string simbrief_flightNumber_s;
   double      distnace_d{ 0.0 };
 
   int         maxAltitude_i{ 0 };
@@ -1047,7 +1049,9 @@ typedef struct _ext_internet_fpln_strct
     toICAO_s.clear ();
     fromName_s.clear ();
     toName_s.clear ();
-    flightNumber_s.clear ();
+    simbrief_icao_airline_s.clear ();
+    simbrief_alternate_icao_s.clear ();
+    simbrief_flightNumber_s.clear ();
     distnace_d = 0.0;
 
     maxAltitude_i = 0;
@@ -1324,6 +1328,16 @@ namespace conv
   // v25.06.1 add structs namespace
   namespace structs
   {
+    typedef struct clock_time_struct_def
+    {
+      int xp_hours;
+      int xp_min;
+      float xp_sec;
+
+      std::string os_time;
+    } mx_clock_time_strct;
+
+
     typedef struct node_attribute_key_value_struct
     {
       std::string tag;

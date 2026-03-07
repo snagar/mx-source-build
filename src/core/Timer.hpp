@@ -345,7 +345,7 @@ public:
 
   // ----------------------------------------------------
 
-  static void start(Timer& inTimer, float inSecondsToRun = 0.0f, std::string inName = "Timer", bool isCumulative = false)
+  static void start(Timer& inTimer, const float inSecondsToRun = 0.0f, const std::string& inName = "Timer", const bool isCumulative = false)
   {
     inTimer.name              = inName;       // for debug
     inTimer.flag_isCumulative = isCumulative; // v3.0.221.11

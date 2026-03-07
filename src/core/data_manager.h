@@ -311,6 +311,7 @@ typedef enum class _flc_commands
   stop_position_camera,                 // v3.0.303.7 position camera view, based on https://developer.x-plane.com/code-sample/camera/
   sound_abort_all_channels,             // v3.305.1c abort and clean all channels in Sound class. Usefull when there are many channels and some might not be cleaned gracefully
   toggle_auto_hide_show_mxpad_option,
+  toggle_ui_clocks, // v26.02.1
   toggle_cue_info_mode, // v3.305.4
   toggle_designer_mode, // v3.305.4
   toggle_target_marker_option, // v3.0.253.9.1
@@ -939,7 +940,7 @@ public:
   static std::map<std::string, missionx::obj3d>   map3dInstances;               // v3.0.200 //name, obj3d instance // Holds static 3D Objects and should also hold moving objects (in future)
   static std::set<std::string>                    listDisplayStatic3dInstances; // v3.0.200 //instance name,  // pointer to instance object. When loading savepoint, we need to add pointers based on "canBeDisplayed" property.
   static std::set<std::string> listDisplayMoving3dInstances; // v3.0.202 //moving instance name,  // Only holds the instance name, the data is stored in map3dInstances // if this map is empty we can unregister draw callback.
-  static void                  addInstanceNameToDisplayList(const std::string& instName);   // v3.0.207.1 // instance name to correct list based on the type of the 3D Object
+  static void                  addInstanceNameToTheDisplayList(const std::string& instName);   // v3.0.207.1 // instance name to correct list based on the type of the 3D Object
   static void                  delInstanceNameFromDisplayList(const std::string& instName); // v3.0.207.1 // instance name to correct list based on the type of the 3D Object
 
 
@@ -1275,6 +1276,10 @@ public:
   //////////////////////////////////////////////////////////////////
   ///// SHARED functions and data with the UI screens
   //////////////////////////////////////////////////////////////////
+
+  // v26.02.1 local time
+  
+  static missionx::structs::mx_clock_time_strct shared_clock_time;
 
   // v26.01.1 failed 3D object to load. Will use after loading a mission file.
   static std::list<std::string> lst_of_failed_3d_obj_to_load;

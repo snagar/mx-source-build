@@ -89,9 +89,9 @@ missionx::CueInfo::calculateCircleFromPoint(Point& inPoint, const bool doCloseSh
   if (hasRadius && radius != 0.0)
   {
     double groundElevationInMeter = 0.0;
-    #ifndef RELEASE
-    Log::logDebugBO("[calculateCircle] Calculating Circle for: " + ((!this->node_ptr.isEmpty()) ? Utils::readAttrib(this->node_ptr, mxconst::get_ATTRIB_NAME(), "") : "\n")); // debug
-    #endif
+    // #ifndef RELEASE
+    // Log::logDebugBO("[calculateCircle] Calculating Circle for: " + ((!this->node_ptr.isEmpty()) ? Utils::readAttrib(this->node_ptr, mxconst::get_ATTRIB_NAME(), "") : "\n")); // debug
+    // #endif
     const double p_x = inPoint.getLat ();
     const double p_y = inPoint.getLon ();
     const double p_z = inPoint.getElevationInMeters (); // return as meters

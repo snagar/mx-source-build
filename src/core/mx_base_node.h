@@ -91,20 +91,20 @@ public:
   bool        getBoolValue(const std::string& inAttribName, bool attribDefaultValue = false) const;
 
   // -------------------------------------------
-  // functions that do not store text internaly
+  // functions that do not store text internally
   void setNodeStringProperty(const std::string& inAttribName, const std::string& attribValue, IXMLNode& inNode_ptr);
   void setNodeStringProperty_drillDown(const std::string& inAttribName, const std::string& attribValue, IXMLNode& inNode_ptr, const std::string& inTagNameToUpdate);
 
   // -------------------------------------------
   // set attribute in the current element (not in a sub element)
-  std::string getAttribStringValue(std::string inAttribName, std::string inDefaultValue, std::string& outErr) // IXMLNode& inParentNodeToSearchFrom = IXMLNode::emptyIXMLNode, const std::string& inTagNameToUpdate = "")
+  std::string getAttribStringValue(const std::string& inAttribName, const std::string& inDefaultValue, std::string& outErr) // IXMLNode& inParentNodeToSearchFrom = IXMLNode::emptyIXMLNode, const std::string& inTagNameToUpdate = "")
   {
     outErr.clear();
     return Utils::readAttrib(this->node, inAttribName, inDefaultValue);
   }
 
   // v3.303.14 should replace getAttribStringValue()
-  std::string getStringAttributeValue(std::string inAttribName, std::string inDefaultValue) // IXMLNode& inParentNodeToSearchFrom = IXMLNode::emptyIXMLNode, const std::string& inTagNameToUpdate = "")
+  std::string getStringAttributeValue(const std::string& inAttribName, const std::string& inDefaultValue) // IXMLNode& inParentNodeToSearchFrom = IXMLNode::emptyIXMLNode, const std::string& inTagNameToUpdate = "")
   {
     return Utils::readAttrib(this->node, inAttribName, inDefaultValue);
   }
@@ -129,32 +129,32 @@ public:
   // -------------------------------------------
 
   template<class T>
-  T getAttribNumericValue(std::string inAttribName, T inDefaultValue, std::string& outErr) // IXMLNode& inParentNodeToSearchFrom = IXMLNode::emptyIXMLNode, const std::string& inTagNameToUpdate = "")
+  T getAttribNumericValue(const std::string inAttribName, T inDefaultValue, std::string& outErr) // IXMLNode& inParentNodeToSearchFrom = IXMLNode::emptyIXMLNode, const std::string& inTagNameToUpdate = "")
   {
     outErr.clear();
 
     if (!node.isEmpty())
     {
-      if (std::is_arithmetic<T>::value)
+      if (std::is_arithmetic_v<T>)
       {
         std::string val_s = Utils::readAttrib(this->node, inAttribName, mxUtils::formatNumber<T>(inDefaultValue));
         if (mxUtils::is_number(val_s))
-          return (T)mxUtils::stringToNumber<T>(val_s, val_s.length());
+          return static_cast<T>(mxUtils::stringToNumber<T>(val_s, val_s.length()));
         else
         {
           outErr = "NaN";
-          return (T)inDefaultValue;
+          return static_cast<T>(inDefaultValue);
         }
       }
     }
     else
     {
       outErr = "Node is empty.";
-      return (T)inDefaultValue;
+      return static_cast<T>(inDefaultValue);
     }
 
     outErr = "Node is empty.";
-    return (T)inDefaultValue;
+    return static_cast<T>(inDefaultValue);
   }
 
   // -------------------------------------------
@@ -195,16 +195,16 @@ public:
 
   // -------------------------------------------
   // setNodeStringProperty sets the XML node with a numeric/bool value and also uses xml_search_and_set_attribute_in_IXMLNode() to set the value at the Node level.
-  // It differs from Utils::xml_set_attribute_in_node() since it also created the sub-node if it is not exists.
+  // It differs from Utils::xml_set_attribute_in_node() since it also created the sub-node if it does not exists.
   template<class T>
-  void setSetupNodeProperty(std::string inTagName, T attribValue) //, IXMLNode& inParentNode_ptr = IXMLNode::emptyIXMLNode)
+  void setSetupNodeProperty(const std::string& inTagName, T attribValue) //, IXMLNode& inParentNode_ptr = IXMLNode::emptyIXMLNode)
   {
     std::string                val_s;
     missionx::mx_property_type val_type_enum = missionx::mx_property_type::MX_UNKNOWN;
 
-    if (std::is_integral<decltype(attribValue)>::value) // ::value will return true or false. Is this a number or bool ?
+    if (std::is_integral_v<decltype(attribValue)>) // ::value will return true or false. Is this a number or bool ?
     {
-      if (std::is_same<decltype(attribValue), bool>::value)
+      if (std::is_same_v<decltype(attribValue), bool>)
       {
         val_s = (attribValue) ? "true" : "false";
         // we could also write:
@@ -225,7 +225,7 @@ public:
     if (!this->node.isEmpty())
     {
       // search for a sub node with the element name {inTagName}
-      const std::string val_type_s = mxUtils::formatNumber<int>((int)val_type_enum);
+      const std::string val_type_s = mxUtils::formatNumber<int>(static_cast<int>(val_type_enum));
       Utils::xml_search_and_set_node_text(this->node, inTagName, val_s, val_type_s, true);
     }
   }

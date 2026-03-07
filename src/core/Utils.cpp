@@ -603,6 +603,33 @@ missionx::Utils::extractUnitsFromString(const std::string& inNumWithUnits, std::
   return success;
 }
 
+// -------------------------------------------
+
+std::string Utils::wrap_text(const std::string& text, const size_t& max_width)
+{
+  std::istringstream words(text);
+  std::ostringstream wrapped;
+  std::string word;
+  std::size_t line_length = 0;
+
+  while (words >> word) {
+    if (line_length + word.length() + 1 > max_width) {
+      wrapped << '\n';
+      line_length = 0;
+    }
+
+    if (line_length > 0) {
+      wrapped << ' ';
+      line_length++;
+    }
+
+    wrapped << word;
+    line_length += word.length();
+  }
+
+  return wrapped.str();
+}
+
 
 // -------------------------------------------
 

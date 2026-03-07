@@ -802,7 +802,7 @@ WinImguiBriefer::add_flight_planning ()
   constexpr static const auto flagsForShortInput     = ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsNoBlank;
   constexpr static auto       mid_btn_size_vec2_vc   = ImVec2 (80.0f, 35.0f); // middle button size (SAVE/LOAD)
   constexpr static auto       simbrief_btn_size_vec2 = ImVec2 (45.0f, 45.0f); // Simbrief button. The size is uneven for visual symmetry
-  constexpr static auto       multiLineSize_vec2_wp  = ImVec2 (-FLT_MIN, 37.0f); // waypoint multiline
+  constexpr static auto       multiLineSize_vec2_wp  = ImVec2 (-10.0f, 37.0f); // waypoint multiline
   constexpr static auto       multiLineSize_vec2_vi  = ImVec2 (-FLT_MIN, 70.0f); // inner multi input size
   constexpr static auto       multiLineSize_vec2_vc  = ImVec2 (255.0f, multiLineSize_vec2_vi.y + 20.0f); // child size - for each "bottom multi line" notes
 
@@ -813,8 +813,11 @@ WinImguiBriefer::add_flight_planning ()
   ImGui::BeginGroup ();
   {
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
-    // ImGui::TextDisabled("%s", "Fill in your pre-flight or fetch from Simbrief. and flight notes so the most important staff will be available to you during flight.");
     ImGui::TextDisabled ("%s", "Fetch pre-flight info from SimBrief or fill in manually");
+
+    // v26.02.1 Add clock
+    // add_ui_os_and_xp_clock_times(win_size_vec2.x - 230.0f);
+
     ImGui::SameLine (win_size_vec2.x - 80.0f);
     ImGui::TextColored (missionx::color::color_vec4_greenyellow, "%s", "Temp:");
     ImGui::SameLine ();
@@ -937,7 +940,11 @@ WinImguiBriefer::add_flight_planning ()
       {
         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
         ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_lightgoldenrodyellow);
-        ImGui::InputTextMultiline ("##Waypoints", this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints], sizeof (this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints]), multiLineSize_vec2_wp, ImGuiInputTextFlags_CharsUppercase);
+        // ImGui::InputTextMultiline ("##Waypoints", this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints], sizeof (this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints]), multiLineSize_vec2_wp, ImGuiInputTextFlags_CharsUppercase);
+        if (ImGui::InputTextMultiline ("##Waypoints", this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints], sizeof (this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints]), multiLineSize_vec2_wp, ImGuiInputTextFlags_CharsUppercase))
+        {
+          this->strct_flight_leg_info.setNoteLongField (missionx::enums::mx_note_longField_enum::waypoints,  Utils::wrap_text(this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints], strct_flight_leg_info.WAYPOINT_MAX_WIDTH_I) );
+        }
         ImGui::PopStyleColor ();
         this->mxUiReleaseLastFont ();
       }
@@ -1251,7 +1258,7 @@ WinImguiBriefer::flc ()
         this->strct_flight_leg_info.setNoteShortField (missionx::enums::mx_note_shortField_enum::toRunway, fpln.simbrief_to_rw);
         this->strct_flight_leg_info.setNoteShortField (missionx::enums::mx_note_shortField_enum::toTrans, fpln.simbrief_to_trans_alt);
 
-        this->strct_flight_leg_info.setNoteLongField (missionx::enums::mx_note_longField_enum::waypoints, fpln.simbrief_route);
+        this->strct_flight_leg_info.setNoteLongField (missionx::enums::mx_note_longField_enum::waypoints,  Utils::wrap_text(fpln.simbrief_route, strct_flight_leg_info.WAYPOINT_MAX_WIDTH_I) );
         this->strct_flight_leg_info.setNoteLongField (missionx::enums::mx_note_longField_enum::more_info, fpln.more_info); // v25.06.1
 
         missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::save_notes_info);
@@ -2608,6 +2615,28 @@ WinImguiBriefer::add_ui_dynamic_options_buttons (const int &inout_picked_indx_lb
 // -------------------------------------------
 
 
+void WinImguiBriefer::add_ui_os_and_xp_clock_times(const float& in_x_pos)
+{
+  // v26.02.1
+  if (in_x_pos >= 0.0f)
+    ImGui::SameLine (in_x_pos);
+  else
+    ImGui::SameLine ();
+
+  ImGui::TextColored (missionx::color::color_vec4_greenyellow, "%s", "OS.T:");
+  ImGui::SameLine ();
+  ImGui::TextDisabled ("%s", data_manager::shared_clock_time.os_time.c_str());
+
+  ImGui::SameLine (0.0f, 10.0f);
+  ImGui::TextColored (missionx::color::color_vec4_greenyellow, "%s", "XP.T:");
+  ImGui::SameLine ();
+  ImGui::TextDisabled ("%d:%d", data_manager::shared_clock_time.xp_hours, data_manager::shared_clock_time.xp_min);
+
+}
+
+// -------------------------------------------
+
+
 void
 WinImguiBriefer::callNavData (std::string_view inICAO, bool bNavigatingFromOtherLayer) // v24.03.1
 {
@@ -2845,6 +2874,19 @@ WinImguiBriefer::draw_top_toolbar ()
 
     this->mxUiReleaseLastFont ();
 
+    /// Countdown
+    if (data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
+    {
+
+      if (const std::string countdown_s = (missionx::data_manager::formated_fail_timer_as_text.empty ()) ? "" : missionx::data_manager::formated_fail_timer_as_text;
+        !countdown_s.empty ())
+      {
+        ImGui::SameLine ((win_width / 2.0f) - 120.0f);
+        // ImGui::TextColored (this->countdown_textColorVec4, "Countdown: %s", title_s.c_str ());
+        ImGui::TextColored (this->countdown_textColorVec4, "%s", countdown_s.c_str ());
+      }
+    }
+
     ///////// HOME BUTTON - center
     ImGui::SameLine ((win_width / 2.0f) - (vec2_sizeTopBtn.x / 2.0f));
     if (ImGui::ImageButton ("HomeButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_HOME ()].gTexture, this->vec2_sizeTopBtn)) // Home Button (will navigate dependent of the
@@ -2873,21 +2915,18 @@ WinImguiBriefer::draw_top_toolbar ()
     // tooltip
     this->mx_add_tooltip (missionx::color::color_vec4_white, "Home Button");
 
+    // Clocks: OS & XPlane
+    if ( missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_DISPLAY_UI_CLOCKS(), true))
+      add_ui_os_and_xp_clock_times( -1.0f );
+
     // Failure Timer at toolbar level
     if (data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
     {
-      ImGui::SameLine (0.0f, 20.0f);
-      const std::string title_s = (missionx::data_manager::formated_fail_timer_as_text.empty ()) ? "" : missionx::data_manager::formated_fail_timer_as_text;
-      if (!title_s.empty ())
-      {
-        ImGui::TextColored (this->countdown_textColorVec4, "Countdown: %s", title_s.c_str ());
-      }
-
       // v25.02.1 Display Success timer countdown
       if (!missionx::data_manager::strct_success_timer_info.triggerNameWithShortestSuccessTimer.empty ())
       {
         if (missionx::data_manager::lowestFailTimerName_s.empty ())
-          ImGui::SameLine (0.0f, 5.0f);
+          ImGui::SameLine (0.0f, 10.0f);
         else
           ImGui::SameLine ();
 
@@ -3660,6 +3699,14 @@ WinImguiBriefer::draw_setup_layer ()
     if (ImGui::Checkbox ("Toggle Cue Info", &bCueInfo))
     {
       missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::toggle_cue_info_mode);
+    }
+
+    // v26.02.1
+    ImGui::SameLine (0.0f, 25.0f);
+    bool bDisplayClock = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_DISPLAY_UI_CLOCKS(), true);
+    if (ImGui::Checkbox ("Toggle Clocks", &bDisplayClock))
+    {
+      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::toggle_ui_clocks);
     }
 
 

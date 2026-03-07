@@ -180,7 +180,7 @@ missionx::dataref_manager::set_xplane_dataref_value (const std::string full_name
 } // end set_xplane_dataref_value
 
 XPLMDataRef
-missionx::dataref_manager::getDataRef (const std::string inDrefName) // v2.1.0
+missionx::dataref_manager::getDataRef (const std::string& inDrefName) // v2.1.0
 {
   return XPLMFindDataRef(inDrefName.c_str());
 }

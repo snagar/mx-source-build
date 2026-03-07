@@ -591,7 +591,6 @@ const static ^std::string^                EXT_mxCargoPosLon                     
 const static ^std::string^                QMM_DUMMY_MSG_NAME_PREFIX                              ^ "msg_"; ^// Queue Message Manager - QMM // used to construct new messages from code
 const static ^std::string^                ELEMENT_BASE_WEIGHTS_KG                                ^ "base_weights_kg"; ^// Base weights by designer // options // mute any sound, include narrator and fmod sounds
 const static ^std::string^                ATTRIB_PILOT                                           ^ "pilot"; ^// v3.0.213.4 pilot weight in kg
-// const static ^std::string^                ATTRIB_PASSENGERS                                      ^ "passengers"; ^// v3.0.213.4 passengers weight in kg // v25.10.1 deprecated, not in use
 const static ^std::string^                ATTRIB_STORAGE                                         ^ "storage"; ^// v3.0.213.4 storage weight in kg
 const static ^std::string^                ELEMENT_POSITION                                       ^ "position"; ^// v3.0.223.1 Hidden parameter for now. Will skip plane repositioning at random start.
 const static ^std::string^                ATTRIB_AUTO_POSITION_PLANE                             ^ "auto_position_plane"; ^// v3.0.223.1 Hidden attribute. Boolean type. true^position plane (default), false^skip position plane.
@@ -599,6 +598,7 @@ const static ^std::string^                OPT_MUTE_MX_SOUNDS                    
 const static ^std::string^                OPT_ABORT_MISSION_ON_CRASH                             ^ "abort_mission_on_crash"; ^// options // bool // abort mission on crash
 const static ^std::string^                OPT_ENABLE_DESIGNER_MODE                               ^ "enable_designer_mode"; ^// options // bool //
 const static ^std::string^                OPT_DISPLAY_VISUAL_CUES                                ^ "enable_visual_cues"; ^// options // bool //
+const static ^std::string^                OPT_DISPLAY_UI_CLOCKS                                  ^ "display_ui_clocks"; ^// options // bool //
 const static ^std::string^                OPT_AUTO_HIDE_SHOW_MXPAD                               ^ "auto_hide_mxpad"; ^// v3.0.215.1 auto hide mxpad options
 const static ^std::string^                OPT_AUTO_PAUSE_IN_2D                                   ^ "auto_pause_in_2D"; ^// v3.0.253.9.1
 const static ^std::string^                OPT_AUTO_PAUSE_IN_VR                                   ^ "auto_pause_in_vr"; ^// v3.0.221.6
@@ -1049,10 +1049,12 @@ static const ^std::string^ ELEMENT_GENERAL            ^ "general"; ^// v25.03.3 
 static const ^std::string^ ELEMENT_ROUTE              ^ "route"; ^// v25.03.3 Simbrief
 static const ^std::string^ ELEMENT_ROUTE_IFPS         ^ "route_ifps"; ^// v25.03.3 Simbrief
 static const ^std::string^ ELEMENT_ROUTE_NAVIGRAPH    ^ "route_navigraph"; ^// v25.03.3 Simbrief
+static const ^std::string^ ELEMENT_ICAO_AIRLINE       ^ "icao_airline"; ^// v26.02.1 Simbrief
 static const ^std::string^ ELEMENT_FLIGHT_NUMBER      ^ "flight_number"; ^// v25.03.3 Simbrief
 static const ^std::string^ ELEMENT_ORIGIN             ^ "origin"; ^// v25.03.3 Simbrief
 static const ^std::string^ ELEMENT_ICAO_CODE          ^ "icao_code"; ^// v25.03.3 Simbrief
 static const ^std::string^ ELEMENT_DESTINATION        ^ "destination"; ^// v25.03.3 Simbrief
+static const ^std::string^ ELEMENT_ALTERNATE          ^ "alternate"; ^// v26.02.1 Simbrief
 static const ^std::string^ ELEMENT_PLAN_RWY           ^ "plan_rwy"; ^// v25.03.3 Simbrief
 static const ^std::string^ ELEMENT_TRANS_ALT          ^ "trans_alt"; ^// v25.03.3 Simbrief
 // static const ^std::string^ ATTRIB_FORMATED_NAV_POINTS ^ "formated_nav_points"; ^// v25.03.3 mission creation using FPLN

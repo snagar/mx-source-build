@@ -245,7 +245,7 @@ public:
 
   // -----------------------------------
 
-  void setName(std::string inName) // v3.0.241.8
+  void setName(const std::string& inName) // v3.0.241.8
   {
     if (!trim(inName).empty())
       this->setNodeStringProperty(mxconst::get_ATTRIB_NAME(), inName);
@@ -254,7 +254,6 @@ public:
   // -----------------------------------
   std::string getName() // v3.0.241.8
   {
-
     return Utils::readAttrib(this->node, mxconst::get_ATTRIB_NAME(), "");
   }
 
@@ -262,7 +261,6 @@ public:
   void setLat(double inValue)
   {
     this->setNodeProperty<double>(mxconst::get_ATTRIB_LAT(), inValue);  // v3.0.241.8
-
     lat        = inValue;
     pointState = missionx::mx_point_state::defined;
   }
@@ -450,7 +448,7 @@ public:
 
   // -----------------------------------
 
-  void setSpeedInFts(double inSpeed) // v3.0.202
+  void setSpeedInFts(const double inSpeed) // v3.0.202
   {
     this->speed_fts = static_cast<float> (inSpeed);
     this->speed_kmh = static_cast<float> (inSpeed * missionx::fts2kmh);
@@ -458,7 +456,7 @@ public:
 
   // -----------------------------------
 
-  void setSpeedInKmh(double inSpeed) // v3.0.202
+  void setSpeedInKmh(const double inSpeed) // v3.0.202
   {
     this->speed_kmh = static_cast<float> (inSpeed);
     this->speed_fts = static_cast<float> (inSpeed * missionx::kmh2fts);
@@ -530,42 +528,25 @@ public:
   
   std::string to_string()
   {
-    std::string format;
-    format.clear();
-    IXMLRenderer xmlWriter;
-    format = xmlWriter.getString(this->node);
-    xmlWriter.clear(); // v3.0.241.8
-
-
-    return format;
+    return Utils::xml_get_node_content_as_text(this->node, ""); // v26.02.1
   }
+
   // -----------------------------------
   std::string to_string_with_locals() // This function is maninly internal for low level debug with LR if needed
   {
-    std::string format;
-    format.clear();
-
-    IXMLRenderer xmlWriter;
-    format = xmlWriter.getString(this->node);
-    format = "local xyz=[" + Utils::formatNumber<double>(this->local_x, 8) + "," + Utils::formatNumber<double>(this->local_y, 8) + "," + Utils::formatNumber<double>(this->local_z, 8) + "]" + " - " + format;
-    xmlWriter.clear(); // v3.0.241.8
-
-
+    const std::string format = "local xyz=[" + Utils::formatNumber<double>(this->local_x, 8) + "," + Utils::formatNumber<double>(this->local_y, 8) + "," + Utils::formatNumber<double>(this->local_z, 8) + "]" + " - " + to_string();
     return format;
   }
   // -----------------------------------
 
-  static int slope(int x1, int y1, int x2, int y2)
+  static int slope(const int x1, const int y1, const int x2, const int y2)
   {
     if (x2 - x1 == 0)
-    {
       return 90;
-    }
 
-    double tanx, s;
-    tanx = static_cast<double> ((y2 - y1)) / static_cast<double> ((x2 - x1));
-    s    = atan(tanx);
-    s    = (180 / missionx::PI) * s;
+    const double tanx = static_cast<double>((y2 - y1)) / static_cast<double>((x2 - x1));
+    double s    = atan(tanx);
+    s           = (180 / missionx::PI) * s;
     return static_cast<int> (s);
   }
 

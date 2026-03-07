@@ -633,6 +633,8 @@ public:
 
   typedef struct _flight_leg_info_layer
   {
+    constexpr static int WAYPOINT_MAX_WIDTH_I = 100;
+
     // child layer
     missionx::uiLayer_enum internal_child_layer{ missionx::uiLayer_enum::flight_leg_info }; // holds the inner layers to display in 2D or VR mode. Example: map, inventory or choice layer
 
@@ -754,14 +756,14 @@ public:
     // v3.305.1 Story mode
     typedef struct _mx_story_mode_strct
     {
-      constexpr const static float STORY_TEXT_AREA_HEIGHT_F = 70.0;
+      constexpr static float STORY_TEXT_AREA_HEIGHT_F = 70.0;
 
-      constexpr const static char *HISTORY_BUTTON_LABEL = "Toggle History [||]";
+      constexpr static auto HISTORY_BUTTON_LABEL = "Toggle History [||]";
 
-      constexpr const static ImVec2 upperStoryMode_vec2 = ImVec2 (0.0f, 300.0f);
-      constexpr const static ImVec2 small_img_vec2      = ImVec2 (250.0f, 300.0f);
-      constexpr const static ImVec2 med_img_vec2        = ImVec2 (360.0f, 300.0f);
-      constexpr const static ImVec2 background_img_vec2 = ImVec2 (790.0f, 300.0f); // 870=exact overlap between left and right images. This gives us 10px in addition from left and right
+      constexpr static auto upperStoryMode_vec2 = ImVec2 (0.0f, 300.0f);
+      constexpr static auto small_img_vec2      = ImVec2 (250.0f, 300.0f);
+      constexpr static auto med_img_vec2        = ImVec2 (360.0f, 300.0f);
+      constexpr static auto background_img_vec2 = ImVec2 (790.0f, 300.0f); // 870=exact overlap between left and right images. This gives us 10px in addition from left and right
 
       bool bPressedPause{ false };
       bool bPressedHistory{ false }; // v3.305.2
@@ -816,83 +818,83 @@ public:
 
     missionx::Timer tmPressedClearU, tmPressedClearD, tmPressedClearAll;
 
-    _flight_leg_info_layer ()
+    _flight_leg_info_layer()
     {
-      initNoteMaps ();
-      this->resetItemMove (); // v24.12.2
+      initNoteMaps();
+      this->resetItemMove(); // v24.12.2
     }
 
-    void initNoteMaps ()
+    void initNoteMaps()
     {
-      for (auto enumI = missionx::enums::mx_note_shortField_enum::begin; enumI < missionx::enums::mx_note_shortField_enum::end; enumI = static_cast<missionx::enums::mx_note_shortField_enum> ((size_t)enumI + 1))
+      for (auto enumI = missionx::enums::mx_note_shortField_enum::begin; enumI < missionx::enums::mx_note_shortField_enum::end; enumI = static_cast<missionx::enums::mx_note_shortField_enum>((size_t)enumI + 1))
       {
-#ifdef IBM
-        memcpy_s (mapNoteFieldShort[enumI], sizeof (mapNoteFieldShort[enumI]), "\0", sizeof ("\0"));
-#else
-        memcpy (mapNoteFieldShort[enumI], "\0", sizeof ("\0"));
-#endif
+        #ifdef IBM
+        memcpy_s(mapNoteFieldShort[enumI], sizeof (mapNoteFieldShort[enumI]), "\0", sizeof ("\0"));
+        #else
+        memcpy(mapNoteFieldShort[enumI], "\0", sizeof ("\0"));
+        #endif
       }
-      for (auto enumI = missionx::enums::mx_note_longField_enum::begin; enumI < missionx::enums::mx_note_longField_enum::end; enumI = static_cast<missionx::enums::mx_note_longField_enum> ((size_t)enumI + 1))
+      for (auto enumI = missionx::enums::mx_note_longField_enum::begin; enumI < missionx::enums::mx_note_longField_enum::end; enumI = static_cast<missionx::enums::mx_note_longField_enum>((size_t)enumI + 1))
       {
-#ifdef IBM
-        memcpy_s (mapNoteFieldLong[enumI], sizeof (mapNoteFieldLong[enumI]), "\0", sizeof ("\0"));
-#else
-        memcpy (mapNoteFieldLong[enumI], "\0", sizeof ("\0"));
-#endif
+        #ifdef IBM
+        memcpy_s(mapNoteFieldLong[enumI], sizeof (mapNoteFieldLong[enumI]), "\0", sizeof ("\0"));
+        #else
+        memcpy(mapNoteFieldLong[enumI], "\0", sizeof ("\0"));
+        #endif
       }
     }
 
-    void resetNotesUpperPart ()
+    void resetNotesUpperPart()
     {
-      for (auto enumI = missionx::enums::mx_note_shortField_enum::begin; enumI < missionx::enums::mx_note_shortField_enum::end; enumI = static_cast<missionx::enums::mx_note_shortField_enum> ((size_t)enumI + 1))
+      for (auto enumI = missionx::enums::mx_note_shortField_enum::begin; enumI < missionx::enums::mx_note_shortField_enum::end; enumI = static_cast<missionx::enums::mx_note_shortField_enum>((size_t)enumI + 1))
       {
-#ifdef IBM
-        memcpy_s (mapNoteFieldShort[enumI], sizeof (mapNoteFieldShort[enumI]), "\0", sizeof ("\0"));
-#else
-        memcpy (mapNoteFieldShort[enumI], "\0", sizeof ("\0"));
-#endif
+        #ifdef IBM
+        memcpy_s(mapNoteFieldShort[enumI], sizeof (mapNoteFieldShort[enumI]), "\0", sizeof ("\0"));
+        #else
+        memcpy(mapNoteFieldShort[enumI], "\0", sizeof ("\0"));
+        #endif
       }
 
-#ifdef IBM
-      memcpy_s (mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints], sizeof (mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints]), "\0", sizeof ("\0"));
-      memcpy_s (mapNoteFieldLong[missionx::enums::mx_note_longField_enum::taxi], sizeof (mapNoteFieldLong[missionx::enums::mx_note_longField_enum::taxi]), "\0", sizeof ("\0"));
-#else
-      memcpy (mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints], "\0", sizeof ("\0"));
-      memcpy (mapNoteFieldLong[missionx::enums::mx_note_longField_enum::taxi], "\0", sizeof ("\0"));
-#endif
+      #ifdef IBM
+      memcpy_s(mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints], sizeof (mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints]), "\0", sizeof ("\0"));
+      memcpy_s(mapNoteFieldLong[missionx::enums::mx_note_longField_enum::taxi], sizeof (mapNoteFieldLong[missionx::enums::mx_note_longField_enum::taxi]), "\0", sizeof ("\0"));
+      #else
+      memcpy(mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints], "\0", sizeof ("\0"));
+      memcpy(mapNoteFieldLong[missionx::enums::mx_note_longField_enum::taxi], "\0", sizeof ("\0"));
+      #endif
     }
 
-    void resetNotesLowerPart ()
+    void resetNotesLowerPart()
     {
-      for (auto enumI = missionx::enums::mx_note_longField_enum::begin; enumI < missionx::enums::mx_note_longField_enum::end; enumI = static_cast<missionx::enums::mx_note_longField_enum> ((size_t)enumI + 1))
+      for (auto enumI = missionx::enums::mx_note_longField_enum::begin; enumI < missionx::enums::mx_note_longField_enum::end; enumI = static_cast<missionx::enums::mx_note_longField_enum>((size_t)enumI + 1))
       {
         if ((enumI == missionx::enums::mx_note_longField_enum::waypoints) || (enumI == missionx::enums::mx_note_longField_enum::taxi))
           continue;
 
-#ifdef IBM
-        memcpy_s (mapNoteFieldLong[enumI], sizeof (mapNoteFieldLong[enumI]), "\0", sizeof ("\0"));
-#else
-        memcpy (mapNoteFieldLong[enumI], "\0", sizeof ("\0"));
-#endif
+        #ifdef IBM
+        memcpy_s(mapNoteFieldLong[enumI], sizeof (mapNoteFieldLong[enumI]), "\0", sizeof ("\0"));
+        #else
+        memcpy(mapNoteFieldLong[enumI], "\0", sizeof ("\0"));
+        #endif
       }
     }
 
-    void setNoteShortField (missionx::enums::mx_note_shortField_enum inEnum, std::string inValue)
+    void setNoteShortField(missionx::enums::mx_note_shortField_enum inEnum, std::string inValue)
     {
-#ifdef IBM
-      memcpy_s (mapNoteFieldShort[inEnum], SHORT_FIELD_SIZE - 1, inValue.c_str (), SHORT_FIELD_SIZE - 1);
-#else
-      memcpy (mapNoteFieldShort[inEnum], inValue.c_str (), SHORT_FIELD_SIZE - 1);
-#endif
+      #ifdef IBM
+      memcpy_s(mapNoteFieldShort[inEnum], SHORT_FIELD_SIZE - 1, inValue.c_str(), SHORT_FIELD_SIZE - 1);
+      #else
+      memcpy(mapNoteFieldShort[inEnum], inValue.c_str(), SHORT_FIELD_SIZE - 1);
+      #endif
     }
 
-    void setNoteLongField (missionx::enums::mx_note_longField_enum inEnum, std::string inValue)
+    void setNoteLongField(missionx::enums::mx_note_longField_enum inEnum, std::string inValue)
     {
-#ifdef IBM
-      memcpy_s (mapNoteFieldLong[inEnum], LONG_FIELD_SIZE - 1, inValue.c_str (), LONG_FIELD_SIZE - 1);
-#else
-      memcpy (mapNoteFieldLong[inEnum], inValue.c_str (), LONG_FIELD_SIZE - 1);
-#endif
+      #ifdef IBM
+      memcpy_s(mapNoteFieldLong[inEnum], LONG_FIELD_SIZE - 1, inValue.c_str(), LONG_FIELD_SIZE - 1);
+      #else
+      memcpy(mapNoteFieldLong[inEnum], inValue.c_str(), LONG_FIELD_SIZE - 1);
+      #endif
     }
 
   } mx_flight_leg_info_layer;
@@ -1389,6 +1391,7 @@ private:
   void        add_ui_auto_load_checkbox (const missionx::mx_window_actions &inActionToExecute = missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS); // v25.04.2
   int         add_ui_two_option_buttons (bool &bOptA, bool &bOptB, const int &returnValueForA, const int &returnValueForB);
   int         add_ui_dynamic_options_buttons (const int &inout_picked_lbl, std::map<int, std::string> &map_lbl_and_values);
+  static void        add_ui_os_and_xp_clock_times (const float &in_x_pos);
   void        callNavData (std::string_view inICAO, bool bNavigatingFromOtherLayer); // v24.03.1
   const dataref_const dc;
 };
