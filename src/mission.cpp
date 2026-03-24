@@ -473,8 +473,8 @@ missionx::Mission::Mission()
   data_manager::missionState  = missionx::mx_mission_state_enum::mission_undefined;
 
   // v25.03.1 read preference file.
-  missionx::data_manager::xMissionxProperties_node = missionx::system_actions::load_plugin_options(); // v3.309.1 switched to return the XML node
-  system_actions::pluginSetupOptions.node         = missionx::data_manager::xMissionxProperties_node.getChildNode(mxconst::get_ELEMENT_SETUP().c_str()).deepCopy();
+  data_manager::xMissionxProperties_node  = missionx::system_actions::load_plugin_options(); // v3.309.1 switched to return the XML node
+  system_actions::pluginSetupOptions.node = missionx::data_manager::xMissionxProperties_node.getChildNode(mxconst::get_ELEMENT_SETUP().c_str()).deepCopy();
 
   // initialize Mission-X Log file
   const bool bCycleLogFiles = Utils::getNodeText_type_1_5<bool>(system_actions::pluginSetupOptions.node, mxconst::get_OPT_CYCLE_LOG_FILES(), true); // v25.03.1
@@ -1444,10 +1444,10 @@ missionx::Mission::initFlightLegDisplayObjects()
 
     // ==== New Code Logic ===
     // If instance is not being displayed and the obj3D has an instanced element <display_object> with attribute "instance_name=ins_name"
-    if ( ! mxUtils::isElementExists(data_manager::map3dInstances, instName) && mxUtils::isElementExists(data_manager::map3dObj, obj_template_name))
+    if ( ! mxUtils::isElementExists(data_manager::map3dInstances, instName) && mxUtils::isElementExists(data_manager::st_map3d_obj, obj_template_name))
     {
       missionx::obj3d instanced_obj3d;
-      instanced_obj3d.node = data_manager::map3dObj[obj_template_name].node.deepCopy(); // copy the node
+      instanced_obj3d.node = data_manager::st_map3d_obj[obj_template_name].node.deepCopy(); // copy the node
 
       // parse_node will read all relevant information // 
       instanced_obj3d.setNodeStringProperty_drillDown(mxconst::get_ATTRIB_INSTANCE_NAME(), instName, instanced_obj3d.node, mxconst::get_ELEMENT_OBJ3D()); // v3.0.241.1 add the instance name to the new node so parse_node will read all relevant information 
@@ -1483,7 +1483,7 @@ missionx::Mission::initFlightLegDisplayObjects()
 
         Utils::addElementToMap(data_manager::map3dInstances, instName, instanced_obj3d);
         // copy g_reference from 3D Object so instanced object will be created correctly
-        data_manager::map3dInstances[instName].g_object_ref = data_manager::map3dObj[obj_template_name].g_object_ref;
+        data_manager::map3dInstances[instName].g_object_ref = data_manager::st_map3d_obj[obj_template_name].g_object_ref;
 
 
         // validate link_task
@@ -1565,14 +1565,10 @@ missionx::Mission::flc()
   // v3.0.219.9
   this->flc_threads(); // if we are optimizing the apt.dat files, this should monitor the thread and join it once it is finished its work
 
-  
   data_manager::shared_clock_time.xp_hours = dataref_manager::getLocalHour();
   data_manager::shared_clock_time.xp_min   = dataref_manager::getLocalMinutes();
   data_manager::shared_clock_time.xp_sec   = dataref_manager::getLocalTimeSec();
-  //auto        now                          = std::chrono::system_clock::now();
-  //std::time_t t                            = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   data_manager::shared_clock_time.os_time  = fmt::format("{:%H:%M}", fmt::localtime(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())));
-
 
 
   // display Visual Cues only if we are in Designer mode and Cue option is enabled
@@ -1607,6 +1603,7 @@ missionx::Mission::flc()
     // mxconst::QMM flc
     if (data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running && data_manager::missionState < missionx::mx_mission_state_enum::stop_all_async_processes) // v3.0.154 fix messages end before broadcast to user
     {
+
       // v3.0.303.7 Added 
       data_manager::smPropSeedValues.setStringProperty(mxconst::get_EXT_MX_CURRENT_LEG(), data_manager::currentLegName);
 
@@ -3488,11 +3485,24 @@ missionx::Mission::flc_3d_objects(mxProperties& inSmPropSeedValues)
 
 
     // check if reached flightLeg
-    if (!data_manager::currentLegName.empty() && data_manager::currentLegName.compare(instObj.getPropKeepUntilLeg()) == 0) // v3.303.11 added ignore logic if currentLegName is empty, This occurs at the end of the flight
+    const std::string inst_attrib_keep_until_leg = instObj.getPropKeepUntilLeg();
+    const std::string created_in_leg_s = instObj.get_instance_created_in_leg(); // v26.03.1 Will be used to evaluate the "keep_until" attribute
+    const bool current_leg_name_is_different_than_created_instance_leg_name = (!created_in_leg_s.empty() && created_in_leg_s != data_manager::currentLegName )? true : false;
+
+    // We will hide the instance, if we reached the leg name in "keep_until_leg" or if the value is: "next_leg" and the creation_leg is different from the current_leg_name.
+    if (!data_manager::currentLegName.empty() &&
+       ( (data_manager::currentLegName == instObj.getPropKeepUntilLeg())
+         ||
+         ( current_leg_name_is_different_than_created_instance_leg_name
+           && inst_attrib_keep_until_leg != created_in_leg_s
+           && inst_attrib_keep_until_leg == mxconst::get_ATTRIB_NEXT_LEG())
+       )
+    ) // v3.303.11 added ignore logic if currentLegName is empty, This occurs at the end of the flight
     {
       reachedFlightLegToHide = true;
       eraseInstanceList.push_back(instName);
     }
+
 
     // v3.0.207.4 check if to hide // v3.0.241.7 extended
     hideInstance = Utils::readBoolAttrib(instObj.node, mxconst::get_ATTRIB_HIDE(), false);
@@ -3537,12 +3547,12 @@ missionx::Mission::flc_3d_objects(mxProperties& inSmPropSeedValues)
       }
 
       // Create an instance reference
-      instObj.create_instance(); // create an instance from object reference
+      instObj.create_instance(missionx::data_manager::currentLegName); // create an instance from object reference
       if (instObj.g_instance_ref) // if instance was created then
       {
         // v3.0.207.2 // for moving objects get_next_point() which represent the destination
         if (instObj.obj3dType == obj3d::obj3d_type::moving_obj)
-          instObj.initPathCycle_new();
+          instObj.init_path_cycle();
 
         // check if we need to probe terrain
         if (instObj.displayCoordinate.getElevationInFeet() == 0.0) // do we need Terrain Probing?
@@ -3735,24 +3745,26 @@ missionx::Mission::drawCallback(const XPLMDrawingPhase& inPhase, const int inIsB
     } // draw only in XP11
     #endif
 
-    // v3.0.207.1 // calculate all moving objects if not empty
-    if (!data_manager::listDisplayMoving3dInstances.empty() &&
-        !missionx::dataref_manager::isSimPause() ) // v3.0.207.3 do not calculate/progress when in pause - PROBLEM - movement might be jerkey of timer calculates clock time and not running time
-    {
-      for (const auto &instName : data_manager::listDisplayMoving3dInstances) // loop over each instance
-      {
-        if (missionx::data_manager::map3dInstances[instName].mvStat.isMoving) // v3.0.207.4 - check moving flag. If we control movment also from script we will need to calculate elapsed time when stopping movement and then resuming it.
-        {
 
-          missionx::data_manager::map3dInstances[instName].calcPosOfMovingObject();   // v3.0.207.2
-          missionx::data_manager::map3dInstances[instName].positionInstancedObject(); // v3.0.207.2
 
-          if (!missionx::data_manager::map3dInstances[instName].mvStat.flag_wait_for_next_flc)
-            missionx::data_manager::map3dInstances[instName].checkAreWeThereYet(); // v3.0.253.6 are we there yet ?
-
-        }
-      }
-    }
+    // // v3.0.207.1 // calculate all moving objects if not empty
+    // if (!data_manager::listDisplayMoving3dInstances.empty() &&
+    //     !missionx::dataref_manager::isSimPause() ) // v3.0.207.3 do not calculate/progress when in pause - PROBLEM - movement might be jerkey of timer calculates clock time and not running time
+    // {
+    //   for (const auto &instName : data_manager::listDisplayMoving3dInstances) // loop over each instance
+    //   {
+    //     if (missionx::data_manager::map3dInstances[instName].mvStat.isMoving) // v3.0.207.4 - check moving flag. If we control movment also from script we will need to calculate elapsed time when stopping movement and then resuming it.
+    //     {
+    //
+    //       missionx::data_manager::map3dInstances[instName].calcPosOfMovingObject();   // v3.0.207.2
+    //       missionx::data_manager::map3dInstances[instName].positionInstancedObject(); // v3.0.207.2
+    //
+    //       if (!missionx::data_manager::map3dInstances[instName].mvStat.flag_wait_for_next_flc)
+    //         missionx::data_manager::map3dInstances[instName].checkAreWeThereYet(); // v3.0.253.6 are we there yet ?
+    //
+    //     }
+    //   }
+    // }
     // v3.0.224.2 add support to draw callback script calls
     if (data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running && !data_manager::draw_script.empty())
     {
@@ -5394,7 +5406,7 @@ missionx::Mission::flcPRE()
           data_manager::map3dInstances[inst_name].node.deleteAttribute(mxconst::get_ATTRIB_LINK_TASK().c_str());
           data_manager::map3dInstances[inst_name].node.deleteAttribute(mxconst::get_PROP_LINK_OBJECTIVE_NAME().c_str());
 
-          data_manager::map3dInstances[inst_name].create_instance();
+          data_manager::map3dInstances[inst_name].create_instance(missionx::data_manager::currentLegName);
           data_manager::map3dInstances[inst_name].positionInstancedObject();
         }
         else
@@ -5952,9 +5964,9 @@ missionx::Mission::flc_check_success()
           if (Utils::isElementExists(data_manager::map3dInstances, instName))
             data_manager::map3dInstances[instName].node.updateAttribute("false", mxconst::get_ATTRIB_DISPLAY_AT_POST_LEG_B().c_str(), mxconst::get_ATTRIB_DISPLAY_AT_POST_LEG_B().c_str());
 
-          if (Utils::isElementExists(data_manager::map3dObj, objName))
+          if (Utils::isElementExists(data_manager::st_map3d_obj, objName))
           {
-            auto dNode = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode(data_manager::map3dObj[objName].node, mxconst::get_ELEMENT_DISPLAY_OBJECT(), mxconst::get_ATTRIB_INSTANCE_NAME(), instName, false);
+            auto dNode = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode(data_manager::st_map3d_obj[objName].node, mxconst::get_ELEMENT_DISPLAY_OBJECT(), mxconst::get_ATTRIB_INSTANCE_NAME(), instName, false);
             if (!dNode.isEmpty())
               dNode.updateAttribute("false", mxconst::get_ATTRIB_DISPLAY_AT_POST_LEG_B().c_str(), mxconst::get_ATTRIB_DISPLAY_AT_POST_LEG_B().c_str());
           }

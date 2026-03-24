@@ -75,7 +75,7 @@ IXMLNode     data_manager::xmlLoadedFMS;
 
 
 // 3d objects
-std::map<std::string, obj3d> data_manager::map3dObj;                     // v3.0.200
+std::map<std::string, obj3d> data_manager::st_map3d_obj;                     // v3.0.200
 std::map<std::string, obj3d> data_manager::map3dInstances;               // v3.0.200 //[name, obj3d instance] // Holds static and moving 3D Objects. We keep different list of 3D Objects in listDisplayStatic3dInstances and listDisplayMoving3dInstances
 std::set<std::string>                  data_manager::listDisplayStatic3dInstances; // v3.0.200 //name, // Holds static 3D Objects
 std::set<std::string>                  data_manager::listDisplayMoving3dInstances; // v3.0.202 //name, // Holds moving 3D Objects
@@ -2335,7 +2335,7 @@ data_manager::stopMission()
   smPropSeedValues.clear();
 
   map3dInstances.clear();
-  map3dObj.clear();
+  st_map3d_obj.clear();
   listDisplayStatic3dInstances.clear();
   listDisplayMoving3dInstances.clear();
 
@@ -3404,8 +3404,8 @@ data_manager::saveCheckpoint(IXMLNode& inParent)
   {
     IXMLNode x3dRoot      = inParent.addChild (   mxconst::get_PROP_OBJECTS_ROOT().c_str () );
     IXMLNode x3dTemplates = x3dRoot.addChild(mxconst::get_ELEMENT_OBJECT_TEMPLATES().c_str());
-    for ( const auto &key : map3dObj | std::views::keys )
-      map3dObj[key].saveCheckpoint(x3dTemplates);
+    for ( const auto &key : st_map3d_obj | std::views::keys )
+      st_map3d_obj[key].saveCheckpoint(x3dTemplates);
 
     IXMLNode x3dInstances = x3dRoot.addChild(mxconst::get_PROP_OBJECTS_INSTANCES().c_str());
     for ( const auto &key : map3dInstances | std::views::keys )
@@ -4270,7 +4270,7 @@ data_manager::loadAll3dObjectFiles()
   std::string objName;
   objName.clear();
 
-  for ( auto &obj : map3dObj | std::views::values )
+  for ( auto &obj : st_map3d_obj | std::views::values )
   {
     bool isVirtual = false;
 
@@ -4315,9 +4315,9 @@ data_manager::loadAll3dObjectFiles()
     for (auto& [key, instObj] : map3dInstances)
     {
       const auto obj3d_template_name = instObj.getName();
-      if (mxUtils::isElementExists(map3dObj, obj3d_template_name))
+      if (mxUtils::isElementExists(st_map3d_obj, obj3d_template_name))
       {
-        instObj.g_object_ref = map3dObj[obj3d_template_name].g_object_ref;
+        instObj.g_object_ref = st_map3d_obj[obj3d_template_name].g_object_ref;
       }
     }
   }
@@ -4719,13 +4719,13 @@ data_manager::parse_leg_dynamic_messages(Waypoint& inLeg)
 
 
 void
-data_manager::parse_leg_DisplayObjects(Waypoint& leg)
+data_manager::parse_leg_DisplayObjects(Waypoint& inLeg)
 {
   ////////////////////////////
   // read 3d object instances
 
   // v3.305.3
-  auto cLogNode = Utils::xml_get_node_pointer_from_node_tree_by_attrib_name_and_value_IXMLNode(xLoadInfoNode.node, mxconst::get_ELEMENT_LEG(), mxconst::get_ATTRIB_NAME(), leg.getName());
+  auto cLogNode = Utils::xml_get_node_pointer_from_node_tree_by_attrib_name_and_value_IXMLNode(xLoadInfoNode.node, mxconst::get_ELEMENT_LEG(), mxconst::get_ATTRIB_NAME(), inLeg.getName());
   assert(cLogNode.isEmpty() == false && fmt::format("[{}] XML Log Node must not be empty.", __func__).c_str());
 
 
@@ -4743,11 +4743,11 @@ data_manager::parse_leg_DisplayObjects(Waypoint& leg)
                                                                                                            { mxconst::get_ATTRIB_KEEP_UNTIL_LEG(), mx_property_type::MX_STRING },
                                                                                                            { mxconst::get_ATTRIB_HEADING_PSI(), mx_property_type::MX_DOUBLE } };
 
-  int nChilds2 = leg.node.nChildNode();
+  int nChilds2 = inLeg.node.nChildNode();
   for (int i2 = 0; i2 < nChilds2; ++i2)
   {
     mx_base_node instProp; // will hold specific properties for a 3D instance
-    instProp.node = leg.node.getChildNode(i2).deepCopy(); // v3.303.11 fetch next <display_node>
+    instProp.node = inLeg.node.getChildNode(i2).deepCopy(); // v3.303.11 fetch next <display_node>
     if (!instProp.node.isEmpty())
     {
       const std::string tag_s = instProp.node.getName();
@@ -4768,7 +4768,7 @@ data_manager::parse_leg_DisplayObjects(Waypoint& leg)
       std::string obj3d_name    = Utils::readAttrib(instProp.node,  mxconst::get_ATTRIB_NAME(), "");
       std::string link_task     = Utils::readAttrib(instProp.node, mxconst::get_ATTRIB_LINK_TASK(), "");
 
-      if ( obj3d_name.empty() ||  !map3dObj.contains(obj3d_name) )
+      if ( obj3d_name.empty() ||  !data_manager::st_map3d_obj.contains(obj3d_name) )
       {
         // v3.305.3
         const std::string txt = fmt::format("The <display_object>: '{}' is missing a reference node in the <object_templates> root node. Skipping instance.", obj3d_name);
@@ -4873,28 +4873,28 @@ data_manager::parse_leg_DisplayObjects(Waypoint& leg)
       bool flag_found = false;
       if (Utils::readAttrib(instProp.node, mxconst::get_ATTRIB_LAT(), "").empty())
       {
-        const std::string obj_lat = Utils::xml_get_attribute_value_drill(map3dObj[obj3d_name].node, mxconst::get_ATTRIB_LAT(), flag_found, mxconst::get_ELEMENT_LOCATION());
+        const std::string obj_lat = Utils::xml_get_attribute_value_drill(st_map3d_obj[obj3d_name].node, mxconst::get_ATTRIB_LAT(), flag_found, mxconst::get_ELEMENT_LOCATION());
         if (flag_found)
           instProp.setNodeProperty<double>(mxconst::get_ATTRIB_LAT(), mxUtils::stringToNumber<double>(obj_lat));
       }
       if (Utils::readAttrib(instProp.node, mxconst::get_ATTRIB_LONG(), "").empty())
       {
         flag_found                 = false;
-        const std::string obj_long = Utils::xml_get_attribute_value_drill(map3dObj[obj3d_name].node, mxconst::get_ATTRIB_LONG(), flag_found, mxconst::get_ELEMENT_LOCATION());
+        const std::string obj_long = Utils::xml_get_attribute_value_drill(st_map3d_obj[obj3d_name].node, mxconst::get_ATTRIB_LONG(), flag_found, mxconst::get_ELEMENT_LOCATION());
         if (flag_found)
           instProp.setNodeProperty<double>(mxconst::get_ATTRIB_LONG(), mxUtils::stringToNumber<double>(obj_long));
       }
 
       // add instance to 3D Object as a sub-element for future use (if the instance is not part of it, yet).
-      if (map3dObj[obj3d_name].node.getChildNodeWithAttribute(mxconst::get_ELEMENT_DISPLAY_OBJECT().c_str(), mxconst::get_ATTRIB_INSTANCE_NAME().c_str(), instance_name.c_str()).isEmpty())
-        map3dObj[obj3d_name].node.addChild(instProp.node.deepCopy()); // add display objects element to the 3D Object as a future instance
+      if (st_map3d_obj[obj3d_name].node.getChildNodeWithAttribute(mxconst::get_ELEMENT_DISPLAY_OBJECT().c_str(), mxconst::get_ATTRIB_INSTANCE_NAME().c_str(), instance_name.c_str()).isEmpty())
+        st_map3d_obj[obj3d_name].node.addChild(instProp.node.deepCopy()); // add display objects element to the 3D Object as a future instance
 
       #ifndef RELEASE
       Log::logMsg(fmt::format("[{}] Added DisplayObject: {}\n", __func__, Utils::xml_get_node_content_as_text(instProp.node) ) );
       #endif // !RELEASE
 
       // add instance to Flight Leg set
-      Utils::addElementToMap(leg.list_displayInstances, instance_name, obj3d_name); // v3.305.1 converted list to a map
+      Utils::addElementToMap(inLeg.list_displayInstances, instance_name, obj3d_name); // v3.305.1 converted list to a map
     }
 
   } // end loop <display_object>

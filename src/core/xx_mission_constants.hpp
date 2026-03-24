@@ -35,8 +35,8 @@ constexpr static const int MX_FEATURES_VERSION = 20250501; //20241212; //2023091
 #define SPECIAL_BUILD ""
 
 inline constexpr static auto PLUGIN_VER_MAJOR                  = "26"; // year
-inline constexpr static auto PLUGIN_VER_MINOR                  = "02"; // month
-inline constexpr static auto PLUGIN_VER_SUB                    = "1"; // sub-version
+inline constexpr static auto PLUGIN_VER_MINOR                  = "03"; // month
+inline constexpr static auto PLUGIN_VER_SUB                    = "1-test"; // sub-version
 inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 
@@ -106,7 +106,9 @@ inline static constexpr float seconds2minutes_f = 0.0166f; // v3.305.3
 inline static constexpr float fpm2ms  = 0.005f; // fpm * feetPerMin2MeterSec = meters per seconds
 
 inline static constexpr float kmh2fts = 0.911344f; // v3.0.202
+inline static constexpr float kmh2mts = 0.27777778f; // v26.03.1
 inline static constexpr float fts2kmh = 1.09728f;  // v3.0.202
+inline static constexpr float mts2kmh = 3.6f;  // v3.0.202
 
 
 inline static constexpr int   OUT_OF_BOUNDING_ALERT_TIMER_SEC = 30; // 30 sec. alert will broadcast every 30 seconds

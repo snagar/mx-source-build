@@ -1077,8 +1077,6 @@ missionx::read_mission_file::read3DObjects(ITCXMLNode& xParent)
   if (xObjTemplate.isEmpty())
     return; // skip rest of code
 
-
-  ITCXMLNode x3dObj;
   ITCXMLNode xConditions;
   ITCXMLNode xLocation;
   ITCXMLNode xTilt;
@@ -1090,7 +1088,7 @@ missionx::read_mission_file::read3DObjects(ITCXMLNode& xParent)
   nChilds1 = xObjTemplate.nChildNode(mxconst::get_ELEMENT_OBJ3D().c_str());
   for (int i1 = 0; i1 < nChilds1; i1++)
   {
-    x3dObj = xObjTemplate.getChildNode(mxconst::get_ELEMENT_OBJ3D().c_str(), i1);
+    ITCXMLNode x3dObj = xObjTemplate.getChildNode(mxconst::get_ELEMENT_OBJ3D().c_str(), i1);
 
     missionx::obj3d mission_obj3d;
     mission_obj3d.node = x3dObj.deepCopy();
@@ -1099,7 +1097,7 @@ missionx::read_mission_file::read3DObjects(ITCXMLNode& xParent)
     {
 
       // add to global 3D map
-      Utils::addElementToMap(data_manager::map3dObj, mission_obj3d.getName(), mission_obj3d);
+      Utils::addElementToMap(data_manager::st_map3d_obj, mission_obj3d.getName(), mission_obj3d);
 
       // print formatted data
       Log::logMsgNone(mission_obj3d.to_string());
@@ -1999,7 +1997,7 @@ missionx::read_mission_file::loadSavePoint()
       Utils::cloneMap(mapInventories, missionx::data_manager::mapInventories);       // v3.0.213.7
       // Utils::cloneMap(mapItemBlueprints, missionx::data_manager::mapItemBlueprints); // v3.0.213.7
 
-      Utils::cloneMap(map3dLoaded, missionx::data_manager::map3dObj);                // v3.0.213.7
+      Utils::cloneMap(map3dLoaded, missionx::data_manager::st_map3d_obj);                // v3.0.213.7
       Utils::cloneMap(map3dInstancesLoaded, missionx::data_manager::map3dInstances); // v3.0.213.7
       Utils::cloneMap(mapFailureTimers, missionx::data_manager::mapFailureTimers);   // v3.0.253.7
 
@@ -2027,7 +2025,7 @@ missionx::read_mission_file::loadSavePoint()
       missionx::data_manager::mapInventories    = mapInventories;    // v3.0.213.7
       // missionx::data_manager::mapItemBlueprints = mapItemBlueprints; // v3.0.213.7
 
-      missionx::data_manager::map3dObj         = map3dLoaded;          // v3.0.213.7
+      missionx::data_manager::st_map3d_obj         = map3dLoaded;          // v3.0.213.7
       missionx::data_manager::map3dInstances   = map3dInstancesLoaded; // v3.0.213.7
       missionx::data_manager::mapFailureTimers = mapFailureTimers;     // v3.0.253.7
 

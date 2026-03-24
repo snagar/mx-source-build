@@ -26,7 +26,10 @@ void    MissionMenuHandler (void *inMenuRef, void *inItemRef);
 void    OptionsMenuHandler (void *inMenuRef, void *inItemRef); // v3.0.219.12+
 void    toolsMenuHandler (void *inMenuRef, void *inItemRef); // v3.0.219.15rc3.4
 
+// XPLMFlightLoopID cb_draw_flightloop_id;
 static float pluginCallback (float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void *inRefcon); // missionx FLC
+static float pluginCallback_draw (float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void *inRefcon); // missionx FLC
+
 int          drawCallback_missionx (XPLMDrawingPhase inPhase, int inIsBefore, void *inRefcon); // draw dlc = draw loop call
 
 /* ******** Commands ************************** */
@@ -135,7 +138,16 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
   #endif
 
   // register callbacks
-  XPLMRegisterFlightLoopCallback (pluginCallback, -1, nullptr);
+  XPLMRegisterFlightLoopCallback (pluginCallback, -1.0f, nullptr);
+
+  // XPLMCreateFlightLoop_t cb_draw_t;
+  // cb_draw_t.structSize = sizeof (XPLMCreateFlightLoop_t);
+  // cb_draw_t.phase = xplm_FlightLoop_Phase_BeforeFlightModel;
+  // cb_draw_t.callbackFunc = pluginCallback_draw;
+  // cb_draw_t.refcon = nullptr;
+  // cb_draw_flightloop_id = XPLMCreateFlightLoop (&cb_draw_t);
+  XPLMRegisterFlightLoopCallback (pluginCallback_draw, -1.0f, nullptr);
+
   const dataref_const dc;
   missionx::data_manager::xplane_using_modern_driver_b = XPLMGetDatai (dc.dref_xplane_using_modern_driver_b);
 
@@ -501,6 +513,7 @@ XPluginEnable (void)
   Log::logMsg ("Plug-in Enabling\n");
   // register callbacks
   XPLMRegisterFlightLoopCallback (pluginCallback, -1, nullptr);
+  XPLMRegisterFlightLoopCallback (pluginCallback_draw, -1, nullptr);
   if (missionx::data_manager::xplane_using_modern_driver_b)
   {
     XPLMRegisterDrawCallback (missionx::drawCallback_missionx, mission.getDrawingPhase (), 0, nullptr); // for XP12
@@ -537,6 +550,7 @@ XPluginDisable (void)
   // debug
   Log::logMsg ("[Mission-X] Plug-in Disabling");
   // unregister callbacks
+  XPLMUnregisterFlightLoopCallback (pluginCallback_draw, nullptr);
   XPLMUnregisterFlightLoopCallback (pluginCallback, nullptr);
   XPLMUnregisterDrawCallback (missionx::drawCallback_missionx, xplm_Phase_Objects, 0, nullptr);
   XPLMUnregisterDrawCallback (missionx::drawCallback_missionx, xplm_Phase_Window, 0, nullptr);
@@ -796,6 +810,38 @@ pluginCallback (float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlight
 
   return 1.0f;
 }
+
+// -----------------------------------
+
+float pluginCallback_draw(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void* inRefcon)
+{
+
+  // v26.03.1 Draw Moving 3D Objects
+  if (data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
+  {
+    if (!data_manager::listDisplayMoving3dInstances.empty() && !missionx::dataref_manager::isSimPause() )
+    {
+      bool b_3d_moving_object_exists = false;
+      for (const auto &instName : data_manager::listDisplayMoving3dInstances) // loop over each instance
+      {
+        if (missionx::data_manager::map3dInstances[instName].mvStat.isMoving) // v3.0.207.4 - check moving flag. If we control movment also from script we will need to calculate elapsed time when stopping movement and then resuming it.
+        {
+          b_3d_moving_object_exists = true;
+          missionx::data_manager::map3dInstances[instName].cb_calc_pos_of_the_moving_object(inElapsedSinceLastCall, inElapsedTimeSinceLastFlightLoop, inCounter );
+
+          if (!missionx::data_manager::map3dInstances[instName].mvStat.flag_wait_for_next_flc)
+            missionx::data_manager::map3dInstances[instName].check_are_we_there_yet(); // v3.0.253.6 are we there yet ?
+
+        }
+      }
+
+      if (b_3d_moving_object_exists)
+        return 0.1f; // calculate every frame
+    }
+  }
+  return 1.0f;
+}
+
 
 // -----------------------------------
 

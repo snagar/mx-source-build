@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <fstream>
 namespace fs = std::filesystem;
 
 #include "writeLogThread.h"

@@ -4,9 +4,6 @@
 
 #include <queue>
 #include <string>
-#include <fstream>
-#include <iomanip>
-#include <stdio.h>
 #include <chrono>
 #include <thread>
 #include <mutex>
@@ -40,8 +37,8 @@ private:
 
     void init()
     {
-      flagIsActive        = false;
-      flagAbortThread     = false;
+      flagIsActive       = false;
+      flagAbortThread    = false;
       flagThreadDoneWork = false;
       dataString.clear();
       mapValues.clear();
@@ -54,8 +51,8 @@ private:
 
     std::string getDuration()
     {
-      std::chrono::time_point<std::chrono::steady_clock> end      = std::chrono::steady_clock::now();
-      double                                             duration = (double)std::chrono::duration_cast<std::chrono::seconds>(end - timer).count();
+      const std::chrono::time_point<std::chrono::steady_clock> end      = std::chrono::steady_clock::now();
+      const double                                             duration = static_cast<double>(std::chrono::duration_cast<std::chrono::seconds>(end - timer).count());
 
       duration_s = mxUtils::formatNumber<double>((duration));
       return duration_s;

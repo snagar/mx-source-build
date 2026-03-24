@@ -52,7 +52,7 @@ public:
   // core
   XPLMObjectRef   g_object_ref;
   XPLMInstanceRef g_instance_ref;
-  XPLMDrawInfo_t  dr;
+  XPLMDrawInfo_t  dr{};
 
   ///// NODE XML
   IXMLNode xConditions;
@@ -80,16 +80,17 @@ public:
   // Time * Velocity (speed) = Distance (Street)
   typedef struct _mvStat
   {
-    bool isMoving =
-      false; // v3.0.207.4 holds flag if object is in moving state. Static objects never moves. // !! If we control movment also from script we will need to calculate elapsed time when stopping movement and then resuming it. !!
+    bool isMoving = false; // v3.0.207.4 holds flag if object is in moving state. Static objects never moves.
     bool isFirstTime                        = true;  // true: first time we calculate movement
     bool shouldWeRenderObject               = false; // true: render object   false: skip rendering (replace DO & SKIP enums from missionx 2).
     bool hasReachedLastPoint                = false;
     bool hasReachedPointTo                  = false;
     bool time_was_advanced_by_draw_function = false;
-    bool isInRecursiveState                 = false; // when nextPoint() function calls init, it also calls nextPoint() recursivly. We need to know that.
+    bool isInRecursiveState                 = false; // when nextPoint() function calls init, it also calls nextPoint() recursively. We need to know that.
+    bool hasReachedPointTo_need_to_stop  = false; // v26.03.1 If true, then we won't calculate 3D object movement.
+    bool done_init_start_position = false; // v26.03.1 when calling the function: "init_start_position". We use that during "cb" iterations, distinguish the first one.
 
-    int currentPointNo   = 0; // holds the current point on vector. We should deprecate it and use iterators instead
+    int currentPointNo   = 0; // TODO: replace with iterators
     int noOfPointsInPath = 0;
 
     float fps                           = 0.0f; // holds frame per second
@@ -128,13 +129,13 @@ public:
   std::deque<missionx::Point>::iterator itPath;
   std::deque<missionx::Point>::iterator itPathEnd;
 
-  void initPathCycle_new(bool isRecursive = false); // v3.0.253.7
-  void firstTimeInCycle();
-  void CyclePath();
-  void nextPoint_new(); // get next point in path, for moving objects
+  void init_path_cycle(); // v3.0.253.7
+  void init_start_position();
+  // void calculate_position_on_path();
+  void set_next_point(); // get next point in path, for moving objects
   void setNextWaitTimer();
 
-  void checkAreWeThereYet(); // former moveSet()
+  void check_are_we_there_yet(); // former moveSet()
   void calcNewCourseBetweenTwoPointsOnVector();
 
   ////// END Moving Attributes //////////
@@ -152,6 +153,7 @@ public:
 
   // 3D Object related property members
   std::string getPropKeepUntilLeg();
+  std::string get_instance_created_in_leg() const;
   std::string getPropLinkTask();
   std::string getPropLinkToObjectiveName();
   bool        getIsPathNeedToCycle();
@@ -163,9 +165,15 @@ public:
   // Load 3D Object
   static void load_cb(const char* real_path, void* ref);
   // instance members
-  void create_instance();         // create instance from g_object_ref (file reference)
+  // void create_instance();         // create instance from g_object_ref (file reference)
+  void create_instance(const std::string &in_current_leg_name);         // create instance from g_object_ref (file reference)
   void initFpsInfo();             // // v3.0.207.1 get fps information
   void calcPosOfMovingObject();   // v3.0.207.1 // calculate the position of a moving 3D Object
+  void calcPosOfMovingObject(const float & inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter);   // v3.0.207.1 // calculate the position of a moving 3D Object
+  void cb_calc_pos_of_the_moving_object_new_time(const float &inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter);   // v26.03.1 // New calculation of the position of a moving 3D Object
+  void cb_calc_pos_of_the_moving_object(const float &inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter);   // v26.03.1 // New calculation of the position of a moving 3D Object
+  // void cb_calc_pos_of_the_moving_object2_bad(const float &inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter);   // v26.03.1 // New calculation of the position of a moving 3D Object
+
   void positionInstancedObject(); // for moving object we need to calculate position every iteration
 
   std::string getInstanceName();

@@ -386,6 +386,7 @@ const static ^std::string ^ATTRIB_REPLACE_KEEP_UNTIL_LEG                   ^ "re
 const static ^std::string ^ATTRIB_REPLACE_ELEV_ABOVE_GROUND_FT             ^ "replace_elev_above_ground_ft"; ^//  v3.0.217.6
 const static ^std::string ^ATTRIB_REPLACE_DISTANCE_TO_DISPLAY_NM           ^ "replace_distance_to_display_nm"; ^//  v3.0.303.3
 const static ^std::string ^ATTRIB_INSTANCE_NAME                            ^ "instance_name"; ^// unique name for 3D object template
+const static ^std::string ^ATTRIB_INSTANCE_CREATED_IN_LEG                  ^ "instance_created_in_leg"; ^// v26.03.1 holds the leg name the instance was created in. Used in flc_3d_objects() function. Part of "keep_until" logic code.
 const static ^std::string ^ATTRIB_TARGET_MARKER_B                          ^ "target_marker_b"; ^// v3.0.241.7 mark an instance as a target marker. Can be helful to show hide these specific markers in random MED missions
 const static ^std::string ^ATTRIB_OBJ3D_TYPE                               ^ "obj_type";
 const static ^std::string ^ATTRIB_IS_VIRTUAL_B                             ^ "is_virtual_b"; ^// v3.0.255.4 - if yes then treat the file name as a virtual library object to load and do not use the mission folder "obj" folder.

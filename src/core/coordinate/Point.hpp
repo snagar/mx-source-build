@@ -46,6 +46,7 @@ private:
 
   std::string err;
 
+  float speed_mts; // meters in seconds
   float speed_fts; // feet in seconds
   float speed_kmh; // km in hour
 
@@ -452,14 +453,19 @@ public:
   {
     this->speed_fts = static_cast<float> (inSpeed);
     this->speed_kmh = static_cast<float> (inSpeed * missionx::fts2kmh);
+    this->speed_mts = static_cast<float> (this->speed_kmh * missionx::kmh2mts);
+
+    this->setNodeProperty<double>(mxconst::get_ATTRIB_SPEED_KMH(), this->speed_kmh);
   }
 
   // -----------------------------------
 
   void setSpeedInKmh(const double inSpeed) // v3.0.202
   {
+    this->setNodeProperty<double>(mxconst::get_ATTRIB_SPEED_KMH(), inSpeed);
     this->speed_kmh = static_cast<float> (inSpeed);
     this->speed_fts = static_cast<float> (inSpeed * missionx::kmh2fts);
+    this->speed_mts = static_cast<float> (inSpeed * missionx::kmh2mts);
   }
 
   // -----------------------------------
@@ -469,6 +475,10 @@ public:
   // -----------------------------------
 
   float getSpeedFts() { return (this->speed_fts >= 0.0f) ? this->speed_fts : 0.0f; }
+
+  // -----------------------------------
+  // v26.03.1
+  float getSpeedMts() { return (this->speed_mts >= 0.0f) ? this->speed_mts : 0.0f; }
 
   // -----------------------------------
 
@@ -945,17 +955,14 @@ public:
       const std::string elev_ft_s         = Utils::readAttrib(this->node, mxconst::get_ATTRIB_ELEV_FT(), "");
 
       if (!above_ground_ft_s.empty() && mxUtils::stringToNumber<double>(above_ground_ft_s, 2) != 0.0)
-      {
         return ( fabs(mxUtils::stringToNumber<double>(above_ground_ft_s) * missionx::feet2meter)) + terrain_elev_mt;
-      }
-      else if(elev_ft_s.empty())
-        return terrain_elev_mt + added_elev_mt;
-      else
-      {
-        const double elev_mt_d = mxUtils::stringToNumber<double>(elev_ft_s) * missionx::feet2meter;
-        return (elev_mt_d > this->terrain_elev_mt) ? elev_mt_d : this->terrain_elev_mt;
-      }
 
+      // fallback if no elevation data was given. We take the terrain elevation and add "1000 feet" to it.
+      if(elev_ft_s.empty())
+        return terrain_elev_mt + added_elev_mt;
+
+      const double elev_mt_d = mxUtils::stringToNumber<double>(elev_ft_s) * missionx::feet2meter;
+      return (elev_mt_d > this->terrain_elev_mt) ? elev_mt_d : this->terrain_elev_mt;
     };
 
     this->setElevationMt(lmbda_get_elevation_in_meters());

@@ -936,7 +936,7 @@ public:
   static bool                flag_inhibit_mxpad_when_entering_inventory_and_airborne; // v24.06.1
 
   static std::map<std::string, missionx::Message> mapMessages;
-  static std::map<std::string, missionx::obj3d>   map3dObj;                     // v3.0.200 //name, obj3d template// Holds static 3D Objects and should also hold moving objects (in future)
+  static std::map<std::string, missionx::obj3d>   st_map3d_obj;                     // v3.0.200 //name, obj3d template// Holds static 3D Objects and should also hold moving objects (in future)
   static std::map<std::string, missionx::obj3d>   map3dInstances;               // v3.0.200 //name, obj3d instance // Holds static 3D Objects and should also hold moving objects (in future)
   static std::set<std::string>                    listDisplayStatic3dInstances; // v3.0.200 //instance name,  // pointer to instance object. When loading savepoint, we need to add pointers based on "canBeDisplayed" property.
   static std::set<std::string> listDisplayMoving3dInstances; // v3.0.202 //moving instance name,  // Only holds the instance name, the data is stored in map3dInstances // if this map is empty we can unregister draw callback.

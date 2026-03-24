@@ -4556,7 +4556,7 @@ Use at your own risk!!!
       if (ImGui::Button ("3D Objects Templates"))
       {
         Log::printHeaderToLog ("In Memory: 3D Object Templates");
-        std::for_each (missionx::data_manager::map3dObj.begin (), missionx::data_manager::map3dObj.end (), [] (std::pair<const std::string, missionx::obj3d> &pair) { Log::logMsg (fmt::format ("3D Object Name: \"{}\"\n{}", pair.first, Utils::xml_get_node_content_as_text (pair.second.node))); });
+        std::for_each (missionx::data_manager::st_map3d_obj.begin (), missionx::data_manager::st_map3d_obj.end (), [] (std::pair<const std::string, missionx::obj3d> &pair) { Log::logMsg (fmt::format ("3D Object Name: \"{}\"\n{}", pair.first, Utils::xml_get_node_content_as_text (pair.second.node))); });
       }
       ImGui::SameLine (0.0f, 10.0f);
       if (ImGui::Button ("Instanced 3D Objects"))
@@ -4614,10 +4614,10 @@ WinImguiBriefer::draw_home_layer ()
   int columns = static_cast<int> (mxUiGetContentWidth () / VEC2_BTN_SIZE.x);
   columns     = columns < 1 ? 1 : columns;
 
-#ifdef ADD_TEST_BUTTON01
+  #ifdef ADD_TEST_BUTTON01
   add_test_button (mx_flc_pre_command::special_test_place_instance, "Place an Instance", "Place an instance at camera location.\nWe use file: \"Dir_Flood_Sm.obj\"");
   ImGui::Separator ();
-#endif
+  #endif
 
   ImGui::Columns (columns, "draw_home_layer_columns", false);
   {
