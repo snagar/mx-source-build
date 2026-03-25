@@ -1392,6 +1392,7 @@ private:
   int         add_ui_two_option_buttons (bool &bOptA, bool &bOptB, const int &returnValueForA, const int &returnValueForB);
   int         add_ui_dynamic_options_buttons (const int &inout_picked_lbl, std::map<int, std::string> &map_lbl_and_values);
   static void        add_ui_os_and_xp_clock_times (const float &in_x_pos);
+  static void        add_ui_fps ();
   void        callNavData (std::string_view inICAO, bool bNavigatingFromOtherLayer); // v24.03.1
   const dataref_const dc;
 };

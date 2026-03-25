@@ -1,3 +1,4 @@
+#include "../dataref_manager.h"
 #ifdef IBM
 #define _USE_MATH_DEFINES
 #include <cmath>
@@ -6,6 +7,7 @@
 #include <assert.h>
 #include <fcntl.h>
 
+// #define DEBUG_MOVE
 namespace missionx
 {
 XPLMDataRef obj3d::fps_dref;
@@ -19,15 +21,11 @@ missionx::obj3d::init_path_cycle()
   mvStat.noOfPointsInPath    = static_cast<int>(deqPoints.size());
   mvStat.currentPointNo      = 0;
   mvStat.hasReachedLastPoint = false;
+  mvStat.timeOnVector      = 0.0f;
 
   if (mvStat.noOfPointsInPath > 0)
   {
     this->init_start_position();
-
-    // if (isRecursive)
-    //   this->calculate_position_on_path();
-    // else
-    //   this->init_start_position();
   }
   else
   {
@@ -53,7 +51,7 @@ missionx::obj3d::init_start_position()
   #endif
   mvStat.lastZuluStartDraw = 0.0f;
   mvStat.timeOnVector      = 0.0f;
-  mvStat.done_init_start_position = true; // v26.03.1
+  // mvStat.done_init_start_position = true; // v26.03.1
 
   itPathEnd = this->deqPoints.end();
   if (this->g_instance_ref) // is object visible
@@ -111,40 +109,6 @@ missionx::obj3d::init_start_position()
 
   } // end if rendering instance
 }
-
-// -----------------------------------------------------------------
-
-// void
-// missionx::obj3d::calculate_position_on_path()
-// {
-//   // Warning: we should never call initPathCycle() function from this function
-//
-//   if (mvStat.noOfPointsInPath > 1)
-//   {
-//     this->itPath = (++this->deqPoints.begin());      // v3.0.253.6 we should start from the second and not the first point in path
-//     mvStat.pointFrom.clone(this->displayCoordinate); // v3.0.207.3 for smooth transition.
-//
-//     mvStat.isFirstTime = false;
-//     if (this->itPath->getSpeedKmh() > 0.0)
-//       mvStat.pointFrom.setSpeedInKmh(this->itPath->getSpeedKmh()); // v3.0.253.7 fix speed not inherited correctly due to the fact we clone from "displayCoordinate"
-//     mvStat.pointFrom.calcSimLocalData();
-//
-//     // validate we have not reached end
-//     if (itPathEnd == itPath)
-//       mvStat.hasReachedLastPoint = true;
-//
-//
-//     mvStat.pointTo.clone((*itPath)); // Copy the next point definitions to "pointTo", this includes the speed
-//
-//     // Calculate new statistic info ( S = V * T )
-//     calcNewCourseBetweenTwoPointsOnVector(); // We call it twice in this function, once for the first time and now when there is point transition
-//     mvStat.hasReachedPointTo = false;
-//     mvStat.isMoving          = true; // flag object as moving
-//
-//     // set wait timer
-//     this->setNextWaitTimer();
-//   }
-// }
 
 // -----------------------------------------------------------------
 
@@ -534,69 +498,29 @@ void obj3d::create_instance(const std::string& in_current_leg_name)
 }
 
 
-void
-missionx::obj3d::initFpsInfo()
-{
-  mvStat.fps = XPLMGetDataf(fps_dref);
-  if (mvStat.fps == 0.0f) // prevent divide by zero
-    mvStat.fps = 1.0f;
-
-  mvStat.fps = 1.0f / mvStat.fps;
-
-  mvStat.deltaTime = mvStat.currentTimeElapsed_sinceStart - mvStat.oldTimeElapsed;
-}
-
-
-void
-missionx::obj3d::calcPosOfMovingObject()
-{
-  static double elevInMeter = 0.0;
-  missionx::Timer::wasXplaneTimerEnded(mvStat.timer); // v3.0.223.5 - changed function to use X-Plane timer and not the regular timer, since the regular one does not work well with draw callback only good for day time considerations.
-
-  this->mvStat.deltaTime = missionx::Timer::getDeltaBetween2TimeFragments(this->mvStat.timer);
-  if (this->mvStat.deltaTime > 0.0f && this->mvStat.fps > 0.0f)
-  {
-    mvStat.currentTimeElapsed_sinceStart = mvStat.timer.getSecondsPassed_for_TotalXP();
-    this->mvStat.timeOnVector            = ((1 / this->mvStat.fps) + mvStat.currentTimeElapsed_sinceStart) / this->mvStat.secondsToReachTarget; // secondsToReachTarget was timeToReachTarget
-  }
-
-  this->mvStat.time_was_advanced_by_draw_function = true;
-  this->setCoordinateOnVector(this->mvStat.pointFrom, this->mvStat.pointTo, this->mvStat.timeOnVector);
-  this->displayCoordinate.calcSimLocalData();
-
-  elevInMeter = this->getElevInMeter();
-
-  if (elevInMeter == 0 || elevInMeter < mvStat.groundElevation)
-    this->calculate_real_elevation_to_DisplayCoordination();
-}
-
-void
-missionx::obj3d::calcPosOfMovingObject(const float & inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter)
-{
-  static double elevInMeter = 0.0;
-  missionx::Timer::wasXplaneTimerEnded(mvStat.timer); // v3.0.223.5 - changed function to use X-Plane timer and not the regular timer, since the regular one does not work well with draw callback only good for day time considerations.
-
-  // this->mvStat.deltaTime = missionx::Timer::getDeltaBetween2TimeFragments(this->mvStat.timer);
-  this->mvStat.deltaTime = inElapsedSinceLastCall;
-  if (this->mvStat.deltaTime > 0.0f && this->mvStat.fps > 0.0f)
-  {
-    // mvStat.currentTimeElapsed_sinceStart = mvStat.timer.getSecondsPassed_for_TotalXP();
-    mvStat.currentTimeElapsed_sinceStart += inElapsedSinceLastCall;
-    this->mvStat.timeOnVector            = ((1 / this->mvStat.fps) + mvStat.currentTimeElapsed_sinceStart) / this->mvStat.secondsToReachTarget; // secondsToReachTarget was timeToReachTarget
-  }
-
-  this->mvStat.time_was_advanced_by_draw_function = true;
-  // this->setCoordinateOnVector(this->mvStat.pointFrom, this->mvStat.pointTo, this->mvStat.timeOnVector);
-  this->setCoordinateOnVector(this->mvStat.pointFrom, this->mvStat.pointTo, mvStat.currentTimeElapsed_sinceStart);
-  this->displayCoordinate.calcSimLocalData();
-
-  elevInMeter = this->getElevInMeter();
-
-  if (elevInMeter == 0 || elevInMeter < mvStat.groundElevation)
-    this->calculate_real_elevation_to_DisplayCoordination();
-}
-
-
+// void
+// missionx::obj3d::calcPosOfMovingObject()
+// {
+//   static double elevInMeter = 0.0;
+//   missionx::Timer::wasXplaneTimerEnded(mvStat.timer); // v3.0.223.5 - changed function to use X-Plane timer and not the regular timer, since the regular one does not work well with draw callback only good for day time considerations.
+//
+//   this->mvStat.deltaTime = missionx::Timer::getDeltaBetween2TimeFragments(this->mvStat.timer);
+//   if (this->mvStat.deltaTime > 0.0f && this->mvStat.fps > 0.0f)
+//   {
+//     mvStat.currentTimeElapsed_sinceStart = mvStat.timer.getSecondsPassed_for_TotalXP();
+//     this->mvStat.timeOnVector            = ((1 / this->mvStat.fps) + mvStat.currentTimeElapsed_sinceStart) / this->mvStat.secondsToReachTarget; // secondsToReachTarget was timeToReachTarget
+//   }
+//
+//   this->mvStat.time_was_advanced_by_draw_function = true;
+//   this->setCoordinateOnVector(this->mvStat.pointFrom, this->mvStat.pointTo, this->mvStat.timeOnVector);
+//   this->displayCoordinate.calcSimLocalData();
+//
+//   elevInMeter = this->getElevInMeter();
+//
+//   if (elevInMeter == 0 || elevInMeter < mvStat.groundElevation)
+//     this->calculate_real_elevation_to_DisplayCoordination();
+// }
+//
 // void
 // missionx::obj3d::cb_calc_pos_of_the_moving_object2_bad(const float &inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter)
 // {
@@ -774,174 +698,177 @@ missionx::obj3d::calcPosOfMovingObject(const float & inElapsedSinceLastCall, con
 // }
 
 
+// void
+// missionx::obj3d::cb_calc_pos_of_the_moving_object_good(const float &inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter)
+// {
+//   // do we need to calculate anything ?
+//   if (this->mvStat.hasReachedPointTo_need_to_stop)
+//   {
+//     #ifndef RELEASE
+//     Log::logMsg( fmt::format ("[{}]--> dist_lat: {:.7f}, dist_lon: {:.7f}), mvStat.hasReachedLastPoint: {}.", __func__, this->displayCoordinate.getLat(), this->displayCoordinate.getLon(), mvStat.hasReachedLastPoint ) );
+//     #endif
+//
+//     return;
+//   }
+//
+//   // 1. Calculate direction/distance to target
+//   this->mvStat.hasReachedPointTo = false;
+//
+//   const auto dist_lat = this->mvStat.pointTo.getLat() - this->displayCoordinate.getLat();
+//   const auto dist_lon = this->mvStat.pointTo.getLon() - this->displayCoordinate.getLon();
+//   auto dAlt     = this->mvStat.pointTo.getElevationInFeet() - this->displayCoordinate.getElevationInFeet();
+//   const auto dPitch   = this->mvStat.pointTo.getPitch() - this->displayCoordinate.getPitch();
+//   const auto dRoll    = this->mvStat.pointTo.getRoll() - this->displayCoordinate.getRoll();
+//   const auto dHeading = this->mvStat.pointTo.getHeading() - this->displayCoordinate.getHeading();
+//
+//   const auto distance_to_point_in_meters = this->mvStat.pointTo.calcDistanceBetween2Points(this->displayCoordinate, mx_units_of_measure::meter); // debug
+//   const double total_dist_deg = sqrt(dist_lat * dist_lat + dist_lon * dist_lon);
+//   if (total_dist_deg < 0.00001) {
+//     this->mvStat.hasReachedPointTo = true; // We reached destination
+//   }
+//
+//
+//   if (this->mvStat.hasReachedPointTo && this->mvStat.noOfPointsInPath > 1)
+//   {
+//     this->mvStat.currentPointNo++;
+//     // Check if we reached the end and if we need to cycle
+//     if (this->mvStat.currentPointNo > this->mvStat.noOfPointsInPath)
+//     {
+//       this->mvStat.hasReachedLastPoint = true;
+//
+//       if (this->getIsPathNeedToCycle())
+//       {
+//         this->mvStat.currentPointNo = 1;
+//         this->mvStat.hasReachedLastPoint = false;
+//       this->mvStat.hasReachedPointTo_need_to_stop = false;
+//       }
+//       else
+//       {
+//         this->mvStat.timer.stop();
+//         this->mvStat.currentPointNo = 0;
+//         this->mvStat.hasReachedPointTo_need_to_stop = true;
+//
+//       }
+//     }
+//
+//     // ---------------------------
+//     // Assign new points from path
+//     // ---------------------------
+//     if (this->mvStat.currentPointNo > 0 && this->mvStat.currentPointNo <= this->mvStat.noOfPointsInPath)
+//     {
+//
+//       // auto temp_position = this->displayCoordinate;
+//
+//       // clone the data from the next point, but retain the original lat/lon
+//       // auto info_next_point = Point::readLocationElement( mvStat.pointTo.node );
+//
+//       // this->mvStat.pointFrom.clone(mvStat.pointTo);
+//       // this->mvStat.pointFrom.clone(this->displayCoordinate);
+//
+//       this->displayCoordinate.setSpeedInKmh(mvStat.pointTo.getSpeedKmh());
+//       this->displayCoordinate.setAdjustHeading(mvStat.pointTo.getAdjustHeading());
+//       this->mvStat.pointFrom.clone(this->displayCoordinate);
+//
+//       this->mvStat.pointTo.clone(this->deqPoints[this->mvStat.currentPointNo - 1]); // deque points start in Zero "0"
+//
+//       this->displayCoordinate.parse_node();
+//       // this->mvStat.pointFrom.clone(this->displayCoordinate);
+//
+//       // handle heading_adjust by forcing the heading of the new "pointTo" to have the value of the "current heading" + "adjust_heading"
+//       // if (!info_next_point.adjust_heading.empty() && mxUtils::is_number(info_next_point.adjust_heading))
+//       // {
+//       //   this->mvStat.pointTo.setHeading(this->mvStat.pointFrom.getAdjustHeading() + this->displayCoordinate.getHeading());
+//       //   #ifndef RELEASE
+//       //   const auto debug_adjust_heading = this->mvStat.pointFrom.getAdjustHeading();
+//       //   #endif
+//       // }
+//
+//       this->setNextWaitTimer();
+//
+//       #ifndef RELEASE
+//       Log::logMsg( fmt::format("\t\t\t===> New Point: {}\n\n\n", mvStat.currentPointNo) );
+//       #endif
+//     }
+//   } // end handling if we reached point on path
+//
+//   // ---------------
+//   // Eval waitTimer
+//   // ---------------
+//   missionx::Timer::wasXplaneTimerEnded(mvStat.waitTimer);
+//
+//   // Wait timer on path change. Evaluate each call, since we also need to start the movement timer
+//   if (!this->mvStat.waitTimer.isRunning() && mvStat.timer.getState() == missionx::mx_timer_state::timer_not_set) // check if timer started
+//   {
+//     missionx::Timer::start(mvStat.timer, 0, "obj3d_timer_" + this->getName()); // SecondsToRun=0 => "run continuously"
+//     mvStat.lastZuluStartDraw = 0.0f;
+//   }
+//
+//   #ifndef RELEASE
+//   Log::logMsg( fmt::format ("[{}]--> dist_lat: {:.7f}, dist_lon: {:.7f}), total_dist_deg: {:.7f}, mvStat.hasReachedPointTo: {}. WaitTimer: {:.2f}, Timer: {:.2f}", __func__, dist_lat, dist_lon, total_dist_deg, mvStat.hasReachedPointTo, mvStat.waitTimer.getSecondsPassed_for_TotalXP(), mvStat.timer.getSecondsPassed_for_TotalXP()) );
+//   #endif
+//
+//
+//   // -----------------------------------------------
+//   // Calculate and assign the new relative position
+//   // -----------------------------------------------
+//   if (!this->mvStat.waitTimer.isRunning() && !this->mvStat.hasReachedLastPoint )
+//   {
+//     // evaluate moving timer
+//     missionx::Timer::wasXplaneTimerEnded(mvStat.timer);
+//
+//     // 2. Move in world coordinates (Degrees)
+//     // Approx conversion: 1 degree latitude = 111,000 meters
+//     const double deg_per_sec = this->displayCoordinate.getSpeedMts() / 111000.0;
+//     const double move_step = deg_per_sec * inElapsedSinceLastCall;
+//
+//     double ratio = move_step / total_dist_deg;
+//     if (ratio > 1.0)
+//       ratio = 1.0;
+//
+//     this->displayCoordinate.setLat(this->displayCoordinate.lat += dist_lat * ratio);
+//     this->displayCoordinate.setLon(this->displayCoordinate.lon += dist_lon * ratio);
+//     this->displayCoordinate.setElevationFt(this->displayCoordinate.getElevationInFeet() + dAlt * ratio);
+//     // this->displayCoordinate.setHeading(this->displayCoordinate.getHeading() + dHeading * ratio);
+//     this->displayCoordinate.setPitch(this->displayCoordinate.getPitch() + dPitch * ratio);
+//     this->displayCoordinate.setRoll(this->displayCoordinate.getRoll() + dRoll * ratio);
+//
+//     this->displayCoordinate.calcSimLocalData();
+//     this->positionInstancedObject();
+//
+//     #ifndef RELEASE
+//     Log::logMsg( fmt::format ("[{}] {}, f.ratio: {:.3f}, speed: {:.2f}mts, t.dist: {:.7f}, dist: {:.3f}mt,  displayCoordinate: ({:.7f}/{:.7f} : el: {:.2f}ft, dAlt:{:.4f}ft, r.dAlt: {:.4f}, pi: {:.2f}deg, roll: {:.2f}deg)"
+//                , __func__, this->getInstanceName(), ratio, this->displayCoordinate.getSpeedMts()
+//                , total_dist_deg, distance_to_point_in_meters
+//                , this->displayCoordinate.lat, this->displayCoordinate.lon
+//                , this->displayCoordinate.getElevationInFeet(), dAlt, dAlt * ratio
+//                , this->displayCoordinate.getPitch(), this->displayCoordinate.getRoll()) );
+//     #endif
+//   }
+//
+//
+// }
+
+
+
 void
 missionx::obj3d::cb_calc_pos_of_the_moving_object(const float &inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter)
 {
-  // do we need to calculate anything ?
-  if (this->mvStat.hasReachedPointTo_need_to_stop)
-  {
-    #ifndef RELEASE
-    Log::logMsg( fmt::format ("[{}]--> dist_lat: {:.7f}, dist_lon: {:.7f}), mvStat.hasReachedLastPoint: {}.", __func__, this->displayCoordinate.getLat(), this->displayCoordinate.getLon(), mvStat.hasReachedLastPoint ) );
-    #endif
+  // The following function will calculate position using time between inElapsedSinceLastCall
 
-    return;
-  }
-
-  // 1. Calculate direction/distance to target
-  this->mvStat.hasReachedPointTo = false;
-
-  const auto dist_lat = this->mvStat.pointTo.getLat() - this->displayCoordinate.getLat();
-  const auto dist_lon = this->mvStat.pointTo.getLon() - this->displayCoordinate.getLon();
-  auto dAlt     = this->mvStat.pointTo.getElevationInFeet() - this->displayCoordinate.getElevationInFeet();
-  const auto dPitch   = this->mvStat.pointTo.getPitch() - this->displayCoordinate.getPitch();
-  const auto dRoll    = this->mvStat.pointTo.getRoll() - this->displayCoordinate.getRoll();
-  const auto dHeading = this->mvStat.pointTo.getHeading() - this->displayCoordinate.getHeading();
-
-  const auto distance_to_point_in_meters = this->mvStat.pointTo.calcDistanceBetween2Points(this->displayCoordinate, mx_units_of_measure::meter); // debug
-  const double total_dist_deg = sqrt(dist_lat * dist_lat + dist_lon * dist_lon);
-  if (total_dist_deg < 0.00001) {
-    this->mvStat.hasReachedPointTo = true; // We reached destination
-  }
-
-
-  if (this->mvStat.hasReachedPointTo && this->mvStat.noOfPointsInPath > 1)
-  {
-    this->mvStat.currentPointNo++;
-    // Check if we reached the end and if we need to cycle
-    if (this->mvStat.currentPointNo > this->mvStat.noOfPointsInPath)
-    {
-      this->mvStat.hasReachedLastPoint = true;
-
-      if (this->getIsPathNeedToCycle())
-      {
-        this->mvStat.currentPointNo = 1;
-        this->mvStat.hasReachedLastPoint = false;
-      this->mvStat.hasReachedPointTo_need_to_stop = false;
-      }
-      else
-      {
-        this->mvStat.timer.stop();
-        this->mvStat.currentPointNo = 0;
-        this->mvStat.hasReachedPointTo_need_to_stop = true;
-
-      }
-    }
-
-    // ---------------------------
-    // Assign new points from path
-    // ---------------------------
-    if (this->mvStat.currentPointNo > 0 && this->mvStat.currentPointNo <= this->mvStat.noOfPointsInPath)
-    {
-
-      // auto temp_position = this->displayCoordinate;
-
-      // clone the data from the next point, but retain the original lat/lon
-      // auto info_next_point = Point::readLocationElement( mvStat.pointTo.node );
-
-      // this->mvStat.pointFrom.clone(mvStat.pointTo);
-      // this->mvStat.pointFrom.clone(this->displayCoordinate);
-
-      this->displayCoordinate.setSpeedInKmh(mvStat.pointTo.getSpeedKmh());
-      this->displayCoordinate.setAdjustHeading(mvStat.pointTo.getAdjustHeading());
-      this->mvStat.pointFrom.clone(this->displayCoordinate);
-
-      this->mvStat.pointTo.clone(this->deqPoints[this->mvStat.currentPointNo - 1]); // deque points start in Zero "0"
-
-      this->displayCoordinate.parse_node();
-      // this->mvStat.pointFrom.clone(this->displayCoordinate);
-
-      // handle heading_adjust by forcing the heading of the new "pointTo" to have the value of the "current heading" + "adjust_heading"
-      // if (!info_next_point.adjust_heading.empty() && mxUtils::is_number(info_next_point.adjust_heading))
-      // {
-      //   this->mvStat.pointTo.setHeading(this->mvStat.pointFrom.getAdjustHeading() + this->displayCoordinate.getHeading());
-      //   #ifndef RELEASE
-      //   const auto debug_adjust_heading = this->mvStat.pointFrom.getAdjustHeading();
-      //   #endif
-      // }
-
-      this->setNextWaitTimer();
-
-      #ifndef RELEASE
-      Log::logMsg( fmt::format("\t\t\t===> New Point: {}\n\n\n", mvStat.currentPointNo) );
-      #endif
-    }
-  } // end handling if we reached point on path
-
-  // ---------------
-  // Eval waitTimer
-  // ---------------
-  missionx::Timer::wasXplaneTimerEnded(mvStat.waitTimer);
-
-  // Wait timer on path change. Evaluate each call, since we also need to start the movement timer
-  if (!this->mvStat.waitTimer.isRunning() && mvStat.timer.getState() == missionx::mx_timer_state::timer_not_set) // check if timer started
-  {
-    missionx::Timer::start(mvStat.timer, 0, "obj3d_timer_" + this->getName()); // SecondsToRun=0 => "run continuously"
-    mvStat.lastZuluStartDraw = 0.0f;
-  }
-
-  #ifndef RELEASE
-  Log::logMsg( fmt::format ("[{}]--> dist_lat: {:.7f}, dist_lon: {:.7f}), total_dist_deg: {:.7f}, mvStat.hasReachedPointTo: {}. WaitTimer: {:.2f}, Timer: {:.2f}", __func__, dist_lat, dist_lon, total_dist_deg, mvStat.hasReachedPointTo, mvStat.waitTimer.getSecondsPassed_for_TotalXP(), mvStat.timer.getSecondsPassed_for_TotalXP()) );
+  #ifndef DEBUG_MOVE
+  Log::logMsg( fmt::format ("[{}] {} => inElapsedSinceLastCall: {:.5f}, inElapsedTimeSinceLastFlightLoop: {:.5f}, inCounter: {}", __func__, this->getInstanceName(), inElapsedSinceLastCall, inElapsedTimeSinceLastFlightLoop, inCounter ));
   #endif
 
 
-  // -----------------------------------------------
-  // Calculate and assign the new relative position
-  // -----------------------------------------------
-  if (!this->mvStat.waitTimer.isRunning() && !this->mvStat.hasReachedLastPoint )
-  {
-    // evaluate moving timer
-    missionx::Timer::wasXplaneTimerEnded(mvStat.timer);
-
-    // 2. Move in world coordinates (Degrees)
-    // Approx conversion: 1 degree latitude = 111,000 meters
-    const double deg_per_sec = this->displayCoordinate.getSpeedMts() / 111000.0;
-    const double move_step = deg_per_sec * inElapsedSinceLastCall;
-
-    double ratio = move_step / total_dist_deg;
-    if (ratio > 1.0)
-      ratio = 1.0;
-
-    this->displayCoordinate.setLat(this->displayCoordinate.lat += dist_lat * ratio);
-    this->displayCoordinate.setLon(this->displayCoordinate.lon += dist_lon * ratio);
-    this->displayCoordinate.setElevationFt(this->displayCoordinate.getElevationInFeet() + dAlt * ratio);
-    // this->displayCoordinate.setHeading(this->displayCoordinate.getHeading() + dHeading * ratio);
-    this->displayCoordinate.setPitch(this->displayCoordinate.getPitch() + dPitch * ratio);
-    this->displayCoordinate.setRoll(this->displayCoordinate.getRoll() + dRoll * ratio);
-
-    this->displayCoordinate.calcSimLocalData();
-    this->positionInstancedObject();
-
-    #ifndef RELEASE
-    Log::logMsg( fmt::format ("[{}] {}, f.ratio: {:.3f}, speed: {:.2f}mts, t.dist: {:.7f}, dist: {:.3f}mt,  displayCoordinate: ({:.7f}/{:.7f} : el: {:.2f}ft, dAlt:{:.4f}ft, r.dAlt: {:.4f}, pi: {:.2f}deg, roll: {:.2f}deg)"
-               , __func__, this->getInstanceName(), ratio, this->displayCoordinate.getSpeedMts()
-               , total_dist_deg, distance_to_point_in_meters
-               , this->displayCoordinate.lat, this->displayCoordinate.lon
-               , this->displayCoordinate.getElevationInFeet(), dAlt, dAlt * ratio
-               , this->displayCoordinate.getPitch(), this->displayCoordinate.getRoll()) );
-    #endif
-  }
-
-
-}
-
-
-
-void
-missionx::obj3d::cb_calc_pos_of_the_moving_object_new_time(const float &inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter)
-{
   // do we need to calculate anything ?
   if (this->mvStat.hasReachedPointTo_need_to_stop)
   {
-    #ifndef RELEASE
+    #ifndef DEBUG_MOVE
     Log::logMsg( fmt::format ("[{}]--> dist_lat: {:.7f}, dist_lon: {:.7f}), mvStat.hasReachedLastPoint: {}.", __func__, this->displayCoordinate.getLat(), this->displayCoordinate.getLon(), mvStat.hasReachedLastPoint ) );
     #endif
 
     return;
   }
-
-  // 1. Calculate direction/distance to target
-  // this->mvStat.hasReachedPointTo = false;
-
 
   // Are we there ?
   mvStat.hasReachedPointTo = (fabs(this->displayCoordinate.getLat() - mvStat.pointFrom.getLat()) >= fabs(mvStat.pointTo.getLat() - mvStat.pointFrom.getLat())
@@ -952,7 +879,9 @@ missionx::obj3d::cb_calc_pos_of_the_moving_object_new_time(const float &inElapse
   if (this->mvStat.hasReachedPointTo && this->mvStat.noOfPointsInPath > 1)
   {
     this->mvStat.currentPointNo++;
-    // Check if we reached the end and if we need to cycle
+    mvStat.timeOnVector = 0.0f;
+
+    // Check if we reached the end of the path, and if we need to cycle
     if (this->mvStat.currentPointNo > this->mvStat.noOfPointsInPath)
     {
       this->mvStat.hasReachedLastPoint = true;
@@ -961,7 +890,7 @@ missionx::obj3d::cb_calc_pos_of_the_moving_object_new_time(const float &inElapse
       {
         this->mvStat.currentPointNo = 1;
         this->mvStat.hasReachedLastPoint = false;
-      this->mvStat.hasReachedPointTo_need_to_stop = false;
+        this->mvStat.hasReachedPointTo_need_to_stop = false;
       }
       else
       {
@@ -980,14 +909,18 @@ missionx::obj3d::cb_calc_pos_of_the_moving_object_new_time(const float &inElapse
       // clone the data from the next point, but retain the original lat/lon
       this->displayCoordinate.setSpeedInKmh(mvStat.pointTo.getSpeedKmh());
       this->displayCoordinate.setAdjustHeading(mvStat.pointTo.getAdjustHeading());
+
       this->mvStat.pointFrom.clone(this->displayCoordinate);
 
       this->mvStat.pointTo.clone(this->deqPoints[this->mvStat.currentPointNo - 1]); // deque points start in Zero "0...(N-1)"
 
       this->displayCoordinate.parse_node();
+      this->mvStat.pointFrom.setSpeedInKmh(this->displayCoordinate.getSpeedKmh());
 
 
       this->mvStat.currentTimeElapsed_sinceStart = 0.0f;
+      this->calcNewCourseBetweenTwoPointsOnVector (); // init: "mvStat.secondsToReachTarget" and "mvStat.distanceFromTo_meters"
+
       this->setNextWaitTimer();
 
       #ifndef RELEASE
@@ -1008,7 +941,7 @@ missionx::obj3d::cb_calc_pos_of_the_moving_object_new_time(const float &inElapse
     mvStat.lastZuluStartDraw = 0.0f;
   }
 
-  #ifndef RELEASE
+  #ifndef DEBUG_MOVE
   // Log::logMsg( fmt::format ("[{}]--> dist_lat: {:.7f}, dist_lon: {:.7f}), total_dist_deg: {:.7f}, mvStat.hasReachedPointTo: {}. WaitTimer: {:.2f}, Timer: {:.2f}", __func__, dist_lat, dist_lon, total_dist_deg, mvStat.hasReachedPointTo, mvStat.waitTimer.getSecondsPassed_for_TotalXP(), mvStat.timer.getSecondsPassed_for_TotalXP()) );
   #endif
 
@@ -1016,20 +949,25 @@ missionx::obj3d::cb_calc_pos_of_the_moving_object_new_time(const float &inElapse
   // -----------------------------------------------
   // Calculate and assign the new relative position
   // -----------------------------------------------
-  if (!this->mvStat.waitTimer.isRunning() && !this->mvStat.hasReachedLastPoint )
+  const auto b_we_have_not_reached_last_point_on_path = !this->mvStat.hasReachedLastPoint;
+  if (!this->mvStat.waitTimer.isRunning() && b_we_have_not_reached_last_point_on_path )
   {
+    mvStat.shouldWeRenderObject = true;
+    initFpsInfo();
+
+
     auto debug_time_passed = mvStat.timer.getCumulativeXplaneTimeInSec(); // v26.03.1
 
-    this->calcPosOfMovingObject(inElapsedSinceLastCall, inElapsedTimeSinceLastFlightLoop, inCounter);
+    this->calcPosOfMovingObject(inElapsedSinceLastCall);
     this->displayCoordinate.calcSimLocalData();
     this->positionInstancedObject();
 
-    #ifndef RELEASE
-    Log::logMsg( fmt::format ("[{}] {}, speed: {:.2f}mts, time_passed: {:.4f},  displayCoordinate: ({:.7f}/{:.7f} : el: {:.2f}ft, pi: {:.2f}deg, roll: {:.2f}deg)"
-               , __func__, this->getInstanceName(), this->displayCoordinate.getSpeedMts(), debug_time_passed
-               , this->displayCoordinate.lat, this->displayCoordinate.lon
-               , this->displayCoordinate.getElevationInFeet()
-               , this->displayCoordinate.getPitch(), this->displayCoordinate.getRoll()) );
+    #ifndef DEBUG_MOVE
+    // Log::logMsg( fmt::format ("[{}] {}, speed: {:.2f}mts, time_passed: {:.4f},  displayCoordinate: ({:.7f}/{:.7f} : el: {:.2f}ft, pi: {:.2f}deg, roll: {:.2f}deg)"
+    //            , __func__, this->getInstanceName(), this->displayCoordinate.getSpeedMts(), debug_time_passed
+    //            , this->displayCoordinate.lat, this->displayCoordinate.lon
+    //            , this->displayCoordinate.getElevationInFeet()
+    //            , this->displayCoordinate.getPitch(), this->displayCoordinate.getRoll()) );
     #endif
   }
 
@@ -1038,22 +976,67 @@ missionx::obj3d::cb_calc_pos_of_the_moving_object_new_time(const float &inElapse
 
 
 void
-missionx::obj3d::setCoordinateOnVector(missionx::Point& pointFrom, missionx::Point& pointTo, const float time)
+missionx::obj3d::initFpsInfo()
 {
-  const auto newLat = (pointTo.getLat() - pointFrom.getLat()) * time + pointFrom.getLat();
-  const auto newLon = (pointTo.getLon() - pointFrom.getLon()) * time + pointFrom.getLon();
-  const auto newElev = (pointTo.getElevationInMeters() - pointFrom.getElevationInMeters()) * time + pointFrom.getElevationInMeters();
+  // mvStat.fps = missionx::dataref_manager::get_raw_fps_f();
+  mvStat.fps = XPLMGetDataf(fps_dref);
+  if (mvStat.fps == 0.0f) // prevent divide by zero
+    mvStat.fps = 1.0f;
+
+  mvStat.fps = 1.0f / mvStat.fps;
+
+}
+
+void
+missionx::obj3d::calcPosOfMovingObject(const float & inElapsedSinceLastCall)
+{
+  static double elevInMeter = 0.0;
+  missionx::Timer::wasXplaneTimerEnded(mvStat.timer); // v3.0.223.5 - changed function to use X-Plane timer and not the regular timer, since the regular one does not work well with draw callback only good for day time considerations.
+
+  // this->mvStat.deltaTime = missionx::Timer::getDeltaBetween2TimeFragments(this->mvStat.timer);
+  // this->mvStat.deltaTime = inElapsedSinceLastCall;
+  if (inElapsedSinceLastCall > 0.0f && this->mvStat.fps > 0.0f)
+  {
+    mvStat.currentTimeElapsed_sinceStart += inElapsedSinceLastCall;
+    this->mvStat.timeOnVector            = (mvStat.currentTimeElapsed_sinceStart) / this->mvStat.secondsToReachTarget; // secondsToReachTarget was timeToReachTarget
+  }
+
+  #ifndef DEBUG_MOVE
+  Log::logMsg( fmt::format ("[{}]--> inElapsedSinceLastCall: {:.3f}, currentTimeElapsed_sinceStart: {:.3f} / secondsToReachTarget: {:2f} = timeOnVector: {:.3f}"
+                                   , __func__, inElapsedSinceLastCall, mvStat.currentTimeElapsed_sinceStart
+                                   , mvStat.secondsToReachTarget, mvStat.timeOnVector)
+                                   );
+  #endif
+
+
+  this->mvStat.time_was_advanced_by_draw_function = true;
+  // Calculate Position on vector and set "displayCoordinate"
+  this->setCoordinateOnVector(this->mvStat.pointFrom, this->mvStat.pointTo, mvStat.timeOnVector);
+  this->displayCoordinate.calcSimLocalData();
+
+  elevInMeter = this->getElevInMeter();
+
+  if (elevInMeter == 0 || elevInMeter < mvStat.groundElevation)
+    this->calculate_real_elevation_to_DisplayCoordination();
+}
+
+
+
+void
+missionx::obj3d::setCoordinateOnVector(missionx::Point& pointFrom, missionx::Point& pointTo, const float &in_time_on_vector)
+{
+  const auto newLat = (pointTo.getLat() - pointFrom.getLat()) * in_time_on_vector + pointFrom.getLat();
+  const auto newLon = (pointTo.getLon() - pointFrom.getLon()) * in_time_on_vector + pointFrom.getLon();
+  const auto newElev = (pointTo.getElevationInMeters() - pointFrom.getElevationInMeters()) * in_time_on_vector + pointFrom.getElevationInMeters();
 
   #ifndef RELEASE
   std::string name = this->getName();
 
   Log::logMsg(fmt::format("[{}] setCoordinateOnVector: {}", __func__, this->getName()) );
-  Log::logMsg(fmt::format("[{}] pointTo.getLat({}) - pointFrom.getLat({})) * time({}) + pointFrom.getLat({})", __func__, pointTo.getLat(), pointFrom.getLat(), time, pointFrom.getLat()));
-  Log::logMsg(fmt::format("[{}] pointTo.getLon({}) - pointFrom.getLon({})) * time({}) + pointFrom.getLon({})", __func__, pointTo.getLon(), pointFrom.getLon(), time, pointFrom.getLon()));
+  Log::logMsg(fmt::format("[{}] pointTo.getLat({}) - pointFrom.getLat({})) * time({}) + pointFrom.getLat({})", __func__, pointTo.getLat(), pointFrom.getLat(), in_time_on_vector, pointFrom.getLat()));
+  Log::logMsg(fmt::format("[{}] pointTo.getLon({}) - pointFrom.getLon({})) * time({}) + pointFrom.getLon({})", __func__, pointTo.getLon(), pointFrom.getLon(), in_time_on_vector, pointFrom.getLon()));
   Log::logMsg(fmt::format("[{}] newLat: {} newLon: {}, newElev: {}\n", __func__, newLat, newLon, newElev));
-  // this->displayCoordinate.setLat((pointTo.getLat() - pointFrom.getLat()) * time + pointFrom.getLat());
-  // this->displayCoordinate.setLon((pointTo.getLon() - pointFrom.getLon()) * time + pointFrom.getLon());
-  // this->displayCoordinate.setElevationMt((pointTo.getElevationInMeters() - pointFrom.getElevationInMeters()) * time + pointFrom.getElevationInMeters());
+  Log::logMsg(fmt::format("[{}] newLat: {} newLon: {}, newElev: {}\n", __func__, newLat, newLon, newElev));
 
   #endif
 
@@ -1062,152 +1045,167 @@ missionx::obj3d::setCoordinateOnVector(missionx::Point& pointFrom, missionx::Poi
   this->displayCoordinate.setLon(newLon);
   this->displayCoordinate.setElevationMt(newElev);
 
-  // if (pointTo.adjust_heading == 0) // keep same heading
-  // {
-  //   // do nothing
-  // }
-  // else if (pointTo.adjust_heading > 0)
 
   // Modify heading only if its value is not Zero ("0").
   if (pointTo.adjust_heading > 0)
-    this->displayCoordinate.setHeading((static_cast<double>(pointTo.adjust_heading) * static_cast<double>(time)) + pointFrom.getHeading()); // v3.0.207.5 calculate relative to the adjust heading value
+    this->displayCoordinate.setHeading((static_cast<double>(pointTo.adjust_heading) * static_cast<double>(in_time_on_vector)) + pointFrom.getHeading()); // v3.0.207.5 calculate relative to the adjust heading value
   else if (pointTo.adjust_heading < 0)
-    this->displayCoordinate.setHeading(pointFrom.getHeading() - std::fabs(pointTo.adjust_heading * time)); // v3.0.207.5 calculate relative to the adjust heading value
+    this->displayCoordinate.setHeading(pointFrom.getHeading() - std::fabs(pointTo.adjust_heading * in_time_on_vector)); // v3.0.207.5 calculate relative to the adjust heading value
 
-  this->displayCoordinate.setPitch((pointTo.getPitch() - pointFrom.getPitch()) * time + pointFrom.getPitch());
-  this->displayCoordinate.setRoll((pointTo.getRoll() - pointFrom.getRoll()) * time + pointFrom.getRoll());
+  this->displayCoordinate.setPitch((pointTo.getPitch() - pointFrom.getPitch()) * in_time_on_vector + pointFrom.getPitch());
+  this->displayCoordinate.setRoll((pointTo.getRoll() - pointFrom.getRoll()) * in_time_on_vector + pointFrom.getRoll());
 }
 
 
 void
 missionx::obj3d::check_are_we_there_yet()
 {
-  mvStat.shouldWeRenderObject = false; // we always init with this value
-
-  if (!mvStat.hasReachedLastPoint)
-  {
-    // fetch FPS info
-    initFpsInfo(); // we fetch this every draw callback, so maybe we should deprecate this line
-
-    if (this->isInDisplayList) // if we already display the 3D Object  // former isRendered (v2.x)
-    {
-
-      // first time timer initialization, we use it to calculate movement on vector
-      if (!this->mvStat.waitTimer.isRunning()                                    //  getState() != missionx::mx_timer_state::timer_running
-          && mvStat.timer.getState() == missionx::mx_timer_state::timer_not_set) // check if timer started
-      {
-        missionx::Timer::start(mvStat.timer, 0, "obj3d_timer_" + this->getName()); // SecondsToRun=0 => "run continuously"
-        mvStat.lastZuluStartDraw = 0.0f;
-      }
-
-      // workaround in the "else" of this Condition caused by double call or off-screen pauses like moving screen or weather widget setup etc...
-      if (mvStat.time_was_advanced_by_draw_function)
-      {
-        mvStat.time_was_advanced_by_draw_function = false; // v2.1.0 a15 // reset until next draw will advance timer
-        mvStat.shouldWeRenderObject               = true;  // flag for instance display decision
-
-        if (!mvStat.hasReachedPointTo)
-        {
-
-          if (mvStat.currentTimeElapsed_sinceStart > 0.0f && !mvStat.isFirstTime)
-          {
-            #ifdef DEBUG_MOVE
-            const auto delta_dispAndPrev_lat    = fabs(this->displayCoordinate.getLat() - mvStat.prevPoint.getLat());
-            const auto delta_pointToandPrev_lat = fabs(mvStat.pointTo.getLat() - mvStat.prevPoint.getLat());
-            const auto delta_dispAndPrev_lon    = fabs(this->displayCoordinate.getLon() - mvStat.prevPoint.getLon());
-            const auto delta_pointToandPrev_lon = fabs(mvStat.pointTo.getLon() - mvStat.prevPoint.getLon());
-
-            Log::logMsg("displayCoordinate: " + this->displayCoordinate.format_point_to_savepoint());
-            Log::logMsg("prevPoint: " + this->mvStat.prevPoint.format_point_to_savepoint());
-            Log::logMsg("toPoint: " + this->mvStat.pointTo.format_point_to_savepoint());
-            Log::logMsg("Delta lat Disp-Prev: " + mxUtils::formatNumber<double>(delta_dispAndPrev_lat, 6) + ",  Delta lat To-Prev: " + mxUtils::formatNumber<double>(delta_pointToandPrev_lat, 6));
-            Log::logMsg("Delta lon Disp-Prev: " + mxUtils::formatNumber<double>(delta_dispAndPrev_lon, 6) + ",  Delta lon To-Prev: " + mxUtils::formatNumber<double>(delta_pointToandPrev_lon, 6));
-            Log::logMsg("\n"); // v26.02.1
-            #endif // !RELEASE
-
-            // Are we there ?
-            mvStat.hasReachedPointTo = (fabs(this->displayCoordinate.getLat() - mvStat.prevPoint.getLat()) >= fabs(mvStat.pointTo.getLat() - mvStat.prevPoint.getLat())
-                                        ||
-                                        fabs(this->displayCoordinate.getLon() - mvStat.prevPoint.getLon()) >= fabs(mvStat.pointTo.getLon() - mvStat.prevPoint.getLon()));
-
-            #ifdef DEBUG_MOVE
-            double val1, val2, val3, val4;
-            val1 = fabs(mvStat.pointTo.getLat() - this->displayCoordinate.getLat());
-            val2 = fabs(mvStat.pointTo.getLat() - mvStat.prevPoint.getLat());
-            val3 = fabs(mvStat.pointTo.getLon() - this->displayCoordinate.getLon());
-            val4 = fabs(mvStat.pointTo.getLon() - mvStat.prevPoint.getLon());
-
-            Utils::logMsg("(pointTo.lat-display.lat)=" + Utils::formatNumber<double>(val1) + ", (pointTo.lat-prev.lat)=" + Utils::formatNumber<double>(val2) + ((val1 < val2) ? "[t]" : "[f]") + " | " +
-                          "(pointTo.lon-display.lon)=" + Utils::formatNumber<double>(val3) + ", (pointTo.lon-prev.lon)=" + Utils::formatNumber<double>(val4) + ((val3 < val4) ? "[t]" : "[f]"));
-
-            Utils::logMsg(std::string(" - hasReachedPointTo: ") + ((mvStat.hasReachedPointTo) ? "<< TRUE >>" : "FALSE") + "\n");
-
-            #endif
-
-
-            mvStat.prevPoint.setLat(this->displayCoordinate.getLat());
-            mvStat.prevPoint.setLon(this->displayCoordinate.getLon());
-            mvStat.prevPoint.setElevationMt(this->displayCoordinate.getElevationInMeters());
-            mvStat.prevPoint.timeToWaitOnPoint_sec = this->displayCoordinate.timeToWaitOnPoint_sec;
-
-
-          } // any change in time ?
-
-        } // end test if reached destination
-
-
-        /// Handle Reached target point
-        if (mvStat.hasReachedPointTo)
-        {
-          #ifdef DEBUG_MOVE
-          Utils::logMsg("\nMoving to nextPoint()\n"); // debug
-          #endif
-
-          mvStat.prevPoint.clone(this->displayCoordinate); // duplicated code
-          // move to next point
-          this->set_next_point(); // v3.0.253.7
-
-          mvStat.currentTimeElapsed_sinceStart = 0.0f;
-          mvStat.timeOnVector                  = 0.0f; // v2.1.0 a15
-
-          this->mvStat.flag_wait_for_next_flc = true;
-        }
-
-        mvStat.isFirstTime = false;
-      }
-      else
-      {
-        mvStat.shouldWeRenderObject = true; // workaround - should we RENDER ?
-      }
-    } // if any time elapsed from lat iteration
-    else
-    {
-      mvStat.shouldWeRenderObject = false;
-
-    } // end if is in display list (rendered)
-  }
+  // mvStat.shouldWeRenderObject = false; // we always init with this value
+  //
+  // if (!mvStat.hasReachedLastPoint)
+  // {
+  //   // fetch FPS info
+  //   initFpsInfo(); // we fetch this every draw callback, so maybe we should deprecate this line
+  //
+  //   if (this->isInDisplayList) // if we already display the 3D Object  // former isRendered (v2.x)
+  //   {
+  //
+  //     // first time timer initialization, we use it to calculate movement on vector
+  //     if (!this->mvStat.waitTimer.isRunning()                                    //  getState() != missionx::mx_timer_state::timer_running
+  //         && mvStat.timer.getState() == missionx::mx_timer_state::timer_not_set) // check if timer started
+  //     {
+  //       missionx::Timer::start(mvStat.timer, 0, "obj3d_timer_" + this->getName()); // SecondsToRun=0 => "run continuously"
+  //       mvStat.lastZuluStartDraw = 0.0f;
+  //     }
+  //
+  //     // workaround in the "else" of this Condition caused by double call or off-screen pauses like moving screen or weather widget setup etc...
+  //     if (mvStat.time_was_advanced_by_draw_function)
+  //     {
+  //       mvStat.time_was_advanced_by_draw_function = false; // v2.1.0 a15 // reset until next draw will advance timer
+  //       mvStat.shouldWeRenderObject               = true;  // flag for instance display decision
+  //
+  //       if (!mvStat.hasReachedPointTo)
+  //       {
+  //
+  //         if (mvStat.currentTimeElapsed_sinceStart > 0.0f && !mvStat.isFirstTime)
+  //         {
+  //           #ifdef DEBUG_MOVE
+  //           const auto delta_dispAndPrev_lat    = fabs(this->displayCoordinate.getLat() - mvStat.prevPoint.getLat());
+  //           const auto delta_pointToandPrev_lat = fabs(mvStat.pointTo.getLat() - mvStat.prevPoint.getLat());
+  //           const auto delta_dispAndPrev_lon    = fabs(this->displayCoordinate.getLon() - mvStat.prevPoint.getLon());
+  //           const auto delta_pointToandPrev_lon = fabs(mvStat.pointTo.getLon() - mvStat.prevPoint.getLon());
+  //
+  //           Log::logMsg("displayCoordinate: " + this->displayCoordinate.format_point_to_savepoint());
+  //           Log::logMsg("prevPoint: " + this->mvStat.prevPoint.format_point_to_savepoint());
+  //           Log::logMsg("toPoint: " + this->mvStat.pointTo.format_point_to_savepoint());
+  //           Log::logMsg("Delta lat Disp-Prev: " + mxUtils::formatNumber<double>(delta_dispAndPrev_lat, 6) + ",  Delta lat To-Prev: " + mxUtils::formatNumber<double>(delta_pointToandPrev_lat, 6));
+  //           Log::logMsg("Delta lon Disp-Prev: " + mxUtils::formatNumber<double>(delta_dispAndPrev_lon, 6) + ",  Delta lon To-Prev: " + mxUtils::formatNumber<double>(delta_pointToandPrev_lon, 6));
+  //           Log::logMsg("\n"); // v26.02.1
+  //           #endif // !RELEASE
+  //
+  //           // Are we there ?
+  //           mvStat.hasReachedPointTo = (fabs(this->displayCoordinate.getLat() - mvStat.prevPoint.getLat()) >= fabs(mvStat.pointTo.getLat() - mvStat.prevPoint.getLat())
+  //                                       ||
+  //                                       fabs(this->displayCoordinate.getLon() - mvStat.prevPoint.getLon()) >= fabs(mvStat.pointTo.getLon() - mvStat.prevPoint.getLon()));
+  //
+  //           #ifdef DEBUG_MOVE
+  //           double val1, val2, val3, val4;
+  //           val1 = fabs(mvStat.pointTo.getLat() - this->displayCoordinate.getLat());
+  //           val2 = fabs(mvStat.pointTo.getLat() - mvStat.prevPoint.getLat());
+  //           val3 = fabs(mvStat.pointTo.getLon() - this->displayCoordinate.getLon());
+  //           val4 = fabs(mvStat.pointTo.getLon() - mvStat.prevPoint.getLon());
+  //
+  //           Utils::logMsg("(pointTo.lat-display.lat)=" + Utils::formatNumber<double>(val1) + ", (pointTo.lat-prev.lat)=" + Utils::formatNumber<double>(val2) + ((val1 < val2) ? "[t]" : "[f]") + " | " +
+  //                         "(pointTo.lon-display.lon)=" + Utils::formatNumber<double>(val3) + ", (pointTo.lon-prev.lon)=" + Utils::formatNumber<double>(val4) + ((val3 < val4) ? "[t]" : "[f]"));
+  //
+  //           Utils::logMsg(std::string(" - hasReachedPointTo: ") + ((mvStat.hasReachedPointTo) ? "<< TRUE >>" : "FALSE") + "\n");
+  //
+  //           #endif
+  //
+  //
+  //           mvStat.prevPoint.setLat(this->displayCoordinate.getLat());
+  //           mvStat.prevPoint.setLon(this->displayCoordinate.getLon());
+  //           mvStat.prevPoint.setElevationMt(this->displayCoordinate.getElevationInMeters());
+  //           mvStat.prevPoint.timeToWaitOnPoint_sec = this->displayCoordinate.timeToWaitOnPoint_sec;
+  //
+  //
+  //         } // any change in time ?
+  //
+  //       } // end test if reached destination
+  //
+  //
+  //       /// Handle Reached target point
+  //       if (mvStat.hasReachedPointTo)
+  //       {
+  //         #ifdef DEBUG_MOVE
+  //         Utils::logMsg("\nMoving to nextPoint()\n"); // debug
+  //         #endif
+  //
+  //         mvStat.prevPoint.clone(this->displayCoordinate); // duplicated code
+  //         // move to next point
+  //         this->set_next_point(); // v3.0.253.7
+  //
+  //         mvStat.currentTimeElapsed_sinceStart = 0.0f;
+  //         mvStat.timeOnVector                  = 0.0f; // v2.1.0 a15
+  //
+  //         this->mvStat.flag_wait_for_next_flc = true;
+  //       }
+  //
+  //       mvStat.isFirstTime = false;
+  //     }
+  //     else
+  //     {
+  //       mvStat.shouldWeRenderObject = true; // workaround - should we RENDER ?
+  //     }
+  //   } // if any time elapsed from lat iteration
+  //   else
+  //   {
+  //     mvStat.shouldWeRenderObject = false;
+  //
+  //   } // end if is in display list (rendered)
+  // }
 }
 
 void
 missionx::obj3d::calcNewCourseBetweenTwoPointsOnVector()
 {
   std::string err;
+  // double      distance_meters = 0.0f;
+  err.clear();
+
+  mvStat.distanceFromTo_meters = this->mvStat.pointFrom.calcDistanceBetween2Points(this->mvStat.pointTo, missionx::mx_units_of_measure::meter, &err);
+  if (!err.empty())
+    mvStat.distanceFromTo_meters = 0.0;
+
+  mvStat.secondsToReachTarget = (static_cast<float>(mvStat.distanceFromTo_meters) / ((mvStat.pointFrom.getSpeedMts() == 0.0f) ? 0.000000000001f : mvStat.pointFrom.getSpeedMts())); // seconds to reach destination
+
+  #ifdef DEBUG_MOVE
+    auto debug_speed_mts = (mvStat.pointFrom.getSpeedMts() == 0.0f) ? 0.000000000001f : mvStat.pointFrom.getSpeedMts(); // seconds to reach destination
+    Log::logMsg(fmt::format("[{}] new speed_mts: {:.2f}, distance_meters: {:.2f}, secondsToReachTarget: {:.2f}", __func__, debug_speed_mts, mvStat.distanceFromTo_meters, mvStat.secondsToReachTarget) );
+  #endif
+}
+
+void
+missionx::obj3d::calcNewCourseBetweenTwoPointsOnVector2()
+{
+  std::string err;
   double      distance = 0.0f;
   err.clear();
 
-  distance = this->mvStat.pointFrom.calcDistanceBetween2Points(this->mvStat.pointTo, missionx::mx_units_of_measure::nm, &err);
+  distance = this->mvStat.pointFrom.calcDistanceBetween2Points(this->mvStat.pointTo, missionx::mx_units_of_measure::meter, &err);
   if (!err.empty())
     distance = 0.0;
 
-  mvStat.distanceFromTo_ft = distance * (double)(static_cast<double>(missionx::nm2meter) * static_cast<double>(missionx::meter2feet)); //  (float)Utils::nmToFeet(&distance);
+  // mvStat.distanceFromTo_meters = distance * (double)(static_cast<double>(missionx::nm2meter) * static_cast<double>(missionx::meter2feet)); //  (float)Utils::nmToFeet(&distance);
+  mvStat.distanceFromTo_meters = distance; //  (float)Utils::nmToFeet(&distance);
 
-  mvStat.secondsToReachTarget = (static_cast<float>(mvStat.distanceFromTo_ft) / ((mvStat.pointFrom.getSpeedFts() == 0.0f) ? 0.000000000001f : mvStat.pointFrom.getSpeedFts())); // seconds to reach destination
+  mvStat.secondsToReachTarget = (static_cast<float>(mvStat.distanceFromTo_meters) / ((mvStat.pointFrom.getSpeedFts() == 0.0f) ? 0.000000000001f : mvStat.pointFrom.getSpeedFts())); // seconds to reach destination
 
 #ifdef DEBUG_MOVE
-  sprintf(LOG_BUFF, "[Moving3D calc] new pointFrom.lat: %f, new pointFrom.lon: %f", mvStat.pointFrom.getLat(), mvStat.pointFrom.getLon());
-  Utils::logMsg(LOG_BUFF);
-  sprintf(LOG_BUFF, "[Moving3D calc] new pointTo.lat: %f  , new pointTo.lon: %f", mvStat.pointTo.getLat(), mvStat.pointTo.getLon());
-  Utils::logMsg(LOG_BUFF);
+  // sprintf(LOG_BUFF, "[Moving3D calc] new pointFrom.lat: %f, new pointFrom.lon: %f", mvStat.pointFrom.getLat(), mvStat.pointFrom.getLon());
+  // Utils::logMsg(LOG_BUFF);
+  // sprintf(LOG_BUFF, "[Moving3D calc] new pointTo.lat: %f  , new pointTo.lon: %f", mvStat.pointTo.getLat(), mvStat.pointTo.getLon());
+  // Utils::logMsg(LOG_BUFF);
 #endif
 }
 
@@ -1310,8 +1308,8 @@ missionx::obj3d::calculate_real_elevation_to_DisplayCoordination()
   this->displayCoordinate.elevWasProbed = true;
 
 #ifdef DEBUG_MOVE 
-  Utils::logMsg("Terrain Probed, elevation [" + mxUtils::formatNumber<double>(this->displayCoordinate.getElevationInMeter()) + "mt | " + mxUtils::formatNumber<double>(this->displayCoordinate.getElevationInFeet()) + "ft]" +
-                mxconst::get_UNIX_EOL());
+  Log::logMsg(fmt::format("[{}] Terrain Probed, elevation [{}mt | {}ft]", __func__, this->displayCoordinate.getElevationInMeters(), this->displayCoordinate.getElevationInFeet() ) );
+
 #endif
 }
 

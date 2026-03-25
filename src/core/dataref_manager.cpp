@@ -15,6 +15,7 @@ namespace missionx
 Point          missionx::dataref_manager::planePoint;
 Point          missionx::dataref_manager::cameraPoint;
 XPLMDataTypeID missionx::dataref_manager::dataRefType;
+float          missionx::dataref_manager::fps = 0.0f;
 
   float
   dataref_manager::getAirspeed()
@@ -94,6 +95,28 @@ XPLMDataTypeID missionx::dataref_manager::dataRefType;
     return XPLMGetDataf(missionx::drefConst.dref_brake_Right_add_f);
   }
 
+  float dataref_manager::get_fps_f()
+  {
+    return 1.0f / dataref_manager::fps;
+  }
+
+  float dataref_manager::get_raw_fps_f()
+  {
+    return dataref_manager::fps;
+  }
+
+  float dataref_manager::init_raw_fps_f(const bool b_store)
+  {
+    auto local_fps = XPLMGetDataf(drefConst.fps_f_dref);
+    if (local_fps == 0.0f)
+      local_fps = 1.0f;
+
+    if (b_store)
+      dataref_manager::fps = local_fps;
+
+    return local_fps;
+  }
+
   void
   dataref_manager::setPlaneInLocalCoordiantes (const double x, const double y, const double z)
   {
@@ -130,6 +153,7 @@ missionx::dataref_manager::flc()
   #endif // TIMER_FUNC
   dataref_manager::storePlanePoint();
   dataref_manager::storeCameraPoint(); // v3.0.223.7
+  dataref_manager::init_raw_fps_f(true); // v26.03.1
 }
 
 

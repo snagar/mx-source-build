@@ -110,6 +110,8 @@ public:
     dref_cg_offset_z_mac_f = XPLMFindDataRef ("sim/flightmodel2/misc/cg_offset_z_mac"); // v25.03.3 Center of gravity - %
     dref_cg_offset_z_f     = XPLMFindDataRef ("sim/flightmodel2/misc/cg_offset_z"); // v25.03.3 Center of gravity - meters
     dref_CG_indicator_f    = XPLMFindDataRef ("sim/cockpit2/gauges/indicators/CG_indicator"); // v25.03.3 Center of gravity - meters
+
+    fps_f_dref = XPLMFindDataRef("sim/time/framerate_period"); // v26.03.1
   }
 
   XPLMDataRef dref_xplane_version_i             ;        // v3.0.241.5 xplane version number as integer
@@ -208,7 +210,7 @@ public:
   XPLMDataRef dref_cg_offset_z_mac_f; // v25.03.3 center of gravity cg_offset_z_mac %
   XPLMDataRef dref_cg_offset_z_f; // v25.03.3 center of gravity sim/flightmodel2/misc/cg_offset_z (meter)
 
-
+  XPLMDataRef fps_f_dref; // v26.03.1 //fps_dref = XPLMFindDataRef("sim/time/framerate_period");
   // const XPLMDataRef dref_ {template}
 };
 

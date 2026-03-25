@@ -26,7 +26,7 @@ class obj3d : public missionx::Points
 
 private:
   // instance related
-  static XPLMDataRef fps_dref; //"sim/operation/misc/frame_rate_period"
+  static XPLMDataRef fps_dref; //fps_dref = XPLMFindDataRef("sim/time/framerate_period");
 
   missionx::mxProperties instProperties; // maybe this should be part of the struct instead of here
   
@@ -88,7 +88,8 @@ public:
     bool time_was_advanced_by_draw_function = false;
     bool isInRecursiveState                 = false; // when nextPoint() function calls init, it also calls nextPoint() recursively. We need to know that.
     bool hasReachedPointTo_need_to_stop  = false; // v26.03.1 If true, then we won't calculate 3D object movement.
-    bool done_init_start_position = false; // v26.03.1 when calling the function: "init_start_position". We use that during "cb" iterations, distinguish the first one.
+    // bool was_eval_this_cb = false; // v26.03.1 will be used in the "pluginCallback_draw()" function to make sure we won't be called twice.
+    // bool done_init_start_position = false; // v26.03.1 when calling the function: "init_start_position". We use that during "cb" iterations, distinguish the first one.
 
     int currentPointNo   = 0; // TODO: replace with iterators
     int noOfPointsInPath = 0;
@@ -108,7 +109,7 @@ public:
 
     missionx::Point pointFrom;
     missionx::Point pointTo;
-    double          distanceFromTo_ft    = 0.0f; // holds the distance in "feet" between 2 points
+    double          distanceFromTo_meters    = 0.0f; // holds the distance in "feet" between 2 points
     float           secondsToReachTarget = 0.0f;
 
     XPLMProbeResult probeResult     = 0;   // we do not really use this parameter, but it is need when we probe ground
@@ -123,7 +124,7 @@ public:
   _mvStat mvStat;
 
   missionx::Point startLocation; // v3.0.202 start location equals to the first location defined in <location> element.
-  void            setCoordinateOnVector(missionx::Point& pointFrom, missionx::Point& pointTo, float time);
+  void            setCoordinateOnVector(missionx::Point& pointFrom, missionx::Point& pointTo, const float &in_time_on_vector);
 
   // ---- Members related to movment of 3D Object
   std::deque<missionx::Point>::iterator itPath;
@@ -137,6 +138,7 @@ public:
 
   void check_are_we_there_yet(); // former moveSet()
   void calcNewCourseBetweenTwoPointsOnVector();
+  void calcNewCourseBetweenTwoPointsOnVector2();
 
   ////// END Moving Attributes //////////
 
@@ -168,10 +170,10 @@ public:
   // void create_instance();         // create instance from g_object_ref (file reference)
   void create_instance(const std::string &in_current_leg_name);         // create instance from g_object_ref (file reference)
   void initFpsInfo();             // // v3.0.207.1 get fps information
-  void calcPosOfMovingObject();   // v3.0.207.1 // calculate the position of a moving 3D Object
-  void calcPosOfMovingObject(const float & inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter);   // v3.0.207.1 // calculate the position of a moving 3D Object
-  void cb_calc_pos_of_the_moving_object_new_time(const float &inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter);   // v26.03.1 // New calculation of the position of a moving 3D Object
+  // void calcPosOfMovingObject();   // v3.0.207.1 // calculate the position of a moving 3D Object
+  void calcPosOfMovingObject(const float & inElapsedSinceLastCall);   // v3.0.207.1 // calculate the position of a moving 3D Object
   void cb_calc_pos_of_the_moving_object(const float &inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter);   // v26.03.1 // New calculation of the position of a moving 3D Object
+  // void cb_calc_pos_of_the_moving_object_good(const float &inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter);   // v26.03.1 // New calculation of the position of a moving 3D Object
   // void cb_calc_pos_of_the_moving_object2_bad(const float &inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter);   // v26.03.1 // New calculation of the position of a moving 3D Object
 
   void positionInstancedObject(); // for moving object we need to calculate position every iteration

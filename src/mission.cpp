@@ -1544,7 +1544,6 @@ missionx::Mission::flc()
 //  missionx::TimerFunc timerFunc(std::string(__FILE__), std::string(__func__), false);
 //#endif // TIMER_FUNC
 
-
   int         countMsg = 0;
   std::string msg;
   data_manager::smPropSeedValues.clear();
@@ -3563,7 +3562,7 @@ missionx::Mission::flc_3d_objects(mxProperties& inSmPropSeedValues)
         // add 3D Object to the relevant list (part of optimization)
         missionx::data_manager::addInstanceNameToTheDisplayList(instName); // v3.0.207.1
 
-        instObj.isInDisplayList = true; // v3.0.207.1 // set display flag //  removed function from older version
+        instObj.isInDisplayList = true; // v3.0.207.1 // set display flag
 
         instObj.positionInstancedObject(); // prepare XPLMDrawInfo_t and call XPLMInstanceSetPosition()
       } // end if instance is valid
@@ -5381,36 +5380,36 @@ missionx::Mission::flcPRE()
       break;
       case missionx::mx_flc_pre_command::special_test_place_instance:
       {
-        static int seq = 0;
-        seq++;
-        std::string inst_name = "test_inst_" + Utils::formatNumber<int>(seq);
-        // get camera terrain elevation
-        Point p1 = missionx::data_manager::getCameraLocationTerrainInfo();
-        obj3d obj3d_inst;
-
-        obj3d_inst.g_object_ref = XPLMLoadObject("Resources/default scenery/airport scenery/Common_Elements/Lighting/Dir_Flood_Sm.obj"); // Load the 3D Object
-        if (obj3d_inst.g_object_ref)                                                                                                     // debug
-        {
-
-          Log::logMsg("Loaded: " + obj3d_inst.file_and_path + mxconst::get_UNIX_EOL());
-
-          // obj3d_inst.parse_node();
-          obj3d_inst.name = inst_name; // setName(inst_name);
-          obj3d_inst.deqPoints.clear();
-          obj3d_inst.addPoint(p1);
-          Utils::addElementToMap(data_manager::map3dInstances, inst_name, obj3d_inst);
-
-          data_manager::map3dInstances[inst_name].g_object_ref      = obj3d_inst.g_object_ref;
-          data_manager::map3dInstances[inst_name].displayCoordinate = std::map<std::basic_string<char>, missionx::obj3d>::mapped_type::calculateCenterOfShape(data_manager::map3dInstances[inst_name].deqPoints);
-          data_manager::map3dInstances[inst_name].calculate_real_elevation_to_DisplayCoordination();
-          data_manager::map3dInstances[inst_name].node.deleteAttribute(mxconst::get_ATTRIB_LINK_TASK().c_str());
-          data_manager::map3dInstances[inst_name].node.deleteAttribute(mxconst::get_PROP_LINK_OBJECTIVE_NAME().c_str());
-
-          data_manager::map3dInstances[inst_name].create_instance(missionx::data_manager::currentLegName);
-          data_manager::map3dInstances[inst_name].positionInstancedObject();
-        }
-        else
-          Log::logMsgErr("Fail to create special Test instance");
+        // static int seq = 0;
+        // seq++;
+        // std::string inst_name = "test_inst_" + Utils::formatNumber<int>(seq);
+        // // get camera terrain elevation
+        // Point p1 = missionx::data_manager::getCameraLocationTerrainInfo();
+        // obj3d obj3d_inst;
+        //
+        // obj3d_inst.g_object_ref = XPLMLoadObject("Resources/default scenery/airport scenery/Common_Elements/Lighting/Dir_Flood_Sm.obj"); // Load the 3D Object
+        // if (obj3d_inst.g_object_ref)                                                                                                     // debug
+        // {
+        //
+        //   Log::logMsg("Loaded: " + obj3d_inst.file_and_path + mxconst::get_UNIX_EOL());
+        //
+        //   // obj3d_inst.parse_node();
+        //   obj3d_inst.name = inst_name; // setName(inst_name);
+        //   obj3d_inst.deqPoints.clear();
+        //   obj3d_inst.addPoint(p1);
+        //   Utils::addElementToMap(data_manager::map3dInstances, inst_name, obj3d_inst);
+        //
+        //   data_manager::map3dInstances[inst_name].g_object_ref      = obj3d_inst.g_object_ref;
+        //   data_manager::map3dInstances[inst_name].displayCoordinate = std::map<std::basic_string<char>, missionx::obj3d>::mapped_type::calculateCenterOfShape(data_manager::map3dInstances[inst_name].deqPoints);
+        //   data_manager::map3dInstances[inst_name].calculate_real_elevation_to_DisplayCoordination();
+        //   data_manager::map3dInstances[inst_name].node.deleteAttribute(mxconst::get_ATTRIB_LINK_TASK().c_str());
+        //   data_manager::map3dInstances[inst_name].node.deleteAttribute(mxconst::get_PROP_LINK_OBJECTIVE_NAME().c_str());
+        //
+        //   data_manager::map3dInstances[inst_name].create_instance(missionx::data_manager::currentLegName);
+        //   data_manager::map3dInstances[inst_name].positionInstancedObject();
+        // }
+        // else
+        //   Log::logMsgErr("Fail to create special Test instance");
       }
       break;
       case missionx::mx_flc_pre_command::restart_all_plugins:

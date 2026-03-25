@@ -20,6 +20,9 @@ double callback_duration     = 0;
 double drawcallback_duration = 0;
 #endif
 
+int  last_valid_in_counter_in_cb = -1; // v26.03.1 Used in the "pluginCallback_draw()" function. If in_counter is the same as last in_counter then skip.
+
+
 mxconst mx_const; // first initialization before other classes
 Mission mission;
 void    MissionMenuHandler (void *inMenuRef, void *inItemRef);
@@ -813,33 +816,39 @@ pluginCallback (float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlight
 
 // -----------------------------------
 
-float pluginCallback_draw(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void* inRefcon)
+float pluginCallback_draw(const float inElapsedSinceLastCall, const float inElapsedTimeSinceLastFlightLoop, const int inCounter, void* inRefcon)
 {
+  if ( (data_manager::missionState != missionx::mx_mission_state_enum::mission_is_running) + data_manager::listDisplayMoving3dInstances.empty())
+    return 1.0f;
+
+  const auto cb_timing = dataref_manager::get_raw_fps_f();
+  // Skip function if the "inCounter" is same as the last one
+  if (last_valid_in_counter_in_cb != inCounter)
+    last_valid_in_counter_in_cb = inCounter;
+  else
+    return cb_timing; // return 0.1f;
 
   // v26.03.1 Draw Moving 3D Objects
   if (data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
   {
     if (!data_manager::listDisplayMoving3dInstances.empty() && !missionx::dataref_manager::isSimPause() )
     {
-      bool b_3d_moving_object_exists = false;
+      // bool b_3d_moving_object_exists = false;
       for (const auto &instName : data_manager::listDisplayMoving3dInstances) // loop over each instance
       {
         if (missionx::data_manager::map3dInstances[instName].mvStat.isMoving) // v3.0.207.4 - check moving flag. If we control movment also from script we will need to calculate elapsed time when stopping movement and then resuming it.
         {
-          b_3d_moving_object_exists = true;
+          // b_3d_moving_object_exists = true;
           missionx::data_manager::map3dInstances[instName].cb_calc_pos_of_the_moving_object(inElapsedSinceLastCall, inElapsedTimeSinceLastFlightLoop, inCounter );
 
-          if (!missionx::data_manager::map3dInstances[instName].mvStat.flag_wait_for_next_flc)
-            missionx::data_manager::map3dInstances[instName].check_are_we_there_yet(); // v3.0.253.6 are we there yet ?
+          // if (!missionx::data_manager::map3dInstances[instName].mvStat.flag_wait_for_next_flc)
+          //   missionx::data_manager::map3dInstances[instName].check_are_we_there_yet(); // v3.0.253.6 are we there yet ?
 
         }
       }
-
-      if (b_3d_moving_object_exists)
-        return 0.1f; // calculate every frame
     }
   }
-  return 1.0f;
+  return cb_timing; // return 0.1f;
 }
 
 

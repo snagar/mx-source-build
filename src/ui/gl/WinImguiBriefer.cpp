@@ -2634,6 +2634,13 @@ void WinImguiBriefer::add_ui_os_and_xp_clock_times(const float& in_x_pos)
 
 }
 
+void WinImguiBriefer::add_ui_fps()
+{
+  ImGui::TextColored(missionx::color::color_vec4_greenyellow, "%s", "FPS:");
+  ImGui::SameLine();
+  ImGui::TextDisabled("%.2f", missionx::dataref_manager::get_fps_f());
+}
+
 // -------------------------------------------
 
 
@@ -2915,9 +2922,14 @@ WinImguiBriefer::draw_top_toolbar ()
     // tooltip
     this->mx_add_tooltip (missionx::color::color_vec4_white, "Home Button");
 
+    // FPS
+    ImGui::SameLine(0.0f, 5.0f);
+    add_ui_fps();
+
     // Clocks: OS & XPlane
     if ( missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_DISPLAY_UI_CLOCKS(), true))
       add_ui_os_and_xp_clock_times( -1.0f );
+
 
     // Failure Timer at toolbar level
     if (data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)

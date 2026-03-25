@@ -21,7 +21,7 @@ private:
   static Point cameraPoint;        // v3.0.223.7
   static void  storePlanePoint();  // flc
   static void  storeCameraPoint(); // flc
-
+  static float fps;
 public:
   // static dataref_const drefConst;
 
@@ -120,6 +120,10 @@ public:
   static float getFaxilGear();
   static float getBrakeLeftAdd();
   static float getBrakeRightAdd();
+
+  static float get_fps_f();
+  static float get_raw_fps_f();
+  static float init_raw_fps_f(bool b_store);
 
   static void setPlaneInLocalCoordiantes(double x, double y, double z);
 
