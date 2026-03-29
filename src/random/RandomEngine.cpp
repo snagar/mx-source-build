@@ -2414,6 +2414,9 @@ RandomEngine::gen_get_cumulative_fpln_desc(std::map<int, NavAidInfo>& navaid_tar
 
     // cumulative_fpln_desc += fmt::format ("{}{}{}", prefix, target_navaid.get_loc_desc (), postfix);
     cumulative_fpln_desc += fmt::format("{}{}", target_navaid.get_loc_desc(), postfix);
+    // Add ramp name
+    if (last_seq_i == target_navaid.fpln_seq && !target_navaid.ramp_info.uq_name.empty())
+      cumulative_fpln_desc += fmt::format("(ramp: {})", target_navaid.ramp_info.uq_name);
 
     counter++;
     if (counter > 1 && !b_user_pref_display_all_flight_legs)
@@ -5702,11 +5705,23 @@ RandomEngine::gen_leg_description(IXMLNode& in_xml_leg_node, missionx::NavAidInf
     return fmt::format("Fly to \"{}\".", mxUtils::sanitize_text(desc_s, "_", ' '));
   };
 
+  // v26.03.1
+  const auto        desc_target_ramp             = (inout_navaid_target.ramp_info.uq_name.empty()) ? "" : inout_navaid_target.ramp_info.uq_name ;
+
   const auto        desc_next_target_text        = lmbda_get_pre_message_for_default_desc_text();
   const auto        desc_distance_text           = "Expected distance: {distance}";
   const auto        desc_elevation_text          = "(Elev: {navaid_elev}ft)";
   auto              desc_wet_text                = (inout_navaid_target.fpln_is_wet) ? "> Your next leg might be above water body.\n" : "\n";
-  const std::string default_description_template = fmt::format("{}\n{} {}.\n\n{}--> Fly Safe <--", desc_next_target_text, desc_distance_text, desc_elevation_text, desc_wet_text);
+
+  const auto lmbda_get_default_description = [&]() -> std::string
+  {
+    if (desc_target_ramp.empty())
+      return fmt::format("{}\n{} {}.\n\n{}--> Fly Safe <--", desc_next_target_text, desc_distance_text, desc_elevation_text, desc_wet_text);
+
+    return fmt::format("{}\nExpected Ramp:{}\n{} {}\n.\n\n{}--> Fly Safe <--", desc_next_target_text, desc_target_ramp, desc_distance_text, desc_elevation_text, desc_wet_text);
+  };
+
+  const std::string default_description_template = lmbda_get_default_description();
 
   // get random node copy
   const IXMLNode xml_custom_desc_from_target_leg_node = Utils::xml_get_node_randomly_by_name_IXMLNode(inout_navaid_target.fpln_xml_osm_q_or_raw_tmpl_node, mxconst::get_ELEMENT_DESC(), false);
@@ -6409,6 +6424,8 @@ RandomEngine::gen_message_with_special_keywords_static(std::string inMessage, mi
     mapReplaceMessageKeywords["{navaid_elev}"]     = (in_target_navaid.height_mt == 0.0f) ? "" : elev_ft_s;
     mapReplaceMessageKeywords["{navaid_loc_desc}"] = in_target_navaid.get_loc_desc();
     mapReplaceMessageKeywords["{distance}"]        = (in_target_navaid.fpln_distance_between_prev_and_current_navaid <= 0.0) ? "n/a" : (Utils::formatNumber<double>(in_target_navaid.fpln_distance_between_prev_and_current_navaid, 0) + "nm");
+    // v26.03.1 ramp
+    mapReplaceMessageKeywords["{ramp}"]        = (in_target_navaid.ramp_info.uq_name.empty())? "" : in_target_navaid.ramp_info.uq_name;
 
     for (const auto& [stringToModify, stringToReplaceWith] : mapReplaceMessageKeywords) // replace all special keywords
     {
