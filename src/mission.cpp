@@ -800,10 +800,17 @@ missionx::Mission::init()
   }
 
 
-  // v25.06.2 ui clocks
+  // v26.02.1 ui clocks
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISPLAY_UI_CLOCKS()).isEmpty())
   {
     missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_DISPLAY_UI_CLOCKS(), true);
+    missionx::system_actions::store_plugin_options();
+  }
+
+  // v26.03.1 ui FPS
+  if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISPLAY_UI_FPS()).isEmpty())
+  {
+    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_DISPLAY_UI_FPS(), true);
     missionx::system_actions::store_plugin_options();
   }
 
@@ -4909,8 +4916,7 @@ missionx::Mission::flcPRE()
 
           // v3.0.253.7 try to pick ramp
           missionx::mx_return err;
-          // missionx::RandomEngine::filterAndPickRampBasedOnPlaneType(navAid, err, missionx::mxFilterRampType::airport_ramp); // this can cause performance issues
-          err = missionx::RandomEngine::gen_get_ramp_based_on_plane_type(navAid, RandomEngine::getPlaneType_enum (), missionx::mxFilterRampType::airport_ramp); // this can cause performance issues
+          err = missionx::RandomEngine::gen_get_ramp_based_on_plane_type(navAid, RandomEngine::getPlaneType_enum (), missionx::mxFilterRampType::airport_ramp);
 
           // Add point element
           IXMLNode p = RandomEngine::shared_navaid_info.parentNode_ptr.addChild(navAid.node.deepCopy());
@@ -5667,6 +5673,16 @@ missionx::Mission::flcPRE()
           val ^= 1;
 
           missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_DISPLAY_UI_CLOCKS(), val);
+          missionx::system_actions::store_plugin_options();
+      }
+      break;
+      case missionx::mx_flc_pre_command::toggle_ui_fps:
+      {
+          // v26.02.3
+          auto val =  missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_DISPLAY_UI_FPS(), true);
+          val ^= 1;
+
+          missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_DISPLAY_UI_FPS(), val);
           missionx::system_actions::store_plugin_options();
       }
       break;

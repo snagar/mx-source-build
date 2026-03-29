@@ -56,9 +56,11 @@ public:
 
   typedef struct _ramp_data // v3.0.253.1 added ramp specific info. lat.lon/heading will be kept in the main NavAid class.
   {
-    std::string gate{ "" };
-    std::string ramp_for_planes{ "" };    // who can park here
-    std::string uq_name{ "" }; // unique name for this ramp
+    std::string gate;
+    std::string ramp_for_planes;    // who can park here
+    std::string uq_name; // unique name for this ramp
+    std::string operation_type; // type of operation
+    std::string ramp_width_code; // icao_width_code
   } navAidRamp;
   navAidRamp ramp_info;
 

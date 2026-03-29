@@ -47,7 +47,6 @@ station::parse_node()
   this->station_indx       = this->getAttribNumericValue<int>(mxconst::get_ATTRIB_ID(), -1); // -1 is invalid
   this->max_allowed_weight = this->getAttribNumericValue<float>(mxconst::get_ATTRIB_WEIGHT_KG(), 0.0f);
 
-  // if (station_indx < 0 || this->name.empty())
   if (station_indx < 0
     || ( this->name.empty ()
         && missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY
@@ -143,7 +142,7 @@ station::calc_total_weight()
   for (int iLoop = 0; iLoop < iNodes; ++iLoop)
   {
     auto itemNode = this->node.getChildNode(mxconst::get_ELEMENT_ITEM().c_str(), iLoop);
-    this->total_weight_in_station_f += (Utils::readNodeNumericAttrib<int>(itemNode, mxconst::get_ATTRIB_QUANTITY(), 0) * Utils::readNodeNumericAttrib<float>(itemNode, mxconst::get_ATTRIB_WEIGHT_KG(), 0.0f) );
+    this->total_weight_in_station_f += (Utils::readNodeNumericAttrib<float>(itemNode, mxconst::get_ATTRIB_QUANTITY(), 0.0f) * Utils::readNodeNumericAttrib<float>(itemNode, mxconst::get_ATTRIB_WEIGHT_KG(), 0.0f) );
   }
   return this->total_weight_in_station_f;
 }

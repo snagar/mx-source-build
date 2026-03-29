@@ -312,6 +312,7 @@ typedef enum class _flc_commands
   sound_abort_all_channels,             // v3.305.1c abort and clean all channels in Sound class. Usefull when there are many channels and some might not be cleaned gracefully
   toggle_auto_hide_show_mxpad_option,
   toggle_ui_clocks, // v26.02.1
+  toggle_ui_fps, // v26.03.1
   toggle_cue_info_mode, // v3.305.4
   toggle_designer_mode, // v3.305.4
   toggle_target_marker_option, // v3.0.253.9.1

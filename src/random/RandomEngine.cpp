@@ -729,7 +729,7 @@ RandomEngine::generateRandomMission()
 
     // Construct mission from template <leg>s. The most basic form of mission creation.
     flag_generic_template_b = true;
-    auto local_result       = gen_prepare_random_mission_based_on_leg_nodes_in_template(RandomEngine::xRootTemplate);
+    auto local_result       = gen_prepare_random_mission_based_on_leg_nodes_in_template(RandomEngine::xRootTemplate, xMetadata);
     if (!local_result.result)
     {
       missionx::RandomEngine::setError(local_result.getErrorsAsText());
@@ -1960,9 +1960,14 @@ RandomEngine::gen_get_generic_template_targets(missionx::base_thread::strct_thre
 // -----------------------------------
 
 missionx::mx_return
-RandomEngine::gen_prepare_random_mission_based_on_leg_nodes_in_template(IXMLNode& in_xTemplateNode)
+RandomEngine::gen_prepare_random_mission_based_on_leg_nodes_in_template(IXMLNode& in_xTemplateNode, IXMLNode & inout_meta_node)
 {
   Log::logDebugBO(fmt::format("[{}] start.", __func__), true);
+
+  // v26.03.1 Added missing plane type initialization.
+  const auto plane_type_enum_i = RandomEngine::gen_parse_plane_type(data_manager::prop_userDefinedMission_ui, in_xTemplateNode, inout_meta_node);
+  this->setPlaneType(plane_type_enum_i); // set plane type in class level for other function usage too
+
 
   missionx::mx_return out_func_result;
   int                 nChilds              = in_xTemplateNode.nChildNode(mxconst::get_ELEMENT_LEG().c_str());
@@ -2547,7 +2552,7 @@ void RandomEngine::write_targets_to_file(const std::map<int, NavAidInfo>& navaid
 // --------------------------------
 
 missionx::mx_return
-RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_target_navaid, const mx_plane_types_enum& in_plane_type_enum_to_search, const missionx::mxFilterRampType& inRampFilterType)
+RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_target_navaid, const mx_plane_types_enum& in_plane_type_enum_to_search, const missionx::mxFilterRampType& inRampFilterType, const bool &if_start_ramp_then_force_plane_position)
 {
   char*                         zErrMsg                         = nullptr;
   missionx::mx_return           result                          = true;
@@ -2558,31 +2563,47 @@ RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_targe
   if (data_manager::db_xp_airports.db_is_open_and_ready)
   {
     int rc = 0;
-    //// construct view query (inner query)
-    // based on airports_vu  // we will pick the first result in the ordered result since it should reflect the closest airport based on its lat/lon
-    const std::string sql_ap = fmt::format(R"(select icao_id, icao, ap_elev_ft, ap_name, ap_type, ap_lat, ap_lon
+
+    if (inout_target_navaid.icao_id <= 0)
+    {
+      // --------------------------------------------------------
+      // Search for airport closest to plane or to provided ICAO
+      // --------------------------------------------------------
+      // construct view query (inner query)
+      // based on airports_vu  // we will pick the first result in the ordered result since it should reflect the closest airport based on its lat/lon
+      const std::string sql_ap = fmt::format(R"(select icao_id, icao, ap_elev_ft, ap_name, ap_type, ap_lat, ap_lon
                             , mx_calc_distance ( ap_lat, ap_lon, {}, {}, 3440) as dist_nm, 0 as bearing
                             , helipads, ramp_helos, ramp_planes, ramp_props, ramp_turboprops, ramp_jet_heavy, rw_hard, rw_dirt_gravel, rw_grass
-                            , rw_water, is_custom from airports_vu where 1 = 1 and icao = '{}' order by dist_nm )",
-                                           mxUtils::formatNumber<double>(inout_target_navaid.lat, 8),
-                                           mxUtils::formatNumber<double>(inout_target_navaid.lon, 8),
-                                           inout_target_navaid.getID());
+                            , rw_water, is_custom from airports_vu where 1 = 1 {}  limit 5)", // v26.03.1 dynamic icao = '{}' order by ...
+                                             mxUtils::formatNumber<double>(inout_target_navaid.lat, 8), mxUtils::formatNumber<double>(inout_target_navaid.lon, 8), (inout_target_navaid.getID().empty()) ? " order by dist_nm " : fmt::format(" and icao = '{}' order by icao, dist_nm ", inout_target_navaid.getID()));
 
-    #ifndef RELEASE
-    Log::logMsgThread(fmt::format("[{}] Search Airport Query for ramps. Plane type: {}\n{}\n", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search), sql_ap));
-    #endif // !RELEASE
+      #ifndef RELEASE
+      Log::logMsgThread(fmt::format("[{}] Search Airport Query for ramps. Plane type: [{}]\n{}\n", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search), sql_ap));
+      #endif // !RELEASE
 
-    // clear local cache
-    RandomEngine::resultTable_gather_random_airports.clear();
-    rc = sqlite3_exec(data_manager::db_xp_airports.db, sql_ap.c_str(), RandomEngine::callback_gather_random_airports_db, nullptr, &zErrMsg);
-    if (rc != SQLITE_OK)
-    {
-      Log::logMsgThread(fmt::format("[{}] SQL Query Error: \n{}\n", __func__, zErrMsg));
-      sqlite3_free(zErrMsg);
-    }
-    else
-    {
-      Log::logMsgThread(fmt::format("[{}] Ramp information was gathered.\n", __func__));
+      // clear local cache
+      RandomEngine::resultTable_gather_random_airports.clear();
+
+      // Fetch airports data
+      rc = sqlite3_exec(data_manager::db_xp_airports.db, sql_ap.c_str(), RandomEngine::callback_gather_random_airports_db, nullptr, &zErrMsg);
+      if (rc != SQLITE_OK)
+      {
+        result.addErrMsg(zErrMsg, true);
+        Log::logMsgThread(fmt::format("[{}] SQL Query Error: \n{}\n", __func__, zErrMsg));
+        sqlite3_free(zErrMsg);
+
+        return result;
+      }
+
+
+      Log::logMsgThread(fmt::format("[{}] Ramp metadata information was gathered.\n", __func__));
+      if (RandomEngine::resultTable_gather_random_airports.empty())
+      {
+        result.addErrMsg(fmt::format("[{}] No airports found relative to Navaid: {}.\n", __func__, inout_target_navaid.getID()), true);
+        return result;
+      }
+
+      // DEBUG INFO
       #ifndef RELEASE
       for (auto& [row_num, row_data] : RandomEngine::resultTable_gather_random_airports)
       {
@@ -2590,463 +2611,569 @@ RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_targe
       }
       #endif // !RELEASE
 
-      if (RandomEngine::resultTable_gather_random_airports.empty())
-      {
-        result.addErrMsg(fmt::format("[{}] No airports found relative to Navaid: {}.\n", __func__, inout_target_navaid.getID()), true);
-        return result;
-      }
-      auto ap_row = RandomEngine::resultTable_gather_random_airports.cbegin()->second; // fetch the first result
 
+      // fetch the first airport from the query
+      auto ap_row = RandomEngine::resultTable_gather_random_airports.cbegin()->second;
+
+      // Store mandatory data
       inout_target_navaid.flag_is_custom_scenery = (!(ap_row["is_custom"].empty()));
+      inout_target_navaid.icao_id                = (ap_row["icao_id"].empty()) ? 0 : mxUtils::stringToNumber<int>(ap_row["icao_id"]);
+    }
 
-      // to build the query based on plane types
-      // we add space at the beginning of the filter
-      int calculate_type_direction = -1; // -1 = drill down, +1 = drill up
-      for (int loop01 = 0; loop01 < 4; ++loop01)
+    // -----------------------------------------------
+    // -- Search Ramps based on plane type
+    // -----------------------------------------------
+
+
+    // | Code Letter | Wingspan  | Main Gear Span | Examples
+    // | ----------- | --------- | -------------- |--------------
+    // | **A**       | < 15 m    | < 4.5 m        | Ultra Light
+    // | **B**       | 15 – 24 m | 4.5 – 6 m      | Cessna 172, real small Jets like Cirrus Vision SF50
+    // | **C**       | 24 – 36 m | 6 – 9 m        | B737, A320
+    // | **D**       | 36 – 52 m | 9 – 14 m       | B777, A350
+    // | **E**       | 52 – 65 m | 9 – 14 m       | B777, A350
+    // | **F**       | 65 – 80 m | 14 – 16 m      | B747, A380
+
+    // Set up the drill rull
+    // -1 = drill down, +1 = drill up
+    int fallback_alternative_ramp_type_to_drill = (local_plane_type_enum_to_search < missionx::mx_plane_types_enum::plane_type_jets) ? 1 : -1;
+
+    for (int loop01 = 0; loop01 < 3; ++loop01)
+    {
+      // -----------------------------------------------
+      // !! add space at the beginning of the filter !!
+      // -----------------------------------------------
+      std::string ramp_filter_stmt_s;
+      switch (local_plane_type_enum_to_search)
       {
-        std::string ramp_filter_stmt_s;
-        switch (local_plane_type_enum_to_search)
-        {
-        case missionx::mx_plane_types_enum::plane_type_any:
-          ramp_filter_stmt_s = "";
-          break;
-        case missionx::mx_plane_types_enum::plane_type_helos:
-          ramp_filter_stmt_s = " and helos > 0 "; // pick all airports that have helos ramps (heliports or any airport with helos in it). The view we use calculated the number of helos ramps so it is easy to distinguish between them.
-          break;
-        case missionx::mx_plane_types_enum::plane_type_ga_floats:
-        case missionx::mx_plane_types_enum::plane_type_ga:
-        case missionx::mx_plane_types_enum::plane_type_props:
-          ramp_filter_stmt_s = " and props + turboprops > 0 and fighters = 0  "; // make sure only props locations are picked exclude "fighter" ramps
-          break;
-        case missionx::mx_plane_types_enum::plane_type_turboprops:
-          ramp_filter_stmt_s = " and props + turboprops > 0 and fighters = 0 "; // make sure only airports are being picked with at list 1 ramp for planes (not heliport or sea airports)
-          break;
-        case missionx::mx_plane_types_enum::plane_type_jets:
-          ramp_filter_stmt_s = " and jet + terminal > 0 and fighters = 0 "; // make sure jet is being picked. Filter out turbo or prop candidates
-          break;
-        case missionx::mx_plane_types_enum::plane_type_heavy:
-          ramp_filter_stmt_s = " and heavy + terminal > 0 and fighters = 0 "; // make sure heavy is being picked. Filter out turbo or prop candidates
-          break;
-        case missionx::mx_plane_types_enum::plane_type_fighter:
-          ramp_filter_stmt_s = " and fighter > 0 "; // make sure only airports are being picked with at list 1 ramp for planes (not heliport or sea airports)
-          break;
-        default:
-          break;
-        }
-
-        const std::string select_s     = "select * from ramps_vu where 1 = 1 and icao_id = " + ap_row["icao_id"];
-        const std::string filter_ramps = ramp_filter_stmt_s;
-        const std::string sql_ramp     = select_s + filter_ramps + " ORDER BY RANDOM() limit 1";
-
-        #ifndef RELEASE
-        Log::logMsgThread(fmt::format("[{}] Ramp Q for type: {}\n{}\n", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search), sql_ramp));
-        #endif // !RELEASE
-
-        RandomEngine::resultTable_gather_ramp_data.clear();
-        rc = sqlite3_exec(data_manager::db_xp_airports.db, sql_ramp.c_str(), RandomEngine::callback_pick_random_ramp_location_db, nullptr, &zErrMsg);
-        if (rc != SQLITE_OK)
-        {
-          result.addErrMsg(fmt::format("[{}] Error during ramp search for plane type: {}", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search)), true); // debug
-          result.addErrMsg(fmt::format("[{}] Fail to pick a ramp, SQL Error: \n{}\n", __func__, zErrMsg), true);
-          sqlite3_free(zErrMsg);
-
-          return result;
-        }
-
-
-        if (RandomEngine::resultTable_gather_ramp_data.empty())
-        {
-          result.addInfoMsg(fmt::format("[{}] No ramp was found for plane type: {}, should continue and search", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search))); // debug
-
-          if (missionx::mxFilterRampType::exact_plane_ramp_type == inRampFilterType)
-            break; // exit the loop since we want the exact ramp type
-          if (loop01 > 0) // if this is not the first iteration
-          {
-            // we try to search ramps that are "jets", then "turboprops" and then "prop".
-            // we do not search for Helos, nor fighter ramps
-            int plane_type_code             = static_cast<int>(local_plane_type_enum_to_search);
-            plane_type_code                 += calculate_type_direction; // decrease/increase the code number - will affect a ramp type based on the enum number
-            local_plane_type_enum_to_search = static_cast<missionx::mx_plane_types_enum>(plane_type_code);
-
-            // Check boundaries
-            if (local_plane_type_enum_to_search <= missionx::mx_plane_types_enum::plane_type_helos || local_plane_type_enum_to_search > missionx::mx_plane_types_enum::plane_type_heavy)
-              break; // exit the loop. We did not find a suitable ramp
-
-            result.addInfoMsg(fmt::format("[{}]: Search for alternate ramp type for plane: {}", __func__, translatePlaneTypeToString(local_plane_type_enum_to_search))); // debug
-          }
-          else
-          {
-            // based on plane type, decide if to drill down or up
-            if (mxUtils::mx_between<int>(static_cast<int>(in_plane_type_enum_to_search), static_cast<int>(mx_plane_types_enum::plane_type_helos), static_cast<int>(mx_plane_types_enum::plane_type_turboprops), enums::mx_between_types::gt_min_less_max))
-            {
-              local_plane_type_enum_to_search = missionx::mx_plane_types_enum::plane_type_turboprops;
-              calculate_type_direction        = 1; // we drill up
-            }
-            else if (in_plane_type_enum_to_search == missionx::mx_plane_types_enum::plane_type_helos || in_plane_type_enum_to_search == missionx::mx_plane_types_enum::plane_type_fighter)
-            {
-              local_plane_type_enum_to_search = missionx::mx_plane_types_enum::plane_type_ga;
-              calculate_type_direction        = 1; // we drill up
-            }
-            else
-            {
-              local_plane_type_enum_to_search = missionx::mx_plane_types_enum::plane_type_heavy;
-              calculate_type_direction        = -1;
-            }
-          }
-        } // end did not find ramp in database
+      case missionx::mx_plane_types_enum::plane_type_any:
+        ramp_filter_stmt_s = "";
+        break;
+      case missionx::mx_plane_types_enum::plane_type_helos:
+        ramp_filter_stmt_s = " and helos > 0 "; // pick all airports that have helos ramps (heliports or any airport with helos in it). The view we use calculated the number of helos ramps so it is easy to distinguish between them.
+        break;
+      case missionx::mx_plane_types_enum::plane_type_ga_floats:
+      case missionx::mx_plane_types_enum::plane_type_ga:
+      case missionx::mx_plane_types_enum::plane_type_props:
+        ramp_filter_stmt_s = " and props + turboprops > 0 "; // make sure only props locations are picked exclude "fighter" ramps
+        break;
+      case missionx::mx_plane_types_enum::plane_type_turboprops:
+        ramp_filter_stmt_s = " and props + turboprops > 0 "; // make sure only airports are being picked with at list 1 ramp for planes (not heliport or sea airports)
+        break;
+      case missionx::mx_plane_types_enum::plane_type_jets:
+        ramp_filter_stmt_s = " and jet + terminal > 0 and icao_width_code >= 'B' "; // make sure jet is being picked. Filter out turbo or prop candidates
+        break;
+      case missionx::mx_plane_types_enum::plane_type_airline:
+      case missionx::mx_plane_types_enum::plane_type_cargo:
+        // filter by plane type, then ramp width type, then place in airport
+        ramp_filter_stmt_s = " and jet + heavy > 0 and icao_width_code >= 'C' ";
+        if (local_plane_type_enum_to_search == missionx::mx_plane_types_enum::plane_type_cargo)
+          ramp_filter_stmt_s += " and ( lower(name) like '%carg%' or operation_type like '%carg%' ) ";
         else
-        {
-          // found ramp
-          // Store ramp location in navaid
-          Log::logMsgThread("[pick ramp] Ramp info gathered.");
-          auto ramp                                     = resultTable_gather_ramp_data.cbegin()->second;
-          inout_target_navaid.lat                       = mxUtils::stringToNumber<float>(ramp["lat"], ramp["lat"].length());
-          inout_target_navaid.lon                       = mxUtils::stringToNumber<float>(ramp["lon"], ramp["lon"].length());
-          inout_target_navaid.heading                   = mxUtils::stringToNumber<float>(ramp["heading"], ramp["heading"].length());
-          inout_target_navaid.ramp_info.uq_name         = ramp["name"];
-          inout_target_navaid.ramp_info.ramp_for_planes = ramp["for_planes"];
+          ramp_filter_stmt_s += " and ( lower(name) like '%term%' or operation_type like '%airl%' ) ";
+        break;
+      case missionx::mx_plane_types_enum::plane_type_heavy_airline:
+      case missionx::mx_plane_types_enum::plane_type_heavy_cargo:
+        // filter by plane type, then ramp width type, then place in airport
+        ramp_filter_stmt_s = " and jet + heavy > 0 and icao_width_code >= 'C' ";
+        if (local_plane_type_enum_to_search == missionx::mx_plane_types_enum::plane_type_heavy_cargo)
+          ramp_filter_stmt_s += " and ( lower(name) like '%carg%' or operation_type like '%carg%' ) ";
+        else if (local_plane_type_enum_to_search == missionx::mx_plane_types_enum::plane_type_heavy_airline)
+          ramp_filter_stmt_s += " and ( lower(name) like '%term%' or operation_type like '%airl%' ) ";
+        break;
+      case missionx::mx_plane_types_enum::plane_type_fighter:
+        ramp_filter_stmt_s = " and fighter > 0 "; // make sure only airports are being picked with at list 1 ramp for planes (not heliport or sea airports)
+        break;
+      default:
+        break;
+      }
 
-          #ifndef RELEASE
-          for (auto& row_val : resultTable_gather_ramp_data | std::views::values)
-          {
-            // Log::logMsgThread (fmt::format("\rRamp: " + row_val["name"] + ", icao_id: " + row_val["icao_id"] + ", icao: " + row_val["icao"]) );
-            Log::logMsgThread(fmt::format("\rRamp: {}, icao_id: {}, icao: {}", row_val["name"], row_val["icao_id"], row_val["icao"]));
-          }
-          #endif // !RELEASE
+      // filter out fighters for non fighter search.
+      if (local_plane_type_enum_to_search != missionx::mx_plane_types_enum::plane_type_fighter)
+        ramp_filter_stmt_s += " and fighters = 0 ";
 
-          // // revert the template type if and only if it is different. Main reason is if we do not find a ramp location for our plane then we try to find a ramp based on other plane types
-          // local_plane_type_enum_to_search = in_plane_type_enum_to_search;
+      // const std::string select_s     = "select * from ramps_vu where 1 = 1 and icao_id = " + ap_row["icao_id"];
+      const std::string select_s     = fmt::format("select * from ramps_vu where 1 = 1 and icao_id = {} ", inout_target_navaid.icao_id);
+      const std::string filter_ramps = ramp_filter_stmt_s;
+      const std::string sql_ramp     = select_s + filter_ramps + " ORDER BY RANDOM() limit 1";
 
-          inout_target_navaid.synchToPoint();
-          result = true;
-          return result; // exit the loop
-        }
-        // end if an airport result is not empty and we should search for ramp location
-      } // end loop
-
-      // revert the plane type to its original value
-      local_plane_type_enum_to_search = in_plane_type_enum_to_search;
-
-
-      // If we reached this location than we failed to find a valid ramp position. We will use the runway as a ramp location.
-      // fetch the longest runway and return its center
-      auto const lmbda_get_query_for_fallback_position_based_on_filter_type = [](const missionx::mxFilterRampType& inFilterType, missionx::NavAidInfo& inNavAid)
-      {
-        static const std::string MOVE_PLANE_IN_METERS{"20"};
-
-        switch (inFilterType)
-        {
-        case missionx::mxFilterRampType::start_ramp:
-          {
-            // place plane 5 meters from beginning of the runway
-            return "select mx_get_point_based_on_bearing_and_length_in_meters (t1.rw_no_1_lat, rw_no_1_lon, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon), " + MOVE_PLANE_IN_METERS + ") as start_pos, t1.rw_no_1 as name, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading, t1.rw_length_mt from xp_rw t1 where t1.icao= '" + inNavAid.getID() + "' order by rw_length_mt desc limit 1";
-          }
-          break;
-        case missionx::mxFilterRampType::any_ramp_location:
-        case missionx::mxFilterRampType::end_ramp:
-          {
-            return "select mx_get_center_between_2_points(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as start_pos, t1.rw_no_1 || '-' || t1.rw_no_2 as name, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading, t1.rw_length_mt from xp_rw t1 where t1.icao= '" + inNavAid.getID() + "' order by rw_length_mt desc limit 1";
-          }
-          break;
-        default:
-          return std::string("");
-        }
-
-        return std::string("");
-      };
-
-      std::string query_start_pos_s = lmbda_get_query_for_fallback_position_based_on_filter_type(inRampFilterType, inout_target_navaid);
       #ifndef RELEASE
-      Log::logMsgThread("SQL Query to Fetch start pos: \n" + query_start_pos_s + "\n");
+      Log::logMsgThread(fmt::format("[{}] Ramp Filter for type: {}\n{}\n", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search), sql_ramp));
       #endif // !RELEASE
 
-      if (!query_start_pos_s.empty())
+      RandomEngine::resultTable_gather_ramp_data.clear();
+      rc = sqlite3_exec(data_manager::db_xp_airports.db, sql_ramp.c_str(), RandomEngine::callback_pick_random_ramp_location_db, nullptr, &zErrMsg);
+      if (rc != SQLITE_OK)
       {
-        resultTable_gather_ramp_data.clear();
-        rc = sqlite3_exec(data_manager::db_xp_airports.db, query_start_pos_s.c_str(), RandomEngine::callback_pick_random_ramp_location_db, nullptr, &zErrMsg);
-        if (rc != SQLITE_OK)
+        result.addErrMsg(fmt::format("[{}] Error during ramp search for plane type: {}", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search)), true); // debug
+        result.addErrMsg(fmt::format("[{}] Fail to pick a ramp, SQL Error: \n{}\n", __func__, zErrMsg), true);
+        sqlite3_free(zErrMsg);
+
+        return result;
+      }
+
+
+      // What to do if we fail to find the type of ramp
+      if (RandomEngine::resultTable_gather_ramp_data.empty())
+      {
+        result.addInfoMsg(fmt::format("[{}] No ramp was found for plane type: {} in Airport: {} with icao_id: {}, should continue and search", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search), inout_target_navaid.getID(), inout_target_navaid.icao_id ) ); // debug
+
+        if (missionx::mxFilterRampType::exact_plane_ramp_type == inRampFilterType)
+          break; // exit the loop since we want the exact ramp type
+
+        // Drill to next plane type using "fallback_alternative_ramp_type_to_drill"
+        // first time - special drill search: "Heavy Cargo > Cargo > Airline > Jet". "Heavy Airline > Airline > Jet"
+        if (loop01 == 0 && (local_plane_type_enum_to_search ==  missionx::mx_plane_types_enum::plane_type_heavy_cargo || local_plane_type_enum_to_search ==  missionx::mx_plane_types_enum::plane_type_heavy_airline ) )
+          local_plane_type_enum_to_search = static_cast<missionx::mx_plane_types_enum>(static_cast<int>(local_plane_type_enum_to_search) - 2);
+        else
+          local_plane_type_enum_to_search = static_cast<missionx::mx_plane_types_enum>(static_cast<int>(local_plane_type_enum_to_search) + fallback_alternative_ramp_type_to_drill);
+
+        // Check search boundaries
+        if (local_plane_type_enum_to_search <= missionx::mx_plane_types_enum::plane_type_any || local_plane_type_enum_to_search > missionx::mx_plane_types_enum::plane_type_heavy_cargo)
         {
-          result.addInfoMsg(fmt::format("[{}] No ramp was found for plane type: {}", __func__, translatePlaneTypeToString(local_plane_type_enum_to_search), false));
-          result.addInfoMsg(fmt::format("[{}] SQL error: {}", __func__, zErrMsg, false));
-          sqlite3_free(zErrMsg);
+          // result.addInfoMsg(fmt::format("[{}]: Fail to find suitable ramp for plane: [{}] in icao: {}", __func__, translatePlaneTypeToString(local_plane_type_enum_to_search), ap_row["icao"] ) ); // debug
+          result.addInfoMsg(fmt::format("[{}]: Fail to find suitable ramp for plane: [{}] in icao: {}", __func__, translatePlaneTypeToString(local_plane_type_enum_to_search), inout_target_navaid.getID())); // debug
+          break; // exit the loop and continue with the fallback logic.
         }
+
+        result.addInfoMsg(fmt::format("[{}]: Will continue searching for alternate ramp type for plane: {}", __func__, translatePlaneTypeToString(local_plane_type_enum_to_search))); // debug
+
+      } // end did not find ramp in database
+      else
+      {
+        // found ramp
+        // Store ramp location in navaid
+        auto ramp                                     = resultTable_gather_ramp_data.cbegin()->second;
+        inout_target_navaid.lat                       = mxUtils::stringToNumber<float>(ramp["lat"], ramp["lat"].length());
+        inout_target_navaid.lon                       = mxUtils::stringToNumber<float>(ramp["lon"], ramp["lon"].length());
+        inout_target_navaid.heading                   = mxUtils::stringToNumber<float>(ramp["heading"], ramp["heading"].length());
+        inout_target_navaid.ramp_info.uq_name         = ramp["name"];
+        inout_target_navaid.ramp_info.ramp_for_planes = ramp["for_planes"];
+        inout_target_navaid.ramp_info.ramp_width_code = ramp["icao_width_code"];
+        inout_target_navaid.ramp_info.operation_type  = ramp["operation_type"];
+
+        Log::logMsgThread(fmt::format("[{}] Ramp info gathered in icao_id: {}, Ramp name: {}.", __func__, inout_target_navaid.icao_id, inout_target_navaid.ramp_info.operation_type ) );
+
+        #ifndef RELEASE
+        for (auto& row_val : resultTable_gather_ramp_data | std::views::values)
+        {
+          // Log::logMsgThread (fmt::format("\rRamp: " + row_val["name"] + ", icao_id: " + row_val["icao_id"] + ", icao: " + row_val["icao"]) );
+          Log::logMsgThread(fmt::format("[{}] Ramp: {}, icao_id: {}, icao: {}", __func__, row_val["name"], row_val["icao_id"], row_val["icao"]));
+        }
+        #endif // !RELEASE
+
+        inout_target_navaid.synchToPoint();
+        result = true;
+
+        if (result.getInfoIndex() > 0)
+          Log::logMsgThread(fmt::format("[{}] {}", __func__, result.getInfoAsText()));
+
+        return result; // exit the loop
+      }
+
+    } // end loop
+
+    // -----------------------------------------------
+    // Fallback - force ramp location
+    // -----------------------------------------------
+
+    // reset the plane type to its original value
+    local_plane_type_enum_to_search = in_plane_type_enum_to_search;
+    result.addInfoMsg(fmt::format("[{}]: Using fallback code to find ramp for plane: {} in icao_id: {}", __func__, translatePlaneTypeToString(local_plane_type_enum_to_search), inout_target_navaid.icao_id)); // debug
+
+
+    // If we reached this location than we failed to find a valid ramp position. We will use the runway as a ramp location.
+    // fetch the longest runway and return its center
+    auto const lmbda_get_query_for_fallback_position_based_on_filter_type = [](const missionx::mxFilterRampType& inFilterType, missionx::NavAidInfo& inNavAid) -> std::string
+    {
+      static const std::string MOVE_PLANE_IN_METERS{"20"};
+
+      switch (inFilterType)
+      {
+      case missionx::mxFilterRampType::start_ramp:
+        {
+          // place plane 5 meters from beginning of the runway
+          // return "select mx_get_point_based_on_bearing_and_length_in_meters (t1.rw_no_1_lat, rw_no_1_lon, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon), " + MOVE_PLANE_IN_METERS + ") as start_pos, t1.rw_no_1 as name, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading, t1.rw_length_mt from xp_rw t1 where t1.icao= '" + inNavAid.getID() + "' order by rw_length_mt desc limit 1";
+          return fmt::format(R"(select mx_get_point_based_on_bearing_and_length_in_meters (t1.rw_no_1_lat, rw_no_1_lon, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon), " + MOVE_PLANE_IN_METERS + ") as start_pos
+                                   , t1.rw_no_1 as name
+                                   , mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading
+                                   , t1.rw_length_mt from xp_rw t1 where {} order by rw_length_mt desc limit 1)"
+                           , (inNavAid.icao_id)
+                               ? fmt::format(" icao_id = {} ", inNavAid.icao_id)
+                               : fmt::format(" icao = '{}' ", inNavAid.getID())
+                            );
+        }
+        break;
+      case missionx::mxFilterRampType::any_ramp_location:
+      case missionx::mxFilterRampType::end_ramp:
+        {
+          // return "select mx_get_center_between_2_points(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as start_pos, t1.rw_no_1 || '-' || t1.rw_no_2 as name, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading, t1.rw_length_mt from xp_rw t1 where t1.icao= '" + inNavAid.getID() + "' order by rw_length_mt desc limit 1";
+          return fmt::format("select mx_get_center_between_2_points(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as start_pos"
+                             ", t1.rw_no_1 || '-' || t1.rw_no_2 as name"
+                             ", mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading"
+                             ", t1.rw_length_mt from xp_rw t1 "
+                             " where {} order by rw_length_mt desc limit 1"
+                           , (inNavAid.icao_id)
+                               ? fmt::format(" icao_id = {} ", inNavAid.icao_id)
+                               : fmt::format(" icao = '{}' ", inNavAid.getID()));
+        }
+        break;
+      default:
+        return "";
+      }
+
+      return "";
+    };
+
+    std::string query_start_pos_s = lmbda_get_query_for_fallback_position_based_on_filter_type(inRampFilterType, inout_target_navaid);
+    #ifndef RELEASE
+    if (inRampFilterType == missionx::mxFilterRampType::start_ramp && if_start_ramp_then_force_plane_position)
+      Log::logMsgThread(fmt::format("[{}] Ramp position will use the inout_target_navaid (plane?) position\n", __func__));
+    else
+      Log::logMsgThread(fmt::format("[{}] SQL Query to Fetch start pos: \n{}\n", __func__, query_start_pos_s));
+    #endif // !RELEASE
+
+    // v26.03.1 skip fallback ramp position, will use the NavAid info for "ramp_start"
+    if (inRampFilterType == missionx::mxFilterRampType::start_ramp && if_start_ramp_then_force_plane_position)
+    {
+      auto plane_position     = missionx::dataref_manager::getPlanePointLocationThreadSafe();
+      inout_target_navaid.lat = static_cast<float>(plane_position.lat);
+      inout_target_navaid.lon = static_cast<float>(plane_position.lon);
+      inout_target_navaid.synchToPoint();
+
+      return result = true;
+    }
+
+    // Try to pick a valid fallback ramp position
+    if (!query_start_pos_s.empty())
+    {
+      resultTable_gather_ramp_data.clear();
+      rc = sqlite3_exec(data_manager::db_xp_airports.db, query_start_pos_s.c_str(), RandomEngine::callback_pick_random_ramp_location_db, nullptr, &zErrMsg);
+      if (rc != SQLITE_OK)
+      {
+        result.addInfoMsg(fmt::format("[{}] No ramp was found for plane type: {}", __func__, translatePlaneTypeToString(local_plane_type_enum_to_search), false));
+        result.addInfoMsg(fmt::format("[{}] SQL error: {}", __func__, zErrMsg, false));
+        sqlite3_free(zErrMsg);
+      }
+      else
+      {
+        if (RandomEngine::resultTable_gather_ramp_data.empty())
+          Log::logMsgThread("[pick ramp] No valid start position was found.");
         else
         {
-          if (RandomEngine::resultTable_gather_ramp_data.empty())
-            Log::logMsgThread("[pick ramp] No valid start position was found.");
-          else
+          Log::logMsgThread("[pick ramp] Start position info gathered.");
+          auto                     ramp        = resultTable_gather_ramp_data.cbegin()->second;
+          std::vector<std::string> vecPosition = mxUtils::split(ramp["start_pos"], ',');
+
+          if (vecPosition.size() > static_cast<size_t>(1))
           {
-            Log::logMsgThread("[pick ramp] Start position info gathered.");
-            auto                     ramp        = resultTable_gather_ramp_data.cbegin()->second;
-            std::vector<std::string> vecPosition = mxUtils::split(ramp["start_pos"], ',');
+            // Store location in Navaid
+            inout_target_navaid.lat                       = mxUtils::stringToNumber<float>(vecPosition.at(0), vecPosition.at(0).length());
+            inout_target_navaid.lon                       = mxUtils::stringToNumber<float>(vecPosition.at(1), vecPosition.at(1).length());
+            inout_target_navaid.heading                   = mxUtils::stringToNumber<float>(ramp["heading"], 6);
+            inout_target_navaid.ramp_info.uq_name         = ramp["name"];
+            inout_target_navaid.ramp_info.ramp_for_planes = "Runway: " + inout_target_navaid.ramp_info.uq_name;
 
-            if (vecPosition.size() > static_cast<size_t>(1))
-            {
-              // Store location in Navaid
-              inout_target_navaid.lat                       = mxUtils::stringToNumber<float>(vecPosition.at(0), vecPosition.at(0).length());
-              inout_target_navaid.lon                       = mxUtils::stringToNumber<float>(vecPosition.at(1), vecPosition.at(1).length());
-              inout_target_navaid.heading                   = mxUtils::stringToNumber<float>(ramp["heading"], 6);
-              inout_target_navaid.ramp_info.uq_name         = ramp["name"];
-              inout_target_navaid.ramp_info.ramp_for_planes = "Runway: " + inout_target_navaid.ramp_info.uq_name;
-
-              inout_target_navaid.synchToPoint();
-              return result = true;
-            }
-          } // end if we fetched the center of the runway as the ramp data
-        } // end if sqlite statement is legit one
-      } // end if we have query for fallback start position - either start of a runway or the center of the runway.
-    } // end if airport information query returned data
+            inout_target_navaid.synchToPoint();
+            return result = true;
+          }
+        } // end if we fetched the center of the runway as the ramp data
+      } // end if sqlite statement is legit one
+    } // end if we have query for fallback start position - either start of a runway or the center of the runway.
+    // } // end if airport information query returned data
   } // end if Database is open
 
 
   return result;
 }
 
+// --------------------------------
+
+// missionx::mx_return
+// RandomEngine::gen_get_ramp_based_on_plane_type.ORIG(missionx::NavAidInfo& inout_target_navaid, const mx_plane_types_enum& in_plane_type_enum_to_search, const missionx::mxFilterRampType& inRampFilterType)
+// {
+//   char*                         zErrMsg                         = nullptr;
+//   missionx::mx_return           result                          = true;
+//   missionx::mx_plane_types_enum local_plane_type_enum_to_search = in_plane_type_enum_to_search;
+//
+//   auto aptNavLine = std::string(inout_target_navaid.name);
+//
+//   if (data_manager::db_xp_airports.db_is_open_and_ready)
+//   {
+//     int rc = 0;
+//     //// construct view query (inner query)
+//     // based on airports_vu  // we will pick the first result in the ordered result since it should reflect the closest airport based on its lat/lon
+//     const std::string sql_ap = fmt::format(R"(select icao_id, icao, ap_elev_ft, ap_name, ap_type, ap_lat, ap_lon
+//                             , mx_calc_distance ( ap_lat, ap_lon, {}, {}, 3440) as dist_nm, 0 as bearing
+//                             , helipads, ramp_helos, ramp_planes, ramp_props, ramp_turboprops, ramp_jet_heavy, rw_hard, rw_dirt_gravel, rw_grass
+//                             , rw_water, is_custom from airports_vu where 1 = 1 and icao = '{}' order by dist_nm )",
+//                                            mxUtils::formatNumber<double>(inout_target_navaid.lat, 8),
+//                                            mxUtils::formatNumber<double>(inout_target_navaid.lon, 8),
+//                                            inout_target_navaid.getID());
+//
+//     #ifndef RELEASE
+//     Log::logMsgThread(fmt::format("[{}] Search Airport Query for ramps. Plane type: {}\n{}\n", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search), sql_ap));
+//     #endif // !RELEASE
+//
+//     // clear local cache
+//     RandomEngine::resultTable_gather_random_airports.clear();
+//     rc = sqlite3_exec(data_manager::db_xp_airports.db, sql_ap.c_str(), RandomEngine::callback_gather_random_airports_db, nullptr, &zErrMsg);
+//     if (rc != SQLITE_OK)
+//     {
+//       Log::logMsgThread(fmt::format("[{}] SQL Query Error: \n{}\n", __func__, zErrMsg));
+//       sqlite3_free(zErrMsg);
+//     }
+//     else
+//     {
+//       Log::logMsgThread(fmt::format("[{}] Ramp information was gathered.\n", __func__));
+//       #ifndef RELEASE
+//       for (auto& [row_num, row_data] : RandomEngine::resultTable_gather_random_airports)
+//       {
+//         Log::logMsgThread(fmt::format("[{}]\tSeq: {}, icao_id: {}, icao: {}, Distance: {}", __func__, mxUtils::formatNumber<int>(row_num), row_data["icao_id"], row_data["icao"], row_data["dist_nm"]));
+//       }
+//       #endif // !RELEASE
+//
+//       if (RandomEngine::resultTable_gather_random_airports.empty())
+//       {
+//         result.addErrMsg(fmt::format("[{}] No airports found relative to Navaid: {}.\n", __func__, inout_target_navaid.getID()), true);
+//         return result;
+//       }
+//       auto ap_row = RandomEngine::resultTable_gather_random_airports.cbegin()->second; // fetch the first result
+//
+//       inout_target_navaid.flag_is_custom_scenery = (!(ap_row["is_custom"].empty()));
+//
+//       // to build the query based on plane types
+//       // we add space at the beginning of the filter
+//       int calculate_type_direction = -1; // -1 = drill down, +1 = drill up
+//       for (int loop01 = 0; loop01 < 4; ++loop01)
+//       {
+//         std::string ramp_filter_stmt_s;
+//         switch (local_plane_type_enum_to_search)
+//         {
+//         case missionx::mx_plane_types_enum::plane_type_any:
+//           ramp_filter_stmt_s = "";
+//           break;
+//         case missionx::mx_plane_types_enum::plane_type_helos:
+//           ramp_filter_stmt_s = " and helos > 0 "; // pick all airports that have helos ramps (heliports or any airport with helos in it). The view we use calculated the number of helos ramps so it is easy to distinguish between them.
+//           break;
+//         case missionx::mx_plane_types_enum::plane_type_ga_floats:
+//         case missionx::mx_plane_types_enum::plane_type_ga:
+//         case missionx::mx_plane_types_enum::plane_type_props:
+//           ramp_filter_stmt_s = " and props + turboprops > 0 "; // make sure only props locations are picked exclude "fighter" ramps
+//           break;
+//         case missionx::mx_plane_types_enum::plane_type_turboprops:
+//           ramp_filter_stmt_s = " and props + turboprops > 0 "; // make sure only airports are being picked with at list 1 ramp for planes (not heliport or sea airports)
+//           break;
+//         case missionx::mx_plane_types_enum::plane_type_jets:
+//           ramp_filter_stmt_s = " and jet + terminal > 0 and icao_width_code >= 'B' "; // make sure jet is being picked. Filter out turbo or prop candidates
+//           break;
+//         case missionx::mx_plane_types_enum::plane_type_airline:
+//         case missionx::mx_plane_types_enum::plane_type_cargo:
+//           // filter by plane type, then ramp width type, then place in airport
+//           ramp_filter_stmt_s = " and jet + heavy > 0 and icao_width_code >= 'C' ";
+//           if (local_plane_type_enum_to_search == missionx::mx_plane_types_enum::plane_type_cargo)
+//             ramp_filter_stmt_s += " and ( lower(name) like '%carg%' or operation_type like '%carg%' ) ";
+//           else
+//             ramp_filter_stmt_s += " and ( lower(name) like '%term%' or operation_type like '%airl%' ) ";
+//           break;
+//         case missionx::mx_plane_types_enum::plane_type_heavy_airline:
+//         case missionx::mx_plane_types_enum::plane_type_heavy_cargo:
+//           // filter by plane type, then ramp width type, then place in airport
+//           ramp_filter_stmt_s = " and jet + heavy > 0 and icao_width_code like >= 'C' ";
+//           if (local_plane_type_enum_to_search == missionx::mx_plane_types_enum::plane_type_heavy_cargo)
+//             ramp_filter_stmt_s += " and ( lower(name) like '%carg%' or operation_type like '%carg%' ) ";
+//           else if (local_plane_type_enum_to_search == missionx::mx_plane_types_enum::plane_type_heavy_airline)
+//             ramp_filter_stmt_s += " and ( lower(name) like '%term%' or operation_type like '%airl%' ) ";
+//           break;
+//         case missionx::mx_plane_types_enum::plane_type_fighter:
+//           ramp_filter_stmt_s = " and fighter > 0 "; // make sure only airports are being picked with at list 1 ramp for planes (not heliport or sea airports)
+//           break;
+//         default:
+//           break;
+//         }
+//
+//         // filter out fighters for non fighter search.
+//         if (local_plane_type_enum_to_search != missionx::mx_plane_types_enum::plane_type_fighter)
+//           ramp_filter_stmt_s += " and fighters = 0 ";
+//
+//         const std::string select_s     = "select * from ramps_vu where 1 = 1 and icao_id = " + ap_row["icao_id"];
+//         const std::string filter_ramps = ramp_filter_stmt_s;
+//         const std::string sql_ramp     = select_s + filter_ramps + " ORDER BY RANDOM() limit 1";
+//
+//         #ifndef RELEASE
+//         Log::logMsgThread(fmt::format("[{}] Ramp Q for type: {}\n{}\n", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search), sql_ramp));
+//         #endif // !RELEASE
+//
+//         RandomEngine::resultTable_gather_ramp_data.clear();
+//         rc = sqlite3_exec(data_manager::db_xp_airports.db, sql_ramp.c_str(), RandomEngine::callback_pick_random_ramp_location_db, nullptr, &zErrMsg);
+//         if (rc != SQLITE_OK)
+//         {
+//           result.addErrMsg(fmt::format("[{}] Error during ramp search for plane type: {}", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search)), true); // debug
+//           result.addErrMsg(fmt::format("[{}] Fail to pick a ramp, SQL Error: \n{}\n", __func__, zErrMsg), true);
+//           sqlite3_free(zErrMsg);
+//
+//           return result;
+//         }
+//
+//
+//         if (RandomEngine::resultTable_gather_ramp_data.empty())
+//         {
+//           result.addInfoMsg(fmt::format("[{}] No ramp was found for plane type: {}, should continue and search", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search))); // debug
+//
+//           if (missionx::mxFilterRampType::exact_plane_ramp_type == inRampFilterType)
+//             break; // exit the loop since we want the exact ramp type
+//           if (loop01 > 0) // if this is not the first iteration
+//           {
+//             // we try to search ramps that are "jets", then "turboprops" and then "prop".
+//             // we do not search for Helos, nor fighter ramps
+//             int plane_type_code             = static_cast<int>(local_plane_type_enum_to_search);
+//             plane_type_code                 += calculate_type_direction; // decrease/increase the code number - will affect a ramp type based on the enum number
+//             local_plane_type_enum_to_search = static_cast<missionx::mx_plane_types_enum>(plane_type_code);
+//
+//             // Check boundaries
+//             if (local_plane_type_enum_to_search <= missionx::mx_plane_types_enum::plane_type_helos || local_plane_type_enum_to_search > missionx::mx_plane_types_enum::plane_type_heavy_cargo)
+//               break; // exit the loop. We did not find a suitable ramp
+//
+//             result.addInfoMsg(fmt::format("[{}]: Search for alternate ramp type for plane: {}", __func__, translatePlaneTypeToString(local_plane_type_enum_to_search))); // debug
+//           }
+//           else
+//           {
+//             // based on plane type, decide if to drill down or up
+//             if (mxUtils::mx_between<int>(static_cast<int>(in_plane_type_enum_to_search), static_cast<int>(mx_plane_types_enum::plane_type_helos), static_cast<int>(mx_plane_types_enum::plane_type_turboprops), enums::mx_between_types::gt_min_less_max))
+//             {
+//               local_plane_type_enum_to_search = missionx::mx_plane_types_enum::plane_type_turboprops;
+//               calculate_type_direction        = 1; // we drill up
+//             }
+//             else if (in_plane_type_enum_to_search == missionx::mx_plane_types_enum::plane_type_helos || in_plane_type_enum_to_search == missionx::mx_plane_types_enum::plane_type_fighter)
+//             {
+//               local_plane_type_enum_to_search = missionx::mx_plane_types_enum::plane_type_ga;
+//               calculate_type_direction        = 1; // we drill up
+//             }
+//             else if (in_plane_type_enum_to_search == missionx::mx_plane_types_enum::plane_type_airline)
+//             {
+//               local_plane_type_enum_to_search = missionx::mx_plane_types_enum::plane_type_airline;
+//               calculate_type_direction        = -1; // we drill down
+//             }
+//             else
+//             {
+//               local_plane_type_enum_to_search = missionx::mx_plane_types_enum::plane_type_heavy_airline;
+//               calculate_type_direction        = -1; // we drill down
+//             }
+//           }
+//         } // end did not find ramp in database
+//         else
+//         {
+//           // found ramp
+//           // Store ramp location in navaid
+//           Log::logMsgThread("[pick ramp] Ramp info gathered.");
+//           auto ramp                                     = resultTable_gather_ramp_data.cbegin()->second;
+//           inout_target_navaid.lat                       = mxUtils::stringToNumber<float>(ramp["lat"], ramp["lat"].length());
+//           inout_target_navaid.lon                       = mxUtils::stringToNumber<float>(ramp["lon"], ramp["lon"].length());
+//           inout_target_navaid.heading                   = mxUtils::stringToNumber<float>(ramp["heading"], ramp["heading"].length());
+//           inout_target_navaid.ramp_info.uq_name         = ramp["name"];
+//           inout_target_navaid.ramp_info.ramp_for_planes = ramp["for_planes"];
+//           inout_target_navaid.ramp_info.ramp_width_code = ramp["icao_width_code"];
+//           inout_target_navaid.ramp_info.operation_type  = ramp["operation_type"];
+//           #ifndef RELEASE
+//           for (auto& row_val : resultTable_gather_ramp_data | std::views::values)
+//           {
+//             // Log::logMsgThread (fmt::format("\rRamp: " + row_val["name"] + ", icao_id: " + row_val["icao_id"] + ", icao: " + row_val["icao"]) );
+//             Log::logMsgThread(fmt::format("\rRamp: {}, icao_id: {}, icao: {}", row_val["name"], row_val["icao_id"], row_val["icao"]));
+//           }
+//           #endif // !RELEASE
+//
+//           // // revert the template type if and only if it is different. Main reason is if we do not find a ramp location for our plane then we try to find a ramp based on other plane types
+//           // local_plane_type_enum_to_search = in_plane_type_enum_to_search;
+//
+//           inout_target_navaid.synchToPoint();
+//           result = true;
+//           return result; // exit the loop
+//         }
+//         // end if an airport result is not empty and we should search for ramp location
+//       } // end loop
+//
+//       // revert the plane type to its original value
+//       local_plane_type_enum_to_search = in_plane_type_enum_to_search;
+//
+//
+//       // If we reached this location than we failed to find a valid ramp position. We will use the runway as a ramp location.
+//       // fetch the longest runway and return its center
+//       auto const lmbda_get_query_for_fallback_position_based_on_filter_type = [](const missionx::mxFilterRampType& inFilterType, missionx::NavAidInfo& inNavAid)
+//       {
+//         static const std::string MOVE_PLANE_IN_METERS{"20"};
+//
+//         switch (inFilterType)
+//         {
+//         case missionx::mxFilterRampType::start_ramp:
+//           {
+//             // place plane 5 meters from beginning of the runway
+//             return "select mx_get_point_based_on_bearing_and_length_in_meters (t1.rw_no_1_lat, rw_no_1_lon, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon), " + MOVE_PLANE_IN_METERS + ") as start_pos, t1.rw_no_1 as name, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading, t1.rw_length_mt from xp_rw t1 where t1.icao= '" + inNavAid.getID() + "' order by rw_length_mt desc limit 1";
+//           }
+//           break;
+//         case missionx::mxFilterRampType::any_ramp_location:
+//         case missionx::mxFilterRampType::end_ramp:
+//           {
+//             return "select mx_get_center_between_2_points(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as start_pos, t1.rw_no_1 || '-' || t1.rw_no_2 as name, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading, t1.rw_length_mt from xp_rw t1 where t1.icao= '" + inNavAid.getID() + "' order by rw_length_mt desc limit 1";
+//           }
+//           break;
+//         default:
+//           return std::string("");
+//         }
+//
+//         return std::string("");
+//       };
+//
+//       std::string query_start_pos_s = lmbda_get_query_for_fallback_position_based_on_filter_type(inRampFilterType, inout_target_navaid);
+//       #ifndef RELEASE
+//       Log::logMsgThread("SQL Query to Fetch start pos: \n" + query_start_pos_s + "\n");
+//       #endif // !RELEASE
+//
+//       if (!query_start_pos_s.empty())
+//       {
+//         resultTable_gather_ramp_data.clear();
+//         rc = sqlite3_exec(data_manager::db_xp_airports.db, query_start_pos_s.c_str(), RandomEngine::callback_pick_random_ramp_location_db, nullptr, &zErrMsg);
+//         if (rc != SQLITE_OK)
+//         {
+//           result.addInfoMsg(fmt::format("[{}] No ramp was found for plane type: {}", __func__, translatePlaneTypeToString(local_plane_type_enum_to_search), false));
+//           result.addInfoMsg(fmt::format("[{}] SQL error: {}", __func__, zErrMsg, false));
+//           sqlite3_free(zErrMsg);
+//         }
+//         else
+//         {
+//           if (RandomEngine::resultTable_gather_ramp_data.empty())
+//             Log::logMsgThread("[pick ramp] No valid start position was found.");
+//           else
+//           {
+//             Log::logMsgThread("[pick ramp] Start position info gathered.");
+//             auto                     ramp        = resultTable_gather_ramp_data.cbegin()->second;
+//             std::vector<std::string> vecPosition = mxUtils::split(ramp["start_pos"], ',');
+//
+//             if (vecPosition.size() > static_cast<size_t>(1))
+//             {
+//               // Store location in Navaid
+//               inout_target_navaid.lat                       = mxUtils::stringToNumber<float>(vecPosition.at(0), vecPosition.at(0).length());
+//               inout_target_navaid.lon                       = mxUtils::stringToNumber<float>(vecPosition.at(1), vecPosition.at(1).length());
+//               inout_target_navaid.heading                   = mxUtils::stringToNumber<float>(ramp["heading"], 6);
+//               inout_target_navaid.ramp_info.uq_name         = ramp["name"];
+//               inout_target_navaid.ramp_info.ramp_for_planes = "Runway: " + inout_target_navaid.ramp_info.uq_name;
+//
+//               inout_target_navaid.synchToPoint();
+//               return result = true;
+//             }
+//           } // end if we fetched the center of the runway as the ramp data
+//         } // end if sqlite statement is legit one
+//       } // end if we have query for fallback start position - either start of a runway or the center of the runway.
+//     } // end if airport information query returned data
+//   } // end if Database is open
+//
+//
+//   return result;
+// }
+
+
 
 // --------------------------------
 
-bool
-RandomEngine::filterAndPickRampBasedOnPlaneType(missionx::NavAidInfo& navAid, std::string& outErrorMsg, const missionx::mxFilterRampType& inRampFilterType) // const bool& inIgnoreCenterOfRunwayAsRamp)
-{
-  char* zErrMsg = nullptr;
-
-  std::string err;
-  // missionx::mx_aptdat_cached_info navData;
-  auto aptNavLine = std::string(navAid.name);
-
-  outErrorMsg.clear();
-
-  if ((missionx::RandomEngine::random_thread_state.flagAbortThread))
-  {
-    outErrorMsg = "Need to abort";
-    return false;
-  }
-
-  mx_plane_types_enum plane_type_enum_to_search = RandomEngine::template_plane_type_enum;
-
-  if (data_manager::db_xp_airports.db_is_open_and_ready)
-  {
-    int rc = 0;
-    //// construct view query (inner query)
-    // base on airports_vu
-    // we will pick the first result in the ordered result since it should reflect the closest airport based on its lat/lon
-    const std::string sql_ap = fmt::format(R"(select icao_id, icao, ap_elev_ft, ap_name, ap_type, ap_lat, ap_lon
-                            , mx_calc_distance ( ap_lat, ap_lon, {}, {}, 3440) as dist_nm, 0 as bearing
-                            , helipads, ramp_helos, ramp_planes, ramp_props, ramp_turboprops, ramp_jet_heavy, rw_hard, rw_dirt_gravel, rw_grass
-                            , rw_water, is_custom from airports_vu where 1 = 1 and icao = '{}' order by dist_nm )",
-                                           mxUtils::formatNumber<double>(navAid.lat, 8),
-                                           mxUtils::formatNumber<double>(navAid.lon, 8),
-                                           navAid.getID());
-
-    #ifndef RELEASE
-    Log::logMsgThread("[get_random_airport_from_db] Query: \n" + sql_ap + "\n");
-    #endif // !RELEASE
-
-    // clear local cache
-    RandomEngine::resultTable_gather_random_airports.clear();
-    rc = sqlite3_exec(data_manager::db_xp_airports.db, sql_ap.c_str(), RandomEngine::callback_gather_random_airports_db, nullptr, &zErrMsg);
-    if (rc != SQLITE_OK)
-    {
-      Log::logMsgThread("[filter and pick ramp] SQL error: " + std::string(zErrMsg));
-      sqlite3_free(zErrMsg);
-    }
-    else
-    {
-      Log::logMsgThread("[filter and pick ramp] Information was gathered.");
-      #ifndef RELEASE
-      for (auto& [row_num, row_data] : RandomEngine::resultTable_gather_random_airports)
-      {
-        Log::logMsgThread(fmt::format("\tSeq: {}, icao_id: {}, icao: {}, Distance: {}", mxUtils::formatNumber<int>(row_num), row_data["icao_id"], row_data["icao"], row_data["dist_nm"]));
-      }
-      #endif // !RELEASE
-
-      if (RandomEngine::resultTable_gather_random_airports.empty())
-      {
-        Log::logMsgThread("[filter and pick ramp] No airports found relative to NavAid: " + navAid.getID());
-        return false;
-      }
-      auto ap_row = RandomEngine::resultTable_gather_random_airports.cbegin()->second; // fetch the first result
-
-      navAid.flag_is_custom_scenery = (!(ap_row["is_custom"].empty()));
-
-      // build the query based on plane types
-      // we add space at the beginning of the filter
-      for (int loop01 = 0; loop01 < 4; ++loop01)
-      {
-        std::string ramp_filter_stmt_s;
-        switch (plane_type_enum_to_search)
-        {
-        case missionx::mx_plane_types_enum::plane_type_any:
-          ramp_filter_stmt_s = "";
-          break;
-        case missionx::mx_plane_types_enum::plane_type_helos:
-          ramp_filter_stmt_s = " and helos > 0 "; // pick all airports that have helos ramps (heliports or any airport with helos in it). The view we use calculated the number of helos ramps so it is easy to distinguish between them.
-          break;
-        case missionx::mx_plane_types_enum::plane_type_ga_floats:
-        case missionx::mx_plane_types_enum::plane_type_ga:
-        case missionx::mx_plane_types_enum::plane_type_props:
-          ramp_filter_stmt_s = " and props + turboprops > 0 and lower(for_planes) not like '%fighter%' "; // make sure only props locations are picked exclude "fighter" ramps
-          break;
-        case missionx::mx_plane_types_enum::plane_type_turboprops:
-          ramp_filter_stmt_s = " and props + turboprops > 0 "; // make sure only airports are being picked with at list 1 ramp for planes (not heliport or sea airports)
-          break;
-        case missionx::mx_plane_types_enum::plane_type_jets:
-        case missionx::mx_plane_types_enum::plane_type_heavy:
-          ramp_filter_stmt_s = " and jet_n_heavy > 0 "; // make sure only airports are being picked with at list 1 ramp for planes (not heliport or sea airports)
-          break;
-        case missionx::mx_plane_types_enum::plane_type_fighter:
-          ramp_filter_stmt_s = " and fighter > 0 "; // make sure only airports are being picked with at list 1 ramp for planes (not heliport or sea airports)
-          break;
-        default:
-          break;
-        }
-
-        const std::string select_s     = "select * from ramps_vu where 1 = 1 and icao_id = " + ap_row["icao_id"];
-        const std::string filter_ramps = ramp_filter_stmt_s;
-        const std::string sql          = select_s + filter_ramps + " ORDER BY RANDOM() limit 1";
-
-        RandomEngine::resultTable_gather_ramp_data.clear();
-        rc = sqlite3_exec(data_manager::db_xp_airports.db, sql.c_str(), RandomEngine::callback_pick_random_ramp_location_db, nullptr, &zErrMsg);
-        if (rc != SQLITE_OK)
-        {
-          outErrorMsg = "Error during ramp search for plane type: " + translatePlaneTypeToString(plane_type_enum_to_search); // debug
-          Log::logMsgThread("[pick ramp] SQL error: " + std::string(zErrMsg));
-          sqlite3_free(zErrMsg);
-
-          return false;
-        }
-        else
-        {
-          outErrorMsg.clear();
-
-          if (RandomEngine::resultTable_gather_ramp_data.empty())
-          {
-            outErrorMsg = "No ramp was found for plane type: " + translatePlaneTypeToString(plane_type_enum_to_search) + ", should continue and search"; // debug
-
-            if (missionx::mxFilterRampType::exact_plane_ramp_type == inRampFilterType)
-              break; // exit the loop since we want the exact ramp type
-            else if (loop01 > 0) // if this is not the first iteration
-            {
-              // we try to search ramps that are "jets", then "turboprops" and then "prop".
-              // we do not search for Helos, nor fighter ramps
-              int i1 = static_cast<int>(plane_type_enum_to_search);
-              i1--;
-              plane_type_enum_to_search = static_cast<missionx::mx_plane_types_enum>(i1);
-              outErrorMsg               += ": try ramp type for: " + translatePlaneTypeToString(plane_type_enum_to_search); // debug
-            }
-            else
-            {
-              plane_type_enum_to_search = missionx::mx_plane_types_enum::plane_type_jets;
-            }
-
-            Log::logMsgThread("[pick ramp] SQL error: " + outErrorMsg);
-          }
-          else
-          {
-            // Store ramp location in navaid
-            Log::logMsgThread("[pick ramp] Ramp info gathered.");
-            auto ramp                        = resultTable_gather_ramp_data.cbegin()->second;
-            navAid.lat                       = mxUtils::stringToNumber<float>(ramp["lat"], ramp["lat"].length());
-            navAid.lon                       = mxUtils::stringToNumber<float>(ramp["lon"], ramp["lon"].length());
-            navAid.heading                   = mxUtils::stringToNumber<float>(ramp["heading"], ramp["heading"].length());
-            navAid.ramp_info.uq_name         = ramp["name"];
-            navAid.ramp_info.ramp_for_planes = ramp["for_planes"];
-
-            #ifndef RELEASE
-            for (auto& row_val : resultTable_gather_ramp_data | std::views::values)
-            {
-              Log::logMsgThread("\rRamp: " + row_val["name"] + ", icao_id: " + row_val["icao_id"] + ", icao: " + row_val["icao"]);
-            }
-            #endif // !RELEASE
-
-            // revert back the template type if and only if it is different. Main reason is if we do not find a ramp location for our plane then we try to find a ramp based on other plane types
-            if (RandomEngine::template_plane_type_enum != plane_type_enum_to_search)
-              plane_type_enum_to_search = RandomEngine::template_plane_type_enum;
-
-            navAid.synchToPoint();
-            return true; // exit the loop
-          }
-        } // end if airport result is not empty and we should search for ramp location
-      } // end loop
-
-      plane_type_enum_to_search = RandomEngine::template_plane_type_enum; // copy back the original plane type
-
-      // If we reached this location than we failed finding a valid ramp position.
-      // fetch the longest runway and return its center
-      auto const lmbda_get_query_for_fallback_position_based_on_filter_type = [](const missionx::mxFilterRampType& inFilterType, missionx::NavAidInfo& inNavAid)
-      {
-        static const std::string MOVE_PLANE_IN_METERS{"20"};
-
-        switch (inFilterType)
-        {
-        case missionx::mxFilterRampType::start_ramp:
-          {
-            // place plane 5 meters from beginning of the runway
-            return "select mx_get_point_based_on_bearing_and_length_in_meters (t1.rw_no_1_lat, rw_no_1_lon, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon), " + MOVE_PLANE_IN_METERS + ") as start_pos, t1.rw_no_1 as name, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading, t1.rw_length_mt from xp_rw t1 where t1.icao= '" + inNavAid.getID() + "' order by rw_length_mt desc limit 1";
-          }
-          break;
-        case missionx::mxFilterRampType::any_ramp_location:
-        case missionx::mxFilterRampType::end_ramp:
-          {
-            return "select mx_get_center_between_2_points(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as start_pos, t1.rw_no_1 || '-' || t1.rw_no_2 as name, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading, t1.rw_length_mt from xp_rw t1 where t1.icao= '" + inNavAid.getID() + "' order by rw_length_mt desc limit 1";
-          }
-          break;
-        default:
-          return std::string("");
-        }
-
-        return std::string("");
-      };
-
-      std::string query_start_pos_s = lmbda_get_query_for_fallback_position_based_on_filter_type(inRampFilterType, navAid);
-      #ifndef RELEASE
-      Log::logMsgThread("SQL Query to Fetch start pos: \n" + query_start_pos_s + "\n");
-      #endif // !RELEASE
-
-      if (!query_start_pos_s.empty())
-      {
-        resultTable_gather_ramp_data.clear();
-        rc = sqlite3_exec(data_manager::db_xp_airports.db, query_start_pos_s.c_str(), RandomEngine::callback_pick_random_ramp_location_db, nullptr, &zErrMsg);
-        if (rc != SQLITE_OK)
-        {
-          outErrorMsg = "No ramp was found for plane type: " + translatePlaneTypeToString(plane_type_enum_to_search);
-          Log::logMsgThread("[pick ramp] SQL error: " + std::string(zErrMsg));
-          sqlite3_free(zErrMsg);
-        }
-        else
-        {
-          outErrorMsg.clear();
-
-          if (RandomEngine::resultTable_gather_ramp_data.empty())
-            Log::logMsgThread("[pick ramp] No valid start position was found.");
-          else
-          {
-            Log::logMsgThread("[pick ramp] Start position info gathered.");
-            auto                     ramp        = resultTable_gather_ramp_data.cbegin()->second;
-            std::vector<std::string> vecPosition = mxUtils::split(ramp["start_pos"], ',');
-
-            if (vecPosition.size() > static_cast<size_t>(1))
-            {
-              // Store location in Navaid
-              navAid.lat                       = mxUtils::stringToNumber<float>(vecPosition.at(0), vecPosition.at(0).length());
-              navAid.lon                       = mxUtils::stringToNumber<float>(vecPosition.at(1), vecPosition.at(1).length());
-              navAid.heading                   = mxUtils::stringToNumber<float>(ramp["heading"], 6);
-              navAid.ramp_info.uq_name         = ramp["name"];
-              navAid.ramp_info.ramp_for_planes = "Runway: " + navAid.ramp_info.uq_name;
-
-              navAid.synchToPoint();
-              return true;
-            }
-          } // end if we fetched the center of the runway as the ramp data
-        } // end if sqlite statement is legit one
-      } // end if we have query for fallback start position - either start of a runway or the center of the runway.
-    } // end if airport information query returned data
-  } // end if Database is open
-
-  return false;
-}
-
-// --------------------------------
 
 void
 RandomEngine::gen_add_inventory_phase02_add_items(missionx::NavAidInfo& inOutNavAidInfo)
@@ -3398,7 +3525,8 @@ RandomEngine::callback_pick_random_ramp_location_db(void* data, const int argc, 
 // -----------------------------------
 
 NavAidInfo
-RandomEngine::get_random_airport_from_db(missionx::Point& inPoint, const float inMinDistance_nm, const float inMaxDistance_nm, const int inExcludeAngle, missionx::mx_base_node& inProperties, const uint8_t& in_plane_type)
+RandomEngine::get_random_airport_from_db(missionx::Point& inPoint, const float inMinDistance_nm, const float inMaxDistance_nm
+                                        , const int inExcludeAngle, missionx::mx_base_node& inProperties, const uint8_t& in_plane_type)
 {
   #ifndef RELEASE
   auto start_db_call = std::chrono::steady_clock::now();
@@ -3423,7 +3551,7 @@ RandomEngine::get_random_airport_from_db(missionx::Point& inPoint, const float i
 
   //// construct view query (inner query)
   // base on xp_airports
-  const std::string inner_view = fmt::format("select icao_id, icao, ap_elev_ft, ap_name, ap_type, ap_lat, ap_lon, mx_calc_distance ( ap_lat, ap_lon, {}, {}, 3440) as dist_nm, mx_bearing (ap_lat, ap_lon, {}, {}) as bearing, helipads, ramp_helos, ramp_planes, ramp_props, ramp_turboprops, ramp_jet_heavy, rw_hard, rw_dirt_gravel, rw_grass, rw_water, is_custom, is_oilrig from airports_vu ", mxUtils::formatNumber<double>(pLat, 10), mxUtils::formatNumber<double>(pLon, 10),
+  const std::string inner_view = fmt::format("select icao_id, icao, ap_elev_ft, ap_name, ap_type, ap_lat, ap_lon, max_rw_length_in_meters, ramp_in_terminal, ramp_in_cargo, mx_calc_distance ( ap_lat, ap_lon, {}, {}, 3440) as dist_nm, mx_bearing (ap_lat, ap_lon, {}, {}) as bearing, helipads, ramp_helos, ramp_planes, ramp_props, ramp_turboprops, ramp_jet_heavy, rw_hard, rw_dirt_gravel, rw_grass, rw_water, is_custom, is_oilrig from airports_vu ", mxUtils::formatNumber<double>(pLat, 10), mxUtils::formatNumber<double>(pLon, 10),
                                              mxUtils::formatNumber<double>(pLat, 10), mxUtils::formatNumber<double>(pLon, 10)); // v3.303.12 added field is_custom
 
   // Construct distance
@@ -3455,10 +3583,11 @@ RandomEngine::get_random_airport_from_db(missionx::Point& inPoint, const float i
     return " and ( bearing < " + mxUtils::formatNumber<int>(excludeAngle_Left) + " or bearing > " + mxUtils::formatNumber<int>(excludeAngle_Right) + " )";
   };
 
+  // Bearing Filter
   const std::string bearing_s = lmbda_get_bearing_string(inExcludeAngle);
 
-  //// AND Bearing construct ////
-  const auto lmbda_get_plane_filter_string = [](const missionx::mx_plane_types_enum inPlaneType)
+  //// Airports Filter ////
+  const auto lmbda_get_airport_filter_based_on_plane_type = [](const missionx::mx_plane_types_enum inPlaneType)
   {
     std::string stmt;
     switch (inPlaneType)
@@ -3480,8 +3609,23 @@ RandomEngine::get_random_airport_from_db(missionx::Point& inPoint, const float i
       stmt = " and ap_type = 1 and ramp_turboprops > 0 "; //
       break;
     case missionx::mx_plane_types_enum::plane_type_jets:
-    case missionx::mx_plane_types_enum::plane_type_heavy:
-      stmt = " and ap_type = 1 and ramp_jet_heavy > 0 "; //
+      stmt = " and ap_type = 1 and ramp_jet_heavy > 0 and max_rw_length_in_meters >= 850 "; //
+      break;
+    case missionx::mx_plane_types_enum::plane_type_airline:
+    case missionx::mx_plane_types_enum::plane_type_cargo:
+      stmt = " and ap_type = 1 and ramp_jet_heavy > 0 and max_rw_length_in_meters >= 1200 "; //
+      if (inPlaneType == missionx::mx_plane_types_enum::plane_type_cargo)
+        stmt += " and ramp_in_cargo > 0 ";  // ramps name have the cargo text in them
+      else
+        stmt += " and ramp_in_terminal > 0 "; // ramps name have the "term" text in them
+      break;
+    case missionx::mx_plane_types_enum::plane_type_heavy_airline:
+    case missionx::mx_plane_types_enum::plane_type_heavy_cargo:
+      stmt = " and ap_type = 1 and ramp_jet_heavy > 0 and rw_hard > 0 and max_rw_length_in_meters >= 1700 ";
+      if (inPlaneType == missionx::mx_plane_types_enum::plane_type_heavy_cargo)
+        stmt += " and ramp_in_cargo > 0 ";  // ramps name have the cargo text in them
+      else
+        stmt += " and ramp_in_terminal > 0 "; // ramps name have the "term" text in them
       break;
     default:
       break;
@@ -3490,8 +3634,7 @@ RandomEngine::get_random_airport_from_db(missionx::Point& inPoint, const float i
     return stmt;
   };
 
-  auto ramp_type_filter_s = lmbda_get_plane_filter_string(static_cast<missionx::mx_plane_types_enum>(in_plane_type));
-
+  auto filter_by_ramp_type_s = lmbda_get_airport_filter_based_on_plane_type(static_cast<missionx::mx_plane_types_enum>(in_plane_type));
 
   // filter airports by runway types (if user asked for)
   const auto lmbda_filter_based_on_rw_type = [](const std::string& inFilter)
@@ -3511,7 +3654,7 @@ RandomEngine::get_random_airport_from_db(missionx::Point& inPoint, const float i
   const std::string filter_by_last_leg = (flag_is_last_flight_leg) ? " and is_oilrig = 0 " : "";
 
   // adding the rw filter to the query
-  const std::string sql = "select * from ( " + inner_view + " ) vu where 1 = 1 " + distance_s + bearing_s + ramp_type_filter_s + subquery_to_filter_rw_type + filter_by_last_leg + " order by RANDOM() limit 10"; // v3.0.255.3 use RANDOM() function to pick random row  // older option: any valid row ordered by distance " order by dist_nm" ;
+  const std::string sql = "select * from ( " + inner_view + " ) vu where 1 = 1 " + distance_s + bearing_s + filter_by_ramp_type_s + subquery_to_filter_rw_type + filter_by_last_leg + " order by RANDOM() limit 10"; // v3.0.255.3 use RANDOM() function to pick random row  // older option: any valid row ordered by distance " order by dist_nm" ;
 
 
   #ifndef RELEASE
@@ -3539,85 +3682,35 @@ RandomEngine::get_random_airport_from_db(missionx::Point& inPoint, const float i
       #endif // !RELEASE
 
 
-      // If there is data then pick a ramp
       if (!RandomEngine::resultTable_gather_random_airports.empty())
       {
-        const auto lmbda_get_ramp_filter_based_on_plane_type = [](missionx::mx_plane_types_enum inPlaneType)
-        {
-          std::string stmt;
-          switch (inPlaneType)
-          {
-          case missionx::mx_plane_types_enum::plane_type_any:
-            stmt = "";
-            break;
-          case missionx::mx_plane_types_enum::plane_type_helos:
-            stmt = " and helos > 0 "; // pick all airports that have helos ramps (heliports or any airport with helos in it). The view we use calculated the number of helos ramps so it is easy to distinguish between them.
-            break;
-          case missionx::mx_plane_types_enum::plane_type_ga_floats:
-          case missionx::mx_plane_types_enum::plane_type_ga:
-          case missionx::mx_plane_types_enum::plane_type_props:
-          case missionx::mx_plane_types_enum::plane_type_turboprops:
-            stmt = " and props + turboprops > 0 "; // make sure only airports are being picked with at list 1 ramp for planes (not heliport or sea airports)
-            break;
-          case missionx::mx_plane_types_enum::plane_type_jets:
-          case missionx::mx_plane_types_enum::plane_type_heavy:
-            stmt = " and jet_n_heavy > 0 "; // make sure only airports are being picked with at list 1 ramp for planes (not heliport or sea airports)
-            break;
-          default:
-            break;
-          }
-
-          return stmt;
-        };
-
+ 
         auto row = RandomEngine::resultTable_gather_random_airports.cbegin()->second; // fetch the first result
+        // set the icao_id
+        nav.icao_id = mxUtils::stringToNumber<int>( row["icao_id"] ); // v26.03.1
+        // Set icao and airport name
         nav.setID(row["icao"]);
         nav.setName(row["ap_name"]);
-        // v25.10.1 store airport lat/lon even if there is no ramp. In most cases, the middle of the runway.
+        // v25.10.1 store airport lat/lon even if there is no ramp. In worst case we will use the middle of the runway.
         nav.lat = mxUtils::stringToNumber<float>(row["ap_lat"], 8);
         nav.lon = mxUtils::stringToNumber<float>(row["ap_lon"], 8);
-
+        // custom scenery ?
         nav.flag_is_custom_scenery = (!(row["is_custom"].empty())); // v3.303.12 changed field name to is_custom
-
+        // elevation
         const std::string elev_ft = row["ap_elev_ft"];
         nav.height_mt             = (elev_ft.empty()) ? 0.0f : mxUtils::stringToNumber<float>(elev_ft) * missionx::feet2meter;
 
-        const std::string select_s     = "select * from ramps_vu where 1 = 1 and for_planes is not null and icao_id = " + row["icao_id"]; // v3.303.14 added "for_planes is not null" to narrow the airports to the ones that there are real ramps
-        const std::string filter_ramps = lmbda_get_ramp_filter_based_on_plane_type(static_cast<missionx::mx_plane_types_enum>(in_plane_type));
-        const std::string sql_query    = select_s + filter_ramps + " ORDER BY RANDOM() limit 1";
+        auto local_plane_type = static_cast<missionx::mx_plane_types_enum>(in_plane_type);
 
-        #ifndef RELEASE
-        Log::logMsgThread("\n[pick ramp sql]\n" + sql_query + "\n"); // debug
-        #endif // !RELEASE
-
-        resultTable_gather_ramp_data.clear();
-        const int rc1 = sqlite3_exec(data_manager::db_xp_airports.db, sql_query.c_str(), RandomEngine::callback_pick_random_ramp_location_db, nullptr, &zErrMsg);
-        if (rc1 != SQLITE_OK)
+        // Search RAMP
+        if (auto result = RandomEngine::gen_get_ramp_based_on_plane_type(nav, local_plane_type, mxFilterRampType::airport_ramp)
+          ; !result.result)
         {
-          Log::logMsgThread("[pick ramp] SQL error: " + std::string(zErrMsg));
-          sqlite3_free(zErrMsg);
+          Log::logMsgThread(fmt::format("[{}] Failed to gather ramp at icao_id: {}, airport: {}.\n{}"
+                           , __func__, nav.icao_id, nav.getID(), result.getErrorsAsText() ), missionx::format_type::error);
         }
-        else
-        {
-          if (RandomEngine::resultTable_gather_ramp_data.empty())
-            Log::logMsgThread("[pick ramp] No ramp was found.");
-          else
-          {
-            Log::logMsgThread("[pick ramp] Ramp info gathered.");
-            auto ramp                     = resultTable_gather_ramp_data.cbegin()->second;
-            nav.lat                       = mxUtils::stringToNumber<float>(ramp["lat"], 12);
-            nav.lon                       = mxUtils::stringToNumber<float>(ramp["lon"], 12);
-            nav.ramp_info.uq_name         = ramp["name"];
-            nav.ramp_info.ramp_for_planes = ramp["for_planes"];
 
-            #ifndef RELEASE
-            for (auto& ramp_data : resultTable_gather_ramp_data | std::views::values)
-            {
-              Log::logMsgThread("\ramp: " + ramp_data["name"] + ", icao_id: " + ramp_data["icao_id"] + ", icao: " + ramp_data["icao"]);
-            }
-            #endif // !RELEASE
-          }
-        }
+
       } // end if an airport result is not empty and we should search for ramp location
     } // end if a query returned value
   } // end if DB is open
@@ -3632,6 +3725,291 @@ RandomEngine::get_random_airport_from_db(missionx::Point& inPoint, const float i
   return nav;
 }
 
+
+// -----------------------------------
+//
+// NavAidInfo RandomEngine::get_random_airport_from_db2(missionx::Point& inPoint, const float inMinDistance_nm, const float inMaxDistance_nm, const int inExcludeAngle, missionx::mx_base_node& inProperties, const uint8_t& in_plane_type)
+// {
+// #ifndef RELEASE
+//   auto start_db_call = std::chrono::steady_clock::now();
+// #endif
+//   /*
+//     select * from
+//     (
+//         select icao_id, icao, ap_name, mx_calc_distance ( ap_lat, ap_lon, -19.25418870, 146.77017290, 3440) as dist_nm, mx_bearing (ap_lat, ap_lon, -19.25418870, 146.77017290) as bearing from xp_airports
+//     ) v1
+//     where 1 = 1
+//     and dist_nm between 5.0 and 30.0
+//     and bearing between N1 and N2  <-- optional if bearing received is less than zero
+//   */
+//
+//   missionx::NavAidInfo nav;
+//
+//   // The point can be plane location or airport in the flight plan that we need to find other airport relative to it.
+//   const double pLat = inPoint.getLat();
+//   const double pLon = inPoint.getLon();
+//
+//   const bool flag_is_last_flight_leg = Utils::readBoolAttrib(inProperties.node, mxconst::get_PROP_IS_LAST_FLIGHT_LEG(), false);
+//
+//   //// construct view query (inner query)
+//   // base on xp_airports
+//   const std::string inner_view = fmt::format("select icao_id, icao, ap_elev_ft, ap_name, ap_type, ap_lat, ap_lon, max_rw_length_in_meters, ramp_in_terminal, ramp_in_cargo, mx_calc_distance ( ap_lat, ap_lon, {}, {}, 3440) as dist_nm, mx_bearing (ap_lat, ap_lon, {}, {}) as bearing, helipads, ramp_helos, ramp_planes, ramp_props, ramp_turboprops, ramp_jet_heavy, rw_hard, rw_dirt_gravel, rw_grass, rw_water, is_custom, is_oilrig from airports_vu ", mxUtils::formatNumber<double>(pLat, 10),
+//                                              mxUtils::formatNumber<double>(pLon, 10), mxUtils::formatNumber<double>(pLat, 10), mxUtils::formatNumber<double>(pLon, 10)); // v3.303.12 added field is_custom
+//
+//   // Construct distance
+//   const std::string distance_s = " and dist_nm between " + mxUtils::formatNumber<float>(inMinDistance_nm) + " and " + mxUtils::formatNumber<float>(inMaxDistance_nm);
+//
+//   //// Construct BEARING data
+//   const auto lmbda_get_bearing_string = [](const int in_ExcludeAngle)
+//   {
+//     if (in_ExcludeAngle < 0)
+//       return missionx::EMPTY_STRING;
+//
+//     auto excludeAngle_tmp = in_ExcludeAngle;
+//     if (excludeAngle_tmp > -1)
+//     {
+//       excludeAngle_tmp -= 180; // we need to exclude the opposite direction of the original angle.
+//       if (excludeAngle_tmp < 0)
+//         excludeAngle_tmp += 360;
+//     }
+//     const int excludeAngle = excludeAngle_tmp;
+//
+//     // create bigger bearing exclusion so we won't fetch those airports
+//     const int excludeAngle_Left  = (excludeAngle - 5 < 0) ? excludeAngle - 5 + 360 : excludeAngle - 5;
+//     const int excludeAngle_Right = (excludeAngle + 5 > 359) ? 360 - excludeAngle : excludeAngle + 5;
+//
+//     if (excludeAngle_Left > excludeAngle_Right) // L > R
+//       return " and bearing between " + mxUtils::formatNumber<int>(excludeAngle_Right) + " and " + mxUtils::formatNumber<int>(excludeAngle_Left);
+//
+//     // L < R then (between 0 and L or between R and 360)
+//     return " and ( bearing < " + mxUtils::formatNumber<int>(excludeAngle_Left) + " or bearing > " + mxUtils::formatNumber<int>(excludeAngle_Right) + " )";
+//   };
+//
+//   // Bearing Filter
+//   const std::string bearing_s = lmbda_get_bearing_string(inExcludeAngle);
+//
+//   //// Airports Filter ////
+//   const auto lmbda_get_plane_filter_string = [](const missionx::mx_plane_types_enum inPlaneType)
+//   {
+//     std::string stmt;
+//     switch (inPlaneType)
+//     {
+//     case missionx::mx_plane_types_enum::plane_type_any:
+//       return missionx::EMPTY_STRING;
+//       break;
+//     case missionx::mx_plane_types_enum::plane_type_helos:
+//       stmt = " and (helipads + ramp_helos) > 0 "; //
+//       break;
+//     case missionx::mx_plane_types_enum::plane_type_ga_floats:
+//       stmt = " and ap_type in ( 1, 16 ) and ramp_planes > 0 ";
+//       break;
+//     case missionx::mx_plane_types_enum::plane_type_ga:
+//     case missionx::mx_plane_types_enum::plane_type_props:
+//       stmt = " and ap_type = 1 and ramp_props > 0 "; //
+//       break;
+//     case missionx::mx_plane_types_enum::plane_type_turboprops:
+//       stmt = " and ap_type = 1 and ramp_turboprops > 0 "; //
+//       break;
+//     case missionx::mx_plane_types_enum::plane_type_jets:
+//       stmt = " and ap_type = 1 and ramp_jet_heavy > 0 and max_rw_length_in_meters >= 850 "; //
+//       break;
+//     case missionx::mx_plane_types_enum::plane_type_airline:
+//     case missionx::mx_plane_types_enum::plane_type_cargo:
+//       stmt = " and ap_type = 1 and ramp_jet_heavy > 0 and max_rw_length_in_meters >= 1200 "; //
+//       if (inPlaneType == missionx::mx_plane_types_enum::plane_type_cargo)
+//         stmt += " and ramp_in_cargo > 0 "; // ramps name have the cargo text in them
+//       else
+//         stmt += " and ramp_in_terminal > 0 "; // ramps name have the "term" text in them
+//       break;
+//     case missionx::mx_plane_types_enum::plane_type_heavy_airline:
+//     case missionx::mx_plane_types_enum::plane_type_heavy_cargo:
+//       stmt = " and ap_type = 1 and ramp_jet_heavy > 0 and rw_hard > 0 and max_rw_length_in_meters >= 1700 ";
+//       if (inPlaneType == missionx::mx_plane_types_enum::plane_type_heavy_cargo)
+//         stmt += " and ramp_in_cargo > 0 "; // ramps name have the cargo text in them
+//       else
+//         stmt += " and ramp_in_terminal > 0 "; // ramps name have the "term" text in them
+//       break;
+//     default:
+//       break;
+//     }
+//
+//     return stmt;
+//   };
+//
+//   auto ramp_type_filter_s = lmbda_get_plane_filter_string(static_cast<missionx::mx_plane_types_enum>(in_plane_type));
+//
+//   // filter airports by runway types (if user asked for)
+//   const auto lmbda_filter_based_on_rw_type = [](const std::string& inFilter)
+//   {
+//     std::string stmt;
+//     if (!inFilter.empty())
+//     {
+//       stmt = " and 0 < ( select count(1) from xp_rw xr where xr.rw_surf in " + inFilter + " and xr.icao_id = vu.icao_id )";
+//     }
+//
+//     return stmt;
+//   };
+//
+//   const std::string subquery_to_filter_rw_type = lmbda_filter_based_on_rw_type(Utils::readAttrib(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_FILTER_AIRPORTS_BY_RUNWAY_TYPE(), ""));
+//
+//   // v25.08.1 add last leg filter
+//   const std::string filter_by_last_leg = (flag_is_last_flight_leg) ? " and is_oilrig = 0 " : "";
+//
+//   // adding the rw filter to the query
+//   const std::string sql = "select * from ( " + inner_view + " ) vu where 1 = 1 " + distance_s + bearing_s + ramp_type_filter_s + subquery_to_filter_rw_type + filter_by_last_leg + " order by RANDOM() limit 10"; // v3.0.255.3 use RANDOM() function to pick random row  // older option: any valid row ordered by distance " order by dist_nm" ;
+//
+//
+// #ifndef RELEASE
+//   Log::logMsgThread(fmt::format("[{}] Query: {}", __func__, sql));
+// #endif // !RELEASE
+//
+//
+//   if (data_manager::db_xp_airports.db_is_open_and_ready)
+//   {
+//     char* zErrMsg = nullptr;
+//
+//     // clear local cache
+//     RandomEngine::resultTable_gather_random_airports.clear();
+//     if (int rc = sqlite3_exec(data_manager::db_xp_airports.db, sql.c_str(), RandomEngine::callback_gather_random_airports_db, nullptr, &zErrMsg); rc != SQLITE_OK)
+//     {
+//       Log::logMsgThread(fmt::format("[{}] SQL error: {}", __func__, std::string(zErrMsg)));
+//       sqlite3_free(zErrMsg);
+//     }
+//     else
+//     {
+//       Log::logMsgThread(fmt::format("[{}] Information was gathered.", __func__));
+// #ifndef RELEASE
+//       for (auto& [row_num, row_data] : RandomEngine::resultTable_gather_random_airports)
+//         Log::logMsgThread(fmt::format("\tSeq: {}, icao_id: {}, icao: {}", row_num, row_data["icao_id"], row_data["icao"]));
+// #endif // !RELEASE
+//
+//
+//       // Filter specific ramp types
+//       ///| Ramp Type   | Supports Aircraft          | Typical Use               |
+//       ///| ----------- | -------------------------- | ------------------------- |
+//       ///| Code A ramp | Props / Hellos             | General Aviation          |
+//       ///| Code B ramp | ATR / small jets / Hellos  | Regional terminals        |
+//       ///| Code C ramp | 737 / A320                 | Standard commercial gates |
+//       ///| Code E ramp | 777 / A350                 | Long-haul gates           |
+//       ///| Code F ramp | A380 / 747-8               | Heavy international hubs  |
+//       ///
+//
+//       if (!RandomEngine::resultTable_gather_random_airports.empty())
+//       {
+//         const auto lmbda_get_ramp_filter_based_on_plane_type = [](const missionx::mx_plane_types_enum inPlaneType)
+//         {
+//           std::string stmt;
+//           switch (inPlaneType)
+//           {
+//           case missionx::mx_plane_types_enum::plane_type_any:
+//             stmt = "";
+//             break;
+//           case missionx::mx_plane_types_enum::plane_type_helos:
+//             stmt = " and helos > 0 "; // pick all airports that have helos ramps (heliports or any airport with helos in it). The view we use calculated the number of helos ramps so it is easy to distinguish between them.
+//             break;
+//           case missionx::mx_plane_types_enum::plane_type_ga_floats:
+//           case missionx::mx_plane_types_enum::plane_type_ga:
+//           case missionx::mx_plane_types_enum::plane_type_props:
+//           case missionx::mx_plane_types_enum::plane_type_turboprops:
+//             stmt = " and props + turboprops > 0 "; // make sure only airports are being picked with at list 1 ramp for planes (not heliport or sea airports)
+//             break;
+//           case missionx::mx_plane_types_enum::plane_type_jets:
+//             stmt = " and jet + heavy > 0 and icao_width_code >= 'B' ";
+//             break;
+//           case missionx::mx_plane_types_enum::plane_type_airline:
+//           case missionx::mx_plane_types_enum::plane_type_cargo:
+//             // filter by plane type, then ramp width type, then place in airport
+//             stmt = " and jet + heavy > 0 and icao_width_code >= 'C' ";
+//             if (inPlaneType == missionx::mx_plane_types_enum::plane_type_cargo)
+//               stmt += " and ( lower(name) like '%carg%' or operation_type like '%carg%' ) ";
+//             else
+//               stmt += " and ( lower(name) like '%term%' or operation_type like '%airl%' ) ";
+//             break;
+//           case missionx::mx_plane_types_enum::plane_type_heavy_airline:
+//           case missionx::mx_plane_types_enum::plane_type_heavy_cargo:
+//             // filter by plane type, then ramp width type, then place in airport
+//             stmt = " and jet + heavy > 0 and icao_width_code like >= 'C' ";
+//             if (inPlaneType == missionx::mx_plane_types_enum::plane_type_heavy_cargo)
+//               stmt += " and ( lower(name) like '%carg%' or operation_type like '%carg%' ) ";
+//             else
+//               stmt += " and ( lower(name) like '%term%' or operation_type like '%airl%' ) ";
+//             break;
+//           default:
+//             break;
+//           }
+//
+//           // // filter out fighters for non fighter search.
+//           // if (inPlaneType != missionx::mx_plane_types_enum::plane_type_fighter)
+//           //   stmt += " and fighters = 0 ";
+//
+//           return stmt;
+//         };
+//
+//         auto row = RandomEngine::resultTable_gather_random_airports.cbegin()->second; // fetch the first result
+//         nav.setID(row["icao"]);
+//         nav.setName(row["ap_name"]);
+//         // v25.10.1 store airport lat/lon even if there is no ramp. In most cases, the middle of the runway.
+//         nav.lat = mxUtils::stringToNumber<float>(row["ap_lat"], 8);
+//         nav.lon = mxUtils::stringToNumber<float>(row["ap_lon"], 8);
+//
+//         nav.flag_is_custom_scenery = (!(row["is_custom"].empty())); // v3.303.12 changed field name to is_custom
+//
+//         const std::string elev_ft = row["ap_elev_ft"];
+//         nav.height_mt             = (elev_ft.empty()) ? 0.0f : mxUtils::stringToNumber<float>(elev_ft) * missionx::feet2meter;
+//
+//         const std::string select_s     = "select * from ramps_vu where 1 = 1 and for_planes is not null and icao_id = " + row["icao_id"]; // v3.303.14 added "for_planes is not null" to narrow the airports to the ones that there are real ramps
+//         const std::string filter_ramps = lmbda_get_ramp_filter_based_on_plane_type(static_cast<missionx::mx_plane_types_enum>(in_plane_type));
+//         const std::string sql_query    = select_s + filter_ramps + " ORDER BY RANDOM() limit 1";
+//
+// #ifndef RELEASE
+//         Log::logMsgThread("\n[pick ramp sql]\n" + sql_query + "\n"); // debug
+// #endif // !RELEASE
+//
+//         resultTable_gather_ramp_data.clear();
+//         const int rc1 = sqlite3_exec(data_manager::db_xp_airports.db, sql_query.c_str(), RandomEngine::callback_pick_random_ramp_location_db, nullptr, &zErrMsg);
+//         if (rc1 != SQLITE_OK)
+//         {
+//           Log::logMsgThread("[pick ramp] SQL error: " + std::string(zErrMsg));
+//           sqlite3_free(zErrMsg);
+//         }
+//         else
+//         {
+//           if (RandomEngine::resultTable_gather_ramp_data.empty())
+//             Log::logMsgThread("[pick ramp] No ramp was found.");
+//           else
+//           {
+//             Log::logMsgThread("[pick ramp] Ramp info gathered.");
+//             auto ramp                     = resultTable_gather_ramp_data.cbegin()->second;
+//             nav.lat                       = mxUtils::stringToNumber<float>(ramp["lat"], 12);
+//             nav.lon                       = mxUtils::stringToNumber<float>(ramp["lon"], 12);
+//             nav.ramp_info.uq_name         = ramp["name"];
+//             nav.ramp_info.ramp_for_planes = ramp["for_planes"];
+//             nav.ramp_info.ramp_width_code = ramp["icao_width_code"];
+//             nav.ramp_info.operation_type  = ramp["operation_type"];
+//
+// #ifndef RELEASE
+//             for (auto& ramp_data : resultTable_gather_ramp_data | std::views::values)
+//             {
+//               // Log::logMsgThread("\ramp: " + ramp_data["name"] + ", icao_id: " + ramp_data["icao_id"] + ", icao: " + ramp_data["icao"]);
+//               Log::logMsgThread(fmt::format("[{}] Ramp: {}, icao_id: {}, icao: {}, ramp_width_code: {}, oper.type: {}, for_planes: {}", __func__, nav.ramp_info.uq_name, ramp_data["icao_id"], ramp_data["icao"], nav.ramp_info.ramp_width_code, nav.ramp_info.operation_type, nav.ramp_info.ramp_for_planes));
+//             }
+// #endif // !RELEASE
+//           }
+//         }
+//       } // end if an airport result is not empty and we should search for ramp location
+//     } // end if a query returned value
+//   } // end if DB is open
+//
+// #ifndef RELEASE
+//   auto end_db_call = std::chrono::steady_clock::now();
+//   auto diff_cache  = end_db_call - start_db_call;
+//   auto duration    = std::chrono::duration<double, std::milli>(diff_cache).count();
+//   Log::logAttention(fmt::format("*** Finished {}. Duration: {:.3f}ms ({:.3f}sec  ****)", __func__, duration, (duration / 1000)), true);
+// #endif // !RELEASE
+//
+//   return nav;
+// }
+//
 
 // -----------------------------------
 
@@ -3735,7 +4113,7 @@ RandomEngine::setPlaneType(const mx_plane_types_enum inPlaneType)
 {
   this->randomPlaneType = missionx::RandomEngine::translatePlaneTypeToString(inPlaneType);
   // v3.0.253.1 extended like setPlaneType(std::string) since we need also "this->template_plane_type_enum" to be initialized when searching for ramps
-  if (Utils::isElementExists(RandomEngine::mapPlaneStringTypesToEnum, this->randomPlaneType))
+  if (RandomEngine::mapPlaneStringTypesToEnum.contains( this->randomPlaneType) )
   {
     missionx::RandomEngine::template_plane_type_enum = RandomEngine::mapPlaneStringTypesToEnum[this->randomPlaneType];
   }
@@ -3975,8 +4353,8 @@ RandomEngine::gen_get_databaseflightplan_site_targets(missionx::base_thread::str
     return navaid_targets;
   }
 
-  // fetch the fpln struct to work with
-  auto const lmbda_get_fpln = [](const int inPicked_id, const std::vector<missionx::mx_ext_internet_fpln_strct>& inFPLN_vec) // missionx::data_manager::tableExternalFPLN_vec
+  // fetch the fpln struct to work with  // missionx::data_manager::tableExternalFPLN_vec
+  auto const lmbda_get_fpln = [](const int inPicked_id, const std::vector<missionx::mx_ext_internet_fpln_strct>& inFPLN_vec)
   {
     missionx::mx_ext_internet_fpln_strct dummy;
     dummy.internal_id = -1;
@@ -3989,7 +4367,8 @@ RandomEngine::gen_get_databaseflightplan_site_targets(missionx::base_thread::str
     return dummy;
   };
 
-  if (auto fpln = lmbda_get_fpln(fpln_id_picked_i, missionx::data_manager::tableExternalFPLN_vec); fpln.internal_id > -1)
+  if (auto fpln = lmbda_get_fpln(fpln_id_picked_i, missionx::data_manager::tableExternalFPLN_vec)
+    ; fpln.internal_id > -1)
   {
     // create navaids based on polyline. First is starting point + briefer and last is target (mandatory)
     int counter = 0;
@@ -4362,7 +4741,8 @@ RandomEngine::gen_get_ils_targets(missionx::base_thread::strct_thread_state* ino
   }
   else
   {
-    auto search_start_ramp_result = RandomEngine::gen_get_ramp_based_on_plane_type(start_na, RandomEngine::getPlaneType_enum(), mxFilterRampType::start_ramp);
+    // find starting ramp, but force plane position if we enter fallback mode.
+    auto search_start_ramp_result = RandomEngine::gen_get_ramp_based_on_plane_type(start_na, RandomEngine::getPlaneType_enum(), mxFilterRampType::start_ramp, true);
     if (!search_start_ramp_result.result)
     {
       Log::logMsgThread(fmt::format("[{}] {}", __func__, search_start_ramp_result.getErrorsAndInfoAsText()));
@@ -4703,7 +5083,7 @@ RandomEngine::gen_get_user_fpln_or_simbrief_targets(missionx::base_thread::strct
   }
   else
   {
-    auto search_start_ramp_result = RandomEngine::gen_get_ramp_based_on_plane_type(start_na, getPlaneType_enum(), missionx::mxFilterRampType::start_ramp);
+    auto search_start_ramp_result = RandomEngine::gen_get_ramp_based_on_plane_type(start_na, getPlaneType_enum(), missionx::mxFilterRampType::start_ramp, true);
     if (!search_start_ramp_result.result || search_start_ramp_result.getInfoIndex())
     {
       Log::logMsgThread(fmt::format("[{}] {}", __func__, search_start_ramp_result.getErrorsAndInfoAsText()));
@@ -5543,10 +5923,9 @@ RandomEngine::gen_briefer_phase_01_parse_briefer_and_start_location(const IXMLNo
       navAid.node = xPoint.deepCopy();
       navAid.syncXmlPointToNav();
 
-      // try to get Navaid information for briefer. If we fail to find information, we ignore and continue with the original xPoint data
-      // if (missionx::RandomEngine::filterAndPickRampBasedOnPlaneType (navAid, navAid.err, missionx::mxFilterRampType::start_ramp))
-
-      auto search_ramp_result = RandomEngine::gen_get_ramp_based_on_plane_type(navAid, RandomEngine::getPlaneType_enum(), mxFilterRampType::start_ramp);
+      
+      // find starting ramp, but force plane position if we enter fallback mode.
+      auto search_ramp_result = RandomEngine::gen_get_ramp_based_on_plane_type(navAid, RandomEngine::getPlaneType_enum(), mxFilterRampType::start_ramp, true);
       if (search_ramp_result.result)
       {
         xPoint = navAid.node.deepCopy();
@@ -7083,8 +7462,7 @@ order by RANDOM() limit 1
   }
   inout_shared_navaid.navAid.synchToPoint();
   target_navaids[0] = NavAidInfo(inout_shared_navaid.navAid); // Store the briefer starting location
-  // std::string err;
-  // RandomEngine::filterAndPickRampBasedOnPlaneType (target_navaids[0], err, mxFilterRampType::start_ramp);
+
   auto search_ramp_result                            = RandomEngine::gen_get_ramp_based_on_plane_type(target_navaids[0], RandomEngine::getPlaneType_enum(), mxFilterRampType::start_ramp);
   target_navaids[0].fpln_navaid_was_already_prepared = true;
 
@@ -8137,8 +8515,8 @@ RandomEngine::gen_parse_plane_type(missionx::mx_base_node& in_user_property_ui_n
   {
     plane_type_i = static_cast<int>(missionx::mx_plane_types_enum::plane_type_helos);
   }
-  auto        conv_plane_type_i = static_cast<missionx::def_mx_plane_type_enum>(plane_type_i);
-  std::string plane_type_s      = missionx::RandomEngine::translatePlaneTypeToString(conv_plane_type_i);
+  const auto        conv_plane_type_i = static_cast<missionx::def_mx_plane_type_enum>(plane_type_i);
+  const std::string plane_type_s      = missionx::RandomEngine::translatePlaneTypeToString(conv_plane_type_i);
 
   // Store plane type in the XML node
   in_user_property_ui_node.setNodeStringProperty(mxconst::get_PROP_PLANE_TYPE_S(), plane_type_s);

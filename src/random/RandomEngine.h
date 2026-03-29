@@ -260,6 +260,7 @@ public:
 
   // NavAidInfo get_random_airport_from_db(missionx::Point& inPoint, float inMinDistance_nm, float inMaxDistance_nm, int inExcludeAngle, missionx::mx_base_node &inProperties);
   static NavAidInfo get_random_airport_from_db(missionx::Point& inPoint, float inMinDistance_nm, float inMaxDistance_nm, int inExcludeAngle, missionx::mx_base_node &inProperties, const uint8_t & in_plane_type);
+  // static NavAidInfo get_random_airport_from_db2(missionx::Point& inPoint, float inMinDistance_nm, float inMaxDistance_nm, int inExcludeAngle, missionx::mx_base_node &inProperties, const uint8_t & in_plane_type);
 
   // gather NavAid information from main plugin thread
   // void gatherRandomAirport_mainThread(const Point& inPoint, float inMaxDistance_nm, int inExcludeAngle = -1, float inStartFromDistance_nm = 0.0f);
@@ -267,13 +268,19 @@ public:
   //// v25.10.2 Find Filter
   static missionx::mx_return gen_get_ramp_based_on_plane_type (missionx::NavAidInfo &     inout_target_navaid
                                                                , const mx_plane_types_enum &in_plane_type_enum_to_search
-                                                               , const missionx::mxFilterRampType &inRampFilterType);
+                                                               , const missionx::mxFilterRampType &inRampFilterType
+                                                               , const bool &if_start_ramp_then_force_plane_position = false // v26.03.1
+                                                               );
 
-  //// v3.0.253.7 made public
-  static bool filterAndPickRampBasedOnPlaneType (missionx::NavAidInfo &           navAid,
-                                                std::string &                     outErrorMsg,
-                                                const missionx::mxFilterRampType &inRampFilterType); // v3.0.221.7 currently being used when reading briefer, and we want to place in plausible
-  ///// weather v3.303.13
+  // static missionx::mx_return gen_get_ramp_based_on_plane_type (missionx::NavAidInfo &     inout_target_navaid
+  //                                               , const mx_plane_types_enum &in_plane_type_enum_to_search
+  //                                               , const missionx::mxFilterRampType &inRampFilterType);
+
+  //// v3.0.253.7 made public. Deprecated in v25.10.2 by the "gen_get_starting_ramp_based_on_plane_type()" function.
+  // static bool filterAndPickRampBasedOnPlaneType (missionx::NavAidInfo &           navAid,
+  //                                               std::string &                     outErrorMsg,
+  //                                               const missionx::mxFilterRampType &inRampFilterType); // v3.0.221.7 currently being used when reading briefer, and we want to place in plausible
+  // ///// weather v3.303.13
   static std::string current_weather_datarefs_s;
 
   static constexpr int MAX_OSM_NODES_TO_SEARCH = 10;
@@ -514,7 +521,7 @@ private:
   // missionx::mx_return                        gen_content_option01_random_mission_from_content2 (IXMLNode &xTemplateNode, IXMLNode & xContent); //  del
   missionx::mx_return                        gen_content_option_01_random_mission_from_content (IXMLNode &xTemplateNode, IXMLNode & xContent); // v25.09.2
   missionx::mx_return                        gen_content_option_02_copy_as_is (IXMLNode &xTemplateNode, IXMLNode & xContent); // v25.09.2
-  missionx::mx_return                        gen_prepare_random_mission_based_on_leg_nodes_in_template (IXMLNode &in_xTemplateNode); // v25.09.2 - this represents the original way we constructed a random mission
+  missionx::mx_return                        gen_prepare_random_mission_based_on_leg_nodes_in_template (IXMLNode &in_xTemplateNode, IXMLNode & inout_meta_node); // v25.09.2 - this represents the original way we constructed a random mission
   void                                       gen_create_all_leg_nodes_based_on_navaid_targets (std::map<int, NavAidInfo> &navaid_targets, bool in_only_2_legs = false);
 
   static std::string gen_get_cumulative_fpln_desc (std::map<int, NavAidInfo> &navaid_targets);
@@ -533,15 +540,19 @@ private:
 public:
 
   inline static std::map<std::string, mx_plane_types_enum> mapPlaneStringTypesToEnum = {
-    { "", missionx::mx_plane_types_enum::plane_type_any },
-    { "helos", missionx::mx_plane_types_enum::plane_type_helos },
-    { "prop", missionx::mx_plane_types_enum::plane_type_props },
-    { "prop_floats", missionx::mx_plane_types_enum::plane_type_prop_floats },
-    { "heavy", missionx::mx_plane_types_enum::plane_type_heavy },
-    { "turboprops", missionx::mx_plane_types_enum::plane_type_turboprops },
-    { "jet", missionx::mx_plane_types_enum::plane_type_jets },
-    { "ga", missionx::mx_plane_types_enum::plane_type_ga },
-    { "ga_floats", missionx::mx_plane_types_enum::plane_type_ga_floats }
+    {"", missionx::mx_plane_types_enum::plane_type_any},
+    {"helos", missionx::mx_plane_types_enum::plane_type_helos},
+    {"prop", missionx::mx_plane_types_enum::plane_type_props},
+    {"prop_floats", missionx::mx_plane_types_enum::plane_type_prop_floats},
+    {"ga", missionx::mx_plane_types_enum::plane_type_ga},
+    {"ga_floats", missionx::mx_plane_types_enum::plane_type_ga_floats},
+    {"turboprops", missionx::mx_plane_types_enum::plane_type_turboprops},
+    {"jet", missionx::mx_plane_types_enum::plane_type_jets},
+    {"airline", missionx::mx_plane_types_enum::plane_type_airline},
+    {"cargo", missionx::mx_plane_types_enum::plane_type_cargo},
+    {"heavy_airline", missionx::mx_plane_types_enum::plane_type_heavy_airline},
+    {"heavy_cargo", missionx::mx_plane_types_enum::plane_type_heavy_cargo},
+    {"fighter", missionx::mx_plane_types_enum::plane_type_fighter}
   };
 
   inline static std::map<mx_plane_types_enum, std::string> mapPlaneEnumToStringTypes;

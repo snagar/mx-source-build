@@ -30,7 +30,7 @@ namespace missionx
 
 #define ENABLE_GATHER_RANDOM_AIRPORTS_FROM_MAIN_THREAD_CALL 0
 
-constexpr static const int MX_FEATURES_VERSION = 20250501; //20241212; //20230917; // 330491; //302564;  // added SETUP_LOCK_OVERPASS_URL_TO_USER_PICK
+constexpr static const int MX_FEATURES_VERSION = 20260301; // Added min/max rw length to airports_vu // 20250501; //20241212; //20230917; // 330491; //302564;  // added SETUP_LOCK_OVERPASS_URL_TO_USER_PICK
 
 #define SPECIAL_BUILD ""
 
@@ -779,11 +779,15 @@ typedef enum class def_mx_plane_type_enum
   plane_type_props,
   plane_type_prop_floats, // custom
   plane_type_ga_floats,   // custom
-  plane_type_ga,          // custom
-  plane_type_turboprops,
-  plane_type_jets,
-  plane_type_heavy,
-  plane_type_fighter
+  plane_type_ga,          // A,B,C,D
+  plane_type_turboprops, // B,C
+  plane_type_jets,    // B,C,D
+  plane_type_airline, // v26.03.1 C,D B737, A320
+  plane_type_cargo,  // v26.03.1 B,C,D
+  plane_type_heavy_airline, // 777 C,D,E
+  plane_type_heavy_cargo,  // v26.03.1 C,D,E
+  // NON_FIGHTER_PLANE_TYPE, // v26.03.1
+  plane_type_fighter,
 } mx_plane_types_enum;
 
 

@@ -600,6 +600,7 @@ const static ^std::string^                OPT_ABORT_MISSION_ON_CRASH            
 const static ^std::string^                OPT_ENABLE_DESIGNER_MODE                               ^ "enable_designer_mode"; ^// options // bool //
 const static ^std::string^                OPT_DISPLAY_VISUAL_CUES                                ^ "enable_visual_cues"; ^// options // bool //
 const static ^std::string^                OPT_DISPLAY_UI_CLOCKS                                  ^ "display_ui_clocks"; ^// options // bool //
+const static ^std::string^                OPT_DISPLAY_UI_FPS                                     ^ "opt_display_ui_fps"; ^// v26.03.1 // options // bool //
 const static ^std::string^                OPT_AUTO_HIDE_SHOW_MXPAD                               ^ "auto_hide_mxpad"; ^// v3.0.215.1 auto hide mxpad options
 const static ^std::string^                OPT_AUTO_PAUSE_IN_2D                                   ^ "auto_pause_in_2D"; ^// v3.0.253.9.1
 const static ^std::string^                OPT_AUTO_PAUSE_IN_VR                                   ^ "auto_pause_in_vr"; ^// v3.0.221.6

@@ -509,7 +509,7 @@ missionx::OptimizeAptDat::parse_aptdat(strct_thread_state* inThreadState, std::s
   auto const lmbda_store_navinfo_in_cache = [&]() {
     if (flag_has105x_code || flag_has1300_code || flag_has100_101_102_code || flag_has1302_code || lmbda_has130_valid_code()) // v3.303.8.3 added flag_start_code130_node
     {
-      if (!indexNavInfo.empty() && !airportCode.empty() && !(info.listNavInfo.size() < 2)) // skip Nav info if one of the parameters is empty. We must have enough data to make it worth storing
+      if (!indexNavInfo.empty() && !airportCode.empty() && info.listNavInfo.size() >= 2) // skip Nav info if one of the parameters is empty. We must have enough data to make it worth storing
       {
         if (!inReadCachedFile)
           info.isCustom = is_custom;                                                          // (relative_apt_dat_path.find("Global Airports") == std::string::npos);
@@ -565,12 +565,14 @@ missionx::OptimizeAptDat::parse_aptdat(strct_thread_state* inThreadState, std::s
       lmbda_store_navinfo_in_cache();
       continue;
     }                                                                                   // End handling "\n"
-    else if (charCounter_i == 3 && c == '\n' && code.at(0) == '9' && code.at(1) == '9') // code 99 = end of file
+
+    if (charCounter_i == 3 && c == '\n' && code.at(0) == '9' && code.at(1) == '9') // code 99 = end of file
     {
       lmbda_store_navinfo_in_cache();
       continue;
     }
-    else if (charCounter_i == 4 && (c == '\n' || c == ' ') && code == "130") // code 130 = start boundary
+
+    if (charCounter_i == 4 && (c == '\n' || c == ' ') && code == "130") // code 130 = start boundary
     {
       std::getline(file_aptDat, line); // skip until end of line
       flag_start_code130_node = true;
@@ -593,18 +595,19 @@ missionx::OptimizeAptDat::parse_aptdat(strct_thread_state* inThreadState, std::s
     }
 
     // Test if to skip character
-    else if (charCounter_i > 1 && (c == '\n' || c == '\r')) // v3.0.255.2 skip line if we only have code in ap.dat and no value, like: "120\n" or "130\n". The old code did not know how to deal with this
+    if (charCounter_i > 1 && (c == '\n' || c == '\r')) // v3.0.255.2 skip line if we only have code in ap.dat and no value, like: "120\n" or "130\n". The old code did not know how to deal with this
     {
       code.clear();
       charCounter_i      = STARTING_COUNTER_I; // always reset charCounter_i to 1 and not zero
       flag_codeIsAirport = false;
       continue;
     }
-    else if (!std::isdigit(c) && c != ' ' && c != '\n' && c != '\r')
+
+    if (!std::isdigit(c) && c != ' ' && c != '\n' && c != '\r')
       continue;
-    else if (charCounter_i == 1 && (c == '\n' || c == '\r')) // skip lines that represent only new lines (blank lines)
+    if (charCounter_i == 1 && (c == '\n' || c == '\r')) // skip lines that represent only new lines (blank lines)
       continue;
-    else if (c == ' ' || c == '\0' || file_aptDat.eof())
+    if (c == ' ' || c == '\0' || file_aptDat.eof())
     {
 
 
@@ -644,8 +647,44 @@ missionx::OptimizeAptDat::parse_aptdat(strct_thread_state* inThreadState, std::s
         std::getline(file_aptDat, line);
 
         vec_splitLineAfterCode = mxUtils::split(mxUtils::trim(line), ' ');
+        info.listNavInfo.push_back( fmt::format("{} {}\n", code, line ) );
+        if (code == "1300")
+        {
+          // read the next line for code 1301: ramp metadata
+          std::string s_metadata_line;
+          std::getline(file_aptDat, s_metadata_line);
+          auto vec_1301 = mxUtils::split(mxUtils::trim(s_metadata_line), ' ');
+          std::string meta_code;
+          bool is_valid_1301_code = false;
+          int counter = 0;
+          for (const auto &val : vec_1301)
+          {
+            if (counter == 0)
+            {
+              meta_code = val;
+              if (meta_code == "1301")
+              {
+                if (vec_splitLineAfterCode.size() > 1)
+                {
+                  s_metadata_line = fmt::format("{} {} {} ", meta_code, vec_splitLineAfterCode[0], vec_splitLineAfterCode[1]); // code, lat, lon
+                  is_valid_1301_code = true;
+                }
+              }
+            }
+            else
+                s_metadata_line += " " + val;
 
-        info.listNavInfo.push_back(code + mxconst::get_SPACE() + line + "\n");
+            if (!is_valid_1301_code)
+              break; // exit loop
+
+            ++counter;
+          } // end loop over the "1301" metadata line
+
+          if (is_valid_1301_code)
+            info.listNavInfo.push_back( fmt::format("{}\n", s_metadata_line ) );
+
+        } // end handling code 1301 for header code: "1300"
+
         flag_has1300_code = true;
 
         if (lmbda_has130_valid_code()) // v3.303.8.3
@@ -747,7 +786,7 @@ missionx::OptimizeAptDat::parse_aptdat(strct_thread_state* inThreadState, std::s
 
 
 missionx::db_field
-missionx::OptimizeAptDat::get_db_field_by_colName(std::list<missionx::db_field>& list_of_fields, const std::string& inColNameToSearch)
+missionx::OptimizeAptDat::get_db_field_by_colName(std::list<missionx::db_field>& list_of_fields, const std::string& inColNameToSearch, const std::string & in_default_value_s)
 {
   missionx::db_field dummy;
   for (auto& field : list_of_fields)
@@ -755,7 +794,8 @@ missionx::OptimizeAptDat::get_db_field_by_colName(std::list<missionx::db_field>&
     if (mxUtils::stringToLower(field.col_name) == mxUtils::stringToLower(inColNameToSearch))
       return field;
   }
-
+  // v26.03.1 fallback value
+  dummy.value_s = in_default_value_s;
   return dummy;
 }
 
@@ -790,7 +830,7 @@ missionx::OptimizeAptDat::prepare_sqlite_db_tables(strct_thread_state* inThreadS
     inDB_ptr->execute_stmt("create table if not exists xp_ap_metadata ( icao_id int, icao text NOT NULL, key_col text NOT NULL, val_col text NULL ) ");
     inDB_ptr->execute_stmt("create table if not exists xp_ap_frq ( icao_id int, icao text NOT NULL, frq int NOT NULL, frq_desc text NULL ) ");
     inDB_ptr->execute_stmt(
-      "create table if not exists xp_ap_ramps ( icao_id int, icao text NOT NULL, ramp_lat real NOT NULL, ramp_lon real NOT NULL, ramp_heading_true NULL, location_type text NULL, for_planes text NULL, ramp_uq_name text NULL)");
+      "create table if not exists xp_ap_ramps ( icao_id int, icao text NOT NULL, ramp_lat real NOT NULL, ramp_lon real NOT NULL, ramp_heading_true NULL, location_type text NULL, for_planes text NULL, ramp_uq_name text NULL, icao_width_code text NULL, operation_type text NULL, dal text NULL ) ");
     inDB_ptr->execute_stmt("create table if not exists xp_rw ( icao_id int,  icao text NOT NULL, rw_width   real NULL, rw_surf integer NULL, rw_sholder integer NULL, rw_smooth  real NULL, rw_no_1    text NOT NULL, rw_no_1_lat real not "
                            "null, rw_no_1_lon real not null, rw_no_1_disp_hold real null, rw_no_2    text NOT NULL, rw_no_2_lat real not null, rw_no_2_lon real not null, rw_no_2_disp_hold real null, rw_length_mt integer null )");
     inDB_ptr->execute_stmt("create table if not exists xp_helipads ( icao_id int,  icao text NOT NULL, name text NULL, lat    real NOT NULL, lon    real NOT NULL, length real NULL,  width  real NULL ) ");
@@ -798,7 +838,7 @@ missionx::OptimizeAptDat::prepare_sqlite_db_tables(strct_thread_state* inThreadS
                            "text, loc_type text, terminal_region text, class integer, name text, bias real ) ");
 
     // main view to fetch basic data on airports and their ramps
-    inDB_ptr->execute_stmt(R"(create view airports_vu as  
+    inDB_ptr->execute_stmt(R"(create view airports_vu as
 WITH helipads_view as (select icao_id, count(1) as helipad_counter from xp_helipads group by icao_id),
      oilrig_view as (select t1.icao_id, t1.icao, 1 as is_oilrig  from xp_helipads t1,  xp_ap_metadata t2 where t1.icao_id = t2.icao_id  and t2.key_col = 'is_oilrig' and t2.val_col = '1'  group by t1.icao_id, t1.icao),
      heli_ramps_view as (select icao_id, count(1) as ramp_helis from xp_ap_ramps where for_planes like '%helos%' or lower(ramp_uq_name) like '%heli%' group by icao_id),
@@ -809,10 +849,13 @@ WITH helipads_view as (select icao_id, count(1) as helipad_counter from xp_helip
      fighter_ramps_view as (select icao_id, count(1) as ramp_planes from xp_ap_ramps where for_planes like '%fighter%' group by icao_id),
      rw_hard_vu as (select icao_id, count(1) as rw_hard from xp_rw where rw_surf in (1,2) group by icao_id),
      rw_dirt_gravel_vu as (select icao_id, count(1) as rw_dirt_n_gravel from xp_rw where rw_surf in (4,5) group by icao_id),
-     rw_grass_vu as (select icao_id, count(1) as rw_grass from xp_rw where rw_surf = 3 group by icao_id),     
+     rw_grass_vu as (select icao_id, count(1) as rw_grass from xp_rw where rw_surf = 3 group by icao_id),
      rw_water_vu as (select icao_id, count(1) as rw_water from xp_rw where rw_surf = 13 group by icao_id),
      region_meta_vu as (select icao_id, val_col as region_name from xp_ap_metadata t1 where key_col = 'region_code'),
-     country_vu as (select icao_id, val_col as country from xp_ap_metadata t1 where key_col = 'country')
+     country_vu as (select icao_id, val_col as country from xp_ap_metadata t1 where key_col = 'country'),
+     rw_length_vu as (select icao_id, min(rw_length_mt) as min_rw_length_mt, max(rw_length_mt) as max_rw_length_mt from xp_rw group by icao_id),
+     terminal_ramps_vu as (select icao_id, count(icao_id) as ramp_terminal from xp_ap_ramps where (lower(ramp_uq_name) like '%term%' or operation_type like '%airl%' ) group by icao_id),
+     cargo_ramps_vu as (select icao_id, count(icao_id) as ramp_cargo from xp_ap_ramps where (lower(ramp_uq_name) like '%carg%' or operation_type like '%carg%') group by icao_id)
 SELECT t1.icao_id,
        t1.icao,
        t1.ap_elev as ap_elev_ft,
@@ -821,42 +864,32 @@ SELECT t1.icao_id,
        t1.is_custom,
        t1.ap_lat,
        t1.ap_lon
+       ,IFNULL((select min_rw_length_mt from rw_length_vu v1 where t1.icao_id = v1.icao_id ), NULL) as min_rw_length_in_meters
+       ,IFNULL((select max_rw_length_mt from rw_length_vu v1 where t1.icao_id = v1.icao_id ), NULL) as max_rw_length_in_meters
+       ,IFNULL((select ramp_terminal from terminal_ramps_vu v1 where t1.icao_id = v1.icao_id ), NULL) as ramp_in_terminal
+       ,IFNULL((select ramp_cargo from cargo_ramps_vu v1 where t1.icao_id = v1.icao_id ), NULL) as ramp_in_cargo
        ,IFNULL((select helipad_counter from helipads_view v1 where t1.icao_id = v1.icao_id), 0) as helipads
        ,IFNULL((select is_oilrig from oilrig_view v1 where t1.icao_id = v1.icao_id), 0) as is_oilrig
        ,IFNULL((select ramp_helis from heli_ramps_view v1 where t1.icao_id = v1.icao_id ), 0) as ramp_helos
-       ,IFNULL((select ramp_planes from plane_ramps_view v1 where t1.icao_id = v1.icao_id ), 0) as ramp_planes       
-       ,IFNULL((select ramp_planes from props_ramps_view v1 where t1.icao_id = v1.icao_id ), 0) as ramp_props       
-       ,IFNULL((select ramp_planes from turboprop_ramps_view v1 where t1.icao_id = v1.icao_id ), 0) as ramp_turboprops       
-       ,IFNULL((select ramp_planes from jets_heavy_ramps_view v1 where t1.icao_id = v1.icao_id ), 0) as ramp_jet_heavy       
-       ,IFNULL((select ramp_planes from fighter_ramps_view v1 where t1.icao_id = v1.icao_id ), 0) as ramp_fighters       
-       ,IFNULL((select rw_hard from rw_hard_vu v1 where t1.icao_id = v1.icao_id ), 0) as rw_hard           
-       ,IFNULL((select rw_dirt_n_gravel from rw_dirt_gravel_vu v1 where t1.icao_id = v1.icao_id ), 0) as rw_dirt_gravel           
-       ,IFNULL((select rw_grass from rw_grass_vu v1 where t1.icao_id = v1.icao_id ), 0) as rw_grass           
+       ,IFNULL((select ramp_planes from plane_ramps_view v1 where t1.icao_id = v1.icao_id ), 0) as ramp_planes
+       ,IFNULL((select ramp_planes from props_ramps_view v1 where t1.icao_id = v1.icao_id ), 0) as ramp_props
+       ,IFNULL((select ramp_planes from turboprop_ramps_view v1 where t1.icao_id = v1.icao_id ), 0) as ramp_turboprops
+       ,IFNULL((select ramp_planes from jets_heavy_ramps_view v1 where t1.icao_id = v1.icao_id ), 0) as ramp_jet_heavy
+       ,IFNULL((select ramp_planes from fighter_ramps_view v1 where t1.icao_id = v1.icao_id ), 0) as ramp_fighters
+       ,IFNULL((select rw_hard from rw_hard_vu v1 where t1.icao_id = v1.icao_id ), 0) as rw_hard
+       ,IFNULL((select rw_dirt_n_gravel from rw_dirt_gravel_vu v1 where t1.icao_id = v1.icao_id ), 0) as rw_dirt_gravel
+       ,IFNULL((select rw_grass from rw_grass_vu v1 where t1.icao_id = v1.icao_id ), 0) as rw_grass
        ,IFNULL((select rw_water from rw_water_vu v1 where t1.icao_id = v1.icao_id ), 0) as rw_water
-       ,IFNULL((select region_name from region_meta_vu v1 where t1.icao_id = v1.icao_id ), NULL) as region_code     
-       ,IFNULL((select country from country_vu v1 where t1.icao_id = v1.icao_id ), NULL) as country     
-       , t1.boundary           
-  FROM xp_airports t1)");
+       ,IFNULL((select region_name from region_meta_vu v1 where t1.icao_id = v1.icao_id ), NULL) as region_code
+       ,IFNULL((select country from country_vu v1 where t1.icao_id = v1.icao_id ), NULL) as country
+       , t1.boundary
+  FROM xp_airports t1
+  where t1.icao_id)");
 
-//     inDB_ptr->execute_stmt(R"(create view ramps_vu as
-// SELECT icao_id, icao, ramp_lat as lat, ramp_lon as lon, ramp_heading_true heading, ramp_uq_name as name, for_planes
-//      -- All the last "OR" logic in each case statements is for compatibility with old scenery files codes and format. We try to guess the ramp type
-//      , case when (instr( lower(IFNULL(for_planes,'')), 'helos') > 0) or (instr( lower(IFNULL(ramp_uq_name,'')), 'heli') > 0) then 1  else 0 END as helos
-//      , case when instr( lower(IFNULL(for_planes,'')), 'props') > 0 or  (instr( lower(IFNULL(ramp_uq_name,'')), 'general') > 0) then 1 else 0 END as props
-//      , case when instr( lower(IFNULL(for_planes,'')), 'turboprops') > 0 or  (instr( lower(IFNULL(ramp_uq_name,'')), 'apron') > 0) then 1 else 0 END as turboprops
-//      , case when instr( lower(IFNULL(for_planes,'')), 'heavy') > 0 or (instr( lower(IFNULL(for_planes,'')), 'jet') > 0) or (instr( lower(IFNULL(ramp_uq_name,'')), 'apron') > 0) then 1 else 0 END as jet_n_heavy
-//      , case when instr( lower(IFNULL(for_planes,'')), 'fighter') > 0 then 1 else 0 END as fighters
-//      , 1 as which_table
-// FROM xp_ap_ramps t1
-// union
-// SELECT icao_id, icao, lat, lon, 0 as heading, name, "helos" as for_planes, 1 as helos, 0 as props, 0 as turboprops, 0 as jet_n_heavy, 0 as fighters, 2 as which_table
-// FROM xp_helipads t1
-// ORDER BY icao_id
-// )");
 
 
     inDB_ptr->execute_stmt(R"(create view ramps_vu as
-SELECT icao_id, icao, ramp_lat as lat, ramp_lon as lon, ramp_heading_true heading, ramp_uq_name as name, for_planes
+SELECT icao_id, icao, ramp_lat as lat, ramp_lon as lon, ramp_heading_true heading, ramp_uq_name as name, for_planes, icao_width_code, operation_type
      -- All the last "OR" logic in each case statements is for compatibility with old scenery files codes and format. We try to guess the ramp type
      , case when (instr( lower(IFNULL(for_planes,'')), 'helos') > 0) or (instr( lower(IFNULL(ramp_uq_name,'')), 'heli') > 0) then 1  else 0 END as helos
      , case when instr( lower(IFNULL(for_planes,'')), 'props') > 0 or  (instr( lower(IFNULL(ramp_uq_name,'')), 'general') > 0) then 1 else 0 END as props
@@ -869,7 +902,7 @@ SELECT icao_id, icao, ramp_lat as lat, ramp_lon as lon, ramp_heading_true headin
      , 1 as which_table
 FROM xp_ap_ramps t1
 union
-SELECT icao_id, icao, lat, lon, 0 as heading, name, "helos" as for_planes, 1 as helos, 0 as props, 0 as turboprops, 0 as jet, 0 as heavy, 0 as fighters, 0 as apron, 0 as terminal, 2 as which_table
+SELECT icao_id, icao, lat, lon, 0 as heading, name, "helos" as for_planes, 'B' as icao_width_code, 'general_aviation' as operation_type, 1 as helos, 0 as props, 0 as turboprops, 0 as jet, 0 as heavy, 0 as fighters, 0 as apron, 0 as terminal, 2 as which_table
 FROM xp_helipads t1
 ORDER BY icao_id
 )");
@@ -881,6 +914,7 @@ ORDER BY icao_id
     inDB_ptr->execute_stmt("CREATE INDEX icao_id_rw_n1 on xp_rw (icao_id)");
     inDB_ptr->execute_stmt("CREATE INDEX surf_type_rw_n2 on xp_rw (rw_surf)");
     inDB_ptr->execute_stmt("CREATE INDEX ap_frq_icao_id_idx on xp_ap_frq (icao_id)"); // v24.03.1
+    inDB_ptr->execute_stmt("CREATE INDEX ramps_icao_id_idx on xp_ap_ramps (icao_id)"); // v26.03.1
 
     // the following indexes are optional
     // inDB_ptr->execute_stmt("CREATE INDEX icao_helipad_n2 on xp_helipads (icao)");
@@ -961,13 +995,13 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(strct_thread_state* inThreadSt
   const std::list<std::string> ap_list_data = info.listNavInfo;
 
   ///// PREPARE STATMENTS
-  std::string prep_stmt_key_s; 
-  std::map<std::string, std::string> map_key_value; // store values in readable key/value, unique to each code line
 
   std::pair<std::string, missionx::db_types> store_pair;
 
   if (db.db_is_open_and_ready) // status. 0 = success/OK
   {
+    std::string prep_stmt_key_s;
+    std::map<std::string, std::string> map_key_value; // store values in readable key/value, unique to each code line
 
     // read main airport list
     bool flag_wrote_airport_lat_long_based_on_runway = false;
@@ -982,24 +1016,19 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(strct_thread_state* inThreadSt
     for (auto it = ap_list_data.cbegin(); it != it_end; ++it)
     {
       const std::string line                   = Utils::rtrim(*it);
-      int               split_fields_counter_i = 1; // holds the field we are working on. We start at 1 and not 0
 
       map_key_value.clear();
       std::list<missionx::db_field> list_of_fields; // store col_name, {value, datatype}
 
-
       list_of_fields.emplace_front(field_icao_id); // v3.0.255.3 manually adding the icao_id to the list
 
-
-      //static constexpr char const *delimeters       = " \t";
-      static constexpr char const *delimeters       = " ";
-      //const std::vector<std::string> vec_split_line = mxUtils::split_v2(line, delimeters, false); // This version of split_v2, handles empty tokens.
       const std::vector<std::string> vec_split_line = mxUtils::split_skipEmptyTokens(line, ' '); // This code seem to be ~2seconds faster than split_v2
 
       if (vec_split_line.size() > 2)
       {
-        auto it_field    = vec_split_line.cbegin();
-        auto it_line_end = vec_split_line.cend();
+        int  split_fields_counter_i = 1; // holds the field we are working on. We start at 1 and not 0
+        auto it_field               = vec_split_line.cbegin();
+        auto it_line_end            = vec_split_line.cend();
 
         int code_i = Utils::stringToNumber<int>(*it_field); // fetch first value
 
@@ -1050,8 +1079,9 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(strct_thread_state* inThreadSt
           list_of_fields.emplace_back(*it_field_mapping); // store column name as "key", and the whole class as "value"
         }
 
-
-        // Insert commands
+        // --------------------
+        // DML commands
+        // --------------------
         switch (code_i)
         {
           case 1:  // Land airport
@@ -1137,6 +1167,41 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(strct_thread_state* inThreadSt
             {
               db.bind_and_execute_ins_stmt(prep_stmt_key_s, " xp_ap_ramps ", list_of_fields);
             }
+          }
+          break;
+          case 1301: // ramp metadata
+          {
+              if (list_of_fields.size() > 3)
+              {
+                double      lat1 = 0.0,      lon1 = 0.0;
+                std::string lat1_s,          lon1_s;
+                std::string icao_width_code, operation_type, dal;
+                lat1_s          = this->get_db_field_by_colName(list_of_fields, "ramp_lat").value_s;
+                lon1_s          = this->get_db_field_by_colName(list_of_fields, "ramp_lon").value_s;
+                icao_width_code = this->get_db_field_by_colName(list_of_fields, "icao_width_code").value_s;
+                operation_type  = mxUtils::stringToLower(this->get_db_field_by_colName(list_of_fields, "operation_type").value_s);
+                dal             = mxUtils::stringToLower(this->get_db_field_by_colName(list_of_fields, "dal").value_s);
+
+                if (mxUtils::is_number(lat1_s) && mxUtils::is_number(lon1_s))
+                {
+                  lat1            = mxUtils::stringToNumber<double>(lat1_s);
+                  lon1            = mxUtils::stringToNumber<double>(lon1_s);
+
+                  // sanitise data
+                  icao_width_code = icao_width_code.empty() ? "NULL" : fmt::format("'{}'", icao_width_code);
+                  operation_type  = (operation_type.empty() || operation_type=="none") ? "NULL" : fmt::format("'{}'", operation_type);
+                  dal             = dal.empty() ? "NULL" : fmt::format("'{}'",dal);
+
+                  const std::string stmt =
+                    fmt::format("update xp_ap_ramps set icao_width_code={}, operation_type={}, dal={} where icao_id={} and ramp_lat={} and ramp_lon={}"
+                    , icao_width_code, operation_type, dal, field_icao_id.value_s, lat1, lon1);
+
+                  // update xp_ap_ramps with metadata info
+                  const auto result = db.execute_stmt(stmt);
+                }
+              }
+
+
           }
           break;
           case 15: // older startup location, like ramps

@@ -547,7 +547,7 @@ Inventory::applyPropertiesToLocal()
   this->setNodeProperty<bool>(mxconst::get_ATTRIB_ENABLED(), Utils::readBoolAttrib(this->node, mxconst::get_ATTRIB_ENABLED(), true));
 
   this->setNodeStringProperty(mxconst::get_ATTRIB_PLANE_ON_GROUND(), mxconst::get_MX_YES()); // this is deterministic. Inventory is always on ground or on surface we land on.
-  this->setNodeProperty<int>(mxconst::get_PROP_TRIG_ELEV_TYPE(), (int)this->trigElevType); // v3.0.241.1 update both property and XML node if we want
+  this->setNodeProperty<int>(mxconst::get_PROP_TRIG_ELEV_TYPE(), static_cast<int>(this->trigElevType)); // v3.0.241.1 update both property and XML node if we want
 }
 
 // -----------------------------------
@@ -832,10 +832,9 @@ Inventory::parse_acf_max_weight_line_and_station_name (const std::string &line, 
               v_station_name += vecTokens.at(i);
             }
 
-            IXMLNode node_station_ptr = lmbda_get_station_from_pNode (pNode, v_station_index_str); //   pNode.addChild (mxconst::get_ELEMENT_STATION().c_str ());
+            IXMLNode node_station_ptr = lmbda_get_station_from_pNode (pNode, v_station_index_str);
             assert (!node_station_ptr.isEmpty () && fmt::format ("[{}] Failed to create <station> node for station name attribute.", __func__).c_str ());
 
-            // Utils::xml_set_attribute_in_node_asString (node_station_ptr, mxconst::get_ATTRIB_ID(), v_station_index_str, mxconst::get_ELEMENT_STATION());
             Utils::xml_set_attribute_in_node_asString (node_station_ptr, mxconst::get_ATTRIB_NAME(), v_station_name, mxconst::get_ELEMENT_STATION());
           } // end is number
         } // end found "/"

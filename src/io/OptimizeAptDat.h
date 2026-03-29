@@ -25,7 +25,7 @@ class OptimizeAptDat : public base_thread
 private:
   static missionx::dbase* db_airports_xp_ptr;
   static missionx::dbase* db_airports_cache_ptr;
-  missionx::db_field      get_db_field_by_colName(std::list<missionx::db_field>& list_of_fields, const std::string& inColNameToSearch);
+  missionx::db_field      get_db_field_by_colName(std::list<missionx::db_field>& list_of_fields, const std::string& inColNameToSearch, const std::string & in_default_value_s = "");
 
   static const int STARTING_COUNTER_I = 1; // v3.303.8.3 used with apt_dat internal character counter. Should always start with 1
 
@@ -97,6 +97,13 @@ private:
         db_field("location_type", db_types::text_typ),
         db_field("for_planes", db_types::text_typ),
         db_field("ramp_uq_name", db_types::text_typ) } }, // ramps
+    { 1301,
+      { db_field("icao", db_types::text_typ, ""),
+        db_field("ramp_lat", db_types::real_typ),
+        db_field("ramp_lon", db_types::real_typ),
+        db_field("icao_width_code", db_types::text_typ),
+        db_field("operation_type", db_types::text_typ),
+        db_field("dal", db_types::text_typ) } }, // ramps metadata
     { 15,
       { db_field("icao", db_types::text_typ, ""),
         db_field("ramp_lat", db_types::real_typ),

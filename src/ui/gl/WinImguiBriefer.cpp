@@ -2636,7 +2636,7 @@ void WinImguiBriefer::add_ui_os_and_xp_clock_times(const float& in_x_pos)
 
 void WinImguiBriefer::add_ui_fps()
 {
-  ImGui::TextColored(missionx::color::color_vec4_greenyellow, "%s", "FPS:");
+  ImGui::TextColored(missionx::color::color_vec4_orange, "%s", "FPS:");
   ImGui::SameLine();
   ImGui::TextDisabled("%.2f", missionx::dataref_manager::get_fps_f());
 }
@@ -2923,8 +2923,11 @@ WinImguiBriefer::draw_top_toolbar ()
     this->mx_add_tooltip (missionx::color::color_vec4_white, "Home Button");
 
     // FPS
-    ImGui::SameLine(0.0f, 5.0f);
-    add_ui_fps();
+    if ( missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_DISPLAY_UI_FPS(), true))
+    {
+      ImGui::SameLine(0.0f, 5.0f);
+      add_ui_fps();
+    }
 
     // Clocks: OS & XPlane
     if ( missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_DISPLAY_UI_CLOCKS(), true))
@@ -3172,7 +3175,7 @@ WinImguiBriefer::draw_popup_extra_data_ext_fpln (std::string_view inPopupWindowN
 void
 WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::string_view inPopupWindowName, const missionx::mx_ext_internet_fpln_strct &rowData, const int &picked_fpln_id_i)
 {
-  ImGui::SetNextWindowSize (ImVec2 (640.0f, 410.0f));
+  ImGui::SetNextWindowSize (ImVec2 (640.0f, 420.0f));
 
   ImGui::PushStyleColor (ImGuiCol_PopupBg, missionx::color::color_vec4_black);
   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
@@ -3183,8 +3186,8 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
 
       if (rowData.internal_id == picked_fpln_id_i)
       {
-        static int             plane_type_i = static_cast<int> (missionx::mx_plane_types_enum::plane_type_props);
-        static constexpr float child_h      = 340.0;
+        static auto            plane_type_i = missionx::mx_plane_types_enum::plane_type_props;
+        static constexpr float child_h      = 350.0;
         ImGui::BeginChild ("fpln_details_left_side", ImVec2 (modal_center.x - 5.0f, child_h), ImGuiChildFlags_Borders);
         {
           ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", "To:");
@@ -3205,21 +3208,26 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
 
         ImGui::BeginChild ("fpln_options_right_side", ImVec2 (modal_center.x - 5.0f, child_h), ImGuiChildFlags_Borders);
         {
-          ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow);
-          ImGui::Text ("Pick your preferred plane:");
-          ImGui::PopStyleColor ();
-          ImGui::RadioButton ("Heli", &plane_type_i, static_cast<int> (missionx::mx_plane_types_enum::plane_type_helos));
-          ImGui::SameLine ();
-          ImGui::RadioButton ("Props", &plane_type_i, static_cast<int> (missionx::mx_plane_types_enum::plane_type_props));
-          ImGui::SameLine ();
-          ImGui::RadioButton ("Floats", &plane_type_i, static_cast<int> (missionx::mx_plane_types_enum::plane_type_ga_floats));
-          ImGui::RadioButton ("Turbo Prop", &plane_type_i, static_cast<int> (missionx::mx_plane_types_enum::plane_type_turboprops));
-          ImGui::SameLine ();
-          ImGui::RadioButton ("Jet", &plane_type_i, static_cast<int> (missionx::mx_plane_types_enum::plane_type_jets));
-          ImGui::SameLine ();
-          ImGui::RadioButton ("Heavy", &plane_type_i, static_cast<int> (missionx::mx_plane_types_enum::plane_type_heavy));
+          ImGui::TextColored (missionx::color::color_vec4_yellow, "Pick your preferred plane:");
+          ImGui::NewLine ();
+          int radio_btn_counter = 0;
+          for (const auto &planeTypeLabel : this->mapListPlaneRadioLabel | std::views::values) // v24.12.1
+          {
+            if (planeTypeLabel.type == mx_plane_types_enum::plane_type_ga_floats)
+              continue;
 
-          ImGui::NewLine (); // v3.0.253.11
+            ImGui::SameLine ();
+            if (ImGui::RadioButton (planeTypeLabel.label.c_str (), plane_type_i == planeTypeLabel.type) )
+            {
+              plane_type_i = planeTypeLabel.type;
+            }
+            radio_btn_counter++;
+            if (radio_btn_counter%3 == 0)
+              ImGui::NewLine();
+
+          } // end loop over all plane types
+
+          ImGui::Separator (); // v3.0.253.11
           if (this->getCurrentLayer () == missionx::uiLayer_enum::flight_leg_info) // v25.04.2
           {
             missionx::WinImguiBriefer::mxUiHelpMarker (missionx::color::color_vec4_aqua, "Ensure that your plane is placed in the Departure airport before pressing the [Start] button.");
@@ -3274,7 +3282,7 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
           IXMLNode node_ptr = missionx::data_manager::prop_userDefinedMission_ui.node;
 
           missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_FPLN_ID_PICKED (), picked_fpln_id_i);
-          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_PLANE_TYPE_I (), plane_type_i);
+          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_PLANE_TYPE_I (), static_cast<int>( plane_type_i) );
           missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_START_FROM_PLANE_POSITION (), this->strct_cross_layer_properties.flag_start_from_plane_position); // v3.0.253.11 start from plane position
           missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), this->strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12 generate GPS waypoints
           missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), this->strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms); // v25.04.2
@@ -3706,7 +3714,7 @@ WinImguiBriefer::draw_setup_layer ()
       missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::toggle_designer_mode);
     }
 
-    ImGui::SameLine (0.0f, 25.0f);
+    ImGui::SameLine (0.0f, 15.0f);
     bool bCueInfo = Utils::readNodeNumericAttrib<int> (missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISPLAY_VISUAL_CUES (), false); // 0 = false
     if (ImGui::Checkbox ("Toggle Cue Info", &bCueInfo))
     {
@@ -3714,11 +3722,18 @@ WinImguiBriefer::draw_setup_layer ()
     }
 
     // v26.02.1
-    ImGui::SameLine (0.0f, 25.0f);
     bool bDisplayClock = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_DISPLAY_UI_CLOCKS(), true);
+      ImGui::SameLine (0.0f, 15.0f);
     if (ImGui::Checkbox ("Toggle Clocks", &bDisplayClock))
     {
       missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::toggle_ui_clocks);
+    }
+
+    bool bDisplayFPS = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_DISPLAY_UI_FPS(), true);
+      ImGui::SameLine (0.0f, 15.0f);
+    if (ImGui::Checkbox ("Toggle FPS", &bDisplayFPS))
+    {
+      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::toggle_ui_fps);
     }
 
 
@@ -4831,9 +4846,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
       ImGui::PopStyleColor (1);
       ImGui::SameLine (0.0f, 2.0f);
 
-      ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
-      ImGui::Text (" Pick Type of Mission:");
-      ImGui::PopStyleColor (1);
+      ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", " Pick Type of Mission:");
 
       ImGui::SameLine (0.0f, 50.0f);
       this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
@@ -4848,7 +4861,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
         this->refresh_slider_data_based_on_plane_type (this->strct_user_create_layer.iRadioPlaneType); // v3.303.14
       }
       ImGui::SameLine ();
-      if (ImGui::RadioButton ("Cargo", this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_ui_mission_type::cargo)))
+      if (ImGui::RadioButton ("Cargo/Passengers", this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_ui_mission_type::cargo)))
       {
         this->strct_user_create_layer.iRadioMissionTypePicked   = static_cast<int> (missionx::mx_ui_mission_type::cargo);
         this->strct_user_create_layer.iMissionSubCategoryPicked = 0; // reset sub category combo
@@ -4945,8 +4958,11 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
         // const bool b_ui_disable_pick_preferred_plane = this->mxStartUiDisableState (bPickedMedevacSurpriseMeMission); // v25.06.1 start disable/enable
         this->mxStartUiDisableState (bPickedMedevacSurpriseMeMission); // v25.06.1 start disable/enable
 
-        ImGui::TextColored  ( missionx::color::color_vec4_yellow, "Pick Preferred Plane:");
+        HelpMarker ("The aircraft you select will help filter the route distance and the available ramps at the destination airport.\n\nExample:\n\nJets: Small to medium Jets (B,C)\nAirline/Cargo: E190, B737, A320 (C,D)\nHeavy Airline/Cargo: B777, A350 (C,D,E,F)");
+        ImGui::SameLine (0.0f, 2.0f);
+        ImGui::TextColored  ( missionx::color::color_vec4_yellow, "Pick The Plane Type You Will Fly:");
 
+        int radio_btn_counter = 0;
         for (const auto &planeTypeLabel : this->mapListPlaneRadioLabel | std::views::values) // v24.12.1
         {
 
@@ -4959,7 +4975,11 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
             this->strct_user_create_layer.iRadioPlaneType = planeTypeLabel.type;
             this->refresh_slider_data_based_on_plane_type (this->strct_user_create_layer.iRadioPlaneType); // v24.12.1 deprecated
           }
-          ImGui::SameLine ();
+          radio_btn_counter++;
+          if (radio_btn_counter%5 == 0)
+            ImGui::NewLine();
+
+          ImGui::SameLine (0.0f);
         }
 
         //// v3.0.253.11 added the PROP_START_FROM_PLANE_POSITION checkbox
@@ -4982,24 +5002,28 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
           // Runway filter
           ImGui::NewLine ();
 
-          ImGui::Checkbox ("Pick Any Runway##filterRunways", &this->strct_user_create_layer.flag_pick_any_rw);
-          // display the filter tree if changed to false
-          if (this->strct_user_create_layer.flag_pick_any_rw == false)
+          // Filter out type of runway for heavies type of plane.
+          if (this->strct_user_create_layer.iRadioPlaneType < missionx::mx_plane_types_enum::plane_type_airline )
           {
-            ImGui::Text ("Include airports that have:");
-
-            for (auto &[rw_lbl, b_picked] : this->strct_user_create_layer.map_filter_runways)
+            ImGui::Checkbox ("Pick Any Runway##filterRunways", &this->strct_user_create_layer.flag_pick_any_rw);
+            // display the filter tree if changed to false
+            if (this->strct_user_create_layer.flag_pick_any_rw == false)
             {
-              ImGui::SameLine (0.0f, 10.0f); //
-              ImGui::Checkbox (rw_lbl.c_str (), &b_picked);
-              if (b_picked) // if picked
-                count_filters_picked++;
+              ImGui::Text ("Include airports that have:");
+
+              for (auto &[rw_lbl, b_picked] : this->strct_user_create_layer.map_filter_runways)
+              {
+                ImGui::SameLine (0.0f, 10.0f); //
+                ImGui::Checkbox (rw_lbl.c_str (), &b_picked);
+                if (b_picked) // if picked
+                  count_filters_picked++;
+              }
+
+              if (count_filters_picked == this->strct_user_create_layer.map_filter_runways.size ())
+                this->strct_user_create_layer.reset_filter_runways_flags ();
             }
 
-            if (count_filters_picked == this->strct_user_create_layer.map_filter_runways.size ())
-              this->strct_user_create_layer.reset_filter_runways_flags ();
           }
-
           ImGui::NewLine ();
         }
 
@@ -5435,6 +5459,12 @@ Filter options:
             int         counter{ 0 };
             std::string query;
             query.clear ();
+            if (this->strct_user_create_layer.iRadioPlaneType >= missionx::mx_plane_types_enum::plane_type_airline)
+            {
+              query = " ( 1, 2 ) "; // concrete codes
+              return query;
+            }
+
             if (this->strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos || this->strct_user_create_layer.flag_pick_any_rw)
               return query; // empty string no filter
 
@@ -5455,21 +5485,18 @@ Filter options:
             if (counter > 0)
               query += " )";
 
-#ifndef RELEASE
-            Log::logMsg ("Query filter: " + query);
-#endif // !RELEASE
-
             return query;
           }; // end lambda
 
 
-// PROP_FILTER_AIRPORTS_BY_RUNWAY_TYPE - prepare the runway filter string
-#ifndef RELEASE
+          // PROP_FILTER_AIRPORTS_BY_RUNWAY_TYPE - prepare the runway filter string
           const std::string filter_query = lmbda_build_filter_for_runway_types ();
           missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_FILTER_AIRPORTS_BY_RUNWAY_TYPE (), filter_query); //, node_ptr, node_ptr.getName());
-#else
-          missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_FILTER_AIRPORTS_BY_RUNWAY_TYPE (), lmbda_build_filter_for_runway_types ()); //, node_ptr, node_ptr.getName());
-#endif
+
+          #ifndef RELEASE
+          Log::logMsg (fmt::format("[{}] Query filter: {}", __func__, filter_query) );
+          #endif // !RELEASE
+
 
           this->asyncSecondMessageLine.clear ();
           this->setMessage ("Random Engine is running, please wait...", 10);
@@ -8490,14 +8517,9 @@ WinImguiBriefer::child_draw_ils_search ()
     this->mxUiReleaseLastFont ();
     ImGui::PopStyleColor (2);
 
-
-
-
     ImGui::EndGroup ();
 
     //
-
-
     ImGui::BeginGroup ();
     ImGui::BeginChild ("Left ILS", child_vec2, ImGuiChildFlags_Borders);
     {
@@ -8907,7 +8929,7 @@ WinImguiBriefer::child_draw_ils_search ()
           // DISPLAY POPUP
           ImVec2 center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f); // center of screen
           ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
-          ImGui::SetNextWindowSize (ImVec2 (480.0f, 415.0f));
+          ImGui::SetNextWindowSize (ImVec2 (480.0f, 435.0f));
 
           ImGui::PushStyleColor (ImGuiCol_PopupBg, missionx::color::color_vec4_black);
           {
@@ -8931,6 +8953,7 @@ WinImguiBriefer::child_draw_ils_search ()
                 ImGui::PopStyleColor (1);
                 ImGui::NewLine ();
 
+                int radio_btn_counter = 0;
                 for (const auto &planeTypeLabel : this->mapListPlaneRadioLabel | std::views::values) // v24.12.1
                 {
                   if (planeTypeLabel.type == mx_plane_types_enum::plane_type_helos || planeTypeLabel.type == mx_plane_types_enum::plane_type_ga_floats)
@@ -8941,6 +8964,10 @@ WinImguiBriefer::child_draw_ils_search ()
                   {
                     this->strct_ils_layer.iRadioPlaneType = planeTypeLabel.type;
                   }
+                  radio_btn_counter++;
+                  if (radio_btn_counter%4 == 0)
+                    ImGui::NewLine();
+
                 } // end loop over all plane types
 
                 ImGui::NewLine ();

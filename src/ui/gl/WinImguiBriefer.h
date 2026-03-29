@@ -826,7 +826,7 @@ public:
 
     void initNoteMaps()
     {
-      for (auto enumI = missionx::enums::mx_note_shortField_enum::begin; enumI < missionx::enums::mx_note_shortField_enum::end; enumI = static_cast<missionx::enums::mx_note_shortField_enum>((size_t)enumI + 1))
+      for (auto enumI = missionx::enums::mx_note_shortField_enum::begin; enumI < missionx::enums::mx_note_shortField_enum::end; enumI = static_cast<missionx::enums::mx_note_shortField_enum>(static_cast<size_t>(enumI) + 1))
       {
         #ifdef IBM
         memcpy_s(mapNoteFieldShort[enumI], sizeof (mapNoteFieldShort[enumI]), "\0", sizeof ("\0"));
@@ -834,7 +834,7 @@ public:
         memcpy(mapNoteFieldShort[enumI], "\0", sizeof ("\0"));
         #endif
       }
-      for (auto enumI = missionx::enums::mx_note_longField_enum::begin; enumI < missionx::enums::mx_note_longField_enum::end; enumI = static_cast<missionx::enums::mx_note_longField_enum>((size_t)enumI + 1))
+      for (auto enumI = missionx::enums::mx_note_longField_enum::begin; enumI < missionx::enums::mx_note_longField_enum::end; enumI = static_cast<missionx::enums::mx_note_longField_enum>(static_cast<size_t>(enumI) + 1))
       {
         #ifdef IBM
         memcpy_s(mapNoteFieldLong[enumI], sizeof (mapNoteFieldLong[enumI]), "\0", sizeof ("\0"));
@@ -846,7 +846,7 @@ public:
 
     void resetNotesUpperPart()
     {
-      for (auto enumI = missionx::enums::mx_note_shortField_enum::begin; enumI < missionx::enums::mx_note_shortField_enum::end; enumI = static_cast<missionx::enums::mx_note_shortField_enum>((size_t)enumI + 1))
+      for (auto enumI = missionx::enums::mx_note_shortField_enum::begin; enumI < missionx::enums::mx_note_shortField_enum::end; enumI = static_cast<missionx::enums::mx_note_shortField_enum>(static_cast<size_t>(enumI) + 1))
       {
         #ifdef IBM
         memcpy_s(mapNoteFieldShort[enumI], sizeof (mapNoteFieldShort[enumI]), "\0", sizeof ("\0"));
@@ -866,7 +866,7 @@ public:
 
     void resetNotesLowerPart()
     {
-      for (auto enumI = missionx::enums::mx_note_longField_enum::begin; enumI < missionx::enums::mx_note_longField_enum::end; enumI = static_cast<missionx::enums::mx_note_longField_enum>((size_t)enumI + 1))
+      for (auto enumI = missionx::enums::mx_note_longField_enum::begin; enumI < missionx::enums::mx_note_longField_enum::end; enumI = static_cast<missionx::enums::mx_note_longField_enum>(static_cast<size_t>(enumI) + 1))
       {
         if ((enumI == missionx::enums::mx_note_longField_enum::waypoints) || (enumI == missionx::enums::mx_note_longField_enum::taxi))
           continue;
@@ -1018,7 +1018,7 @@ private:
 
   typedef struct _radio_plane_type
   {
-    missionx::mx_plane_types_enum type;
+    missionx::mx_plane_types_enum type {missionx::mx_plane_types_enum::plane_type_any};
     std::string              label;
 
     float from_slider_min{ (float)mxconst::SLIDER_MIN_RND_DIST };
@@ -1026,22 +1026,32 @@ private:
     float from_slider_max{ (float)(mxconst::SLIDER_MIN_RND_DIST * 1.2) };
     float to_slider_max{ (float)(mxconst::SLIDER_MAX_RND_DIST * 1.2) };
 
-    _radio_plane_type () {}
+    _radio_plane_type () = default;
 
-    _radio_plane_type (missionx::mx_plane_types_enum inType, std::string inLabel, float in_lower_slider_min, float in_upper_slider_min, float inMultiplyLowerMin = 1.2f, float inMultiplyUpperMin = 1.2f)
+    _radio_plane_type (const missionx::mx_plane_types_enum inType, const std::string& inLabel, const float in_lower_slider_min, const float in_upper_slider_min, const float inMultiplyLowerMin = 1.2f, const float inMultiplyUpperMin = 1.2f)
     {
       type            = inType;
       label           = inLabel;
       from_slider_min = in_lower_slider_min;
       to_slider_min   = in_upper_slider_min;
-      from_slider_max = (float)(int)(from_slider_min * inMultiplyLowerMin);
-      to_slider_max   = (float)(int)(to_slider_min * inMultiplyUpperMin);
+      from_slider_max = static_cast<float>(static_cast<int>(from_slider_min * inMultiplyLowerMin));
+      to_slider_max   = static_cast<float>(static_cast<int>(to_slider_min * inMultiplyUpperMin));
     }
 
   } radio_plane_type;
 
 
-  std::map<missionx::mx_plane_types_enum, radio_plane_type> mapListPlaneRadioLabel = { { mx_plane_types_enum::plane_type_helos, radio_plane_type (mx_plane_types_enum::plane_type_helos, "Helos", (float)mxconst::SLIDER_MIN_RND_DIST, (float)((int)(mxconst::SLIDER_MAX_RND_DIST * 0.2)), 2.4f, 2.0f) }, { mx_plane_types_enum::plane_type_props, radio_plane_type (mx_plane_types_enum::plane_type_props, "GA (props)", (float)mxconst::SLIDER_MIN_RND_DIST, (float)(mxconst::SLIDER_MAX_RND_DIST), 10.5f, 4.0f) }, { mx_plane_types_enum::plane_type_ga_floats, radio_plane_type (mx_plane_types_enum::plane_type_ga_floats, "Floats", (float)mxconst::SLIDER_MIN_RND_DIST, (float)(mxconst::SLIDER_MAX_RND_DIST), 10.5f, 4.0f) }, { mx_plane_types_enum::plane_type_turboprops, radio_plane_type (mx_plane_types_enum::plane_type_turboprops, "Turbo Props", 15.0f, (float)((int)(mxconst::SLIDER_MAX_RND_DIST * 4.0)), 4.0f, 5.0f) }, { mx_plane_types_enum::plane_type_jets, radio_plane_type (mx_plane_types_enum::plane_type_jets, "Jets", 80.0f, (float)((int)(mxconst::SLIDER_MAX_RND_DIST * 4.0)), 40.0f, 40.0f) }, { mx_plane_types_enum::plane_type_heavy, radio_plane_type (mx_plane_types_enum::plane_type_heavy, "Heavies", 120.0f, (float)((int)(mxconst::SLIDER_MAX_RND_DIST * 10.0)), 40.0f, 30.0f) } };
+  std::map<missionx::mx_plane_types_enum, radio_plane_type> mapListPlaneRadioLabel = {
+    { mx_plane_types_enum::plane_type_helos, radio_plane_type (mx_plane_types_enum::plane_type_helos, "Helos", (float)mxconst::SLIDER_MIN_RND_DIST, static_cast<float>(static_cast<int>(mxconst::SLIDER_MAX_RND_DIST * 0.2)), 2.4f, 2.0f) },
+    { mx_plane_types_enum::plane_type_props, radio_plane_type (mx_plane_types_enum::plane_type_props, "GA (props)", (float)mxconst::SLIDER_MIN_RND_DIST, (float)(mxconst::SLIDER_MAX_RND_DIST), 10.5f, 4.0f) },
+    { mx_plane_types_enum::plane_type_ga_floats, radio_plane_type (mx_plane_types_enum::plane_type_ga_floats, "Floats", (float)mxconst::SLIDER_MIN_RND_DIST, (float)(mxconst::SLIDER_MAX_RND_DIST), 10.5f, 4.0f) },
+    { mx_plane_types_enum::plane_type_turboprops, radio_plane_type (mx_plane_types_enum::plane_type_turboprops, "Turbo Props", 15.0f, static_cast<float>(static_cast<int>(mxconst::SLIDER_MAX_RND_DIST * 4.0)), 4.0f, 5.0f) },
+    { mx_plane_types_enum::plane_type_jets, radio_plane_type (mx_plane_types_enum::plane_type_jets, "Jets", 80.0f, static_cast<float>(static_cast<int>(mxconst::SLIDER_MAX_RND_DIST * 4.0)), 40.0f, 40.0f) },
+    { mx_plane_types_enum::plane_type_airline, radio_plane_type (mx_plane_types_enum::plane_type_airline, "Airline", 120.0f, static_cast<float>(static_cast<int>(mxconst::SLIDER_MAX_RND_DIST * 6.0)), 40.0f, 30.0f) },
+    { mx_plane_types_enum::plane_type_heavy_airline, radio_plane_type (mx_plane_types_enum::plane_type_heavy_airline, "H.Airline", 120.0f, static_cast<float>(static_cast<int>(mxconst::SLIDER_MAX_RND_DIST * 10.0)), 40.0f, 30.0f) },
+    { mx_plane_types_enum::plane_type_cargo, radio_plane_type (mx_plane_types_enum::plane_type_cargo, "Cargo", 120.0f, static_cast<float>(static_cast<int>(mxconst::SLIDER_MAX_RND_DIST * 6.0)), 40.0f, 30.0f) },
+    { mx_plane_types_enum::plane_type_heavy_cargo, radio_plane_type (mx_plane_types_enum::plane_type_heavy_cargo, "H.Cargo", 120.0f, static_cast<float>(static_cast<int>(mxconst::SLIDER_MAX_RND_DIST * 10.0)), 40.0f, 30.0f) }
+  };
 
   void validate_sliders_values (missionx::mx_plane_types_enum inPlaneType);
 
@@ -1050,8 +1060,8 @@ private:
   typedef struct _radio_calendar_dateTime_type_strct
   {
     missionx::mx_ui_random_date_time_type type{ missionx::mx_ui_random_date_time_type::xplane_day_and_time };
-    std::string                           label{ "" };
-    std::string                           toolTip{ "" };
+    std::string                           label;
+    std::string                           toolTip;
   } radio_calender_dateTime_type;
 
   const std::list<radio_calender_dateTime_type> listRandomCalendarRadioLabel = { { missionx::mx_ui_random_date_time_type::xplane_day_and_time, "A", "Pick X-Plane day in year and the hour" }, { missionx::mx_ui_random_date_time_type::os_day_and_time, "B", "Operating System day in year and the hour." }, { missionx::mx_ui_random_date_time_type::any_day_time, "C", "Pick any day in the year.\nPick any hour between 06:00 and 19:00.\nYou can extend it to include night hours." }, { missionx::mx_ui_random_date_time_type::exact_day_and_time, "D", "Pick the exact day of year and hour you would like to fly in." }, { missionx::mx_ui_random_date_time_type::pick_months_and_part_of_preferred_day, "E", "Pick the months and hours you are interested to fly in.\nThe plugin will pick a day and hour in the time frame defined." } };
@@ -1060,8 +1070,8 @@ private:
   typedef struct _radio_weather_options_strct
   {
     missionx::mx_ui_random_weather_options type{ missionx::mx_ui_random_weather_options::use_xplane_weather };
-    std::string                            label{ "" };
-    std::string                            toolTip{ "" };
+    std::string                            label;
+    std::string                            toolTip;
   } radio_weather_options_strct;
 
   const std::list<radio_weather_options_strct> listRandomWeatherRadioLabel = { { missionx::mx_ui_random_weather_options::use_xplane_weather, "Use X-Plane\nsettings", "Use X-Plane settings" }, { missionx::mx_ui_random_weather_options::use_xplane_weather_and_store, "Use X-Plane\nsettings (Save to file)", "Use X-Plane settings and also store in the mission file." }, { missionx::mx_ui_random_weather_options::pick_pre_defined, "Pick from a predefined\nweather sets.", "Pick from the pre-defined weather sets." } };
@@ -1075,11 +1085,11 @@ private:
     int end_hour{ 0 };
     int span_time{ 0 };
 
-    void operator= (_mx_part_of_day &inVal) { clone (inVal); }
+    void operator= (const _mx_part_of_day &inVal) { clone (inVal); }
 
-    void clone (_mx_part_of_day &inVal) { _mx_part_of_day (inVal.start_hour, inVal.end_hour); }
+    static void clone (const _mx_part_of_day &inVal) { _mx_part_of_day (inVal.start_hour, inVal.end_hour); }
 
-    _mx_part_of_day () {}
+    _mx_part_of_day () = default;
     _mx_part_of_day (_mx_part_of_day const &) = default;
 
     _mx_part_of_day (int inStartHour, int inEndtHour)
@@ -1094,9 +1104,9 @@ private:
       end_hour   = inEndtHour;
 
       if (inStartHour > inEndtHour)
-        span_time = (int)fabs (missionx::HOURS_IN_A_DAY_24 + end_hour - start_hour);
+        span_time = static_cast<int>(fabs(missionx::HOURS_IN_A_DAY_24 + end_hour - start_hour));
       else
-        span_time = (int)fabs (end_hour - start_hour);
+        span_time = static_cast<int>(fabs(end_hour - start_hour));
     }
   } mx_part_of_day;
 
@@ -1121,7 +1131,7 @@ private:
   float fDebugSlider{ 0.0f };
   float fDebugSliderWidth = 400.0f;
 
-  float       xyHelper{ (float)this->WINDOW_MAX_WIDTH }; // used to assist in debuging region heights
+  float       xyHelper{ static_cast<float>(missionx::WinImguiBriefer::WINDOW_MAX_WIDTH) }; // used to assist in debug region heights
   const float fdebugMin[2]    = { 200.0f };
   const float fdebugMax[2]    = { 400.0f };
   float       fDebugInitValue = 250.0f;
@@ -1134,8 +1144,8 @@ private:
   const float fBottomToolbarPadding_f{ 30.0f };
   const float PAD_BETWEEN_CHILD_REGIONS{ 20.0f };
   ImVec2      imvec2_top_toolbar_size            = ImVec2{ 0.0f, 35.0f };
-  ImVec2      imvec2_pick_template_top_area_size = ImVec2{ (float)this->WINDOW_MAX_WIDTH, 25.0f };
-  ImVec2      imvec2_flight_info_top_area_size   = ImVec2{ (float)this->WINDOW_MAX_WIDTH, 148.0f };
+  ImVec2      imvec2_pick_template_top_area_size = ImVec2{ static_cast<float>(this->WINDOW_MAX_WIDTH), 25.0f };
+  ImVec2      imvec2_flight_info_top_area_size   = ImVec2{ static_cast<float>(this->WINDOW_MAX_WIDTH), 148.0f };
   ImVec2      imvec2_main_area_size              = ImVec2 (0.0f, 320.0f);
   ImVec2      imvec2_main_pick_mission_area_size = ImVec2 (0.0f, 350.0f);
 
@@ -1177,9 +1187,9 @@ private:
   const std::string LBL_LOAD_WARNINGS              = "!! Show Warnings !!"; // v26.1.1
   const std::string LBL_ABORT_THREAD_LABEL         = "!! Abort !!";
   const std::string FPLN_MORE_DETAILS              = "More Flight Plan Details";
-  const std::string GENERATE_QUESTION              = "Generate Mission From Flight Plan?";
-  const std::string GENERATE_ILS_QUESTION          = "Generate Mission From ILS data?"; // v3.0.253.6
-  const std::string GENERATE_TEMPLATE_QUESTION     = "Generate Mission From Template data?"; // v25.06.1
+  const std::string GENERATE_QUESTION              = "Generate Mission From Flight Plan";
+  const std::string GENERATE_ILS_QUESTION          = "Generate Mission From ILS data"; // v3.0.253.6
+  const std::string GENERATE_TEMPLATE_QUESTION     = "Generate Mission From Template data"; // v25.06.1
   const std::string POPUP_FLIGHT_LEG_SETTINGS      = "Leg Detail Popup"; // v3.0.301
   const std::string POPUP_BRIEFER_SETTINGS         = "Briefer Settings Popup"; // v3.0.301
   const std::string POPUP_TRIGGER_SETTINGS         = "Trigger Settings Popup"; // v3.0.301
