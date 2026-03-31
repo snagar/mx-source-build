@@ -4,25 +4,24 @@
  *  Created on: Dec 13, 2018
  *      Author: snagar
 
-    Random Engine does not run on main thread.
-    To make it compatible with Laminar XPSDK, we must make sure that all calls will be execute from Main thread and the result will be handled here.
-    In this class case, I had to do an ugly workaround that will make the child thread wait for N milliseconds, and then handle the outcome.
-    Why is it ugly ?
-    Because we we are using shared parameters as the means to communicate between the threads.
-    We use: base_thread.status_thread.pipeParameters to store lat/long or any string/number/bool but we also use
-            _random_airport_info_struct: to store information when we need to call to get_random_airport(p1,p2,p3,p4,p5) function from main thread. But we also added to the struct -
-            "NavAidInfo navAid" to hold information on the Navaid information returned from "get_random_airport()".
-    The end result was:
-    We use: gatherRandomAirport_mainThread(Point inPoint, float inMaxDistance_nm, std::string inRestrictRampType, int inExcludeAngle, float inStartFromDistance_nm) from Main thread to gather ALL navaids we will process in the thread. The
- parameters are passed from "_random_airport_info_struct" struct. We then call "getRandomAirport_localThread()" to process the information gathered in: "gatherRandomAirport_mainThread" and was stored in "mapNavAidsFromMainThread". We use:
- calc_slope_at_point_mainThread() to calculate slope of target point. we use threadState.pipeProperties to store lat/long of current target point coordinates. we retrieve from: "threadState.pipeProperties" ATTRIB_TERRAIN_SLOPE as result
- from main thread.
+Random Engine does not run on the main thread.
+To make it compatible with the Laminar XPSDK, we must ensure that all calls are executed on the main thread and that the results will pass back and be handled by the Random class.
+In this case, I had to implement a workaround: the child thread waits for N milliseconds and then processes the outcome.
 
+Why is it a workaround ?
+Because we are using shared parameters as the communication mechanism between threads.
 
-    The main function that "instructs" main thread is: "waitForPluginCallbackJob()". We send "missionx::mx_flc_pre_command:xxxx" that is handled by: "mission::flcPRE()" function.
-    !!! The main problem with this flow of code is: "we take for granted that no one is going to touch our shared struct or "pipe". !!!
+We use:
+RandomEngine::shared_navaid_info to hold target information as a navaid class.
+RandomEngine::random_thread_state to hold navigation data shared with the main thread via the data_manager::waitForPluginCallbackJob() function call.
 
-    but it works, and it confined to LR standard.
+The end result is as follows:
+We use data_manager::waitForPluginCallbackJob() to invoke functions that interact with the XPSDK APIs, while shared_navaid_info is used to pass data to and from the main thread.
+For specific action,  We send missionx::mx_flc_pre_command:xxxx, which is handled by the mission::flcPRE() function.
+
+!!! The primary issue with this flow is that it assumes no other code will modify the shared structure. !!!
+
+That said, it works and remains within Laminar Research standards.
 
  */
 
@@ -171,13 +170,8 @@ private:
   static bool gen_get_is_navaid_in_a_valid_distance (const double &currentDistanceToTarget, const double &in_location_value_d, const double &in_location_minDistance_d, const double &in_location_maxDistance_d);
   void init();
 
-  // void        addTriggersBasedOnTargetLocation (NavAidInfo &inNav, IXMLNode &inSpecialLegSubNode); // del
   void        gen_inject_countdown_timer ( const int &current_nav_index, std::map<int, missionx::NavAidInfo> &in_navaid_targets); // v25.10.1
-  // void        gen_inject_countdown_timers (std::map<int, missionx::NavAidInfo> &in_navaid_targets, IXMLNode &in_xGlobalSettings, IXMLNode &in_xFlightLegs); // v25.10.1
-  // void        injectCountdownTimers ();
   static bool get_user_wants_to_start_from_plane_position (); // v3.0.253.11 a function that checks property setup + layer came from so we will ignore this property if not called from the correct layer
-
-  // std::string prepare_message_with_special_keywords(missionx::NavAidInfo& inNavAid, const std::string &inMessage); // del
 
   static bool      flag_force_template_distances_b;
   const int RADIUS_MT_MINIMUM_LENGTH = 50;
@@ -188,19 +182,15 @@ private:
 
   static std::map<int, NavAidInfo> gen_get_databaseflightplan_site_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr); // v25.10.1
   missionx::mx_return gen_prepare_mission_based_on_databaseflightplan_site(IXMLNode& in_xTemplateNode, IXMLNode & inout_meta_node); // v25.10.1
-  // bool prepare_mission_based_on_external_fpln(IXMLNode& pNode); // v3.0.253.1 // NEED TO CONVERT // DEPRECATED
 
   static std::map<int, NavAidInfo> gen_get_ils_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr); // v25.10.1
   missionx::mx_return gen_prepare_mission_based_on_ils_search (IXMLNode &pNode, IXMLNode & inout_meta_node); // v25.10.1
-  // bool prepare_mission_based_on_ils_search(IXMLNode& pNode);    // v3.0.253.6 // NEED TO CONVERT // DEPRECATED
 
   void add_waypoints_for_fpln_or_simbrief(IXMLNode& pNode); // v25.04.2 // NEED TO CONVERT
   static std::map<int, NavAidInfo> gen_get_user_fpln_or_simbrief_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr); // v25.10.1
   missionx::mx_return gen_prepare_mission_based_on_user_fpln_or_simbrief (IXMLNode &in_xTemplateNode, IXMLNode & inout_meta_node); // v25.10.1
-  // bool prepare_mission_based_on_user_fpln_or_simbrief (IXMLNode &pNode); // v25.03.3 // v25.10.1 DEPRECATED
   // end v25.06.1
   mx_return gen_prepare_mission_based_on_oilrig (IXMLNode &inRootTemplate, IXMLNode & inout_meta_node); // v25.09.2
-  // mx_return gen_prepare_mission_based_on_oilrig2 (IXMLNode &pNode, std::string &outErr); // v25.09.1
 
   static missionx::mx_plane_types_enum gen_parse_plane_type (missionx::mx_base_node &in_user_property_ui_node, IXMLNode & inout_parent_node, IXMLNode & inout_meta_node );
 
@@ -217,8 +207,6 @@ public:
   std::string                        first_location_desc_s; // v25.04.2, used in conjunction with "Expose all GPS legs at mission start" = false
 
   //// OSM related queries
-  // static bool flag_picked_from_osm_database; // del // v25.09.2 deprecated since we never use it
-
   // members exposing private parameters
   static bool                is_plane_type_valid (const std::string &in_plane_type); // v25.09.2
   static uint8_t             getPlaneType ();
@@ -248,8 +236,6 @@ public:
 
   static float calc_slope_at_point_mainThread(NavAidInfo& inNavAid);
 
-  // static missionx::NavAidInfo lastFlightLegNavInfo; // v3.0.219.9 Holds the last point location of the last built goal // v3.0.221.4 moved to public
-
   // v3.0.255.3 implementing db queries instead of using cached data
   static std::map<std::string, std::string>                          row_gather_db_data;
   static std::unordered_map<int, std::map<std::string, std::string>> resultTable_gather_random_airports;
@@ -258,12 +244,7 @@ public:
   static int callback_gather_random_airports_db(void* data, int argc, char** argv, char** azColName);    // this function will be called for each fetched row
   static int callback_pick_random_ramp_location_db(void* data, int argc, char** argv, char** azColName); // this function will be called for each fetched row
 
-  // NavAidInfo get_random_airport_from_db(missionx::Point& inPoint, float inMinDistance_nm, float inMaxDistance_nm, int inExcludeAngle, missionx::mx_base_node &inProperties);
   static NavAidInfo get_random_airport_from_db(missionx::Point& inPoint, float inMinDistance_nm, float inMaxDistance_nm, int inExcludeAngle, missionx::mx_base_node &inProperties, const uint8_t & in_plane_type);
-  // static NavAidInfo get_random_airport_from_db2(missionx::Point& inPoint, float inMinDistance_nm, float inMaxDistance_nm, int inExcludeAngle, missionx::mx_base_node &inProperties, const uint8_t & in_plane_type);
-
-  // gather NavAid information from main plugin thread
-  // void gatherRandomAirport_mainThread(const Point& inPoint, float inMaxDistance_nm, int inExcludeAngle = -1, float inStartFromDistance_nm = 0.0f);
 
   //// v25.10.2 Find Filter
   static missionx::mx_return gen_get_ramp_based_on_plane_type (missionx::NavAidInfo &     inout_target_navaid
@@ -272,14 +253,6 @@ public:
                                                                , const bool &if_start_ramp_then_force_plane_position = false // v26.03.1
                                                                );
 
-  // static missionx::mx_return gen_get_ramp_based_on_plane_type (missionx::NavAidInfo &     inout_target_navaid
-  //                                               , const mx_plane_types_enum &in_plane_type_enum_to_search
-  //                                               , const missionx::mxFilterRampType &inRampFilterType);
-
-  //// v3.0.253.7 made public. Deprecated in v25.10.2 by the "gen_get_starting_ramp_based_on_plane_type()" function.
-  // static bool filterAndPickRampBasedOnPlaneType (missionx::NavAidInfo &           navAid,
-  //                                               std::string &                     outErrorMsg,
-  //                                               const missionx::mxFilterRampType &inRampFilterType); // v3.0.221.7 currently being used when reading briefer, and we want to place in plausible
   // ///// weather v3.303.13
   static std::string current_weather_datarefs_s;
 
@@ -301,17 +274,6 @@ private:
   std::string inject_files_into_xml(missionx::TemplateFileInfo* tempFile_ptr);  // v24.12.2 implement the new multi options code.
   bool        generateRandomMission();
 
-  // A simple function to manage thread wait for main thread actions that needs to take place before it can continue. Default wait time is 500 milliseconds for 10 iteration (5 seconds)
-  // For every function call we need to handle failure cases (false returned).
-  // For every function call we need to use threadState.pipeProperties to set the attributes we want the main thread to handle.
-
-  // v25.09.1 deprecated moved to data_manager to share with other parts of the code
-  // static bool waitForPluginCallbackJob(missionx::mx_flc_pre_command inQueuedCommand, std::chrono::milliseconds inWaitTimeMilliseconds = std::chrono::milliseconds(500), int inLimitWaitCounter = 10);
-
-  // Main function to search destination airports
-  // del
-  // bool get_target(NavAidInfo& outNewNavInfo, const IXMLNode &inLegFromTemplate, mx_plane_types in_plane_type_enum, std::map<std::string, std::string>& inMapLocationSplitValues, missionx::mx_base_node& inProperties); // v3.305.1
-
   // v25.09.2
   static bool gen_target_base_on_icao_or_near_types(NavAidInfo&                         outNewNavInfo,
                                               mx_plane_types_enum                      in_plane_type_enum,
@@ -328,15 +290,6 @@ private:
                                               NavAidInfo *prev_na_ptr); // v25.09.2
 
 
-  // get Helos target based on OSM or fallback to XY location if none was found
-  // static bool get_targetForHelos_base_XY_OSM_OSMWEB(NavAidInfo&                         outNewNavInfo,
-  //                                             mx_plane_types_enum                      in_plane_type_enum,
-  //                                             std::map<std::string, std::string>& inMapLocationSplitValues,
-  //                                             missionx::mx_base_node&             inProperties); // v3.305.1
-  //                                             // double                              location_value_d,
-  //                                             // double                              location_min_distance_d,
-  //                                             // double                              location_max_distance_d);
-
   // v25.09.2 re-implement: "get_target_or_lastFlightLeg_base_on_XY_or_OSM()", search for airports based on XY information for all planes and for helos it can also be based on OSM data (depends on the location_type value - inLocationType)
   static bool gen_target_or_last_flight_leg_base_on_xy_or_osm(NavAidInfo&       outNewNavInfo,
                                             mx_plane_types_enum                      in_plane_type_enum,
@@ -344,32 +297,12 @@ private:
                                             missionx::mx_base_node&             inProperties,
                                             NavAidInfo *prev_na_ptr);
 
-  // search for airports based on XY information for all planes and for helos it can also be based on OSM data (depends on the location_type value - inLocationType)
-  // static bool get_target_or_lastFlightLeg_base_on_XY_or_OSM (NavAidInfo                         &outNewNavInfo,
-  //                                                      std::map<std::string, std::string> &inMapLocationSplitValues,
-  //                                                      missionx::mx_base_node             &inProperties);
-  //                                                      // v3.305.1
-  //                                                      // double location_value_d,
-  //                                                      // double location_minDistance_d,
-  //                                                      // double location_maxDistance_d);
-
   // v25.09.2 Search and pick a pre-defined location based on an XML tag name
   static bool gen_get_target_base_on_tag_name (NavAidInfo &                  outNewNavInfo,
                                                   std::map<std::string, std::string>& inMapLocationSplitValues,
                                                   missionx::mx_base_node &inProperties,
-                                                  // const std::string &           location_value_tag_name_s,
-                                                  // double                        location_value_d,
-                                                  // double                        location_minDistance_d,
-                                                  // double                        location_maxDistance_d,
                                                   NavAidInfo *prev_na_ptr);
 
-  // bool get_target_base_on_tag_name(NavAidInfo&             outNewNavInfo,
-  //                               mx_plane_types_enum          in_plane_type_enum,
-  //                                 const missionx::mx_base_node& inProperties, // v3.305.1
-  //                               const std::string&             location_value_tag_name_s,
-  //                               double                  location_value_d,
-  //                               double                  location_minDistance_d,
-  //                               double                  location_maxDistance_d);
 
   static double get_slope_at_point (const missionx::NavAidInfo &outNavAid);
   static bool   get_is_wet_at_point (const missionx::NavAidInfo &inNavAid);
@@ -379,17 +312,6 @@ private:
 
   static void calculate_bbox_coordinates(missionx::Point& outN0, missionx::Point& outS180, missionx::Point& outE90, missionx::Point& outW270, float inRefLat, float inRefLon, double inMaxRadius_d); // v3.0.255.3
   static void gather_all_osm_db_files_names_and_path(std::list<std::string>& outListOfFiles);
-  // static bool osm_get_navaid_from_osm(NavAidInfo&                         outNavAid,
-  //                              std::map<std::string, std::string>& inMapLocationSplitValues,
-  //                              missionx::mx_base_node&             inProperties, // v3.305.1
-  //                              double                              sourceLat_d,
-  //                              double                              sourceLon_d,
-  //                              double                              min_lat,
-  //                              double                              max_lat,
-  //                              double                              min_lon,
-  //                              double                              max_lon,
-  //                              double                              maxDistance_d = mxconst::SLIDER_MAX_RND_DIST,
-  //                              double minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT /*, std::string inExpectedLocationType = ""*/); // if return empty string then no file was found valid for the search
 
   static bool osm_get_navaid_from_osm(NavAidInfo&                         outNavAid,
                                std::map<std::string, std::string>& inMapLocationSplitValues,
@@ -400,7 +322,7 @@ private:
                                double                              min_lon,
                                double                              max_lon,
                                double                              maxDistance_d = mxconst::SLIDER_MAX_RND_DIST,
-                               double minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT /*, std::string inExpectedLocationType = ""*/); // if return empty string then no file was found valid for the search
+                               double minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT );
 
   static bool osm_get_navaid_from_overpass(NavAidInfo&                         outNavAid,
                                     std::map<std::string, std::string>& inMapLocationSplitValues,
@@ -412,7 +334,7 @@ private:
                                     double                              min_lon,
                                     double                              max_lon,
                                     double                              maxDistance_d = mxconst::SLIDER_MAX_RND_DIST,
-                                    double                              minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT); // if return empty string then no file was found valid for the search
+                                    double                              minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT);
 
   static bool osm_get_navaid_from_osm_database(NavAidInfo&                         outNavAid,
                                         std::map<std::string, std::string>& inMapLocationSplitValues,
@@ -424,19 +346,16 @@ private:
                                         double                              min_lon,
                                         double                              max_lon,
                                         double                              maxDistance_d = mxconst::SLIDER_MAX_RND_DIST,
-                                        double                              minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT); // if return empty string then no file was found valid for the search
+                                        double                              minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT);
+  
+  // initialize the sqlite queries we would use.
   static void initQueries();
 
   // overpass mission_info custom urls
   static std::vector<std::string> vecMissionInfoOverpassUrls;
   static int                      current_url_indx_used_i; // = mxconst::INT_UNDEFINED;
 
-  // // Test both NavAid ID and Name. Sometimes the ID can be empty but not the name.
-  // del
-  // static bool check_if_new_target_is_same_as_prev (missionx::NavAidInfo &inCurrentTargetNav, missionx::NavAidInfo &inPrevNav);
-  // bool        check_last_2_legs_if_they_have_same_icao (); // del
-
-  static std::string get_short_flight_description_from_to (const std::string &inFromName, const std::string &inFromICAO, const std::string &inToName, const std::string &inToICAO);
+    static std::string get_short_flight_description_from_to (const std::string &inFromName, const std::string &inFromICAO, const std::string &inToName, const std::string &inToICAO);
 
   // v25.02.1
   static std::vector<IXMLNode>                                             gen_land_hover_display_objects (const double &inLat, const double &inLon, const int &inRadiusMT, const int &inHowManyObjects, int &inout_seq, const std::string &inFileName = "land_hover01.obj");
@@ -470,7 +389,7 @@ private:
   mx_return gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IXMLNode& inoutMetaNode, const missionx::Point& in_plane_location); // v25.05.1
 
   static std::vector<missionx::structs::strct_osm_query> gen_osm_analyse (mx_return &out_mx_return, const std::string &xmlFilename, const std::string &in_cache_folder, double centre_lat, double centre_lon, IXMLNode &outRootNode = IXMLNode::emptyIXMLNode);
-  // The function returns "shuffled index vector" as a value, and initializes the "out_main_subject_node" and "analyzed_query" from inside the function to use later from the calling routine.
+  // The function returns a "shuffled index vector" as a value, and initializes the "out_main_subject_node" and "analyzed_query" from inside the function to use later from the calling routine.
   static std::vector<int>                    gen_shuffled_q_from_osm_subject_node (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_root_node, const std::vector<missionx::structs::strct_osm_query> &vec_osm_queries, IXMLNode &out_main_subject_node, missionx::structs::strct_osm_query &analyzed_query);
   static std::map<int, missionx::NavAidInfo> gen_get_targets_using_osm_queries_from_a_thread (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_root_node, missionx::structs::strct_osm_query &inout_osm_query, strct_shared_random_airport_info &inout_shared_navaid);
   // find metadata of current target NavAid relative to previous and next NavAids
@@ -494,7 +413,6 @@ private:
   static void     gen_leg_start_messages (int &seq, NavAidInfo &inout_target_na, std::map<int, NavAidInfo> &navaid_targets, IXMLNode &inout_xml_messages, const bool &flag_one_of_targets_is_above_water_body); // adds simple messages between flight legs.
   static void     gen_messages_when_reaching_target_leg (int &seq_trig, int &seq_msg, NavAidInfo &inout_target_na, IXMLNode &in_metadata_node, IXMLNode &inout_xml_messages, IXMLNode &inout_xml_triggers, const IXMLNode &in_xml_land_trigger, const IXMLNode &in_xml_hover_trigger); // add "you reached the target area" message. Add as trigger
   static void     gen_2nm_to_N_nm_message (int &seq_trig, int &seq_msg, NavAidInfo &inout_target_na, IXMLNode &inout_xml_messages, IXMLNode &inout_xml_triggers, const IXMLNode &in_xml_land_trigger);
-  // static void     gen_parse_and_add_all_display_objects_in_node (const std::string &in_which_func_called, const IXMLNode &in_source_node, IXMLNode &inout_target_node, IXMLNode &in_template_node, IXMLNode &inout_x3DObjTemplate, double &in_expected_slope_at_target_location_d);
   static void     gen_parse_and_add_all_display_objects_in_node (const std::string &in_which_func_called, missionx::NavAidInfo &in_target_navaid, const IXMLNode &in_source_node, IXMLNode &inout_target_node, IXMLNode &in_template_node, IXMLNode &inout_x3DObjTemplate, double &in_expected_slope_at_target_location_d);
   static void     gen_3d_hint_objects_for_land_and_hover (const NavAidInfo &inout_target_na, IXMLNode &inout_leg_node, const NavAidInfo *next_navaid_ptr); // Add 3D hint objects
   static void     gen_add_3d_objects_for_surprise_me_base_on_predefined_attributes (NavAidInfo &inout_target_na, IXMLNode &inout_leg_node, IXMLNode &in_template_node, IXMLNode &inout_x3DObjTemplate, double &in_expected_slope_at_target_location_d); // Add 3D clutter Objects around the target
@@ -518,7 +436,6 @@ private:
   static std::map<int, missionx::NavAidInfo> gen_get_content_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, const IXMLNode &in_content_node, strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr);
   static std::map<int, missionx::NavAidInfo> gen_get_generic_template_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr);
   missionx::mx_return                        gen_prepare_random_mission_based_on_content (IXMLNode &xTemplateNode); // v25.09.2
-  // missionx::mx_return                        gen_content_option01_random_mission_from_content2 (IXMLNode &xTemplateNode, IXMLNode & xContent); //  del
   missionx::mx_return                        gen_content_option_01_random_mission_from_content (IXMLNode &xTemplateNode, IXMLNode & xContent); // v25.09.2
   missionx::mx_return                        gen_content_option_02_copy_as_is (IXMLNode &xTemplateNode, IXMLNode & xContent); // v25.09.2
   missionx::mx_return                        gen_prepare_random_mission_based_on_leg_nodes_in_template (IXMLNode &in_xTemplateNode, IXMLNode & inout_meta_node); // v25.09.2 - this represents the original way we constructed a random mission
@@ -530,7 +447,7 @@ private:
   static IXMLNode gen_set_and_get_start_cold_and_dark (IXMLNode &xTemplateNode, NavAidInfo &navaid);
 
   // v25.10.2
-  // Will return true if function finds airport data. out_rw_count and out_longest_rw should return a value greater than zero (0).
+  // Will return true if the function finds an airport data. out_rw_count and out_longest_rw should return a value greater than zero (0).
   static bool gen_get_rw_metadata (const std::string &in_icao, int &out_rw_count, float &out_longest_rw);
 
   #ifndef RELEASE_DEBUG

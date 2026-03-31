@@ -33,6 +33,7 @@ namespace fs = std::filesystem;
 namespace missionx
 {
 // #define ENABLE_GATHER_RANDOM_AIRPORTS_FROM_MAIN_THREAD_CALL 0
+#define DEBUG_GENERATED_CONTENT  // v26.03.1
 
 std::thread                               missionx::RandomEngine::thread_ref;
 missionx::base_thread::strct_thread_state missionx::RandomEngine::random_thread_state;
@@ -47,8 +48,6 @@ std::string missionx::RandomEngine::current_weather_datarefs_s;
 
 mx_plane_types_enum missionx::RandomEngine::template_plane_type_enum; // v25.06.1
 
-// missionx::NavAidInfo RandomEngine::lastFlightLegNavInfo; // v25.09.2
-// bool RandomEngine::flag_picked_from_osm_database; // v25.09.2 deprecated
 bool                                           RandomEngine::flag_force_template_distances_b; // v25.09.1
 missionx::Point                                RandomEngine::planeLocation; // v25.09.2
 IXMLNode                                       RandomEngine::xRootTemplate; // v25.09.2
@@ -124,15 +123,11 @@ RandomEngine::init()
 
   RandomEngine::xDrefStartColdAndDark = IXMLNode::emptyIXMLNode;
 
-  // this->mapFlightPlanOrder_si.clear ();
-  // this->mapFLightPlanOrder_is.clear ();
-
   RandomEngine::listNavInfo.clear();
   this->flag_found = false;
 
   missionx::RandomEngine::template_plane_type_enum = missionx::mx_plane_types_enum::plane_type_any; // v3.0.221.11
   RandomEngine::planeLocation.init();
-  // RandomEngine::lastFlightLegNavInfo.init ();
 
   this->flag_isLastFlightLeg = false; // v3.0.219.11
 
@@ -140,7 +135,6 @@ RandomEngine::init()
 
   missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::not_waiting; // v3.0.221.3
   missionx::RandomEngine::mapNavAidsFromMainThread.clear();
-  // this->map_customScenery_XPLMNavRef_NavAidsFromMainThread.clear ();
 
   this->cumulative_location_desc_s.clear();
 }
@@ -452,12 +446,10 @@ RandomEngine::generateRandomMission()
 
   missionx::RandomEngine::random_thread_state.startThreadStopper();
 
-  // missionx::RandomEngine::flag_picked_from_osm_database = false; // v3.0.241.10
   bool        result = true;
   std::string pathToTemplateFile;
   pathToTemplateFile.clear();
   RandomEngine::listNavInfo.clear();
-  // this->setInventories.clear ();
   missionx::RandomEngine::map_flight_legs_translation_from_template.clear(); // v25.09.1
   missionx::RandomEngine::map_osm_inventory_track.clear(); // v25.09.2
 
@@ -490,7 +482,6 @@ RandomEngine::generateRandomMission()
   }
 
   //// Read from cached file if our current cache is empty
-  // this->readOptimizedAptDatIntoCache ();
 
   //// set folders path ////
   this->pathToRandomRootFolder    = (RandomEngine::working_tempFile_ptr->missionFolderName.empty()) ? data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONS_ROOT_PATH(), "", err) : RandomEngine::working_tempFile_ptr->filePath; // v3.0.241.10 b2 decide from where to pick template file
@@ -720,6 +711,9 @@ RandomEngine::generateRandomMission()
   this->setPlaneType(mxUtils::stringToLower(Utils::readAttrib(missionx::RandomEngine::xRootTemplate, mxconst::get_ATTRIB_PLANE_TYPE(), mxconst::get_PLANE_TYPE_HELOS()))); // v3.0.221.15 Default plane is Helicopter.
   Log::logDebugBO("[DEBUG random airport] After <briefer_info> node.", true);
 
+  // --------------------------------------------------------
+  // -- Do we create a mission from the "creation" screen ?
+  // --------------------------------------------------------
   if (!flag_surprise_me_b && !flag_oilrig_b && nContentChilds_i == 0) // v25.08.1 split the "content" code and moved it before the call to "parse_3D_object_template_element"
   {
     // read the briefer element before calling "readFlightLegs_directlyFromTemplate()"
@@ -739,8 +733,8 @@ RandomEngine::generateRandomMission()
   }
 
 
-  // POST_MISSION_ACTIONS:
-post_mission_action:
+  // Post mission creation actions:
+  post_mission_action:
 
   // call readMissionInfoElement // v3.0.253.1 moved to this location so fetch external code will create briefer info too.
   if (missionx::RandomEngine::random_thread_state.flagAbortThread)
@@ -804,8 +798,6 @@ post_mission_action:
 bool
 RandomEngine::gen_read_mission_info_element()
 {
-  // bool result = true;
-
   this->xBrieferInfo = xRootTemplate.getChildNode(mxconst::get_ELEMENT_MISSION_INFO().c_str()).deepCopy();
   if (this->xBrieferInfo.isEmpty())
   {
@@ -936,10 +928,6 @@ RandomEngine::parse_display_object_element(const missionx::NavAidInfo* in_target
 
   if (flag_isFlightLegInWater && !randomWaterTag.empty()) // v3.0.219.10 switch between terrain random object and water tag object
   {
-    // #ifndef RELEASE
-    // Log::logMsgThread (fmt::format("[{}] Replaced randomTag with the water Tag: {}, for display object name: {}", __func__, randomWaterTag, attrib_name_value) );
-    // #endif // !RELEASE
-
     randomTag = randomWaterTag;
   }
 
@@ -1141,7 +1129,6 @@ RandomEngine::gen_parse_template_leg(missionx::base_thread::strct_thread_state* 
 
     // The flightLegName will be overridden in a later function, when we will create the <leg> node.
     const std::string flightLegName = fmt::format("{}_{}", mxconst::get_ELEMENT_LEG(), in_leg_counter);
-    // const std::string flight_leg_type_hover_land_or_start = mxconst::get_FL_TEMPLATE_VAL_LAND ();
     // relevant only in case we use "tag_name" and we pick <points> from it.
     // Check if we have to force flight_leg_type on the random point that we might pick.
     const bool flag_force_flight_leg_type = Utils::readBoolAttrib(xml_leg_node_from_template, mxconst::get_ATTRIB_PICK_LOCATION_BASED_ON_SAME_TEMPLATE_B(), false);
@@ -1178,9 +1165,6 @@ RandomEngine::gen_parse_template_leg(missionx::base_thread::strct_thread_state* 
     targetProp.setStringProperty(mxconst::get_ATTRIB_LOCATION_TYPE(), na.fpln_expected_location_data.location_type); // location type
     targetProp.setBoolProperty(mxconst::get_PROP_IS_LAST_FLIGHT_LEG(), is_last_flight_leg); // is the last flight leg?
     targetProp.setBoolProperty(mxconst::get_ATTRIB_PICK_LOCATION_BASED_ON_SAME_TEMPLATE_B(), flag_force_flight_leg_type); // force leg type ?
-    // v25.09.2 unsupported properties, we won't force land or hover anymore.
-    // targetProp.setNodeProperty<int> (mxconst::get_ATTRIB_FORCE_TYPE_OF_TEMPLATE (), static_cast<int> (which_type_to_force_enum)); // force level terrain or slope ?
-    // targetProp.setNodeProperty<int> (mxconst::get_PROP_NUMBER_OF_LOOPS_TO_FORCE_TYPE_TEMPLATE (), how_many_times_to_loop_i); // a force slope will be used with webosm
     targetProp.setStringProperty("nm", mxUtils::getValueFromElement(na.fpln_expected_location_data.mapLocationSplitPropertiesValues, std::string("nm"), std::string(""))); // location type
     targetProp.setStringProperty("tag", mxUtils::getValueFromElement(na.fpln_expected_location_data.mapLocationSplitPropertiesValues, std::string("tag"), std::string(""))); // location type
     targetProp.setStringProperty("nm_between", mxUtils::getValueFromElement(na.fpln_expected_location_data.mapLocationSplitPropertiesValues, std::string("nm_between"), std::string(""))); // location type
@@ -1198,8 +1182,6 @@ RandomEngine::gen_parse_template_leg(missionx::base_thread::strct_thread_state* 
 
     if (is_last_flight_leg)
     {
-      // auto result = get_target_or_lastFlightLeg_base_on_XY_or_OSM (na, data.mapLocationSplitValues, targetProp, location_value_d, data.nm_between_min, data.nm_between_max);
-      // auto result = get_target_or_lastFlightLeg_base_on_XY_or_OSM (na, na.fpln_expected_location_data.mapLocationSplitValues, targetProp);
       if (mxUtils::isElementExists(in_mission_targets, in_leg_counter - 1))
       {
         const auto result = gen_target_or_last_flight_leg_base_on_xy_or_osm(na, RandomEngine::template_plane_type_enum, na.fpln_expected_location_data.mapLocationSplitPropertiesValues, targetProp, &in_mission_targets[in_leg_counter - 1]);
@@ -1404,12 +1386,6 @@ RandomEngine::gen_get_content_targets(missionx::base_thread::strct_thread_state*
       } // end loop over all <leg> nodes in the set
     }
 
-    // // Do final validation
-    // for (auto& [indx, na] : navaids)
-    // {
-    //   if (na.is_lat_lon_valid ())
-    //     local_target_navaids[++target_leg_counter] = na;
-    // }
   } // end loop over list tags
 
 
@@ -1431,11 +1407,6 @@ RandomEngine::gen_prepare_random_mission_based_on_content(IXMLNode& xTemplateNod
     return false;
   }
 
-  // v25.10.2 The plane type should be defined by the <content> template.
-  // const auto plane_type_enum_i = RandomEngine::gen_parse_plane_type (data_manager::prop_userDefinedMission_ui, xTemplateNode, inout_meta_node);
-  // this->setPlaneType (plane_type_enum_i); // set plane type in class level for other function usage too
-
-
   // Plane type is mandatory at the <content> or <template> level
   // use plane_type from content then from template then throw error if it is not defined or it is not a valid type
   std::string pType = Utils::readAttrib(xContent, mxconst::get_ATTRIB_PLANE_TYPE(), "");
@@ -1454,8 +1425,6 @@ RandomEngine::gen_prepare_random_mission_based_on_content(IXMLNode& xTemplateNod
   {
     // v25.09.2 Added "any" plane fallback.
     this->setPlaneType(""); // set plane type to any
-    // RandomEngine::setError (R"(Plane type was not set in template <content> or template level. Please notify the template writer or add plane_type="prop" or plane_type="helos" to the template. Check documentation for more details.)");
-    // return false;
   }
 
   if (const bool copy_as_is_b = Utils::readBoolAttrib(xContent, mxconst::get_ATTRIB_COPY_AS_IS_B(), false)
@@ -1463,9 +1432,6 @@ RandomEngine::gen_prepare_random_mission_based_on_content(IXMLNode& xTemplateNod
     return gen_content_option_02_copy_as_is(xTemplateNode, xContent);
 
   return gen_content_option_01_random_mission_from_content(xTemplateNode, xContent);
-
-  // out_func_result.result = true;
-  // return out_func_result;
 }
 
 
@@ -1609,7 +1575,6 @@ RandomEngine::gen_content_option_01_random_mission_from_content(IXMLNode& xTempl
     gen_leg_start_messages(this->seq_messages, target_navaid, navaid_targets, this->xMessages, flag_one_of_the_targets_above_water);
 
     // add 3D object sets
-    // gen_add_3d_objects_for_surprise_me_base_on_predefined_attributes (target_navaid, target_navaid.fpln_xml_target_leg_node, xTemplateNode, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
     gen_3d_add_display_object_sets_instances_to_leg(target_navaid, target_navaid.fpln_xml_target_leg_node, xTemplateNode, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
 
     // add 3D display objects around the landing
@@ -1878,7 +1843,7 @@ RandomEngine::gen_content_option_02_copy_as_is(IXMLNode& xTemplateNode, IXMLNode
   // <xpdata>
   this->xpData = content_root_node.getChildNode(mxconst::get_ELEMENT_XPDATA().c_str()).deepCopy();
 
-  #ifndef RELEASE
+  #ifdef DEBUG_GENERATED_CONTENT
   Log::logMsgThread(fmt::format("-------------- <CONTENT_MISSION> RESULTS - Post {} --------------", __func__));
   Log::logMsgThread(fmt::format("BRIEFER_INFO:\n{}\n", Utils::xml_get_node_content_as_text(this->xBrieferInfo)));
   Log::logMsgThread(fmt::format("BRIEFER:\n{}\n", Utils::xml_get_node_content_as_text(this->xBriefer))); // we store the briefer in [0]
@@ -1976,8 +1941,6 @@ RandomEngine::gen_prepare_random_mission_based_on_leg_nodes_in_template(IXMLNode
   const int i_how_many_legs_user_picked              = Utils::readNodeNumericAttrib<int>(missionx::data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_NO_OF_LEGS(), 0);
   bool      flag_user_asked_to_generate_only_one_leg = (i_how_many_legs_user_picked == 1);
 
-  // std::map<int, NavAidInfo> navaid_targets;
-
   //-----------------------------------------------
   // Get all targets including the "starting location" (briefer)
   //-----------------------------------------------
@@ -1997,7 +1960,6 @@ RandomEngine::gen_prepare_random_mission_based_on_leg_nodes_in_template(IXMLNode
     out_func_result.addErrMsg(outErr, true);
     return out_func_result;
   }
-
 
   //-----------------------------------------------
   //--- Analyze Water Bodies / Slope / Leg Name ---
@@ -2174,7 +2136,7 @@ RandomEngine::gen_prepare_random_mission_based_on_leg_nodes_in_template(IXMLNode
   }
 
 
-  #ifndef RELEASE
+  #ifdef DEBUG_GENERATED_CONTENT
   Log::logMsgThread(fmt::format("-------------- <CONTENT_MISSION> RESULTS - Post {} --------------", __func__));
   Log::logMsgThread(fmt::format("BRIEFER_INFO:\n{}\n", Utils::xml_get_node_content_as_text(this->xBriefer)));
   Log::logMsgThread(fmt::format("BRIEFER:\n{}\n", Utils::xml_get_node_content_as_text(navaid_targets[0].fpln_xml_target_leg_node))); // we store the briefer in [0]
@@ -2734,7 +2696,6 @@ RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_targe
         // Check search boundaries
         if (local_plane_type_enum_to_search <= missionx::mx_plane_types_enum::plane_type_any || local_plane_type_enum_to_search > missionx::mx_plane_types_enum::plane_type_heavy_cargo)
         {
-          // result.addInfoMsg(fmt::format("[{}]: Fail to find suitable ramp for plane: [{}] in icao: {}", __func__, translatePlaneTypeToString(local_plane_type_enum_to_search), ap_row["icao"] ) ); // debug
           result.addInfoMsg(fmt::format("[{}]: Fail to find suitable ramp for plane: [{}] in icao: {}", __func__, translatePlaneTypeToString(local_plane_type_enum_to_search), inout_target_navaid.getID())); // debug
           break; // exit the loop and continue with the fallback logic.
         }
@@ -2796,7 +2757,6 @@ RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_targe
       case missionx::mxFilterRampType::start_ramp:
         {
           // place plane 5 meters from beginning of the runway
-          // return "select mx_get_point_based_on_bearing_and_length_in_meters (t1.rw_no_1_lat, rw_no_1_lon, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon), " + MOVE_PLANE_IN_METERS + ") as start_pos, t1.rw_no_1 as name, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading, t1.rw_length_mt from xp_rw t1 where t1.icao= '" + inNavAid.getID() + "' order by rw_length_mt desc limit 1";
           return fmt::format(R"(select mx_get_point_based_on_bearing_and_length_in_meters (t1.rw_no_1_lat, rw_no_1_lon, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon), " + MOVE_PLANE_IN_METERS + ") as start_pos
                                    , t1.rw_no_1 as name
                                    , mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading
@@ -2810,7 +2770,6 @@ RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_targe
       case missionx::mxFilterRampType::any_ramp_location:
       case missionx::mxFilterRampType::end_ramp:
         {
-          // return "select mx_get_center_between_2_points(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as start_pos, t1.rw_no_1 || '-' || t1.rw_no_2 as name, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading, t1.rw_length_mt from xp_rw t1 where t1.icao= '" + inNavAid.getID() + "' order by rw_length_mt desc limit 1";
           return fmt::format("select mx_get_center_between_2_points(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as start_pos"
                              ", t1.rw_no_1 || '-' || t1.rw_no_2 as name"
                              ", mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading"
@@ -2889,290 +2848,6 @@ RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_targe
 
   return result;
 }
-
-// --------------------------------
-
-// missionx::mx_return
-// RandomEngine::gen_get_ramp_based_on_plane_type.ORIG(missionx::NavAidInfo& inout_target_navaid, const mx_plane_types_enum& in_plane_type_enum_to_search, const missionx::mxFilterRampType& inRampFilterType)
-// {
-//   char*                         zErrMsg                         = nullptr;
-//   missionx::mx_return           result                          = true;
-//   missionx::mx_plane_types_enum local_plane_type_enum_to_search = in_plane_type_enum_to_search;
-//
-//   auto aptNavLine = std::string(inout_target_navaid.name);
-//
-//   if (data_manager::db_xp_airports.db_is_open_and_ready)
-//   {
-//     int rc = 0;
-//     //// construct view query (inner query)
-//     // based on airports_vu  // we will pick the first result in the ordered result since it should reflect the closest airport based on its lat/lon
-//     const std::string sql_ap = fmt::format(R"(select icao_id, icao, ap_elev_ft, ap_name, ap_type, ap_lat, ap_lon
-//                             , mx_calc_distance ( ap_lat, ap_lon, {}, {}, 3440) as dist_nm, 0 as bearing
-//                             , helipads, ramp_helos, ramp_planes, ramp_props, ramp_turboprops, ramp_jet_heavy, rw_hard, rw_dirt_gravel, rw_grass
-//                             , rw_water, is_custom from airports_vu where 1 = 1 and icao = '{}' order by dist_nm )",
-//                                            mxUtils::formatNumber<double>(inout_target_navaid.lat, 8),
-//                                            mxUtils::formatNumber<double>(inout_target_navaid.lon, 8),
-//                                            inout_target_navaid.getID());
-//
-//     #ifndef RELEASE
-//     Log::logMsgThread(fmt::format("[{}] Search Airport Query for ramps. Plane type: {}\n{}\n", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search), sql_ap));
-//     #endif // !RELEASE
-//
-//     // clear local cache
-//     RandomEngine::resultTable_gather_random_airports.clear();
-//     rc = sqlite3_exec(data_manager::db_xp_airports.db, sql_ap.c_str(), RandomEngine::callback_gather_random_airports_db, nullptr, &zErrMsg);
-//     if (rc != SQLITE_OK)
-//     {
-//       Log::logMsgThread(fmt::format("[{}] SQL Query Error: \n{}\n", __func__, zErrMsg));
-//       sqlite3_free(zErrMsg);
-//     }
-//     else
-//     {
-//       Log::logMsgThread(fmt::format("[{}] Ramp information was gathered.\n", __func__));
-//       #ifndef RELEASE
-//       for (auto& [row_num, row_data] : RandomEngine::resultTable_gather_random_airports)
-//       {
-//         Log::logMsgThread(fmt::format("[{}]\tSeq: {}, icao_id: {}, icao: {}, Distance: {}", __func__, mxUtils::formatNumber<int>(row_num), row_data["icao_id"], row_data["icao"], row_data["dist_nm"]));
-//       }
-//       #endif // !RELEASE
-//
-//       if (RandomEngine::resultTable_gather_random_airports.empty())
-//       {
-//         result.addErrMsg(fmt::format("[{}] No airports found relative to Navaid: {}.\n", __func__, inout_target_navaid.getID()), true);
-//         return result;
-//       }
-//       auto ap_row = RandomEngine::resultTable_gather_random_airports.cbegin()->second; // fetch the first result
-//
-//       inout_target_navaid.flag_is_custom_scenery = (!(ap_row["is_custom"].empty()));
-//
-//       // to build the query based on plane types
-//       // we add space at the beginning of the filter
-//       int calculate_type_direction = -1; // -1 = drill down, +1 = drill up
-//       for (int loop01 = 0; loop01 < 4; ++loop01)
-//       {
-//         std::string ramp_filter_stmt_s;
-//         switch (local_plane_type_enum_to_search)
-//         {
-//         case missionx::mx_plane_types_enum::plane_type_any:
-//           ramp_filter_stmt_s = "";
-//           break;
-//         case missionx::mx_plane_types_enum::plane_type_helos:
-//           ramp_filter_stmt_s = " and helos > 0 "; // pick all airports that have helos ramps (heliports or any airport with helos in it). The view we use calculated the number of helos ramps so it is easy to distinguish between them.
-//           break;
-//         case missionx::mx_plane_types_enum::plane_type_ga_floats:
-//         case missionx::mx_plane_types_enum::plane_type_ga:
-//         case missionx::mx_plane_types_enum::plane_type_props:
-//           ramp_filter_stmt_s = " and props + turboprops > 0 "; // make sure only props locations are picked exclude "fighter" ramps
-//           break;
-//         case missionx::mx_plane_types_enum::plane_type_turboprops:
-//           ramp_filter_stmt_s = " and props + turboprops > 0 "; // make sure only airports are being picked with at list 1 ramp for planes (not heliport or sea airports)
-//           break;
-//         case missionx::mx_plane_types_enum::plane_type_jets:
-//           ramp_filter_stmt_s = " and jet + terminal > 0 and icao_width_code >= 'B' "; // make sure jet is being picked. Filter out turbo or prop candidates
-//           break;
-//         case missionx::mx_plane_types_enum::plane_type_airline:
-//         case missionx::mx_plane_types_enum::plane_type_cargo:
-//           // filter by plane type, then ramp width type, then place in airport
-//           ramp_filter_stmt_s = " and jet + heavy > 0 and icao_width_code >= 'C' ";
-//           if (local_plane_type_enum_to_search == missionx::mx_plane_types_enum::plane_type_cargo)
-//             ramp_filter_stmt_s += " and ( lower(name) like '%carg%' or operation_type like '%carg%' ) ";
-//           else
-//             ramp_filter_stmt_s += " and ( lower(name) like '%term%' or operation_type like '%airl%' ) ";
-//           break;
-//         case missionx::mx_plane_types_enum::plane_type_heavy_airline:
-//         case missionx::mx_plane_types_enum::plane_type_heavy_cargo:
-//           // filter by plane type, then ramp width type, then place in airport
-//           ramp_filter_stmt_s = " and jet + heavy > 0 and icao_width_code like >= 'C' ";
-//           if (local_plane_type_enum_to_search == missionx::mx_plane_types_enum::plane_type_heavy_cargo)
-//             ramp_filter_stmt_s += " and ( lower(name) like '%carg%' or operation_type like '%carg%' ) ";
-//           else if (local_plane_type_enum_to_search == missionx::mx_plane_types_enum::plane_type_heavy_airline)
-//             ramp_filter_stmt_s += " and ( lower(name) like '%term%' or operation_type like '%airl%' ) ";
-//           break;
-//         case missionx::mx_plane_types_enum::plane_type_fighter:
-//           ramp_filter_stmt_s = " and fighter > 0 "; // make sure only airports are being picked with at list 1 ramp for planes (not heliport or sea airports)
-//           break;
-//         default:
-//           break;
-//         }
-//
-//         // filter out fighters for non fighter search.
-//         if (local_plane_type_enum_to_search != missionx::mx_plane_types_enum::plane_type_fighter)
-//           ramp_filter_stmt_s += " and fighters = 0 ";
-//
-//         const std::string select_s     = "select * from ramps_vu where 1 = 1 and icao_id = " + ap_row["icao_id"];
-//         const std::string filter_ramps = ramp_filter_stmt_s;
-//         const std::string sql_ramp     = select_s + filter_ramps + " ORDER BY RANDOM() limit 1";
-//
-//         #ifndef RELEASE
-//         Log::logMsgThread(fmt::format("[{}] Ramp Q for type: {}\n{}\n", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search), sql_ramp));
-//         #endif // !RELEASE
-//
-//         RandomEngine::resultTable_gather_ramp_data.clear();
-//         rc = sqlite3_exec(data_manager::db_xp_airports.db, sql_ramp.c_str(), RandomEngine::callback_pick_random_ramp_location_db, nullptr, &zErrMsg);
-//         if (rc != SQLITE_OK)
-//         {
-//           result.addErrMsg(fmt::format("[{}] Error during ramp search for plane type: {}", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search)), true); // debug
-//           result.addErrMsg(fmt::format("[{}] Fail to pick a ramp, SQL Error: \n{}\n", __func__, zErrMsg), true);
-//           sqlite3_free(zErrMsg);
-//
-//           return result;
-//         }
-//
-//
-//         if (RandomEngine::resultTable_gather_ramp_data.empty())
-//         {
-//           result.addInfoMsg(fmt::format("[{}] No ramp was found for plane type: {}, should continue and search", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search))); // debug
-//
-//           if (missionx::mxFilterRampType::exact_plane_ramp_type == inRampFilterType)
-//             break; // exit the loop since we want the exact ramp type
-//           if (loop01 > 0) // if this is not the first iteration
-//           {
-//             // we try to search ramps that are "jets", then "turboprops" and then "prop".
-//             // we do not search for Helos, nor fighter ramps
-//             int plane_type_code             = static_cast<int>(local_plane_type_enum_to_search);
-//             plane_type_code                 += calculate_type_direction; // decrease/increase the code number - will affect a ramp type based on the enum number
-//             local_plane_type_enum_to_search = static_cast<missionx::mx_plane_types_enum>(plane_type_code);
-//
-//             // Check boundaries
-//             if (local_plane_type_enum_to_search <= missionx::mx_plane_types_enum::plane_type_helos || local_plane_type_enum_to_search > missionx::mx_plane_types_enum::plane_type_heavy_cargo)
-//               break; // exit the loop. We did not find a suitable ramp
-//
-//             result.addInfoMsg(fmt::format("[{}]: Search for alternate ramp type for plane: {}", __func__, translatePlaneTypeToString(local_plane_type_enum_to_search))); // debug
-//           }
-//           else
-//           {
-//             // based on plane type, decide if to drill down or up
-//             if (mxUtils::mx_between<int>(static_cast<int>(in_plane_type_enum_to_search), static_cast<int>(mx_plane_types_enum::plane_type_helos), static_cast<int>(mx_plane_types_enum::plane_type_turboprops), enums::mx_between_types::gt_min_less_max))
-//             {
-//               local_plane_type_enum_to_search = missionx::mx_plane_types_enum::plane_type_turboprops;
-//               calculate_type_direction        = 1; // we drill up
-//             }
-//             else if (in_plane_type_enum_to_search == missionx::mx_plane_types_enum::plane_type_helos || in_plane_type_enum_to_search == missionx::mx_plane_types_enum::plane_type_fighter)
-//             {
-//               local_plane_type_enum_to_search = missionx::mx_plane_types_enum::plane_type_ga;
-//               calculate_type_direction        = 1; // we drill up
-//             }
-//             else if (in_plane_type_enum_to_search == missionx::mx_plane_types_enum::plane_type_airline)
-//             {
-//               local_plane_type_enum_to_search = missionx::mx_plane_types_enum::plane_type_airline;
-//               calculate_type_direction        = -1; // we drill down
-//             }
-//             else
-//             {
-//               local_plane_type_enum_to_search = missionx::mx_plane_types_enum::plane_type_heavy_airline;
-//               calculate_type_direction        = -1; // we drill down
-//             }
-//           }
-//         } // end did not find ramp in database
-//         else
-//         {
-//           // found ramp
-//           // Store ramp location in navaid
-//           Log::logMsgThread("[pick ramp] Ramp info gathered.");
-//           auto ramp                                     = resultTable_gather_ramp_data.cbegin()->second;
-//           inout_target_navaid.lat                       = mxUtils::stringToNumber<float>(ramp["lat"], ramp["lat"].length());
-//           inout_target_navaid.lon                       = mxUtils::stringToNumber<float>(ramp["lon"], ramp["lon"].length());
-//           inout_target_navaid.heading                   = mxUtils::stringToNumber<float>(ramp["heading"], ramp["heading"].length());
-//           inout_target_navaid.ramp_info.uq_name         = ramp["name"];
-//           inout_target_navaid.ramp_info.ramp_for_planes = ramp["for_planes"];
-//           inout_target_navaid.ramp_info.ramp_width_code = ramp["icao_width_code"];
-//           inout_target_navaid.ramp_info.operation_type  = ramp["operation_type"];
-//           #ifndef RELEASE
-//           for (auto& row_val : resultTable_gather_ramp_data | std::views::values)
-//           {
-//             // Log::logMsgThread (fmt::format("\rRamp: " + row_val["name"] + ", icao_id: " + row_val["icao_id"] + ", icao: " + row_val["icao"]) );
-//             Log::logMsgThread(fmt::format("\rRamp: {}, icao_id: {}, icao: {}", row_val["name"], row_val["icao_id"], row_val["icao"]));
-//           }
-//           #endif // !RELEASE
-//
-//           // // revert the template type if and only if it is different. Main reason is if we do not find a ramp location for our plane then we try to find a ramp based on other plane types
-//           // local_plane_type_enum_to_search = in_plane_type_enum_to_search;
-//
-//           inout_target_navaid.synchToPoint();
-//           result = true;
-//           return result; // exit the loop
-//         }
-//         // end if an airport result is not empty and we should search for ramp location
-//       } // end loop
-//
-//       // revert the plane type to its original value
-//       local_plane_type_enum_to_search = in_plane_type_enum_to_search;
-//
-//
-//       // If we reached this location than we failed to find a valid ramp position. We will use the runway as a ramp location.
-//       // fetch the longest runway and return its center
-//       auto const lmbda_get_query_for_fallback_position_based_on_filter_type = [](const missionx::mxFilterRampType& inFilterType, missionx::NavAidInfo& inNavAid)
-//       {
-//         static const std::string MOVE_PLANE_IN_METERS{"20"};
-//
-//         switch (inFilterType)
-//         {
-//         case missionx::mxFilterRampType::start_ramp:
-//           {
-//             // place plane 5 meters from beginning of the runway
-//             return "select mx_get_point_based_on_bearing_and_length_in_meters (t1.rw_no_1_lat, rw_no_1_lon, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon), " + MOVE_PLANE_IN_METERS + ") as start_pos, t1.rw_no_1 as name, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading, t1.rw_length_mt from xp_rw t1 where t1.icao= '" + inNavAid.getID() + "' order by rw_length_mt desc limit 1";
-//           }
-//           break;
-//         case missionx::mxFilterRampType::any_ramp_location:
-//         case missionx::mxFilterRampType::end_ramp:
-//           {
-//             return "select mx_get_center_between_2_points(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as start_pos, t1.rw_no_1 || '-' || t1.rw_no_2 as name, mx_bearing(t1.rw_no_1_lat, rw_no_1_lon, rw_no_2_lat, rw_no_2_lon) as heading, t1.rw_length_mt from xp_rw t1 where t1.icao= '" + inNavAid.getID() + "' order by rw_length_mt desc limit 1";
-//           }
-//           break;
-//         default:
-//           return std::string("");
-//         }
-//
-//         return std::string("");
-//       };
-//
-//       std::string query_start_pos_s = lmbda_get_query_for_fallback_position_based_on_filter_type(inRampFilterType, inout_target_navaid);
-//       #ifndef RELEASE
-//       Log::logMsgThread("SQL Query to Fetch start pos: \n" + query_start_pos_s + "\n");
-//       #endif // !RELEASE
-//
-//       if (!query_start_pos_s.empty())
-//       {
-//         resultTable_gather_ramp_data.clear();
-//         rc = sqlite3_exec(data_manager::db_xp_airports.db, query_start_pos_s.c_str(), RandomEngine::callback_pick_random_ramp_location_db, nullptr, &zErrMsg);
-//         if (rc != SQLITE_OK)
-//         {
-//           result.addInfoMsg(fmt::format("[{}] No ramp was found for plane type: {}", __func__, translatePlaneTypeToString(local_plane_type_enum_to_search), false));
-//           result.addInfoMsg(fmt::format("[{}] SQL error: {}", __func__, zErrMsg, false));
-//           sqlite3_free(zErrMsg);
-//         }
-//         else
-//         {
-//           if (RandomEngine::resultTable_gather_ramp_data.empty())
-//             Log::logMsgThread("[pick ramp] No valid start position was found.");
-//           else
-//           {
-//             Log::logMsgThread("[pick ramp] Start position info gathered.");
-//             auto                     ramp        = resultTable_gather_ramp_data.cbegin()->second;
-//             std::vector<std::string> vecPosition = mxUtils::split(ramp["start_pos"], ',');
-//
-//             if (vecPosition.size() > static_cast<size_t>(1))
-//             {
-//               // Store location in Navaid
-//               inout_target_navaid.lat                       = mxUtils::stringToNumber<float>(vecPosition.at(0), vecPosition.at(0).length());
-//               inout_target_navaid.lon                       = mxUtils::stringToNumber<float>(vecPosition.at(1), vecPosition.at(1).length());
-//               inout_target_navaid.heading                   = mxUtils::stringToNumber<float>(ramp["heading"], 6);
-//               inout_target_navaid.ramp_info.uq_name         = ramp["name"];
-//               inout_target_navaid.ramp_info.ramp_for_planes = "Runway: " + inout_target_navaid.ramp_info.uq_name;
-//
-//               inout_target_navaid.synchToPoint();
-//               return result = true;
-//             }
-//           } // end if we fetched the center of the runway as the ramp data
-//         } // end if sqlite statement is legit one
-//       } // end if we have query for fallback start position - either start of a runway or the center of the runway.
-//     } // end if airport information query returned data
-//   } // end if Database is open
-//
-//
-//   return result;
-// }
-
 
 
 // --------------------------------
@@ -3279,8 +2954,8 @@ bool
 RandomEngine::writeTargetFile()
 {
   bool result = true;
-  // Prepare path and file names // v3.0.241.10 b2 extended cases where template was picked from custom mission folder, therefore the output should be {mission folder name}.xml. That way we create uniquness
 
+  // Prepare path and file names // v3.0.241.10 b2 extended cases where template was picked from custom mission folder, therefore the output should be {mission folder name}.xml. That way we create uniquness
   const std::string savePathAndFile = (RandomEngine::working_tempFile_ptr->missionFolderName.empty()) ? this->pathToRandomBrieferFolder + mxconst::get_FOLDER_SEPARATOR() + mxconst::get_RANDOM_MISSION_DATA_FILE_NAME() : this->pathToRandomBrieferFolder + mxconst::get_FOLDER_SEPARATOR() + RandomEngine::working_tempFile_ptr->missionFolderName + ".xml";
 
 
@@ -3305,18 +2980,27 @@ RandomEngine::writeTargetFile()
 
   ///// ORGENIZE <MISSION> Element children /////
 
-  // add global setting from mapping
+  // ---------------------------------------------------------------------
+  // -- add global setting from mapping
+  // ---------------------------------------------------------------------
+
+
   if (this->xGlobalSettings.isEmpty()) // v3.0.303.2 add global_settings from Mapping only if it is empty.
     this->xGlobalSettings = data_manager::xmlMappingNode.getChildNode(mxconst::get_GLOBAL_SETTINGS().c_str()).deepCopy();
 
-  // v3.303.9 add scoring
+  // ---------------------------------------------------------------------
+  // -- Add Scoring (v3.303.9)
+  // ---------------------------------------------------------------------
   if (!this->xScoring.isEmpty())
   {
     Utils::xml_delete_all_subnodes(this->xGlobalSettings, mxconst::get_ELEMENT_SCORING());
     this->xGlobalSettings.addChild(xScoring.deepCopy());
   }
 
-  // v24.12.2 Handling compatibility flag. Will only affect template that do not have the "compatibility -> inventory_layout" set for them.
+  // ---------------------------------------------------------------------
+  // v24.12.2 Compatibility flag (xp12/11 inventory layout).
+  // Will only affect template that do not have the "compatibility -> inventory_layout" set for them.
+  // ---------------------------------------------------------------------
   if (const bool flag_surprise_me = Utils::readBoolAttrib(xMetadata, mxconst::get_ATTRIB_SURPRISE_ME_SUB_CAT_B(), false)
     ; missionx::data_manager::flag_setupUseXP11InventoryUI || flag_surprise_me)
   {
@@ -3331,47 +3015,19 @@ RandomEngine::writeTargetFile()
       this->xCompatibility.updateAttribute(mxUtils::formatNumber<int>(missionx::XP11_COMPATIBILITY).c_str(), mxconst::get_ATTRIB_INVENTORY_LAYOUT().c_str(), mxconst::get_ATTRIB_INVENTORY_LAYOUT().c_str());
   }
 
-  // v3.303.14 moved date/time and weather advance settings integration into the <global_settings> node to data_manager
+  // ---------------------------------------------------------------------
+  // -- Read Weather
+  // ---------------------------------------------------------------------
   if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_current_weather_state_and_store_in_RandomEngine))
   {
     missionx::RandomEngine::current_weather_datarefs_s.clear();
-    RandomEngine::setError("[random write weather] Failed to read current X-Plane weather information.");
+    RandomEngine::setError(fmt::format("[{}] Failed to read current X-Plane weather information.", __func__) );
   }
   missionx::data_manager::add_advanceSettingsDateTime_and_Weather_to_node(this->xGlobalSettings, missionx::data_manager::prop_userDefinedMission_ui.node, missionx::RandomEngine::current_weather_datarefs_s);
 
-  // Deprecate, use new static: RandomEngine::xDrefStartColdAndDark.
-  // IXMLNode xDrefStartColdAndDark = missionx::RandomEngine::xRootTemplate.getChildNode (mxconst::get_ELEMENT_DATAREFS_START_COLD_AND_DARK ().c_str ()).deepCopy ();
-  // if (!xDrefStartColdAndDark.isEmpty () && (Utils::readBoolAttrib (xRootTemplate, mxconst::get_ATTRIB_COPY_LEG_AS_IS_B (), false) == false)) // v3.0.303 add support for special words "{navaid_lat}" and "{navaid_lon}"
-  // {
-  //
-  //   // find the first NavAid that briefer is using.
-  //   const std::string firstLeg_s = Utils::readAttrib (this->xBriefer, mxconst::get_ATTRIB_STARTING_LEG (), "");
-  //   bool bFoundFirstLeg = false;
-  //   int leg_counter            = this->xFlightLegs.nChildNode ();
-  //   for (int i1 = 0; i1 < leg_counter; ++i1)
-  //   {
-  //     auto leg_node = this->xFlightLegs.getChildNode (mxconst::get_ELEMENT_LEG ().c_str (), i1);
-  //     const auto flightLegName = Utils::readAttrib (leg_node, mxconst::get_ATTRIB_NAME (), "");
-  //     bFoundFirstLeg = (flightLegName == firstLeg_s);
-  //     if (bFoundFirstLeg)
-  //     {
-  //       if (!leg_node.isEmpty ())
-  //       {
-  //         std::string text = Utils::xml_get_text (xDrefStartColdAndDark);
-  //         text             = Utils::replaceString (text, "{navaid_lat}", leg->getLat (), true);
-  //         text             = Utils::replaceString (text, "{navaid_lon}", leg->getLon (), true);
-  //
-  //         Utils::xml_set_text (xDrefStartColdAndDark, text);
-  //       }
-  //     }
-  //   } // end loop
-  //
-  //
-  //
-  // } // xDrefStartColdAndDark
-
-
+  // ---------------------------------------------------------------------
   // v3.0.255.3 test validity of 3D Objects. Inject warning into Briefer
+  // ---------------------------------------------------------------------
   std::string localErr;
   missionx::data_manager::validate_display_object_file_existence(savePathAndFile, xFlightLegs, xGlobalSettings, x3DObjTemplate, localErr);
   if (!localErr.empty())
@@ -3379,13 +3035,18 @@ RandomEngine::writeTargetFile()
     RandomEngine::setError(localErr);
   }
 
+  // ---------------------------------------------------------------------
+  // <briefer_info>
+  // ---------------------------------------------------------------------
   if (!xBrieferInfo.isEmpty()) // v24026
   {
     if (xBrieferInfo.isAttributeSet(mxconst::get_ATTRIB_SHORT_DESC().c_str()))
       xBrieferInfo.deleteAttribute(mxconst::get_ATTRIB_SHORT_DESC().c_str()); // v24036 - delete short_desc attribute from <briefer_info> element.
   }
 
-  // v24.12.1
+  // ---------------------------------------------------------------------
+  // Prepare Mission XML // v24.12.1
+  // ---------------------------------------------------------------------
   Utils::add_xml_comment(xTargetTopNode);
   xTargetTopNode.addChild(this->xMetadata);
   Utils::add_xml_comment(xTargetTopNode);
@@ -3439,8 +3100,9 @@ RandomEngine::writeTargetFile()
   xTargetTopNode.addChild(this->xGPS);
 
 
-  // xTargetTopNode.addChild(xEnd);
-  //   add end node from Template
+  // ---------------------------------------------------------------------
+  // Add <end_node>
+  // ---------------------------------------------------------------------
   this->xEnd = missionx::RandomEngine::xRootTemplate.getChildNode(mxconst::get_ELEMENT_END_MISSION().c_str()).deepCopy(); // v3.305.1 added template read first
   if (xEnd.isEmpty()) // try to read from mapping if we don't find one in the template
     this->xEnd = data_manager::xmlMappingNode.getChildNode(mxconst::get_ELEMENT_END_MISSION().c_str()).deepCopy();
@@ -3464,9 +3126,11 @@ RandomEngine::writeTargetFile()
   if (!this->xDummyTopNode.isEmpty())
     this->xDummyTopNode.deleteNodeContent();
 
-  /////////////////////////////
-  ////////////////////////////
-  // Write to file  /////////
+  // ---------------------------------------------------------------------
+  // ---------------------------------------------------------------------
+  // ---------------------------------------------------------------------
+  // Write the mission file
+  // ---------------------------------------------------------------------
   IXMLRenderer  xmlWriter;
   IXMLErrorInfo errInfo = xmlWriter.writeToFile(this->xTargetMainNode, savePathAndFile.c_str(), "ASCII"); // "ISO-8859-1");
   if (errInfo != IXMLError_None)
@@ -3730,291 +3394,6 @@ RandomEngine::get_random_airport_from_db(missionx::Point& inPoint, const float i
 
 
 // -----------------------------------
-//
-// NavAidInfo RandomEngine::get_random_airport_from_db2(missionx::Point& inPoint, const float inMinDistance_nm, const float inMaxDistance_nm, const int inExcludeAngle, missionx::mx_base_node& inProperties, const uint8_t& in_plane_type)
-// {
-// #ifndef RELEASE
-//   auto start_db_call = std::chrono::steady_clock::now();
-// #endif
-//   /*
-//     select * from
-//     (
-//         select icao_id, icao, ap_name, mx_calc_distance ( ap_lat, ap_lon, -19.25418870, 146.77017290, 3440) as dist_nm, mx_bearing (ap_lat, ap_lon, -19.25418870, 146.77017290) as bearing from xp_airports
-//     ) v1
-//     where 1 = 1
-//     and dist_nm between 5.0 and 30.0
-//     and bearing between N1 and N2  <-- optional if bearing received is less than zero
-//   */
-//
-//   missionx::NavAidInfo nav;
-//
-//   // The point can be plane location or airport in the flight plan that we need to find other airport relative to it.
-//   const double pLat = inPoint.getLat();
-//   const double pLon = inPoint.getLon();
-//
-//   const bool flag_is_last_flight_leg = Utils::readBoolAttrib(inProperties.node, mxconst::get_PROP_IS_LAST_FLIGHT_LEG(), false);
-//
-//   //// construct view query (inner query)
-//   // base on xp_airports
-//   const std::string inner_view = fmt::format("select icao_id, icao, ap_elev_ft, ap_name, ap_type, ap_lat, ap_lon, max_rw_length_in_meters, ramp_in_terminal, ramp_in_cargo, mx_calc_distance ( ap_lat, ap_lon, {}, {}, 3440) as dist_nm, mx_bearing (ap_lat, ap_lon, {}, {}) as bearing, helipads, ramp_helos, ramp_planes, ramp_props, ramp_turboprops, ramp_jet_heavy, rw_hard, rw_dirt_gravel, rw_grass, rw_water, is_custom, is_oilrig from airports_vu ", mxUtils::formatNumber<double>(pLat, 10),
-//                                              mxUtils::formatNumber<double>(pLon, 10), mxUtils::formatNumber<double>(pLat, 10), mxUtils::formatNumber<double>(pLon, 10)); // v3.303.12 added field is_custom
-//
-//   // Construct distance
-//   const std::string distance_s = " and dist_nm between " + mxUtils::formatNumber<float>(inMinDistance_nm) + " and " + mxUtils::formatNumber<float>(inMaxDistance_nm);
-//
-//   //// Construct BEARING data
-//   const auto lmbda_get_bearing_string = [](const int in_ExcludeAngle)
-//   {
-//     if (in_ExcludeAngle < 0)
-//       return missionx::EMPTY_STRING;
-//
-//     auto excludeAngle_tmp = in_ExcludeAngle;
-//     if (excludeAngle_tmp > -1)
-//     {
-//       excludeAngle_tmp -= 180; // we need to exclude the opposite direction of the original angle.
-//       if (excludeAngle_tmp < 0)
-//         excludeAngle_tmp += 360;
-//     }
-//     const int excludeAngle = excludeAngle_tmp;
-//
-//     // create bigger bearing exclusion so we won't fetch those airports
-//     const int excludeAngle_Left  = (excludeAngle - 5 < 0) ? excludeAngle - 5 + 360 : excludeAngle - 5;
-//     const int excludeAngle_Right = (excludeAngle + 5 > 359) ? 360 - excludeAngle : excludeAngle + 5;
-//
-//     if (excludeAngle_Left > excludeAngle_Right) // L > R
-//       return " and bearing between " + mxUtils::formatNumber<int>(excludeAngle_Right) + " and " + mxUtils::formatNumber<int>(excludeAngle_Left);
-//
-//     // L < R then (between 0 and L or between R and 360)
-//     return " and ( bearing < " + mxUtils::formatNumber<int>(excludeAngle_Left) + " or bearing > " + mxUtils::formatNumber<int>(excludeAngle_Right) + " )";
-//   };
-//
-//   // Bearing Filter
-//   const std::string bearing_s = lmbda_get_bearing_string(inExcludeAngle);
-//
-//   //// Airports Filter ////
-//   const auto lmbda_get_plane_filter_string = [](const missionx::mx_plane_types_enum inPlaneType)
-//   {
-//     std::string stmt;
-//     switch (inPlaneType)
-//     {
-//     case missionx::mx_plane_types_enum::plane_type_any:
-//       return missionx::EMPTY_STRING;
-//       break;
-//     case missionx::mx_plane_types_enum::plane_type_helos:
-//       stmt = " and (helipads + ramp_helos) > 0 "; //
-//       break;
-//     case missionx::mx_plane_types_enum::plane_type_ga_floats:
-//       stmt = " and ap_type in ( 1, 16 ) and ramp_planes > 0 ";
-//       break;
-//     case missionx::mx_plane_types_enum::plane_type_ga:
-//     case missionx::mx_plane_types_enum::plane_type_props:
-//       stmt = " and ap_type = 1 and ramp_props > 0 "; //
-//       break;
-//     case missionx::mx_plane_types_enum::plane_type_turboprops:
-//       stmt = " and ap_type = 1 and ramp_turboprops > 0 "; //
-//       break;
-//     case missionx::mx_plane_types_enum::plane_type_jets:
-//       stmt = " and ap_type = 1 and ramp_jet_heavy > 0 and max_rw_length_in_meters >= 850 "; //
-//       break;
-//     case missionx::mx_plane_types_enum::plane_type_airline:
-//     case missionx::mx_plane_types_enum::plane_type_cargo:
-//       stmt = " and ap_type = 1 and ramp_jet_heavy > 0 and max_rw_length_in_meters >= 1200 "; //
-//       if (inPlaneType == missionx::mx_plane_types_enum::plane_type_cargo)
-//         stmt += " and ramp_in_cargo > 0 "; // ramps name have the cargo text in them
-//       else
-//         stmt += " and ramp_in_terminal > 0 "; // ramps name have the "term" text in them
-//       break;
-//     case missionx::mx_plane_types_enum::plane_type_heavy_airline:
-//     case missionx::mx_plane_types_enum::plane_type_heavy_cargo:
-//       stmt = " and ap_type = 1 and ramp_jet_heavy > 0 and rw_hard > 0 and max_rw_length_in_meters >= 1700 ";
-//       if (inPlaneType == missionx::mx_plane_types_enum::plane_type_heavy_cargo)
-//         stmt += " and ramp_in_cargo > 0 "; // ramps name have the cargo text in them
-//       else
-//         stmt += " and ramp_in_terminal > 0 "; // ramps name have the "term" text in them
-//       break;
-//     default:
-//       break;
-//     }
-//
-//     return stmt;
-//   };
-//
-//   auto ramp_type_filter_s = lmbda_get_plane_filter_string(static_cast<missionx::mx_plane_types_enum>(in_plane_type));
-//
-//   // filter airports by runway types (if user asked for)
-//   const auto lmbda_filter_based_on_rw_type = [](const std::string& inFilter)
-//   {
-//     std::string stmt;
-//     if (!inFilter.empty())
-//     {
-//       stmt = " and 0 < ( select count(1) from xp_rw xr where xr.rw_surf in " + inFilter + " and xr.icao_id = vu.icao_id )";
-//     }
-//
-//     return stmt;
-//   };
-//
-//   const std::string subquery_to_filter_rw_type = lmbda_filter_based_on_rw_type(Utils::readAttrib(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_FILTER_AIRPORTS_BY_RUNWAY_TYPE(), ""));
-//
-//   // v25.08.1 add last leg filter
-//   const std::string filter_by_last_leg = (flag_is_last_flight_leg) ? " and is_oilrig = 0 " : "";
-//
-//   // adding the rw filter to the query
-//   const std::string sql = "select * from ( " + inner_view + " ) vu where 1 = 1 " + distance_s + bearing_s + ramp_type_filter_s + subquery_to_filter_rw_type + filter_by_last_leg + " order by RANDOM() limit 10"; // v3.0.255.3 use RANDOM() function to pick random row  // older option: any valid row ordered by distance " order by dist_nm" ;
-//
-//
-// #ifndef RELEASE
-//   Log::logMsgThread(fmt::format("[{}] Query: {}", __func__, sql));
-// #endif // !RELEASE
-//
-//
-//   if (data_manager::db_xp_airports.db_is_open_and_ready)
-//   {
-//     char* zErrMsg = nullptr;
-//
-//     // clear local cache
-//     RandomEngine::resultTable_gather_random_airports.clear();
-//     if (int rc = sqlite3_exec(data_manager::db_xp_airports.db, sql.c_str(), RandomEngine::callback_gather_random_airports_db, nullptr, &zErrMsg); rc != SQLITE_OK)
-//     {
-//       Log::logMsgThread(fmt::format("[{}] SQL error: {}", __func__, std::string(zErrMsg)));
-//       sqlite3_free(zErrMsg);
-//     }
-//     else
-//     {
-//       Log::logMsgThread(fmt::format("[{}] Information was gathered.", __func__));
-// #ifndef RELEASE
-//       for (auto& [row_num, row_data] : RandomEngine::resultTable_gather_random_airports)
-//         Log::logMsgThread(fmt::format("\tSeq: {}, icao_id: {}, icao: {}", row_num, row_data["icao_id"], row_data["icao"]));
-// #endif // !RELEASE
-//
-//
-//       // Filter specific ramp types
-//       ///| Ramp Type   | Supports Aircraft          | Typical Use               |
-//       ///| ----------- | -------------------------- | ------------------------- |
-//       ///| Code A ramp | Props / Hellos             | General Aviation          |
-//       ///| Code B ramp | ATR / small jets / Hellos  | Regional terminals        |
-//       ///| Code C ramp | 737 / A320                 | Standard commercial gates |
-//       ///| Code E ramp | 777 / A350                 | Long-haul gates           |
-//       ///| Code F ramp | A380 / 747-8               | Heavy international hubs  |
-//       ///
-//
-//       if (!RandomEngine::resultTable_gather_random_airports.empty())
-//       {
-//         const auto lmbda_get_ramp_filter_based_on_plane_type = [](const missionx::mx_plane_types_enum inPlaneType)
-//         {
-//           std::string stmt;
-//           switch (inPlaneType)
-//           {
-//           case missionx::mx_plane_types_enum::plane_type_any:
-//             stmt = "";
-//             break;
-//           case missionx::mx_plane_types_enum::plane_type_helos:
-//             stmt = " and helos > 0 "; // pick all airports that have helos ramps (heliports or any airport with helos in it). The view we use calculated the number of helos ramps so it is easy to distinguish between them.
-//             break;
-//           case missionx::mx_plane_types_enum::plane_type_ga_floats:
-//           case missionx::mx_plane_types_enum::plane_type_ga:
-//           case missionx::mx_plane_types_enum::plane_type_props:
-//           case missionx::mx_plane_types_enum::plane_type_turboprops:
-//             stmt = " and props + turboprops > 0 "; // make sure only airports are being picked with at list 1 ramp for planes (not heliport or sea airports)
-//             break;
-//           case missionx::mx_plane_types_enum::plane_type_jets:
-//             stmt = " and jet + heavy > 0 and icao_width_code >= 'B' ";
-//             break;
-//           case missionx::mx_plane_types_enum::plane_type_airline:
-//           case missionx::mx_plane_types_enum::plane_type_cargo:
-//             // filter by plane type, then ramp width type, then place in airport
-//             stmt = " and jet + heavy > 0 and icao_width_code >= 'C' ";
-//             if (inPlaneType == missionx::mx_plane_types_enum::plane_type_cargo)
-//               stmt += " and ( lower(name) like '%carg%' or operation_type like '%carg%' ) ";
-//             else
-//               stmt += " and ( lower(name) like '%term%' or operation_type like '%airl%' ) ";
-//             break;
-//           case missionx::mx_plane_types_enum::plane_type_heavy_airline:
-//           case missionx::mx_plane_types_enum::plane_type_heavy_cargo:
-//             // filter by plane type, then ramp width type, then place in airport
-//             stmt = " and jet + heavy > 0 and icao_width_code like >= 'C' ";
-//             if (inPlaneType == missionx::mx_plane_types_enum::plane_type_heavy_cargo)
-//               stmt += " and ( lower(name) like '%carg%' or operation_type like '%carg%' ) ";
-//             else
-//               stmt += " and ( lower(name) like '%term%' or operation_type like '%airl%' ) ";
-//             break;
-//           default:
-//             break;
-//           }
-//
-//           // // filter out fighters for non fighter search.
-//           // if (inPlaneType != missionx::mx_plane_types_enum::plane_type_fighter)
-//           //   stmt += " and fighters = 0 ";
-//
-//           return stmt;
-//         };
-//
-//         auto row = RandomEngine::resultTable_gather_random_airports.cbegin()->second; // fetch the first result
-//         nav.setID(row["icao"]);
-//         nav.setName(row["ap_name"]);
-//         // v25.10.1 store airport lat/lon even if there is no ramp. In most cases, the middle of the runway.
-//         nav.lat = mxUtils::stringToNumber<float>(row["ap_lat"], 8);
-//         nav.lon = mxUtils::stringToNumber<float>(row["ap_lon"], 8);
-//
-//         nav.flag_is_custom_scenery = (!(row["is_custom"].empty())); // v3.303.12 changed field name to is_custom
-//
-//         const std::string elev_ft = row["ap_elev_ft"];
-//         nav.height_mt             = (elev_ft.empty()) ? 0.0f : mxUtils::stringToNumber<float>(elev_ft) * missionx::feet2meter;
-//
-//         const std::string select_s     = "select * from ramps_vu where 1 = 1 and for_planes is not null and icao_id = " + row["icao_id"]; // v3.303.14 added "for_planes is not null" to narrow the airports to the ones that there are real ramps
-//         const std::string filter_ramps = lmbda_get_ramp_filter_based_on_plane_type(static_cast<missionx::mx_plane_types_enum>(in_plane_type));
-//         const std::string sql_query    = select_s + filter_ramps + " ORDER BY RANDOM() limit 1";
-//
-// #ifndef RELEASE
-//         Log::logMsgThread("\n[pick ramp sql]\n" + sql_query + "\n"); // debug
-// #endif // !RELEASE
-//
-//         resultTable_gather_ramp_data.clear();
-//         const int rc1 = sqlite3_exec(data_manager::db_xp_airports.db, sql_query.c_str(), RandomEngine::callback_pick_random_ramp_location_db, nullptr, &zErrMsg);
-//         if (rc1 != SQLITE_OK)
-//         {
-//           Log::logMsgThread("[pick ramp] SQL error: " + std::string(zErrMsg));
-//           sqlite3_free(zErrMsg);
-//         }
-//         else
-//         {
-//           if (RandomEngine::resultTable_gather_ramp_data.empty())
-//             Log::logMsgThread("[pick ramp] No ramp was found.");
-//           else
-//           {
-//             Log::logMsgThread("[pick ramp] Ramp info gathered.");
-//             auto ramp                     = resultTable_gather_ramp_data.cbegin()->second;
-//             nav.lat                       = mxUtils::stringToNumber<float>(ramp["lat"], 12);
-//             nav.lon                       = mxUtils::stringToNumber<float>(ramp["lon"], 12);
-//             nav.ramp_info.uq_name         = ramp["name"];
-//             nav.ramp_info.ramp_for_planes = ramp["for_planes"];
-//             nav.ramp_info.ramp_width_code = ramp["icao_width_code"];
-//             nav.ramp_info.operation_type  = ramp["operation_type"];
-//
-// #ifndef RELEASE
-//             for (auto& ramp_data : resultTable_gather_ramp_data | std::views::values)
-//             {
-//               // Log::logMsgThread("\ramp: " + ramp_data["name"] + ", icao_id: " + ramp_data["icao_id"] + ", icao: " + ramp_data["icao"]);
-//               Log::logMsgThread(fmt::format("[{}] Ramp: {}, icao_id: {}, icao: {}, ramp_width_code: {}, oper.type: {}, for_planes: {}", __func__, nav.ramp_info.uq_name, ramp_data["icao_id"], ramp_data["icao"], nav.ramp_info.ramp_width_code, nav.ramp_info.operation_type, nav.ramp_info.ramp_for_planes));
-//             }
-// #endif // !RELEASE
-//           }
-//         }
-//       } // end if an airport result is not empty and we should search for ramp location
-//     } // end if a query returned value
-//   } // end if DB is open
-//
-// #ifndef RELEASE
-//   auto end_db_call = std::chrono::steady_clock::now();
-//   auto diff_cache  = end_db_call - start_db_call;
-//   auto duration    = std::chrono::duration<double, std::milli>(diff_cache).count();
-//   Log::logAttention(fmt::format("*** Finished {}. Duration: {:.3f}ms ({:.3f}sec  ****)", __func__, duration, (duration / 1000)), true);
-// #endif // !RELEASE
-//
-//   return nav;
-// }
-//
-
-// -----------------------------------
 
 float
 RandomEngine::calc_slope_at_point_mainThread(NavAidInfo& inNavAid)
@@ -4243,19 +3622,19 @@ RandomEngine::prepare_blank_template_with_flight_legs_based_on_ui(IXMLNode& pNod
   outMetaNode.updateAttribute(mxUtils::formatNumber<int>(med_cargo_or_oilrig_i).c_str(), mxconst::get_PROP_MED_CARGO_OR_OILRIG().c_str(), mxconst::get_PROP_MED_CARGO_OR_OILRIG().c_str());
   outMetaNode.updateAttribute(mxUtils::formatNumber<int>(mission_subcategory_indx_picked_i).c_str(), mxconst::get_PROP_MISSION_SUBCATEGORY().c_str(), mxconst::get_PROP_MISSION_SUBCATEGORY().c_str());
 
-
-  // auto       plane_type_i        = Utils::readNodeNumericAttrib<int> (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_PLANE_TYPE_I (), static_cast<int> (missionx::mx_plane_types_enum::plane_type_props)); // plane type
-  const auto no_of_legs_i        = Utils::readNodeNumericAttrib<int>(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_NO_OF_LEGS(), 2); // no of legs
-  auto       min_distance_slider = Utils::readNodeNumericAttrib<double>(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_MIN_DISTANCE_SLIDER(), 5.0); // min slider
-  auto       max_distance_slider = Utils::readNodeNumericAttrib<double>(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_MAX_DISTANCE_SLIDER(), 45.0); // max slider
-
+  // Plane Type
   auto        plane_type_enum_i = RandomEngine::gen_parse_plane_type(data_manager::prop_userDefinedMission_ui, pNode, outMetaNode);
   std::string plane_type_s      = missionx::RandomEngine::translatePlaneTypeToString(plane_type_enum_i);
-
   // Store plane type in the XML node
   missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty(mxconst::get_PROP_PLANE_TYPE_S(), plane_type_s);
   pNode.updateAttribute(plane_type_s.c_str(), mxconst::get_ATTRIB_PLANE_TYPE().c_str(), mxconst::get_ATTRIB_PLANE_TYPE().c_str());
   outMetaNode.updateAttribute(plane_type_s.c_str(), mxconst::get_ATTRIB_PLANE_TYPE().c_str(), mxconst::get_ATTRIB_PLANE_TYPE().c_str()); // v25.05.1
+
+  // Gather Flight Plan metadata
+  const auto no_of_legs_i        = Utils::readNodeNumericAttrib<int>(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_NO_OF_LEGS(), 2); // no of legs
+  auto       min_distance_slider = Utils::readNodeNumericAttrib<double>(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_MIN_DISTANCE_SLIDER(), 5.0); // min slider
+  auto       max_distance_slider = Utils::readNodeNumericAttrib<double>(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_MAX_DISTANCE_SLIDER(), 45.0); // max slider
+
 
   const auto lmbda_get_ramp_type_H_or_S_or_any = [](auto in_plane_type_i)
   {
@@ -4493,8 +3872,7 @@ RandomEngine::gen_prepare_mission_based_on_databaseflightplan_site(IXMLNode& in_
 
   missionx::mx_return out_func_result = true;
 
-  // const auto plane_type_i     = Utils::readNodeNumericAttrib<int> (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_PLANE_TYPE_I (), static_cast<int> (missionx::mx_plane_types_enum::plane_type_props)); // plane type
-  // v25.10.2
+  // v25.10.2 Plane Type
   const auto plane_type_enum_i = RandomEngine::gen_parse_plane_type(data_manager::prop_userDefinedMission_ui, in_xTemplateNode, inout_meta_node);
   this->setPlaneType(plane_type_enum_i); // set plane type in class level for other function usage too
 
@@ -4666,7 +4044,7 @@ RandomEngine::gen_prepare_mission_based_on_databaseflightplan_site(IXMLNode& in_
       nav.fpln_xml_inv_node = this->xInventoris.addChild(nav.fpln_xml_inv_node);
   }
 
-  #ifndef RELEASE
+  #ifdef DEBUG_GENERATED_CONTENT
   Log::logMsgThread(fmt::format("-------------- <CONTENT_MISSION> RESULTS - Post {} --------------", __func__));
   Log::logMsgThread(fmt::format("BRIEFER_INFO:\n{}\n", Utils::xml_get_node_content_as_text(this->xBriefer)));
   Log::logMsgThread(fmt::format("BRIEFER:\n{}\n", Utils::xml_get_node_content_as_text(navaid_targets[0].fpln_xml_target_leg_node))); // we store the briefer in [0]
@@ -4756,13 +4134,7 @@ RandomEngine::gen_get_ils_targets(missionx::base_thread::strct_thread_state* ino
   if (start_na.getName().empty())
     start_na.setName(mxconst::get_ELEMENT_BRIEFER());
 
-  // try to locate a ramp
-  // outErr.clear ();
-  // if (!missionx::RandomEngine::get_user_wants_to_start_from_plane_position () && !filterAndPickRampBasedOnPlaneType (start_na, outErr, missionx::mxFilterRampType::start_ramp))
-  // outErr.clear ();
-
-
-  // handle target location
+  // Get target Navaid data from the main thread.
   RandomEngine::shared_navaid_info.navAid.init();
   RandomEngine::shared_navaid_info.navAid.setID(toICAO);
   if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_nav_aid_info_mainThread))
@@ -4774,17 +4146,15 @@ RandomEngine::gen_get_ils_targets(missionx::base_thread::strct_thread_state* ino
   NavAidInfo target_na = RandomEngine::shared_navaid_info.navAid;
   target_na.synchToPoint();
 
-  // Locate target ramp
-  // outErr.clear ();
-  // if (!filterAndPickRampBasedOnPlaneType (target_na, outErr, missionx::mxFilterRampType::end_ramp))
-  // v25.10.2
+  
+  // v25.10.2 Find a ramp in the target airport.
   auto search_end_ramp_result = RandomEngine::gen_get_ramp_based_on_plane_type(target_na, RandomEngine::getPlaneType_enum(), mxFilterRampType::end_ramp);
   if (!search_end_ramp_result.result)
   {
     Log::logMsgThread(fmt::format("[{}, Target ILS] {}", __func__, search_end_ramp_result.getErrorsAndInfoAsText()));
   }
-  // outErr.clear ();
 
+  // validation
   if (!start_na.is_lat_lon_valid() || !target_na.is_lat_lon_valid())
   {
     outErr = fmt::format("[{}] One of the navaids is invalid. Aborting. Consider notifying the developer.", __func__);
@@ -4815,9 +4185,7 @@ RandomEngine::gen_prepare_mission_based_on_ils_search(IXMLNode& in_xTemplateNode
   std::string         outErr;
   missionx::mx_return out_func_result = true;
 
-  // const auto plane_type_i = Utils::readNodeNumericAttrib<int> (data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_PLANE_TYPE_I (), static_cast<int> (missionx::mx_plane_types_enum::plane_type_props)); // plane type
-  // this->setPlaneType (static_cast<missionx::mx_plane_types_enum> (plane_type_i)); // set plane type in class level for other function too
-  // v25.10.2
+  // v25.10.2 Plane Type
   const auto plane_type_enum_i = RandomEngine::gen_parse_plane_type(data_manager::prop_userDefinedMission_ui, in_xTemplateNode, inout_meta_node);
   this->setPlaneType(plane_type_enum_i); // set plane type in class level for other function usage too
 
@@ -4961,7 +4329,7 @@ RandomEngine::gen_prepare_mission_based_on_ils_search(IXMLNode& in_xTemplateNode
       nav.fpln_xml_inv_node = this->xInventoris.addChild(nav.fpln_xml_inv_node);
   }
 
-  #ifndef RELEASE
+  #ifdef DEBUG_GENERATED_CONTENT
   Log::logMsgThread(fmt::format("-------------- <CONTENT_MISSION> RESULTS - Post {} --------------", __func__));
   Log::logMsgThread(fmt::format("BRIEFER_INFO:\n{}\n", Utils::xml_get_node_content_as_text(this->xBriefer)));
   Log::logMsgThread(fmt::format("BRIEFER:\n{}\n", Utils::xml_get_node_content_as_text(navaid_targets[0].fpln_xml_target_leg_node))); // we store the briefer in [0]
@@ -5070,6 +4438,7 @@ RandomEngine::gen_get_user_fpln_or_simbrief_targets(missionx::base_thread::strct
     return navaid_targets;
   }
   RandomEngine::shared_navaid_info.navAid.synchToPoint();
+
   // if we reached here then we should have a valid startICAO NavAid information
   NavAidInfo start_na(RandomEngine::shared_navaid_info.navAid);
 
@@ -5094,7 +4463,6 @@ RandomEngine::gen_get_user_fpln_or_simbrief_targets(missionx::base_thread::strct
   }
 
 
-
   //////////////////////////
   // handle target location
   /////////////////////////
@@ -5109,18 +4477,13 @@ RandomEngine::gen_get_user_fpln_or_simbrief_targets(missionx::base_thread::strct
   RandomEngine::shared_navaid_info.navAid.synchToPoint();
   NavAidInfo target_na(RandomEngine::shared_navaid_info.navAid); // v25.04.2, it also calls "syncToPoint()"
 
-  // get ramp location
-  // outErr.clear ();
-  // if (!filterAndPickRampBasedOnPlaneType (target_na, outErr, missionx::mxFilterRampType::end_ramp)) // v3.303.12_r2
-
-
+  // Locate a Ramp
   auto search_end_ramp_result = RandomEngine::gen_get_ramp_based_on_plane_type(target_na, getPlaneType_enum(), missionx::mxFilterRampType::end_ramp);
   if (!search_end_ramp_result.result || search_end_ramp_result.getInfoIndex())
   {
     Log::logMsgThread(fmt::format("[{}, Target ILS] {}", __func__, search_end_ramp_result.getErrorsAndInfoAsText()));
   }
-  // outErr.clear ();
-
+  
   // Construct Briefer Description
   const std::string from_to_s   = get_short_flight_description_from_to(start_na.getName(), start_na.getID(), target_na.getName(), target_na.getID());
   std::string       brieferDesc = "Hello pilot.\nYou have been assigned a flight " + from_to_s + ".\nGo over the route and fly it according to plan or modify it if you so wish.\n\nBlue skys.";
@@ -5151,7 +4514,8 @@ RandomEngine::gen_prepare_mission_based_on_user_fpln_or_simbrief(IXMLNode& in_xT
   assert(!in_xTemplateNode.isEmpty () && !data_manager::prop_userDefinedMission_ui.node.isEmpty () && fmt::format("[{}] Empty template or prop_userDefinedMission_ui node.", __func__).c_str ());
 
   missionx::mx_return out_func_result = true;
-  // v25.10.2
+
+  // v25.10.2 Plane Type
   const auto plane_type_enum_i = RandomEngine::gen_parse_plane_type(data_manager::prop_userDefinedMission_ui, in_xTemplateNode, inout_meta_node);
   this->setPlaneType(plane_type_enum_i); // set plane type in class level for other function usage too
 
@@ -5159,7 +4523,6 @@ RandomEngine::gen_prepare_mission_based_on_user_fpln_or_simbrief(IXMLNode& in_xT
   std::map<int, NavAidInfo> navaid_targets = gen_get_user_fpln_or_simbrief_targets(&RandomEngine::random_thread_state, in_xTemplateNode, RandomEngine::shared_navaid_info, outErr);
   if (!outErr.empty() || navaid_targets.empty())
   {
-    // missionx::RandomEngine::setError (outErr);
     if (outErr.empty())
       outErr = "No valid targets were generated.";
 
@@ -5300,7 +4663,7 @@ RandomEngine::gen_prepare_mission_based_on_user_fpln_or_simbrief(IXMLNode& in_xT
       nav.fpln_xml_inv_node = this->xInventoris.addChild(nav.fpln_xml_inv_node);
   }
 
-  #ifndef RELEASE
+  #ifdef DEBUG_GENERATED_CONTENT
   Log::logMsgThread(fmt::format("-------------- <CONTENT_MISSION> RESULTS - Post {} --------------", __func__));
   Log::logMsgThread(fmt::format("BRIEFER_INFO:\n{}\n", Utils::xml_get_node_content_as_text(this->xBriefer)));
   Log::logMsgThread(fmt::format("BRIEFER:\n{}\n", Utils::xml_get_node_content_as_text(navaid_targets[0].fpln_xml_target_leg_node))); // we store the briefer in [0]
@@ -5718,7 +5081,7 @@ RandomEngine::gen_leg_description(IXMLNode& in_xml_leg_node, missionx::NavAidInf
     if (desc_target_ramp.empty())
       return fmt::format("{}\n{} {}.\n\n{}--> Fly Safe <--", desc_next_target_text, desc_distance_text, desc_elevation_text, desc_wet_text);
 
-    return fmt::format("{}\nExpected Ramp:{}\n{} {}\n.\n\n{}--> Fly Safe <--", desc_next_target_text, desc_target_ramp, desc_distance_text, desc_elevation_text, desc_wet_text);
+    return fmt::format("{}\nExpected Ramp:{}\n{} {}.\n\n\n{}--> Fly Safe <--", desc_next_target_text, desc_target_ramp, desc_distance_text, desc_elevation_text, desc_wet_text);
   };
 
   const std::string default_description_template = lmbda_get_default_description();
@@ -5824,7 +5187,7 @@ RandomEngine::get_skew_target_data(missionx::NavAidInfo& in_target_navaid)
 
     in_target_navaid.flag_is_skewed = false;
     return IXMLNode::emptyIXMLNode;
-    // return inTargetPoint.deepCopy (); // original code
+
   };
 
   IXMLNode xPoint = in_target_navaid.p.node.deepCopy();
@@ -6133,7 +5496,9 @@ void
 RandomEngine::gen_briefer_phase_03_add_desc(std::map<int, NavAidInfo>& inout_targets, const bool flag_has_wet_target)
 {
   if (inout_targets.empty() || !inout_targets.contains(0) || !inout_targets.contains(1))
+  {
     return;
+  }
 
 
   // FYI:
@@ -6147,7 +5512,25 @@ RandomEngine::gen_briefer_phase_03_add_desc(std::map<int, NavAidInfo>& inout_tar
       cumulative_location_desc_s = fmt::format("(start): {}.\n", inout_targets[i1].get_loc_desc());
     else
       cumulative_location_desc_s.append(inout_targets[i1].get_loc_desc()).append(".\n");
-  }
+
+    // validate briefer has starting attribute
+    if (i1 == 1) // validate starting leg
+    {
+      // get STARTING_LEG from briefer
+      if (!inout_targets[0].fpln_xml_target_leg_node.isEmpty())
+      {
+        const auto starting_leg_from_briefer = Utils::readAttrib( inout_targets[0].fpln_xml_target_leg_node, mxconst::get_ATTRIB_STARTING_LEG(), "");
+        if (starting_leg_from_briefer.empty())
+        {
+          const auto leg_index_1_name = Utils::readAttrib( inout_targets[1].fpln_xml_target_leg_node, mxconst::get_ATTRIB_NAME(), "");
+          Utils::xml_set_attribute_in_node_asString(inout_targets[0].fpln_xml_target_leg_node, mxconst::get_ATTRIB_STARTING_LEG(), leg_index_1_name, inout_targets[0].fpln_xml_target_leg_node.getName());
+        }
+      }
+    }
+
+  } // end loop over all targets
+
+
 
   std::string briefer_desc = mxUtils::trim(inout_targets[0].fpln_expected_location_data.desc, ""); // v25.09.2 use the description from the <briefer_and_start_location>
 
@@ -6426,6 +5809,7 @@ RandomEngine::gen_message_with_special_keywords_static(std::string inMessage, mi
     mapReplaceMessageKeywords["{distance}"]        = (in_target_navaid.fpln_distance_between_prev_and_current_navaid <= 0.0) ? "n/a" : (Utils::formatNumber<double>(in_target_navaid.fpln_distance_between_prev_and_current_navaid, 0) + "nm");
     // v26.03.1 ramp
     mapReplaceMessageKeywords["{ramp}"]        = (in_target_navaid.ramp_info.uq_name.empty())? "" : in_target_navaid.ramp_info.uq_name;
+    mapReplaceMessageKeywords["{ramp_info}"]        = (in_target_navaid.ramp_info.uq_name.empty())? "" : fmt::format("Ramp info: {}", in_target_navaid.getRampInfo());
 
     for (const auto& [stringToModify, stringToReplaceWith] : mapReplaceMessageKeywords) // replace all special keywords
     {
@@ -6748,11 +6132,14 @@ RandomEngine::gen_2nm_to_N_nm_message(int& seq_trig, int& seq_msg, NavAidInfo& i
       return fmt::format("You are nearing the search area. [{}]. The target should be somewhere around the suggested location.", inout_target_na.get_skewed_desc());
 
     // if we have a unique target location description, we should use it, or else, we will use a generic message.
-    const std::string target_description = (inout_target_na.nav_aid_has_unique_name())
-                                             ? fmt::format("You are nearing {}", inout_target_na.get_loc_desc())
+    const std::string target_description = (inout_target_na.nav_aid_has_unique_name()) ? 
+                                             fmt::format("You are nearing {}{}", inout_target_na.get_loc_desc(), 
+                                                                                        (inout_target_na.ramp_info.uq_name.empty())? ""
+                                                                                               : fmt::format("(ramp: {})", inout_target_na.ramp_info.uq_name)
+                                                                                               )
                                              : "You are nearing the target location.";
 
-    return fmt::format("{}\t{}", target_description,
+    return fmt::format("{}\n{}", target_description,
                        (flag_wp_type_is_land_hover) ? "Look for a landing spot near the target. Alternatively, you may hover above it." : "Prepare for landing.");
   };
   const std::string message_text = lmbda_get_message_text(); // v25.09.2 return regular or skewed related text
@@ -6803,10 +6190,8 @@ RandomEngine::gen_2nm_to_N_nm_message(int& seq_trig, int& seq_msg, NavAidInfo& i
   };
 
   const auto distance_in_meters = lmbda_get_trigger_radius_based_on_rw_data_in_mt();
-
-  // const std::string trigger_name  = fmt::format ("trig_{}_leg_{}_near_target_2m", seq_trig, inout_target_na.fpln_seq );
+  
   const std::string trigger_name = fmt::format("trig_{}_{}", seq_trig, message_name); // v25.09.2 the trig name will reflect a skewed position
-  // const std::string radius_mt_2nm = fmt::format("{}", 2.0f * missionx::nm2meter);
   const std::string radius_in_nm = fmt::format("{}", distance_in_meters);
 
   // Prepare landing trigger attributes
@@ -7682,12 +7067,9 @@ RandomEngine::parse_expected_location(const IXMLNode& in_xml_leg_from_template, 
       }
 
       // Validate and fix if min > max
-      // if (data.nm_between_min >=0 && data.nm_between_max >=0 )
       if (data.nm_between_min >= 0 && data.nm_between_max >= 0)
       {
         mxUtils::mx_eval_min_max(data.nm_between_min, data.nm_between_max);
-        // if (data.nm_between_min > data.nm_between_max)
-        //   std::swap(data.nm_between_min, data.nm_between_max);
       }
     } // end "nm_between"
 
@@ -7925,7 +7307,6 @@ RandomEngine::gen_get_targets_using_osm_queries_from_a_thread(missionx::base_thr
       else
       {
         flag_all_osm_queries_are_done = true;
-        // break; // Should exit the "while" loop
       }
     } // end if inout_osm_query is valid
     else
@@ -8042,8 +7423,10 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
     //  >> GET TARGETS  <<  - CALL GENERIC OVERPASS - Step 2
     // ----------------------
     navaid_targets = gen_get_targets_using_osm_queries_from_a_thread(&RandomEngine::random_thread_state, osm_gen_xml_root_node, osm_query, RandomEngine::shared_navaid_info);
-    if (!navaid_targets.empty())
+    if (!navaid_targets.empty() || navaid_targets.size() > 1)
       break; // Exit loop
+
+    Log::logMsgThread( fmt::format("[{}] There is an issue with the gathered osm targets. Overall gathered targets: {}. Will try again.", __func__, navaid_targets.size()));
   } // end loop over shuffled "q" nodes
 
 
@@ -8058,6 +7441,12 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
   if (navaid_targets.empty())
   {
     out_func_result.addErrMsg("No valid targets were found. Aborting.", true);
+    return out_func_result;
+  }
+
+  if (navaid_targets.size() < 2)
+  {
+    out_func_result.addErrMsg(fmt::format("[{}] Not enough valid targets were found ({}). Aborting.", __func__, navaid_targets.size()), true);
     return out_func_result;
   }
 
@@ -8165,6 +7554,22 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
       continue;
     }
 
+    // // validate briefer has starting attribute
+    // if (indx == 1) // validate starting leg
+    // {
+    //   // get STARTING_LEG from briefer
+    //   if (navaid_targets.contains(0) && !navaid_targets[0].fpln_xml_target_leg_node.isEmpty())
+    //   {
+    //     const auto starting_leg_from_briefer = Utils::readAttrib( navaid_targets[0].fpln_xml_target_leg_node, mxconst::get_ATTRIB_STARTING_LEG(), "");
+    //     if (starting_leg_from_briefer.empty())
+    //     {
+    //       const auto leg_index_1_name = Utils::readAttrib( target_navaid.fpln_xml_target_leg_node, mxconst::get_ATTRIB_NAME(), "");
+    //       Utils::xml_set_attribute_in_node_asString(navaid_targets[0].fpln_xml_target_leg_node, mxconst::get_ATTRIB_STARTING_LEG(), leg_index_1_name, navaid_targets[0].fpln_xml_target_leg_node.getName());
+    //     }
+    //   }
+    //
+    // }
+
     // decide the "landing type"
     if (target_navaid.fpln_wp_template_type.empty())
     {
@@ -8177,7 +7582,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
     // todo: move script creation after all targets were generated
     if (!target_navaid.fpln_xml_inv_node.isEmpty())
     {
-      // create scripts and attach them into the <inventory> as a subelement.
+      // create scripts and attach them into the <inventory> as a sub-element.
       RandomEngine::gen_target_inventory_scripts(target_navaid, map_osm_inventory_track);
     }
 
@@ -8260,29 +7665,30 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
   gen_briefer_phase_03_add_desc(navaid_targets, flag_one_of_the_targets_above_water);
   this->xBriefer = navaid_targets[0].fpln_xml_target_leg_node.deepCopy();
 
+
   // v25.10.1 Add Cold and dark
   RandomEngine::xDrefStartColdAndDark = gen_set_and_get_start_cold_and_dark(inRootTemplate, navaid_targets[1]);
 
   // loop over all inventories and add to the global xInventories node
-  for (auto& [key, nav] : navaid_targets)
+  for (auto& nav : navaid_targets | std::views::values)
   {
     // add to inventories
     nav.fpln_xml_inv_node = this->xInventoris.addChild(nav.fpln_xml_inv_node);
   }
 
-
-  #ifndef RELEASE
+#define DEBUG_GENERATED_CONTENT
+  #ifdef DEBUG_GENERATED_CONTENT
   Log::logMsgThread(fmt::format("-------------- RESULTS - Post {} --------------", __func__));
-  Log::logMsgThread(fmt::format("BRIEFER_INFO:\n{}\n", Utils::xml_get_node_content_as_text(x_local_BrieferInfo)));
+  // Log::logMsgThread(fmt::format("BRIEFER_INFO:\n{}\n", Utils::xml_get_node_content_as_text(x_local_BrieferInfo)));
   Log::logMsgThread(fmt::format("BRIEFER:\n{}\n", Utils::xml_get_node_content_as_text(navaid_targets[0].fpln_xml_target_leg_node))); // we store the briefer in [0]
-  Log::logMsgThread(fmt::format("TRIGGERS:\n{}\n", Utils::xml_get_node_content_as_text(this->xTriggers)));
-  Log::logMsgThread(fmt::format("OBJECTIVES:\n{}\n", Utils::xml_get_node_content_as_text(this->xObjectives)));
-  Log::logMsgThread(fmt::format("FLIGHT LEGS:\n{}\n", Utils::xml_get_node_content_as_text(this->xFlightLegs)));
-  Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventoris)));
-  Log::logMsgThread(fmt::format("GPS:\n{}\n", Utils::xml_get_node_content_as_text(this->xGPS)));
+  // Log::logMsgThread(fmt::format("TRIGGERS:\n{}\n", Utils::xml_get_node_content_as_text(this->xTriggers)));
+  // Log::logMsgThread(fmt::format("OBJECTIVES:\n{}\n", Utils::xml_get_node_content_as_text(this->xObjectives)));
+  // Log::logMsgThread(fmt::format("FLIGHT LEGS:\n{}\n", Utils::xml_get_node_content_as_text(this->xFlightLegs)));
+  // Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventoris)));
+  // Log::logMsgThread(fmt::format("GPS:\n{}\n", Utils::xml_get_node_content_as_text(this->xGPS)));
   Log::logMsgThread(fmt::format("-------------- END RESULTS - {} --------------", __func__));
-  #endif // !RELEASE
-
+  #endif // DEBUG_GENERATED_CONTENT
+#undef DEBUG_GENERATED_CONTENT
 
   return out_func_result = true;
 }
@@ -8369,7 +7775,7 @@ RandomEngine::gen_prepare_mission_based_on_oilrig(IXMLNode& inRootTemplate, IXML
   // ----------------------
   // -- Add <briefer> node - Start Location
   // ----------------------
-  // navaid_targets[0].fpln_navaid_was_already_prepared = true; // force flag ?? do we need to add this ?
+ 
   gen_briefer_phase_02_base_node_from_navaid(navaid_targets[0], RandomEngine::shared_navaid_info, flag_one_of_the_targets_above_water);
 
   // ----------------------
@@ -8492,7 +7898,7 @@ RandomEngine::gen_prepare_mission_based_on_oilrig(IXMLNode& inRootTemplate, IXML
   }
 
 
-  #ifndef RELEASE
+ #ifndef DEBUG_GENERATED_CONTENT
   Log::logMsgThread(fmt::format("-------------- RESULTS OIL-RIG - Post {} --------------", __func__));
   Log::logMsgThread(fmt::format("BRIEFER_INFO:\n{}\n", Utils::xml_get_node_content_as_text(x_local_BrieferInfo)));
   Log::logMsgThread(fmt::format("BRIEFER:\n{}\n", Utils::xml_get_node_content_as_text(navaid_targets[0].fpln_xml_target_leg_node))); // we store the briefer in [0]
@@ -8920,7 +8326,11 @@ PICK_RANDOM_OSM_BBOX:
 
     Log::logMsgThread("[overpass] WAYS URL: " + url_s + "\n");
 
-    const auto result_s = missionx::data_manager::fetch_overpass_info(url_s, err);
+    // url_s includes the "overpass url" + ?data=..."
+    const auto st_curl_result = missionx::data_manager::fetch_overpass_info(url_s);
+    const auto result_s       = st_curl_result.result_text;
+    err                       = st_curl_result.request_err;
+
     if (missionx::RandomEngine::random_thread_state.flagAbortThread)
       return false;
 
@@ -9053,7 +8463,16 @@ PICK_OSM_CHILD_NODE:
 
             // Get <node> information using <ref id="xxx" /> value
             const std::string node_url_s    = stored_overpass_url + "?data=node(id:" + node_id_s + ");out;";
-            const std::string node_result_s = missionx::data_manager::fetch_overpass_info(node_url_s, err);
+
+            // --------------
+            // CURL Call
+            // --------------
+            
+            //const std::string node_result_s = missionx::data_manager::fetch_overpass_info(node_url_s, err);
+            const auto        st_curl_result = missionx::data_manager::fetch_overpass_info(node_url_s);
+            const std::string node_result_s  = st_curl_result.result_text;
+            err                              = st_curl_result.request_err;
+
             if (missionx::RandomEngine::random_thread_state.flagAbortThread)
               return false;
 
@@ -9279,7 +8698,12 @@ PICK_OSM_CHILD_NODE:
             Log::logMsgThread("[overpass] Fetch ways around navaid URL: \n" + around_url_s + "\n");
             #endif // !RELEASE
 
-            const std::string around_result_s = missionx::data_manager::fetch_overpass_info(around_url_s, err);
+            //const std::string around_result_s = missionx::data_manager::fetch_overpass_info(around_url_s, err);
+            const auto st_curl_result  = missionx::data_manager::fetch_overpass_info(around_url_s);
+            const auto around_result_s = st_curl_result.result_text;
+            err                        = st_curl_result.request_err;
+
+
             if (err.empty() && !around_result_s.empty())
               outNavAid.xml_osm_around = iDom.parseString(around_result_s.c_str()).deepCopy();
 
@@ -10024,8 +9448,6 @@ RandomEngine::gen_target_base_on_icao_or_near_types(NavAidInfo&                 
 
   // Prepare distance to target
   // location_value_d has precedence over nm_between, unless we defined it in the setup flag_override_random_target_min_dist. we will use nm_between if location_value_d is smaller than 1.0nm
-  // double nm_random_distance_d         = 1.5;
-  // double nm_max_distance_osm_radius_d = 0.0; // will hold the expected max radius nm value for OSM based legs
 
   // validate location_max_distance_d
   if (location_value_d > location_max_distance_d)
@@ -10346,8 +9768,7 @@ RandomEngine::gen_target_or_last_flight_leg_base_on_xy_or_osm(NavAidInfo&       
 
   outNewNavInfo.synchToPoint(true);
 
-  // if (outNewNavInfo.lat == 0.0f || outNewNavInfo.lon == 0.0f)
-
+  // validation
   if (!outNewNavInfo.is_lat_lon_valid())
   {
     outNewNavInfo.init();
@@ -10362,9 +9783,6 @@ RandomEngine::gen_target_or_last_flight_leg_base_on_xy_or_osm(NavAidInfo&       
 
   return true;
 }
-
-
-// -----------------------------------
 
 // -----------------------------------
 } /* namespace missionx */

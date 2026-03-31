@@ -407,7 +407,7 @@ public:
 
   std::string getRampInfo()
    {
-     return fmt::format("Gate Type: {}, For planes: {}, ramp name: {}", this->ramp_info.gate, this->ramp_info.ramp_for_planes, this->ramp_info.uq_name);
+     return fmt::format("Gate Type: {}, For planes: {}, Ramp name: [{}]", this->ramp_info.gate, this->ramp_info.ramp_for_planes, this->ramp_info.uq_name);
    }
 
   std::string get_loc_desc() const
@@ -890,6 +890,9 @@ void copy_target_nav_data_only (missionx::NavAidInfo &in_navaid)
   this->flag_fetched_from_webosm                 = in_navaid.flag_fetched_from_webosm;
   this->flag_navDataFetchedFromXPLMGetNavAidInfo = in_navaid.flag_navDataFetchedFromXPLMGetNavAidInfo;
   this->flag_picked_random_lat_long              = in_navaid.flag_picked_random_lat_long;
+
+  // v26.03.1 copy ramp
+  this->ramp_info = in_navaid.ramp_info;
 
   if (!in_navaid.getID ().empty () && this->getNavAidName ().empty ())
     this->setID (in_navaid.getID ());

@@ -65,23 +65,21 @@ namespace missionx
 // v25.06.1 added the structs namespace
 namespace structs
 {
-  // struct strct_curl_param
-  // {
-  //   int curl_code = 0; // store ::CURLCode
-  //   mx_property_type param_type {mx_property_type::MX_UNKNOWN};
-  //   std::string param_value_str {""};
-  // };
-  //
-  //
-  // struct strct_curl_result
-  // {
-  //   int         request_code = 0;
-  //   std::string result_text {""};
-  //   IXMLNode    result_node{IXMLNode::emptyIXMLNode};
-  //
-  //   strct_curl_result () {}
-  //
-  // };
+
+  typedef struct curl_result_strct_def
+  {
+    ::CURLcode  res_curl = CURLE_FAILED_INIT;
+    std::string result_text;
+    std::string request_err;
+
+    void reset() 
+    {
+      res_curl = CURLE_FAILED_INIT;
+      result_text.clear();
+      request_err.clear();
+    }
+  } strct_curl_result;
+
 
   struct strct_osm_query
   {
@@ -1215,8 +1213,8 @@ public:
   static std::vector<std::string> vecOverpassUrls;               // v3.0.255.4.1
   static int                      overpass_user_picked_combo_i;  // v3.0.255.4.1
   static int                      overpass_last_url_indx_used_i; // v3.0.255.4.1
-  static std::string              fetch_overpass_info(const std::string& in_url_s, std::string& outError, const std::string & in_separate_data_from_utl = ""); // This function is part of the RandomEngine class call, which is threaded already.
-  static std::string              fetch_overpass_info2(const std::string& in_url_s, std::string& outError); // This function is part of the RandomEngine class call, which is threaded already.
+  static missionx::structs::strct_curl_result     fetch_overpass_info(const std::string& in_url_s, const std::string& in_separate_data_from_url = ""); // This function is part of the RandomEngine class call, which is threaded already.
+  // static std::string              fetch_overpass_info2(const std::string& in_url_s, std::string& outError); // This function is part of the RandomEngine class call, which is threaded already.
 
   // v25.06.1 Use the sqlite db information to find the nearest navaid
   static void fetch_nearest_osm_navaid_from_sqlite (missionx::NavAidInfo *inFrom_navaid, missionx::NavAidInfo *out_navaid);
@@ -1232,7 +1230,6 @@ public:
   static std::vector<missionx::mx_stats_data>               get_landing_stats_as_vec(); // v3.303.8.3
   static missionx::GatherStats                              gather_stats;               // v3.0.255.1
 
-  //static bool fetch_does_airport_has_valid_rw_based_on_filters_sqlite(missionx::NavAidInfo* inFrom_navaid, std::string* inFilter, std::string* outStatusMessage);
   static void reset_runway_search_filter();
 
   // cURL  
@@ -1435,10 +1432,9 @@ public:
   static void fetch_overpass_info_analyze_thread(missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q, const std::map<missionx::enums::mx_osm_region, missionx::structs::BBox>& in_map_bbox);
 
   // 25.12.1 The function should be called from a thread. It should initialize the curl object and fetch OSM data
-  // static missionx::structs::strct_curl_result fetch_overpass_data (std::unordered_map<int, missionx::structs::strct_curl_param> &curl_data_map, const std::string & in_base_url, const std::string & in_url_query);
-
   // The function will fetch OSM information from local cache folder or the web. Make sure to initialize the "cache_folder" in the "*q" parameter before calling this function.
   static void fetch_ways_and_target_node_from_overpass_thread (missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
+  static void fetch_ways_and_target_node_from_overpass_thread3 (missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
   static void fetch_ways_and_target_node_from_overpass_thread2 (missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
 
 
