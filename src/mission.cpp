@@ -750,7 +750,7 @@ missionx::Mission::init()
   }
 
 
-  // v3.303.8.3 Authorization Key   
+  // v3.303.8.3 DatabaseFlightplan Authorization Key
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY()).isEmpty())
   {
     Utils::xml_search_and_set_node_text(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY(), "", mxUtils::formatNumber<int>(static_cast<int> (missionx::mx_property_type::MX_STRING)), true);
@@ -811,6 +811,13 @@ missionx::Mission::init()
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISPLAY_UI_FPS()).isEmpty())
   {
     missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_DISPLAY_UI_FPS(), true);
+    missionx::system_actions::store_plugin_options();
+  }
+
+  // v26.04.1 Autoload Simbrief extra data into notes
+  if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SIMBRIEF_AUTO_LOAD_INTO_NOTES()).isEmpty())
+  {
+    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_SETUP_SIMBRIEF_AUTO_LOAD_INTO_NOTES(), false);
     missionx::system_actions::store_plugin_options();
   }
 

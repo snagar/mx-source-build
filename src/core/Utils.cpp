@@ -605,29 +605,93 @@ missionx::Utils::extractUnitsFromString(const std::string& inNumWithUnits, std::
 
 // -------------------------------------------
 
-std::string Utils::wrap_text(const std::string& text, const size_t& max_width)
+// std::string Utils::wrap_text(const std::string& text, const size_t& max_width)
+// {
+//   std::istringstream words(text);
+//   std::ostringstream wrapped;
+//   std::string word;
+//   std::size_t line_length = 0;
+//
+//   while (words >> word) {
+//     if (line_length + word.length() + 1 > max_width) {
+//       wrapped << '\n';
+//       line_length = 0;
+//     }
+//
+//     if (line_length > 0) {
+//       wrapped << ' ';
+//       line_length++;
+//     }
+//
+//     wrapped << word;
+//     line_length += word.length();
+//   }
+//
+//   return wrapped.str();
+// }
+
+// -------------------------------------------
+
+std::string Utils::wrap_text(const std::string_view text, const size_t max_width, const missionx::enums::NewlinePolicy policy)
 {
-  std::istringstream words(text);
-  std::ostringstream wrapped;
-  std::string word;
-  std::size_t line_length = 0;
+  std::string wrapped;
+  std::string current_word;
+  size_t line_length = 0;
 
-  while (words >> word) {
-    if (line_length + word.length() + 1 > max_width) {
-      wrapped << '\n';
+  // Helper to push the current word to the output string
+  auto lmbda_flush_word = [&]() {
+    if (current_word.empty()) return;
+
+    // Determine if we need a space before this word
+    bool needs_space = (line_length > 0);
+
+    // If word doesn't fit on this line, break first
+    if (const size_t space_cost = needs_space ? 1 : 0
+      ; line_length + space_cost + current_word.length() > max_width && line_length > 0) {
+      wrapped += '\n';
       line_length = 0;
+      needs_space = false;
     }
 
-    if (line_length > 0) {
-      wrapped << ' ';
-      line_length++;
+    if (needs_space) {
+      wrapped += ' ';
+      line_length += 1;
     }
 
-    wrapped << word;
-    line_length += word.length();
+    wrapped += current_word;
+    line_length += current_word.length();
+    current_word.clear();
+  };
+
+  for (size_t i = 0; i < text.length(); ++i) {
+    char c = text[i];
+
+    if (c == '\n' || c == '\r') {
+      if (policy == missionx::enums::NewlinePolicy::Preserve) {
+        lmbda_flush_word();
+        wrapped += '\n';
+        line_length = 0;
+
+        // Handle CRLF (\r\n) so we don't get double newlines
+        if (c == '\r' && (i + 1 < text.length()) && text[i + 1] == '\n') {
+          i++;
+        }
+      } else {
+        // Treat newline as a space
+        lmbda_flush_word();
+      }
+    }
+    else if (std::isspace(static_cast<unsigned char>(c))) {
+      lmbda_flush_word();
+    }
+    else {
+      current_word += c;
+    }
   }
 
-  return wrapped.str();
+  lmbda_flush_word(); // Handle the final word
+  return wrapped;
+
 }
 
 

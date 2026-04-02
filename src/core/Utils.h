@@ -386,8 +386,8 @@ public:
 
   // -------------------------------------------
   // v26.02.1 Wrap text at a specific character length. Takes into consideration word length.
-  static std::string wrap_text(const std::string& text, const size_t &max_width);
-
+  // static std::string wrap_text(const std::string& text, const size_t &max_width);
+  static std::string wrap_text(std::string_view text, size_t max_width, missionx::enums::NewlinePolicy policy = missionx::enums::NewlinePolicy::Preserve);
   // -------------------------------------------
 
   std::map<int, std::string> static splitStringToMap(const std::string& inString, const std::string& delimateChars); // returns set of key,values. Key is seq number starting from 0... while value is string

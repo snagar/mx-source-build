@@ -541,10 +541,10 @@ public:
 
     int iNormalizedVolume_val{ mxconst::DEFAULT_SETUP_MISSION_VOLUME_I }; // v3.0.303.6
     int iMinDistanceSlider{ static_cast<int> (mxconst::SLIDER_MIN_RND_DIST) }; // init with 5
-#ifdef LIN
-    int                             iLinuxFlavor_val{ 0 }; // v3.303.8.1 - will hold the linux flavor to deal with
-    const std::vector<const char *> vecLinuxComboCodes_s{ "Debian / Ubuntu based distros like Mint, Pop!OS and the likes", "Arch based distros like Manjaro, Garuda, Endeavour and the likes", "other - not in the list" };
-#endif
+    #ifdef LIN
+    int                            iLinuxFlavor_val{0}; // v3.303.8.1 - will hold the linux flavor to deal with
+    const std::vector<const char*> vecLinuxComboCodes_s{"Debian / Ubuntu based distros like Mint, Pop!OS and the likes", "Arch based distros like Manjaro, Garuda, Endeavour and the likes", "other - not in the list"};
+    #endif
 
     // int   iPreferredFontSize{ 0 }; // v3.303.14
 
@@ -568,11 +568,12 @@ public:
 
     const char *font_list[2] = { "default - DejaVuSans", "Internal" };
     int         user_font_picked_i{ 0 };
-    std::string user_preferred_font_path_s{ "" };
+    std::string user_preferred_font_path_s;
 
     char default_scoring_buf[4096]{ "" };
     char buf_pilotName[24]{ '\0' };
     char buf_simbrief_pilot_id[10]{ '\0' }; // v25.03.3
+    bool flag_load_extra_data_from_simbrief_to_notes {false}; // v26.04.1
 
     bool            bPressedPlane;
     bool            bPressedCamera;
@@ -813,6 +814,8 @@ public:
     std::map<missionx::enums::mx_note_shortField_enum, char[SHORT_FIELD_SIZE]> mapNoteFieldShort;
     std::map<missionx::enums::mx_note_longField_enum, char[LONG_FIELD_SIZE]>   mapNoteFieldLong;
     constexpr const static auto                                                iMaxCharsInLongField = sizeof mapNoteFieldLong[missionx::enums::mx_note_longField_enum::takeoff_notes];
+    // v26.04.1
+    missionx::enums::mx_note_longField_enum fpln_picked_note {missionx::enums::mx_note_longField_enum::takeoff_notes};
 
     mx_ext_internet_fpln_strct fpln; // v25.03.3
 

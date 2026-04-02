@@ -118,7 +118,9 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
 
 
   // v25.03.3
-  this->strct_setup_layer.setSimbriefPilotID (Utils::getNodeText_type_6 (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SIMBRIEF_PILOT_ID (), "")); // initialize  Simbrief pilot ID from preference file
+  this->strct_setup_layer.setSimbriefPilotID (Utils::getNodeText_type_6 (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SIMBRIEF_PILOT_ID (), "")); // initialize Simbrief pilot ID from preference file
+  // v26.04.1
+  this->strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes =  Utils::getNodeText_type_1_5 <bool>(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SIMBRIEF_AUTO_LOAD_INTO_NOTES (), false); // initialize the flag if Simbrief extra data will be autoloaded to the notes fields
 
   // Initialize local day - always initialize to 90days and 23 o'clock. Will be re-initialized on first briefer open which provide better result.
   adv_settings_strct.iClockDayOfYearPicked = dataref_manager::getLocalDateDays ();
@@ -799,12 +801,15 @@ WinImguiBriefer::add_debug_info ()
 void
 WinImguiBriefer::add_flight_planning ()
 {
-  constexpr static const auto flagsForShortInput     = ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsNoBlank;
-  constexpr static auto       mid_btn_size_vec2_vc   = ImVec2 (80.0f, 35.0f); // middle button size (SAVE/LOAD)
-  constexpr static auto       simbrief_btn_size_vec2 = ImVec2 (45.0f, 45.0f); // Simbrief button. The size is uneven for visual symmetry
-  constexpr static auto       multiLineSize_vec2_wp  = ImVec2 (-10.0f, 37.0f); // waypoint multiline
-  constexpr static auto       multiLineSize_vec2_vi  = ImVec2 (-FLT_MIN, 70.0f); // inner multi input size
-  constexpr static auto       multiLineSize_vec2_vc  = ImVec2 (255.0f, multiLineSize_vec2_vi.y + 20.0f); // child size - for each "bottom multi line" notes
+  constexpr static const auto flagsForShortInput       = ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsNoBlank;
+  constexpr static auto       mid_btn_size_vec2_vc     = ImVec2(80.0f, 35.0f); // middle button size (SAVE/LOAD)
+  constexpr static auto       simbrief_btn_size_vec2   = ImVec2(45.0f, 45.0f); // Simbrief button. The size is uneven for visual symmetry
+  constexpr static auto       multiLineSize_vec2_wp    = ImVec2(-10.0f, 37.0f); // waypoint multiline
+  constexpr static auto       multiLineSize_vec2_vi    = ImVec2(-FLT_MIN, 70.0f); // inner multi input size
+  constexpr static auto       multiLineSize_vec2_vc    = ImVec2(255.0f, multiLineSize_vec2_vi.y + 20.0f); // child size - for each "bottom multi line" notes
+  // v26.04.1
+  constexpr static auto       multiLineSize_vec2_notes_child = ImVec2(0.0f, multiLineSize_vec2_vc.y); // Child for multiline notes
+  constexpr static auto       multiLineSize_vec2_notes_wp = ImVec2(-10.0f, multiLineSize_vec2_vi.y); // notes multiline
 
   const auto     win_size_vec2          = this->mxUiGetWindowContentWxH ();
   constexpr auto multiLineSize_vec2_wpc = ImVec2 (0.0f, 40.0f); // child size for waypoints multi line
@@ -1067,69 +1072,131 @@ WinImguiBriefer::add_flight_planning ()
   ImGui::BeginGroup ();
   {
 
-    // OPTION 2 - Three vertical items
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+    if (this->strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes)
     {
-      float i = 1.0f; // assist in calculating text header position
+      // OPTION 2.1 - Three buttons with interchangeable multi line field
+      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+      {
+        // ------------------------------------------------
+        // Display the flight stage BUTTONS: Takeoff/Cruise/Descent
+        // ------------------------------------------------
+        for (auto long_field_loop = missionx::enums::mx_note_longField_enum::takeoff_notes;  long_field_loop <= missionx::enums::mx_note_longField_enum::descent_notes; ++long_field_loop )
+        {
+          std::string buff_s = this->strct_flight_leg_info.mapNoteFieldLong[long_field_loop];
 
-      /////////////////
-      // Input items
-      ////////////////
+          // Should we highlight the button ?
+          bool b_pop_style = false;
+          if (long_field_loop == this->strct_flight_leg_info.fpln_picked_note)
+          {
+            ImGui::PushStyleColor(ImGuiCol_Button, missionx::color::color_vec4_green);
+            b_pop_style = true;
+          }
 
-      ///////// VERTICAL MULTI LINE INPUT FIELDS
-      // Headers for Takeoff/Cruise/Descent
-      std::string buff_s = this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::takeoff_notes];
+          // Display the Button for each flight stage: Takeoff/Cruise/Descent
+          if (ImGui::Button(fmt::format("{}##notes_button", (long_field_loop == enums::mx_note_longField_enum::takeoff_notes) ? "Takeoff" : (long_field_loop == enums::mx_note_longField_enum::cruise_notes) ? "Cruise" : "Descent").c_str()
+                            , ImVec2 (80.0f, 0.0f))
+            )
+            this->strct_flight_leg_info.fpln_picked_note = long_field_loop;
 
-      ImGui::TextColored (missionx::color::color_vec4_burlywood, "Takeoff Notes:");
-      ImGui::SameLine (0.0f, 5.0f);
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
-      ImGui::TextDisabled ("%s", fmt::format ("{}/{}", buff_s.length (), missionx::WinImguiBriefer::mx_flight_leg_info_layer::iMaxCharsInLongField).c_str ());
+          if (b_pop_style)
+            ImGui::PopStyleColor(1);
+          // End button highlight
+
+          ImGui::SameLine ();
+          this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
+          ImGui::TextDisabled ("%s", fmt::format ("{}/{}", buff_s.length (), missionx::WinImguiBriefer::mx_flight_leg_info_layer::iMaxCharsInLongField).c_str ());
+          this->mxUiReleaseLastFont ();
+
+          ImGui::SameLine(0.0f, 20.0f);
+        } // end loop over mx_note_longField_enum fields
+
+        ImGui::NewLine();
+
+        // ------------------------------------------------
+        // Display the multi line with the relevant text
+        // ------------------------------------------------
+        ImGui::BeginChild ("notes##NotesChild", multiLineSize_vec2_notes_child, ImGuiChildFlags_Borders, ImGuiWindowFlags_None);
+        {
+          this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+          ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_lightgoldenrodyellow);
+          if (ImGui::InputTextMultiline ("##notes_from_simbrief", this->strct_flight_leg_info.mapNoteFieldLong[this->strct_flight_leg_info.fpln_picked_note], sizeof (this->strct_flight_leg_info.mapNoteFieldLong[this->strct_flight_leg_info.fpln_picked_note]), multiLineSize_vec2_notes_wp, ImGuiInputTextFlags_AllowTabInput))
+          {
+            this->strct_flight_leg_info.setNoteLongField (this->strct_flight_leg_info.fpln_picked_note,  this->strct_flight_leg_info.mapNoteFieldLong[this->strct_flight_leg_info.fpln_picked_note] );
+          }
+          ImGui::PopStyleColor ();
+          this->mxUiReleaseLastFont ();
+        }
+        ImGui::EndChild ();
+
+      }
       this->mxUiReleaseLastFont ();
-
-
-      buff_s = this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::cruise_notes];
-      ImGui::SameLine (multiLineSize_vec2_vc.x * i + (5.0f * i));
-      ImGui::TextColored (missionx::color::color_vec4_burlywood, "%s", "Cruise Notes:");
-      ImGui::SameLine (0.0f, 5.0f);
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
-      ImGui::TextDisabled ("%s", fmt::format ("{}/{}", buff_s.length (), missionx::WinImguiBriefer::mx_flight_leg_info_layer::iMaxCharsInLongField).c_str ());
-      this->mxUiReleaseLastFont ();
-
-      i++;
-
-      buff_s = this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::descent_notes];
-      ImGui::SameLine (multiLineSize_vec2_vc.x * i + (5.0f * i));
-      ImGui::TextColored (missionx::color::color_vec4_goldenrod, "%s", "Descent Notes:");
-      ImGui::SameLine (0.0f, 5.0f);
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
-      ImGui::TextDisabled ("%s", fmt::format ("{}/{}", buff_s.length (), missionx::WinImguiBriefer::mx_flight_leg_info_layer::iMaxCharsInLongField).c_str ());
-      this->mxUiReleaseLastFont ();
-
-      // MultiLine Input for Takeoff/Cruise/Descent
-      ImGui::BeginChild ("takeoff##Child1", multiLineSize_vec2_vc, ImGuiChildFlags_Borders, ImGuiWindowFlags_None);
-      ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_bisque);
-      ImGui::InputTextMultiline ("##Departure", this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::takeoff_notes], missionx::WinImguiBriefer::mx_flight_leg_info_layer::LONG_FIELD_SIZE, multiLineSize_vec2_vi, ImGuiInputTextFlags_AllowTabInput);
-      ImGui::PopStyleColor ();
-      ImGui::EndChild ();
-
-      ImGui::SameLine (0.0f, 5.0f);
-
-      ImGui::BeginChild ("cruise##Child2", multiLineSize_vec2_vc, ImGuiChildFlags_Borders, ImGuiWindowFlags_None);
-      ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_bisque);
-      ImGui::InputTextMultiline ("##Cruise", this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::cruise_notes], missionx::WinImguiBriefer::mx_flight_leg_info_layer::LONG_FIELD_SIZE, multiLineSize_vec2_vi, ImGuiInputTextFlags_AllowTabInput);
-      ImGui::PopStyleColor ();
-      ImGui::EndChild ();
-
-      ImGui::SameLine (0.0f, 5.0f);
-
-      ImGui::BeginChild ("descent##Child3", multiLineSize_vec2_vc, ImGuiChildFlags_Borders, ImGuiWindowFlags_None);
-      ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_orange);
-      ImGui::InputTextMultiline ("##Descent", this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::descent_notes], missionx::WinImguiBriefer::mx_flight_leg_info_layer::LONG_FIELD_SIZE, multiLineSize_vec2_vi, ImGuiInputTextFlags_AllowTabInput);
-      ImGui::PopStyleColor ();
-      ImGui::EndChild ();
     }
+    else
+    {
+      // OPTION 2.2 - Three vertical items
+      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+      {
+        float i = 1.0f; // assist in calculating text header position
 
-    this->mxUiReleaseLastFont ();
+        /////////////////
+        // Input items
+        ////////////////
+
+        ///////// VERTICAL MULTI LINE INPUT FIELDS
+        // Headers for Takeoff/Cruise/Descent
+        std::string buff_s = this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::takeoff_notes];
+
+        ImGui::TextColored (missionx::color::color_vec4_burlywood, "Takeoff Notes:");
+        ImGui::SameLine (0.0f, 5.0f);
+        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
+        ImGui::TextDisabled ("%s", fmt::format ("{}/{}", buff_s.length (), missionx::WinImguiBriefer::mx_flight_leg_info_layer::iMaxCharsInLongField).c_str ());
+        this->mxUiReleaseLastFont ();
+
+
+        buff_s = this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::cruise_notes];
+        ImGui::SameLine (multiLineSize_vec2_vc.x * i + (5.0f * i));
+        ImGui::TextColored (missionx::color::color_vec4_burlywood, "%s", "Cruise Notes:");
+        ImGui::SameLine (0.0f, 5.0f);
+        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
+        ImGui::TextDisabled ("%s", fmt::format ("{}/{}", buff_s.length (), missionx::WinImguiBriefer::mx_flight_leg_info_layer::iMaxCharsInLongField).c_str ());
+        this->mxUiReleaseLastFont ();
+
+        i++;
+
+        buff_s = this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::descent_notes];
+        ImGui::SameLine (multiLineSize_vec2_vc.x * i + (5.0f * i));
+        ImGui::TextColored (missionx::color::color_vec4_goldenrod, "%s", "Descent Notes:");
+        ImGui::SameLine (0.0f, 5.0f);
+        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
+        ImGui::TextDisabled ("%s", fmt::format ("{}/{}", buff_s.length (), missionx::WinImguiBriefer::mx_flight_leg_info_layer::iMaxCharsInLongField).c_str ());
+        this->mxUiReleaseLastFont ();
+
+        // MultiLine Input for Takeoff/Cruise/Descent
+        ImGui::BeginChild ("takeoff##Child1", multiLineSize_vec2_vc, ImGuiChildFlags_Borders, ImGuiWindowFlags_None);
+        ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_bisque);
+        ImGui::InputTextMultiline ("##Departure", this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::takeoff_notes], missionx::WinImguiBriefer::mx_flight_leg_info_layer::LONG_FIELD_SIZE, multiLineSize_vec2_vi, ImGuiInputTextFlags_AllowTabInput);
+        ImGui::PopStyleColor ();
+        ImGui::EndChild ();
+
+        ImGui::SameLine (0.0f, 5.0f);
+
+        ImGui::BeginChild ("cruise##Child2", multiLineSize_vec2_vc, ImGuiChildFlags_Borders, ImGuiWindowFlags_None);
+        ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_bisque);
+        ImGui::InputTextMultiline ("##Cruise", this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::cruise_notes], missionx::WinImguiBriefer::mx_flight_leg_info_layer::LONG_FIELD_SIZE, multiLineSize_vec2_vi, ImGuiInputTextFlags_AllowTabInput);
+        ImGui::PopStyleColor ();
+        ImGui::EndChild ();
+
+        ImGui::SameLine (0.0f, 5.0f);
+
+        ImGui::BeginChild ("descent##Child3", multiLineSize_vec2_vc, ImGuiChildFlags_Borders, ImGuiWindowFlags_None);
+        ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_orange);
+        ImGui::InputTextMultiline ("##Descent", this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::descent_notes], missionx::WinImguiBriefer::mx_flight_leg_info_layer::LONG_FIELD_SIZE, multiLineSize_vec2_vi, ImGuiInputTextFlags_AllowTabInput);
+        ImGui::PopStyleColor ();
+        ImGui::EndChild ();
+      }
+
+      this->mxUiReleaseLastFont ();
+    }
   }
   ImGui::EndGroup ();
 
@@ -1252,14 +1319,22 @@ WinImguiBriefer::flc ()
       if (const missionx::mx_ext_internet_fpln_strct &fpln = data_manager::tableExternalFPLN_simbrief_vec.front (); !fpln.simbrief_route.empty ())
       {
         this->strct_flight_leg_info.setNoteShortField (missionx::enums::mx_note_shortField_enum::fromICAO, fpln.fromICAO_s);
-        this->strct_flight_leg_info.setNoteShortField (missionx::enums::mx_note_shortField_enum::fromRunway, fpln.simbrief_from_rw);
-        this->strct_flight_leg_info.setNoteShortField (missionx::enums::mx_note_shortField_enum::fromTrans, fpln.simbrief_from_trans_alt);
+        this->strct_flight_leg_info.setNoteShortField (missionx::enums::mx_note_shortField_enum::fromRunway, fpln.simbrief_origin_rw);
+        this->strct_flight_leg_info.setNoteShortField (missionx::enums::mx_note_shortField_enum::fromTrans, fpln.simbrief_origin_trans_alt);
         this->strct_flight_leg_info.setNoteShortField (missionx::enums::mx_note_shortField_enum::toICAO, fpln.toICAO_s);
-        this->strct_flight_leg_info.setNoteShortField (missionx::enums::mx_note_shortField_enum::toRunway, fpln.simbrief_to_rw);
-        this->strct_flight_leg_info.setNoteShortField (missionx::enums::mx_note_shortField_enum::toTrans, fpln.simbrief_to_trans_alt);
+        this->strct_flight_leg_info.setNoteShortField (missionx::enums::mx_note_shortField_enum::toRunway, fpln.simbrief_destination_rw);
+        this->strct_flight_leg_info.setNoteShortField (missionx::enums::mx_note_shortField_enum::toTrans, fpln.simbrief_destination_trans_alt);
 
         this->strct_flight_leg_info.setNoteLongField (missionx::enums::mx_note_longField_enum::waypoints,  Utils::wrap_text(fpln.simbrief_route, strct_flight_leg_info.WAYPOINT_MAX_WIDTH_I) );
         this->strct_flight_leg_info.setNoteLongField (missionx::enums::mx_note_longField_enum::more_info, fpln.more_info); // v25.06.1
+
+        // v26.04.1
+        if (this->strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes)
+        {
+          this->strct_flight_leg_info.setNoteLongField(missionx::enums::mx_note_longField_enum::takeoff_notes, fpln.origin_info);
+          this->strct_flight_leg_info.setNoteLongField(missionx::enums::mx_note_longField_enum::cruise_notes, fpln.cruise_info);
+          this->strct_flight_leg_info.setNoteLongField(missionx::enums::mx_note_longField_enum::descent_notes, fpln.destination_info);
+        }
 
         missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::save_notes_info);
       }
@@ -2416,6 +2491,11 @@ WinImguiBriefer::add_ui_simbrief_pilot_id ()
   const auto lmbda_save_simbrief_settings = [&] ()
   {
     Utils::xml_search_and_set_node_text (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SIMBRIEF_PILOT_ID (), std::string (this->strct_setup_layer.buf_simbrief_pilot_id), this->mxcode.STRING, true);
+    // v26.04.1
+    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_SETUP_SIMBRIEF_AUTO_LOAD_INTO_NOTES(), this->strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes);
+    // save changes
+    missionx::system_actions::store_plugin_options();
+
     this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
   };
 
@@ -2432,6 +2512,12 @@ WinImguiBriefer::add_ui_simbrief_pilot_id ()
       lmbda_save_simbrief_settings ();
     ImGui::SameLine ();
     if (ImGui::Button ("Save##SaveSimBriefButton"))
+      lmbda_save_simbrief_settings ();
+
+    // v26.04.1
+    missionx::WinImguiBriefer::HelpMarker (R"(When fetching the Simbrief flight plan, parts of the extra data will be written into the "notes" fields.)");
+    ImGui::SameLine();
+    if (ImGui::Checkbox(R"(Autoload extra data into the "notes" fields.)", &this->strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes))
       lmbda_save_simbrief_settings ();
   }
   this->mxUiReleaseLastFont ();
@@ -7925,7 +8011,7 @@ WinImguiBriefer::draw_external_fpln_screen ()
 void
 WinImguiBriefer::draw_child_ext_fpln_home_screen ()
 {
-  constexpr static const auto btn_size_vec2 = ImVec2 (200.0f, 200.0f);
+  constexpr static auto btn_size_vec2 = ImVec2 (190.0f, 190.0f);
   const auto                  win_size_vec2 = this->mxUiGetWindowContentWxH ();
 
   ImGui::Spacing ();

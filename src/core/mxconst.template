@@ -246,6 +246,7 @@ const static ^std::string ^ATTRIB_MISSION_TYPE                             ^ "mi
 
 
 const static ^std::string ^ELEMENT_METAR                                   ^ "metar"; ^// METAR
+const static ^std::string ^ELEMENT_METAR_TIME                              ^ "metar_time"; ^// METAR
 const static ^std::string ^ATTRIB_INJECT_METAR_FILE                        ^ "inject_metar_file"; ^// v3.0.224.1 used in message element and will be called once text message has been broadcasted.
 const static ^std::string ^XPLANE_METAR_FILENAME                           ^ "METAR.rwx"; ^//
 const static ^std::string ^ATTRIB_FORCE_CUSTOM_METAR_FILE                  ^ "force_custom_metar_file"; ^// bool value "0 ^ no/false; 1 ^ yes/true
@@ -857,6 +858,7 @@ const static ^std::string^               SETUP_LOCK_OVERPASS_URL_TO_USER_PICK   
 const static ^std::string^               NO_SETUP_TEXT                                          ^ "N/An/aN/An/a"; ^// v3.0.253.4.2 used with overpass combo
 const static ^std::string^               SETUP_NORMALIZED_VOLUME                                ^ "setup_normalized_volume"; ^// v3.0.303.6 Used with volume settings. Values between 1..100
 const static ^std::string^               SETUP_SIMBRIEF_PILOT_ID                                ^ "simbrief_pilot_id"; ^// Simbrief // v25.03.3 Stores Simbrief Pilot ID
+const static ^std::string^               SETUP_SIMBRIEF_AUTO_LOAD_INTO_NOTES                    ^ "simbrief_auto_load_into_notes"; ^// Simbrief // v26.04.1 Write extra data into the notes part of the flight plan screen.
 const static ^std::string^               SETUP_NORMALIZE_VOLUME_B                               ^ "setup_normalize_volume_b"; ^// v3.0.303.6 If the failure is true: then use the "setup_mission_volume" to override higher mixture values. Example, if the <mix> tag defines a volume of 0.5 and the setup volume is set to 40 (^0.4) then it will force the lower value
 const static ^std::string^               SETUP_AUTHORIZATION_KEY                                ^ "setup_authorization_key_s"; ^// v3.303.8.3 authorization key from flightplandatabase.com
 

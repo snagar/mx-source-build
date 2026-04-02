@@ -35,7 +35,7 @@ constexpr static const int MX_FEATURES_VERSION = 20260301; // Added min/max rw l
 #define SPECIAL_BUILD ""
 
 inline constexpr static auto PLUGIN_VER_MAJOR                  = "26"; // year
-inline constexpr static auto PLUGIN_VER_MINOR                  = "03"; // month
+inline constexpr static auto PLUGIN_VER_MINOR                  = "04"; // month
 inline constexpr static auto PLUGIN_VER_SUB                    = "1"; // sub-version
 inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
@@ -254,7 +254,7 @@ typedef enum class _mxNoteField
   end = _COUNT
 } mx_note_shortField_enum;
 
-typedef enum class _mxNoteLargeFields
+enum class mx_note_longField_enum
   : uint8_t
 {
   waypoints = 0,
@@ -266,7 +266,14 @@ typedef enum class _mxNoteLargeFields
   _COUNT, // ILLEGAL
   begin  = 0,
   end    = _COUNT
-} mx_note_longField_enum;
+} ;
+
+// Pre-increment: ++e
+inline mx_note_longField_enum& operator++(mx_note_longField_enum& e) {
+  using T = std::underlying_type_t<mx_note_longField_enum>;
+  e = static_cast<mx_note_longField_enum>(static_cast<T>(e) + 1);
+  return e;
+}
 
 typedef enum class _mx_action_from_trigger_enum
   : uint8_t
@@ -282,6 +289,11 @@ typedef enum class _mx_acf_line_type_enum
   station_name_line = 1,
 } mx_acf_line_type_enum;
 
+
+enum class NewlinePolicy {
+  Preserve, // Keep internal \n and \r, and wrap around them
+  Ignore    // Treat internal \n and \r as standard spaces
+};
 
 } // namespace enums
 
@@ -1021,11 +1033,16 @@ typedef struct _ext_internet_fpln_strct
   std::string simbrief_sid; // v25.03.3
   std::string simbrief_star; // v25.03.3
 
-  std::string simbrief_from_rw; // v25.03.3
-  std::string simbrief_to_rw; // v25.03.3
+  std::string simbrief_origin_rw; // v25.03.3
+  std::string simbrief_destination_rw; // v25.03.3
 
-  std::string simbrief_from_trans_alt; // v25.03.3
-  std::string simbrief_to_trans_alt; // v25.03.3
+  std::string simbrief_origin_trans_alt; // v25.03.3
+  std::string simbrief_destination_trans_alt; // v25.03.3
+
+  std::string simbrief_origin_metar; // v26.04.1
+  std::string simbrief_origin_metar_time; // v26.04.1
+  std::string simbrief_destination_metar; // v26.04.1
+  std::string simbrief_destination_metar_time; // v26.04.1
 
   std::string simbrief_enroute_burn; // v25.06.1
   std::string simbrief_reserve; // v25.06.1
@@ -1045,6 +1062,10 @@ typedef struct _ext_internet_fpln_strct
   std::string simbrief_fuel_weight; // v25.06.1
 
   std::string more_info; // v25.06.1 holds "payload, fuel and TOC data in one string
+
+  std::string origin_info; // v26.04.1
+  std::string cruise_info; // v26.04.1
+  std::string destination_info; // v26.04.1
 
 
   void reset()
@@ -1081,10 +1102,10 @@ typedef struct _ext_internet_fpln_strct
     simbrief_route_navigraph.clear();
     simbrief_sid.clear();
     simbrief_star.clear();
-    simbrief_from_rw.clear();
-    simbrief_to_rw.clear();
-    simbrief_from_trans_alt.clear();
-    simbrief_to_trans_alt.clear();
+    simbrief_origin_rw.clear();
+    simbrief_destination_rw.clear();
+    simbrief_origin_trans_alt.clear();
+    simbrief_destination_trans_alt.clear();
 
     // v25.06.1
     simbrief_costindex.clear();
@@ -1099,6 +1120,10 @@ typedef struct _ext_internet_fpln_strct
     simbrief_toc_via_airway.clear();
     simbrief_payload.clear();
     more_info.clear();
+    // v26.04.1
+    origin_info.clear();
+    cruise_info.clear();
+    destination_info.clear();
   }
 
 } mx_ext_internet_fpln_strct;

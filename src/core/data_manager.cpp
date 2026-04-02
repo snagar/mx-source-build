@@ -6423,7 +6423,7 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
           curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, 1L); // v26.01.4 force SSL
           curl_easy_setopt (curl, CURLOPT_SSL_VERIFYHOST, 2L); // v26.01.4 force SSL
         }
-        curl_easy_setopt (curl, CURLOPT_NOPROGRESS, 0L);
+        curl_easy_setopt   (curl, CURLOPT_NOPROGRESS, 0L);
 
         curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuff);
 
@@ -6506,30 +6506,40 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
 
       if (!node_origin.isEmpty ())
       {
-        auto icao_code_node = node_origin.getChildNode (mxconst::get_ELEMENT_ICAO_CODE().c_str ());
-        auto name_node      = node_origin.getChildNode (mxconst::get_ATTRIB_NAME().c_str ());
-        auto trans_alt_node      = node_origin.getChildNode (mxconst::get_ELEMENT_TRANS_ALT().c_str ());
-        auto plan_rwy_node      = node_origin.getChildNode (mxconst::get_ELEMENT_PLAN_RWY().c_str ());
+        auto icao_code_node       = node_origin.getChildNode(mxconst::get_ELEMENT_ICAO_CODE().c_str());
+        auto name_node            = node_origin.getChildNode(mxconst::get_ATTRIB_NAME().c_str());
+        auto trans_alt_node       = node_origin.getChildNode(mxconst::get_ELEMENT_TRANS_ALT().c_str());
+        auto plan_rwy_node        = node_origin.getChildNode(mxconst::get_ELEMENT_PLAN_RWY().c_str());
+        auto plan_metar_node      = node_origin.getChildNode(mxconst::get_ELEMENT_METAR().c_str());
+        auto plan_metar_time_node = node_origin.getChildNode(mxconst::get_ELEMENT_METAR_TIME().c_str());
 
-        fpln.fromICAO_s = Utils::xml_get_text (icao_code_node);
-        fpln.fromName_s = Utils::xml_get_text (name_node);
+        fpln.fromICAO_s = Utils::xml_get_text(icao_code_node);
+        fpln.fromName_s = Utils::xml_get_text(name_node);
 
-        fpln.simbrief_from_rw = Utils::xml_get_text (plan_rwy_node);
-        fpln.simbrief_from_trans_alt = Utils::xml_get_text (trans_alt_node);
+        fpln.simbrief_origin_rw         = Utils::xml_get_text(plan_rwy_node);
+        fpln.simbrief_origin_trans_alt  = Utils::xml_get_text(trans_alt_node);
+        fpln.simbrief_origin_metar      = Utils::xml_get_text(plan_metar_node);
+        fpln.simbrief_origin_metar_time = Utils::xml_get_text(plan_metar_time_node);
+
       }
 
       if (!node_destination.isEmpty ())
       {
-        auto icao_code_node = node_destination.getChildNode (mxconst::get_ELEMENT_ICAO_CODE().c_str ());
-        auto name_node      = node_destination.getChildNode (mxconst::get_ATTRIB_NAME().c_str ());
-        auto trans_alt_node = node_destination.getChildNode (mxconst::get_ELEMENT_TRANS_ALT().c_str ());
-        auto plan_rwy_node  = node_destination.getChildNode (mxconst::get_ELEMENT_PLAN_RWY().c_str ());
+        auto icao_code_node       = node_destination.getChildNode(mxconst::get_ELEMENT_ICAO_CODE().c_str());
+        auto name_node            = node_destination.getChildNode(mxconst::get_ATTRIB_NAME().c_str());
+        auto trans_alt_node       = node_destination.getChildNode(mxconst::get_ELEMENT_TRANS_ALT().c_str());
+        auto plan_rwy_node        = node_destination.getChildNode(mxconst::get_ELEMENT_PLAN_RWY().c_str());
+        auto plan_metar_node      = node_destination.getChildNode(mxconst::get_ELEMENT_METAR().c_str());
+        auto plan_metar_time_node = node_destination.getChildNode(mxconst::get_ELEMENT_METAR_TIME().c_str());
 
         fpln.toICAO_s = Utils::xml_get_text (icao_code_node);
         fpln.toName_s = Utils::xml_get_text (name_node);
 
-        fpln.simbrief_to_rw = Utils::xml_get_text (plan_rwy_node);
-        fpln.simbrief_to_trans_alt = Utils::xml_get_text (trans_alt_node);
+        fpln.simbrief_destination_rw         = Utils::xml_get_text(plan_rwy_node);
+        fpln.simbrief_destination_trans_alt  = Utils::xml_get_text(trans_alt_node);
+        fpln.simbrief_destination_metar      = Utils::xml_get_text(plan_metar_node);
+        fpln.simbrief_destination_metar_time = Utils::xml_get_text(plan_metar_time_node);
+
       }
 
       if (!node_alternate.isEmpty ())
@@ -6598,6 +6608,19 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
                                     , "OAT", fpln.simbrief_toc_wind_OAT
                                     , "Airway", ((fpln.simbrief_toc_via_airway.empty ())? "n/a": fpln.simbrief_toc_via_airway)
                                    ); // Right aligned: |{:>6}|
+
+      // fill origin / cruise and destination info
+      fpln.origin_info = fmt::format ("Metar Time: {}\nMetar: {}\n", fpln.simbrief_origin_metar_time, fpln.simbrief_origin_metar );
+      fpln.cruise_info = fmt::format ("Elev ft.: {}\nWind: {}\nW.ISA Dev: {}\nOAT: {}\nAirway: {}"
+                                     , fpln.simbrief_toc_elev_ft, fpln.simbrief_toc_wind
+                                     , fpln.simbrief_toc_wind_ISA, fpln.simbrief_toc_wind_OAT
+                                     , ((fpln.simbrief_toc_via_airway.empty ())? "n/a": fpln.simbrief_toc_via_airway)
+                                     );
+      fpln.destination_info = fmt::format ("Metar Time: {}\nMetar: {}\n", fpln.simbrief_destination_metar_time, fpln.simbrief_destination_metar );
+
+
+
+
 
       data_manager::tableExternalFPLN_simbrief_vec.emplace_back (fpln);
 
