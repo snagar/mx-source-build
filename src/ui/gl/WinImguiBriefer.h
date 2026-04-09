@@ -15,6 +15,31 @@ namespace missionx
 static constexpr const int MIN_RAD_UI_VALUE_MT = 5;
 static constexpr const int MAX_RAD_UI_VALUE_MT = 50000;
 
+// v26.03.1
+struct mx_header_state
+{
+  bool        bState{ false };
+  std::string title{ "n/a" };
+
+  mx_header_state () {};
+  mx_header_state (const std::string& inVal_s, const bool inBool)
+  {
+    bState = inBool;
+    title  = inVal_s;
+  }
+
+  void setState (const bool inState)
+  {
+    if (this->bState != inState)
+    {
+      this->bState ^= 1;
+
+      if (bState)
+        ImGui::SetScrollHereY ();
+    }
+  }
+};
+
 // v24.12.2
 typedef enum class _ui_inv_regions
   : int8_t
@@ -160,6 +185,8 @@ public:
   void  add_info_to_flight_leg (); // v3.305.2
   void  add_debug_info (); // v3.305.2
   void  add_flight_planning (); // v24.03.1
+  void  add_other_settings_header( const bool in_plane_is_helo, const bool bPickedMedevacMission, bool bPickedOilRigMission ); // v26.04.1
+  void  action_prepare_dynamic_mission_properties_and_call_generate_action(const float &in_distance_min, const float & in_distance_max); // v26.04.1
 
   void flc () override;
   void execAction (mx_window_actions actionCommand); // special function to handle specific requests from outside of the window
@@ -199,14 +226,103 @@ public:
   int              win_pad{ 75 }; ///< distance from left and top border
   const int        win_coll_pad{ 30 }; ///< offset of collated windows
 
-
-
-  //// user mission creation variables
-  typedef struct _user_create_mission_layer
+  // v26.04.1
+  enum class mx_act_phase_enum : uint8_t
   {
+    phase_pick = 0,
+    phase_accept
+  };
+
+  struct activity_btn_info
+  {
+    struct st_distance
+    {
+      float min {5.0f};
+      float max {50.0f};
+    };
+    struct st_targets
+    {
+      int min {1};
+      int max {1};
+    };
+
+    int          id{ -1 };
+    int          final_legs_no_to_generate {1}; // Will hold the final number of legs to generate.
+
+    st_distance  distance_min_max {5.0f, 50.0f};
+    st_targets   legs_min_max {1, 4}; // store the number of targets per "action type picked". Example: Medevac will only have 2 legs.
+
+    missionx::enums::mx_semi_activities_enum activity{missionx::enums::mx_semi_activities_enum::act_none};
+    missionx::mx_plane_types_enum            plane_type{missionx::mx_plane_types_enum::plane_type_any};
+
+    std::string  imgName;
+    std::string  label;
+    std::string  tip;
+
+
+    void reset()
+    {
+      id                        = -1;
+      final_legs_no_to_generate = 1;
+      distance_min_max          = {5.0, 50.0};
+      legs_min_max              = {1, 4};
+      activity                  = missionx::enums::mx_semi_activities_enum::act_none;
+      plane_type                = missionx::mx_plane_types_enum::plane_type_any;
+      imgName.clear();
+      label.clear();
+      tip.clear();
+    }
+
+    float randomize_max_distance() { 
+      const auto min = (distance_min_max.max - distance_min_max.min) * 0.25 + distance_min_max.min; // debug
+      return std::roundf( Utils::getRandomRealNumber(min, distance_min_max.max) );
+    }
+
+    int randomize_no_of_legs() 
+    {
+       final_legs_no_to_generate = legs_min_max.min;
+
+      if (legs_min_max.min < legs_min_max.max)
+      {
+        // randomize pick num of legs
+        final_legs_no_to_generate = Utils::getRandomIntNumber(legs_min_max.min, legs_min_max.max);
+      }
+
+      return final_legs_no_to_generate;
+
+    } // end randomize_no_of_legs
+  };
+
+  // ids: 1-4 will be kept for Helos accident, Hellos Surprise me, Hellos oilrig and any medevac activity
+  const std::list<activity_btn_info> list_semi_auto_activities = {
+    {5, 2, {20.0, 80.0}, {1, 4}, missionx::enums::mx_semi_activities_enum::act_props, missionx::mx_plane_types_enum::plane_type_props, mxconst::get_BITMAP_BTN_ACT_GA(), "GA", "Short flights around the area"},
+    {6, 1, {120.0, 800.0}, {1, 1}, missionx::enums::mx_semi_activities_enum::act_jets, missionx::mx_plane_types_enum::plane_type_jets, mxconst::get_BITMAP_BTN_ACT_JET(), "Jet", "FLying in style"},
+  };
+
+  // -------------------------------------------
+  // -- STRUCT user mission creation variables
+  // -------------------------------------------
+  struct mx_user_create_mission_layer
+  {
+    enum class mx_dynamic_fpln_screen
+  : uint8_t
+    {
+      ext_home = 0,
+      ext_option_a,
+      ext_option_b
+    };
+
     bool flag_first_time{ true };
+    mx_dynamic_fpln_screen child_screen{ mx_dynamic_fpln_screen::ext_home };
 
     mx_layer_state_enum layer_state{ missionx::mx_layer_state_enum::not_initialized }; // v3.0.253.9
+
+    // v26.04.1 semi-automated mission creation
+    mx_act_phase_enum act_phase_enum{ mx_act_phase_enum::phase_pick }; // v26.04.1
+    activity_btn_info user_semi_act_picked; // v26.04.1
+    std::string semi_mission_description; // v26.04.1
+    int                                      headerIndex{ 0 }; // v25.03.3. Used only with mapSetupHeaders
+    std::unordered_map<int, mx_header_state> mapSemiOptionsHeaders = { { headerIndex, mx_header_state ("Custom Tweaks", true) } }; // header is open by default
 
 
     int            iRadioMissionTypePicked{ static_cast<int> (missionx::mx_ui_mission_type::medevac) }; // which type of template user picked ?
@@ -258,9 +374,10 @@ public:
     }
 
 
-    _user_create_mission_layer () {}
+    mx_user_create_mission_layer() = default;
 
-  } mx_user_create_mission_layer;
+  };
+  // define the instance
   mx_user_create_mission_layer strct_user_create_layer;
 
 
@@ -277,8 +394,8 @@ public:
 
 
   // Flight plan result string
-  std::string asyncSecondMessageLine{ "" };
-  bool        flag_generatedRandomFile_success{ false }; // we use this flag to ditinguish when engine ran and finish generating a mission based on RandomEngin. We can then display the correct output in the UI
+  std::string asyncSecondMessageLine;
+  bool        flag_generatedRandomFile_success{ false }; // we use this flag to distinguish when engine ran and finish generating a mission based on RandomEngin. We can then display the correct output in the UI
 
   // Template Key
   // std::string selectedTemplateKey{ "" }; // deprecated, use: strct_generate_template_layer.selectedTemplateKey instead      // used when user picks custom or generate their own template (empty template file name)
@@ -503,8 +620,6 @@ public:
       }
     }
 
-
-
   } mx_conv_layer;
   mx_conv_layer strct_conv_layer;
 
@@ -588,30 +703,6 @@ public:
 
 
     // v3.305.3 collapse headers in a better controlled way on the scroll location. See implementation in draw_setup_layer().
-    typedef struct _mx_header_state
-    {
-      bool        bState{ false };
-      std::string title{ "n/a" };
-
-      _mx_header_state () {};
-      _mx_header_state (std::string inVal_s, bool inBool)
-      {
-        bState = inBool;
-        title  = inVal_s;
-      }
-
-      void setState (bool inState)
-      {
-        if (this->bState != inState)
-        {
-          this->bState ^= 1;
-
-          if (bState)
-            ImGui::SetScrollHereY ();
-        }
-      }
-    } mx_header_state;
-
     int                                      headerIndex{ 0 }; // v25.03.3. Used only with mapSetupHeaders
     std::unordered_map<int, mx_header_state> mapSetupHeaders = { { headerIndex, mx_header_state ("General Settings", false) }, { ++headerIndex, mx_header_state ("Simbrief & flightplandatabase.com setup", false) }, { ++headerIndex, mx_header_state ("APT data optimization", false) }, { ++headerIndex, mx_header_state ("TOOLS", false) }, { ++headerIndex, mx_header_state ("Normalize Mission Sound Volume", false) }, { ++headerIndex, mx_header_state ("OVERPASS Setup", false) }, { ++headerIndex, mx_header_state ("Medevac Setup", false) }, { ++headerIndex, mx_header_state ("External Flight Plan Setup", false) }, { ++headerIndex, mx_header_state ("Default Scoring", false) }, { ++headerIndex, mx_header_state ("Linux: Troubleshoot", false) }, { ++headerIndex, mx_header_state ("Designer: Unsaved Options", false) } };
 
@@ -915,6 +1006,7 @@ public:
     ext_simbrief
   } mx_ext_fpln_screen;
 
+  // ----- External Routes Layer -----
   typedef struct _external_routes_layer
   {
     mx_ext_fpln_screen ext_screen{ mx_ext_fpln_screen::ext_home };
@@ -965,7 +1057,7 @@ public:
   mx_generate_template_layer strct_generate_template_layer;
 
 
-  missionx::uiLayer_enum getCurrentLayer () { return this->currentLayer; }
+  missionx::uiLayer_enum getCurrentLayer () const { return this->currentLayer; }
 
 
 
@@ -1003,6 +1095,7 @@ private:
 
 
 
+
   //// Keep track of Layer change
   uiLayer_enum currentLayer{ missionx::uiLayer_enum::imgui_home_layer };
   uiLayer_enum prevBrieferLayer{ missionx::uiLayer_enum::imgui_home_layer };
@@ -1018,6 +1111,10 @@ private:
     { 7, missionx::uiLayer_enum::option_conv_fpln_to_mission, mxconst::get_BITMAP_BTN_CONVERT_FPLN_TO_MISSION_24X18 (), "Conv. FPLN", "Convert LittleNavMap FPLN to mission file." }
 
   };
+
+
+
+
 
   typedef struct _radio_plane_type
   {
@@ -1163,6 +1260,9 @@ private:
   void draw_setup_layer ();
   void draw_home_layer ();
   void draw_dynamic_mission_creation_screen ();
+  void draw_dynamic_mission_creation_screen_home ();
+  void draw_dynamic_mission_creation_screen_child_1 ();
+  void draw_dynamic_mission_creation_screen_child_2 ();
   void draw_template_mission_generator_screen ();
   void draw_flight_leg_info ();
   void child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab (); //
@@ -1388,25 +1488,28 @@ private:
   void refresh_slider_data_based_on_plane_type (missionx::mx_plane_types_enum inPlaneType); // split the code so it will be simpler to call it from different logic locations.
 
   // v3.305.3
-  void        print_tasks_ui_debug_info (missionx::Objective &inObj); // v3.305.2
-  void        print_triggers_ui_debug_info (); // v3.305.3 moved to briefer class
-  void        print_datarefs_ui_debug_info (); // v3.305.3 moved to briefer class
-  void        print_globals_ui_debug_info (); // v3.305.3
-  void        print_scripts_ui_debug_info (); // v3.305.3
-  static void print_interpolated_ui_debug_info (); // v3.305.3
-  void        print_messages_ui_debug_info (); // v3.305.4
-  static void add_ui_skip_abort_setup_checkbox (); // v3.305.3
-  static void add_designer_mode_checkbox (); // v24.3.2
-  void        add_ui_xp11_comp_checkbox (const bool &inStorePreference); // v24.12.2
-  void        add_ui_simbrief_pilot_id (); // v25.03.3
-  void        add_ui_flightplandb_key (bool isPopup); // v25.03.3
-  void        add_ui_pick_subcategories (const std::vector<const char *> &vecToDisplay); // v25.04.1
-  void        add_ui_auto_load_checkbox (const missionx::mx_window_actions &inActionToExecute = missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS); // v25.04.2
-  int         add_ui_two_option_buttons (bool &bOptA, bool &bOptB, const int &returnValueForA, const int &returnValueForB);
-  int         add_ui_dynamic_options_buttons (const int &inout_picked_lbl, std::map<int, std::string> &map_lbl_and_values);
-  static void        add_ui_os_and_xp_clock_times (const float &in_x_pos);
-  static void        add_ui_fps ();
-  void        callNavData (std::string_view inICAO, bool bNavigatingFromOtherLayer); // v24.03.1
+  void                print_tasks_ui_debug_info(missionx::Objective& inObj); // v3.305.2
+  void                print_triggers_ui_debug_info(); // v3.305.3 moved to briefer class
+  void                print_datarefs_ui_debug_info(); // v3.305.3 moved to briefer class
+  void                print_globals_ui_debug_info(); // v3.305.3
+  void                print_scripts_ui_debug_info(); // v3.305.3
+  static void         print_interpolated_ui_debug_info(); // v3.305.3
+  void                print_messages_ui_debug_info(); // v3.305.4
+  static void         add_ui_skip_abort_setup_checkbox(); // v3.305.3
+  static void         add_designer_mode_checkbox(); // v24.3.2
+  void                add_ui_xp11_comp_checkbox(const bool& inStorePreference); // v24.12.2
+  void                add_ui_simbrief_pilot_id(); // v25.03.3
+  void                add_ui_flightplandb_key(bool isPopup); // v25.03.3
+  void                add_ui_pick_subcategories(const std::vector<const char*>& vecToDisplay); // v25.04.1
+  void                add_ui_auto_load_checkbox(const missionx::mx_window_actions& inActionToExecute = missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS); // v25.04.2
+  int                 add_ui_two_option_buttons(bool& bOptA, bool& bOptB, const int& returnValueForA, const int& returnValueForB);
+  int                 add_ui_dynamic_options_buttons(const int& inout_picked_lbl, std::map<int, std::string>& map_lbl_and_values);
+  static void         add_ui_os_and_xp_clock_times(const float& in_x_pos);
+  static void         add_ui_fps();
+  void                callNavData(std::string_view inICAO, bool bNavigatingFromOtherLayer); // v24.03.1
+  void                add_ui_semi_act_phase_1_pick (); // v26.04.1
+  void                add_ui_semi_act_phase_2_detail (); // v26.04.1
+  static void         add_ui_pick_how_many_legs ( int & inout_radio_value_ref, const std::string & in_label, const int & in_minButtons, const int & in_maxButtons); // v26.04.1
   const dataref_const dc;
 };
 

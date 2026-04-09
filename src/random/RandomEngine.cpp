@@ -8054,6 +8054,8 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
                                            double                              maxDistance_d,
                                            double                              minDistance_d)
 {
+  // Note: This function is old, and will be replaced by the "Surprise Me" flow, but it does what it has to do so far.
+
   // calculate bounding box
   // create a 1nm mesh of points on that box (each box has its own: "topLeft,topRight,bottomLeft,bottomRight" coordinates.
   // Remove the boxes that are too close to the center (less than min distance)
@@ -8197,7 +8199,7 @@ PICK_RANDOM_OSM_BBOX:
 
     if (meshSize > 1 && iTryCounter > max_boxes_to_search_i) // We try to restrict the number of boxes to search in
     {
-      Log::logMsgThread("[overpass2] Failed to find an area with valid node/way.");
+      Log::logMsgThread(fmt::format("[{}] Failed to find an area with valid node/way.", __func__ ) );
       return false;
     }
 
@@ -8324,10 +8326,11 @@ PICK_RANDOM_OSM_BBOX:
 
     const std::string url_s = stored_overpass_url + "?data=" + overpass_filter_s; // v3.0.253.9
 
-    Log::logMsgThread("[overpass] WAYS URL: " + url_s + "\n");
+    // Log::logMsgThread("[overpass] WAYS URL: " + url_s + "\n");
+    Log::logMsgThread(fmt::format("[{}] WAYS URL:: {}\n", __func__, url_s ) );
 
     // url_s includes the "overpass url" + ?data=..."
-    const auto st_curl_result = missionx::data_manager::fetch_overpass_info(url_s);
+    const auto st_curl_result = missionx::data_manager::get_curl_request_respond(url_s);
     const auto result_s       = st_curl_result.result_text;
     err                       = st_curl_result.request_err;
 
@@ -8337,7 +8340,7 @@ PICK_RANDOM_OSM_BBOX:
 
     if (!err.empty())
     {
-      Log::logMsgThread("[overpass2] Error while fetching from overpass: " + err);
+      Log::logMsgThread(fmt::format("[{}] Error while fetching from overpass: {}\n", __func__, err ) );
       goto PICK_RANDOM_OSM_BBOX;
     }
     else if (err.empty() && !result_s.empty())
@@ -8346,15 +8349,14 @@ PICK_RANDOM_OSM_BBOX:
       auto          xmlOSM             = iDom.parseString(result_s.c_str()).deepCopy();
       int           count_nodes_pick_i = 0;
 
-      if (xmlOSM.nChildNode() < 3) // osm always have note + meta, so minimum should be 3
+      if (xmlOSM.nChildNode() < 3) // osm always have note + meta, so minimum nodes should be 3
       {
         #ifndef RELEASE
         Log::logMsgThread("\n ===osm node ==>\n" + Utils::xml_get_node_content_as_text(xmlOSM) + "\n<=== end osm node ===\n");
         #endif // !RELEASE
 
-        Log::logMsgThread("[overpass] Found no valid sub node elements, will try different way box."); // debug
-        // Utils::deque_erase_item_at_index<missionx::strct_box> (meshList, rnd_box_i);
-
+        // Log::logMsgThread("[overpass] Found no valid sub node elements, will try different way box."); // debug
+        Log::logMsgThread(fmt::format("[{}] Did not find enough sub node elements, will try different way box.", __func__) ); // debug
 
         goto PICK_RANDOM_OSM_BBOX;
       }
@@ -8374,8 +8376,7 @@ PICK_OSM_CHILD_NODE:
         Log::logMsgThread("\n ===osm node ==>\n" + Utils::xml_get_node_content_as_text(xmlOSM) + "\n<=== end osm node ===\n");
         #endif // !RELEASE
 
-        Log::logMsgThread("[overpass] Found no valid sub node elements, will try different way box."); // debug
-        // Utils::deque_erase_item_at_index<missionx::strct_box> (meshList, rnd_box_i);
+        Log::logMsgThread(fmt::format("[{}] Found no valid <osm> sub node elements, will try different way box.", __func__) ); // debug
         goto PICK_RANDOM_OSM_BBOX; // pick another box
       }
       else
@@ -8418,7 +8419,9 @@ PICK_OSM_CHILD_NODE:
 
           if (iNd == 0 && iCenterTag == 0 && tagName == mxconst::get_ELEMENT_WAY_OSM()) // fetch new zone only if <way> tag has no valid sub-elements to use
           {
-            Log::logMsgThread("[overpass2] Found no <nd> element, will try different <osm> child in same box."); // debug
+            // Log::logMsgThread("[overpass2] Found no <nd> element, will try different <osm> child in same box."); // debug
+            Log::logMsgThread(fmt::format("[{}] Found no valid <nd> element, will try different <osm> child in the same box.", __func__) ); // debug
+
 
             osmChildNode.deleteNodeContent();
             goto PICK_OSM_CHILD_NODE;
@@ -8431,7 +8434,8 @@ PICK_OSM_CHILD_NODE:
             if (iCenterTag > 0)
             {
               #ifndef release
-              Log::logMsgThread("[overpass] >>> plugin will use <center> element.<<<\n"); // debug
+              // Log::logMsgThread("[overpass] >>> plugin will use <center> element.<<<\n"); // debug
+              Log::logMsgThread(fmt::format("[{}] >>> plugin will use <center> element.<<<\n", __func__ ) ); // debug
               if (!osmChildNode.isEmpty())
                 Log::logMsgThread(std::string(IXMLRenderer().getString(osmChildNode)) + "\n");
               #endif
@@ -8455,7 +8459,9 @@ PICK_OSM_CHILD_NODE:
             node_id_s = Utils::readAttrib(picked_random_target_node_ptr, mxconst::get_ATTRIB_REF_OSM(), ""); // fetch ref attribute
             if (node_id_s.empty())
             {
-              Log::logMsgThread("[overpass2] Found no 'ref' attribute in <nd>, element maybe malformed, will try other <way> in same area box."); // debug
+              // Log::logMsgThread("[overpass2] Found no 'ref' attribute in <nd>, element maybe malformed, will try other <way> in same area box."); // debug
+              Log::logMsgThread(fmt::format("[{}] No 'ref' attribute was found in <nd>, element maybe malformed, will try other <way> in same area box.", __func__ ) ); // debug
+
               osmChildNode.deleteNodeContent();
               goto PICK_OSM_CHILD_NODE;
             }
@@ -8469,7 +8475,7 @@ PICK_OSM_CHILD_NODE:
             // --------------
             
             //const std::string node_result_s = missionx::data_manager::fetch_overpass_info(node_url_s, err);
-            const auto        st_curl_result = missionx::data_manager::fetch_overpass_info(node_url_s);
+            const auto        st_curl_result = missionx::data_manager::get_curl_request_respond(node_url_s);
             const std::string node_result_s  = st_curl_result.result_text;
             err                              = st_curl_result.request_err;
 
@@ -8477,28 +8483,29 @@ PICK_OSM_CHILD_NODE:
               return false;
 
             #ifndef RELEASE
-            Log::logMsgThread("[overpass] NODE URL: " + node_url_s + "\nResult: " + node_result_s + "\n"); // debug
+            // Log::logMsgThread("[overpass] NODE URL: " + node_url_s + "\nResult: " + node_result_s + "\n"); // debug
+            Log::logMsgThread(fmt::format("[{}] NODE URL: {}\nResult: {}\n", __func__, node_url_s, node_result_s ) ); // debug
             #endif
 
 
             nodeOSM_XML = iDom2.parseString(node_result_s.c_str()).deepCopy();
             if (nodeOSM_XML.isEmpty() || node_result_s.empty())
             {
-              Log::logMsgThread("[overpass2] Failed to fetch a <node>. will try a different area box."); // debug
+              // Log::logMsgThread("[overpass2] Failed to fetch a <node>. will try a different area box."); // debug
+              Log::logMsgThread(fmt::format("[{}] Failed to fetch a <node>. will try a different area box.", __func__)); // debug
               // Utils::deque_erase_item_at_index<missionx::strct_box> (meshList, rnd_box_i);
               goto PICK_RANDOM_OSM_BBOX; // pick another box
             }
-            else
-            {
-              // store the <node> value for later use as position
-              picked_random_target_node_ptr = nodeOSM_XML.getChildNode(mxconst::get_ELEMENT_NODE_OSM().c_str()).deepCopy();
 
-              #ifndef RELEASE
-              auto wayNode_s = std::string(IXMLRenderer().getString(osmChildNode));
-              Log::logMsgThread("[overpass] Found 'ref' attributes in 'nd' elements. Will pick way based on nd ref: " + node_id_s + "\n");
-              Log::logMsgThread("[overpass] Picked Way:\n" + wayNode_s + "\n");
-              #endif // !RELEASE
-            } // end if we read <ref> and not <center> element
+            // store the <node> value for later use as position
+            picked_random_target_node_ptr = nodeOSM_XML.getChildNode(mxconst::get_ELEMENT_NODE_OSM().c_str()).deepCopy();
+
+            #ifndef RELEASE
+            auto wayNode_s = std::string(IXMLRenderer().getString(osmChildNode));
+            Log::logMsgThread(fmt::format("[{}] Found 'ref' attributes in 'nd' elements. Will pick way based on nd ref: {}\n", __func__, node_id_s ) );
+            Log::logMsgThread(fmt::format("[{}] Picked Way:\n {}\n", __func__, wayNode_s ) );
+            #endif // !RELEASE
+            // end if we read <ref> and not <center> element
           }
           // Fetch the node from OVERPASS
         }
@@ -8510,7 +8517,8 @@ PICK_OSM_CHILD_NODE:
 
         if (target_node_pos_ptr.isEmpty())
         {
-          Log::logMsgThread("[overpass2] Failed to fetch a <node>. will try a different way in same box."); // debug
+          Log::logMsgThread(fmt::format("[{}] Failed to fetch a <node>. will try a different way in same box.", __func__)); // debug
+
           osmChildNode.deleteNodeContent();
           goto PICK_OSM_CHILD_NODE;
         }
@@ -8529,13 +8537,13 @@ PICK_OSM_CHILD_NODE:
             double       nm_d               = (nm_s.empty()) ? static_cast<double>(mxconst::INT_UNDEFINED) : mxUtils::stringToNumber<double>(nm_s, 2);
 
             #ifndef RELEASE
-            Log::logMsgThread(fmt::format("[overpass2] Test Distance. Target distance: {}, Allowed distances[nm/between] [nm: {}/ between: {} and {}]", distance_to_target, (nm_d > 0.0) ? mxUtils::formatNumber<double>(nm_d, 2) : "Not Defined", minDistance_d, maxDistance_d)); // debug
+            Log::logMsgThread(fmt::format("[{}] Test Distance. Target distance: {}, Allowed distances[nm/between] [nm: {}/ between: {} and {}]", __func__, distance_to_target, (nm_d > 0.0) ? mxUtils::formatNumber<double>(nm_d, 2) : "Not Defined", minDistance_d, maxDistance_d)); // debug
             #endif
 
             if (!missionx::RandomEngine::gen_get_is_navaid_in_a_valid_distance(distance_to_target, nm_d, minDistance_d, maxDistance_d))
             {
               #ifndef RELEASE
-              Log::logMsgThread(fmt::format("[overpass2] target picked is not in the correct distance. Picked target in: {}, nm: {}, or between: {} and {}", distance_to_target, nm_d, minDistance_d, maxDistance_d)); // debug
+              Log::logMsgThread(fmt::format("[{}] target picked is not in the correct distance. Picked target in: {}, nm: {}, or between: {} and {}", __func__, distance_to_target, nm_d, minDistance_d, maxDistance_d)); // debug
               goto PICK_OSM_CHILD_NODE;
               #endif
             }
@@ -8564,21 +8572,22 @@ PICK_OSM_CHILD_NODE:
           if (!lmbda_was_expected_slope_correlate_to_force_type())
           {
             if (designer_force_type_attrib == RandomEngine::mx_which_type_to_force::force_hover)
-              Log::logMsgThread("[overpass2] Failed slope test for overpass node. Found slope: " + mxUtils::formatNumber<double>(slope_d, 2) + ", in: " + outNavAid.get_latLon_name()); // debug
+              Log::logMsgThread( fmt::format("[{}] Failed slope test for overpass node. Found slope: {:.2f}, in: {}", __func__, slope_d, outNavAid.get_latLon_name() ) ); // debug
+              // Log::logMsgThread("[overpass2] Failed slope test for overpass node. Found slope: " + mxUtils::formatNumber<double>(slope_d, 2) + ", in: " + outNavAid.get_latLon_name()); // debug
             else
-              Log::logMsgThread("[overpass2] Failed flat terrain probe for overpass node. Found slope: " + mxUtils::formatNumber<double>(slope_d, 2) + ", in: " + outNavAid.get_latLon_name()); // debug
+              Log::logMsgThread( fmt::format("[{}] Failed flat terrain probe for overpass node. Found slope: {:.2f}, in: {}", __func__, slope_d, outNavAid.get_latLon_name() ) ); // debug
+              // Log::logMsgThread("[overpass2] Failed flat terrain probe for overpass node. Found slope: " + mxUtils::formatNumber<double>(slope_d, 2) + ", in: " + outNavAid.get_latLon_name()); // debug
 
             osmChildNode.deleteNodeContent();
 
             if (count_nodes_pick_i < number_of_times_to_loop_over_force_template_type_i)
               goto PICK_OSM_CHILD_NODE;
-            else
-            {
-              Log::logMsgThread("[overpass2] Slopped node failed for: " + mxUtils::formatNumber<int>(number_of_times_to_loop_over_force_template_type_i) + " times, Will try other <way> box"); // v3.0.253.6
 
-              // Utils::deque_erase_item_at_index<missionx::strct_box> (meshList, rnd_box_i);
-              goto PICK_RANDOM_OSM_BBOX; // pick another box
-            }
+            Log::logMsgThread( fmt::format("[{}] Slopped node failed for: {} times, Will try other <way> box", __func__, number_of_times_to_loop_over_force_template_type_i) ); // v3.0.253.6
+            // Log::logMsgThread("[overpass2] Slopped node failed for: " + mxUtils::formatNumber<int>(number_of_times_to_loop_over_force_template_type_i) + " times, Will try other <way> box"); // v3.0.253.6
+
+            goto PICK_RANDOM_OSM_BBOX; // pick another box
+
           }
         } // end force loop type
 
@@ -8699,9 +8708,9 @@ PICK_OSM_CHILD_NODE:
             #endif // !RELEASE
 
             //const std::string around_result_s = missionx::data_manager::fetch_overpass_info(around_url_s, err);
-            const auto st_curl_result  = missionx::data_manager::fetch_overpass_info(around_url_s);
-            const auto around_result_s = st_curl_result.result_text;
-            err                        = st_curl_result.request_err;
+            const auto around_st_curl_result  = missionx::data_manager::get_curl_request_respond(around_url_s);
+            const auto around_result_s = around_st_curl_result.result_text;
+            err                        = around_st_curl_result.request_err;
 
 
             if (err.empty() && !around_result_s.empty())

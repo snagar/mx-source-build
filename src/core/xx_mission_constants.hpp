@@ -168,6 +168,29 @@ namespace enums
 //   loaded_from_random = 2
 // } mx_from_where_mission_was_loaded;
 
+enum class mx_semi_activities_enum
+  : uint8_t
+{
+  act_none = 0,
+  act_helos_cargo_oilrig,
+  act_helos_medevac_oilrig,
+  act_helos_medevac_accident,
+  act_helos_medevac_surprise_me,
+  act_props,
+  act_props_float,
+  act_turboprops,
+  act_jets,
+  act_airline_short,
+  act_airline_medium,
+  act_heavy_airline_medium,
+  act_heavy_airline_long,
+  act_cargo_short,
+  act_cargo_medium,
+  act_cargo_heavy_medium,
+  act_cargo_heavy_long,
+  ENUM_COUNT
+} ;
+
 
 typedef enum class rnd_user_picked_mission_type_enum
   : int8_t

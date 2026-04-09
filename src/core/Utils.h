@@ -45,11 +45,15 @@ namespace missionx
 // https://stackoverflow.com/questions/21892934/how-to-assert-if-a-stdmutex-is-locked
 class mutex : public std::mutex
 {
+private:
+  bool is_mutex_locked = false;
+  std::atomic<std::thread::id> m_holder;
 public:
   void lock()
   {
     std::mutex::lock();
     m_holder = std::this_thread::get_id();
+    is_mutex_locked = true;
   }
 
 
@@ -58,16 +62,16 @@ public:
   {
     m_holder = std::thread::id();
     std::mutex::unlock();
+    is_mutex_locked = false;
   }
 
 
   /**
    * @return true iff the mutex is locked by the caller of this method. */
-  bool locked_by_caller() const { return m_holder == std::this_thread::get_id(); }
+  [[nodiscard]] bool locked_by_caller() const { return m_holder == std::this_thread::get_id(); }
 
+  [[nodiscard]] bool is_locked() const { return is_mutex_locked;}
 
-private:
-  std::atomic<std::thread::id> m_holder;
 };
 
 } // namespace missionx

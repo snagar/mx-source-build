@@ -407,7 +407,7 @@ WinImguiBriefer::add_ui_abort_mission_creation_button (missionx::mx_window_actio
   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_aliceblue);
   iStyle++;
   if (ImGui::Button (this->LBL_ABORT_THREAD_LABEL.c_str ()))
-    this->execAction (inActionToExecute); // should hide the window
+    this->execAction (inActionToExecute);
   ImGui::PopStyleColor (iStyle);
 }
 
@@ -1287,6 +1287,169 @@ WinImguiBriefer::add_flight_planning ()
   ImGui::EndGroup ();
 }
 
+
+// -------------------------------------------
+
+
+void WinImguiBriefer::add_other_settings_header(const bool in_plane_is_helo, const bool bPickedMedevacMission, bool bPickedOilRigMission)
+{
+  if (ImGui::CollapsingHeader("Other Settings"))
+  {
+
+    // ------------------------
+    // Compatibility - Inventory XP11
+    // ------------------------
+    this->add_ui_xp11_comp_checkbox(false); // v24.12.2
+    ImGui::Separator();
+
+    ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_white); // internal color
+
+    // ------------------------
+    // -- Countdown
+    // ------------------------
+    if ( (in_plane_is_helo && bPickedMedevacMission) || (bPickedOilRigMission))
+    {
+      // ImGui::SameLine(0.0f, 100.0f);
+      ImGui::Checkbox("Add Countdown", &this->strct_setup_layer.bAddCountdown);
+      this->mx_add_tooltip(missionx::color::color_vec4_yellow, "Add random countdown to each leg to add to the challenge.");
+
+      ImGui::Separator();
+    }
+    else
+      ImGui::NewLine();
+
+
+    // ------------------------
+    // -- Suppress Distance Messages
+    // ------------------------
+    this->add_ui_suppress_distance_messages_checkbox_ui(); // v25.02.1
+    ImGui::Separator();
+
+    // ------------------------
+    // -- GPS Waypoints
+    // ------------------------
+
+    ImGui::Checkbox("Generate GPS waypoints.", &this->strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12
+    ImGui::SameLine(0.0f, 90.0f);
+    this->add_ui_expose_all_gps_waypoints();
+
+    this->add_ui_auto_load_checkbox(); // v25.04.2
+
+    // ------------------------
+    // -- Default Weight
+    // ------------------------
+    ImGui::NewLine();
+    // ImGui::Checkbox("Add default base weights.\n(Not advisable for planes > GAs)", &this->adv_settings_strct.flag_add_default_weight_settings);
+    this->add_ui_default_weights();
+
+    ImGui::PopStyleColor(1); // pop-out internal text color settings
+  } // end "Other Settings" Collapsing Header
+
+} // add_other_settings_header
+
+// -------------------------------------------
+
+void WinImguiBriefer::action_prepare_dynamic_mission_properties_and_call_generate_action(const float& in_distance_min, const float& in_distance_max) 
+{
+  IXMLNode node_ptr = missionx::data_manager::prop_userDefinedMission_ui.node;
+
+  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int>(mxconst::get_PROP_MED_CARGO_OR_OILRIG(), strct_user_create_layer.iRadioMissionTypePicked);
+  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int>(mxconst::get_PROP_MISSION_SUBCATEGORY(), strct_user_create_layer.iMissionSubCategoryPicked); // v3.303.14
+  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int>(mxconst::get_PROP_PLANE_TYPE_I(), static_cast<int>(strct_user_create_layer.iRadioPlaneType));
+  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int>(mxconst::get_PROP_NO_OF_LEGS(), strct_user_create_layer.iNumberOfFlighLegs);
+  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double>(mxconst::get_PROP_MIN_DISTANCE_SLIDER(), in_distance_min);
+  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double>(mxconst::get_PROP_MAX_DISTANCE_SLIDER(), in_distance_max);
+  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_ADD_COUNTDOWN(), false); // We set a default value for helos/planes with cargo missions. LAter we will change it if needed
+  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_GENERATE_GPS_WAYPOINTS(), this->strct_cross_layer_properties.flag_generate_gps_waypoints);
+
+  // mission category
+  auto vecToDisplay = this->mapMissionCategories.contains(this->strct_user_create_layer.iRadioMissionTypePicked) ? this->mapMissionCategories[this->strct_user_create_layer.iRadioMissionTypePicked] : std::vector<const char*>{};
+  // Store the label of the sub category, if the vector has the data
+  if (static_cast<int>(vecToDisplay.size()) >= this->strct_user_create_layer.iMissionSubCategoryPicked)
+    missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty(mxconst::get_PROP_MISSION_SUBCATEGORY_LBL(), vecToDisplay.at(this->strct_user_create_layer.iMissionSubCategoryPicked));
+
+
+  // v3.0.253.6 no osm search for cargo missions
+  if (strct_user_create_layer.iRadioMissionTypePicked != static_cast<int>(mx_ui_mission_type::medevac)) // USE OSM WEB or OSM DB only if it is not cargo type
+  {
+    strct_user_create_layer.flag_use_osm     = false;
+    strct_user_create_layer.flag_use_web_osm = false;
+  }
+  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_USE_OSM_CHECKBOX(), strct_user_create_layer.flag_use_osm);
+  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_USE_WEB_OSM_CHECKBOX(), strct_user_create_layer.flag_use_web_osm);
+
+  // Add specific Helos properties based on user definitions and restrictions // v3.0.253.7 narrow helos ramp filtering,
+  // means to store mainly rw code 101 and airports that have [H] in them ignore ramp code 1300 that are for "helos"
+  if (this->strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos)
+  {
+    missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_NARROW_HELOS_RAMP_SEARCH(), strct_user_create_layer.flag_narrow_helos_filtering); //, node_ptr, node_ptr.getName());
+    // add countdown for helos + medevac
+    if (strct_user_create_layer.iRadioMissionTypePicked == static_cast<int>(missionx::mx_ui_mission_type::medevac) || strct_user_create_layer.iRadioMissionTypePicked == static_cast<int>(missionx::_ui_mission_type::oil_rig))
+      missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_ADD_COUNTDOWN(), this->strct_setup_layer.bAddCountdown);
+  }
+  else
+  {
+    missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_NARROW_HELOS_RAMP_SEARCH(), false);
+  }
+
+  // v3.303.12 weather
+  this->addAdvancedSettingsPropertiesBeforeGeneratingRandomMission();
+
+
+  const auto lmbda_build_filter_for_runway_types = [&]()
+  {
+    int         counter{0};
+    std::string query;
+    query.clear();
+    if (this->strct_user_create_layer.iRadioPlaneType >= missionx::mx_plane_types_enum::plane_type_airline)
+    {
+      query = " ( 1, 2 ) "; // concrete codes
+      return query;
+    }
+
+    if (this->strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos || this->strct_user_create_layer.flag_pick_any_rw)
+      return query; // empty string no filter
+
+    for (auto& [rw_type, b_picked] : this->strct_user_create_layer.map_filter_runways)
+    {
+      if (b_picked)
+      {
+        if (counter == 0)
+          query = " ( ";
+        else
+          query += ", ";
+
+        query += this->strct_user_create_layer.map_filter_runways_translate_to_numbers[rw_type];
+        counter++;
+      }
+    }
+
+    if (counter > 0)
+      query += " )";
+
+    return query;
+  }; // end lambda
+
+
+  // PROP_FILTER_AIRPORTS_BY_RUNWAY_TYPE - prepare the runway filter string
+  const std::string filter_query = lmbda_build_filter_for_runway_types();
+  missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty(mxconst::get_PROP_FILTER_AIRPORTS_BY_RUNWAY_TYPE(), filter_query);
+
+#ifndef RELEASE
+  Log::logMsg(fmt::format("[{}] Query filter: {}", __func__, filter_query));
+#endif // !RELEASE
+
+
+  this->asyncSecondMessageLine.clear();
+  this->setMessage("Random Engine is running, please wait...", 10);
+  this->execAction(missionx::mx_window_actions::ACTION_GENERATE_RANDOM_MISSION); // should hide the window
+}
+
+// -------------------------------------------
+
+// ------------ flc --------------
+// ------------ flc --------------
+// ------------ flc --------------
 // ------------ flc --------------
 void
 WinImguiBriefer::flc ()
@@ -1573,7 +1736,7 @@ WinImguiBriefer::buildInterface ()
   ImGui::PushStyleColor (ImGuiCol_Text, ImGui::GetColorU32 (ImGuiCol_ScrollbarGrabActive)); // dark gray
   ImGui::PushStyleColor (ImGuiCol_Button, IM_COL32_BLACK_TRANS); // transparent
   ImGui::PushStyleColor (ImGuiCol_ButtonHovered, IM_COL32 (51, 153, 51, 255)); // green  https://www.w3schools.com/colors/colors_picker.asp
-  draw_top_toolbar (); // TOOLBAR
+  this->draw_top_toolbar (); // TOOLBAR
   ImGui::PopStyleColor (3);
 
 
@@ -2755,6 +2918,302 @@ WinImguiBriefer::callNavData (std::string_view inICAO, bool bNavigatingFromOther
     this->setMessage ("A previous request is running in the background.");
 }
 
+// -------------------------------------------
+
+void WinImguiBriefer::add_ui_semi_act_phase_1_pick()
+{
+  constexpr static auto TABLE_COLUMNS        = 4;
+  static constexpr auto VEC2_BTN_SIZE        = ImVec2 (160.0f, 120.0f);
+
+  if (ImGui::BeginTable ("Semi Actions Table Based On Plane Type", TABLE_COLUMNS))
+  {
+    int column_index_i       = 0;
+
+    // loop over list. every time mod TABLE_COLUMN == 0 we start a new column.
+    for (const auto & btn_info : list_semi_auto_activities)
+    {
+      // decide if we need another row
+      if (column_index_i%TABLE_COLUMNS == 0)
+        ImGui::TableNextRow();
+
+      ImGui::TableNextColumn();
+      {
+        ImGui::BeginGroup();
+        {
+          // Display big ICON image
+          if (ImGui::ImageButton (btn_info.imgName.c_str(), data_manager::mapCachedPluginTextures[btn_info.imgName].gTexture, VEC2_BTN_SIZE))
+          {
+            this->strct_user_create_layer.user_semi_act_picked = btn_info;
+            this->strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_accept;
+
+            // ---------------
+            // init sliders
+            // ---------------
+            this->strct_user_create_layer.dyn_sliderVal2 = this->strct_user_create_layer.user_semi_act_picked.randomize_max_distance();
+
+            if (this->strct_user_create_layer.user_semi_act_picked.id < 5)
+              this->strct_user_create_layer.semi_mission_description = fmt::format("You will fly a helos mission.\n\nArea of flight: {} to {} nautical miles.\nYou will have: {} landing location{}.\n\nFly Safe.", btn_info.distance_min_max.min, btn_info.distance_min_max.max, btn_info.final_legs_no_to_generate, ((btn_info.final_legs_no_to_generate == 1)? "" : "s"));
+            else
+              this->strct_user_create_layer.semi_mission_description = fmt::format("You will fly a plane mission.\n\nArea of flight: {} to {} nautical miles.\nYou will have: {}.\n\nFly Safe.", btn_info.distance_min_max.min, btn_info.distance_min_max.max, (btn_info.final_legs_no_to_generate < 2)? " one landing location" : fmt::format(" up to {}, landing locations", btn_info.final_legs_no_to_generate) );
+
+
+            // ------------------------
+            // -- init how many "Flight Legs" to generate based on activity type
+            // ------------------------
+            // default settings are good for props activities
+            strct_user_create_layer.iNumberOfFlighLegs = this->strct_user_create_layer.user_semi_act_picked.randomize_no_of_legs();
+
+          }
+          if (!btn_info.tip.empty ())
+            this->mx_add_tooltip(missionx::color::color_vec4_yellow, btn_info.tip);
+
+          this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_MED ()); // set font size
+          ImGui::TextColored(missionx::color::color_vec4_springgreen, "%s", btn_info.label.c_str());
+          this->mxUiReleaseLastFont();
+        } // end group
+        ImGui::EndGroup();
+      }
+      // End table column
+
+      // increase column counter
+      ++column_index_i;
+    }
+    ImGui::EndTable ();
+  } // end table
+
+}
+
+// -------------------------------------------
+
+void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
+{
+  static constexpr auto VEC2_IMAGE_BTN_SIZE = ImVec2(160.0f, 120.0f);
+  static constexpr auto VEC2_MOD_CHILD      = ImVec2(0.0f, 150.0f);
+  static constexpr auto VEC2_BACK_BTN_SIZE  = ImVec2(32.0f, 32.0f);
+
+  const auto win_width_f = this->mxUiGetContentWidth();
+
+  // display back button
+  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+  if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_REPLY).append ("##BackButtonInSetup").c_str (), "Back", IM_COL32 (255, 255, 0, 255), IM_COL32 (0, 0, 0, 255), VEC2_BACK_BTN_SIZE)) //
+  {
+    this->strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_pick;
+    this->strct_user_create_layer.user_semi_act_picked.reset();
+  }
+  this->mxUiReleaseLastFont ();
+  ImGui::SameLine(0.0f, VEC2_IMAGE_BTN_SIZE.x);
+  // title
+  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+  ImGui::TextColored(missionx::color::color_vec4_yellow, "%s", "Description");
+  this->mxUiReleaseLastFont ();
+
+  ImGui::BeginGroup();
+  {
+    // Display button image
+    ImGui::Image (data_manager::mapCachedPluginTextures[this->strct_user_create_layer.user_semi_act_picked.imgName].gTexture, VEC2_IMAGE_BTN_SIZE);
+    
+    ImGui::SameLine(0.0f, VEC2_BACK_BTN_SIZE.x);
+    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // set font size
+    {
+      ImGui::Text("%s", this->strct_user_create_layer.semi_mission_description.c_str());
+    }
+    this->mxUiReleaseLastFont();
+
+  }
+  ImGui::EndGroup();
+
+  // Modification options
+  this->mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_REG()); // set font size
+  ImGui::BeginGroup();
+  {
+    ImGui::BeginChild("Modify Semi-Automation Options", VEC2_MOD_CHILD, ImGuiChildFlags_None);
+    {
+      ImGui::Spacing();
+      this->strct_user_create_layer.mapSemiOptionsHeaders[this->strct_user_create_layer.headerIndex].setState((ImGui::CollapsingHeader(this->strct_user_create_layer.mapSemiOptionsHeaders[this->strct_user_create_layer.headerIndex].title.c_str())));
+      if (this->strct_user_create_layer.mapSemiOptionsHeaders[this->strct_user_create_layer.headerIndex].bState)
+      {
+        // ------------------------
+        // -- Restrict max distance
+        // ------------------------
+        // sliders
+        // We will use: dyn_sliderVal2 to hold the max distance. This parameter is shared with "option a"
+
+        ImGui::TextColored ( missionx::color::color_vec4_yellow, "%s", "Pick Maximum Flight Leg Distance: ");
+        if (ImGui::SliderFloat ("##tweak_max_distance", &strct_user_create_layer.dyn_sliderVal2, this->strct_user_create_layer.user_semi_act_picked.distance_min_max.min, this->strct_user_create_layer.user_semi_act_picked.distance_min_max.max, "%.2f nm"))
+        {
+          // validate 10nm buffer between max slider and minimum distance
+          if (strct_user_create_layer.dyn_sliderVal2 - 10.0f < this->strct_user_create_layer.user_semi_act_picked.distance_min_max.min )
+            strct_user_create_layer.dyn_sliderVal2 = this->strct_user_create_layer.user_semi_act_picked.distance_min_max.min + 10.0f;
+        }
+
+
+        // Customise number of flight legs to generate.
+        WinImguiBriefer::add_ui_pick_how_many_legs(strct_user_create_layer.iNumberOfFlighLegs, "How Many Flight Legs ? ", this->strct_user_create_layer.user_semi_act_picked.legs_min_max.min, this->strct_user_create_layer.user_semi_act_picked.legs_min_max.max);
+      }
+
+      ImGui::NewLine(); 
+
+      // ------------------------------
+      // Add other settings: header
+      // ------------------------------
+      const bool b_plane_is_helos      = strct_user_create_layer.user_semi_act_picked.activity < missionx::enums::mx_semi_activities_enum::act_props;
+      const bool bPickedMedevacMission = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_accident || strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me);
+      const bool bPickedOilRigMission  = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_cargo_oilrig);
+      add_other_settings_header(b_plane_is_helos, bPickedMedevacMission, bPickedOilRigMission);
+
+    }
+    ImGui::EndChild();
+  }
+  ImGui::EndGroup();
+  this->mxUiReleaseLastFont();
+
+  ImGui::Separator();
+  ImGui::Spacing();
+
+
+  // --------------------------
+  // Add bottom buttons
+  // --------------------------
+  ImGui::BeginGroup();
+  {
+    // Add Advance Configuration Button
+    ImGui::NewLine();
+    ImGui::SameLine(win_width_f - 230.0f);
+    this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked);
+
+    // Add <generate> button
+    ImGui::SameLine(10.0f);
+    this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
+    {
+
+      if (missionx::data_manager::flag_generate_engine_is_running && this->sBottomMessage.empty())
+      {
+        this->setMessage("Random Engine is running, please wait...");
+      }
+      else if (missionx::data_manager::flag_apt_dat_optimization_is_running && sBottomMessage.empty())
+      {
+        this->setMessage("Can't Generate mission, apt data optimization is currently running. Please wait for it to finish first !!!");
+      }
+      else if (!(missionx::data_manager::flag_generate_engine_is_running || missionx::data_manager::flag_apt_dat_optimization_is_running))
+      {
+        // Regenerate Random Date Time // v3.303.10
+        static bool bRerunRandomDateTime{false};
+        bRerunRandomDateTime = add_ui_checkbox_rerun_random_date_and_time();
+        ImGui::SameLine();
+
+        this->flag_generatedRandomFile_success = false;        
+
+        // -----------------------
+        // DISPLAY GENERATE BUTTON
+        // -----------------------
+        ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_black);
+        ImGui::PushStyleColor(ImGuiCol_Button, missionx::color::color_vec4_orange);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, missionx::color::color_vec4_azure);
+        if (ImGui::Button(">> Generate Mission <<"))
+        {
+          if (bRerunRandomDateTime) // v3.303.10
+            this->execAction(missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
+
+          // set template
+          this->strct_generate_template_layer.selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI();
+
+
+          // ---------------------
+          // Prepare layer data to be compatible with the - 
+          // "action_prepare_dynamic_mission_properties_and_call_generate_action()" function properties
+          // ---------------------
+          
+          // type of mission
+          
+          //if (this->strct_user_create_layer.user_semi_act_picked.activity <= missionx::enums::mx_semi_activities_enum::act_helos_medevac_oilrig)
+          if (mxUtils::mx_between<missionx::enums::mx_semi_activities_enum>(this->strct_user_create_layer.user_semi_act_picked.activity, missionx::enums::mx_semi_activities_enum::act_none, missionx::enums::mx_semi_activities_enum::act_helos_medevac_oilrig, missionx::enums::mx_between_types::gt_min_eqles_max))
+            strct_user_create_layer.iRadioMissionTypePicked = 2; // oilrig
+          else if (this->strct_user_create_layer.user_semi_act_picked.activity < missionx::enums::mx_semi_activities_enum::act_props)
+            strct_user_create_layer.iRadioMissionTypePicked = 0; // medevac
+          else
+            strct_user_create_layer.iRadioMissionTypePicked = 1; // cargo
+
+          // subcategory
+          switch (this->strct_user_create_layer.user_semi_act_picked.activity)
+          {
+          case missionx::enums::mx_semi_activities_enum::act_helos_medevac_accident:
+            strct_user_create_layer.iMissionSubCategoryPicked = 1; // 0: any location, 1: accident, 2: surprise me
+            break;
+          case missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me:
+            strct_user_create_layer.iMissionSubCategoryPicked = 2; // 0: any location, 1: accident, 2: surprise me
+            break;
+          case missionx::enums::mx_semi_activities_enum::act_helos_medevac_oilrig:
+            strct_user_create_layer.iMissionSubCategoryPicked = 0; // 0: cargo, 1: medevac
+            break;
+          default:
+            strct_user_create_layer.iMissionSubCategoryPicked = 0; // 0: cargo  <= planes, oilrig cargo mission
+            break;
+
+          } // end switch subcategory
+
+          // set plane type
+          strct_user_create_layer.iRadioPlaneType = this->strct_user_create_layer.user_semi_act_picked.plane_type;
+
+          // set min/max distances
+          const auto min_distance = strct_user_create_layer.dyn_sliderVal2 - ( 0.25 * (strct_user_create_layer.dyn_sliderVal2 - strct_user_create_layer.user_semi_act_picked.distance_min_max.min) );
+
+          this->action_prepare_dynamic_mission_properties_and_call_generate_action(min_distance, strct_user_create_layer.dyn_sliderVal2);
+
+        }
+        ImGui::PopStyleColor(3);
+
+      }
+      else if (missionx::RandomEngine::random_thread_state.flagIsActive)
+      {
+        // -----------------------
+        // DISPLAY [ABORT]
+        // -----------------------
+        missionx::WinImguiBriefer::HelpMarker("Abort the background process.");
+        ImGui::SameLine(0.0f, 5.0f);
+        this->add_ui_abort_mission_creation_button(); // Add Abort Random Engine
+      }
+
+      if (!this->asyncSecondMessageLine.empty())
+      {
+        // -----------------------
+        // DISPLAY [START] & [WARNING]
+        // -----------------------
+        ImGui::SameLine((mxUiGetContentWidth() * 0.40f) - (ImGui::CalcTextSize(this->LBL_START_MISSION.c_str()).x * 0.5f));
+        this->add_ui_start_mission_button(missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
+
+        this->add_ui_warning_messages_button(); // v26.1.1. Also change the "start" button position to clear space for the warning button.
+      }
+
+      ImGui::SetWindowFontScale(mxconst::DEFAULT_BASE_FONT_SCALE);
+    }
+    this->mxUiReleaseLastFont();
+
+  } // end footer button group
+  ImGui::EndGroup();
+
+
+}
+
+// -------------------------------------------
+
+void
+WinImguiBriefer::add_ui_pick_how_many_legs(int & inout_radio_value_ref, const std::string & in_label, const int & in_minButtons, const int & in_maxButtons)
+{
+  ImGui::TextColored (missionx::color::color_vec4_yellow , "%s", in_label.c_str()); // between 2 and 4
+
+  ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_white); // internal color
+  for (int i = in_minButtons; i <= in_maxButtons; ++i)
+  {
+    if (ImGui::RadioButton (fmt::format("{}", i).c_str (), inout_radio_value_ref == i))
+      inout_radio_value_ref = i;
+
+    if ( i < in_maxButtons)
+      ImGui::SameLine ();
+  }
+  ImGui::PopStyleColor ();
+
+}
+
 
 // ------------ setMessage --------------
 void
@@ -2987,6 +3446,7 @@ WinImguiBriefer::draw_top_toolbar ()
       this->strct_generate_template_layer.user_pick_from_replaceOptions_combo_i = mxconst::INT_UNDEFINED; // v3.0.255.4 reset user pick
       this->strct_ils_layer.flagNavigatedFromOtherLayer                         = false; // v24025
       this->strct_ext_layer.ext_screen                                          = mx_ext_fpln_screen::ext_home; // v25.03.3 reset external fpln to main screen
+      this->strct_user_create_layer.child_screen = mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_home; // v26.04.1
 
       switch (this->currentLayer)
       {
@@ -4715,13 +5175,11 @@ WinImguiBriefer::draw_home_layer ()
   static ImVec2 VEC2_BTN_SIZE = ImVec2 (160.0f, 120.0f);
 
   // loop over all listMainBtn and display in buttons
-  int                    numButtons  = 0; // which number we draw in current row. Every time we overflow window we will need to reset this number.
   static constexpr float win_padding = 30.0f;
 
   ///////// Main Layer Buttons
   ImGui::BeginChild ("draw_home_layer_01", ImVec2 (0.0f, ImGui::GetWindowHeight () - this->fBottomToolbarPadding_f - this->fTopToolbarPadding_f - win_padding));
 
-  // ImGui::SetWindowFontScale(1.2f);
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_springgreen); // green
 
   int columns = static_cast<int> (mxUiGetContentWidth () / VEC2_BTN_SIZE.x);
@@ -4734,6 +5192,7 @@ WinImguiBriefer::draw_home_layer ()
 
   ImGui::Columns (columns, "draw_home_layer_columns", false);
   {
+    int numButtons  = 0; // which number we draw in current row. Every time we overflow window we will need to reset this number.
     for (auto &btn : this->listMainBtn)
     {
       numButtons++;
@@ -4901,6 +5360,86 @@ WinImguiBriefer::draw_home_layer ()
 void
 WinImguiBriefer::draw_dynamic_mission_creation_screen ()
 {
+  switch (this->strct_user_create_layer.child_screen)
+  {
+  case mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_option_a:
+    {
+      // reset the "semi-automated" mission creation, since we share parameters (like dynSlider)
+      this->strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_pick;
+      this->strct_user_create_layer.user_semi_act_picked.reset();
+      draw_dynamic_mission_creation_screen_child_1 ();
+    }
+    break;
+  case mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_option_b:
+    {
+      draw_dynamic_mission_creation_screen_child_2();
+    }
+    break;
+  default: // mx_ext_fpln_screen::ext_home
+    ImGui::BeginChild ("User Creation Screen", ImVec2 (0.0f, -50.0f), ImGuiChildFlags_None);
+    draw_dynamic_mission_creation_screen_home ();
+    ImGui::EndChild ();
+  }
+}
+
+// ---------------------------------------------------
+
+void WinImguiBriefer::draw_dynamic_mission_creation_screen_home()
+{
+  constexpr static auto btn_size_vec2 = ImVec2 (190.0f, 190.0f);
+  const auto                  win_size_vec2 = this->mxUiGetWindowContentWxH ();
+
+  ImGui::Spacing ();
+  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
+  ImGui::TextWrapped ("%s", "Pick one of the options below.");
+  ImGui::Separator ();
+  this->mxUiReleaseLastFont ();
+
+
+  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+  ImGui::Spacing ();
+  ImGui::Spacing ();
+  ImGui::Spacing ();
+  if (ImGui::BeginTable ("Dynamic Creation Options", 2))
+  {
+    ImGui::TableNextColumn ();
+    {
+      if (ImGui::ImageButton ("Full Control", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_FULL_CONTROL ()].gTexture, btn_size_vec2))
+      {
+        // flag we want to display Option A Screen
+        this->strct_user_create_layer.child_screen = mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_option_a;
+        this->refresh_slider_data_based_on_plane_type(this->strct_user_create_layer.iRadioPlaneType);
+      } // end imageButton - flightplandb
+      this->mx_add_tooltip (missionx::color::color_vec4_white, "Configure a random mission.");
+      // bottom title
+      ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "%s", "Configure every aspect of the generated flight." );
+
+    } // end full configuration button
+
+    ImGui::TableNextColumn ();
+    {
+      if (ImGui::ImageButton ("Some Control", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_SOME_CONTROL()].gTexture, btn_size_vec2))
+      {
+        // flag we want to display Option B Screen
+        this->strct_user_create_layer.child_screen = mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_option_b;
+      }
+      this->mx_add_tooltip (missionx::color::color_vec4_white, "Pick the type to generate.");
+      // bottom title
+      ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "%s", "Pick which type of flight you would like to fly,\nWith minimal custom settings.");
+
+    } // end Some Control
+    ImGui::EndTable ();
+  }
+  this->mxUiReleaseLastFont ();
+
+
+}
+
+// ---------------------------------------------------
+
+void
+WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
+{
   const auto win_size_vec2 = this->mxUiGetWindowContentWxH ();
 
   if (this->strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw)
@@ -5041,7 +5580,6 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
         // -- Preferred Plane
         // ------------------------
 
-        // const bool b_ui_disable_pick_preferred_plane = this->mxStartUiDisableState (bPickedMedevacSurpriseMeMission); // v25.06.1 start disable/enable
         this->mxStartUiDisableState (bPickedMedevacSurpriseMeMission); // v25.06.1 start disable/enable
 
         HelpMarker ("The aircraft you select will help filter the route distance and the available ramps at the destination airport.\n\nExample:\n\nJets: Small to medium Jets (B,C)\nAirline/Cargo: E190, B737, A320 (C,D)\nHeavy Airline/Cargo: B777, A350 (C,D,E,F)");
@@ -5367,17 +5905,7 @@ Filter options:
         //if (this->strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_mission_type::medevac) && this->strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_mission_type::oil_rig) && strct_user_create_layer.iRadioPlaneType < missionx::mx_plane_types::plane_type_jets)
         if (!bPickedMedevacMission && !bPickedOilRigMission && !bPickedMedevacSurpriseMeMission && strct_user_create_layer.iRadioPlaneType < missionx::mx_plane_types_enum::plane_type_jets)
         {
-          ImGui::TextColored (missionx::color::color_vec4_yellow ,"How Many Flight Legs ? "); // between 2 and 4
-
-          ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_white); // internal color
-          for (int i = iMinLegsVal; i <= iMaxLegsVal; ++i)
-          {
-            if (ImGui::RadioButton (Utils::formatNumber<int> (i).c_str (), strct_user_create_layer.iNumberOfFlighLegs == i))
-              strct_user_create_layer.iNumberOfFlighLegs = i;
-
-            ImGui::SameLine ();
-          }
-          ImGui::PopStyleColor ();
+          WinImguiBriefer::add_ui_pick_how_many_legs (strct_user_create_layer.iNumberOfFlighLegs, "How Many Flight Legs ? ", iMinLegsVal, iMaxLegsVal);
 
           ImGui::NewLine ();
         }
@@ -5388,58 +5916,10 @@ Filter options:
       //     Topic 4 (basically the columns have few rows, but we count them as 1)
       //------------------------------------------------
 
-      if (ImGui::CollapsingHeader ("Other Settings"))
-      {
+      // v26.04.1
+      const bool b_plane_is_helos = strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos;
+      add_other_settings_header(b_plane_is_helos, bPickedMedevacMission, bPickedOilRigMission);
 
-        // ------------------------
-        // Compatibility - Inventory XP11
-        // ------------------------
-        this->add_ui_xp11_comp_checkbox (false); // v24.12.2
-        ImGui::Separator ();
-
-        ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_white); // internal color
-
-        // ------------------------
-        // -- Countdown
-        // ------------------------
-        //if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types::plane_type_helos && strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::_mission_type::medevac)) || (this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_mission_type::oil_rig)))
-        if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos && bPickedMedevacMission) || (bPickedOilRigMission))
-        {
-          // ImGui::SameLine(0.0f, 100.0f);
-          ImGui::Checkbox ("Add Countdown", &this->strct_setup_layer.bAddCountdown);
-          this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Add random countdown to each leg to add to the challenge.");
-
-          ImGui::Separator ();
-        }
-        else
-          ImGui::NewLine ();
-
-
-        // ------------------------
-        // -- Suppress Distance Messages
-        // ------------------------
-        this->add_ui_suppress_distance_messages_checkbox_ui (); // v25.02.1
-        ImGui::Separator ();
-
-        // ------------------------
-        // -- GPS Waypoints
-        // ------------------------
-
-        ImGui::Checkbox ("Generate GPS waypoints.", &this->strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12
-        ImGui::SameLine (0.0f, 90.0f);
-        this->add_ui_expose_all_gps_waypoints ();
-
-        this->add_ui_auto_load_checkbox (); // v25.04.2
-
-        // ------------------------
-        // -- Default Weight
-        // ------------------------
-        ImGui::NewLine ();
-        // ImGui::Checkbox("Add default base weights.\n(Not advisable for planes > GAs)", &this->adv_settings_strct.flag_add_default_weight_settings);
-        this->add_ui_default_weights ();
-
-        ImGui::PopStyleColor (1); // pop-out internal text color settings
-      } // end "Other Settings" Collapsing Header
 
       ImGui::PopStyleColor (3); // end Collapse Header special color - button hovered,button,text,text selected bg
 
@@ -5489,104 +5969,15 @@ Filter options:
         ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
         ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_orange);
         ImGui::PushStyleColor (ImGuiCol_ButtonActive, missionx::color::color_vec4_azure);
-        if (ImGui::Button ("Generate a Mission Based on User Preferences"))
+        if (ImGui::Button (">> Generate Mission <<"))
         {
           if (bRerunRandomDateTime) // v3.303.10
             this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
 
           this->strct_generate_template_layer.selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI ();
 
-          IXMLNode node_ptr = missionx::data_manager::prop_userDefinedMission_ui.node;
+          this->action_prepare_dynamic_mission_properties_and_call_generate_action(strct_user_create_layer.dyn_sliderVal1, strct_user_create_layer.dyn_sliderVal2);
 
-          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_MED_CARGO_OR_OILRIG (), strct_user_create_layer.iRadioMissionTypePicked);
-          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_MISSION_SUBCATEGORY (), strct_user_create_layer.iMissionSubCategoryPicked); // v3.303.14
-          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_PLANE_TYPE_I (), static_cast<int> (strct_user_create_layer.iRadioPlaneType));
-          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_NO_OF_LEGS (), strct_user_create_layer.iNumberOfFlighLegs);
-          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MIN_DISTANCE_SLIDER (), strct_user_create_layer.dyn_sliderVal1);
-          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MAX_DISTANCE_SLIDER (), strct_user_create_layer.dyn_sliderVal2);
-          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_ADD_COUNTDOWN (), false); // v3.0.253.9.1 default value for helos/planes + cargo missions
-          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), this->strct_cross_layer_properties.flag_generate_gps_waypoints);
-
-          // v24.03.1 Sub Category Text
-          auto vecToDisplay = this->mapMissionCategories[this->strct_user_create_layer.iRadioMissionTypePicked];
-          // Store the label of the sub category, if the vector has the data
-          if ( static_cast<int>( vecToDisplay.size () ) >= this->strct_user_create_layer.iMissionSubCategoryPicked)
-            missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_MISSION_SUBCATEGORY_LBL (), vecToDisplay.at (this->strct_user_create_layer.iMissionSubCategoryPicked));
-
-
-          // v3.0.253.6 no osm search for cargo missions
-          if (strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (mx_ui_mission_type::medevac)) // USE OSM WEB or OSM DB only if it is not cargo type
-          {
-            strct_user_create_layer.flag_use_osm     = false;
-            strct_user_create_layer.flag_use_web_osm = false;
-          }
-          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_USE_OSM_CHECKBOX (), strct_user_create_layer.flag_use_osm);
-          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_USE_WEB_OSM_CHECKBOX (), strct_user_create_layer.flag_use_web_osm);
-
-          if (this->strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos) // v3.0.253.9.1 Add specific Helos properties based on user definitions and restrictions // v3.0.253.7 narrow helos ramp filtering,
-                                                                                                           // means to store mainly rw code 101 and airports that have [H] in them ignore ramp code 1300 that are for "helos"
-          {
-            missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_NARROW_HELOS_RAMP_SEARCH (), strct_user_create_layer.flag_narrow_helos_filtering); //, node_ptr, node_ptr.getName());
-            // v3.0.253.1.9 added countdown for helos + medevac
-            if (strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_ui_mission_type::medevac) || strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::_ui_mission_type::oil_rig))
-              missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_ADD_COUNTDOWN (), this->strct_setup_layer.bAddCountdown);
-          }
-          else
-          {
-            missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_NARROW_HELOS_RAMP_SEARCH (), false);
-          }
-
-          // v3.303.12 weather
-          this->addAdvancedSettingsPropertiesBeforeGeneratingRandomMission ();
-
-
-          const auto lmbda_build_filter_for_runway_types = [&] ()
-          {
-            int         counter{ 0 };
-            std::string query;
-            query.clear ();
-            if (this->strct_user_create_layer.iRadioPlaneType >= missionx::mx_plane_types_enum::plane_type_airline)
-            {
-              query = " ( 1, 2 ) "; // concrete codes
-              return query;
-            }
-
-            if (this->strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos || this->strct_user_create_layer.flag_pick_any_rw)
-              return query; // empty string no filter
-
-            for (auto &[rw_type, b_picked] : this->strct_user_create_layer.map_filter_runways)
-            {
-              if (b_picked)
-              {
-                if (counter == 0)
-                  query = " ( ";
-                else
-                  query += ", ";
-
-                query += this->strct_user_create_layer.map_filter_runways_translate_to_numbers[rw_type];
-                counter++;
-              }
-            }
-
-            if (counter > 0)
-              query += " )";
-
-            return query;
-          }; // end lambda
-
-
-          // PROP_FILTER_AIRPORTS_BY_RUNWAY_TYPE - prepare the runway filter string
-          const std::string filter_query = lmbda_build_filter_for_runway_types ();
-          missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_FILTER_AIRPORTS_BY_RUNWAY_TYPE (), filter_query); //, node_ptr, node_ptr.getName());
-
-          #ifndef RELEASE
-          Log::logMsg (fmt::format("[{}] Query filter: {}", __func__, filter_query) );
-          #endif // !RELEASE
-
-
-          this->asyncSecondMessageLine.clear ();
-          this->setMessage ("Random Engine is running, please wait...", 10);
-          this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_MISSION); // should hide the window
         }
 
         ImGui::PopStyleColor (3);
@@ -5601,7 +5992,7 @@ Filter options:
 
       if (!this->asyncSecondMessageLine.empty ())
       {
-        ImGui::SameLine ((mxUiGetContentWidth () * 0.60f) - (ImGui::CalcTextSize (this->LBL_START_MISSION.c_str ()).x * 0.5f));
+        ImGui::SameLine ((mxUiGetContentWidth () * 0.40f) - (ImGui::CalcTextSize (this->LBL_START_MISSION.c_str ()).x * 0.5f));
         this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
 
         this->add_ui_warning_messages_button (); // v26.1.1. Also change the "start" button position to clear space for the warning button.
@@ -5616,7 +6007,7 @@ Filter options:
   } // end if (this->strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw)
   else if (this->strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::failed_data_is_not_present || this->strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly)
   {
-    /// TODO: consider removing this part of code since we always force the creation of the SQLite DB in order to use the plugin features.
+    /// TODO: consider removing this part of the code, since we always force the creation of the SQLite DB in order to use the plugin features.
     ImGui::NewLine ();
 
     if (this->strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::failed_data_is_not_present)
@@ -5645,6 +6036,32 @@ Filter options:
 
 
 } // draw_dynamic_mission_creation_screen
+void WinImguiBriefer::draw_dynamic_mission_creation_screen_child_2()
+{
+  // loop over all listMainBtn and display in buttons
+  static constexpr float win_padding = 30.0f;
+
+  ///////// Main Layer Buttons
+  ImGui::BeginChild ("draw_semi_auto_screen", ImVec2 (0.0f, ImGui::GetWindowHeight () - this->fBottomToolbarPadding_f - this->fTopToolbarPadding_f - win_padding));
+  {
+    switch (this->strct_user_create_layer.act_phase_enum)
+    {
+    case mx_act_phase_enum::phase_pick:
+      {
+        this->add_ui_semi_act_phase_1_pick();
+      }
+      break;
+    case mx_act_phase_enum::phase_accept:
+      {
+        this->add_ui_semi_act_phase_2_detail();
+      }
+      break;
+    }
+
+  }
+  ImGui::EndChild(); // end draw_semi_auto_screen
+
+}
 
 // ---------------------------------------------------
 

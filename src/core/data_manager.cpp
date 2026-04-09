@@ -1085,7 +1085,7 @@ data_manager::readPluginTextures()
 {
   std::string                 errorMsg;
   const std::string                 bitmapPath      = mx_folders_properties.getAttribStringValue (mxconst::get_PROP_MISSIONX_BITMAP_PATH(), "", errStr);
-  const std::array<std::string, 24> textureName_arr = { mxconst::get_BITMAP_LOAD_MISSION(),
+  const std::array<std::string, 29> textureName_arr = { mxconst::get_BITMAP_LOAD_MISSION(),
                                                   mxconst::get_BITMAP_INVENTORY_MXPAD(),
                                                   mxconst::get_BITMAP_MAP_MXPAD(),
                                                   mxconst::get_BITMAP_AUTO_HIDE_EYE_FOCUS(),
@@ -1111,7 +1111,15 @@ data_manager::readPluginTextures()
                                                   mxconst::get_BITMAP_BTN_NAVINFO(),
                                                   mxconst::get_BITMAP_BTN_SIMBRIEF_BIG(),
                                                   mxconst::get_BITMAP_BTN_SIMBRIEF_ICO(),
-                                                  mxconst::get_BITMAP_BTN_FLIGHTPLANDB() };
+                                                  mxconst::get_BITMAP_BTN_FLIGHTPLANDB(),
+
+                                                  mxconst::get_BITMAP_BTN_FULL_CONTROL(),
+                                                  mxconst::get_BITMAP_BTN_SOME_CONTROL(),
+                                                  mxconst::get_BITMAP_BTN_FULL_AUTOMATION(),
+                                                  mxconst::get_BITMAP_BTN_ACT_GA(),
+                                                  mxconst::get_BITMAP_BTN_ACT_JET(),
+
+  };
 
   // ranged for loop is supported
   for (const auto& f : textureName_arr)
@@ -6226,7 +6234,7 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
       data_manager::shared_navaid_between_threads.setID (nav.icao);
       if (!missionx::data_manager::waitForPluginCallbackJob (&data_manager::metar_thread_state, missionx::mx_flc_pre_command::get_metar_for_airport, std::chrono::milliseconds (1000)))
       {
-        Log::logMsgThread (fmt::format ("[{}] Failed to find Metar info for ICAO: {} from X-Plane.", __func__,  nav.icao ) );
+        Log::logMsgThread (fmt::format ("[{}] Callback timeout for: '{}({})'.", __func__,  "get_metar_for_airport ", nav.icao ) );
       }
       else
       {
@@ -6236,6 +6244,9 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
           nav.sMetar = data_manager::shared_navaid_between_threads.sMetar;
           (*outStatusMessage) = fmt::format( "Finished fetching METAR information for: {} from X-Plane.", nav.icao);
         }
+        else
+          Log::logMsgThread (fmt::format ("[{}] Failed to find Metar info for ICAO: {} using: XPLMGetMETARForAirport() and 'get_metar_for_airport'.", __func__,  nav.icao ) );
+
       }
 
     } // end if SDK >= 400
@@ -6384,13 +6395,15 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
   const std::string full_url_s = fmt::format ("https://www.simbrief.com/api/xml.fetcher.php?userid={}", in_pilot_id);
 
   //// Fetch information
-  std::string result_s;
+  // std::string result_s;
   std::string err;
   std::string cert_loc_s = data_manager::mx_folders_properties.getStringAttributeValue (mxconst::get_PROP_MISSIONX_PATH(), "");
+  missionx::structs::strct_curl_result simbrief_st_curl_result;
+
     long httpStatus = 0;
     if (curl)
     {
-      result_s.clear();
+      // result_s.clear();
 
       // try up to three times
       std::string msg;
@@ -6399,50 +6412,19 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
       {
         msg.clear();
 
-        char errBuff[CURL_ERROR_SIZE]{ '\0' };
-        curl_easy_setopt(curl, CURLOPT_URL, full_url_s.c_str());
-
-        // setup agent
-        //curl_easy_setopt(curl, CURLOPT_USERAGENT, APP_NAME);
-        curl_easy_setopt (curl, CURLOPT_USERAGENT, "MissionX/1.0");
-
-        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 20L); // v24.06.1 /Timeout for server connection
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);        // v24.06.1 overall work timeout - 60 seconds
-        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);        // CURLOPT_NOSIGNAL - skip all signal handling (values 0 or 1)
-
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-
-        // Conditional SSL integration
-        curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, 0L); // v26.01.1 fallback if SSL fails
-        curl_easy_setopt (curl, CURLOPT_SSL_VERIFYHOST, 0L); // v26.01.1 fallback if SSL fails
-
-        // https://curl.haxx.se/docs/sslcerts.html
-        if (loop01 == 0 && std ::filesystem::exists (data_manager::ca_path) && std::filesystem::is_regular_file (ca_path)) // v26.01.1
+        // execute the REQUEST
+        simbrief_st_curl_result = data_manager::get_curl_request_respond(full_url_s);
+        if ( CURLE_OK != simbrief_st_curl_result.res_curl )
         {
-          curl_easy_setopt (curl, CURLOPT_CAINFO, data_manager::ca_path.string ().c_str ());
-          curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, 1L); // v26.01.4 force SSL
-          curl_easy_setopt (curl, CURLOPT_SSL_VERIFYHOST, 2L); // v26.01.4 force SSL
-        }
-        curl_easy_setopt   (curl, CURLOPT_NOPROGRESS, 0L);
-
-        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuff);
-
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_write);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result_s);
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-
-        if (CURLcode res_curl = curl_easy_perform(curl) // execute the REQUEST
-            ; CURLE_OK != res_curl)
-        {
-          msg = fmt::format ("cURL error code: {}\n", Utils::formatNumber<int> (res_curl));
+          msg = fmt::format ("cURL error code: {}\n", Utils::formatNumber<int> (simbrief_st_curl_result.res_curl));
           Log::logMsgThread(msg);
           
         }
-        std::string errBuff_s(errBuff);
+        // std::string errBuff_s(simbrief_st_curl_result.request_err);
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpStatus);
-        if (httpStatus != 200 || !errBuff_s.empty())
+        if (httpStatus != 200 || !simbrief_st_curl_result.request_err.empty())
         {
-          msg = fmt::format("cURL HTTP status: {}. {}", std::to_string(httpStatus), errBuff_s);
+          msg = fmt::format("cURL HTTP status: {}. {}", std::to_string(httpStatus), simbrief_st_curl_result.request_err);
         }
         else // parse json
         {
@@ -6465,12 +6447,12 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
   //// Parse result
   if (flag_http_success)
   {
-    result_s = mxUtils::replaceAll (result_s, "<br>", ""); // v25.06.1
+    simbrief_st_curl_result.result_text = mxUtils::replaceAll (simbrief_st_curl_result.result_text, "<br>", ""); // v25.06.1
 
-    IXMLReaderStringSZ iReaderSZ(result_s.c_str());
+    IXMLReaderStringSZ iReaderSZ(simbrief_st_curl_result.result_text.c_str());
     IXMLResults parse_result;
     IXMLDomParser idom;
-    auto xml_ofp = idom.parseString (result_s.c_str (), "OFP", &parse_result);
+    auto xml_ofp = idom.parseString (simbrief_st_curl_result.result_text.c_str (), mxconst::get_ELEMENT_SIMBRIEF_ROOT_OFP().c_str(), &parse_result);
     if (parse_result.errorCode == IXMLError_None)
     {
       mx_ext_internet_fpln_strct fpln;
@@ -6627,7 +6609,7 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
     }
 
     #ifndef RELEASE
-    Log::logMsgThread("Curl Result: " + result_s);
+    Log::logMsgThread("Curl Result: " + simbrief_st_curl_result.result_text);
     #endif
 
   }
@@ -6950,9 +6932,9 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
 // -------------------------------------
 
 missionx::structs::strct_curl_result
-data_manager::fetch_overpass_info(const std::string& in_url_s, const std::string & in_separate_data_from_url)
+data_manager::get_curl_request_respond(const std::string& in_url_s, const std::string & in_separate_data_from_url, const int & in_loop_tries)
 {
-  std::lock_guard<std::mutex> lock (s_thread_sync_mutex);
+  // std::lock_guard<std::mutex> lock (s_thread_sync_mutex); // v26.04.1 disabled. Will lock from calling functions
 
   missionx::structs::strct_curl_result st_result;
   // std::string result_s;
@@ -6967,10 +6949,7 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, const std::string
     long httpStatus = 0;
     if (data_manager::curl)
     {
-      //std::string errBuff_s;
-      //CURLcode res_curl = CURLE_FAILED_INIT;
-      constexpr int C_MAX_LOOP = 3;      
-      for (int v_loop01 = 0; v_loop01 < C_MAX_LOOP && (CURLE_OK != st_result.res_curl); ++v_loop01)
+      for (int v_loop01 = 0; v_loop01 < in_loop_tries && (CURLE_OK != st_result.res_curl); ++v_loop01)
       {
         st_result.reset();
         //errBuff_s.clear();
@@ -6979,7 +6958,8 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, const std::string
         std::this_thread::sleep_for (std::chrono::seconds(2)); // v25.06.1 not overwhelm the overpass server
 
         overpass_counter_i++; // counter
-        Log::logMsgThread("[overpass] Overpass Calls: " + mxUtils::formatNumber<int>(overpass_counter_i));
+        const std::string base_url = in_url_s.substr(0, in_url_s.find('?')); // extract base_url
+        Log::logMsgThread(fmt::format("[{}] Overpass Calls: {}\t from: \"{}\"", __func__, overpass_counter_i, base_url) );
 
         char errBuff[CURL_ERROR_SIZE] = "\0"; // v3.305.3
 
@@ -7014,18 +6994,25 @@ data_manager::fetch_overpass_info(const std::string& in_url_s, const std::string
 
         if (CURLE_OK != st_result.res_curl)
         {
-          Log::logMsgThread("CURL error code: " + Utils::formatNumber<int>(st_result.res_curl) + "\n");
+          Log::logMsgThread(fmt::format("CURL error code: {}\n", Utils::formatNumber<int>(st_result.res_curl) ) );
         }
 
         st_result.request_err = std::string(errBuff); // v3.305.3
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpStatus);
-      
+
+        if (st_result.res_curl <= CURLE_COULDNT_CONNECT)
+        {
+          #ifndef RELEASE
+          Log::logMsgThread(fmt::format("[{}] Will force exit CURL loop, based on respond code: {}\n", __func__, Utils::formatNumber<int>(st_result.res_curl) ) );
+          #endif
+          break;
+        }
+
       } // end loop over curl calls
 
 
       if (httpStatus != 200 || !st_result.request_err.empty())
       {
-        //outError.append(std::string("CURL HTTP status: ") + std::to_string(httpStatus) + ((errBuff_s.empty()) ? "" : fmt::format(". Error Buff: {}", errBuff_s) ) ); // v3.0.255.4 added logic to display "Error Buff" only if there is a string value in it
         st_result.request_err.append(fmt::format("CURL HTTP status: {} {}", std::to_string(httpStatus), ((st_result.request_err.empty()) ? "" : fmt::format(". {}", st_result.request_err)))); // v3.0.255.4 added logic to display "Error Buff" only if there is a string value in it
 
         switch (httpStatus)
@@ -9141,7 +9128,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
       // ----------------------------------
       std::string errBuff_s;
       st_curl_result.reset(); // v26.03.1
-      st_curl_result = data_manager::fetch_overpass_info(overpass_url, q->q_unescaped_request);
+      st_curl_result = data_manager::get_curl_request_respond(overpass_url, q->q_unescaped_request);
       response_text  = st_curl_result.result_text;
       errBuff_s      = st_curl_result.request_err;
 
@@ -9271,7 +9258,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
             // ----------------------------------
             std::string errBuff_s;
             st_curl_result.reset(); // v26.03.1
-            st_curl_result = data_manager::fetch_overpass_info(overpass_url, s_curl_node_query);
+            st_curl_result = data_manager::get_curl_request_respond(overpass_url, s_curl_node_query);
             response_text  = st_curl_result.result_text;
             errBuff_s      = st_curl_result.request_err;
 
@@ -9377,7 +9364,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
                   const auto& overpass_url_to_fetch_ref = (trial_counter < data_manager::vecOverpassUrls.size()) ? data_manager::vecOverpassUrls.at(trial_counter) : mxconst::get_DEFAULT_OVERPASS_URL();
 
                   std::this_thread::sleep_for(std::chrono::seconds(2)); // wait for a few seconds
-                  st_curl_result_for_step3 = data_manager::fetch_overpass_info(overpass_url_to_fetch_ref, s_curl_vector_node_query);
+                  st_curl_result_for_step3 = data_manager::get_curl_request_respond(overpass_url_to_fetch_ref, s_curl_vector_node_query);
 
                   const std::string result_text = st_curl_result_for_step3.result_text;
                   curl_error_text = st_curl_result_for_step3.request_err;

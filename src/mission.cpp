@@ -3,6 +3,8 @@
 #include <limits>
 #include <filesystem>
 #include <utility>
+// #include <XPLMWeather.h>
+
 namespace fs = std::filesystem;
 
 // The raw TTF data of OpenFontIcons has been generated into the following file
@@ -5769,6 +5771,26 @@ missionx::Mission::flcPRE()
           }
           else
           {
+            #ifndef RELEASE
+            using GetMetarPtr = void(*)(const char *id, XPLMFixedString150_t *outMETAR);
+            if (data_manager::xplm_version >= 400)
+            {
+              data_manager::shared_navaid_between_threads.init();
+
+              GetMetarPtr getMetar_func{};
+              getMetar_func = reinterpret_cast<GetMetarPtr>( XPLMFindSymbol("XPLMGetMETARForAirport") );
+              if (getMetar_func)
+              {
+                XPLMFixedString150_t strct_metar;
+                getMetar_func( "KSEA", &strct_metar );
+                data_manager::shared_navaid_between_threads.sMetar = mxUtils::trim ( std::string(strct_metar.buffer) );
+              }
+            }
+            #endif
+
+
+
+
             bool bLock = true;
             data_manager::threadStateMetar.init();
             missionx::data_manager::mFetchFutures.push_back(
@@ -5791,23 +5813,27 @@ missionx::Mission::flcPRE()
       {
         // v25.09.1 get METAR from X-Plane if a version is 12.x or newer
 
-        #ifndef MAC  // Using XPLM400 SDK
+        // #ifndef MAC  // Using XPLM400 SDK
         using GetMetarPtr = void(*)(const char *id, XPLMFixedString150_t *outMETAR);
         if (data_manager::xplm_version >= 400)
         {
-          GetMetarPtr getMetar{};
+          GetMetarPtr getMetar_func{};
           // getMetar = (GetMetarPtr) XPLMFindSymbol("XPLMGetMETARForAirport");
-          getMetar = reinterpret_cast<GetMetarPtr>( XPLMFindSymbol("XPLMGetMETARForAirport") );
-          if (getMetar)
+          getMetar_func = reinterpret_cast<GetMetarPtr>( XPLMFindSymbol("XPLMGetMETARForAirport") );
+          if (getMetar_func)
           {
             XPLMFixedString150_t strct_metar;
-            getMetar( data_manager::shared_navaid_between_threads.ID, &strct_metar );
+            getMetar_func( data_manager::shared_navaid_between_threads.ID, &strct_metar );
             data_manager::shared_navaid_between_threads.sMetar = mxUtils::trim ( std::string(strct_metar.buffer) );
           }
         }
-        #endif
+        // #endif
 
         data_manager::metar_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        #ifndef RELEASE
+        auto debug_dummy = 1;
+        debug_dummy = 2;
+        #endif
       }
       break;
       default:

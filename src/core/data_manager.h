@@ -1213,7 +1213,11 @@ public:
   static std::vector<std::string> vecOverpassUrls;               // v3.0.255.4.1
   static int                      overpass_user_picked_combo_i;  // v3.0.255.4.1
   static int                      overpass_last_url_indx_used_i; // v3.0.255.4.1
-  static missionx::structs::strct_curl_result     fetch_overpass_info(const std::string& in_url_s, const std::string& in_separate_data_from_url = ""); // This function is part of the RandomEngine class call, which is threaded already.
+  // Call CURL to send http/s request and receive a respond.
+  // in_url_s: a string that can receive the full URL or only the base part.
+  // in_separate_data_from_url: a string that construct the data part of the URL. From the "?" onward.
+  // in_loop_tries: represent how many time to try and send the request in the case of failure. Default 3.
+  static missionx::structs::strct_curl_result     get_curl_request_respond(const std::string& in_url_s, const std::string& in_separate_data_from_url = "", const int & in_loop_tries = 3); // This function is part of the RandomEngine class call, which is threaded already.
   // static std::string              fetch_overpass_info2(const std::string& in_url_s, std::string& outError); // This function is part of the RandomEngine class call, which is threaded already.
 
   // v25.06.1 Use the sqlite db information to find the nearest navaid
