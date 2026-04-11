@@ -1435,9 +1435,9 @@ void WinImguiBriefer::action_prepare_dynamic_mission_properties_and_call_generat
   const std::string filter_query = lmbda_build_filter_for_runway_types();
   missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty(mxconst::get_PROP_FILTER_AIRPORTS_BY_RUNWAY_TYPE(), filter_query);
 
-#ifndef RELEASE
+  #ifndef RELEASE
   Log::logMsg(fmt::format("[{}] Query filter: {}", __func__, filter_query));
-#endif // !RELEASE
+  #endif // !RELEASE
 
 
   this->asyncSecondMessageLine.clear();
@@ -2947,21 +2947,23 @@ void WinImguiBriefer::add_ui_semi_act_phase_1_pick()
             this->strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_accept;
 
             // ---------------
-            // init sliders
+            // Randomize max distance to use with the "tweak" slider
             // ---------------
-            this->strct_user_create_layer.dyn_sliderVal2 = this->strct_user_create_layer.user_semi_act_picked.randomize_max_distance();
-
-            if (this->strct_user_create_layer.user_semi_act_picked.id < 5)
-              this->strct_user_create_layer.semi_mission_description = fmt::format("You will fly a helos mission.\n\nArea of flight: {} to {} nautical miles.\nYou will have: {} landing location{}.\n\nFly Safe.", btn_info.distance_min_max.min, btn_info.distance_min_max.max, btn_info.final_legs_no_to_generate, ((btn_info.final_legs_no_to_generate == 1)? "" : "s"));
-            else
-              this->strct_user_create_layer.semi_mission_description = fmt::format("You will fly a plane mission.\n\nArea of flight: {} to {} nautical miles.\nYou will have: {}.\n\nFly Safe.", btn_info.distance_min_max.min, btn_info.distance_min_max.max, (btn_info.final_legs_no_to_generate < 2)? " one landing location" : fmt::format(" up to {}, landing locations", btn_info.final_legs_no_to_generate) );
-
-
+            this->strct_user_create_layer.user_semi_act_picked.randomize_max_distance();
             // ------------------------
-            // -- init how many "Flight Legs" to generate based on activity type
+            // Randomize how many "Flight Legs" to generate based on activity type
             // ------------------------
-            // default settings are good for props activities
             strct_user_create_layer.iNumberOfFlighLegs = this->strct_user_create_layer.user_semi_act_picked.randomize_no_of_legs();
+
+            // prepare detail description for "add_ui_semi_act_phase_2_detail()" function
+            this->strct_user_create_layer.user_semi_act_picked.prepare_the_semi_activity_description();
+
+            // web osm
+            if (this->strct_user_create_layer.user_semi_act_picked.activity == enums::mx_semi_activities_enum::act_helos_medevac_accident
+              || this->strct_user_create_layer.user_semi_act_picked.activity == enums::mx_semi_activities_enum::act_helos_medevac_surprise_me)
+              this->strct_user_create_layer.flag_use_web_osm          = true;
+            else
+              this->strct_user_create_layer.flag_use_web_osm          = false;
 
           }
           if (!btn_info.tip.empty ())
@@ -2993,6 +2995,13 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
 
   const auto win_width_f = this->mxUiGetContentWidth();
 
+  // Initialize basic flags
+  const bool b_plane_is_helos      = strct_user_create_layer.user_semi_act_picked.activity < missionx::enums::mx_semi_activities_enum::act_props;
+  const bool bPickedMedevacMission = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_accident || strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me);
+  const bool bPickedOilRigMission  = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_cargo_oilrig);
+  const bool bPickedMedevacSurpriseMeMission  = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me);
+
+
   // display back button
   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
   if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_REPLY).append ("##BackButtonInSetup").c_str (), "Back", IM_COL32 (255, 255, 0, 255), IM_COL32 (0, 0, 0, 255), VEC2_BACK_BTN_SIZE)) //
@@ -3001,6 +3010,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
     this->strct_user_create_layer.user_semi_act_picked.reset();
   }
   this->mxUiReleaseLastFont ();
+
   ImGui::SameLine(0.0f, VEC2_IMAGE_BTN_SIZE.x);
   // title
   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
@@ -3015,39 +3025,65 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
     ImGui::SameLine(0.0f, VEC2_BACK_BTN_SIZE.x);
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // set font size
     {
-      ImGui::Text("%s", this->strct_user_create_layer.semi_mission_description.c_str());
+      ImGui::Text("%s", this->strct_user_create_layer.user_semi_act_picked.desc.c_str());
     }
     this->mxUiReleaseLastFont();
 
+    ImGui::Separator();
   }
   ImGui::EndGroup();
 
+  // ------------------------
   // Modification options
+  // ------------------------
   this->mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_REG()); // set font size
   ImGui::BeginGroup();
   {
     ImGui::BeginChild("Modify Semi-Automation Options", VEC2_MOD_CHILD, ImGuiChildFlags_None);
     {
       ImGui::Spacing();
+
+      // Oil rig search area
+      if (bPickedOilRigMission)
+      {
+        ImGui::Spacing();
+        add_ui_oilrig_search_area_buttons();
+        ImGui::Spacing();
+        ImGui::Separator();
+      }
+      else if (bPickedMedevacSurpriseMeMission)
+      {
+        ImGui::Spacing();
+        add_ui_medevac_surprise_me_warning();
+        ImGui::Spacing();
+        ImGui::Separator();
+
+      }
+
       this->strct_user_create_layer.mapSemiOptionsHeaders[this->strct_user_create_layer.headerIndex].setState((ImGui::CollapsingHeader(this->strct_user_create_layer.mapSemiOptionsHeaders[this->strct_user_create_layer.headerIndex].title.c_str())));
       if (this->strct_user_create_layer.mapSemiOptionsHeaders[this->strct_user_create_layer.headerIndex].bState)
       {
-        // ------------------------
-        // -- Restrict max distance
-        // ------------------------
-        // sliders
-        // We will use: dyn_sliderVal2 to hold the max distance. This parameter is shared with "option a"
-
-        ImGui::TextColored ( missionx::color::color_vec4_yellow, "%s", "Pick Maximum Flight Leg Distance: ");
-        if (ImGui::SliderFloat ("##tweak_max_distance", &strct_user_create_layer.dyn_sliderVal2, this->strct_user_create_layer.user_semi_act_picked.distance_min_max.min, this->strct_user_create_layer.user_semi_act_picked.distance_min_max.max, "%.2f nm"))
+        if (!bPickedOilRigMission && !bPickedMedevacSurpriseMeMission)
         {
-          // validate 10nm buffer between max slider and minimum distance
-          if (strct_user_create_layer.dyn_sliderVal2 - 10.0f < this->strct_user_create_layer.user_semi_act_picked.distance_min_max.min )
-            strct_user_create_layer.dyn_sliderVal2 = this->strct_user_create_layer.user_semi_act_picked.distance_min_max.min + 10.0f;
-        }
+          // ------------------------
+          // -- Restrict max distance
+          // ------------------------
+          // sliders
+          // We will the "strct_user_create_layer.user_semi_act_picked.max_distance_slider" to hold the max distance. This parameter is shared with "option a"
 
+          ImGui::TextColored ( missionx::color::color_vec4_yellow, "%s", "Pick Maximum Flight Leg Distance: ");
+          if (ImGui::SliderFloat ("##tweak_max_distance", &strct_user_create_layer.user_semi_act_picked.max_distance_slider_f, this->strct_user_create_layer.user_semi_act_picked.distance_min_max.min, this->strct_user_create_layer.user_semi_act_picked.distance_min_max.max, "%.2f nm"))
+          {
+            // validate 10nm buffer between max slider and minimum distance
+            if (strct_user_create_layer.user_semi_act_picked.max_distance_slider_f - 10.0f < this->strct_user_create_layer.user_semi_act_picked.distance_min_max.min )
+              strct_user_create_layer.user_semi_act_picked.max_distance_slider_f = this->strct_user_create_layer.user_semi_act_picked.distance_min_max.min + 10.0f;
 
-        // Customise number of flight legs to generate.
+            // refresh description
+            strct_user_create_layer.user_semi_act_picked.prepare_the_semi_activity_description();
+          }
+        } // end oilrig and distance restriction
+
+        // Customize the number of flight legs to generate.
         WinImguiBriefer::add_ui_pick_how_many_legs(strct_user_create_layer.iNumberOfFlighLegs, "How Many Flight Legs ? ", this->strct_user_create_layer.user_semi_act_picked.legs_min_max.min, this->strct_user_create_layer.user_semi_act_picked.legs_min_max.max);
       }
 
@@ -3056,9 +3092,6 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
       // ------------------------------
       // Add other settings: header
       // ------------------------------
-      const bool b_plane_is_helos      = strct_user_create_layer.user_semi_act_picked.activity < missionx::enums::mx_semi_activities_enum::act_props;
-      const bool bPickedMedevacMission = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_accident || strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me);
-      const bool bPickedOilRigMission  = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_cargo_oilrig);
       add_other_settings_header(b_plane_is_helos, bPickedMedevacMission, bPickedOilRigMission);
 
     }
@@ -3081,7 +3114,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
     ImGui::SameLine(win_width_f - 230.0f);
     this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked);
 
-    // Add <generate> button
+    // Add [generate] button
     ImGui::SameLine(10.0f);
     this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
     {
@@ -3155,9 +3188,10 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
           strct_user_create_layer.iRadioPlaneType = this->strct_user_create_layer.user_semi_act_picked.plane_type;
 
           // set min/max distances
-          const auto min_distance = strct_user_create_layer.dyn_sliderVal2 - ( 0.25 * (strct_user_create_layer.dyn_sliderVal2 - strct_user_create_layer.user_semi_act_picked.distance_min_max.min) );
+          // const auto min_distance = strct_user_create_layer.dyn_sliderVal2 - ( 0.25 * (strct_user_create_layer.dyn_sliderVal2 - strct_user_create_layer.user_semi_act_picked.distance_min_max.min) );
+          const auto [min, max] = this->strct_user_create_layer.user_semi_act_picked.get_mission_area();
 
-          this->action_prepare_dynamic_mission_properties_and_call_generate_action(min_distance, strct_user_create_layer.dyn_sliderVal2);
+          this->action_prepare_dynamic_mission_properties_and_call_generate_action(min, max);
 
         }
         ImGui::PopStyleColor(3);
@@ -3214,6 +3248,44 @@ WinImguiBriefer::add_ui_pick_how_many_legs(int & inout_radio_value_ref, const st
 
 }
 
+// -------------------------------------------
+
+void WinImguiBriefer::add_ui_oilrig_search_area_buttons()
+{
+  missionx::WinImguiBriefer::HelpMarker (R"(Best used with the "OSM Offshore Oil-Rigs" custom scenery for full world coverage.
+
+The plugin will place you randomly in a location near an Oil Rig.\nThe Oil Rig data is highly dependent on the Oil Rig information found in the apt.dat files, and not on what you see in your maps.
+
+Filter options:
+---------------
+* "In My Area": Searches for oil rigs within a radius of approximately 200 NM from your current location.
+
+* "Local Region": Searches for an oil rig within a larger area relative to the aircraft. The aircraft will be repositioned at mission start.
+
+* "Quarter/Half/Full Globe: Broadens the search to a much larger geographic area. The aircraft will be repositioned at mission start.
+)", missionx::color::color_vec4_aqua);
+  ImGui::SameLine ();
+  ImGui::TextColored (missionx::color::color_vec4_yellow, "Choose a region to search for oil rigs:");
+  missionx::data_manager::ui_oilrig_globe_part_i = add_ui_dynamic_options_buttons (missionx::data_manager::ui_oilrig_globe_part_i, this->strct_user_create_layer.map_pick_oilrig_globe_part);
+  ImGui::NewLine ();
+
+}
+
+void WinImguiBriefer::add_ui_medevac_surprise_me_warning()
+{
+  this->mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_SMALL());
+  {
+    ImGui::TextColored(missionx::color::color_vec4_aqua, "You can test this category, it is still a Work.In.Progress.");
+    // v25.12.1
+    ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_yellow);
+    ImGui::TextWrapped("%s", "All locations in the mission are based on OpenStreetMap data, including extraction and drop-off locations, which may not be positioned exactly at the helipad. This is the current limitation until a better solution is implemented. Enjoy.");
+    ImGui::PopStyleColor(1);
+  }
+  this->mxUiReleaseLastFont();
+}
+
+// -------------------------------------------
+// -------------------------------------------
 
 // ------------ setMessage --------------
 void
@@ -5425,7 +5497,7 @@ void WinImguiBriefer::draw_dynamic_mission_creation_screen_home()
       }
       this->mx_add_tooltip (missionx::color::color_vec4_white, "Pick the type to generate.");
       // bottom title
-      ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "%s", "Pick which type of flight you would like to fly,\nWith minimal custom settings.");
+      ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "%s", "(W.I.P)\nPick which type of flight you would like to fly,\nWith minimal custom settings.");
 
     } // end Some Control
     ImGui::EndTable ();
@@ -5517,14 +5589,15 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
 
       if (bPickedMedevacSurpriseMeMission)
       {
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
-        ImGui::TextColored (missionx::color::color_vec4_aqua, "You can test this category, it is still a Work.In.Progress.");
-        // v25.12.1
-        ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_yellow);
-        ImGui::TextWrapped("%s", "All locations in the mission are based on OpenStreetMap data, including extraction and drop-off locations, which may not be positioned exactly at the helipad. This is the current limitation until a better solution is implemented. Enjoy.");
-        ImGui::PopStyleColor(1);
-
-        this->mxUiReleaseLastFont ();
+        add_ui_medevac_surprise_me_warning();
+        // this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
+        // ImGui::TextColored (missionx::color::color_vec4_aqua, "You can test this category, it is still a Work.In.Progress.");
+        // // v25.12.1
+        // ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_yellow);
+        // ImGui::TextWrapped("%s", "All locations in the mission are based on OpenStreetMap data, including extraction and drop-off locations, which may not be positioned exactly at the helipad. This is the current limitation until a better solution is implemented. Enjoy.");
+        // ImGui::PopStyleColor(1);
+        //
+        // this->mxUiReleaseLastFont ();
       }
 
 
@@ -5663,20 +5736,21 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
 
         if (bPickedOilRigMission)
         {
-          missionx::WinImguiBriefer::HelpMarker (R"(Best used with the "OSM Offshore Oil-Rigs" custom scenery for full world coverage.
-
-Filter options:
----------------
-* "In My Area": Searches for oil rigs within a radius of approximately 200 NM from your current location.
-
-* "Local Region": Searches for an oil rig within a larger area relative to the aircraft. The aircraft will be repositioned at mission start.
-
-* "Quarter/Half/Full Globe: Broadens the search to a much larger geographic area. The aircraft will be repositioned at mission start.
-)", missionx::color::color_vec4_aqua);
-          ImGui::SameLine ();
-          ImGui::TextColored (missionx::color::color_vec4_yellow, "Choose a region to search for oil rigs.:");
-          missionx::data_manager::ui_oilrig_globe_part_i = add_ui_dynamic_options_buttons (missionx::data_manager::ui_oilrig_globe_part_i, this->strct_user_create_layer.map_pick_oilrig_globe_part);
-          ImGui::NewLine ();
+          add_ui_oilrig_search_area_buttons(); // v26.04.1
+//           missionx::WinImguiBriefer::HelpMarker (R"(Best used with the "OSM Offshore Oil-Rigs" custom scenery for full world coverage.
+//
+// Filter options:
+// ---------------
+// * "In My Area": Searches for oil rigs within a radius of approximately 200 NM from your current location.
+//
+// * "Local Region": Searches for an oil rig within a larger area relative to the aircraft. The aircraft will be repositioned at mission start.
+//
+// * "Quarter/Half/Full Globe: Broadens the search to a much larger geographic area. The aircraft will be repositioned at mission start.
+// )", missionx::color::color_vec4_aqua);
+//           ImGui::SameLine ();
+//           ImGui::TextColored (missionx::color::color_vec4_yellow, "Choose a region to search for oil rigs.:");
+//           missionx::data_manager::ui_oilrig_globe_part_i = add_ui_dynamic_options_buttons (missionx::data_manager::ui_oilrig_globe_part_i, this->strct_user_create_layer.map_pick_oilrig_globe_part);
+//           ImGui::NewLine ();
         }
 
         if (!bPickedOilRigMission && !bPickedMedevacSurpriseMeMission ) // Display for missions that are NOT Oil Rig nor "Surprise Me type".

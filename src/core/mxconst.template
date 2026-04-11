@@ -725,7 +725,9 @@ const static ^std::string^                BITMAP_BTN_FULL_AUTOMATION            
 const static ^std::string^                BITMAP_BTN_ACT_GA                                      ^ "act_ga_01.png"; ^// v26.04.1
 const static ^std::string^                BITMAP_BTN_ACT_JET                                     ^ "act_jet_01.png"; ^// v26.04.1
 const static ^std::string^                BITMAP_BTN_ACT_TURBOPROP                               ^ "act_tp_01.png"; ^// v26.04.1 - tbd
-const static ^std::string^                BITMAP_BTN_ACT_HEL_MED_ACCIDENT                        ^ "act_med_h_acc_01.png"; ^// v26.04.1 - tbd
+const static ^std::string^                BITMAP_BTN_ACT_HELOS_ACC                               ^ "act_helos_acc_01.png"; ^// v26.04.1
+const static ^std::string^                BITMAP_BTN_ACT_HELOS_OIL                               ^ "act_helos_oil_01.png"; ^// v26.04.1
+const static ^std::string^                BITMAP_BTN_ACT_HELOS_SRP                               ^ "act_helos_srp_01.png"; ^// v26.04.1
 
 const static ^std::string^                WHITE                                                  ^ "white";
 const static ^std::string^                RED                                                    ^ "red";

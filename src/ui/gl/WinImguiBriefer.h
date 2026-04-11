@@ -185,11 +185,11 @@ public:
   void  add_info_to_flight_leg (); // v3.305.2
   void  add_debug_info (); // v3.305.2
   void  add_flight_planning (); // v24.03.1
-  void  add_other_settings_header( const bool in_plane_is_helo, const bool bPickedMedevacMission, bool bPickedOilRigMission ); // v26.04.1
+  void  add_other_settings_header( bool in_plane_is_helo, bool bPickedMedevacMission, bool bPickedOilRigMission ); // v26.04.1
   void  action_prepare_dynamic_mission_properties_and_call_generate_action(const float &in_distance_min, const float & in_distance_max); // v26.04.1
 
   void flc () override;
-  void execAction (mx_window_actions actionCommand); // special function to handle specific requests from outside of the window
+  void execAction (mx_window_actions actionCommand); // special function to handle specific requests from outside the window
 
 
   // Counter for the number of windows opened
@@ -233,8 +233,9 @@ public:
     phase_accept
   };
 
-  struct activity_btn_info
+  struct activity_btn_info_strct
   {
+    // list parameters (needed for the semi-automation activity screen)
     struct st_distance
     {
       float min {5.0f};
@@ -259,6 +260,9 @@ public:
     std::string  label;
     std::string  tip;
 
+    // Non-List parameters
+    std::string desc {""}; // we need initializer
+    float max_distance_slider_f {0.0f};
 
     void reset()
     {
@@ -271,11 +275,25 @@ public:
       imgName.clear();
       label.clear();
       tip.clear();
+
+      // temporary data
+      desc.clear();
+      max_distance_slider_f = 0.0f;
     }
 
-    float randomize_max_distance() { 
-      const auto min = (distance_min_max.max - distance_min_max.min) * 0.25 + distance_min_max.min; // debug
-      return std::roundf( Utils::getRandomRealNumber(min, distance_min_max.max) );
+    [[nodiscard]] st_distance get_mission_area() const
+    {
+      st_distance mission_area;
+      mission_area.min = max_distance_slider_f - ( 0.33f * (max_distance_slider_f - distance_min_max.min ) );
+      mission_area.max = max_distance_slider_f;
+
+      return mission_area;
+    }
+
+    void randomize_max_distance()
+    {
+      const auto min = (distance_min_max.max - distance_min_max.min) * 0.33f + distance_min_max.min; // debug
+      max_distance_slider_f = std::roundf(  static_cast<float>( Utils::getRandomRealNumber(min, distance_min_max.max) ) );
     }
 
     int randomize_no_of_legs() 
@@ -291,12 +309,40 @@ public:
       return final_legs_no_to_generate;
 
     } // end randomize_no_of_legs
+
+    // prepare desc
+    void prepare_the_semi_activity_description()
+    {
+      // Type of plane
+      const std::string plane_type_desc = (id < 5)? "You will fly a helos mission" : "You will fly a plane mission";
+
+      // Flight area description
+      const auto  [min_area, max_area] = get_mission_area();
+
+      std::string flight_area_desc = fmt::format("{:.0f} to {:.0f}", min_area, max_area);
+      if (activity == enums::mx_semi_activities_enum::act_helos_cargo_oilrig || activity == enums::mx_semi_activities_enum::act_helos_medevac_oilrig)
+        flight_area_desc            = fmt::format("determined based on the oil rig search area");
+      else if (activity == enums::mx_semi_activities_enum::act_helos_medevac_surprise_me)
+        flight_area_desc            = fmt::format("determined by the plugin");
+
+      const std::string area_desc  = fmt::format("Flight area: {}", flight_area_desc);
+
+
+      // no. of legs
+      const std::string no_of_legs_desc = fmt::format("You will have: {}", (final_legs_no_to_generate < 2)? " one landing location" : fmt::format(" up to {}, landing locations", final_legs_no_to_generate));
+
+      // construct description
+      desc = fmt::format("{}.\n\n{}.\n{}.", plane_type_desc, area_desc, no_of_legs_desc);
+    }
   };
 
   // ids: 1-4 will be kept for Helos accident, Hellos Surprise me, Hellos oilrig and any medevac activity
-  const std::list<activity_btn_info> list_semi_auto_activities = {
-    {5, 2, {20.0, 80.0}, {1, 4}, missionx::enums::mx_semi_activities_enum::act_props, missionx::mx_plane_types_enum::plane_type_props, mxconst::get_BITMAP_BTN_ACT_GA(), "GA", "Short flights around the area"},
-    {6, 1, {120.0, 800.0}, {1, 1}, missionx::enums::mx_semi_activities_enum::act_jets, missionx::mx_plane_types_enum::plane_type_jets, mxconst::get_BITMAP_BTN_ACT_JET(), "Jet", "FLying in style"},
+  const std::list<activity_btn_info_strct> list_semi_auto_activities = {
+    {.id=1, .final_legs_no_to_generate=2, .distance_min_max{5.0, 30.0}, .legs_min_max{2, 2}, .activity=missionx::enums::mx_semi_activities_enum::act_helos_medevac_accident, .plane_type=missionx::mx_plane_types_enum::plane_type_helos, .imgName=mxconst::get_BITMAP_BTN_ACT_HELOS_ACC(), .label="Accident", .tip="Medevac accident, based on OSM location"},
+    {.id=2, .final_legs_no_to_generate=2, .distance_min_max{5.0, 75}, .legs_min_max{2, 2}, .activity=missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me, .plane_type=missionx::mx_plane_types_enum::plane_type_helos, .imgName=mxconst::get_BITMAP_BTN_ACT_HELOS_SRP(), .label="Rescue", .tip="Medevac rescue, based on OSM location"},
+    {.id=3, .final_legs_no_to_generate=2, .distance_min_max{5.0, 70}, .legs_min_max{2, 2}, .activity=missionx::enums::mx_semi_activities_enum::act_helos_cargo_oilrig, .plane_type=missionx::mx_plane_types_enum::plane_type_helos, .imgName=mxconst::get_BITMAP_BTN_ACT_HELOS_OIL(), .label="Oilrig", .tip="TBD - Fly to an Oilrig"},
+    {.id=5, .final_legs_no_to_generate=2, .distance_min_max{20.0, 80.0}, .legs_min_max{1, 4}, .activity=missionx::enums::mx_semi_activities_enum::act_props, .plane_type=missionx::mx_plane_types_enum::plane_type_props, .imgName=mxconst::get_BITMAP_BTN_ACT_GA(), .label="GA", .tip="Short flights around the area"},
+    {.id=6, .final_legs_no_to_generate=1, .distance_min_max{120.0, 800.0}, .legs_min_max{1, 1}, .activity=missionx::enums::mx_semi_activities_enum::act_jets, .plane_type=missionx::mx_plane_types_enum::plane_type_jets, .imgName=mxconst::get_BITMAP_BTN_ACT_JET(), .label="Jet", .tip="Flying in style"},
   };
 
   // -------------------------------------------
@@ -319,8 +365,7 @@ public:
 
     // v26.04.1 semi-automated mission creation
     mx_act_phase_enum act_phase_enum{ mx_act_phase_enum::phase_pick }; // v26.04.1
-    activity_btn_info user_semi_act_picked; // v26.04.1
-    std::string semi_mission_description; // v26.04.1
+    activity_btn_info_strct user_semi_act_picked; // v26.04.1
     int                                      headerIndex{ 0 }; // v25.03.3. Used only with mapSetupHeaders
     std::unordered_map<int, mx_header_state> mapSemiOptionsHeaders = { { headerIndex, mx_header_state ("Custom Tweaks", true) } }; // header is open by default
 
@@ -1510,6 +1555,8 @@ private:
   void                add_ui_semi_act_phase_1_pick (); // v26.04.1
   void                add_ui_semi_act_phase_2_detail (); // v26.04.1
   static void         add_ui_pick_how_many_legs ( int & inout_radio_value_ref, const std::string & in_label, const int & in_minButtons, const int & in_maxButtons); // v26.04.1
+  void                add_ui_oilrig_search_area_buttons ( ); // v26.04.1
+  void                add_ui_medevac_surprise_me_warning ( ); // v26.04.1
   const dataref_const dc;
 };
 

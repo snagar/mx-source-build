@@ -5771,24 +5771,22 @@ missionx::Mission::flcPRE()
           }
           else
           {
-            #ifndef RELEASE
-            using GetMetarPtr = void(*)(const char *id, XPLMFixedString150_t *outMETAR);
-            if (data_manager::xplm_version >= 400)
-            {
-              data_manager::shared_navaid_between_threads.init();
-
-              GetMetarPtr getMetar_func{};
-              getMetar_func = reinterpret_cast<GetMetarPtr>( XPLMFindSymbol("XPLMGetMETARForAirport") );
-              if (getMetar_func)
-              {
-                XPLMFixedString150_t strct_metar;
-                getMetar_func( "KSEA", &strct_metar );
-                data_manager::shared_navaid_between_threads.sMetar = mxUtils::trim ( std::string(strct_metar.buffer) );
-              }
-            }
-            #endif
-
-
+            // #ifndef RELEASE
+            // using GetMetarPtr = void(*)(const char *id, XPLMFixedString150_t *outMETAR);
+            // if (data_manager::xplm_version >= 400)
+            // {
+            //   data_manager::shared_navaid_between_threads.init();
+            //
+            //   GetMetarPtr getMetar_func{};
+            //   getMetar_func = reinterpret_cast<GetMetarPtr>( XPLMFindSymbol("XPLMGetMETARForAirport") );
+            //   if (getMetar_func)
+            //   {
+            //     XPLMFixedString150_t strct_metar;
+            //     getMetar_func(data_manager::shared_navaid_between_threads.ID , &strct_metar );
+            //     data_manager::shared_navaid_between_threads.sMetar = mxUtils::trim ( std::string(strct_metar.buffer) );
+            //   }
+            // }
+            // #endif
 
 
             bool bLock = true;
