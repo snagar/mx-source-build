@@ -186,7 +186,8 @@ public:
   void  add_debug_info (); // v3.305.2
   void  add_flight_planning (); // v24.03.1
   void  add_other_settings_header( bool in_plane_is_helo, bool bPickedMedevacMission, bool bPickedOilRigMission ); // v26.04.1
-  void  action_prepare_dynamic_mission_properties_and_call_generate_action(const float &in_distance_min, const float & in_distance_max); // v26.04.1
+  void  action_prepare_dynamic_mission_properties_and_call_generate_action(const float &in_distance_min, const float & in_distance_max, const bool & in_add_start_from_plane_position = true); // v26.04.1
+  bool  add_ui_generate_button(); // v26.04.2
 
   void flc () override;
   void execAction (mx_window_actions actionCommand); // special function to handle specific requests from outside the window
@@ -239,6 +240,7 @@ public:
     struct st_distance
     {
       float min {5.0f};
+      float lowest_max{20.0f};
       float max {50.0f};
     };
     struct st_targets
@@ -250,7 +252,7 @@ public:
     int          id{ -1 };
     int          final_legs_no_to_generate {1}; // Will hold the final number of legs to generate.
 
-    st_distance  distance_min_max {5.0f, 50.0f};
+    st_distance  distance_min_max {5.0f, 20.0f, 50.0f};
     st_targets   legs_min_max {1, 4}; // store the number of targets per "action type picked". Example: Medevac will only have 2 legs.
 
     missionx::enums::mx_semi_activities_enum activity{missionx::enums::mx_semi_activities_enum::act_none};
@@ -268,7 +270,7 @@ public:
     {
       id                        = -1;
       final_legs_no_to_generate = 1;
-      distance_min_max          = {5.0, 50.0};
+      distance_min_max          = {5.0, 20.0f, 50.0};
       legs_min_max              = {1, 4};
       activity                  = missionx::enums::mx_semi_activities_enum::act_none;
       plane_type                = missionx::mx_plane_types_enum::plane_type_any;
@@ -284,8 +286,9 @@ public:
     [[nodiscard]] st_distance get_mission_area() const
     {
       st_distance mission_area;
-      mission_area.min = max_distance_slider_f - ( 0.33f * (max_distance_slider_f - distance_min_max.min ) );
+      mission_area.min = max_distance_slider_f - ( 0.5f * (max_distance_slider_f - distance_min_max.min ) );
       mission_area.max = max_distance_slider_f;
+      mission_area.lowest_max = 0.0f;
 
       return mission_area;
     }
@@ -317,7 +320,7 @@ public:
       const std::string plane_type_desc = (id < 5)? "You will fly a helos mission" : "You will fly a plane mission";
 
       // Flight area description
-      const auto  [min_area, max_area] = get_mission_area();
+      const auto  [min_area, low_max, max_area] = get_mission_area();
 
       std::string flight_area_desc = fmt::format("{:.0f} to {:.0f}", min_area, max_area);
       if (activity == enums::mx_semi_activities_enum::act_helos_cargo_oilrig || activity == enums::mx_semi_activities_enum::act_helos_medevac_oilrig)
@@ -338,11 +341,16 @@ public:
 
   // ids: 1-4 will be kept for Helos accident, Hellos Surprise me, Hellos oilrig and any medevac activity
   const std::list<activity_btn_info_strct> list_semi_auto_activities = {
-    {.id=1, .final_legs_no_to_generate=2, .distance_min_max{5.0, 30.0}, .legs_min_max{2, 2}, .activity=missionx::enums::mx_semi_activities_enum::act_helos_medevac_accident, .plane_type=missionx::mx_plane_types_enum::plane_type_helos, .imgName=mxconst::get_BITMAP_BTN_ACT_HELOS_ACC(), .label="Accident", .tip="Medevac accident, based on OSM location"},
-    {.id=2, .final_legs_no_to_generate=2, .distance_min_max{5.0, 75}, .legs_min_max{2, 2}, .activity=missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me, .plane_type=missionx::mx_plane_types_enum::plane_type_helos, .imgName=mxconst::get_BITMAP_BTN_ACT_HELOS_SRP(), .label="Rescue", .tip="Medevac rescue, based on OSM location"},
-    {.id=3, .final_legs_no_to_generate=2, .distance_min_max{5.0, 70}, .legs_min_max{2, 2}, .activity=missionx::enums::mx_semi_activities_enum::act_helos_cargo_oilrig, .plane_type=missionx::mx_plane_types_enum::plane_type_helos, .imgName=mxconst::get_BITMAP_BTN_ACT_HELOS_OIL(), .label="Oilrig", .tip="TBD - Fly to an Oilrig"},
-    {.id=5, .final_legs_no_to_generate=2, .distance_min_max{20.0, 80.0}, .legs_min_max{1, 4}, .activity=missionx::enums::mx_semi_activities_enum::act_props, .plane_type=missionx::mx_plane_types_enum::plane_type_props, .imgName=mxconst::get_BITMAP_BTN_ACT_GA(), .label="GA", .tip="Short flights around the area"},
-    {.id=6, .final_legs_no_to_generate=1, .distance_min_max{120.0, 800.0}, .legs_min_max{1, 1}, .activity=missionx::enums::mx_semi_activities_enum::act_jets, .plane_type=missionx::mx_plane_types_enum::plane_type_jets, .imgName=mxconst::get_BITMAP_BTN_ACT_JET(), .label="Jet", .tip="Flying in style"},
+    {.id=1, .final_legs_no_to_generate=2, .distance_min_max{5.0f, 10.0f, 30.0f}, .legs_min_max{2, 2}, .activity=missionx::enums::mx_semi_activities_enum::act_helos_medevac_accident, .plane_type=missionx::mx_plane_types_enum::plane_type_helos, .imgName=mxconst::get_BITMAP_BTN_ACT_HELOS_ACC(), .label="Accident", .tip="Medevac accident, based on OSM location"},
+    {.id=2, .final_legs_no_to_generate=2, .distance_min_max{5.0f, 35.0f, 75.0f}, .legs_min_max{2, 2}, .activity=missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me, .plane_type=missionx::mx_plane_types_enum::plane_type_helos, .imgName=mxconst::get_BITMAP_BTN_ACT_HELOS_SRP(), .label="Rescue", .tip="Medevac rescue, based on OSM location"},
+    {.id=3, .final_legs_no_to_generate=2, .distance_min_max{5.0f, 30.0f, 70.0f}, .legs_min_max{2, 2}, .activity=missionx::enums::mx_semi_activities_enum::act_helos_cargo_oilrig, .plane_type=missionx::mx_plane_types_enum::plane_type_helos, .imgName=mxconst::get_BITMAP_BTN_ACT_HELOS_OIL(), .label="Oilrig", .tip="TBD - Fly to an Oilrig"},
+    {.id=5, .final_legs_no_to_generate=2, .distance_min_max{20.0f, 30.0f, 80.0f}, .legs_min_max{1, 4}, .activity=missionx::enums::mx_semi_activities_enum::act_props, .plane_type=missionx::mx_plane_types_enum::plane_type_props, .imgName=mxconst::get_BITMAP_BTN_ACT_GA(), .label="GA", .tip="Short flights around the area"},
+    {.id=6, .final_legs_no_to_generate=1, .distance_min_max{50.0f, 150.0f, 800.0f}, .legs_min_max{1, 2}, .activity=missionx::enums::mx_semi_activities_enum::act_turboprops, .plane_type=missionx::mx_plane_types_enum::plane_type_turboprops, .imgName=mxconst::get_BITMAP_BTN_ACT_TURBOPROP(), .label="Turboprop", .tip="Like Jet, but more versetile"},
+    {.id=7, .final_legs_no_to_generate=1, .distance_min_max{120.0f, 200.0f, 1500.0f}, .legs_min_max{1, 1}, .activity=missionx::enums::mx_semi_activities_enum::act_jets, .plane_type=missionx::mx_plane_types_enum::plane_type_jets, .imgName=mxconst::get_BITMAP_BTN_ACT_JET(), .label="Jet", .tip="Flying in style"},
+    {.id = 8, .final_legs_no_to_generate = 1, .distance_min_max{200.0f, 300.0f, 1500.0f}, .legs_min_max{1, 1}, .activity = missionx::enums::mx_semi_activities_enum::act_airline_medium, .plane_type = missionx::mx_plane_types_enum::plane_type_airline, .imgName = mxconst::get_BITMAP_BTN_ACT_AIRLINE(), .label = "Airline", .tip = "Medium range flights"},
+    {.id = 9, .final_legs_no_to_generate = 1, .distance_min_max{500.0f, 600.0f, 6000.0f}, .legs_min_max{1, 1}, .activity = missionx::enums::mx_semi_activities_enum::act_heavy_airline_long, .plane_type = missionx::mx_plane_types_enum::plane_type_heavy_airline, .imgName = mxconst::get_BITMAP_BTN_ACT_AIRLINE_H(), .label = "Airline Heavy", .tip = "Long range flights"},
+    {.id = 10, .final_legs_no_to_generate = 1, .distance_min_max{200.0f, 400.0f, 4000.0f}, .legs_min_max{1, 1}, .activity = missionx::enums::mx_semi_activities_enum::act_cargo_medium, .plane_type = missionx::mx_plane_types_enum::plane_type_cargo, .imgName = mxconst::get_BITMAP_BTN_ACT_CARGO(), .label = "Cargo", .tip = "Medium cargo flights"},
+    {.id = 11, .final_legs_no_to_generate = 1, .distance_min_max{500.0f, 600.0f, 6000.0f}, .legs_min_max{1, 1}, .activity = missionx::enums::mx_semi_activities_enum::act_cargo_heavy_long, .plane_type = missionx::mx_plane_types_enum::plane_type_heavy_cargo, .imgName = mxconst::get_BITMAP_BTN_ACT_CARGO_H (), .label = "Cargo Heavy", .tip = "Medium to Long cargo flights"},
   };
 
   // -------------------------------------------

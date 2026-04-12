@@ -724,6 +724,10 @@ const static ^std::string^                BITMAP_BTN_SOME_CONTROL               
 const static ^std::string^                BITMAP_BTN_FULL_AUTOMATION                             ^ "no_control_256.png"; ^// v26.04.1
 const static ^std::string^                BITMAP_BTN_ACT_GA                                      ^ "act_ga_01.png"; ^// v26.04.1
 const static ^std::string^                BITMAP_BTN_ACT_JET                                     ^ "act_jet_01.png"; ^// v26.04.1
+const static ^std::string^                BITMAP_BTN_ACT_AIRLINE                                 ^ "act_airline_01.png"; ^// v26.04.2
+const static ^std::string^                BITMAP_BTN_ACT_CARGO                                   ^ "act_cargo_01.png"; ^// v26.04.2
+const static ^std::string^                BITMAP_BTN_ACT_AIRLINE_H                               ^ "act_airline_h_01.png"; ^// v26.04.2
+const static ^std::string^                BITMAP_BTN_ACT_CARGO_H                                 ^ "act_cargo_h_01.png"; ^// v26.04.2
 const static ^std::string^                BITMAP_BTN_ACT_TURBOPROP                               ^ "act_tp_01.png"; ^// v26.04.1 - tbd
 const static ^std::string^                BITMAP_BTN_ACT_HELOS_ACC                               ^ "act_helos_acc_01.png"; ^// v26.04.1
 const static ^std::string^                BITMAP_BTN_ACT_HELOS_OIL                               ^ "act_helos_oil_01.png"; ^// v26.04.1

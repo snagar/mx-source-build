@@ -1349,7 +1349,7 @@ void WinImguiBriefer::add_other_settings_header(const bool in_plane_is_helo, con
 
 // -------------------------------------------
 
-void WinImguiBriefer::action_prepare_dynamic_mission_properties_and_call_generate_action(const float& in_distance_min, const float& in_distance_max) 
+void WinImguiBriefer::action_prepare_dynamic_mission_properties_and_call_generate_action(const float& in_distance_min, const float& in_distance_max, const bool & in_add_start_from_plane_position)
 {
   IXMLNode node_ptr = missionx::data_manager::prop_userDefinedMission_ui.node;
 
@@ -1361,6 +1361,12 @@ void WinImguiBriefer::action_prepare_dynamic_mission_properties_and_call_generat
   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double>(mxconst::get_PROP_MAX_DISTANCE_SLIDER(), in_distance_max);
   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_ADD_COUNTDOWN(), false); // We set a default value for helos/planes with cargo missions. LAter we will change it if needed
   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_GENERATE_GPS_WAYPOINTS(), this->strct_cross_layer_properties.flag_generate_gps_waypoints);
+
+  if (in_add_start_from_plane_position) // v26.04.2 add start from plane position
+    missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_START_FROM_PLANE_POSITION (), true);
+  else
+    missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute(mxconst::get_PROP_START_FROM_PLANE_POSITION ().c_str()); // remove
+
 
   // mission category
   auto vecToDisplay = this->mapMissionCategories.contains(this->strct_user_create_layer.iRadioMissionTypePicked) ? this->mapMissionCategories[this->strct_user_create_layer.iRadioMissionTypePicked] : std::vector<const char*>{};
@@ -1443,6 +1449,23 @@ void WinImguiBriefer::action_prepare_dynamic_mission_properties_and_call_generat
   this->asyncSecondMessageLine.clear();
   this->setMessage("Random Engine is running, please wait...", 10);
   this->execAction(missionx::mx_window_actions::ACTION_GENERATE_RANDOM_MISSION); // should hide the window
+}
+
+// -------------------------------------------
+
+bool
+WinImguiBriefer::add_ui_generate_button() 
+{
+
+  ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_black);
+  ImGui::PushStyleColor(ImGuiCol_Button, missionx::color::color_vec4_orange);
+  ImGui::PushStyleColor(ImGuiCol_ButtonActive, missionx::color::color_vec4_azure);
+  
+  auto pressed = ImGui::Button(">> Generate Mission <<");
+  
+  ImGui::PopStyleColor(3);
+
+  return pressed;
 }
 
 // -------------------------------------------
@@ -2934,7 +2957,9 @@ void WinImguiBriefer::add_ui_semi_act_phase_1_pick()
     {
       // decide if we need another row
       if (column_index_i%TABLE_COLUMNS == 0)
+      {
         ImGui::TableNextRow();
+      }
 
       ImGui::TableNextColumn();
       {
@@ -2972,6 +2997,10 @@ void WinImguiBriefer::add_ui_semi_act_phase_1_pick()
           this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_MED ()); // set font size
           ImGui::TextColored(missionx::color::color_vec4_springgreen, "%s", btn_info.label.c_str());
           this->mxUiReleaseLastFont();
+
+          ImGui::Separator();
+          ImGui::Spacing();
+
         } // end group
         ImGui::EndGroup();
       }
@@ -3057,7 +3086,11 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
         add_ui_medevac_surprise_me_warning();
         ImGui::Spacing();
         ImGui::Separator();
-
+      }
+      else if (!bPickedOilRigMission && !bPickedMedevacSurpriseMeMission)
+      {
+        ImGui::Checkbox ("Start from plane position", &this->strct_cross_layer_properties.flag_start_from_plane_position);
+        ImGui::Spacing ();
       }
 
       this->strct_user_create_layer.mapSemiOptionsHeaders[this->strct_user_create_layer.headerIndex].setState((ImGui::CollapsingHeader(this->strct_user_create_layer.mapSemiOptionsHeaders[this->strct_user_create_layer.headerIndex].title.c_str())));
@@ -3072,11 +3105,12 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
           // We will the "strct_user_create_layer.user_semi_act_picked.max_distance_slider" to hold the max distance. This parameter is shared with "option a"
 
           ImGui::TextColored ( missionx::color::color_vec4_yellow, "%s", "Pick Maximum Flight Leg Distance: ");
-          if (ImGui::SliderFloat ("##tweak_max_distance", &strct_user_create_layer.user_semi_act_picked.max_distance_slider_f, this->strct_user_create_layer.user_semi_act_picked.distance_min_max.min, this->strct_user_create_layer.user_semi_act_picked.distance_min_max.max, "%.2f nm"))
+          if (ImGui::SliderFloat ("##tweak_max_distance", &strct_user_create_layer.user_semi_act_picked.max_distance_slider_f, this->strct_user_create_layer.user_semi_act_picked.distance_min_max.lowest_max, this->strct_user_create_layer.user_semi_act_picked.distance_min_max.max, "%.2f nm"))
           {
-            // validate 10nm buffer between max slider and minimum distance
-            if (strct_user_create_layer.user_semi_act_picked.max_distance_slider_f - 10.0f < this->strct_user_create_layer.user_semi_act_picked.distance_min_max.min )
-              strct_user_create_layer.user_semi_act_picked.max_distance_slider_f = this->strct_user_create_layer.user_semi_act_picked.distance_min_max.min + 10.0f;
+            // v26.04.2 deprecated. We define the "lowest max" value in the "st_distance" struct.
+            //// validate 10nm buffer between max slider and minimum distance
+            //if (strct_user_create_layer.user_semi_act_picked.max_distance_slider_f - 10.0f < this->strct_user_create_layer.user_semi_act_picked.distance_min_max.min )
+            //  strct_user_create_layer.user_semi_act_picked.max_distance_slider_f = this->strct_user_create_layer.user_semi_act_picked.distance_min_max.min + 10.0f;
 
             // refresh description
             strct_user_create_layer.user_semi_act_picked.prepare_the_semi_activity_description();
@@ -3139,10 +3173,8 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
         // -----------------------
         // DISPLAY GENERATE BUTTON
         // -----------------------
-        ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_black);
-        ImGui::PushStyleColor(ImGuiCol_Button, missionx::color::color_vec4_orange);
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, missionx::color::color_vec4_azure);
-        if (ImGui::Button(">> Generate Mission <<"))
+
+        if (add_ui_generate_button())
         {
           if (bRerunRandomDateTime) // v3.303.10
             this->execAction(missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
@@ -3189,12 +3221,11 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
 
           // set min/max distances
           // const auto min_distance = strct_user_create_layer.dyn_sliderVal2 - ( 0.25 * (strct_user_create_layer.dyn_sliderVal2 - strct_user_create_layer.user_semi_act_picked.distance_min_max.min) );
-          const auto [min, max] = this->strct_user_create_layer.user_semi_act_picked.get_mission_area();
+          const auto [min, low_max, max] = this->strct_user_create_layer.user_semi_act_picked.get_mission_area();
 
-          this->action_prepare_dynamic_mission_properties_and_call_generate_action(min, max);
+          this->action_prepare_dynamic_mission_properties_and_call_generate_action(min, max, this->strct_cross_layer_properties.flag_start_from_plane_position);
 
-        }
-        ImGui::PopStyleColor(3);
+        } // end [generate button]
 
       }
       else if (missionx::RandomEngine::random_thread_state.flagIsActive)

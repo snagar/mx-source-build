@@ -36,7 +36,7 @@ constexpr static const int MX_FEATURES_VERSION = 20260301; // Added min/max rw l
 
 inline constexpr static auto PLUGIN_VER_MAJOR                  = "26"; // year
 inline constexpr static auto PLUGIN_VER_MINOR                  = "04"; // month
-inline constexpr static auto PLUGIN_VER_SUB                    = "1"; // sub-version
+inline constexpr static auto PLUGIN_VER_SUB                    = "2"; // sub-version
 inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 

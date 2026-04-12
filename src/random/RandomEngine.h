@@ -94,7 +94,8 @@ private:
   std::string                randomPlaneType; // v3.0.221.11
   mx_plane_types_enum        setPlaneType (std::string inPlaneType);
   void                       setPlaneType (mx_plane_types_enum inPlaneType);
-
+  // v26.04.2 Only returns plane type as "enum" value
+  static mx_plane_types_enum get_plane_type_enum (std::string inPlaneType);
   static std::string errMsg;
 
   ///// template stream and xml nodes

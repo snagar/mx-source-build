@@ -1085,7 +1085,7 @@ data_manager::readPluginTextures()
 {
   std::string                 errorMsg;
   const std::string                 bitmapPath      = mx_folders_properties.getAttribStringValue (mxconst::get_PROP_MISSIONX_BITMAP_PATH(), "", errStr);
-  const std::array<std::string, 32> textureName_arr = { mxconst::get_BITMAP_LOAD_MISSION(),
+  const std::array<std::string, 37> textureName_arr = { mxconst::get_BITMAP_LOAD_MISSION(),
                                                   mxconst::get_BITMAP_INVENTORY_MXPAD(),
                                                   mxconst::get_BITMAP_MAP_MXPAD(),
                                                   mxconst::get_BITMAP_AUTO_HIDE_EYE_FOCUS(),
@@ -1117,7 +1117,12 @@ data_manager::readPluginTextures()
                                                   mxconst::get_BITMAP_BTN_SOME_CONTROL(),
                                                   mxconst::get_BITMAP_BTN_FULL_AUTOMATION(),
                                                   mxconst::get_BITMAP_BTN_ACT_GA(),
+                                                  mxconst::get_BITMAP_BTN_ACT_TURBOPROP(),
                                                   mxconst::get_BITMAP_BTN_ACT_JET(),
+                                                  mxconst::get_BITMAP_BTN_ACT_AIRLINE(),
+                                                  mxconst::get_BITMAP_BTN_ACT_AIRLINE_H(),
+                                                  mxconst::get_BITMAP_BTN_ACT_CARGO(),
+                                                  mxconst::get_BITMAP_BTN_ACT_CARGO_H(),
                                                   mxconst::get_BITMAP_BTN_ACT_HELOS_ACC(),
                                                   mxconst::get_BITMAP_BTN_ACT_HELOS_SRP(),
                                                   mxconst::get_BITMAP_BTN_ACT_HELOS_OIL(),
@@ -9065,7 +9070,6 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
 
   try
   {
-
 
     if (std::filesystem::exists (filename))
     {
