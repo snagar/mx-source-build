@@ -3030,37 +3030,52 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
   const bool bPickedOilRigMission  = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_cargo_oilrig);
   const bool bPickedMedevacSurpriseMeMission  = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me);
 
-
-  // display back button
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-  if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_REPLY).append ("##BackButtonInSetup").c_str (), "Back", IM_COL32 (255, 255, 0, 255), IM_COL32 (0, 0, 0, 255), VEC2_BACK_BTN_SIZE)) //
-  {
-    this->strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_pick;
-    this->strct_user_create_layer.user_semi_act_picked.reset();
-  }
-  this->mxUiReleaseLastFont ();
-
-  ImGui::SameLine(0.0f, VEC2_IMAGE_BTN_SIZE.x);
-  // title
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
-  ImGui::TextColored(missionx::color::color_vec4_yellow, "%s", "Description");
-  this->mxUiReleaseLastFont ();
-
   ImGui::BeginGroup();
   {
-    // Display button image
-    ImGui::Image (data_manager::mapCachedPluginTextures[this->strct_user_create_layer.user_semi_act_picked.imgName].gTexture, VEC2_IMAGE_BTN_SIZE);
-    
-    ImGui::SameLine(0.0f, VEC2_BACK_BTN_SIZE.x);
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // set font size
+    // display back button
+    this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
+    if (ImgWindow::ButtonTooltip(mxUtils::from_u8string(ICON_FA_REPLY).append("##BackButtonInSetup").c_str(), "Back", IM_COL32(255, 255, 0, 255), IM_COL32(0, 0, 0, 255), VEC2_BACK_BTN_SIZE)) //
     {
-      ImGui::Text("%s", this->strct_user_create_layer.user_semi_act_picked.desc.c_str());
+      this->strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_pick;
+      this->strct_user_create_layer.user_semi_act_picked.reset();
     }
     this->mxUiReleaseLastFont();
 
-    ImGui::Separator();
-  }
+    // title
+    ImGui::SameLine(0.0f, VEC2_IMAGE_BTN_SIZE.x - VEC2_BACK_BTN_SIZE.x + 10.0f);
+    this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_MED());
+    ImGui::TextColored(missionx::color::color_vec4_yellow, "%s", "Description");
+    this->mxUiReleaseLastFont();
+
+    const auto table_flags = (this->strct_user_create_layer.user_semi_act_picked.activity != enums::mx_semi_activities_enum::act_helos_medevac_surprise_me)? ImGuiTableFlags_SizingFixedFit : ImGuiTableFlags_SizingStretchProp;
+
+    ImGui::BeginTable("mission_description#table_phase2_detail", 2, table_flags);
+    {
+      ImGui::TableNextRow();
+      // Show image
+      ImGui::TableNextColumn();
+      {
+        //  Display button image
+        ImGui::Image(data_manager::mapCachedPluginTextures[this->strct_user_create_layer.user_semi_act_picked.imgName].gTexture, VEC2_IMAGE_BTN_SIZE);
+      }
+      ImGui::TableNextColumn();
+      {
+        this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG()); // set font size
+          ImGui::Text("%s", this->strct_user_create_layer.user_semi_act_picked.desc.c_str());
+        this->mxUiReleaseLastFont();
+
+        // Display special message for SurpriseMe missions
+        if (bPickedMedevacSurpriseMeMission)
+        {
+          ImGui::Spacing();
+          this->add_ui_medevac_surprise_me_warning();
+        }
+      }
+      ImGui::EndTable();
+    } // endTable block
+  } // end group
   ImGui::EndGroup();
+  ImGui::Separator();
 
   // ------------------------
   // Modification options
@@ -3077,13 +3092,6 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
       {
         ImGui::Spacing();
         add_ui_oilrig_search_area_buttons();
-        ImGui::Spacing();
-        ImGui::Separator();
-      }
-      else if (bPickedMedevacSurpriseMeMission)
-      {
-        ImGui::Spacing();
-        add_ui_medevac_surprise_me_warning();
         ImGui::Spacing();
         ImGui::Separator();
       }
@@ -3121,7 +3129,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
         WinImguiBriefer::add_ui_pick_how_many_legs(strct_user_create_layer.iNumberOfFlighLegs, "How Many Flight Legs ? ", this->strct_user_create_layer.user_semi_act_picked.legs_min_max.min, this->strct_user_create_layer.user_semi_act_picked.legs_min_max.max);
       }
 
-      ImGui::NewLine(); 
+      ImGui::Spacing();
 
       // ------------------------------
       // Add other settings: header
@@ -3221,9 +3229,11 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
 
           // set min/max distances
           // const auto min_distance = strct_user_create_layer.dyn_sliderVal2 - ( 0.25 * (strct_user_create_layer.dyn_sliderVal2 - strct_user_create_layer.user_semi_act_picked.distance_min_max.min) );
-          const auto [min, low_max, max] = this->strct_user_create_layer.user_semi_act_picked.get_mission_area();
+          // const auto [min, low_max, max] = this->strct_user_create_layer.user_semi_act_picked.get_mission_area();
 
-          this->action_prepare_dynamic_mission_properties_and_call_generate_action(min, max, this->strct_cross_layer_properties.flag_start_from_plane_position);
+          const auto min = this->strct_user_create_layer.user_semi_act_picked.calc_min_area_distance();
+
+          this->action_prepare_dynamic_mission_properties_and_call_generate_action(min, this->strct_user_create_layer.user_semi_act_picked.max_distance_slider_f, this->strct_cross_layer_properties.flag_start_from_plane_position);
 
         } // end [generate button]
 
@@ -5532,7 +5542,7 @@ void WinImguiBriefer::draw_dynamic_mission_creation_screen_home()
 
     } // end Some Control
     ImGui::EndTable ();
-  }
+  } // end table
   this->mxUiReleaseLastFont ();
 
 
