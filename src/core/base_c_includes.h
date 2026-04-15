@@ -2,6 +2,11 @@
 #define BASE_C_INCLUDE_H_
 #pragma once
 
+// #ifdef IBM
+// #define NOMINMAX
+// #include <windows.h>
+// #endif
+
 // **************
 #include <algorithm>
 #include <errno.h>
@@ -15,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include <span>
 
 #include <cstdlib>
 #include <cstring>

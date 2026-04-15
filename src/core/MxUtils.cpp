@@ -1135,6 +1135,32 @@ missionx::mxUtils::create_random_engine ()
   return engine;
 }
 
+// ----------------------------------------------
+
+size_t missionx::mxUtils::copy_string_to_buffer(const std::string& in_source, char& out_value_array, const size_t in_value_array_size)
+{
+  // 1. Clear the buffer first (optional but clean)
+  std::memset(&out_value_array, 0, in_value_array_size);
+
+  // 2. Copy the string (it will copy up to the buffer size - 1)
+  const size_t length = in_source.copy(&out_value_array, in_value_array_size - 1);
+
+  // 3. Manually null-terminate
+  (&out_value_array)[length] = '\0';
+
+  return length;
+
+
+  //// Create a view of your destination buffer
+  // std::span<char> dest(this->strct_setup_layer.overpass_url_buf, missionx::mx_setup_layer::OSM_BUFF_SIZE_I);
+
+  //// Ensure we don't copy more than the string length OR the buffer size
+  // size_t copy_len = std::min (stored_overpass_url.length(), dest.size() );
+
+  // std::copy_n(stored_overpass_url.begin(), copy_len, dest.begin());
+  // dest[copy_len] = '\0'; // Guaranteed safety
+}
+
 
 // ----------------------------------------------
 // ----------------------------------------------

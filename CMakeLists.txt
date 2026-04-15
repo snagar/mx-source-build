@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(missionx LANGUAGES C CXX VERSION 25.09 DESCRIPTION "Mission-X X-Plane plugin v25.x")
+project(missionx LANGUAGES C CXX VERSION 26.04 DESCRIPTION "Mission-X X-Plane plugin v26.x")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -123,6 +123,9 @@ set(BASE_SRC src/core/coordinate/NavAidInfo.hpp
         src/ui/gl/WinImguiMxpad.cpp
         src/ui/gl/WinImguiOptions.h
         src/ui/gl/WinImguiOptions.cpp
+        src/ui/gl/ui_conv_screen.cpp
+        src/ui/gl/ui_conv_screen.h
+        src/ui/gl/shared_ui_types.hpp
         src/ui/MxUICore.cpp
         src/ui/MxUICore.hpp
         src/lr_crash.h

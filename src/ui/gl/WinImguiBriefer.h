@@ -2,43 +2,47 @@
 #define WINIMGUIBRIEFER_H_
 #pragma once
 
-#include "../../core/data_manager.h"
+#include "shared_ui_types.hpp"
+
+// #include "../../core/data_manager.h"
 #include "../../core/thread/base_thread.hpp"
-#include "../../core/xx_mission_constants.hpp"
+// #include "../../core/xx_mission_constants.hpp"
 
 // Definitions for OpenFontIcons
 #include <IconsFontAwesome5.h> // inside libs/imgui4xp
 #include <ImgWindow/ImgWindow.h> // inside libs/imgui4xp
 
+#include "ui_conv_screen.h"
+
 namespace missionx
 {
-static constexpr const int MIN_RAD_UI_VALUE_MT = 5;
-static constexpr const int MAX_RAD_UI_VALUE_MT = 50000;
+// static constexpr const int MIN_RAD_UI_VALUE_MT = 5;
+// static constexpr const int MAX_RAD_UI_VALUE_MT = 50000;
 
-// v26.03.1
-struct mx_header_state
-{
-  bool        bState{ false };
-  std::string title{ "n/a" };
-
-  mx_header_state () {};
-  mx_header_state (const std::string& inVal_s, const bool inBool)
-  {
-    bState = inBool;
-    title  = inVal_s;
-  }
-
-  void setState (const bool inState)
-  {
-    if (this->bState != inState)
-    {
-      this->bState ^= 1;
-
-      if (bState)
-        ImGui::SetScrollHereY ();
-    }
-  }
-};
+// // v26.03.1
+// struct mx_header_state
+// {
+//   bool        bState{ false };
+//   std::string title{ "n/a" };
+//
+//   mx_header_state () {};
+//   mx_header_state (const std::string& inVal_s, const bool inBool)
+//   {
+//     bState = inBool;
+//     title  = inVal_s;
+//   }
+//
+//   void setState (const bool inState)
+//   {
+//     if (this->bState != inState)
+//     {
+//       this->bState ^= 1;
+//
+//       if (bState)
+//         ImGui::SetScrollHereY ();
+//     }
+//   }
+// };
 
 // v24.12.2
 typedef enum class _ui_inv_regions
@@ -48,89 +52,89 @@ typedef enum class _ui_inv_regions
   external_store = 1
 } mx_ui_inv_regions;
 
-typedef struct trig_table_strct_
-{
-  static const int MAX_ARRAY = 10;
-
-  bool flag_first_point_is_center_cbox{ false };
-
-  int indx{ -1 };
-  int trig_type_indx{ 0 }; // type // 0 = rad, 1 = script, 2 = polygonal
-  int trig_plane_pos_combo_indx{ 0 }; // 0=ignore 1=on ground 2=airborn
-  int trig_ui_elev_type_combo_indx{ -1 }; // { "min/max elev", "lower than..", "above than..", "max elev above ground", "min elev above ground" }
-
-  int  iCurrentBuf{ 0 };
-  char buffArray[MAX_ARRAY][512] = { { '\0' } }; // holds all trigger arrays. [0]=name(reserved)
-
-  std::string trig_type_s{ "" }; // type string
-  std::string trig_onGround_s{ "" }; // on ground string
-  std::string trig_name_s{ "" };
-
-  IXMLNode node_ptr{ IXMLNode::emptyIXMLNode };
-  IXMLNode copyOfNode_ptr{ IXMLNode::emptyIXMLNode };
-
-  missionx::Point pos; // used with poly type trigger
-  void            init ()
-  {
-    indx                         = -1;
-    trig_type_indx               = 0; // type // 0 = rad, 1 = polygonal, 2 = script
-    trig_plane_pos_combo_indx    = 0; // 0=ignore 1=on ground 2=airborne
-    trig_ui_elev_type_combo_indx = -1;
-
-    trig_type_s.clear (); // type string
-    trig_onGround_s.clear (); // on ground string
-    trig_name_s.clear ();
-
-    for (size_t i = 0; i < 10; ++i)
-    {
-      buffArray[i][0] = '\0'; // holds all trigger arrays
-      memset (buffArray[i], '\0', sizeof (buffArray[i]));
-    }
-
-    node_ptr = IXMLNode::emptyIXMLNode;
-  }
-
-  // reset buff
-  void resetBuff (int indx)
-  {
-    assert (indx < MAX_ARRAY && "Tried to reset a cell not in array.");
-
-    memset (buffArray[indx], '\0', sizeof (buffArray[indx]));
-  }
-
-  // get buff
-  std::string getBuff (int i)
-  {
-    assert (i < MAX_ARRAY && "Tried to access cell not in array.");
-
-    return std::string (buffArray[i]);
-  }
-  // set buff array
-  void setBuff (int indx, std::string inVal_s)
-  {
-    if (indx < MAX_ARRAY)
-    {
-      resetBuff (indx);
-#ifdef IBM
-      memcpy_s (buffArray[indx], sizeof (buffArray[indx]), inVal_s.c_str (), (inVal_s.length () > sizeof (buffArray[indx]) ? sizeof (buffArray[indx]) : inVal_s.length ())); // we copy the memory based on which buffer do not exceeds the buffer.
-#else
-      memcpy (buffArray[indx], inVal_s.c_str (), inVal_s.length ());
-#endif
-
-    } // end if in bounderies
-
-  } // end set buff
-
-
-} mx_trig_strct_;
-
-enum class mxTrig_ui_mode_enm : uint8_t // v3.0.301
-{
-  naTrigger   = 0,
-  editTrigger = 1, // edit mode
-  newTrigger  = 2 // add new trigger
-};
-
+// typedef struct trig_table_strct_
+// {
+//   static const int MAX_ARRAY = 10;
+//
+//   bool flag_first_point_is_center_cbox{ false };
+//
+//   int indx{ -1 };
+//   int trig_type_indx{ 0 }; // type // 0 = rad, 1 = script, 2 = polygonal
+//   int trig_plane_pos_combo_indx{ 0 }; // 0=ignore 1=on ground 2=airborn
+//   int trig_ui_elev_type_combo_indx{ -1 }; // { "min/max elev", "lower than..", "above than..", "max elev above ground", "min elev above ground" }
+//
+//   int  iCurrentBuf{ 0 };
+//   char buffArray[MAX_ARRAY][512] = { { '\0' } }; // holds all trigger arrays. [0]=name(reserved)
+//
+//   std::string trig_type_s{ "" }; // type string
+//   std::string trig_onGround_s{ "" }; // on ground string
+//   std::string trig_name_s{ "" };
+//
+//   IXMLNode node_ptr{ IXMLNode::emptyIXMLNode };
+//   IXMLNode copyOfNode_ptr{ IXMLNode::emptyIXMLNode };
+//
+//   missionx::Point pos; // used with poly type trigger
+//   void            init ()
+//   {
+//     indx                         = -1;
+//     trig_type_indx               = 0; // type // 0 = rad, 1 = polygonal, 2 = script
+//     trig_plane_pos_combo_indx    = 0; // 0=ignore 1=on ground 2=airborne
+//     trig_ui_elev_type_combo_indx = -1;
+//
+//     trig_type_s.clear (); // type string
+//     trig_onGround_s.clear (); // on ground string
+//     trig_name_s.clear ();
+//
+//     for (size_t i = 0; i < 10; ++i)
+//     {
+//       buffArray[i][0] = '\0'; // holds all trigger arrays
+//       memset (buffArray[i], '\0', sizeof (buffArray[i]));
+//     }
+//
+//     node_ptr = IXMLNode::emptyIXMLNode;
+//   }
+//
+//   // reset buff
+//   void resetBuff (int indx)
+//   {
+//     assert (indx < MAX_ARRAY && "Tried to reset a cell not in array.");
+//
+//     memset (buffArray[indx], '\0', sizeof (buffArray[indx]));
+//   }
+//
+//   // get buff
+//   std::string getBuff (int i)
+//   {
+//     assert (i < MAX_ARRAY && "Tried to access cell not in array.");
+//
+//     return std::string (buffArray[i]);
+//   }
+//   // set buff array
+//   void setBuff (int indx, std::string inVal_s)
+//   {
+//     if (indx < MAX_ARRAY)
+//     {
+//       resetBuff (indx);
+// #ifdef IBM
+//       memcpy_s (buffArray[indx], sizeof (buffArray[indx]), inVal_s.c_str (), (inVal_s.length () > sizeof (buffArray[indx]) ? sizeof (buffArray[indx]) : inVal_s.length ())); // we copy the memory based on which buffer do not exceeds the buffer.
+// #else
+//       memcpy (buffArray[indx], inVal_s.c_str (), inVal_s.length ());
+// #endif
+//
+//     } // end if in bounderies
+//
+//   } // end set buff
+//
+//
+// } mx_trig_strct_;
+//
+// enum class mxTrig_ui_mode_enm : uint8_t // v3.0.301
+// {
+//   naTrigger   = 0,
+//   editTrigger = 1, // edit mode
+//   newTrigger  = 2 // add new trigger
+// };
+//
 
 enum class mx_ui_text_type // v3.0.301
 {
@@ -149,13 +153,16 @@ private:
   ImVec4 countdown_textColorVec4;
   ImVec4 countdown_success_textColorVec4; // v25.06.1
 
-  typedef enum _mx_btn_state
-    : uint8_t
-  {
-    none   = 0,
-    plane  = 1,
-    camera = 2
-  } mx_btn_coordinate_state_enum;
+  // typedef enum _mx_btn_state
+  //   : uint8_t
+  // {
+  //   none   = 0,
+  //   plane  = 1,
+  //   camera = 2
+  // } mx_btn_coordinate_state_enum;
+
+
+
 
 public:
   WinImguiBriefer (int                  left,
@@ -164,6 +171,12 @@ public:
                    int                  bot,
                    XPLMWindowDecoration decoration = xplm_WindowDecorationRoundRectangle, // xplm_WindowDecorationSelfDecoratedResizable
                    XPLMWindowLayer      layer      = xplm_WindowLayerFloatingWindows);
+
+
+  // -------------------------------------------------
+  // Child UI classes to decrease the main class size.
+  // -------------------------------------------------
+  std::unique_ptr<ui_conv_screen> m_ui_conv_screen;
 
 
   void  setLayer (missionx::uiLayer_enum inLayer);
@@ -283,25 +296,21 @@ public:
       max_distance_slider_f = 0.0f;
     }
 
-    // use calc_min_area_distance() instead
+
     [[nodiscard]] st_distance get_mission_area() const
     {
       st_distance mission_area;
-      mission_area.min = max_distance_slider_f - ( 0.5f * (max_distance_slider_f - distance_min_max.min ) );
+
+      if (this->activity < missionx::enums::mx_semi_activities_enum::act_turboprops && (this->max_distance_slider_f - this->distance_min_max.min < 10.0f))
+        mission_area.min = distance_min_max.min;
+      else 
+        mission_area.min = max_distance_slider_f - ( 0.5f * (max_distance_slider_f - distance_min_max.min ) );
+
       mission_area.max = max_distance_slider_f;
-      mission_area.lowest_max = 0.0f;
+      mission_area.lowest_max = distance_min_max.lowest_max;
 
       return mission_area;
     }
-
-    [[nodiscard]] float calc_min_area_distance () const
-    {
-      if (this->activity < missionx::enums::mx_semi_activities_enum::act_turboprops && ( this->max_distance_slider_f - this->distance_min_max.min < 10.0f))
-        return this->distance_min_max.min;
-
-      return get_mission_area().min;
-    }
-
 
     void randomize_max_distance()
     {
@@ -329,11 +338,11 @@ public:
       const std::string plane_type_desc = (id < 5)? "You will fly a helos mission" : "You will fly a plane mission";
 
       // Flight area description
-      // const auto  [min_area, low_max, max_area] = get_mission_area();
-      const auto min_area = calc_min_area_distance();
+       const auto  [min_area, low_max, max_area] = get_mission_area();
+      //const auto min_area = calc_min_area_distance();
 
 
-      std::string flight_area_desc = fmt::format("{:.0f} to {:.0f}", min_area, max_distance_slider_f);
+      std::string flight_area_desc = fmt::format("{:.0f} to {:.0f}", min_area, max_area);
       if (activity == enums::mx_semi_activities_enum::act_helos_cargo_oilrig || activity == enums::mx_semi_activities_enum::act_helos_medevac_oilrig)
         flight_area_desc            = fmt::format("determined based on the oil rig search area");
       else if (activity == enums::mx_semi_activities_enum::act_helos_medevac_surprise_me)
@@ -588,189 +597,190 @@ public:
 
 
 
-  // ----- convert FPLN layer -----
-  // v3.0.301
-  typedef enum class conv_sub_ui_enum
-    : uint8_t
-  {
-    conv_pick_fpln   = 0,
-    conv_design_fpln = 5
-  } mx_conv_sub_ui;
-
-  typedef struct _conv_layer
-  {
-    bool flag_first_time{ true };
-    bool flag_foundBriefer_index0{ false };
-    bool flag_refresh_table_from_file{ false };
-
-    bool flag_store_state{ false }; // v3.0.303.4
-    bool flag_use_loaded_globalSetting_from_conversion_file{ false }; // v3.305.1
-    bool flag_load_conversion_file{ false }; // v3.0.303.4
-
-    int file_picked_i{ -1 };
-    int way_row_picked_i{ -1 };
-
-    mx_conv_sub_ui conv_sub_ui{ conv_sub_ui_enum::conv_pick_fpln };
-
-    IXMLNode               xConvMainNode{ IXMLNode () }; // { IXMLNode::createXMLTopNode("xml", TRUE) };
-    IXMLNode               xSavedGlobalSettingsNode{ IXMLNode () }; // Will hold the <global_settings> stored at the <CONVERSION> element. We should have a flag to keep the Saved globalSettings or use the "advanced settings" (construct a new one)
-    IXMLNode               xConvDummy{ IXMLNode () }; // empty <DUMMY> node
-    IXMLNode               xConvInfo{ IXMLNode () }; // empty <mission_info> node
-    IXMLNode               xTriggers_global{ IXMLNode () }; // empty <triggers> node will be used as the global triggers node that will hold mainly custom user events
-    IXMLNode               xXPlaneDataRef_global{ IXMLNode () }; // empty <xpdata> node will be used as the global datarefs
-    const std::string_view MISSION_SKELATON_ELEMENT = "<MISSION> </MISSION>";
-    const std::string_view DUMMY_SKELATON_ELEMENT   = "<DUMMY> </DUMMY>";
-
-    char buff_dataref[4096]{ '\0' }; // v3.0.303.4 store dataref string
-    char buff_globalSettings[4096]{ '\0' }; // v3.305.1 stores the GlobalSettings string
-
-    std::map<std::string, std::string> mapFileList;
-    std::vector<const char *>          vecFileList_char; // convert to
-
-    void set_conv_map_files (const std::map<std::string, std::string> inMapFileList)
-    {
-      mapFileList.clear ();
-      mapFileList = inMapFileList;
-      convert_map_files_to_const_char_vector ();
-    }
-    void convert_map_files_to_const_char_vector ()
-    {
-      vecFileList_char.clear ();
-      for (auto &[f, p] : mapFileList)
-      {
-        vecFileList_char.emplace_back (f.c_str ());
-      }
-    }
-
-    // reset briefer buffs
-
-    // Triggers
-    int  trig_picked_i{ -1 };
-    int  trig_seq{ 1 }; // used when creating new triggers only
-    bool flag_refreshTriggerListFrom_xNode{ true };
-
-    mxTrig_ui_mode_enm trig_ui_mode{ mxTrig_ui_mode_enm ::naTrigger };
-
-    const std::vector<const char *> vecTrigType_list           = { "Radius", "Script", "Box", "Camera" }; //{ "Radius","Polygonal","Script" };
-    const std::vector<const char *> vecTrigType_list_trans     = { "rad", "script", "poly", "camera" }; //{ "rad","script","poly" };
-    const std::vector<const char *> vecTrigOnGround_list       = { "Ignore", "On Ground", "Airborne" };
-    const std::vector<const char *> vecTrigOnGround_list_trans = { "", "true", "false" };
-    const int                       vecTrigTypeCounter_i       = 3;
-    const int                       vecTrigOnGroundCount_i     = 3;
-
-    std::map<int, missionx::mx_trig_strct_> mapOfGlobalTriggers;
-    std::vector<std::string>                vecGlobalTriggers_names;
-
-    mx_trig_strct_ trigger;
-
-    void set_global_settings_into_buffer (IXMLNode &in_xGlobalSettings) // v3.305.1
-    {
-      if (!in_xGlobalSettings.isEmpty ())
-      {
-        std::string data_4096_s;
-        for (int i1 = 0; i1 < in_xGlobalSettings.nChildNode (); ++i1) // read all sub elements
-        {
-          IXMLRenderer render;
-          data_4096_s += render.getString (in_xGlobalSettings.getChildNode (i1));
-        }
-
-#ifdef IBM
-        memcpy_s (buff_globalSettings, sizeof (buff_globalSettings), data_4096_s.c_str (), sizeof (buff_globalSettings) - 1);
-#else
-        memcpy (buff_globalSettings, data_4096_s.c_str (), sizeof (buff_globalSettings) - 1);
-#endif
-
-        xSavedGlobalSettingsNode = in_xGlobalSettings.deepCopy ();
-      }
-    }
-
-  } mx_conv_layer;
-  mx_conv_layer strct_conv_layer;
+//   // ----- convert FPLN layer -----
+//   // v3.0.301
+//   typedef enum class conv_sub_ui_enum
+//     : uint8_t
+//   {
+//     conv_pick_fpln   = 0,
+//     conv_design_fpln = 5
+//   } mx_conv_sub_ui;
+//
+//   typedef struct _conv_layer
+//   {
+//     bool flag_first_time{ true };
+//     bool flag_foundBriefer_index0{ false };
+//     bool flag_refresh_table_from_file{ false };
+//
+//     bool flag_store_state{ false }; // v3.0.303.4
+//     bool flag_use_loaded_globalSetting_from_conversion_file{ false }; // v3.305.1
+//     bool flag_load_conversion_file{ false }; // v3.0.303.4
+//
+//     int file_picked_i{ -1 };
+//     int way_row_picked_i{ -1 };
+//
+//     mx_conv_sub_ui conv_sub_ui{ conv_sub_ui_enum::conv_pick_fpln };
+//
+//     IXMLNode               xConvMainNode{ IXMLNode () }; // { IXMLNode::createXMLTopNode("xml", TRUE) };
+//     IXMLNode               xSavedGlobalSettingsNode{ IXMLNode () }; // Will hold the <global_settings> stored at the <CONVERSION> element. We should have a flag to keep the Saved globalSettings or use the "advanced settings" (construct a new one)
+//     IXMLNode               xConvDummy{ IXMLNode () }; // empty <DUMMY> node
+//     IXMLNode               xConvInfo{ IXMLNode () }; // empty <mission_info> node
+//     IXMLNode               xTriggers_global{ IXMLNode () }; // empty <triggers> node will be used as the global triggers node that will hold mainly custom user events
+//     IXMLNode               xXPlaneDataRef_global{ IXMLNode () }; // empty <xpdata> node will be used as the global datarefs
+//     const std::string_view MISSION_SKELATON_ELEMENT = "<MISSION> </MISSION>";
+//     const std::string_view DUMMY_SKELATON_ELEMENT   = "<DUMMY> </DUMMY>";
+//
+//     char buff_dataref[4096]{ '\0' }; // v3.0.303.4 store dataref string
+//     char buff_globalSettings[4096]{ '\0' }; // v3.305.1 stores the GlobalSettings string
+//
+//     std::map<std::string, std::string> mapFileList;
+//     std::vector<const char *>          vecFileList_char; // convert to
+//
+//     void set_conv_map_files (const std::map<std::string, std::string> inMapFileList)
+//     {
+//       mapFileList.clear ();
+//       mapFileList = inMapFileList;
+//       convert_map_files_to_const_char_vector ();
+//     }
+//     void convert_map_files_to_const_char_vector ()
+//     {
+//       vecFileList_char.clear ();
+//       for (auto &[f, p] : mapFileList)
+//       {
+//         vecFileList_char.emplace_back (f.c_str ());
+//       }
+//     }
+//
+//     // reset briefer buffs
+//
+//     // Triggers
+//     int  trig_picked_i{ -1 };
+//     int  trig_seq{ 1 }; // used when creating new triggers only
+//     bool flag_refreshTriggerListFrom_xNode{ true };
+//
+//     mxTrig_ui_mode_enm trig_ui_mode{ mxTrig_ui_mode_enm ::naTrigger };
+//
+//     const std::vector<const char *> vecTrigType_list           = { "Radius", "Script", "Box", "Camera" }; //{ "Radius","Polygonal","Script" };
+//     const std::vector<const char *> vecTrigType_list_trans     = { "rad", "script", "poly", "camera" }; //{ "rad","script","poly" };
+//     const std::vector<const char *> vecTrigOnGround_list       = { "Ignore", "On Ground", "Airborne" };
+//     const std::vector<const char *> vecTrigOnGround_list_trans = { "", "true", "false" };
+//     const int                       vecTrigTypeCounter_i       = 3;
+//     const int                       vecTrigOnGroundCount_i     = 3;
+//
+//     std::map<int, missionx::mx_trig_strct_> mapOfGlobalTriggers;
+//     std::vector<std::string>                vecGlobalTriggers_names;
+//
+//     mx_trig_strct_ trigger;
+//
+//     void set_global_settings_into_buffer (IXMLNode &in_xGlobalSettings) // v3.305.1
+//     {
+//       if (!in_xGlobalSettings.isEmpty ())
+//       {
+//         std::string data_4096_s;
+//         for (int i1 = 0; i1 < in_xGlobalSettings.nChildNode (); ++i1) // read all sub elements
+//         {
+//           IXMLRenderer render;
+//           data_4096_s += render.getString (in_xGlobalSettings.getChildNode (i1));
+//         }
+//
+// #ifdef IBM
+//         memcpy_s (buff_globalSettings, sizeof (buff_globalSettings), data_4096_s.c_str (), sizeof (buff_globalSettings) - 1);
+// #else
+//         memcpy (buff_globalSettings, data_4096_s.c_str (), sizeof (buff_globalSettings) - 1);
+// #endif
+//
+//         xSavedGlobalSettingsNode = in_xGlobalSettings.deepCopy ();
+//       }
+//     }
+//
+//   } mx_conv_layer;
+//   mx_conv_layer strct_conv_layer;
 
   //// END CONVERTION struct
 
   // convert FPLN members
-  std::map<std::string, std::string> read_fpln_files ();
-  void                               draw_conv_popup_datarefs (IXMLNode &inXpData);
-  void                               draw_conv_popup_globalSettings (IXMLNode &inXpData);
-  void                               draw_conv_popup_flight_leg_detail (missionx::mx_local_fpln_strct &inLegData);
-  void                               draw_conv_popup_briefer (missionx::mx_local_fpln_strct &inLegData);
-  void                               subDraw_popup_user_lat_lon (mx_trig_strct_ &inout_trig);
-  void                               subDraw_popup_outcome (mx_trig_strct_ &inout_trig, IXMLNode &inMessageTemplates);
+  // std::map<std::string, std::string> read_fpln_files ();
+  // void                               draw_conv_popup_datarefs (IXMLNode &inXpData);
+  // void                               draw_conv_popup_globalSettings (IXMLNode &inXpData);
+  // void                               draw_conv_popup_flight_leg_detail (missionx::mx_local_fpln_strct &inLegData);
+  // void                               draw_conv_popup_briefer (missionx::mx_local_fpln_strct &inLegData);
+  // void                               subDraw_popup_user_lat_lon (mx_trig_strct_ &inout_trig);
+  // void                               subDraw_popup_outcome (mx_trig_strct_ &inout_trig, IXMLNode &inMessageTemplates);
 
-  void subDraw_fpln_table (IXMLNode &inMainNode, std::map<int, missionx::mx_local_fpln_strct> &in_map_tableOfParsedFpln);
-  bool validate_conversion_table (IXMLNode &inMainNode, std::map<int, missionx::mx_local_fpln_strct> in_map_tableOfParsedFpln);
+  // void subDraw_fpln_table (IXMLNode &inMainNode, std::map<int, missionx::mx_local_fpln_strct> &in_map_tableOfParsedFpln);
+  // bool validate_conversion_table (IXMLNode &inMainNode, std::map<int, missionx::mx_local_fpln_strct> in_map_tableOfParsedFpln);
 
   // ----- END convert FPLN layer -----
 
 
   // ----- setup Layer -----
-  typedef struct _setup_layer
-  {
-    static const int OSM_BUFF_SIZE_I = 499;
-    bool             bDisplayTargetMarkers{ true };
-    bool             bOverrideExpectedTargetDistance{ false };
-    bool             bPauseIn2D{ false };
-    bool             bPauseInVR{ false }; // v25.06.1 should always be false
-    bool             bCycleLogFiles{ false };
-    bool             bAddCountdown{ false };
-    bool             bGPSImmediateExposure{ false };
-    bool             bForceNormalizedVolume{ false }; // v3.0.303.6
-    bool             bSuppressDistanceMessages{ false }; // v25.02.1
+  // typedef struct _setup_layer
+  // {
+  //   static const int OSM_BUFF_SIZE_I = 499;
+  //   bool             bDisplayTargetMarkers{ true };
+  //   bool             bOverrideExpectedTargetDistance{ false };
+  //   bool             bPauseIn2D{ false };
+  //   bool             bPauseInVR{ false }; // v25.06.1 should always be false
+  //   bool             bCycleLogFiles{ false };
+  //   bool             bAddCountdown{ false };
+  //   bool             bGPSImmediateExposure{ false };
+  //   bool             bForceNormalizedVolume{ false }; // v3.0.303.6
+  //   bool             bSuppressDistanceMessages{ false }; // v25.02.1
+  //
+  //   int iNormalizedVolume_val{ mxconst::DEFAULT_SETUP_MISSION_VOLUME_I }; // v3.0.303.6
+  //   int iMinDistanceSlider{ static_cast<int> (mxconst::SLIDER_MIN_RND_DIST) }; // init with 5
+  //   #ifdef LIN
+  //   int                            iLinuxFlavor_val{0}; // v3.303.8.1 - will hold the linux flavor to deal with
+  //   const std::vector<const char*> vecLinuxComboCodes_s{"Debian / Ubuntu based distros like Mint, Pop!OS and the likes", "Arch based distros like Manjaro, Garuda, Endeavour and the likes", "other - not in the list"};
+  //   #endif
+  //
+  //   // int   iPreferredFontSize{ 0 }; // v3.303.14
+  //
+  //   float fPreferredFontPixelSize{ mxconst::FONT_PIXEL_13 };
+  //   float fFontMaxPixelSize{ mxconst::DEFAULT_MAX_FONT_PIXEL_SIZE };
+  //   float fFontMinPixelSize{ mxconst::DEFAULT_MIN_FONT_PIXEL_SIZE };
+  //
+  //   float fPreferredFontScale{ 1.0f };
+  //   float fFontMaxScaleSize{ mxconst::DEFAULT_MAX_FONT_SCALE }; // 1.4f as of this writing
+  //   float fFontMinScaleSize{ mxconst::DEFAULT_MIN_FONT_SCALE }; // 0.8f as of this writing
+  //
+  //
+  //   bool bPlaceMarkersAwayFromTarget{ false };
+  //   bool bOverideCustomExternalFPLN_folders{ false };
+  //   // bool bWriteCacheDataIntoDB{ false }; // v3.303.14 deprecated - always on
+  //
+  //   bool                      is_first_time{ true };
+  //   char                      overpass_url_buf[OSM_BUFF_SIZE_I + 1]{ "" };
+  //   std::vector<const char *> vecOverpassUrls_char;
+  //   bool                      flag_lock_overpass_url{ false }; // lock user picked url so when fetching from overpass we won't cycle
+  //
+  //   const char *font_list[2] = { "default - DejaVuSans", "Internal" };
+  //   int         user_font_picked_i{ 0 };
+  //   std::string user_preferred_font_path_s;
+  //
+  //   char default_scoring_buf[4096]{ "" };
+  //   char buf_pilotName[24]{ '\0' };
+  //   char buf_simbrief_pilot_id[10]{ '\0' }; // v25.03.3
+  //   bool flag_load_extra_data_from_simbrief_to_notes {false}; // v26.04.1
+  //
+  //   bool            bPressedPlane;
+  //   bool            bPressedCamera;
+  //   missionx::Point coord;
+  //
+  //   mx_btn_coordinate_state_enum btn_coord_state = { WinImguiBriefer::mx_btn_coordinate_state_enum::none };
+  //
+  //
+  //   int setPilotName (const std::string &inPilotName) { return snprintf (buf_pilotName, sizeof (buf_pilotName) - 1, "%s", inPilotName.c_str ()); }
+  //
+  //   int setSimbriefPilotID (const std::string &inPilotID) { return snprintf (buf_simbrief_pilot_id, sizeof (buf_simbrief_pilot_id) - 1, "%s", inPilotID.c_str ()); }
+  //
+  //
+  //   // v3.305.3 collapse headers in a better controlled way on the scroll location. See implementation in draw_setup_layer().
+  //   int                                      headerIndex{ 0 }; // v25.03.3. Used only with mapSetupHeaders
+  //   std::unordered_map<int, mx_header_state> mapSetupHeaders = { { headerIndex, mx_header_state ("General Settings", false) }, { ++headerIndex, mx_header_state ("Simbrief & flightplandatabase.com setup", false) }, { ++headerIndex, mx_header_state ("APT data optimization", false) }, { ++headerIndex, mx_header_state ("TOOLS", false) }, { ++headerIndex, mx_header_state ("Normalize Mission Sound Volume", false) }, { ++headerIndex, mx_header_state ("OVERPASS Setup", false) }, { ++headerIndex, mx_header_state ("Medevac Setup", false) }, { ++headerIndex, mx_header_state ("External Flight Plan Setup", false) }, { ++headerIndex, mx_header_state ("Default Scoring", false) }, { ++headerIndex, mx_header_state ("Linux: Troubleshoot", false) }, { ++headerIndex, mx_header_state ("Designer: Unsaved Options", false) } };
+  //
+  // } mx_setup_layer;
 
-    int iNormalizedVolume_val{ mxconst::DEFAULT_SETUP_MISSION_VOLUME_I }; // v3.0.303.6
-    int iMinDistanceSlider{ static_cast<int> (mxconst::SLIDER_MIN_RND_DIST) }; // init with 5
-    #ifdef LIN
-    int                            iLinuxFlavor_val{0}; // v3.303.8.1 - will hold the linux flavor to deal with
-    const std::vector<const char*> vecLinuxComboCodes_s{"Debian / Ubuntu based distros like Mint, Pop!OS and the likes", "Arch based distros like Manjaro, Garuda, Endeavour and the likes", "other - not in the list"};
-    #endif
-
-    // int   iPreferredFontSize{ 0 }; // v3.303.14
-
-    float fPreferredFontPixelSize{ mxconst::FONT_PIXEL_13 };
-    float fFontMaxPixelSize{ mxconst::DEFAULT_MAX_FONT_PIXEL_SIZE };
-    float fFontMinPixelSize{ mxconst::DEFAULT_MIN_FONT_PIXEL_SIZE };
-
-    float fPreferredFontScale{ 1.0f };
-    float fFontMaxScaleSize{ mxconst::DEFAULT_MAX_FONT_SCALE }; // 1.4f as of this writing
-    float fFontMinScaleSize{ mxconst::DEFAULT_MIN_FONT_SCALE }; // 0.8f as of this writing
-
-
-    bool bPlaceMarkersAwayFromTarget{ false };
-    bool bOverideCustomExternalFPLN_folders{ false };
-    // bool bWriteCacheDataIntoDB{ false }; // v3.303.14 deprecated - always on
-
-    bool                      is_first_time{ true };
-    char                      overpass_url_buf[OSM_BUFF_SIZE_I + 1]{ "" };
-    std::vector<const char *> vecOverpassUrls_char;
-    bool                      flag_lock_overpass_url{ false }; // lock user picked url so when fetching from overpass we won't cycle
-
-    const char *font_list[2] = { "default - DejaVuSans", "Internal" };
-    int         user_font_picked_i{ 0 };
-    std::string user_preferred_font_path_s;
-
-    char default_scoring_buf[4096]{ "" };
-    char buf_pilotName[24]{ '\0' };
-    char buf_simbrief_pilot_id[10]{ '\0' }; // v25.03.3
-    bool flag_load_extra_data_from_simbrief_to_notes {false}; // v26.04.1
-
-    bool            bPressedPlane;
-    bool            bPressedCamera;
-    missionx::Point coord;
-
-    mx_btn_coordinate_state_enum btn_coord_state = { WinImguiBriefer::mx_btn_coordinate_state_enum::none };
-
-
-    int setPilotName (const std::string &inPilotName) { return snprintf (buf_pilotName, sizeof (buf_pilotName) - 1, "%s", inPilotName.c_str ()); }
-
-    int setSimbriefPilotID (const std::string &inPilotID) { return snprintf (buf_simbrief_pilot_id, sizeof (buf_simbrief_pilot_id) - 1, "%s", inPilotID.c_str ()); }
-
-
-    // v3.305.3 collapse headers in a better controlled way on the scroll location. See implementation in draw_setup_layer().
-    int                                      headerIndex{ 0 }; // v25.03.3. Used only with mapSetupHeaders
-    std::unordered_map<int, mx_header_state> mapSetupHeaders = { { headerIndex, mx_header_state ("General Settings", false) }, { ++headerIndex, mx_header_state ("Simbrief & flightplandatabase.com setup", false) }, { ++headerIndex, mx_header_state ("APT data optimization", false) }, { ++headerIndex, mx_header_state ("TOOLS", false) }, { ++headerIndex, mx_header_state ("Normalize Mission Sound Volume", false) }, { ++headerIndex, mx_header_state ("OVERPASS Setup", false) }, { ++headerIndex, mx_header_state ("Medevac Setup", false) }, { ++headerIndex, mx_header_state ("External Flight Plan Setup", false) }, { ++headerIndex, mx_header_state ("Default Scoring", false) }, { ++headerIndex, mx_header_state ("Linux: Troubleshoot", false) }, { ++headerIndex, mx_header_state ("Designer: Unsaved Options", false) } };
-
-  } mx_setup_layer;
   mx_setup_layer strct_setup_layer;
 
   void set_vecOverpassUrls_char (const std::vector<std::string> &inVecData);
@@ -1318,7 +1328,7 @@ private:
   void popup_draw_quit_mission (std::string_view inPopupWindowName); // v3.303.8.3
   void draw_popup_extra_data_ext_fpln (std::string_view inPopupWindowName ); // v25.06.1
   void draw_popup_generate_mission_based_on_ext_fpln (std::string_view inPopupWindowName, const missionx::mx_ext_internet_fpln_strct &rowData, const int &picked_fpln_id_i = 0); // v25.03.3
-  void draw_conv_popup_which_global_settings_to_save (std::string_view inPopupWindowName); // v3.303.8.3
+  // void draw_conv_popup_which_global_settings_to_save (std::string_view inPopupWindowName); // v3.303.8.3
   void draw_globals_online_edit_popup (std::string_view inPopupWindowName, char inType, std::string inKey, std::string inVal); // v3.303.8.3
   void draw_script_online_edit_popup (std::string_view inPopupWindowName, bool &outSave); // v3.303.8.3
   void draw_setup_layer ();
@@ -1346,7 +1356,7 @@ private:
   void child_draw_ils_search (); // v25.08.1
   void child_draw_nav_search (); // v24.02.5
   void draw_about_layer ();
-  void draw_conv_main_fpln_to_mission_window (); // v3.0.301
+  // void draw_conv_main_fpln_to_mission_window (); // v3.0.301
   void add_landing_rate_ui (const missionx::mx_enrout_stats_strct &inStats); // v3.303.14  landing rate performance row
   void add_ui_stats_child (bool isEmbedded = false); // v3.303.14  isEmbedded means that we don't want the BeginChild definition inside the function we will use and external BeginChild
 
@@ -1357,18 +1367,18 @@ private:
   const std::string GENERATE_QUESTION              = "Generate Mission From Flight Plan";
   const std::string GENERATE_ILS_QUESTION          = "Generate Mission From ILS data"; // v3.0.253.6
   const std::string GENERATE_TEMPLATE_QUESTION     = "Generate Mission From Template data"; // v25.06.1
-  const std::string POPUP_FLIGHT_LEG_SETTINGS      = "Leg Detail Popup"; // v3.0.301
-  const std::string POPUP_BRIEFER_SETTINGS         = "Briefer Settings Popup"; // v3.0.301
-  const std::string POPUP_TRIGGER_SETTINGS         = "Trigger Settings Popup"; // v3.0.301
-  const std::string POPUP_DATAREF_SETTINGS         = "Dataref Settings Popup"; // v3.0.301
-  const std::string POPUP_GLOBAL_SETTINGS          = "GlobalSettings Popup"; // v3.305.1
-  const std::string POPUP_USER_LAT_LON             = "User Lat/Lon"; // v3.0.301
-  const std::string POPUP_TRIG_OUTCOME             = "Outcome Trigger Element"; // v3.0.301
-  const std::string POPUP_PICK_GLOBAL_SETTING_NODE = "Pick GlobalSettings to store Popup"; // v3.305.1
-  const std::string POPUP_ONLINE_SCRIPT_EDIT       = "Script Online Edit"; // v3.305.3
-  const std::string POPUP_ONLINE_GLOBALS_EDIT      = "Globals Online Edit"; // v3.305.3
-  const std::string POPUP_FPLN_EXTRA_DATA          = "FPLN Extra Data"; // v25.06.1
-  const std::string POPUP_LOAD_WARNINGS            = "LOAD Warnings"; // v26.01.1
+  // const std::string POPUP_FLIGHT_LEG_SETTINGS      = "Leg Detail Popup"; // v3.0.301
+  // const std::string POPUP_BRIEFER_SETTINGS         = "Briefer Settings Popup"; // v3.0.301
+  // const std::string POPUP_TRIGGER_SETTINGS         = "Trigger Settings Popup"; // v3.0.301
+  //const std::string POPUP_DATAREF_SETTINGS         = "Dataref Settings Popup"; // v3.0.301
+  //const std::string POPUP_GLOBAL_SETTINGS          = "GlobalSettings Popup"; // v3.305.1
+  // const std::string POPUP_USER_LAT_LON             = "User Lat/Lon"; // v3.0.301
+  // const std::string POPUP_TRIG_OUTCOME             = "Outcome Trigger Element"; // v3.0.301
+  //const std::string POPUP_PICK_GLOBAL_SETTING_NODE = "Pick GlobalSettings to store Popup"; // v3.305.1
+  // const std::string POPUP_ONLINE_SCRIPT_EDIT       = "Script Online Edit"; // v3.305.3
+  // const std::string POPUP_ONLINE_GLOBALS_EDIT      = "Globals Online Edit"; // v3.305.3
+  // const std::string POPUP_FPLN_EXTRA_DATA          = "FPLN Extra Data"; // v25.06.1
+  // const std::string POPUP_LOAD_WARNINGS            = "LOAD Warnings"; // v26.01.1
 
 
 #ifndef RELEASE
@@ -1402,11 +1412,11 @@ private:
   void subDraw_ui_xScriptlet (IXMLNode &pNode, mxTrig_ui_mode_enm &inMode, mx_trig_strct_ *inTrig_ptr, const std::string inScriptInputLabel = "", missionx::mx_local_fpln_strct *inLegData = nullptr,
                               char *inOutBuff = nullptr); // display a multiline input text for <scriptlet> element. Add it to the pNode once clicking the [apply] button. Returns the name of the scriptlet.
   // xLinkToNode can be an empty node. We will use it to link to a flight leg
-  void subDraw_ui_xTrigger_main (missionx::mx_local_fpln_strct &inLegData, bool &inNeedRefresh_b, int inLegIndex, std::map<int, missionx::mx_trig_strct_> &inMapOfGlobalTriggers,
-                                 std::vector<std::string> &inVecGlobalTriggers_names); // The function should receive the parent of all <trigger> elements. The ifnormation that will be displayed will be added to it.
+  // void subDraw_ui_xTrigger_main (missionx::mx_local_fpln_strct &inLegData, bool &inNeedRefresh_b, int inLegIndex, std::map<int, missionx::mx_trig_strct_> &inMapOfGlobalTriggers,
+  //                                std::vector<std::string> &inVecGlobalTriggers_names); // The function should receive the parent of all <trigger> elements. The ifnormation that will be displayed will be added to it.
   void subDraw_ui_xTrigger_detail (mx_trig_strct_ &inTrig_ptr, bool &in_out_needRefresh_b, std::string &suggested_name, missionx::mx_local_fpln_strct &inLegData);
 
-  std::map<int, missionx::mx_local_fpln_strct> read_and_parse_saved_state (const std::string inPathAndFile); // v3.0.303.4 Read stored conversion state
+  // std::map<int, missionx::mx_local_fpln_strct> read_and_parse_saved_state (const std::string inPathAndFile); // v3.0.303.4 Read stored conversion state
 
 
 
@@ -1431,110 +1441,111 @@ private:
 
 
 
-  typedef struct _popup_adv_settings_popup
-  {
-    // random date and time  // v3.303.10
-    bool                                  flag_includeNightHours{ false }; // v3.303.10
-    bool                                  flag_checkAnyMonth = false;
-    bool                                  checkPartOfDay_b   = false;
-    missionx::mx_ui_random_date_time_type iRadioRandomDateTime_pick{ missionx::mx_ui_random_date_time_type::xplane_day_and_time }; // v3.303.10
-    char                                  selected_dateTime_by_user_arr[3][4] = { { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } }; // represent month selected
-    const char                            selected_month_no[3][4]             = { { 1, 2, 3, 4 }, { 5, 6, 7, 8 }, { 9, 10, 11, 12 } }; // represent month numer
-    const std::string                     selected_lbl[3][4]                  = { { "Jan", "Feb", "Mar", "Apr" }, { "May", "Jun", "Jul", "Aug" }, { "Sep", "Oct", "Nov", "Dec" } }; // represent month label
-
-    char              selectedTime[4][2]      = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } }; // represent month selected
-    const char        selected_time_no[4][2]  = { { 1, 2 }, { 3, 4 }, { 5, 6 }, { 7, 8 } }; // represent which cell was picked
-    const std::string selected_time_lbl[4][2] = { { "Early morning 5am to 8am", "Morning 8am to 10am" }, { "Late morning 11am to 12pm", "Early afternoon 1pm to 3pm" }, { "Late afternoon 4pm to 5pm", "Early evening 5pm to 7pm" }, { "Late evening 7pm to 9pm", "Night 9pm to 4am" } }; // represent which cell was picked
-
-
-    int  iClockHourPicked{ 9 }; // v3.303.8 default hour is 09:00 in the morning
-    int  iClockMinutesPicked{ 0 }; // v3.303.8 default hour is xx:00 in the morning
-    int  iClockDayOfYearPicked{ 0 }; // v3.303.8 default hour is xx:00 in the morning
-    bool flag_firstTimeOpenBriefer{ true }; // v3.303.10
-
-    // Weather Related settings
-
-    bool flag_use_custom_weather_settings{ false };
-    bool flag_pickAnyWeatherType{ false };
-    // bool bDisableCustomWeatherWidgets{ true };
-
-    static const int weather_y = 2, weather_x = 5; // array size
-
-    // XP 11 add hock weather
-    int               selected_weather_by_user_arr_0_1_xp11[weather_y][weather_x] = { { 0, 0, 0, 0, 0 }, { 0, 0, 0, 0, 0 } };
-    const int         selected_weather_code_xp11[weather_y][weather_x]            = { { 0, 1, 2, 3, 4 }, { 5, 6, 7, -1, -1 } }; // -1 means can not be picked
-    const std::string selected_weather_lbl_xp11[weather_y][weather_x]             = { { "Clear", "Cirrus", "Scattered", "Broken", "Overcast" }, { "Low Visibility", "Foggy", "Stormy", "", "" } };
-    // XP 12 add hock weather
-    int               selected_weather_by_user_arr_0_1_xp12[weather_y][weather_x] = { { 0, 0, 0, 0, 0 }, { 0, 0, 0, 0, 0 } };
-    const int         selected_weather_code_xp12[weather_y][weather_x]            = { { 0, 1, 2, 3, 4 }, { 5, 6, 7, 8, -1 } }; // -1 means can not be picked
-    const std::string selected_weather_lbl_xp12[weather_y][weather_x]             = { { "Clear", "VFR", "VFR Scattered", "VFR Broken", "VFR Overcast" }, { "IFR N.P", "IFR.P", "Convective", "Thunder Storms", "" } };
-
-    // pointer to one of the weather types
-    int (*ptr_selected_weather_by_user_arr)[weather_y][weather_x]       = ((missionx::data_manager::xplane_ver_i < missionx::XP12_VERSION_NO) ? &selected_weather_by_user_arr_0_1_xp11 : &selected_weather_by_user_arr_0_1_xp12);
-    const int (*ptr_selected_weather_code)[weather_y][weather_x]        = ((missionx::data_manager::xplane_ver_i < missionx::XP12_VERSION_NO) ? &selected_weather_code_xp11 : &selected_weather_code_xp12);
-    const std::string (*ptr_selected_weather_lbl)[weather_y][weather_x] = ((missionx::data_manager::xplane_ver_i < missionx::XP12_VERSION_NO) ? &selected_weather_lbl_xp11 : &selected_weather_lbl_xp12);
-
-    // XP 12 add hock weather change mode: sim/weather/region/change_mode:	How the weather is changing.
-    // 0 = Rapidly Improving, 1 = Improving, 2 = Gradually Improving, 3 = Static, 4 = Gradually Deteriorating, 5 = Deteriorating, 6 = Rapidly Deteriorating, 7 = Using Real Weather
-    static const int  DEFAULT_WEATHER_MODE_Y = 1, DEFAULT_WEATHER_MODE_X = 0; // array size
-    static const int  weather_mode_y = 2, weather_mode_x = 3; // array size
-    int               selected_weather_mode_by_user_arr_0_1_xp12[weather_mode_y][weather_mode_x] = { { 0, 0, 0 }, { 1, 0, 0 } };
-    const int         selected_weather_mode_code_xp12[weather_mode_y][weather_mode_x]            = { { 0, 1, 2 }, { 3, 4, 5 } };
-    const std::string selected_weather_mode_lbl_xp12[weather_mode_y][weather_mode_x]             = { { "Rapidly Improving", "Improving", "Gradually Improving" }, { "Static", "Gradually Deteriorating", "Rapidly Deteriorating" } };
-
-
-    std::string get_weather_picked_by_user ()
-    {
-      std::string propValue_s{ "" };
-
-      for (int yy = 0; yy < weather_y; yy++)
-        for (int xx = 0; xx < weather_x; xx++)
-        {
-          if ((*ptr_selected_weather_by_user_arr)[yy][xx] > 0) // We store only picked weather, meaning value must be greater than 0
-            propValue_s += (!propValue_s.empty ()) ? "," + mxUtils::formatNumber<int> ((*ptr_selected_weather_code)[yy][xx]) : mxUtils::formatNumber<int> ((*ptr_selected_weather_code)[yy][xx]);
-        }
-
-      return propValue_s;
-    }
-
-    std::string get_weather_change_mode_picked_by_user ()
-    {
-      std::string propValue_s{ "" };
-
-      for (int yy = 0; yy < weather_mode_y; yy++)
-        for (int xx = 0; xx < weather_mode_x; xx++)
-        {
-          if (selected_weather_mode_by_user_arr_0_1_xp12[yy][xx] > 0) // We store only picked weather, meaning value must be greater than 0
-            propValue_s += (!propValue_s.empty ()) ? "," + mxUtils::formatNumber<int> (selected_weather_mode_code_xp12[yy][xx]) : mxUtils::formatNumber<int> (selected_weather_mode_code_xp12[yy][xx]);
-        }
-
-      return propValue_s;
-    }
-
-    const char *windSpeeds_arr[31] = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30" }; // v3.303.12
-    int         windSpeeds_user_picked_i{ 0 };
-    int         iWindMin         = 0;
-    int         iWindMax         = 0;
-    std::string windSpeedMin_lbl = "Min Speed: " + mxUtils::formatNumber<int> (iWindMin);
-    std::string windSpeedMax_lbl = "Max Speed: " + mxUtils::formatNumber<int> (iWindMax);
-
-    missionx::mx_ui_random_weather_options iWeatherType_user_picked{ missionx::mx_ui_random_weather_options::use_xplane_weather }; // v3.303.12
-
-    int         cloudElevInputField_i{ 500 };
-    int         iCloudMin        = 0;
-    int         iCloudMax        = 0;
-    std::string cloudElevMin_lbl = "Min Elev: " + mxUtils::formatNumber<int> (iCloudMin);
-    std::string cloudElevMax_lbl = "Max Elev: " + mxUtils::formatNumber<int> (iCloudMax);
-
-
-    // Weight
-    bool flag_add_default_weight_settings{ true }; // v3.303.14
-    int  pilot_base_weight_i{ 85 }; // v25.02.1
-    int  passengers_base_weight_i{ 70 }; // v25.02.1
-    int  cargo_base_weight{ 10 }; // v25.02.1
-
-
-  } mx_popup_adv_settings_strct;
+  // typedef struct _popup_adv_settings_popup
+  // struct mx_popup_adv_settings_strct
+  // {
+  //   // random date and time  // v3.303.10
+  //   bool                                  flag_includeNightHours{ false }; // v3.303.10
+  //   bool                                  flag_checkAnyMonth = false;
+  //   bool                                  checkPartOfDay_b   = false;
+  //   missionx::mx_ui_random_date_time_type iRadioRandomDateTime_pick{ missionx::mx_ui_random_date_time_type::xplane_day_and_time }; // v3.303.10
+  //   char                                  selected_dateTime_by_user_arr[3][4] = { { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } }; // represent month selected
+  //   const char                            selected_month_no[3][4]             = { { 1, 2, 3, 4 }, { 5, 6, 7, 8 }, { 9, 10, 11, 12 } }; // represent month numer
+  //   const std::string                     selected_lbl[3][4]                  = { { "Jan", "Feb", "Mar", "Apr" }, { "May", "Jun", "Jul", "Aug" }, { "Sep", "Oct", "Nov", "Dec" } }; // represent month label
+  //
+  //   char              selectedTime[4][2]      = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } }; // represent month selected
+  //   const char        selected_time_no[4][2]  = { { 1, 2 }, { 3, 4 }, { 5, 6 }, { 7, 8 } }; // represent which cell was picked
+  //   const std::string selected_time_lbl[4][2] = { { "Early morning 5am to 8am", "Morning 8am to 10am" }, { "Late morning 11am to 12pm", "Early afternoon 1pm to 3pm" }, { "Late afternoon 4pm to 5pm", "Early evening 5pm to 7pm" }, { "Late evening 7pm to 9pm", "Night 9pm to 4am" } }; // represent which cell was picked
+  //
+  //
+  //   int  iClockHourPicked{ 9 }; // v3.303.8 default hour is 09:00 in the morning
+  //   int  iClockMinutesPicked{ 0 }; // v3.303.8 default hour is xx:00 in the morning
+  //   int  iClockDayOfYearPicked{ 0 }; // v3.303.8 default hour is xx:00 in the morning
+  //   bool flag_firstTimeOpenBriefer{ true }; // v3.303.10
+  //
+  //   // Weather Related settings
+  //
+  //   bool flag_use_custom_weather_settings{ false };
+  //   bool flag_pickAnyWeatherType{ false };
+  //   // bool bDisableCustomWeatherWidgets{ true };
+  //
+  //   static const int weather_y = 2, weather_x = 5; // array size
+  //
+  //   // XP 11 add hock weather
+  //   int               selected_weather_by_user_arr_0_1_xp11[weather_y][weather_x] = { { 0, 0, 0, 0, 0 }, { 0, 0, 0, 0, 0 } };
+  //   const int         selected_weather_code_xp11[weather_y][weather_x]            = { { 0, 1, 2, 3, 4 }, { 5, 6, 7, -1, -1 } }; // -1 means can not be picked
+  //   const std::string selected_weather_lbl_xp11[weather_y][weather_x]             = { { "Clear", "Cirrus", "Scattered", "Broken", "Overcast" }, { "Low Visibility", "Foggy", "Stormy", "", "" } };
+  //   // XP 12 add hock weather
+  //   int               selected_weather_by_user_arr_0_1_xp12[weather_y][weather_x] = { { 0, 0, 0, 0, 0 }, { 0, 0, 0, 0, 0 } };
+  //   const int         selected_weather_code_xp12[weather_y][weather_x]            = { { 0, 1, 2, 3, 4 }, { 5, 6, 7, 8, -1 } }; // -1 means can not be picked
+  //   const std::string selected_weather_lbl_xp12[weather_y][weather_x]             = { { "Clear", "VFR", "VFR Scattered", "VFR Broken", "VFR Overcast" }, { "IFR N.P", "IFR.P", "Convective", "Thunder Storms", "" } };
+  //
+  //   // pointer to one of the weather types
+  //   int (*ptr_selected_weather_by_user_arr)[weather_y][weather_x]       = ((missionx::data_manager::xplane_ver_i < missionx::XP12_VERSION_NO) ? &selected_weather_by_user_arr_0_1_xp11 : &selected_weather_by_user_arr_0_1_xp12);
+  //   const int (*ptr_selected_weather_code)[weather_y][weather_x]        = ((missionx::data_manager::xplane_ver_i < missionx::XP12_VERSION_NO) ? &selected_weather_code_xp11 : &selected_weather_code_xp12);
+  //   const std::string (*ptr_selected_weather_lbl)[weather_y][weather_x] = ((missionx::data_manager::xplane_ver_i < missionx::XP12_VERSION_NO) ? &selected_weather_lbl_xp11 : &selected_weather_lbl_xp12);
+  //
+  //   // XP 12 add hock weather change mode: sim/weather/region/change_mode:	How the weather is changing.
+  //   // 0 = Rapidly Improving, 1 = Improving, 2 = Gradually Improving, 3 = Static, 4 = Gradually Deteriorating, 5 = Deteriorating, 6 = Rapidly Deteriorating, 7 = Using Real Weather
+  //   static const int  DEFAULT_WEATHER_MODE_Y = 1, DEFAULT_WEATHER_MODE_X = 0; // array size
+  //   static const int  weather_mode_y = 2, weather_mode_x = 3; // array size
+  //   int               selected_weather_mode_by_user_arr_0_1_xp12[weather_mode_y][weather_mode_x] = { { 0, 0, 0 }, { 1, 0, 0 } };
+  //   const int         selected_weather_mode_code_xp12[weather_mode_y][weather_mode_x]            = { { 0, 1, 2 }, { 3, 4, 5 } };
+  //   const std::string selected_weather_mode_lbl_xp12[weather_mode_y][weather_mode_x]             = { { "Rapidly Improving", "Improving", "Gradually Improving" }, { "Static", "Gradually Deteriorating", "Rapidly Deteriorating" } };
+  //
+  //
+  //   std::string get_weather_picked_by_user ()
+  //   {
+  //     std::string propValue_s{ "" };
+  //
+  //     for (int yy = 0; yy < weather_y; yy++)
+  //       for (int xx = 0; xx < weather_x; xx++)
+  //       {
+  //         if ((*ptr_selected_weather_by_user_arr)[yy][xx] > 0) // We store only picked weather, meaning value must be greater than 0
+  //           propValue_s += (!propValue_s.empty ()) ? "," + mxUtils::formatNumber<int> ((*ptr_selected_weather_code)[yy][xx]) : mxUtils::formatNumber<int> ((*ptr_selected_weather_code)[yy][xx]);
+  //       }
+  //
+  //     return propValue_s;
+  //   }
+  //
+  //   std::string get_weather_change_mode_picked_by_user ()
+  //   {
+  //     std::string propValue_s{ "" };
+  //
+  //     for (int yy = 0; yy < weather_mode_y; yy++)
+  //       for (int xx = 0; xx < weather_mode_x; xx++)
+  //       {
+  //         if (selected_weather_mode_by_user_arr_0_1_xp12[yy][xx] > 0) // We store only picked weather, meaning value must be greater than 0
+  //           propValue_s += (!propValue_s.empty ()) ? "," + mxUtils::formatNumber<int> (selected_weather_mode_code_xp12[yy][xx]) : mxUtils::formatNumber<int> (selected_weather_mode_code_xp12[yy][xx]);
+  //       }
+  //
+  //     return propValue_s;
+  //   }
+  //
+  //   const char *windSpeeds_arr[31] = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30" }; // v3.303.12
+  //   int         windSpeeds_user_picked_i{ 0 };
+  //   int         iWindMin         = 0;
+  //   int         iWindMax         = 0;
+  //   std::string windSpeedMin_lbl = "Min Speed: " + mxUtils::formatNumber<int> (iWindMin);
+  //   std::string windSpeedMax_lbl = "Max Speed: " + mxUtils::formatNumber<int> (iWindMax);
+  //
+  //   missionx::mx_ui_random_weather_options iWeatherType_user_picked{ missionx::mx_ui_random_weather_options::use_xplane_weather }; // v3.303.12
+  //
+  //   int         cloudElevInputField_i{ 500 };
+  //   int         iCloudMin        = 0;
+  //   int         iCloudMax        = 0;
+  //   std::string cloudElevMin_lbl = "Min Elev: " + mxUtils::formatNumber<int> (iCloudMin);
+  //   std::string cloudElevMax_lbl = "Max Elev: " + mxUtils::formatNumber<int> (iCloudMax);
+  //
+  //
+  //   // Weight
+  //   bool flag_add_default_weight_settings{ true }; // v3.303.14
+  //   int  pilot_base_weight_i{ 85 }; // v25.02.1
+  //   int  passengers_base_weight_i{ 70 }; // v25.02.1
+  //   int  cargo_base_weight{ 10 }; // v25.02.1
+  //
+  //
+  // };
 
   mx_popup_adv_settings_strct adv_settings_strct;
 

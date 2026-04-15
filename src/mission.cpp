@@ -5502,23 +5502,23 @@ missionx::Mission::flcPRE()
       {
         assert(Mission::uiImGuiBriefer != nullptr);
 
-        const std::string filename = (Mission::uiImGuiBriefer->strct_conv_layer.file_picked_i > -1) ? Mission::uiImGuiBriefer->strct_conv_layer.vecFileList_char.at(Mission::uiImGuiBriefer->strct_conv_layer.file_picked_i) : mxconst::get_CONVERTER_FILE();
+        const std::string filename = (Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.file_picked_i > -1) ? Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.vecFileList_char.at(Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.file_picked_i) : mxconst::get_CONVERTER_FILE();
         
         if (missionx::data_manager::generate_missionx_mission_file_from_convert_screen( missionx::data_manager::prop_userDefinedMission_ui
                                                                                       // , filename
-                                                                                      , Mission::uiImGuiBriefer->strct_conv_layer.xConvMainNode
-                                                                                      , Mission::uiImGuiBriefer->strct_conv_layer.xSavedGlobalSettingsNode // v3.305.1
+                                                                                      , Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.xConvMainNode
+                                                                                      , Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.xSavedGlobalSettingsNode // v3.305.1
                                                                                       , missionx::data_manager::map_tableOfParsedFpln
-                                                                                      , Mission::uiImGuiBriefer->strct_conv_layer.flag_store_state
-                                                                                      , !Mission::uiImGuiBriefer->strct_conv_layer.flag_use_loaded_globalSetting_from_conversion_file ) // v3.305.1 send the oposite value of flag_use_loaded_globalSetting_from_conversion_file 
+                                                                                      , Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.flag_store_state
+                                                                                      , !Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.flag_use_loaded_globalSetting_from_conversion_file ) // v3.305.1 send the oposite value of flag_use_loaded_globalSetting_from_conversion_file 
            )
         {
           Mission::uiImGuiBriefer->setMessage(R"(Mission file was generated as a "random" mission. You can run it from the "Load Mission" screen.)");
 
           // v3.305.1 refresh global_settings buffer if needed
-          if (!Mission::uiImGuiBriefer->strct_conv_layer.flag_use_loaded_globalSetting_from_conversion_file) // if we created new global_Settings file then refresh the buffer
+          if (!Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.flag_use_loaded_globalSetting_from_conversion_file) // if we created new global_Settings file then refresh the buffer
           {
-            Mission::uiImGuiBriefer->strct_conv_layer.set_global_settings_into_buffer(Mission::uiImGuiBriefer->strct_conv_layer.xSavedGlobalSettingsNode); // if we reached here, xSavedGlobalSettingsNode should have been refreshed from generate_missionx_mission_file_from_convert_screen() function
+            Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.set_global_settings_into_buffer(Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.xSavedGlobalSettingsNode); // if we reached here, xSavedGlobalSettingsNode should have been refreshed from generate_missionx_mission_file_from_convert_screen() function
           }
         }
 

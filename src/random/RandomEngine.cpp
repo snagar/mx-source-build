@@ -5355,7 +5355,6 @@ RandomEngine::gen_briefer_phase_01_parse_briefer_and_start_location(const IXMLNo
   } // end construct <start_location> based on "xy" (pre-defined targetLat/long or based on ad-hock starting points that we will pick at random
   else
   {
-    // TODO: add search for ramp location
     // init plane position
     navAid.lat     = static_cast<float>(RandomEngine::planeLocation.lat);
     navAid.lon     = static_cast<float>(RandomEngine::planeLocation.lon);
