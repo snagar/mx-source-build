@@ -8354,20 +8354,22 @@ PICK_RANDOM_OSM_BBOX:
 
     ++missionx::data_manager::overpass_last_url_indx_used_i; // round-robin
 
-    #ifndef RELEASE
-    Log::logMsgThread("[overpass] WAYS URL: " + stored_overpass_url + "?data=" + overpass_filter_s + "\n");
-    #endif // !RELEASE
+    // #ifndef RELEASE
+    // Log::logMsgThread("[overpass] WAYS URL: " + stored_overpass_url + "?data=" + overpass_filter_s + "\n");
+    // #endif // !RELEASE
 
     //"https://overpass-api.de/api/interpreter?data=(" + overpass_filter_s +");out;"; // EXAMPLE
 
-    const std::string url_s = stored_overpass_url + "?data=" + overpass_filter_s; // v3.0.253.9
+    // const std::string url_s = stored_overpass_url + "?data=" + overpass_filter_s; // v3.0.253.9
 
+    const std::string url_filter_s = fmt::format("data={}", overpass_filter_s); // v26.04.3
     // Log::logMsgThread("[overpass] WAYS URL: " + url_s + "\n");
-    Log::logMsgThread(fmt::format("[{}] WAYS URL:: {}\n", __func__, url_s ) );
+    Log::logMsgThread(fmt::format("[{}] WAYS URL: {}?{}\n", __func__, stored_overpass_url, url_filter_s ) );
 
     // url_s includes the "overpass url" + ?data=..."
-    const auto st_curl_result = missionx::data_manager::get_curl_request_respond(url_s);
-    const auto result_s       = st_curl_result.result_text;
+    // const auto st_curl_result = missionx::data_manager::get_curl_request_respond(url_s);
+    const auto st_curl_result = missionx::data_manager::get_curl_request_respond(stored_overpass_url, url_filter_s, 2);
+    const auto result_s       = st_curl_result.response_text;
     err                       = st_curl_result.request_err;
 
     if (missionx::RandomEngine::random_thread_state.flagAbortThread)
@@ -8379,7 +8381,8 @@ PICK_RANDOM_OSM_BBOX:
       Log::logMsgThread(fmt::format("[{}] Error while fetching from overpass: {}\n", __func__, err ) );
       goto PICK_RANDOM_OSM_BBOX;
     }
-    else if (err.empty() && !result_s.empty())
+
+    if (err.empty() && !result_s.empty())
     {
       IXMLDomParser iDom;
       auto          xmlOSM             = iDom.parseString(result_s.c_str()).deepCopy();
@@ -8417,49 +8420,54 @@ PICK_OSM_CHILD_NODE:
       }
       else
       {
-        IXMLNode picked_random_target_node_ptr = IXMLNode::emptyIXMLNode;
+        IXMLNode picked_random_target_way_nd_ptr = IXMLNode::emptyIXMLNode;
 
         std::string node_id_s;
-        const int   rnd_nodes_i  = Utils::getRandomIntNumber(0, nAllChildNodes - 1);
-        IXMLNode    osmChildNode = xmlOSM.getChildNode(rnd_nodes_i);
+        const int   rnd_osm_way_tags_i  = Utils::getRandomIntNumber(0, nAllChildNodes - 1);
+        IXMLNode    osm_way_node = xmlOSM.getChildNode(rnd_osm_way_tags_i);
         // store some information about the picked element
-        std::string tagName = osmChildNode.getName();
+        std::string tagName = osm_way_node.getName();
+        // v26.04.3
+        std::string way_id_s = Utils::readAttrib(osm_way_node, mxconst::get_ATTRIB_ID(), "");
+        #ifndef RELEASE
+        Log::logMsgThread(fmt::format ("[{}] Picked Way id: [{}]", __func__, way_id_s) );
+        #endif
 
         if (tagName != mxconst::get_ELEMENT_NODE_OSM() && tagName != mxconst::get_ELEMENT_WAY_OSM() && tagName != mxconst::get_ELEMENT_REL_OSM())
         {
           Log::logMsgThread("Picked unsupported node: <" + tagName + ">. Will fetch other node.\n");
-          osmChildNode.deleteNodeContent(); // remove from XML output
+          osm_way_node.deleteNodeContent(); // remove from XML output
           count_nodes_pick_i--; // v3.0.253.9.1 we remove this node from counter so only valid nodes will take into consideration
           goto PICK_OSM_CHILD_NODE;
         }
 
 
-        int       iNd        = (osmChildNode.isEmpty()) ? 0 : osmChildNode.nChildNode(mxconst::get_ELEMENT_ND_OSM().c_str());
-        const int iCenterTag = osmChildNode.nChildNode(mxconst::get_ELEMENT_CENTER().c_str()); // should be only 1 or 0
+        int       i_osm_nodes = (osm_way_node.isEmpty()) ? 0 : osm_way_node.nChildNode(mxconst::get_ELEMENT_ND_OSM().c_str());
+        const int iCenterTag = osm_way_node.nChildNode(mxconst::get_ELEMENT_CENTER().c_str()); // should be only 1 or 0
 
         if (tagName == mxconst::get_ELEMENT_NODE_OSM())
         {
-          picked_random_target_node_ptr = osmChildNode;
+          picked_random_target_way_nd_ptr = osm_way_node;
 
           #ifndef RELEASE
-          Log::logMsgThread("Picked osm node: \n" + std::string(IXMLRenderer().getString(osmChildNode)) + "\n");
+          Log::logMsgThread(fmt::format("[{}] Picked osm <way> node: {}\n", __func__, Utils::xml_get_node_content_as_text(osm_way_node)) );
           #endif
         }
         else
         {
           bool bFoundCenter = false;
-
           bFoundCenter   = false;
-          const int nd_i = (iNd == 0) ? 0 : Utils::getRandomIntNumber(0, iNd - 1 + iCenterTag); // v3.0.253.9 we add the center tag to the mix. If result is = nd_i then we will pick Center element.
 
+          // v3.0.253.9 we add the center tag to the mix. If result is = nd_i then we will pick Center element.
+          const int nd_i = (i_osm_nodes == 0) ? 0 : Utils::getRandomIntNumber(0, i_osm_nodes - 1 + iCenterTag);
 
-          if (iNd == 0 && iCenterTag == 0 && tagName == mxconst::get_ELEMENT_WAY_OSM()) // fetch new zone only if <way> tag has no valid sub-elements to use
+          // fetch new zone only if <way> tag has no valid sub-elements to use
+          if (i_osm_nodes == 0 && iCenterTag == 0 && tagName == mxconst::get_ELEMENT_WAY_OSM())
           {
             // Log::logMsgThread("[overpass2] Found no <nd> element, will try different <osm> child in same box."); // debug
             Log::logMsgThread(fmt::format("[{}] Found no valid <nd> element, will try different <osm> child in the same box.", __func__) ); // debug
 
-
-            osmChildNode.deleteNodeContent();
+            osm_way_node.deleteNodeContent();
             goto PICK_OSM_CHILD_NODE;
           }
 
@@ -8472,48 +8480,51 @@ PICK_OSM_CHILD_NODE:
               #ifndef release
               // Log::logMsgThread("[overpass] >>> plugin will use <center> element.<<<\n"); // debug
               Log::logMsgThread(fmt::format("[{}] >>> plugin will use <center> element.<<<\n", __func__ ) ); // debug
-              if (!osmChildNode.isEmpty())
-                Log::logMsgThread(std::string(IXMLRenderer().getString(osmChildNode)) + "\n");
+              if (!osm_way_node.isEmpty())
+                Log::logMsgThread(std::string(IXMLRenderer().getString(osm_way_node)) + "\n");
               #endif
-              iNd = nd_i;
+              i_osm_nodes = nd_i;
 
               bFoundCenter = true;
-              xCenterNode  = osmChildNode.getChildNode(mxconst::get_ELEMENT_CENTER().c_str()).deepCopy();
+              xCenterNode  = osm_way_node.getChildNode(mxconst::get_ELEMENT_CENTER().c_str()).deepCopy();
               return xCenterNode.deepCopy();
             }
 
-            return osmChildNode.getChildNode(mxconst::get_ELEMENT_ND_OSM().c_str(), nd_i);
+            return osm_way_node.getChildNode(mxconst::get_ELEMENT_ND_OSM().c_str(), nd_i);
           }; // end lmbda_get_nd_or_center_tag_node
 
-          picked_random_target_node_ptr = lmbda_get_nd_or_center_tag_node();
+          picked_random_target_way_nd_ptr = lmbda_get_nd_or_center_tag_node();
 
           //////////////////////////////////////////////////////
           // Handle <ref> node. if we are using <ref> then we need to fetch the <node> based on its "id" attrib value. <center> already holds the position.
+
           if (!bFoundCenter)
           {
             IXMLDomParser iDom2;
-            node_id_s = Utils::readAttrib(picked_random_target_node_ptr, mxconst::get_ATTRIB_REF_OSM(), ""); // fetch ref attribute
+            node_id_s = Utils::readAttrib(picked_random_target_way_nd_ptr, mxconst::get_ATTRIB_REF_OSM(), ""); // fetch ref attribute
             if (node_id_s.empty())
             {
               // Log::logMsgThread("[overpass2] Found no 'ref' attribute in <nd>, element maybe malformed, will try other <way> in same area box."); // debug
               Log::logMsgThread(fmt::format("[{}] No 'ref' attribute was found in <nd>, element maybe malformed, will try other <way> in same area box.", __func__ ) ); // debug
 
-              osmChildNode.deleteNodeContent();
+              osm_way_node.deleteNodeContent();
               goto PICK_OSM_CHILD_NODE;
             }
 
 
             // Get <node> information using <ref id="xxx" /> value
-            const std::string node_url_s    = stored_overpass_url + "?data=node(id:" + node_id_s + ");out;";
+            // const std::string node_url_s    = stored_overpass_url + "?data=node(id:" + node_id_s + ");out;";
+            const std::string node_url_s    = fmt::format("{}?data=node(id:{});out;", stored_overpass_url, node_id_s);
 
             // --------------
             // CURL Call
             // --------------
-            
+            Log::logMsgThread(fmt::format("[{}] Searching a node in way_id: {} node id: {}", __func__, way_id_s, node_id_s) );
+
             //const std::string node_result_s = missionx::data_manager::fetch_overpass_info(node_url_s, err);
-            const auto        st_curl_result = missionx::data_manager::get_curl_request_respond(node_url_s);
-            const std::string node_result_s  = st_curl_result.result_text;
-            err                              = st_curl_result.request_err;
+            const auto        st_local_curl_result = missionx::data_manager::get_curl_request_respond(node_url_s);
+            const std::string node_result_s  = st_local_curl_result.response_text;
+            err                              = st_local_curl_result.request_err;
 
             if (missionx::RandomEngine::random_thread_state.flagAbortThread)
               return false;
@@ -8534,10 +8545,11 @@ PICK_OSM_CHILD_NODE:
             }
 
             // store the <node> value for later use as position
-            picked_random_target_node_ptr = nodeOSM_XML.getChildNode(mxconst::get_ELEMENT_NODE_OSM().c_str()).deepCopy();
+            picked_random_target_way_nd_ptr = nodeOSM_XML.getChildNode(mxconst::get_ELEMENT_NODE_OSM().c_str()).deepCopy();
 
             #ifndef RELEASE
-            auto wayNode_s = std::string(IXMLRenderer().getString(osmChildNode));
+            // const auto wayNode_s = std::string(IXMLRenderer().getString(osm_way_node));
+            const auto wayNode_s = Utils::xml_get_node_content_as_text(osm_way_node);
             Log::logMsgThread(fmt::format("[{}] Found 'ref' attributes in 'nd' elements. Will pick way based on nd ref: {}\n", __func__, node_id_s ) );
             Log::logMsgThread(fmt::format("[{}] Picked Way:\n {}\n", __func__, wayNode_s ) );
             #endif // !RELEASE
@@ -8549,13 +8561,13 @@ PICK_OSM_CHILD_NODE:
 
         ///////////////////// Test the target/NavAid Node ////////////////////////////
         // get position node and use it to construct the target
-        IXMLNode target_node_pos_ptr = picked_random_target_node_ptr.deepCopy(); //
+        IXMLNode target_node_pos_ptr = picked_random_target_way_nd_ptr.deepCopy(); //
 
         if (target_node_pos_ptr.isEmpty())
         {
           Log::logMsgThread(fmt::format("[{}] Failed to fetch a <node>. will try a different way in same box.", __func__)); // debug
 
-          osmChildNode.deleteNodeContent();
+          osm_way_node.deleteNodeContent();
           goto PICK_OSM_CHILD_NODE;
         }
 
@@ -8614,7 +8626,7 @@ PICK_OSM_CHILD_NODE:
               Log::logMsgThread( fmt::format("[{}] Failed flat terrain probe for overpass node. Found slope: {:.2f}, in: {}", __func__, slope_d, outNavAid.get_latLon_name() ) ); // debug
               // Log::logMsgThread("[overpass2] Failed flat terrain probe for overpass node. Found slope: " + mxUtils::formatNumber<double>(slope_d, 2) + ", in: " + outNavAid.get_latLon_name()); // debug
 
-            osmChildNode.deleteNodeContent();
+            osm_way_node.deleteNodeContent();
 
             if (count_nodes_pick_i < number_of_times_to_loop_over_force_template_type_i)
               goto PICK_OSM_CHILD_NODE;
@@ -8631,10 +8643,10 @@ PICK_OSM_CHILD_NODE:
         // read and store way metadata
         {
           // Fetch WAY tag information
-          const int tags_i = osmChildNode.nChildNode("tag"); // check
+          const int tags_i = osm_way_node.nChildNode("tag"); // check
           for (int i1 = 0; i1 < tags_i; ++i1)
           {
-            auto tagNode = osmChildNode.getChildNode("tag", i1);
+            auto tagNode = osm_way_node.getChildNode("tag", i1);
             // bool              bFound  = false;
             const std::string key   = Utils::readAttrib(tagNode, "k", "");
             const std::string value = Utils::readAttrib(tagNode, "v", "");
@@ -8745,7 +8757,7 @@ PICK_OSM_CHILD_NODE:
 
             //const std::string around_result_s = missionx::data_manager::fetch_overpass_info(around_url_s, err);
             const auto around_st_curl_result  = missionx::data_manager::get_curl_request_respond(around_url_s);
-            const auto around_result_s = around_st_curl_result.result_text;
+            const auto around_result_s = around_st_curl_result.response_text;
             err                        = around_st_curl_result.request_err;
 
 

@@ -3235,7 +3235,12 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
         } // end oilrig and distance restriction
 
         // Customize the number of flight legs to generate.
-        WinImguiBriefer::add_ui_pick_how_many_legs(strct_user_create_layer.iNumberOfFlighLegs, "How Many Flight Legs ? ", missionx::strct_user_create_layer.user_semi_act_picked.legs_min_max.min, missionx::strct_user_create_layer.user_semi_act_picked.legs_min_max.max);
+        if (WinImguiBriefer::add_ui_pick_how_many_legs(strct_user_create_layer.iNumberOfFlighLegs, "How Many Flight Legs ? ", missionx::strct_user_create_layer.user_semi_act_picked.legs_min_max.min, missionx::strct_user_create_layer.user_semi_act_picked.legs_min_max.max) )
+        {
+          strct_user_create_layer.user_semi_act_picked.final_legs_no_to_generate = strct_user_create_layer.iNumberOfFlighLegs;
+          strct_user_create_layer.user_semi_act_picked.prepare_the_semi_activity_description();
+        }
+
       }
 
       ImGui::Spacing();
@@ -3372,22 +3377,27 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
 
 // -------------------------------------------
 
-void
+bool
 WinImguiBriefer::add_ui_pick_how_many_legs(int & inout_radio_value_ref, const std::string & in_label, const int & in_minButtons, const int & in_maxButtons)
 {
+  bool bWasChanged {false};
   ImGui::TextColored (missionx::color::color_vec4_yellow , "%s", in_label.c_str()); // between 2 and 4
 
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_white); // internal color
   for (int i = in_minButtons; i <= in_maxButtons; ++i)
   {
     if (ImGui::RadioButton (fmt::format("{}", i).c_str (), inout_radio_value_ref == i))
+    {
       inout_radio_value_ref = i;
+      bWasChanged ^= 1;
+    }
 
     if ( i < in_maxButtons)
       ImGui::SameLine ();
   }
   ImGui::PopStyleColor ();
 
+  return bWasChanged;
 }
 
 // -------------------------------------------

@@ -218,6 +218,7 @@ mutex data_manager::s_thread_sync_mutex;   // defined here and not in the class 
 mutex data_manager::s_ImageLoadMutex;      // v3.303.14 Used in loadInventoryImages(), also solves non-POD when defined in namespace level
 mutex data_manager::s_StoryImageLoadMutex; // v3.305.1 Used in loadStoryImages()
 mutex data_manager::mt_SortTriggersMutex;  // v3.305.2 Used in sort
+mutex data_manager::mt_request_get_curl_request_respond_mutex; // v26.06.4 Used in get_curl_request_respond()
 
 int                      data_manager::overpass_counter_i;                                      // v3.0.255.4.1
 std::vector<std::string> data_manager::vecOverpassUrls;                                         // v3.0.255.4.1
@@ -6218,7 +6219,6 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
 
   outStatusMessage->clear();
 
-
   if (threadStateMetar.flagAbortThread)
   {
     (*outState) = mxFetchState_enum::fetch_ended;
@@ -6411,125 +6411,124 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
   std::string cert_loc_s = data_manager::mx_folders_properties.getStringAttributeValue (mxconst::get_PROP_MISSIONX_PATH(), "");
   missionx::structs::strct_curl_result simbrief_st_curl_result;
 
-    long httpStatus = 0;
-    if (curl)
+  long httpStatus = 0;
+  // if (curl)
+  {
+    // result_s.clear();
+
+    // try up to three times
+    std::string          msg;
+    constexpr static int MAX_TRIES = 3;
+    for (int loop01 = 0; loop01 < MAX_TRIES && !flag_http_success; ++loop01)
     {
-      // result_s.clear();
+      msg.clear();
 
-      // try up to three times
-      std::string msg;
-      constexpr static int MAX_TRIES = 3;
-      for (int loop01 = 0; loop01 < MAX_TRIES && !flag_http_success; ++loop01)
+      // char errBuff[CURL_ERROR_SIZE]{ '\0' };
+      // curl_easy_setopt(curl, CURLOPT_URL, full_url_s.c_str());
+
+      // // setup agent
+      // //curl_easy_setopt(curl, CURLOPT_USERAGENT, APP_NAME);
+      // curl_easy_setopt (curl, CURLOPT_USERAGENT, "MissionX/1.0");
+      //
+      // curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 20L); // v24.06.1 /Timeout for server connection
+      // curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);        // v24.06.1 overall work timeout - 60 seconds
+      // curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);        // CURLOPT_NOSIGNAL - skip all signal handling (values 0 or 1)
+      //
+      // curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+      //
+      // // Conditional SSL integration
+      // curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, 0L); // v26.01.1 fallback if SSL fails
+      // curl_easy_setopt (curl, CURLOPT_SSL_VERIFYHOST, 0L); // v26.01.1 fallback if SSL fails
+      //
+      // // https://curl.haxx.se/docs/sslcerts.html
+      // if (loop01 == 0 && std ::filesystem::exists (data_manager::ca_path) && std::filesystem::is_regular_file (ca_path)) // v26.01.1
+      // {
+      //   curl_easy_setopt (curl, CURLOPT_CAINFO, data_manager::ca_path.string ().c_str ());
+      //   curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, 1L); // v26.01.4 force SSL
+      //   curl_easy_setopt (curl, CURLOPT_SSL_VERIFYHOST, 2L); // v26.01.4 force SSL
+      // }
+      // curl_easy_setopt   (curl, CURLOPT_NOPROGRESS, 0L);
+      //
+      // curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuff);
+      //
+      // curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_write);
+      // curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result_s);
+      // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+
+      // execute the REQUEST
+      simbrief_st_curl_result = data_manager::get_curl_request_respond(full_url_s);
+      if (CURLE_OK != simbrief_st_curl_result.res_curl)
       {
-        msg.clear();
+        msg = fmt::format("cURL error code: {}\n", Utils::formatNumber<int>(simbrief_st_curl_result.res_curl));
+        Log::logMsgThread(msg);
+      }
 
-        // char errBuff[CURL_ERROR_SIZE]{ '\0' };
-        // curl_easy_setopt(curl, CURLOPT_URL, full_url_s.c_str());
+      // std::string errBuff_s(simbrief_st_curl_result.request_err);
+      // curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpStatus);
 
-        // // setup agent
-        // //curl_easy_setopt(curl, CURLOPT_USERAGENT, APP_NAME);
-        // curl_easy_setopt (curl, CURLOPT_USERAGENT, "MissionX/1.0");
-        //
-        // curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 20L); // v24.06.1 /Timeout for server connection
-        // curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);        // v24.06.1 overall work timeout - 60 seconds
-        // curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);        // CURLOPT_NOSIGNAL - skip all signal handling (values 0 or 1)
-        //
-        // curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-        //
-        // // Conditional SSL integration
-        // curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, 0L); // v26.01.1 fallback if SSL fails
-        // curl_easy_setopt (curl, CURLOPT_SSL_VERIFYHOST, 0L); // v26.01.1 fallback if SSL fails
-        //
-        // // https://curl.haxx.se/docs/sslcerts.html
-        // if (loop01 == 0 && std ::filesystem::exists (data_manager::ca_path) && std::filesystem::is_regular_file (ca_path)) // v26.01.1
-        // {
-        //   curl_easy_setopt (curl, CURLOPT_CAINFO, data_manager::ca_path.string ().c_str ());
-        //   curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, 1L); // v26.01.4 force SSL
-        //   curl_easy_setopt (curl, CURLOPT_SSL_VERIFYHOST, 2L); // v26.01.4 force SSL
-        // }
-        // curl_easy_setopt   (curl, CURLOPT_NOPROGRESS, 0L);
-        //
-        // curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuff);
-        //
-        // curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_write);
-        // curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result_s);
-        // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+      if (!simbrief_st_curl_result.request_err.empty())
+      {
+        msg = fmt::format("cURL HTTP status: {}", simbrief_st_curl_result.request_err);
+      }
+      else // parse json
+      {
+        flag_http_success   = true;
+        (*outStatusMessage) = "cURL fetch success.";
+      }
 
-        // execute the REQUEST
-        simbrief_st_curl_result = data_manager::get_curl_request_respond(full_url_s);
-        if ( CURLE_OK != simbrief_st_curl_result.res_curl )
-        {
-          msg = fmt::format ("cURL error code: {}\n", Utils::formatNumber<int> (simbrief_st_curl_result.res_curl));
-          Log::logMsgThread(msg);
-          
-        }
-        // std::string errBuff_s(simbrief_st_curl_result.request_err);
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpStatus);
-        if (httpStatus != 200 || !simbrief_st_curl_result.request_err.empty())
-        {
-          msg = fmt::format("cURL HTTP status: {}. {}", std::to_string(httpStatus), simbrief_st_curl_result.request_err);
-        }
-        else // parse json
-        {
-          flag_http_success   = true;
-          (*outStatusMessage) = "cURL fetch success.";
-        }
+      if (!msg.empty())
+        (*outStatusMessage) = fmt::format("Try {}/{}. {}", loop01 + 1, MAX_TRIES, msg);
 
-        if (!msg.empty ())
-          (*outStatusMessage) = fmt::format("Try {}/{}. {}", loop01 + 1, MAX_TRIES, msg);
+      Log::logMsgThread((*outStatusMessage)); // debug
 
-        Log::logMsgThread ((*outStatusMessage)); // debug
-
-        // Wait for 2 seconds
-        std::this_thread::sleep_for (std::chrono::seconds (2)); // v26.01.1 wait for 2 seconds
-
-      } // end internal fetch loop. Try few times before giving up.
-
-    } // end data_manager::curl - handling cURL
+      // Wait for 2 seconds
+      std::this_thread::sleep_for(std::chrono::seconds(2)); // v26.01.1 wait for 2 seconds
+    } // end internal fetch loop. Try few times before giving up.
+  } // end data_manager::curl - handling cURL
 
   //// Parse result
   if (flag_http_success)
   {
-    simbrief_st_curl_result.result_text = mxUtils::replaceAll (simbrief_st_curl_result.result_text, "<br>", ""); // v25.06.1
+    simbrief_st_curl_result.response_text = mxUtils::replaceAll(simbrief_st_curl_result.response_text, "<br>", ""); // v25.06.1
 
-    IXMLReaderStringSZ iReaderSZ(simbrief_st_curl_result.result_text.c_str());
-    IXMLResults parse_result;
-    IXMLDomParser idom;
-    auto xml_ofp = idom.parseString (simbrief_st_curl_result.result_text.c_str (), mxconst::get_ELEMENT_SIMBRIEF_ROOT_OFP().c_str(), &parse_result);
+    IXMLReaderStringSZ iReaderSZ(simbrief_st_curl_result.response_text.c_str());
+    IXMLResults        parse_result;
+    IXMLDomParser      idom;
+    auto               xml_ofp = idom.parseString(simbrief_st_curl_result.response_text.c_str(), mxconst::get_ELEMENT_SIMBRIEF_ROOT_OFP().c_str(), &parse_result);
     if (parse_result.errorCode == IXMLError_None)
     {
       mx_ext_internet_fpln_strct fpln;
       fpln.internal_id = 0;
 
       missionx::mx_base_node ofp_node;
-      ofp_node.node = xml_ofp.deepCopy ();
+      ofp_node.node = xml_ofp.deepCopy();
       // read the route nodes. So far there are three
-      auto node_general     = ofp_node.node.getChildNode (mxconst::get_ELEMENT_GENERAL().c_str ());
-      auto node_origin      = ofp_node.node.getChildNode (mxconst::get_ELEMENT_ORIGIN().c_str ());
-      auto node_destination = ofp_node.node.getChildNode (mxconst::get_ELEMENT_DESTINATION().c_str ());
-      auto node_alternate   = ofp_node.node.getChildNode (mxconst::get_ELEMENT_ALTERNATE().c_str ()); // v26.02.1
-      auto node_fuel        = ofp_node.node.getChildNode ("fuel"); // v25.06.1 fetch fuel information
-      auto node_navlog      = ofp_node.node.getChildNode ("navlog"); // v25.06.1 fetch TOC, top of climb, data
-      auto node_weights     = ofp_node.node.getChildNode ("weights"); // v25.06.1 fetch TOC, top of climb, data
+      auto node_general     = ofp_node.node.getChildNode(mxconst::get_ELEMENT_GENERAL().c_str());
+      auto node_origin      = ofp_node.node.getChildNode(mxconst::get_ELEMENT_ORIGIN().c_str());
+      auto node_destination = ofp_node.node.getChildNode(mxconst::get_ELEMENT_DESTINATION().c_str());
+      auto node_alternate   = ofp_node.node.getChildNode(mxconst::get_ELEMENT_ALTERNATE().c_str()); // v26.02.1
+      auto node_fuel        = ofp_node.node.getChildNode("fuel"); // v25.06.1 fetch fuel information
+      auto node_navlog      = ofp_node.node.getChildNode("navlog"); // v25.06.1 fetch TOC, top of climb, data
+      auto node_weights     = ofp_node.node.getChildNode("weights"); // v25.06.1 fetch TOC, top of climb, data
 
-      if (!node_general.isEmpty ())
+      if (!node_general.isEmpty())
       {
-        auto icaoairln_node       = node_general.getChildNode (mxconst::get_ELEMENT_ICAO_AIRLINE().c_str ());
-        auto flnum_node           = node_general.getChildNode (mxconst::get_ELEMENT_FLIGHT_NUMBER().c_str ());
-        auto route_node           = node_general.getChildNode (mxconst::get_ELEMENT_ROUTE().c_str ());
-        auto route_ifps_node      = node_general.getChildNode (mxconst::get_ELEMENT_ROUTE_IFPS().c_str ());
-        auto route_navigraph_node = node_general.getChildNode (mxconst::get_ELEMENT_ROUTE_NAVIGRAPH().c_str ());
-        auto cruise_profile_node  = node_general.getChildNode ("costindex"); // v25.06.1
+        auto icaoairln_node       = node_general.getChildNode(mxconst::get_ELEMENT_ICAO_AIRLINE().c_str());
+        auto flnum_node           = node_general.getChildNode(mxconst::get_ELEMENT_FLIGHT_NUMBER().c_str());
+        auto route_node           = node_general.getChildNode(mxconst::get_ELEMENT_ROUTE().c_str());
+        auto route_ifps_node      = node_general.getChildNode(mxconst::get_ELEMENT_ROUTE_IFPS().c_str());
+        auto route_navigraph_node = node_general.getChildNode(mxconst::get_ELEMENT_ROUTE_NAVIGRAPH().c_str());
+        auto cruise_profile_node  = node_general.getChildNode("costindex"); // v25.06.1
 
-        fpln.simbrief_icao_airline_s  = Utils::xml_get_text (icaoairln_node);
-        fpln.simbrief_flightNumber_s  = Utils::xml_get_text (flnum_node);
-        fpln.simbrief_route           = Utils::xml_get_text (route_node);
-        fpln.simbrief_route_ifps      = Utils::xml_get_text (route_ifps_node);
-        fpln.simbrief_route_navigraph = Utils::xml_get_text (route_navigraph_node);
-        fpln.simbrief_costindex       = Utils::xml_get_text (cruise_profile_node); // v25.06.1
+        fpln.simbrief_icao_airline_s  = Utils::xml_get_text(icaoairln_node);
+        fpln.simbrief_flightNumber_s  = Utils::xml_get_text(flnum_node);
+        fpln.simbrief_route           = Utils::xml_get_text(route_node);
+        fpln.simbrief_route_ifps      = Utils::xml_get_text(route_ifps_node);
+        fpln.simbrief_route_navigraph = Utils::xml_get_text(route_navigraph_node);
+        fpln.simbrief_costindex       = Utils::xml_get_text(cruise_profile_node); // v25.06.1
       }
 
-      if (!node_origin.isEmpty ())
+      if (!node_origin.isEmpty())
       {
         auto icao_code_node       = node_origin.getChildNode(mxconst::get_ELEMENT_ICAO_CODE().c_str());
         auto name_node            = node_origin.getChildNode(mxconst::get_ATTRIB_NAME().c_str());
@@ -6545,10 +6544,9 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
         fpln.simbrief_origin_trans_alt  = Utils::xml_get_text(trans_alt_node);
         fpln.simbrief_origin_metar      = Utils::xml_get_text(plan_metar_node);
         fpln.simbrief_origin_metar_time = Utils::xml_get_text(plan_metar_time_node);
-
       }
 
-      if (!node_destination.isEmpty ())
+      if (!node_destination.isEmpty())
       {
         auto icao_code_node       = node_destination.getChildNode(mxconst::get_ELEMENT_ICAO_CODE().c_str());
         auto name_node            = node_destination.getChildNode(mxconst::get_ATTRIB_NAME().c_str());
@@ -6557,104 +6555,97 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
         auto plan_metar_node      = node_destination.getChildNode(mxconst::get_ELEMENT_METAR().c_str());
         auto plan_metar_time_node = node_destination.getChildNode(mxconst::get_ELEMENT_METAR_TIME().c_str());
 
-        fpln.toICAO_s = Utils::xml_get_text (icao_code_node);
-        fpln.toName_s = Utils::xml_get_text (name_node);
+        fpln.toICAO_s = Utils::xml_get_text(icao_code_node);
+        fpln.toName_s = Utils::xml_get_text(name_node);
 
         fpln.simbrief_destination_rw         = Utils::xml_get_text(plan_rwy_node);
         fpln.simbrief_destination_trans_alt  = Utils::xml_get_text(trans_alt_node);
         fpln.simbrief_destination_metar      = Utils::xml_get_text(plan_metar_node);
         fpln.simbrief_destination_metar_time = Utils::xml_get_text(plan_metar_time_node);
-
       }
 
-      if (!node_alternate.isEmpty ())
+      if (!node_alternate.isEmpty())
       {
-        auto alternate_icao_node = node_alternate.getChildNode (mxconst::get_ELEMENT_ICAO_CODE().c_str ());
-        fpln.simbrief_alternate_icao_s = Utils::xml_get_text (alternate_icao_node);
+        auto alternate_icao_node       = node_alternate.getChildNode(mxconst::get_ELEMENT_ICAO_CODE().c_str());
+        fpln.simbrief_alternate_icao_s = Utils::xml_get_text(alternate_icao_node);
       }
 
-      if (!node_fuel.isEmpty ())
+      if (!node_fuel.isEmpty())
       {
-        auto enroute_burn_node = node_fuel.getChildNode ("enroute_burn");
-        auto reserve_node = node_fuel.getChildNode ("reserve");
-        auto plan_ramp_block_fuel = node_fuel.getChildNode ("plan_ramp");
+        auto enroute_burn_node    = node_fuel.getChildNode("enroute_burn");
+        auto reserve_node         = node_fuel.getChildNode("reserve");
+        auto plan_ramp_block_fuel = node_fuel.getChildNode("plan_ramp");
 
-        fpln.simbrief_enroute_burn = Utils::xml_get_text (enroute_burn_node);
-        fpln.simbrief_reserve = Utils::xml_get_text (reserve_node);
-        fpln.simbrief_plan_ramp_block_fuel = Utils::xml_get_text (plan_ramp_block_fuel);
+        fpln.simbrief_enroute_burn         = Utils::xml_get_text(enroute_burn_node);
+        fpln.simbrief_reserve              = Utils::xml_get_text(reserve_node);
+        fpln.simbrief_plan_ramp_block_fuel = Utils::xml_get_text(plan_ramp_block_fuel);
       }
 
-      if (!node_navlog.isEmpty ())
+      if (!node_navlog.isEmpty())
       {
         // find <fix> subnode with a subnode <ident> and value "TOC"
-        auto toc_fix_node = Utils::xml_get_parent_node_from_node_tree_by_sub_tag_name_and_text_value (node_navlog, "ident", "TOC", 0);
+        auto toc_fix_node = Utils::xml_get_parent_node_from_node_tree_by_sub_tag_name_and_text_value(node_navlog, "ident", "TOC", 0);
 
-        auto simbrief_altitude_feet_node = Utils::xml_get_child_node (toc_fix_node, "altitude_feet");
-        auto simbrief_wind_dir_node      = Utils::xml_get_child_node (toc_fix_node, "wind_dir");
-        auto simbrief_wind_spd_node      = Utils::xml_get_child_node (toc_fix_node, "wind_spd");
-        auto simbrief_oat_isa_dev_node   = Utils::xml_get_child_node (toc_fix_node, "oat_isa_dev");
-        auto simbrief_oat_node           = Utils::xml_get_child_node (toc_fix_node, "oat");
-        auto simbrief_via_airway         = Utils::xml_get_child_node (toc_fix_node, "via_airway");
+        auto simbrief_altitude_feet_node = Utils::xml_get_child_node(toc_fix_node, "altitude_feet");
+        auto simbrief_wind_dir_node      = Utils::xml_get_child_node(toc_fix_node, "wind_dir");
+        auto simbrief_wind_spd_node      = Utils::xml_get_child_node(toc_fix_node, "wind_spd");
+        auto simbrief_oat_isa_dev_node   = Utils::xml_get_child_node(toc_fix_node, "oat_isa_dev");
+        auto simbrief_oat_node           = Utils::xml_get_child_node(toc_fix_node, "oat");
+        auto simbrief_via_airway         = Utils::xml_get_child_node(toc_fix_node, "via_airway");
 
-        fpln.simbrief_toc_elev_ft    = Utils::xml_get_text (simbrief_altitude_feet_node);
-        fpln.simbrief_toc_wind       = fmt::format ("{}/{}", Utils::xml_get_text (simbrief_wind_dir_node), Utils::xml_get_text (simbrief_wind_spd_node));
-        fpln.simbrief_toc_wind_ISA   = Utils::xml_get_text (simbrief_oat_isa_dev_node);
-        fpln.simbrief_toc_wind_OAT   = Utils::xml_get_text (simbrief_oat_node);
-        fpln.simbrief_toc_via_airway = Utils::xml_get_text (simbrief_via_airway);
-
+        fpln.simbrief_toc_elev_ft    = Utils::xml_get_text(simbrief_altitude_feet_node);
+        fpln.simbrief_toc_wind       = fmt::format("{}/{}", Utils::xml_get_text(simbrief_wind_dir_node), Utils::xml_get_text(simbrief_wind_spd_node));
+        fpln.simbrief_toc_wind_ISA   = Utils::xml_get_text(simbrief_oat_isa_dev_node);
+        fpln.simbrief_toc_wind_OAT   = Utils::xml_get_text(simbrief_oat_node);
+        fpln.simbrief_toc_via_airway = Utils::xml_get_text(simbrief_via_airway);
       }
 
-      if (!node_weights.isEmpty ())
+      if (!node_weights.isEmpty())
       {
-        auto payload_node = Utils::xml_get_child_node (node_weights, "payload");
-        auto est_tow_node = Utils::xml_get_child_node (node_weights, "est_tow"); // TOW estimation
+        auto payload_node = Utils::xml_get_child_node(node_weights, "payload");
+        auto est_tow_node = Utils::xml_get_child_node(node_weights, "est_tow"); // TOW estimation
 
-        fpln.simbrief_payload = Utils::xml_get_text (payload_node);
-        fpln.simbrief_takeoff_weight = Utils::xml_get_text (est_tow_node);
+        fpln.simbrief_payload        = Utils::xml_get_text(payload_node);
+        fpln.simbrief_takeoff_weight = Utils::xml_get_text(est_tow_node);
       }
 
-      fpln.more_info = fmt::format ("General:\n\tAirline/FlightNo: {}/{}, Cost Index: {}, Alternate: {}\n\n"
-                                    "Weights:\n\t{:<10}: {:>8} kg\n\t{:<10}: {:>8} kg\n\t{:<10}: {:>8} ton\n\n"
-                                    "Fuel:\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\n"
-                                    "T O C:\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\n"
-                                    // <general>
-                                    // , "Airline/FlightNo: "
-                                    , fpln.simbrief_icao_airline_s, fpln.simbrief_flightNumber_s
-                                    // , "Cost Index"
-                                    , fpln.simbrief_costindex
-                                    // , "Alter"
-                                    , fpln.simbrief_alternate_icao_s
-                                    // Weights
-                                    , "Payload", fpln.simbrief_payload, "Est. TOW", fpln.simbrief_takeoff_weight, "Fuel", fmt::format("{:.1f}", mxUtils::stringToNumber<float>(fpln.simbrief_plan_ramp_block_fuel) / 1000.0f )  // <weights>
-                                    // Fuel
-                                    , "Block Fuel", fpln.simbrief_plan_ramp_block_fuel, "Trip", fpln.simbrief_enroute_burn, "Reserve", fpln.simbrief_reserve  // <fuel>
-                                    // T.O.C
-                                    , "Elev ft.", fpln.simbrief_toc_elev_ft, "Wind", fpln.simbrief_toc_wind, "W.ISA Dev", fpln.simbrief_toc_wind_ISA  // Top Of Climb
-                                    , "OAT", fpln.simbrief_toc_wind_OAT
-                                    , "Airway", ((fpln.simbrief_toc_via_airway.empty ())? "n/a": fpln.simbrief_toc_via_airway)
-                                   ); // Right aligned: |{:>6}|
+      fpln.more_info = fmt::format("General:\n\tAirline/FlightNo: {}/{}, Cost Index: {}, Alternate: {}\n\n"
+                                   "Weights:\n\t{:<10}: {:>8} kg\n\t{:<10}: {:>8} kg\n\t{:<10}: {:>8} ton\n\n"
+                                   "Fuel:\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\n"
+                                   "T O C:\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\n"
+                                   // <general>
+                                   // , "Airline/FlightNo: "
+                                 , fpln.simbrief_icao_airline_s, fpln.simbrief_flightNumber_s
+                                   // , "Cost Index"
+                                 , fpln.simbrief_costindex
+                                   // , "Alter"
+                                 , fpln.simbrief_alternate_icao_s
+                                   // Weights
+                                 , "Payload", fpln.simbrief_payload, "Est. TOW", fpln.simbrief_takeoff_weight, "Fuel", fmt::format("{:.1f}", mxUtils::stringToNumber<float>(fpln.simbrief_plan_ramp_block_fuel) / 1000.0f) // <weights>
+                                   // Fuel
+                                 , "Block Fuel", fpln.simbrief_plan_ramp_block_fuel, "Trip", fpln.simbrief_enroute_burn, "Reserve", fpln.simbrief_reserve // <fuel>
+                                   // T.O.C
+                                 , "Elev ft.", fpln.simbrief_toc_elev_ft, "Wind", fpln.simbrief_toc_wind, "W.ISA Dev", fpln.simbrief_toc_wind_ISA // Top Of Climb
+                                 , "OAT", fpln.simbrief_toc_wind_OAT
+                                 , "Airway", ((fpln.simbrief_toc_via_airway.empty()) ? "n/a" : fpln.simbrief_toc_via_airway)
+                                  ); // Right aligned: |{:>6}|
 
       // fill origin / cruise and destination info
-      fpln.origin_info = fmt::format ("Metar Time: {}\nMetar: {}\n", fpln.simbrief_origin_metar_time, fpln.simbrief_origin_metar );
-      fpln.cruise_info = fmt::format ("Elev ft.: {}\nWind: {}\nW.ISA Dev: {}\nOAT: {}\nAirway: {}"
-                                     , fpln.simbrief_toc_elev_ft, fpln.simbrief_toc_wind
-                                     , fpln.simbrief_toc_wind_ISA, fpln.simbrief_toc_wind_OAT
-                                     , ((fpln.simbrief_toc_via_airway.empty ())? "n/a": fpln.simbrief_toc_via_airway)
-                                     );
-      fpln.destination_info = fmt::format ("Metar Time: {}\nMetar: {}\n", fpln.simbrief_destination_metar_time, fpln.simbrief_destination_metar );
+      fpln.origin_info = fmt::format("Metar Time: {}\nMetar: {}\n", fpln.simbrief_origin_metar_time, fpln.simbrief_origin_metar);
+      fpln.cruise_info = fmt::format("Elev ft.: {}\nWind: {}\nW.ISA Dev: {}\nOAT: {}\nAirway: {}"
+                                   , fpln.simbrief_toc_elev_ft, fpln.simbrief_toc_wind
+                                   , fpln.simbrief_toc_wind_ISA, fpln.simbrief_toc_wind_OAT
+                                   , ((fpln.simbrief_toc_via_airway.empty()) ? "n/a" : fpln.simbrief_toc_via_airway)
+                                    );
+      fpln.destination_info = fmt::format("Metar Time: {}\nMetar: {}\n", fpln.simbrief_destination_metar_time, fpln.simbrief_destination_metar);
 
 
-
-
-
-      data_manager::tableExternalFPLN_simbrief_vec.emplace_back (fpln);
-
+      data_manager::tableExternalFPLN_simbrief_vec.emplace_back(fpln);
     }
 
     #ifndef RELEASE
-    Log::logMsgThread("Curl Result: " + simbrief_st_curl_result.result_text);
+    Log::logMsgThread("Curl Result: " + simbrief_st_curl_result.response_text);
     #endif
-
   }
   #ifndef RELEASE
   Log::logMsgThread (fmt::format("\nSimbrief URL: {}\n", full_url_s) ); // debug
@@ -6750,7 +6741,6 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
   const std::string url_s      = "api.flightplandatabase.com";
   const std::string full_url_s = mxUtils::trim("https://" + url_s + ":443" + q);
   Log::logMsgThread("url: " + full_url_s); // debug
-
 
   //// Fetch information
   std::string err;
@@ -6977,20 +6967,21 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
 missionx::structs::strct_curl_result
 data_manager::get_curl_request_respond(const std::string& in_url_s, const std::string & in_separate_data_from_url, const int & in_loop_tries)
 {
-  // std::lock_guard<std::mutex> lock (s_thread_sync_mutex); // v26.04.1 disabled. Will lock from calling functions
+  std::lock_guard<std::mutex> lock (mt_request_get_curl_request_respond_mutex); // v26.04.3 Special lock to solve racing issue in "osm_get_navaid_from_overpass()"
 
   missionx::structs::strct_curl_result st_result;
-  // std::string result_s;
-  // outError.clear();
 
-  const std::string url_site = (in_url_s.find('?') != std::string::npos) ? in_url_s.substr(0, in_url_s.find('?')) : "";
+  const std::string base_url = in_url_s.substr(0, in_url_s.find('?'));
   const std::string q        = (in_url_s.find('?') != std::string::npos) ? in_url_s.substr(in_url_s.find('?') + 1) : "";
 
   //// Fetch information
   std::string err;
-  {
+
     long httpStatus = 0;
-    if (data_manager::curl)
+
+    // v26.04.3
+    auto curl_func = curl_easy_init();
+    if (curl_func)
     {
       for (int v_loop01 = 0; v_loop01 < in_loop_tries && (CURLE_OK != st_result.res_curl); ++v_loop01)
       {
@@ -7001,39 +6992,38 @@ data_manager::get_curl_request_respond(const std::string& in_url_s, const std::s
         std::this_thread::sleep_for (std::chrono::seconds(2)); // v25.06.1 not overwhelm the overpass server
 
         overpass_counter_i++; // counter
-        const std::string base_url = in_url_s.substr(0, in_url_s.find('?')); // extract base_url
         Log::logMsgThread(fmt::format("[{}] Overpass Calls: {}\t from: \"{}\"", __func__, overpass_counter_i, base_url) );
 
         char errBuff[CURL_ERROR_SIZE] = "\0"; // v3.305.3
 
-        curl_easy_setopt(curl, CURLOPT_URL, in_url_s.c_str());
+        curl_easy_setopt(curl_func, CURLOPT_URL, in_url_s.c_str());
 
         // https://curl.haxx.se/docs/sslcerts.html
         if (std::filesystem::exists (data_manager::ca_path) && std::filesystem::is_regular_file(ca_path)) // v26.01.1
-          curl_easy_setopt(curl, CURLOPT_CAINFO, data_manager::ca_path.string().c_str());
+          curl_easy_setopt(curl_func, CURLOPT_CAINFO, data_manager::ca_path.string().c_str());
 
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, APP_NAME);
-        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 20L); // v25.09.2 /Timeout for server connection
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 25L); // v25.09.2 added timeout
+        curl_easy_setopt(curl_func, CURLOPT_USERAGENT, APP_NAME);
+        curl_easy_setopt(curl_func, CURLOPT_CONNECTTIMEOUT, 20L); // v25.09.2 /Timeout for server connection
+        curl_easy_setopt(curl_func, CURLOPT_TIMEOUT, 25L); // v25.09.2 added timeout
 
         // ignore SSL - important for Windows
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); // v26.01.1 fallback if SSL fails
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L); // v26.01.1 fallback if SSL fails
-        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+        curl_easy_setopt(curl_func, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl_func, CURLOPT_SSL_VERIFYPEER, 0L); // v26.01.1 fallback if SSL fails
+        curl_easy_setopt(curl_func, CURLOPT_SSL_VERIFYHOST, 0L); // v26.01.1 fallback if SSL fails
+        curl_easy_setopt(curl_func, CURLOPT_NOPROGRESS, 0L);
 
-        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuff);
+        curl_easy_setopt(curl_func, CURLOPT_ERRORBUFFER, errBuff);
 
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_write); // <==== THIS IS WHERE WE HANDLE THE RESPONSE DATA
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &st_result.result_text);
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+        curl_easy_setopt(curl_func, CURLOPT_WRITEFUNCTION, my_write); // <==== THIS IS WHERE WE HANDLE THE RESPONSE DATA
+        curl_easy_setopt(curl_func, CURLOPT_WRITEDATA, &st_result.response_text);
+        curl_easy_setopt(curl_func, CURLOPT_VERBOSE, 1L);
 
         // v25.12.1
         if (!in_separate_data_from_url.empty())
-          curl_easy_setopt (curl, CURLOPT_POSTFIELDS, in_separate_data_from_url.c_str());
+          curl_easy_setopt (curl_func, CURLOPT_POSTFIELDS, in_separate_data_from_url.c_str());
 
         // https://curl.haxx.se/docs/sslcerts.html
-        st_result.res_curl = curl_easy_perform(curl); // execute the REQUEST
+        st_result.res_curl = curl_easy_perform(curl_func); // execute the REQUEST
 
         if (CURLE_OK != st_result.res_curl)
         {
@@ -7041,9 +7031,10 @@ data_manager::get_curl_request_respond(const std::string& in_url_s, const std::s
         }
 
         st_result.request_err = std::string(errBuff); // v3.305.3
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpStatus);
+        curl_easy_getinfo(curl_func, CURLINFO_RESPONSE_CODE, &httpStatus);
 
-        if (st_result.res_curl <= CURLE_COULDNT_CONNECT)
+        // if we have abnormal response code we will have to abort the loop. Example: site is not responding.
+        if (mxUtils::mx_between( st_result.res_curl, CURLE_OK, CURLE_COULDNT_CONNECT, enums::mx_between_types::gt_min_eqles_max) )
         {
           #ifndef RELEASE
           Log::logMsgThread(fmt::format("[{}] Will force exit CURL loop, based on respond code: {}\n", __func__, Utils::formatNumber<int>(st_result.res_curl) ) );
@@ -7071,9 +7062,9 @@ data_manager::get_curl_request_respond(const std::string& in_url_s, const std::s
         }
 
         // v35.12.1 added warning to the missionx.log file
-        if (mxUtils::find_text (st_result.result_text, "Error", false) != std::string::npos)
+        if (mxUtils::find_text (st_result.response_text, "Error", false) != std::string::npos)
         {
-          Log::logMsgThread (fmt::format ("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", in_url_s, in_separate_data_from_url, st_result.result_text));
+          Log::logMsgThread (fmt::format ("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", in_url_s, in_separate_data_from_url, st_result.response_text));
           Log::logMsgThread(fmt::format("\tCurl error: \n\t{}\n", curl_easy_strerror(st_result.res_curl)));
         }
 
@@ -7086,10 +7077,8 @@ data_manager::get_curl_request_respond(const std::string& in_url_s, const std::s
         st_result.request_err.clear();
       }
 
-    } // end data_manager::curl - handling cURL
-
-    // #endif
-  } // end CURL call
+      curl_easy_cleanup (curl_func);
+    } // end curl_func - handling cURL  // end CURL call
 
   overpass_fetch_err = st_result.request_err; // v3.0.255.4 overpass_fetch_err will get the error. This will clear the last error message overpass_fetch_err had.
 
@@ -8877,7 +8866,7 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
       q->sanitized_bbox = mxUtils::sanitize_text (q->q_short_bbox_fmt, " ,'\"\t\n");
       // Write to cached output folder
       const std::string filename = fmt::format ("{}/cached_{}_{}.xml", q->cache_folder, q->sanitized_id, q->sanitized_bbox);
-      std::string       response_text;
+      structs::strct_curl_result strct_result;
 
       bool useCache = false;
 
@@ -8888,11 +8877,11 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
           if (std::ifstream inFile (filename);
             inFile.is_open ())
           {
-            response_text.assign ((std::istreambuf_iterator<char> (inFile)), std::istreambuf_iterator<char> ());
+            strct_result.response_text.assign ((std::istreambuf_iterator<char> (inFile)), std::istreambuf_iterator<char> ());
             inFile.close ();
             // Check cached result has valid "count" node data
             IXMLDomParser xmlParser;
-            auto          root = xmlParser.parseString (response_text.c_str ()).deepCopy ();
+            auto          root = xmlParser.parseString (strct_result.response_text.c_str ()).deepCopy ();
 
             IXMLNode nodeCount = Utils::xml_get_node_from_node_tree_IXMLNode (root, "count", true);
             if (nodeCount.isEmpty ())
@@ -8931,45 +8920,56 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
       }
 
       // Call OVERPASS using cURL and make sure we do not have ABORT request
-      while (iTry++ < 5 && !found_valid_count_node && !useCache && !inoutThreadState->flagAbortThread)
+      size_t   curl_call_counter_i       = 0;
+      std::string overpass_url;
+
+      while (iTry++ < 5 && !found_valid_count_node && !useCache && !inoutThreadState->flagAbortThread && (curl_call_counter_i < data_manager::vecOverpassUrls.size ()))
       {
-        if (CURL *curl = curl_easy_init ())
+        overpass_url = (curl_call_counter_i < data_manager::vecOverpassUrls.size ()) ? data_manager::vecOverpassUrls.at (curl_call_counter_i)
+                                                                                               : mxconst::get_DEFAULT_OVERPASS_URL ();
+        curl_call_counter_i++;
+
+        // We can't use "get_curl_request_respond()" because this function is called as a threaded request, so we must create a new handle every time.
+        // strct_result = data_manager::get_curl_request_respond(overpass_url, fullQuery, 1);
+
+        if (auto curl_analyze = curl_easy_init ())
         {
           char errBuff[CURL_ERROR_SIZE] = "\0";
 
-          curl_easy_setopt (curl, CURLOPT_URL, "https://overpass-api.de/api/interpreter");
-          
-          curl_easy_setopt (curl, CURLOPT_USERAGENT, APP_NAME);
+          // curl_easy_setopt (curl, CURLOPT_URL, "https://overpass-api.de/api/interpreter");
+          curl_easy_setopt (curl_analyze, CURLOPT_URL, overpass_url.c_str());
+
+          curl_easy_setopt (curl_analyze, CURLOPT_USERAGENT, APP_NAME);
 
           // ignore SSL - important for Windows
-          curl_easy_setopt (curl, CURLOPT_FOLLOWLOCATION, 1L);
-          curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
-          curl_easy_setopt (curl, CURLOPT_NOPROGRESS, 0L);
+          curl_easy_setopt (curl_analyze, CURLOPT_FOLLOWLOCATION, 1L);
+          curl_easy_setopt (curl_analyze, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
+          curl_easy_setopt (curl_analyze, CURLOPT_NOPROGRESS, 0L);
 
-          curl_easy_setopt (curl, CURLOPT_ERRORBUFFER, errBuff);
+          curl_easy_setopt (curl_analyze, CURLOPT_ERRORBUFFER, errBuff);
 
-          curl_easy_setopt (curl, CURLOPT_POSTFIELDS, fullQuery.c_str());
-          curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, my_write);
-          curl_easy_setopt (curl, CURLOPT_WRITEDATA, &response_text);
-          CURLcode res = curl_easy_perform (curl);
+          curl_easy_setopt (curl_analyze, CURLOPT_POSTFIELDS, fullQuery.c_str());
+          curl_easy_setopt (curl_analyze, CURLOPT_WRITEFUNCTION, my_write);
+          curl_easy_setopt (curl_analyze, CURLOPT_WRITEDATA, &strct_result.response_text);
+          strct_result.res_curl = curl_easy_perform (curl_analyze);
 
-          if (res == CURLE_OK)
+          Log::logMsgThread (fmt::format ("URL: {}", overpass_url));
+
+          if (strct_result.res_curl == CURLE_OK)
           {
-            Log::logMsgThread (fmt::format ("Query ID: {} BBOX: {}\n", q->id, q->q_bbox));
-
             found_valid_count_node = true;
+            Log::logMsgThread (fmt::format ("Query ID: [{}] BBOX: {}\n", q->id, q->q_bbox));
             std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for 2 seconds before sending a new request
-
           }
           else
           {
-            // res != CURLE_OK
-            Log::logMsgThread (fmt::format ("\tCurl error: \n\t{}\n", curl_easy_strerror (res)));
+            // strct_result.res_curl != CURLE_OK
+            Log::logMsgThread (fmt::format ("\tCurl error: \n\t{}\n", curl_easy_strerror (strct_result.res_curl)));
             std::this_thread::sleep_for (std::chrono::seconds (5)); // Sleep longer
           }
 
-          curl_easy_cleanup (curl);
-        }
+          curl_easy_cleanup (curl_analyze);
+        } // End CURL in memory creation
 
         // check [abort]
         if (inoutThreadState->flagAbortThread)
@@ -8992,7 +8992,7 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
       if ( found_valid_count_node + useCache )
       {
         IXMLDomParser xmlParser;
-        auto          xml_count_node      = xmlParser.parseString (response_text.c_str ()).deepCopy ();
+        auto          xml_count_node      = xmlParser.parseString (strct_result.response_text.c_str ()).deepCopy ();
         IXMLNode      nodeCount = Utils::xml_get_node_from_node_tree_IXMLNode (xml_count_node, "count", true);
         if (!nodeCount.isEmpty ())
         {
@@ -9014,15 +9014,16 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
             if (std::ofstream outFile (filename);
               outFile.is_open ())
             {
-              outFile << response_text;
+              outFile << strct_result.response_text;
               outFile.close ();
             }
           }
         }
         else
         {
-          Log::logMsgThread (fmt::format ("\tRegion: {}, has no <count> element:\n\t{}\n", mxUtils::get_mx_osm_region_trans (loc), Utils::xml_get_node_content_as_text (nodeCount, "> Empty Node")));
-          Log::logMsgThread (fmt::format ("\tResponse: {}\n", response_text.c_str ()));
+          Log::logMsgThread (fmt::format ("Overpass Url: {}", overpass_url));
+          Log::logMsgThread (fmt::format ("\tRegion: {}, has no <count>.\n Query:\n{}\nNode Element:\n\t{}\n", mxUtils::get_mx_osm_region_trans (loc), filledQuery, Utils::xml_get_node_content_as_text (nodeCount, "> Empty Node")));
+          Log::logMsgThread (fmt::format ("\tResponse: {}\n", strct_result.response_text.c_str ()));
         }
       }
     }
@@ -9171,7 +9172,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
       std::string errBuff_s;
       st_curl_result.reset(); // v26.03.1
       st_curl_result = data_manager::get_curl_request_respond(overpass_url, q->q_unescaped_request);
-      response_text  = st_curl_result.result_text;
+      response_text  = st_curl_result.response_text;
       errBuff_s      = st_curl_result.request_err;
 
       curl_call_counter_i++;
@@ -9301,7 +9302,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
             std::string errBuff_s;
             st_curl_result.reset(); // v26.03.1
             st_curl_result = data_manager::get_curl_request_respond(overpass_url, s_curl_node_query);
-            response_text  = st_curl_result.result_text;
+            response_text  = st_curl_result.response_text;
             errBuff_s      = st_curl_result.request_err;
 
             url_node_loop_counter_i++;
@@ -9406,9 +9407,9 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
                   const auto& overpass_url_to_fetch_ref = (trial_counter < data_manager::vecOverpassUrls.size()) ? data_manager::vecOverpassUrls.at(trial_counter) : mxconst::get_DEFAULT_OVERPASS_URL();
 
                   std::this_thread::sleep_for(std::chrono::seconds(2)); // wait for a few seconds
-                  st_curl_result_for_step3 = data_manager::get_curl_request_respond(overpass_url_to_fetch_ref, s_curl_vector_node_query);
+                  st_curl_result_for_step3 = data_manager::get_curl_request_respond(overpass_url_to_fetch_ref, s_curl_vector_node_query, 2);
 
-                  const std::string result_text = st_curl_result_for_step3.result_text;
+                  const std::string result_text = st_curl_result_for_step3.response_text;
                   curl_error_text = st_curl_result_for_step3.request_err;
                   trial_counter++;
 
@@ -9432,6 +9433,10 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
                       {
                         q->xml_next_node_to_find_vector = xml_next_nd_node.deepCopy(); // store just in case we will need it
                         q->target_node_estimate_vector  = mxUtils::mxCalcBearingBetween2Points(target_lat, target_lon, next_lat, next_lon);
+
+                        #ifndef RELEASE
+                        Log::logMsgThread(fmt::format("[{}] Vector Found: {:.2f}\n", __func__, q->target_node_estimate_vector)); // debug
+                        #endif
                       }
                     }
                   }

@@ -583,6 +583,10 @@ missionx::Mission::init()
 
       missionx::data_manager::xMissionxProperties_node.addChild (overpass_node.deepCopy (), 0); // store new URLs
 
+      // v26.04.3 override default accident overpass search filter
+      Utils::xml_search_and_set_node_text(system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_FILTER(), mxconst::get_DEFAULT_OVERPASS_WAYS_FILTER(), mxUtils::formatNumber<int>(static_cast<int> (missionx::mx_property_type::MX_STRING)), true); // "6" = string type
+
+
       missionx::system_actions::store_plugin_options();
     }
 

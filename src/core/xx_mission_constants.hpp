@@ -30,7 +30,7 @@ namespace missionx
 
 #define ENABLE_GATHER_RANDOM_AIRPORTS_FROM_MAIN_THREAD_CALL 0
 
-inline constexpr const int MX_FEATURES_VERSION = 20260301; // Added min/max rw length to airports_vu // 20250501; //20241212; //20230917; // 330491; //302564;  // added SETUP_LOCK_OVERPASS_URL_TO_USER_PICK
+inline constexpr const int MX_FEATURES_VERSION = 20260403; // Added min/max rw length to airports_vu // 20250501; //20241212; //20230917; // 330491; //302564;  // added SETUP_LOCK_OVERPASS_URL_TO_USER_PICK
 
 #define SPECIAL_BUILD ""
 

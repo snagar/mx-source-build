@@ -1168,7 +1168,7 @@ private:
   //void                callNavData(std::string_view inICAO, bool bNavigatingFromOtherLayer); // v24.03.1
   void                add_ui_semi_act_phase_1_pick (); // v26.04.1
   void                add_ui_semi_act_phase_2_detail (); // v26.04.1
-  static void         add_ui_pick_how_many_legs ( int & inout_radio_value_ref, const std::string & in_label, const int & in_minButtons, const int & in_maxButtons); // v26.04.1
+  static bool         add_ui_pick_how_many_legs ( int & inout_radio_value_ref, const std::string & in_label, const int & in_minButtons, const int & in_maxButtons); // v26.04.1
   void                add_ui_oilrig_search_area_buttons ( ); // v26.04.1
   void                add_ui_medevac_surprise_me_warning ( ); // v26.04.1
   const dataref_const dc;

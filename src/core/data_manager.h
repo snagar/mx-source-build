@@ -69,13 +69,13 @@ namespace structs
   struct strct_curl_result
   {
     ::CURLcode  res_curl = CURLE_FAILED_INIT;
-    std::string result_text;
+    std::string response_text;
     std::string request_err;
 
     void reset() 
     {
       res_curl = CURLE_FAILED_INIT;
-      result_text.clear();
+      response_text.clear();
       request_err.clear();
     }
   } ;
@@ -1243,6 +1243,7 @@ public:
   static missionx::mutex s_thread_sync_mutex;
   static CURL*       curl;
   static std::string curl_result_s;
+  static missionx::mutex mt_request_get_curl_request_respond_mutex; // v26.04.3 Used in get_curl_request_respond()
 
   // Error Mission Load String
   static std::string load_error_message; // holds the ERROR string when trying to load a mission file or any file(?). Should display in the uiImguiBrifer window message footer line.
