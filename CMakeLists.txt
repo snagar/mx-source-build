@@ -125,6 +125,8 @@ set(BASE_SRC src/core/coordinate/NavAidInfo.hpp
         src/ui/gl/WinImguiOptions.cpp
         src/ui/gl/ui_conv_screen.cpp
         src/ui/gl/ui_conv_screen.h
+        src/ui/gl/ui_nav_screen.cpp
+        src/ui/gl/ui_nav_screen.h
         src/ui/gl/shared_ui_types.hpp
         src/ui/MxUICore.cpp
         src/ui/MxUICore.hpp

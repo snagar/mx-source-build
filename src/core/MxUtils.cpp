@@ -1137,10 +1137,18 @@ missionx::mxUtils::create_random_engine ()
 
 // ----------------------------------------------
 
+void missionx::mxUtils::reset_buffer(char& out_value_array, size_t in_value_array_size, const char &in_reset_char)
+{
+  std::memset(&out_value_array, in_reset_char, in_value_array_size);
+}
+
+// ----------------------------------------------
+
 size_t missionx::mxUtils::copy_string_to_buffer(const std::string& in_source, char& out_value_array, const size_t in_value_array_size)
 {
   // 1. Clear the buffer first (optional but clean)
-  std::memset(&out_value_array, 0, in_value_array_size);
+  // std::memset(&out_value_array, 0, in_value_array_size);
+  mxUtils::reset_buffer(out_value_array, in_value_array_size); // v26.04.3
 
   // 2. Copy the string (it will copy up to the buffer size - 1)
   const size_t length = in_source.copy(&out_value_array, in_value_array_size - 1);

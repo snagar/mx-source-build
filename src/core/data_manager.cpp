@@ -870,7 +870,7 @@ mx_enrout_stats_strct              data_manager::strct_currentLegStats4UIDisplay
 std::vector<mx_enrout_stats_strct> data_manager::vecPreviousLegStats4UIDisplay;   // v3.303.14
 
 //// v3.305.1b
-mx_sceneryOrPlaneLoad_state_strct data_manager::strct_sceneryOrPlaneLoadState;
+mx_sceneryOrPlaneLoad_state_strct data_manager::strct_mx_xplane_metadata;
 
 
 // v3.305.2
@@ -915,8 +915,7 @@ missionx::base_thread::strct_thread_state missionx::data_manager::metar_thread_s
   std::list<std::string> missionx::data_manager::lst_of_failed_3d_obj_to_load;
   std::list<std::string> missionx::data_manager::lst_of_errors_and_warnings_during_mission_validation;
 
-// v26.02.1 
-
+// v26.02.1
   missionx::structs::mx_clock_time_strct missionx::data_manager::shared_clock_time;
 
 // -------------------------------------
@@ -4783,6 +4782,13 @@ data_manager::parse_leg_DisplayObjects(Waypoint& inLeg)
       std::string instance_name = Utils::readAttrib(instProp.node, mxconst::get_ATTRIB_INSTANCE_NAME(), "");
       std::string obj3d_name    = Utils::readAttrib(instProp.node,  mxconst::get_ATTRIB_NAME(), "");
       std::string link_task     = Utils::readAttrib(instProp.node, mxconst::get_ATTRIB_LINK_TASK(), "");
+
+      #ifndef RELEASE
+      if (obj3d_name.find("ambulance") != std::string::npos)
+      {
+        int i_stop = 0;
+      }
+      #endif
 
       if ( obj3d_name.empty() ||  !data_manager::st_map3d_obj.contains(obj3d_name) )
       {

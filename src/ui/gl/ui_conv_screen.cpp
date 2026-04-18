@@ -797,11 +797,13 @@ void ui_conv_screen::subDraw_popup_outcome(mx_trig_strct_& inout_trig, IXMLNode&
     IXMLRenderer xmlRenderer;
     std::string  outcom_s = xmlRenderer.getString (xOutcome);
     char         buf[missionx::LOG_BUFF_SIZE]{ 0 };
-#ifdef IBM
-    memcpy_s (buf, sizeof (buf), outcom_s.c_str (), (sizeof (buf) > outcom_s.length ()) ? outcom_s.length () : sizeof (buf));
-#else
-    memcpy (buf, outcom_s.c_str (), (sizeof (buf) > outcom_s.length ()) ? outcom_s.length () : sizeof (buf));
-#endif
+//#ifdef IBM
+//    memcpy_s (buf, sizeof (buf), outcom_s.c_str (), (sizeof (buf) > outcom_s.length ()) ? outcom_s.length () : sizeof (buf));
+//#else
+//    memcpy (buf, outcom_s.c_str (), (sizeof (buf) > outcom_s.length ()) ? outcom_s.length () : sizeof (buf));
+//#endif
+    mxUtils::copy_string_to_buffer(outcom_s, buf[0], sizeof(buf));
+
 
     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
     ImGui::PushStyleColor (ImGuiCol_ChildBg, missionx::color::color_vec4_antiquewhite);
@@ -1307,11 +1309,13 @@ ui_conv_screen::subDraw_ui_xTrigger_detail (mx_trig_strct_ &inTrig_ptr, bool &in
       IXMLRenderer      xmlRenderer;
       const std::string print_s = xmlRenderer.getString (inTrig_ptr.node_ptr);
       char              print_buff[2048]; // { 0 };
-#ifdef IBM
-      memcpy_s (print_buff, sizeof (print_buff), print_s.c_str (), (print_s.length () > sizeof (print_buff)) ? sizeof (print_buff) : print_s.length ());
-#else
-      memcpy (print_buff, print_s.c_str (), (print_s.length () > sizeof (print_buff)) ? sizeof (print_buff) : print_s.length ());
-#endif // IBM
+//#ifdef IBM
+//      memcpy_s (print_buff, sizeof (print_buff), print_s.c_str (), (print_s.length () > sizeof (print_buff)) ? sizeof (print_buff) : print_s.length ());
+//#else
+//      memcpy (print_buff, print_s.c_str (), (print_s.length () > sizeof (print_buff)) ? sizeof (print_buff) : print_s.length ());
+//#endif // IBM
+
+      mxUtils::copy_string_to_buffer(print_s, print_buff[0], sizeof(print_buff));
 
       // readonly multi line input. We display 10 rows
       ImGui::InputTextMultiline ("###triggerXMLoutput", print_buff, sizeof (print_buff), ImVec2 (ImGui::GetContentRegionAvail ().x, ImGui::GetTextLineHeight () * 12.0f), ImGuiInputTextFlags_ReadOnly);
@@ -1533,11 +1537,14 @@ ui_conv_screen::subDraw_ui_xTrigger_detail (mx_trig_strct_ &inTrig_ptr, bool &in
       IXMLRenderer      xmlRenderer;
       const std::string print_s = xmlRenderer.getString (inTrig_ptr.node_ptr);
       char              print_buff[2048]; // { 0 };
-#ifdef IBM
-      memcpy_s (print_buff, sizeof (print_buff), print_s.c_str (), (print_s.length () > sizeof (print_buff)) ? sizeof (print_buff) : print_s.length ());
-#else
-      memcpy (print_buff, print_s.c_str (), (print_s.length () > sizeof (print_buff)) ? sizeof (print_buff) : print_s.length ());
-#endif // IBM
+//#ifdef IBM
+//      memcpy_s (print_buff, sizeof (print_buff), print_s.c_str (), (print_s.length () > sizeof (print_buff)) ? sizeof (print_buff) : print_s.length ());
+//#else
+//      memcpy (print_buff, print_s.c_str (), (print_s.length () > sizeof (print_buff)) ? sizeof (print_buff) : print_s.length ());
+//#endif // IBM
+
+      mxUtils::copy_string_to_buffer(print_s, print_buff[0], sizeof(print_buff));
+
 
       // readonly multi line input. We display 10 rows
       ImGui::InputTextMultiline ("###triggerXMLoutput", print_buff, sizeof (print_buff), ImVec2 (ImGui::GetContentRegionAvail ().x, ImGui::GetTextLineHeight () * 12.0f), ImGuiInputTextFlags_ReadOnly);
@@ -2032,7 +2039,7 @@ void ui_conv_screen::draw_conv_main_fpln_to_mission_window()
 {
     auto win_size_vec2 = ImGui::GetContentRegionAvail ();
 
-  // ImGui::SetWindowFontScale (this->strct_setup_layer->fPreferredFontScale);
+  ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
 
   // First Time code
   if (this->strct_conv_layer.flag_first_time)
@@ -2401,7 +2408,7 @@ There are other options that are best handle manually inside an editor and not i
       ImGui::SameLine (0.0f, 50.0f);
       bRerunRandomDateTime = this->add_ui_checkbox_rerun_random_date_and_time ();
       ImGui::SameLine ();
-      this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct->iClockDayOfYearPicked, this->adv_settings_strct->iClockHourPicked, this->adv_settings_strct->iClockMinutesPicked, mxconst::get_TEXT_TYPE_TITLE_REG ());
+      this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked, mxconst::get_TEXT_TYPE_TITLE_REG ());
 
       ImGui::SameLine (0.0f, 25.0f);
       this->add_designer_mode_checkbox ();
@@ -2439,7 +2446,7 @@ There are other options that are best handle manually inside an editor and not i
     break;
   } // end switch between layers
 
-  ImGui::SetWindowFontScale (this->strct_setup_layer->fPreferredFontScale);
+  ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
 }
 
 // ----------------------------
@@ -2572,11 +2579,14 @@ std::map<int, missionx::mx_local_fpln_strct> ui_conv_screen::read_and_parse_save
         xpdata_4096_s += render.getString (xXpdata.getChildNode (mxconst::get_ELEMENT_DATAREF ().c_str (), i1));
       }
 
-#ifdef IBM
-      memcpy_s (this->strct_conv_layer.buff_dataref, sizeof (this->strct_conv_layer.buff_dataref), xpdata_4096_s.c_str (), sizeof (this->strct_conv_layer.buff_dataref) - 1);
-#else
-      memcpy (this->strct_conv_layer.buff_dataref, xpdata_4096_s.c_str (), sizeof (this->strct_conv_layer.buff_dataref) - 1);
-#endif
+//#ifdef IBM
+//      memcpy_s (this->strct_conv_layer.buff_dataref, sizeof (this->strct_conv_layer.buff_dataref), xpdata_4096_s.c_str (), sizeof (this->strct_conv_layer.buff_dataref) - 1);
+//#else
+//      memcpy (this->strct_conv_layer.buff_dataref, xpdata_4096_s.c_str (), sizeof (this->strct_conv_layer.buff_dataref) - 1);
+//#endif
+      mxUtils::copy_string_to_buffer(xpdata_4096_s, this->strct_conv_layer.buff_dataref[0], sizeof(this->strct_conv_layer.buff_dataref));
+
+
       this->strct_conv_layer.xXPlaneDataRef_global = xXpdata.deepCopy ();
     }
 
@@ -2591,11 +2601,12 @@ std::map<int, missionx::mx_local_fpln_strct> ui_conv_screen::read_and_parse_save
         data_4096_s += render.getString (xGlobalSetting.getChildNode (i1));
       }
 
-#ifdef IBM
-      memcpy_s (this->strct_conv_layer.buff_globalSettings, sizeof (this->strct_conv_layer.buff_globalSettings), data_4096_s.c_str (), sizeof (this->strct_conv_layer.buff_globalSettings) - 1);
-#else
-      memcpy (this->strct_conv_layer.buff_globalSettings, data_4096_s.c_str (), sizeof (this->strct_conv_layer.buff_globalSettings) - 1);
-#endif
+//#ifdef IBM
+//      memcpy_s (this->strct_conv_layer.buff_globalSettings, sizeof (this->strct_conv_layer.buff_globalSettings), data_4096_s.c_str (), sizeof (this->strct_conv_layer.buff_globalSettings) - 1);
+//#else
+//      memcpy (this->strct_conv_layer.buff_globalSettings, data_4096_s.c_str (), sizeof (this->strct_conv_layer.buff_globalSettings) - 1);
+//#endif
+      mxUtils::copy_string_to_buffer(data_4096_s, this->strct_conv_layer.buff_globalSettings[0], sizeof(this->strct_conv_layer.buff_globalSettings));
 
       this->strct_conv_layer.xSavedGlobalSettingsNode = xGlobalSetting.deepCopy ();
     }

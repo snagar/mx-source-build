@@ -66,7 +66,7 @@ namespace missionx
 namespace structs
 {
 
-  typedef struct curl_result_strct_def
+  struct strct_curl_result
   {
     ::CURLcode  res_curl = CURLE_FAILED_INIT;
     std::string result_text;
@@ -78,7 +78,7 @@ namespace structs
       result_text.clear();
       request_err.clear();
     }
-  } strct_curl_result;
+  } ;
 
 
   struct strct_osm_query
@@ -392,18 +392,21 @@ typedef struct _local_fpln_strct
 
     if (indx < MAX_ARRAY)
     {
-      resetBuff(indx);
-#ifdef IBM
-      memcpy_s(buff_arr[indx], sizeof(buff_arr[indx]), inVal_s.c_str(), (inVal_s.length() > sizeof(buff_arr[indx]) ? sizeof(buff_arr[indx]) : inVal_s.length())); // we copy the memory based on which buffer do not exceeds the buffer.
-#else
-      memcpy(buff_arr[indx], inVal_s.c_str(), inVal_s.length());
-#endif
+      //resetBuff(indx);
+      //#ifdef IBM
+      //memcpy_s(buff_arr[indx], sizeof(buff_arr[indx]), inVal_s.c_str(), (inVal_s.length() > sizeof(buff_arr[indx]) ? sizeof(buff_arr[indx]) : inVal_s.length())); // we copy the memory based on which buffer do not exceeds the buffer.
+      //#else
+      //memcpy(buff_arr[indx], inVal_s.c_str(), inVal_s.length());
+      //#endif
+
+      // v26.04.3
+      mxUtils::copy_string_to_buffer(inVal_s, buff_arr[indx][0], sizeof(buff_arr[indx]));
 
     } // end if in bounderies
   }
 
 
-  typedef struct target_trig_ // inner struct
+  struct target_trig_strct_ // inner struct
   {
     bool flag_on_ground{ false };
     int elev_min{ 0 };
@@ -429,7 +432,7 @@ typedef struct _local_fpln_strct
       elev_lower_upper.clear();
     }
 
-  } target_trig_strct_;
+  } ;
   target_trig_strct_ target_trig_strct;
 
 
@@ -555,7 +558,7 @@ typedef struct _local_fpln_strct
 
 
 
-typedef struct _mx_sceneryOrPlaneLoad_state_strct
+struct mx_sceneryOrPlaneLoad_state_strct
 {
   // v3.305.1b
   // Valid combinations:
@@ -603,7 +606,7 @@ typedef struct _mx_sceneryOrPlaneLoad_state_strct
   }
 
 
-} mx_sceneryOrPlaneLoad_state_strct;
+} ;
 
 
 
@@ -868,7 +871,7 @@ public:
   static const std::string plugin_sig;   // = "missionx_snagar.dev";
   static XPLMPluginID      mx_plugin_id; // XPLMFindPluginBySignature(const char* inSignature);
 
-  constexpr const static float FONT_SIZE = 13.0; // TODO: will be deprecated 
+  constexpr static float FONT_SIZE = 13.0; // TODO: will be deprecated
 
 
   // Flight Leg statistics
@@ -1409,7 +1412,7 @@ public:
   static std::string get_translate_of_mission_subcategory_code(int in_missionCodeType, int in_subCategoryCode, IXMLNode &outMetaNode);
 
   //// v3.305.1b
-  static mx_sceneryOrPlaneLoad_state_strct strct_sceneryOrPlaneLoadState;
+  static mx_sceneryOrPlaneLoad_state_strct strct_mx_xplane_metadata;
 
   // v3.305.2
   static std::list<missionx::messageLine_strct> listOfMessageStoryMessages;

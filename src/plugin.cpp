@@ -590,9 +590,10 @@ XPluginReceiveMessage (XPLMPluginID inFrom, const intptr_t inMsg, void *inParam)
     case XPLM_MSG_AIRPORT_LOADED:
     case XPLM_MSG_SCENERY_LOADED:
     {
-      missionx::data_manager::strct_sceneryOrPlaneLoadState.set_flagSceneryOrAirportLoaded (true); // v3.305.1c
+      missionx::data_manager::strct_mx_xplane_metadata.set_flagSceneryOrAirportLoaded (true); // v3.305.1c
       missionx::data_manager::refresh_3d_objects_and_cues_after_location_transition ();
       missionx::Mission::uiImGuiBriefer->strct_ext_layer.from_icao.clear ();
+
     }
     break;
     case XPLM_MSG_PLANE_CRASHED: // abort only is mission is active and if auto abort on crash flag is true
@@ -626,7 +627,6 @@ XPluginReceiveMessage (XPLMPluginID inFrom, const intptr_t inMsg, void *inParam)
     break;
     case XPLM_MSG_PLANE_LOADED:
     {
-
     }
     break;
     default:
@@ -643,12 +643,12 @@ MissionMenuHandler (void *inMenuRef, void *inItemRef)
 {
   // Main Menu Dispatcher that calls the function that creates each Widget
 
-    switch (static_cast<Mission::mx_menuIdRefs> (reinterpret_cast<intptr_t> (inItemRef)))
+  switch (static_cast<Mission::mx_menuIdRefs> (reinterpret_cast<intptr_t> (inItemRef)))
   {
     case Mission::mx_menuIdRefs::MENU_TOGGLE_MISSIONX_BRIEFER:
     {
       #ifndef RELEASE
-      missionx::Log::logMsg ("[Missionx] Menu toggle briefer.");
+      missionx::Log::logMsg ( fmt::format("[{}] Menu toggle briefer.", __FUNCTION__) );
       #endif
       BriefCommandHandler (nullptr, xplm_CommandBegin, nullptr);
     }
@@ -656,7 +656,7 @@ MissionMenuHandler (void *inMenuRef, void *inItemRef)
     case Mission::mx_menuIdRefs::MENU_RESET_BRIEFER_POSITION:
     {
       #ifndef RELEASE
-      missionx::Log::logMsg ("[Missionx] Reset Briefer Position to Center.");
+      missionx::Log::logMsg (fmt::format("[{}] Reset Briefer Position to Center.", __FUNCTION__ ) );
       #endif
       if (missionx::Mission::uiImGuiBriefer)
         missionx::Mission::uiImGuiBriefer->execAction (missionx::mx_window_actions::ACTION_RESET_BRIEFER_POSITION);
@@ -665,7 +665,7 @@ MissionMenuHandler (void *inMenuRef, void *inItemRef)
     case Mission::mx_menuIdRefs::MENU_TOGGLE_MXPAD:
     {
       #ifndef RELEASE
-      missionx::Log::logMsg ("[Missionx] Menu toggle mxpad.");
+      missionx::Log::logMsg (fmt::format("[{}] Menu toggle mxpad.", __FUNCTION__ ) );
       #endif
       mxpadShowHideCommandHandler (nullptr, xplm_CommandBegin, nullptr);
     }
@@ -673,7 +673,7 @@ MissionMenuHandler (void *inMenuRef, void *inItemRef)
     case Mission::mx_menuIdRefs::MENU_TOGGLE_MAP:
     {
       #ifndef RELEASE
-      missionx::Log::logMsg ("[Missionx] Menu toggle mission map.");
+      missionx::Log::logMsg (fmt::format("[{}] Menu toggle mission map.", __FUNCTION__ ));
       #endif
       toggleMapCommandHandler (nullptr, xplm_CommandBegin, nullptr);
     }
@@ -681,7 +681,7 @@ MissionMenuHandler (void *inMenuRef, void *inItemRef)
     case Mission::mx_menuIdRefs::MENU_APT_DAT_OPTIMIZATION:
     {
       #ifndef RELEASE
-      missionx::Log::logMsg ("[Missionx] Menu Optimize \"apt.dat\" files (should take 1-2min, depends on machine, runs in the background).");
+      missionx::Log::logMsg (fmt::format("[{}] Menu Optimize 'apt.dat' files (should take 1-2min, depends on machine, runs in the background).", __FUNCTION__ ));
       #endif
       missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::exec_apt_dat_optimization); // v3.0.253.6
     }
@@ -689,7 +689,7 @@ MissionMenuHandler (void *inMenuRef, void *inItemRef)
     case Mission::mx_menuIdRefs::MENU_TOGGLE_CHOICE_WINDOW:
     {
       #ifndef RELEASE
-      missionx::Log::logMsg ("[Missionx] Toggle Choice window.");
+      missionx::Log::logMsg (fmt::format("[{}] Toggle Choice window.", __FUNCTION__ ));
       #endif
       toggleCoiceWindow_CommandHandler (nullptr, xplm_CommandBegin, nullptr);
     }
@@ -886,15 +886,15 @@ BriefCommandHandler (XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void *i
   {
     // reload mission list if mission is in undefined state and briefer window is closed
     if (data_manager::missionState == missionx::mx_mission_state_enum::mission_undefined && (missionx::Mission::uiImGuiBriefer->GetVisible () == false))
-    {
+    {      
       missionx::mission.prepareUiMissionList ();
     }
 
-    // toggle briefer windows state
-    missionx::Mission::uiImGuiBriefer->execAction (missionx::mx_window_actions::ACTION_TOGGLE_BRIEFER);
+    missionx::Mission::uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_TOGGLE_BRIEFER);
   }
 
   // Log::logMsg("[Rares debug] plugin: after BriefCommandHandler"); // debug - rares
+
 
   return 0;
 }

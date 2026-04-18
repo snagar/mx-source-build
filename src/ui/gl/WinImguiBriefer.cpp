@@ -21,7 +21,7 @@
 //
 
 // The raw TTF data of OpenFontIcons has been generated into the following file
-#include "fa-solid-900.inc"
+//#include "fa-solid-900.inc"
 
 namespace missionx
 {
@@ -50,8 +50,12 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
   ImGuiIO &io    = ImGui::GetIO ();
   io.IniFilename = nullptr;
 
-  // Create pointers to the ui draw classes
-  m_ui_conv_screen = std::make_unique<ui_conv_screen>(left, top, right, bot, decoration, layer, this->myWinNum, &this->strct_setup_layer, &this->adv_settings_strct);
+  // -------------------------------------------
+  // Create pointers to the ui m_ui_conv_screen
+  // -------------------------------------------
+  // m_ui_conv_screen = std::make_unique<ui_conv_screen>(left, top, right, bot, decoration, layer, this->myWinNum, &missionx::strct_setup_layer, &missionx::adv_settings_strct);
+  m_ui_conv_screen = std::make_unique<ui_conv_screen>(left, top, right, bot, decoration, layer, this->myWinNum);
+
   // 2. "Hook up" the child's callback to the parent's function
   // We use a lambda and capture 'this' to reach add_message
   // this->setMessage()
@@ -63,7 +67,7 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
   // this->add_designer_mode_checkbox();
   m_ui_conv_screen->add_designer_mode_checkbox = [this]()
   {
-    this->add_designer_mode_checkbox();
+    missionx::WinImguiBriefer::add_designer_mode_checkbox();
   };
   // this->add_ui_checkbox_rerun_random_date_and_time();
   m_ui_conv_screen->add_ui_checkbox_rerun_random_date_and_time = [this]()->bool
@@ -89,8 +93,90 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
     { 
       this->add_message_text();  
     };
+  // -------------------------------------------
+  // END pointers to the ui m_ui_conv_screen
+  // -------------------------------------------
+
+  // -------------------------------------------
+  // Create pointers to the ui ui_nav_screen
+  // -------------------------------------------
+
+  // m_ui_nav_screen = std::make_unique<ui_nav_screen>(left, top, right, bot, decoration, layer, this->myWinNum, &missionx::strct_setup_layer, &missionx::adv_settings_strct);
+  m_ui_nav_screen = std::make_unique<ui_nav_screen>(left, top, right, bot, decoration, layer, this->myWinNum);
+
+  // 2. "Hook up" the child's callback to the parent's function
+  // We use a lambda and capture 'this' to reach add_message
+  // this->setMessage()
+  m_ui_nav_screen->setMessage = [this](std::string msg, int time_to_display)
+  {
+    this->setMessage(msg, time_to_display);
+  };
+
+  // this->add_designer_mode_checkbox();
+  m_ui_nav_screen->add_designer_mode_checkbox = [this]()
+  {
+    this->add_designer_mode_checkbox();
+  };
+  // this->add_ui_checkbox_rerun_random_date_and_time();
+  m_ui_nav_screen->add_ui_checkbox_rerun_random_date_and_time = [this]()->bool
+  {
+    return this->add_ui_checkbox_rerun_random_date_and_time();
+  };
+  // this->add_ui_advance_settings_random_date_time_weather_and_weight_button()
+  m_ui_nav_screen->add_ui_advance_settings_random_date_time_weather_and_weight_button = [this](int out_iClockDayOfYearPicked, int out_iClockHourPicked, int out_iClockMinutesPicked, std::string inTEXT_TYPE)->void
+  {
+    // handle empty default values
+    if (inTEXT_TYPE.empty())
+      this->add_ui_advance_settings_random_date_time_weather_and_weight_button(out_iClockDayOfYearPicked, out_iClockHourPicked, out_iClockMinutesPicked, mxconst::get_TEXT_TYPE_TITLE_REG ());
+    else
+      this->add_ui_advance_settings_random_date_time_weather_and_weight_button(out_iClockDayOfYearPicked, out_iClockHourPicked, out_iClockMinutesPicked, inTEXT_TYPE);
+  };
+  // this->execAction()
+  m_ui_nav_screen->execAction = [this](missionx::mx_window_actions in_action)
+  {
+    this->execAction(in_action);
+  };
+  // this->add_message_text()
+  m_ui_nav_screen->add_message_text = [this]()
+  {
+    this->add_message_text();
+  };
+
+  m_ui_nav_screen->display_shared_message_when_optimized_data_is_not_present = [this](missionx::mx_layer_state_enum in_state_enum)
+  {
+    this->display_shared_message_when_optimized_data_is_not_present(in_state_enum);
+  };
+
+  m_ui_nav_screen->add_ui_start_mission_button = [this](missionx::mx_window_actions in_action)
+  {
+    this->add_ui_start_mission_button(in_action);
+  };
+
+  m_ui_nav_screen->add_ui_auto_load_checkbox = [this](missionx::mx_window_actions in_action)
+  {
+    this->add_ui_auto_load_checkbox(in_action);
+  };
+
+  m_ui_nav_screen->add_ui_pick_subcategories = [this](const std::vector<const char *> in_vec_categories)
+  {
+    this->add_ui_pick_subcategories(in_vec_categories);
+  };
+
+
+
+  // -------------------------------------------
+  // END pointers to the ui ui_nav_screen
+  // -------------------------------------------
+
+
+
+
+
 
   // -------------- END Register Functions ----------------
+
+
+
 
   // We take the parameter combination "SelfDecorateResizeable" + "LayerFlightOverlay"
   // to mean: simulate HUD
@@ -106,13 +192,12 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
     SetWindowDragArea (0, 5, INT_MAX, 5 + 2 * static_cast<int> (data_manager::FONT_SIZE));
   }
 
-// Define our own window title
-#ifdef RELEASE
-  // SetWindowTitle(fmt::format("Mission-X ({})", __DATE__));
+  // Define our own window title
+  #ifdef RELEASE
   SetWindowTitle (fmt::format ("Mission-X (v{}.{})", PLUGIN_VER_MAJOR, PLUGIN_VER_MINOR));
-#else
+  #else
   SetWindowTitle (std::string ("Mission-X v") + missionx::FULL_VERSION);
-#endif // !RELEASE
+  #endif // !RELEASE
 
 
   SetWindowResizingLimits (missionx::WinImguiBriefer::WINDOW_MAX_WIDTH / 2, missionx::WinImguiBriefer::WINDOWS_MAX_HEIGHT / 2, WinImguiBriefer::WINDOW_MAX_WIDTH, this->WINDOWS_MAX_HEIGHT); // minW. minH. maxW, maxH
@@ -120,41 +205,41 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
 
   this->mWindow = this->GetWindowId ();
 
-  // this->strct_user_create_layer.validate_sliders_values();
+  // missionx::strct_user_create_layer.validate_sliders_values();
   this->validate_sliders_values (missionx::mx_plane_types_enum::plane_type_helos); // v24.12.1 validate based on helos distances constraints
 
   fDebugSlider = this->fDebugInitValue;
 
 
-  this->strct_setup_layer.bDisplayTargetMarkers = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_DISPLAY_TARGET_MARKERS (), true); // v3.0.254.10 one time initialization
-  this->strct_setup_layer.bGPSImmediateExposure = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE (), true);
-  this->strct_setup_layer.bPauseIn2D            = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_PAUSE_IN_2D (), mxconst::DEFAULT_AUTO_PAUSE_IN_2D); // v3.0.253.9.1
-  // this->strct_setup_layer.bPauseInVR            = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_PAUSE_IN_VR (), mxconst::DEFAULT_AUTO_PAUSE_IN_VR); // v3.0.253.9.1
-  this->strct_setup_layer.bCycleLogFiles        = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_OPT_CYCLE_LOG_FILES (), true); // v25.03.1
+  missionx::strct_setup_layer.bDisplayTargetMarkers = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_DISPLAY_TARGET_MARKERS (), true); // v3.0.254.10 one time initialization
+  missionx::strct_setup_layer.bGPSImmediateExposure = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE (), true);
+  missionx::strct_setup_layer.bPauseIn2D            = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_PAUSE_IN_2D (), mxconst::DEFAULT_AUTO_PAUSE_IN_2D); // v3.0.253.9.1
+  // missionx::strct_setup_layer.bPauseInVR            = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_PAUSE_IN_VR (), mxconst::DEFAULT_AUTO_PAUSE_IN_VR); // v3.0.253.9.1
+  missionx::strct_setup_layer.bCycleLogFiles        = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_OPT_CYCLE_LOG_FILES (), true); // v25.03.1
   // We will force XP11 layout if X-Plane is v11.x, else, we will read from the properties file.
   missionx::data_manager::flag_setupUseXP11InventoryUI = (missionx::data_manager::xplane_ver_i < missionx::XP12_VERSION_NO) ? true : Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::SETUP_USE_XP11_INV_LAYOUT, (missionx::data_manager::xplane_ver_i < missionx::XP12_VERSION_NO)); // v24.12.2
 
   // v3.0.255.2
-  this->strct_setup_layer.bOverideCustomExternalFPLN_folders = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_OPT_WRITE_CONVERTED_FPLN_TO_XPLANE_FOLDER (), mxconst::DEFAULT_WRITE_CONVERTED_FMS_TO_XPLANE_FOLDER); // v3.0.255.2 initialize strct_setup_layer.bOverideCustomExternalFPLN_folders
+  missionx::strct_setup_layer.bOverideCustomExternalFPLN_folders = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_OPT_WRITE_CONVERTED_FPLN_TO_XPLANE_FOLDER (), mxconst::DEFAULT_WRITE_CONVERTED_FMS_TO_XPLANE_FOLDER); // v3.0.255.2 initialize strct_setup_layer.bOverideCustomExternalFPLN_folders
   // v3.0.303.6
-  this->strct_setup_layer.bForceNormalizedVolume = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_NORMALIZE_VOLUME_B (), false);
-  this->strct_setup_layer.iNormalizedVolume_val  = Utils::getNodeText_type_1_5<int> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_NORMALIZED_VOLUME (), mxconst::DEFAULT_SETUP_MISSION_VOLUME_I);
+  missionx::strct_setup_layer.bForceNormalizedVolume = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_NORMALIZE_VOLUME_B (), false);
+  missionx::strct_setup_layer.iNormalizedVolume_val  = Utils::getNodeText_type_1_5<int> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_NORMALIZED_VOLUME (), mxconst::DEFAULT_SETUP_MISSION_VOLUME_I);
 
   // v3.305.1
-  this->strct_setup_layer.setPilotName (Utils::getNodeText_type_6 (system_actions::pluginSetupOptions.node, mxconst::SETUP_PILOT_NAME, mxconst::DEFAULT_SETUP_PILOT_NAME)); // initialize pilot name from preference file
+  missionx::strct_setup_layer.setPilotName (Utils::getNodeText_type_6 (system_actions::pluginSetupOptions.node, mxconst::SETUP_PILOT_NAME, mxconst::DEFAULT_SETUP_PILOT_NAME)); // initialize pilot name from preference file
 
   // init setup font scale = should be moved into a function inside Mission class
   if (!Utils::xml_get_node_from_node_tree_IXMLNode (missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE ()).isEmpty ())
   {
 
     float fScale = static_cast<float> (Utils::getNodeText_type_1_5<double> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE (), mxconst::DEFAULT_BASE_FONT_SCALE)); // default scale size
-    if (fScale < this->strct_setup_layer.fFontMinScaleSize || fScale > this->strct_setup_layer.fFontMaxScaleSize)
+    if (fScale < missionx::strct_setup_layer.fFontMinScaleSize || fScale > missionx::strct_setup_layer.fFontMaxScaleSize)
       fScale = mxconst::DEFAULT_BASE_FONT_SCALE; // default size = no change in pixel scale
 
-    this->strct_setup_layer.fPreferredFontScale = fScale;
+    missionx::strct_setup_layer.fPreferredFontScale = fScale;
   }
 
-  this->strct_setup_layer.bPlaceMarkersAwayFromTarget = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET (), false); // display target away from target
+  missionx::strct_setup_layer.bPlaceMarkersAwayFromTarget = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET (), false); // display target away from target
 
   // v25.05.1 init overpass before reading from property file so we have default values.
   set_vecOverpassUrls_char (data_manager::get_default_overpass_urls_as_vector (data_manager::get_default_overpass_urls_node ()));
@@ -163,13 +248,14 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
 
   // v3.303.8.3 add authorization key to the Briefer screen
   const std::string authKey_s = Utils::getNodeText_type_6 (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY (), "");
-  std::memcpy (this->strct_ext_layer.buf_authorization, authKey_s.substr (0, 255).c_str (), 255); // copy no more than 255 characters because our buffer is 256 in size
+  //std::memcpy (this->strct_ext_layer.buf_authorization, authKey_s.substr (0, 255).c_str (), 255); // copy no more than 255 characters because our buffer is 256 in size
+  mxUtils::copy_string_to_buffer(authKey_s.substr(0, 255), this->strct_ext_layer.buf_authorization[0], 255); // copy no more than 255 characters because our buffer is 256 in size
 
 
   // v25.03.3
-  this->strct_setup_layer.setSimbriefPilotID (Utils::getNodeText_type_6 (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SIMBRIEF_PILOT_ID (), "")); // initialize Simbrief pilot ID from preference file
+  missionx::strct_setup_layer.setSimbriefPilotID (Utils::getNodeText_type_6 (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SIMBRIEF_PILOT_ID (), "")); // initialize Simbrief pilot ID from preference file
   // v26.04.1
-  this->strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes =  Utils::getNodeText_type_1_5 <bool>(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SIMBRIEF_AUTO_LOAD_INTO_NOTES (), false); // initialize the flag if Simbrief extra data will be autoloaded to the notes fields
+  missionx::strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes =  Utils::getNodeText_type_1_5 <bool>(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SIMBRIEF_AUTO_LOAD_INTO_NOTES (), false); // initialize the flag if Simbrief extra data will be autoloaded to the notes fields
 
   // Initialize local day - always initialize to 90days and 23 o'clock. Will be re-initialized on first briefer open which provide better result.
   adv_settings_strct.iClockDayOfYearPicked = dataref_manager::getLocalDateDays ();
@@ -196,18 +282,18 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
     for (auto &val : this->vecExternalCategories)
       data_manager::strct_ui_share_data.cargo_arr.emplace_back (val.c_str ());
 
-    this->mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)] = data_manager::strct_ui_share_data.cargo_arr;
+    missionx::mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)] = data_manager::strct_ui_share_data.cargo_arr;
   }
 
-  strct_user_create_layer.dyn_slider1_lbl = "[" + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[missionx::mx_plane_types_enum::plane_type_helos].from_slider_min, 0) + "..." + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[missionx::mx_plane_types_enum::plane_type_helos].from_slider_max, 0) + "]";
-  strct_user_create_layer.dyn_slider2_lbl = "[" + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[missionx::mx_plane_types_enum::plane_type_helos].to_slider_min, 0) + "..." + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[missionx::mx_plane_types_enum::plane_type_helos].to_slider_max, 0) + "]";
+  strct_user_create_layer.dyn_slider1_lbl = "[" + Utils::formatNumber<float> (missionx::mapListPlaneRadioLabel[missionx::mx_plane_types_enum::plane_type_helos].from_slider_min, 0) + "..." + Utils::formatNumber<float> (missionx::mapListPlaneRadioLabel[missionx::mx_plane_types_enum::plane_type_helos].from_slider_max, 0) + "]";
+  strct_user_create_layer.dyn_slider2_lbl = "[" + Utils::formatNumber<float> (missionx::mapListPlaneRadioLabel[missionx::mx_plane_types_enum::plane_type_helos].to_slider_min, 0) + "..." + Utils::formatNumber<float> (missionx::mapListPlaneRadioLabel[missionx::mx_plane_types_enum::plane_type_helos].to_slider_max, 0) + "]";
 
 
   // v25.02.1
-  this->strct_setup_layer.bSuppressDistanceMessages = Utils::getNodeText_type_1_5<bool> (missionx::system_actions::pluginSetupOptions.node, mxconst::get_ATTRIB_SUPPRESS_DISTANCE_MESSAGES_B (), false);
+  missionx::strct_setup_layer.bSuppressDistanceMessages = Utils::getNodeText_type_1_5<bool> (missionx::system_actions::pluginSetupOptions.node, mxconst::get_ATTRIB_SUPPRESS_DISTANCE_MESSAGES_B (), false);
 
   // v25.04.2 Auto Load GPS waypoints into GPS on mission start
-  this->strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool> (mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), mxconst::DEFAULT_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B);
+  missionx::strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool> (mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), mxconst::DEFAULT_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B);
 
 } // End Constructor
 
@@ -229,9 +315,9 @@ WinImguiBriefer::setLayer (missionx::uiLayer_enum inLayer)
 float
 WinImguiBriefer::calc_and_getNewFontScaledSize (float inNewSize)
 {
-  const float newFontScaleSize = this->strct_setup_layer.fPreferredFontScale + (inNewSize);
-  if (newFontScaleSize > this->strct_setup_layer.fFontMaxScaleSize || newFontScaleSize < this->strct_setup_layer.fFontMinScaleSize) // make sure boundaries are kept
-    return this->strct_setup_layer.fPreferredFontScale;
+  const float newFontScaleSize = missionx::strct_setup_layer.fPreferredFontScale + (inNewSize);
+  if (newFontScaleSize > missionx::strct_setup_layer.fFontMaxScaleSize || newFontScaleSize < missionx::strct_setup_layer.fFontMinScaleSize) // make sure boundaries are kept
+    return missionx::strct_setup_layer.fPreferredFontScale;
 
   return newFontScaleSize;
 }
@@ -257,10 +343,10 @@ void
 WinImguiBriefer::add_pause_in_2d_mode ()
 {
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_orange);
-  if (ImGui::Checkbox ("Pause in 2D mode (ignored when popped out)", &this->strct_setup_layer.bPauseIn2D))
+  if (ImGui::Checkbox ("Pause in 2D mode (ignored when popped out)", &missionx::strct_setup_layer.bPauseIn2D))
   {
     // ADD set option value
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_AUTO_PAUSE_IN_2D (), this->strct_setup_layer.bPauseIn2D);
+    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_AUTO_PAUSE_IN_2D (), missionx::strct_setup_layer.bPauseIn2D);
     this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
   }
   ImGui::PopStyleColor ();
@@ -276,7 +362,7 @@ WinImguiBriefer::add_font_size_scale_buttons ()
   //// +/- font size
   if (ImGui::SmallButton (" + "))
   {
-    this->strct_setup_layer.fPreferredFontScale = this->calc_and_getNewFontScaledSize (0.1f);
+    missionx::strct_setup_layer.fPreferredFontScale = this->calc_and_getNewFontScaledSize (0.1f);
   }
   this->mx_add_tooltip (missionx::color::color_vec4_white, "Increase font scale");
   ImGui::SameLine ();
@@ -285,11 +371,11 @@ WinImguiBriefer::add_font_size_scale_buttons ()
 
   if (ImGui::SmallButton (" - "))
   {
-    this->strct_setup_layer.fPreferredFontScale = this->calc_and_getNewFontScaledSize (-0.1f);
+    missionx::strct_setup_layer.fPreferredFontScale = this->calc_and_getNewFontScaledSize (-0.1f);
   }
   this->mx_add_tooltip (missionx::color::color_vec4_white, "Decrease font scale");
 
-  ImGui::SetWindowFontScale (this->strct_setup_layer.fPreferredFontScale); // v3.305.1
+  ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale); // v3.305.1
 }
 
 // -------------------------------------
@@ -298,10 +384,10 @@ void
 WinImguiBriefer::add_skewed_marker_checkbox ()
 {
   ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
-  if (ImGui::Checkbox (std::string ("Place markers near targets and not above them (in +/-" + mxUtils::formatNumber<double> (mxconst::MAX_AWAY_SKEWED_DISTANCE_NM, 1) + "nm radius).").c_str (), &this->strct_setup_layer.bPlaceMarkersAwayFromTarget))
+  if (ImGui::Checkbox (std::string ("Place markers near targets and not above them (in +/-" + mxUtils::formatNumber<double> (mxconst::MAX_AWAY_SKEWED_DISTANCE_NM, 1) + "nm radius).").c_str (), &missionx::strct_setup_layer.bPlaceMarkersAwayFromTarget))
   {
     // ADD set option value
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET (), this->strct_setup_layer.bPlaceMarkersAwayFromTarget);
+    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET (), missionx::strct_setup_layer.bPlaceMarkersAwayFromTarget);
     missionx::system_actions::store_plugin_options ();
   }
 } // add_skewed_marker_checkbox
@@ -318,7 +404,7 @@ WinImguiBriefer::add_ui_start_mission_button (missionx::mx_window_actions inActi
   iStyle++;
   ImGui::PushStyleColor (ImGuiCol_ButtonActive, missionx::color::color_vec4_azure);
   iStyle++;
-  if (ImGui::Button (this->LBL_START_MISSION.c_str ()))
+  if (ImGui::Button (missionx::LBL_START_MISSION.c_str ()))
     this->execAction (inActionToExecute); // should hide the window
   ImGui::PopStyleColor (iStyle);
 }
@@ -333,7 +419,7 @@ void WinImguiBriefer::add_ui_warning_messages_button()
     ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_aliceblue);
     {
       ImGui::SameLine (0.0f, 25.0f);
-      if (ImGui::Button (this->LBL_LOAD_WARNINGS.c_str ()))
+      if (ImGui::Button (missionx::LBL_LOAD_WARNINGS.c_str ()))
       {
         // open popup
         ImGui::OpenPopup (POPUP_LOAD_WARNINGS.c_str ());
@@ -386,53 +472,53 @@ WinImguiBriefer::add_ui_ils_vfr_search_airports_button (missionx::mx_window_acti
     std::string sql_filter = " and rw_length_mt >= " + mxUtils::formatNumber<int> (strct_ils_layer.slider_min_rw_length_i); // " and rw_length_mt >= 1000 "
     sql_filter += " and rw_width >= " + mxUtils::formatNumber<int> (strct_ils_layer.slider_min_rw_width_i); // " and rw_width >= 45 "
     sql_filter += " and ap_elev >= " + mxUtils::formatNumber<int> (strct_ils_layer.slider_min_airport_elev_ft_i); // " and ap_elev >= 0 "
-    if (!this->strct_ils_layer.to_icao.empty ()) // v24.03.1 add the TO
-      sql_filter += fmt::format (" and icao like '%{}%' ", this->strct_ils_layer.to_icao);
+    if (!missionx::strct_ils_layer.to_icao.empty ()) // v24.03.1 add the TO
+      sql_filter += fmt::format (" and icao like '%{}%' ", missionx::strct_ils_layer.to_icao);
 
 
     // v25.08.1 added VFR filter
-    if (this->strct_ils_layer.get_ils_types_picked ().empty () || data_manager::ui_ifr_or_vfr_i == missionx::PICKED_VFR)
+    if (missionx::strct_ils_layer.get_ils_types_picked ().empty () || data_manager::ui_ifr_or_vfr_i == missionx::PICKED_VFR)
       sql_filter += " ";
     else
-      sql_filter += " and lower(loc_type) in ( " + this->strct_ils_layer.get_ils_types_picked () + " )"; //
+      sql_filter += " and lower(loc_type) in ( " + missionx::strct_ils_layer.get_ils_types_picked () + " )"; //
 
-    if (!this->strct_ils_layer.flagIgnoreDistanceFilter) // v24.03.1
+    if (!missionx::strct_ils_layer.flagIgnoreDistanceFilter) // v24.03.1
       sql_filter += " and distance_nm between " + mxUtils::formatNumber<float> (strct_ils_layer.ils_sliderVal1, 0) + " and " + mxUtils::formatNumber<float> (strct_ils_layer.ils_sliderVal2, 0); // " and distance between 50 and 100 "
 
-    sql_filter += fmt::format (" ORDER BY distance_nm LIMIT {} ", missionx::WinImguiBriefer::mx_ils_layer::limit_items[this->strct_ils_layer.limit_indx]); // v24.03.1 We always limit rows, for UI performance reasons
+    sql_filter += fmt::format (" ORDER BY distance_nm LIMIT {} ", missionx::mx_ils_layer::limit_items[missionx::strct_ils_layer.limit_indx]); // v24.03.1 We always limit rows, for UI performance reasons
 
 
-    this->strct_ils_layer.filter_query_s = sql_filter; // v24.03.1 store the final filter for the thread use.
+    missionx::strct_ils_layer.filter_query_s = sql_filter; // v24.03.1 store the final filter for the thread use.
 
-    if (this->strct_ils_layer.from_icao.empty ())
+    if (missionx::strct_ils_layer.from_icao.empty ())
     {
       #ifdef IBM
-      this->strct_ils_layer.navaid = data_manager::get_plane_airport_or_nearest_icao ();
+      missionx::strct_ils_layer.navaid = data_manager::get_plane_airport_or_nearest_icao ();
       #else
       auto tempNav                 = data_manager::get_plane_airport_or_nearest_icao ();
-      this->strct_ils_layer.navaid = tempNav;
+      missionx::strct_ils_layer.navaid = tempNav;
       #endif
     }
 
-    if ((!this->strct_ils_layer.from_icao.empty ()) && (this->strct_ils_layer.navaid.getID ().empty () || this->strct_ils_layer.navaid.lat == 0 || this->strct_ils_layer.navaid.lon == 0))
+    if ((!missionx::strct_ils_layer.from_icao.empty ()) && (missionx::strct_ils_layer.navaid.getID ().empty () || missionx::strct_ils_layer.navaid.lat == 0 || missionx::strct_ils_layer.navaid.lon == 0))
     {
       #ifdef IBM
-      this->strct_ils_layer.navaid = data_manager::getICAO_info (this->strct_ils_layer.from_icao);
+      missionx::strct_ils_layer.navaid = data_manager::getICAO_info (missionx::strct_ils_layer.from_icao);
       #else
-      auto tempNav                 = data_manager::getICAO_info (this->strct_ils_layer.from_icao);
-      this->strct_ils_layer.navaid = tempNav;
+      auto tempNav                 = data_manager::getICAO_info (missionx::strct_ils_layer.from_icao);
+      missionx::strct_ils_layer.navaid = tempNav;
       #endif
     }
 
     // last validation
-    if (this->strct_ils_layer.navaid.getID ().empty ()) // if navaid ID is still empty then pick plane position
+    if (missionx::strct_ils_layer.navaid.getID ().empty ()) // if navaid ID is still empty then pick plane position
     {
       this->setMessage ("Could not initialize starting ICAO. Please consider entering it manually.");
     }
     else
     {
-      this->strct_ils_layer.fetch_ils_state  = missionx::mxFetchState_enum::fetch_not_started;
-      this->flag_generatedRandomFile_success = false; // reset state if already generated information. Will hide Start button until next mission generated.
+      missionx::strct_ils_layer.fetch_ils_state  = missionx::mxFetchState_enum::fetch_not_started;
+      missionx::flag_generatedRandomFile_success = false; // reset state if already generated information. Will hide Start button until next mission generated.
 
       // this->execAction (missionx::mx_window_actions::ACTION_FETCH_ILS_AIRPORTS);
       this->execAction (inActionToExecute);
@@ -455,7 +541,7 @@ WinImguiBriefer::add_ui_abort_mission_creation_button (missionx::mx_window_actio
   iStyle++;
   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_aliceblue);
   iStyle++;
-  if (ImGui::Button (this->LBL_ABORT_THREAD_LABEL.c_str ()))
+  if (ImGui::Button (missionx::LBL_ABORT_THREAD_LABEL.c_str ()))
     this->execAction (inActionToExecute);
   ImGui::PopStyleColor (iStyle);
 }
@@ -471,10 +557,10 @@ WinImguiBriefer::add_ui_expose_all_gps_waypoints (const missionx::mx_window_acti
     ImGui::SameLine ();
   }
 
-  if (ImGui::Checkbox ("Expose All GPS legs at mission start", &this->strct_setup_layer.bGPSImmediateExposure))
+  if (ImGui::Checkbox ("Expose All GPS legs at mission start", &missionx::strct_setup_layer.bGPSImmediateExposure))
   {
     // ADD set option value
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE (), this->strct_setup_layer.bGPSImmediateExposure);
+    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE (), missionx::strct_setup_layer.bGPSImmediateExposure);
     this->execAction (inActionToExecute);
   }
 }
@@ -487,10 +573,10 @@ WinImguiBriefer::add_ui_suppress_distance_messages_checkbox_ui (missionx::mx_win
   missionx::WinImguiBriefer::HelpMarker ("When the Random engine is generating a mission, do you want to suppress the progress messages as you near the target ?\nWill be saved in the preference file.");
   ImGui::SameLine ();
 
-  if (ImGui::Checkbox ("Suppress distance messages, to a waypoint, when generating a random mission.", &this->strct_setup_layer.bSuppressDistanceMessages))
+  if (ImGui::Checkbox ("Suppress distance messages, to a waypoint, when generating a random mission.", &missionx::strct_setup_layer.bSuppressDistanceMessages))
   {
     // ADD set option value
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_ATTRIB_SUPPRESS_DISTANCE_MESSAGES_B (), this->strct_setup_layer.bSuppressDistanceMessages);
+    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_ATTRIB_SUPPRESS_DISTANCE_MESSAGES_B (), missionx::strct_setup_layer.bSuppressDistanceMessages);
     this->execAction (inActionToExecute);
   }
 }
@@ -503,41 +589,41 @@ WinImguiBriefer::add_ui_default_weights ()
   // ------------------------
   // -- Default Weight
   // ------------------------
-  ImGui::Checkbox ("Add default base weights.\nThis will be added to the weight of any item you pick from an external inventory.\n(Not advisable for aircraft larger than General Aviation)", &this->adv_settings_strct.flag_add_default_weight_settings);
-  if (this->adv_settings_strct.flag_add_default_weight_settings)
+  ImGui::Checkbox ("Add default base weights.\nThis will be added to the weight of any item you pick from an external inventory.\n(Not advisable for aircraft larger than General Aviation)", &missionx::adv_settings_strct.flag_add_default_weight_settings);
+  if (missionx::adv_settings_strct.flag_add_default_weight_settings)
   {
     missionx::WinImguiBriefer::HelpMarker ("Define Pilot Weight (0..200)");
     ImGui::SameLine ();
     ImGui::SetNextItemWidth (100.0f);
-    if (ImGui::InputInt ("Pilot Weight", &this->adv_settings_strct.pilot_base_weight_i, 5, 100, ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal))
+    if (ImGui::InputInt ("Pilot Weight", &missionx::adv_settings_strct.pilot_base_weight_i, 5, 100, ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal))
     {
-      if (this->adv_settings_strct.pilot_base_weight_i < 0)
-        this->adv_settings_strct.pilot_base_weight_i = 0;
-      if (this->adv_settings_strct.pilot_base_weight_i > 200)
-        this->adv_settings_strct.pilot_base_weight_i = 200;
+      if (missionx::adv_settings_strct.pilot_base_weight_i < 0)
+        missionx::adv_settings_strct.pilot_base_weight_i = 0;
+      if (missionx::adv_settings_strct.pilot_base_weight_i > 200)
+        missionx::adv_settings_strct.pilot_base_weight_i = 200;
     }
     if (missionx::data_manager::flag_setupUseXP11InventoryUI)
     {
       missionx::WinImguiBriefer::HelpMarker ("Define the total passenger weight (0..50000)");
       ImGui::SameLine ();
       ImGui::SetNextItemWidth (100.0f);
-      if (ImGui::InputInt ("Total Passengers Weight", &this->adv_settings_strct.passengers_base_weight_i, 5, 100, ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal))
+      if (ImGui::InputInt ("Total Passengers Weight", &missionx::adv_settings_strct.passengers_base_weight_i, 5, 100, ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal))
       {
-        if (this->adv_settings_strct.passengers_base_weight_i < 0)
-          this->adv_settings_strct.passengers_base_weight_i = 0;
-        if (this->adv_settings_strct.passengers_base_weight_i > 50000)
-          this->adv_settings_strct.passengers_base_weight_i = 50000;
+        if (missionx::adv_settings_strct.passengers_base_weight_i < 0)
+          missionx::adv_settings_strct.passengers_base_weight_i = 0;
+        if (missionx::adv_settings_strct.passengers_base_weight_i > 50000)
+          missionx::adv_settings_strct.passengers_base_weight_i = 50000;
       }
 
       missionx::WinImguiBriefer::HelpMarker ("Total Cargo Weight (0..80000)");
       ImGui::SameLine ();
       ImGui::SetNextItemWidth (100.0f);
-      if (ImGui::InputInt ("Total Cargo Weight", &this->adv_settings_strct.cargo_base_weight, 5, 100, ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal))
+      if (ImGui::InputInt ("Total Cargo Weight", &missionx::adv_settings_strct.cargo_base_weight, 5, 100, ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal))
       {
-        if (this->adv_settings_strct.cargo_base_weight < 0)
-          this->adv_settings_strct.cargo_base_weight = 0;
-        if (this->adv_settings_strct.cargo_base_weight > 80000)
-          this->adv_settings_strct.cargo_base_weight = 80000;
+        if (missionx::adv_settings_strct.cargo_base_weight < 0)
+          missionx::adv_settings_strct.cargo_base_weight = 0;
+        if (missionx::adv_settings_strct.cargo_base_weight > 80000)
+          missionx::adv_settings_strct.cargo_base_weight = 80000;
       }
     } // display only in XP11 inventory type
   }
@@ -549,7 +635,7 @@ void
 WinImguiBriefer::add_message_text ()
 {
   // display message text in Yellow
-  if (!this->sBottomMessage.empty ())
+  if (!missionx::sBottomMessage.empty ())
   {
     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
     ImGui::TextWrapped ("%s", sBottomMessage.c_str ());
@@ -669,7 +755,7 @@ WinImguiBriefer::add_debug_info ()
   constexpr const float        fTitleHeight = 30.0f;
   constexpr const static float fPADDING     = 10.0f;
 
-  ImGui::SetWindowFontScale (this->strct_setup_layer.fPreferredFontScale);
+  ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
 
   if (missionx::data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running && ImGui::BeginTabBar ("FlightLegInfo", ImGuiTabBarFlags_None))
   {
@@ -890,7 +976,7 @@ WinImguiBriefer::add_flight_planning ()
       {
         ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_greenyellow);
         if (ImGui::Button ("Departure:"))
-          this->callNavData (this->strct_flight_leg_info.mapNoteFieldShort[missionx::enums::mx_note_shortField_enum::fromICAO], true); // v24.03.1
+          this->m_ui_nav_screen->callNavData (this->strct_flight_leg_info.mapNoteFieldShort[missionx::enums::mx_note_shortField_enum::fromICAO], true); // v24.03.1
         this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Fetch Departure nav data.");
         ImGui::PopStyleColor ();
       }
@@ -948,7 +1034,7 @@ WinImguiBriefer::add_flight_planning ()
       {
         ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_greenyellow);
         if (ImGui::Button ("Arrival:"))
-          this->callNavData (this->strct_flight_leg_info.mapNoteFieldShort[missionx::enums::mx_note_shortField_enum::toICAO], true); // v24.03.1
+          this->m_ui_nav_screen->callNavData (this->strct_flight_leg_info.mapNoteFieldShort[missionx::enums::mx_note_shortField_enum::toICAO], true); // v24.03.1
         this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Fetch Arrival nav data.");
         ImGui::PopStyleColor ();
       }
@@ -983,7 +1069,10 @@ WinImguiBriefer::add_flight_planning ()
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
       if (ImGui::Button (mxUtils::from_u8string (ICON_FA_TRASH).c_str ()))
       {
-        memcpy (this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::taxi], "\0", sizeof ("\0")); // should work cross platforms but not very safe
+        //memcpy (this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::taxi], "\0", sizeof ("\0")); // should work cross platforms but not very safe
+        mxUtils::copy_string_to_buffer("\0", this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::taxi][0], sizeof(this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::taxi] ) );
+
+
       }
       this->mxUiReleaseLastFont ();
 
@@ -1121,7 +1210,7 @@ WinImguiBriefer::add_flight_planning ()
   ImGui::BeginGroup ();
   {
 
-    if (this->strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes)
+    if (missionx::strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes)
     {
       // OPTION 2.1 - Three buttons with interchangeable multi line field
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
@@ -1263,7 +1352,7 @@ WinImguiBriefer::add_flight_planning ()
 
     if (!missionx::RandomEngine::random_thread_state.flagIsActive)
     {
-      // this->add_ui_advance_settings_random_date_time_weather_and_weight_button(this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked);
+      // this->add_ui_advance_settings_random_date_time_weather_and_weight_button(missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked);
 
       // -------------------
       // Generate Mission Popup Button - FPLN screen
@@ -1313,7 +1402,7 @@ WinImguiBriefer::add_flight_planning ()
       // -------------------
       if (!this->asyncSecondMessageLine.empty ())
       {
-        // ImGui::SameLine((win_size_vec2.x * 0.75f) - (ImGui::CalcTextSize(this->LBL_START_MISSION.c_str()).x * 0.6f));
+        // ImGui::SameLine((win_size_vec2.x * 0.75f) - (ImGui::CalcTextSize(missionx::LBL_START_MISSION.c_str()).x * 0.6f));
         ImGui::SameLine (0.0f, 60.0f);
         this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
       }
@@ -1359,7 +1448,7 @@ void WinImguiBriefer::add_other_settings_header(const bool in_plane_is_helo, con
     if ( (in_plane_is_helo && bPickedMedevacMission) || (bPickedOilRigMission))
     {
       // ImGui::SameLine(0.0f, 100.0f);
-      ImGui::Checkbox("Add Countdown", &this->strct_setup_layer.bAddCountdown);
+      ImGui::Checkbox("Add Countdown", &missionx::strct_setup_layer.bAddCountdown);
       this->mx_add_tooltip(missionx::color::color_vec4_yellow, "Add random countdown to each leg to add to the challenge.");
 
       ImGui::Separator();
@@ -1378,7 +1467,7 @@ void WinImguiBriefer::add_other_settings_header(const bool in_plane_is_helo, con
     // -- GPS Waypoints
     // ------------------------
 
-    ImGui::Checkbox("Generate GPS waypoints.", &this->strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12
+    ImGui::Checkbox("Generate GPS waypoints.", &missionx::strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12
     ImGui::SameLine(0.0f, 90.0f);
     this->add_ui_expose_all_gps_waypoints();
 
@@ -1388,7 +1477,7 @@ void WinImguiBriefer::add_other_settings_header(const bool in_plane_is_helo, con
     // -- Default Weight
     // ------------------------
     ImGui::NewLine();
-    // ImGui::Checkbox("Add default base weights.\n(Not advisable for planes > GAs)", &this->adv_settings_strct.flag_add_default_weight_settings);
+    // ImGui::Checkbox("Add default base weights.\n(Not advisable for planes > GAs)", &missionx::adv_settings_strct.flag_add_default_weight_settings);
     this->add_ui_default_weights();
 
     ImGui::PopStyleColor(1); // pop-out internal text color settings
@@ -1409,7 +1498,7 @@ void WinImguiBriefer::action_prepare_dynamic_mission_properties_and_call_generat
   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double>(mxconst::get_PROP_MIN_DISTANCE_SLIDER(), in_distance_min);
   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double>(mxconst::get_PROP_MAX_DISTANCE_SLIDER(), in_distance_max);
   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_ADD_COUNTDOWN(), false); // We set a default value for helos/planes with cargo missions. LAter we will change it if needed
-  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_GENERATE_GPS_WAYPOINTS(), this->strct_cross_layer_properties.flag_generate_gps_waypoints);
+  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_GENERATE_GPS_WAYPOINTS(), missionx::strct_cross_layer_properties.flag_generate_gps_waypoints);
 
   if (in_add_start_from_plane_position) // v26.04.2 add start from plane position
     missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_START_FROM_PLANE_POSITION (), true);
@@ -1418,10 +1507,10 @@ void WinImguiBriefer::action_prepare_dynamic_mission_properties_and_call_generat
 
 
   // mission category
-  auto vecToDisplay = this->mapMissionCategories.contains(this->strct_user_create_layer.iRadioMissionTypePicked) ? this->mapMissionCategories[this->strct_user_create_layer.iRadioMissionTypePicked] : std::vector<const char*>{};
+  auto vecToDisplay = missionx::mapMissionCategories.contains(missionx::strct_user_create_layer.iRadioMissionTypePicked) ? missionx::mapMissionCategories[missionx::strct_user_create_layer.iRadioMissionTypePicked] : std::vector<const char*>{};
   // Store the label of the sub category, if the vector has the data
-  if (static_cast<int>(vecToDisplay.size()) >= this->strct_user_create_layer.iMissionSubCategoryPicked)
-    missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty(mxconst::get_PROP_MISSION_SUBCATEGORY_LBL(), vecToDisplay.at(this->strct_user_create_layer.iMissionSubCategoryPicked));
+  if (static_cast<int>(vecToDisplay.size()) >= missionx::strct_user_create_layer.iMissionSubCategoryPicked)
+    missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty(mxconst::get_PROP_MISSION_SUBCATEGORY_LBL(), vecToDisplay.at(missionx::strct_user_create_layer.iMissionSubCategoryPicked));
 
 
   // v3.0.253.6 no osm search for cargo missions
@@ -1435,12 +1524,12 @@ void WinImguiBriefer::action_prepare_dynamic_mission_properties_and_call_generat
 
   // Add specific Helos properties based on user definitions and restrictions // v3.0.253.7 narrow helos ramp filtering,
   // means to store mainly rw code 101 and airports that have [H] in them ignore ramp code 1300 that are for "helos"
-  if (this->strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos)
+  if (missionx::strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos)
   {
     missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_NARROW_HELOS_RAMP_SEARCH(), strct_user_create_layer.flag_narrow_helos_filtering); //, node_ptr, node_ptr.getName());
     // add countdown for helos + medevac
     if (strct_user_create_layer.iRadioMissionTypePicked == static_cast<int>(missionx::mx_ui_mission_type::medevac) || strct_user_create_layer.iRadioMissionTypePicked == static_cast<int>(missionx::_ui_mission_type::oil_rig))
-      missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_ADD_COUNTDOWN(), this->strct_setup_layer.bAddCountdown);
+      missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_ADD_COUNTDOWN(), missionx::strct_setup_layer.bAddCountdown);
   }
   else
   {
@@ -1448,7 +1537,7 @@ void WinImguiBriefer::action_prepare_dynamic_mission_properties_and_call_generat
   }
 
   // v3.303.12 weather
-  this->addAdvancedSettingsPropertiesBeforeGeneratingRandomMission();
+  missionx::addAdvancedSettingsPropertiesBeforeGeneratingRandomMission();
 
 
   const auto lmbda_build_filter_for_runway_types = [&]()
@@ -1456,16 +1545,16 @@ void WinImguiBriefer::action_prepare_dynamic_mission_properties_and_call_generat
     int         counter{0};
     std::string query;
     query.clear();
-    if (this->strct_user_create_layer.iRadioPlaneType >= missionx::mx_plane_types_enum::plane_type_airline)
+    if (missionx::strct_user_create_layer.iRadioPlaneType >= missionx::mx_plane_types_enum::plane_type_airline)
     {
       query = " ( 1, 2 ) "; // concrete codes
       return query;
     }
 
-    if (this->strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos || this->strct_user_create_layer.flag_pick_any_rw)
+    if (missionx::strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos || missionx::strct_user_create_layer.flag_pick_any_rw)
       return query; // empty string no filter
 
-    for (auto& [rw_type, b_picked] : this->strct_user_create_layer.map_filter_runways)
+    for (auto& [rw_type, b_picked] : missionx::strct_user_create_layer.map_filter_runways)
     {
       if (b_picked)
       {
@@ -1474,7 +1563,7 @@ void WinImguiBriefer::action_prepare_dynamic_mission_properties_and_call_generat
         else
           query += ", ";
 
-        query += this->strct_user_create_layer.map_filter_runways_translate_to_numbers[rw_type];
+        query += missionx::strct_user_create_layer.map_filter_runways_translate_to_numbers[rw_type];
         counter++;
       }
     }
@@ -1530,11 +1619,20 @@ WinImguiBriefer::flc ()
   missionx::TimerFunc timerFunc (std::string (__FILE__), std::string (__func__), false);
   #endif // TIMER_FUNC
 
-  // v3.305.1
-  if (this->GetVisible () && !this->flag_displayedOnce)
+  // v26.04.3 force hide the window on plane load. useful when sim just started and Missionx-X window is open without explicit user action.
+  if (this->GetVisible())
   {
-    this->flag_displayedOnce = true;
-    this->SetWindowPositioningMode (xplm_WindowPositionFree);
+    //if (missionx::data_manager::strct_xplane_started.bPlaneJustLoaded )
+    //{
+    //  this->execAction(missionx::mx_window_actions::ACTION_HIDE_WINDOW);      
+    //  missionx::data_manager::strct_xplane_started.bPlaneJustLoaded ^= 1;
+    //}
+    //else 
+    if (!this->flag_displayedOnce)
+    {
+      this->SetWindowPositioningMode(xplm_WindowPositionFree);
+      this->flag_displayedOnce = true;
+    }      
   }
 
 
@@ -1564,7 +1662,7 @@ WinImguiBriefer::flc ()
         this->strct_flight_leg_info.setNoteLongField (missionx::enums::mx_note_longField_enum::more_info, fpln.more_info); // v25.06.1
 
         // v26.04.1
-        if (this->strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes)
+        if (missionx::strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes)
         {
           this->strct_flight_leg_info.setNoteLongField(missionx::enums::mx_note_longField_enum::takeoff_notes, fpln.origin_info);
           this->strct_flight_leg_info.setNoteLongField(missionx::enums::mx_note_longField_enum::cruise_notes, fpln.cruise_info);
@@ -1636,7 +1734,7 @@ WinImguiBriefer::flc ()
     }
     else
     {
-      this->sBottomMessage.clear ();
+      missionx::sBottomMessage.clear ();
       this->timerMessage.reset (); // v24.03.1 reset timer state so bottom message won't continuously clear the status bottom message.
     }
   }
@@ -1694,7 +1792,7 @@ WinImguiBriefer::flc ()
   }
 
   // Check if to pause xplane if briefer window is open
-  if ((this->strct_setup_layer.bPauseIn2D && this->GetVisible () && !missionx::dataref_manager::isSimPause () && !this->IsPoppedOut () && !missionx::mxvr::flag_in_vr) || this->forcePauseSim) // If forcePauseSim or if Briefer UI is open and not popped-out and sim is not in PAUSE mode then pause sim
+  if ((missionx::strct_setup_layer.bPauseIn2D && this->GetVisible () && !missionx::dataref_manager::isSimPause () && !this->IsPoppedOut () && !missionx::mxvr::flag_in_vr) || this->forcePauseSim) // If forcePauseSim or if Briefer UI is open and not popped-out and sim is not in PAUSE mode then pause sim
   {
     missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::pause_xplane);
   }
@@ -1722,17 +1820,17 @@ WinImguiBriefer::flc ()
   else if (currentLayer == missionx::uiLayer_enum::option_ils_layer) // v3.0.253.6 handle messages from the data_manager::fetch_ils_rw_from_sqlite()
   {
     std::string msg;
-    if (!this->strct_ils_layer.asyncFetchMsg_s.empty ())
+    if (!missionx::strct_ils_layer.asyncFetchMsg_s.empty ())
     {
-      this->strct_ils_layer.asyncFetchMsg_s.append (fmt::format ("(limited to {} rows)", this->strct_ils_layer.limit_items[this->strct_ils_layer.limit_indx])); // v24.03.1 add the limit message.
-      msg = this->strct_ils_layer.asyncFetchMsg_s;
-      this->strct_ils_layer.asyncFetchMsg_s.clear ();
+      missionx::strct_ils_layer.asyncFetchMsg_s.append (fmt::format ("(limited to {} rows)", missionx::strct_ils_layer.limit_items[missionx::strct_ils_layer.limit_indx])); // v24.03.1 add the limit message.
+      msg = missionx::strct_ils_layer.asyncFetchMsg_s;
+      missionx::strct_ils_layer.asyncFetchMsg_s.clear ();
     }
-    else if (!this->strct_ils_layer.asyncNavFetchMsg_s.empty () + !this->strct_ils_layer.asyncMetarFetchMsg_s.empty ())
+    else if (!missionx::strct_ils_layer.asyncNavFetchMsg_s.empty () + !missionx::strct_ils_layer.asyncMetarFetchMsg_s.empty ())
     {
-      msg = (this->strct_ils_layer.asyncMetarFetchMsg_s.empty ()) ? this->strct_ils_layer.asyncNavFetchMsg_s : this->strct_ils_layer.asyncMetarFetchMsg_s;
-      this->strct_ils_layer.asyncNavFetchMsg_s.clear ();
-      this->strct_ils_layer.asyncMetarFetchMsg_s.clear ();
+      msg = (missionx::strct_ils_layer.asyncMetarFetchMsg_s.empty ()) ? missionx::strct_ils_layer.asyncNavFetchMsg_s : missionx::strct_ils_layer.asyncMetarFetchMsg_s;
+      missionx::strct_ils_layer.asyncNavFetchMsg_s.clear ();
+      missionx::strct_ils_layer.asyncMetarFetchMsg_s.clear ();
     }
 
     if (!msg.empty ())
@@ -1753,34 +1851,8 @@ WinImguiBriefer::flc ()
   }
 } // flc
 
-// ------------ contains --------------
-// bool
-// WinImguiBriefer::tableDataTy::contains (const std::string &s) const
-// {
-//   // try finding s in all our texts
-//   for (const std::string &t : { reg, model, typecode, owner })
-//   {
-//     std::string l = t;
-//     if (mxUtils::stringToUpper (l).find (s) != std::string::npos)
-//       return true;
-//   }
-//
-//   // not found
-//   return false;
-// }
 
-
-
-//std::map<std::string, std::string>
-//WinImguiBriefer::read_fpln_files ()
-//{
-//  const std::string                  pathToRead = "Output/FMS plans";
-//  std::map<std::string, std::string> mapListOfFiles;
-//  std::string                        filter = ".lnmpln";
-//  missionx::ListDir::getListOfFiles (pathToRead.c_str (), mapListOfFiles, filter);
-//  return mapListOfFiles;
-//}
-
+// -------------------------------------------
 
 
 void
@@ -1788,13 +1860,13 @@ WinImguiBriefer::set_vecOverpassUrls_char (const std::vector<std::string> &inVec
 {
   if (!inVecData.empty ())
   {
-    this->strct_setup_layer.vecOverpassUrls_char.clear ();
+    missionx::strct_setup_layer.vecOverpassUrls_char.clear ();
     for (auto &v : inVecData)
     {
-      this->strct_setup_layer.vecOverpassUrls_char.emplace_back (v.c_str ());
+      missionx::strct_setup_layer.vecOverpassUrls_char.emplace_back (v.c_str ());
     }
 
-    // this->strct_setup_layer.overpass_user_picked_combo_i = 0;
+    // missionx::strct_setup_layer.overpass_user_picked_combo_i = 0;
     missionx::data_manager::overpass_user_picked_combo_i = 0;
   }
 }
@@ -1860,7 +1932,8 @@ WinImguiBriefer::buildInterface ()
     break;
     case missionx::uiLayer_enum::option_ils_layer:
     {
-      this->draw_ils_screen ();
+      //this->draw_ils_screen ();
+      this->m_ui_nav_screen->draw_ils_screen ();
     }
     break;
     case missionx::uiLayer_enum::about_layer:
@@ -1915,15 +1988,15 @@ WinImguiBriefer::buildInterface ()
 void
 WinImguiBriefer::validate_sliders_values (missionx::mx_plane_types_enum inPlaneType)
 {
-  if (this->strct_user_create_layer.dyn_sliderVal1 < this->mapListPlaneRadioLabel[inPlaneType].from_slider_min)
-    this->strct_user_create_layer.dyn_sliderVal1 = this->mapListPlaneRadioLabel[inPlaneType].from_slider_min;
-  else if (this->strct_user_create_layer.dyn_sliderVal1 > this->mapListPlaneRadioLabel[inPlaneType].from_slider_max)
-    this->strct_user_create_layer.dyn_sliderVal1 = this->mapListPlaneRadioLabel[inPlaneType].from_slider_max;
+  if (missionx::strct_user_create_layer.dyn_sliderVal1 < missionx::mapListPlaneRadioLabel[inPlaneType].from_slider_min)
+    missionx::strct_user_create_layer.dyn_sliderVal1 = missionx::mapListPlaneRadioLabel[inPlaneType].from_slider_min;
+  else if (missionx::strct_user_create_layer.dyn_sliderVal1 > missionx::mapListPlaneRadioLabel[inPlaneType].from_slider_max)
+    missionx::strct_user_create_layer.dyn_sliderVal1 = missionx::mapListPlaneRadioLabel[inPlaneType].from_slider_max;
 
-  if (this->strct_user_create_layer.dyn_sliderVal2 < this->mapListPlaneRadioLabel[inPlaneType].to_slider_min)
-    this->strct_user_create_layer.dyn_sliderVal2 = this->mapListPlaneRadioLabel[inPlaneType].to_slider_min;
-  else if (this->strct_user_create_layer.dyn_sliderVal2 > this->mapListPlaneRadioLabel[inPlaneType].to_slider_max)
-    this->strct_user_create_layer.dyn_sliderVal2 = this->mapListPlaneRadioLabel[inPlaneType].to_slider_max;
+  if (missionx::strct_user_create_layer.dyn_sliderVal2 < missionx::mapListPlaneRadioLabel[inPlaneType].to_slider_min)
+    missionx::strct_user_create_layer.dyn_sliderVal2 = missionx::mapListPlaneRadioLabel[inPlaneType].to_slider_min;
+  else if (missionx::strct_user_create_layer.dyn_sliderVal2 > missionx::mapListPlaneRadioLabel[inPlaneType].to_slider_max)
+    missionx::strct_user_create_layer.dyn_sliderVal2 = missionx::mapListPlaneRadioLabel[inPlaneType].to_slider_max;
 }
 
 // -------------------------------------------
@@ -1931,7 +2004,7 @@ WinImguiBriefer::validate_sliders_values (missionx::mx_plane_types_enum inPlaneT
 void
 WinImguiBriefer::generate_mission_date_based_on_user_preference (int &out_iClockDayOfYearPicked, int &out_iClockHourPicked, int &out_iClockMinutesPicked, const bool &inIncludeNightHours)
 {
-  switch (this->adv_settings_strct.iRadioRandomDateTime_pick)
+  switch (missionx::adv_settings_strct.iRadioRandomDateTime_pick)
   {
     case missionx::mx_ui_random_date_time_type::xplane_day_and_time:
     {
@@ -1969,10 +2042,10 @@ WinImguiBriefer::generate_mission_date_based_on_user_preference (int &out_iClock
       for (int y = 0; y < 3; y++)
         for (int x = 0; x < 4; x++)
         {
-          if (this->adv_settings_strct.selected_dateTime_by_user_arr[y][x])
-            Utils::addElementToMap (mapMonthPicked, this->adv_settings_strct.selected_month_no[y][x], mapCalander_days_in_a_month[this->adv_settings_strct.selected_month_no[y][x]]);
+          if (missionx::adv_settings_strct.selected_dateTime_by_user_arr[y][x])
+            Utils::addElementToMap (mapMonthPicked, missionx::adv_settings_strct.selected_month_no[y][x], mapCalander_days_in_a_month[missionx::adv_settings_strct.selected_month_no[y][x]]);
         }
-      if (mapMonthPicked.empty () || this->adv_settings_strct.flag_checkAnyMonth)
+      if (mapMonthPicked.empty () || missionx::adv_settings_strct.flag_checkAnyMonth)
         out_iClockDayOfYearPicked = Utils::getRandomIntNumber (0, 355);
       else
       {
@@ -2008,9 +2081,9 @@ WinImguiBriefer::generate_mission_date_based_on_user_preference (int &out_iClock
       for (int y = 0; y < 4; y++)
         for (int x = 0; x < 2; x++)
         {
-          if (this->adv_settings_strct.selectedTime[y][x])
+          if (missionx::adv_settings_strct.selectedTime[y][x])
           {
-            const int key = this->adv_settings_strct.selected_time_no[y][x];
+            const int key = missionx::adv_settings_strct.selected_time_no[y][x];
             // #ifndef RELEASE
             //             mx_part_of_day [[maybe_unused]] mxPartOfDay = mapCalander_parts_of_the_day[key]; // debug
             // #endif // !RELEASE
@@ -2019,7 +2092,7 @@ WinImguiBriefer::generate_mission_date_based_on_user_preference (int &out_iClock
           }
         }
 
-      if (this->adv_settings_strct.checkPartOfDay_b || mapTimeInDayPicked.empty ())
+      if (missionx::adv_settings_strct.checkPartOfDay_b || mapTimeInDayPicked.empty ())
         out_iClockHourPicked = Utils::getRandomIntNumber (6, 19); // pick an hour between 06:00 and 19:00
       else // if picked valid hours
       {
@@ -2049,72 +2122,72 @@ WinImguiBriefer::generate_mission_date_based_on_user_preference (int &out_iClock
 
 // -------------------------------------------
 
-void
-WinImguiBriefer::addAdvancedSettingsPropertiesBeforeGeneratingRandomMission ()
-{
-
-  // v25.09.2 Make sure that once you hit the generate button, and you picked x-plane time, we re-read X-Plane clock, especially if the sim is not in pause state
-  if (this->adv_settings_strct.iRadioRandomDateTime_pick == missionx::mx_ui_random_date_time_type::xplane_day_and_time)
-  {
-    this->adv_settings_strct.iClockDayOfYearPicked = dataref_manager::getLocalDateDays (); // strct_user_create_layer.iClockDayOfYearPicked
-    this->adv_settings_strct.iClockHourPicked      = dataref_manager::getLocalHour (); // strct_user_create_layer.iClockHourPicked
-    this->adv_settings_strct.iClockMinutesPicked   = dataref_manager::getLocalMinutes (); // How many minutes passed since the start of the hour
-  }
-
-
-  // v3.303.14 added advance weather/time settings
-  missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_STARTING_DAY (), this->clockDayOfYear_arr[this->adv_settings_strct.iClockDayOfYearPicked]);
-  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_STARTING_HOUR (), mxUtils::stringToNumber<int> (this->clockHours_arr[this->adv_settings_strct.iClockHourPicked]));
-  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_STARTING_MINUTE (), this->adv_settings_strct.iClockMinutesPicked);
-
-  // Added weather information for RandomEngine
-  switch (this->adv_settings_strct.iWeatherType_user_picked)
-  {
-    case missionx::mx_ui_random_weather_options::pick_pre_defined:
-    {
-      // store values in the prop_userDefinedMission_ui. During Random mission generation the weather will be picked from the list
-      missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_WEATHER_USER_PICKED (), this->adv_settings_strct.get_weather_picked_by_user ());
-      missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_WEATHER_CHANGE_MODE_USER_PICKED (), this->adv_settings_strct.get_weather_change_mode_picked_by_user ()); // v3.303.13
-    }
-    break;
-    case missionx::mx_ui_random_weather_options::use_xplane_weather_and_store:
-    {
-      missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_WEATHER_USER_PICKED (), mxconst::get_VALUE_STORE_CURRENT_WEATHER_DATAREFS ());
-      missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_PROP_WEATHER_CHANGE_MODE_USER_PICKED ().c_str ()); // v3.303.13
-    }
-    break;
-    default: // use_xplane_weather - does not store in random.xml file
-    {
-      missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_PROP_WEATHER_USER_PICKED ().c_str ());
-      missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_PROP_WEATHER_CHANGE_MODE_USER_PICKED ().c_str ()); // v3.303.13
-    }
-    break;
-  } // end switch on weather options
-
-  // Add weight setting
-  missionx::data_manager::prop_userDefinedMission_ui.setBoolProperty (mxconst::get_PROP_ADD_DEFAULT_WEIGHTS_TO_PLANE (), this->adv_settings_strct.flag_add_default_weight_settings);
-  if (this->adv_settings_strct.flag_add_default_weight_settings)
-  {
-    missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_OPT_PILOT_BASE_WEIGHT (), this->adv_settings_strct.pilot_base_weight_i);
-    // v25.02.1
-    if (missionx::data_manager::flag_setupUseXP11InventoryUI)
-    {
-      missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_OPT_PASSENGERS_BASE_WEIGHT (), this->adv_settings_strct.passengers_base_weight_i);
-      missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_OPT_STORAGE_BASE_WEIGHT (), this->adv_settings_strct.cargo_base_weight);
-    }
-    else
-    {
-      missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_OPT_PASSENGERS_BASE_WEIGHT ().c_str ());
-      missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_OPT_STORAGE_BASE_WEIGHT ().c_str ());
-    }
-  }
-  else // remove default weight attributes if the "add default wights is not flagged
-  {
-    missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_OPT_PILOT_BASE_WEIGHT ().c_str ());
-    missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_OPT_PASSENGERS_BASE_WEIGHT ().c_str ());
-    missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_OPT_STORAGE_BASE_WEIGHT ().c_str ());
-  }
-}
+// void
+// WinImguiBriefer::addAdvancedSettingsPropertiesBeforeGeneratingRandomMission ()
+// {
+//
+//   // v25.09.2 Make sure that once you hit the generate button, and you picked x-plane time, we re-read X-Plane clock, especially if the sim is not in pause state
+//   if (missionx::adv_settings_strct.iRadioRandomDateTime_pick == missionx::mx_ui_random_date_time_type::xplane_day_and_time)
+//   {
+//     missionx::adv_settings_strct.iClockDayOfYearPicked = dataref_manager::getLocalDateDays (); // strct_user_create_layer.iClockDayOfYearPicked
+//     missionx::adv_settings_strct.iClockHourPicked      = dataref_manager::getLocalHour (); // strct_user_create_layer.iClockHourPicked
+//     missionx::adv_settings_strct.iClockMinutesPicked   = dataref_manager::getLocalMinutes (); // How many minutes passed since the start of the hour
+//   }
+//
+//
+//   // v3.303.14 added advance weather/time settings
+//   missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_STARTING_DAY (), missionx::clockDayOfYear_arr[missionx::adv_settings_strct.iClockDayOfYearPicked]);
+//   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_STARTING_HOUR (), mxUtils::stringToNumber<int> (missionx::clockHours_arr[missionx::adv_settings_strct.iClockHourPicked]));
+//   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_STARTING_MINUTE (), missionx::adv_settings_strct.iClockMinutesPicked);
+//
+//   // Added weather information for RandomEngine
+//   switch (missionx::adv_settings_strct.iWeatherType_user_picked)
+//   {
+//     case missionx::mx_ui_random_weather_options::pick_pre_defined:
+//     {
+//       // store values in the prop_userDefinedMission_ui. During Random mission generation the weather will be picked from the list
+//       missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_WEATHER_USER_PICKED (), missionx::adv_settings_strct.get_weather_picked_by_user ());
+//       missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_WEATHER_CHANGE_MODE_USER_PICKED (), missionx::adv_settings_strct.get_weather_change_mode_picked_by_user ()); // v3.303.13
+//     }
+//     break;
+//     case missionx::mx_ui_random_weather_options::use_xplane_weather_and_store:
+//     {
+//       missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_WEATHER_USER_PICKED (), mxconst::get_VALUE_STORE_CURRENT_WEATHER_DATAREFS ());
+//       missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_PROP_WEATHER_CHANGE_MODE_USER_PICKED ().c_str ()); // v3.303.13
+//     }
+//     break;
+//     default: // use_xplane_weather - does not store in random.xml file
+//     {
+//       missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_PROP_WEATHER_USER_PICKED ().c_str ());
+//       missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_PROP_WEATHER_CHANGE_MODE_USER_PICKED ().c_str ()); // v3.303.13
+//     }
+//     break;
+//   } // end switch on weather options
+//
+//   // Add weight setting
+//   missionx::data_manager::prop_userDefinedMission_ui.setBoolProperty (mxconst::get_PROP_ADD_DEFAULT_WEIGHTS_TO_PLANE (), missionx::adv_settings_strct.flag_add_default_weight_settings);
+//   if (missionx::adv_settings_strct.flag_add_default_weight_settings)
+//   {
+//     missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_OPT_PILOT_BASE_WEIGHT (), missionx::adv_settings_strct.pilot_base_weight_i);
+//     // v25.02.1
+//     if (missionx::data_manager::flag_setupUseXP11InventoryUI)
+//     {
+//       missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_OPT_PASSENGERS_BASE_WEIGHT (), missionx::adv_settings_strct.passengers_base_weight_i);
+//       missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_OPT_STORAGE_BASE_WEIGHT (), missionx::adv_settings_strct.cargo_base_weight);
+//     }
+//     else
+//     {
+//       missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_OPT_PASSENGERS_BASE_WEIGHT ().c_str ());
+//       missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_OPT_STORAGE_BASE_WEIGHT ().c_str ());
+//     }
+//   }
+//   else // remove default weight attributes if the "add default wights is not flagged
+//   {
+//     missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_OPT_PILOT_BASE_WEIGHT ().c_str ());
+//     missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_OPT_PASSENGERS_BASE_WEIGHT ().c_str ());
+//     missionx::data_manager::prop_userDefinedMission_ui.node.deleteAttribute (mxconst::get_OPT_STORAGE_BASE_WEIGHT ().c_str ());
+//   }
+// }
 
 
 // -------------------------------------------
@@ -2123,8 +2196,8 @@ WinImguiBriefer::addAdvancedSettingsPropertiesBeforeGeneratingRandomMission ()
 void
 WinImguiBriefer::refresh_slider_data_based_on_plane_type (missionx::mx_plane_types_enum inPlaneType)
 {
-  strct_user_create_layer.dyn_slider1_lbl = "[" + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[this->strct_user_create_layer.iRadioPlaneType].from_slider_min, 0) + "..." + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[this->strct_user_create_layer.iRadioPlaneType].from_slider_max, 0) + "]";
-  strct_user_create_layer.dyn_slider2_lbl = "[" + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[this->strct_user_create_layer.iRadioPlaneType].to_slider_min, 0) + "..." + Utils::formatNumber<float> (this->mapListPlaneRadioLabel[this->strct_user_create_layer.iRadioPlaneType].to_slider_max, 0) + "]";
+  strct_user_create_layer.dyn_slider1_lbl = "[" + Utils::formatNumber<float> (missionx::mapListPlaneRadioLabel[missionx::strct_user_create_layer.iRadioPlaneType].from_slider_min, 0) + "..." + Utils::formatNumber<float> (missionx::mapListPlaneRadioLabel[missionx::strct_user_create_layer.iRadioPlaneType].from_slider_max, 0) + "]";
+  strct_user_create_layer.dyn_slider2_lbl = "[" + Utils::formatNumber<float> (missionx::mapListPlaneRadioLabel[missionx::strct_user_create_layer.iRadioPlaneType].to_slider_min, 0) + "..." + Utils::formatNumber<float> (missionx::mapListPlaneRadioLabel[missionx::strct_user_create_layer.iRadioPlaneType].to_slider_max, 0) + "]";
 
   this->validate_sliders_values (inPlaneType);
 }
@@ -2190,7 +2263,6 @@ WinImguiBriefer::print_tasks_ui_debug_info (missionx::Objective &inObj)
   const auto lmbda_print_task_info = [&] (const int inTreeId_i, const std::string &taskName, std::string &tasksInfo)
   {
     auto &tsk = inObj.mapTasks[taskName];
-    // tasksInfo = inObj.mapTasks[taskName].to_string_ui(); // v3.305.3 deprecated, we override it with the lmbda below
 
     tasksInfo = lmbda_task_state_info (inObj, taskName);
 
@@ -2243,7 +2315,6 @@ WinImguiBriefer::print_tasks_ui_debug_info (missionx::Objective &inObj)
     auto &tsk = inObj.mapTasks[taskName];
     tasksInfo = inObj.mapTasks[taskName].to_string_ui ();
     tasksInfo = lmbda_task_state_info (inObj, taskName);
-    // tasksInfo = "\t" + lmbda_task_state_info(inObj, taskName);
 
     lmbda_print_task_info (treeId_i, taskName, tasksInfo);
 
@@ -2726,9 +2797,9 @@ WinImguiBriefer::add_ui_simbrief_pilot_id ()
 {
   const auto lmbda_save_simbrief_settings = [&] ()
   {
-    Utils::xml_search_and_set_node_text (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SIMBRIEF_PILOT_ID (), std::string (this->strct_setup_layer.buf_simbrief_pilot_id), this->mxcode.STRING, true);
+    Utils::xml_search_and_set_node_text (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SIMBRIEF_PILOT_ID (), std::string (missionx::strct_setup_layer.buf_simbrief_pilot_id), this->mxcode.STRING, true);
     // v26.04.1
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_SETUP_SIMBRIEF_AUTO_LOAD_INTO_NOTES(), this->strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes);
+    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_SETUP_SIMBRIEF_AUTO_LOAD_INTO_NOTES(), missionx::strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes);
     // save changes
     missionx::system_actions::store_plugin_options();
 
@@ -2744,7 +2815,7 @@ WinImguiBriefer::add_ui_simbrief_pilot_id ()
     ImGui::SameLine ();
 
     ImGui::SetNextItemWidth (120.0f);
-    if (ImGui::InputTextWithHint ("##SimbriefPilotID", "Simbrief Pilot ID", this->strct_setup_layer.buf_simbrief_pilot_id, sizeof (this->strct_setup_layer.buf_simbrief_pilot_id), ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_EnterReturnsTrue))
+    if (ImGui::InputTextWithHint ("##SimbriefPilotID", "Simbrief Pilot ID", missionx::strct_setup_layer.buf_simbrief_pilot_id, sizeof (missionx::strct_setup_layer.buf_simbrief_pilot_id), ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_EnterReturnsTrue))
       lmbda_save_simbrief_settings ();
     ImGui::SameLine ();
     if (ImGui::Button ("Save##SaveSimBriefButton"))
@@ -2753,7 +2824,7 @@ WinImguiBriefer::add_ui_simbrief_pilot_id ()
     // v26.04.1
     missionx::WinImguiBriefer::HelpMarker (R"(When fetching the Simbrief flight plan, parts of the extra data will be written into the "notes" fields.)");
     ImGui::SameLine();
-    if (ImGui::Checkbox(R"(Autoload extra data into the "notes" fields.)", &this->strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes))
+    if (ImGui::Checkbox(R"(Autoload extra data into the "notes" fields.)", &missionx::strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes))
       lmbda_save_simbrief_settings ();
   }
   this->mxUiReleaseLastFont ();
@@ -2813,24 +2884,18 @@ void
 WinImguiBriefer::add_ui_pick_subcategories (const std::vector<const char *> &vecToDisplay)
 {
   // iMissionSubCategoryPicked should always be smaller than the vecToDisplay.size () because the numbering starts in "0"
-  if (static_cast<int> (vecToDisplay.size ()) <= this->strct_user_create_layer.iMissionSubCategoryPicked || this->strct_user_create_layer.iMissionSubCategoryPicked < 0)
+  if (static_cast<int> (vecToDisplay.size ()) <= missionx::strct_user_create_layer.iMissionSubCategoryPicked || missionx::strct_user_create_layer.iMissionSubCategoryPicked < 0)
   {
-    this->strct_user_create_layer.iMissionSubCategoryPicked = 0;
-    // missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_MISSION_SUBCATEGORY_LBL (), vecToDisplay.at (this->strct_user_create_layer.iMissionSubCategoryPicked));
+    missionx::strct_user_create_layer.iMissionSubCategoryPicked = 0;
   }
 
   missionx::WinImguiBriefer::HelpMarker ("Pick one of the sub categories");
   ImGui::SameLine ();
-  // auto vecToDisplay = this->mapMissionCategories[this->strct_user_create_layer.iRadioMissionTypePicked];
   ImGui::SetNextItemWidth (250.0f);
-  // if (ImGui::Combo ("##mission_subcategory", &this->strct_user_create_layer.iMissionSubCategoryPicked, vecToDisplay.data (), static_cast<int> (vecToDisplay.size ())))
-  // { // always store the subcategory value - NOT FPS friendly
-  //   missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_MISSION_SUBCATEGORY_LBL (), vecToDisplay.at (this->strct_user_create_layer.iMissionSubCategoryPicked));
-  // }
 
   // display combo and always store picked value
-  ImGui::Combo ("##mission_subcategory", &this->strct_user_create_layer.iMissionSubCategoryPicked, vecToDisplay.data (), static_cast<int> (vecToDisplay.size ()));
-  missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_MISSION_SUBCATEGORY_LBL (), vecToDisplay.at (this->strct_user_create_layer.iMissionSubCategoryPicked));
+  ImGui::Combo ("##mission_subcategory", &missionx::strct_user_create_layer.iMissionSubCategoryPicked, vecToDisplay.data (), static_cast<int> (vecToDisplay.size ()));
+  missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_MISSION_SUBCATEGORY_LBL (), vecToDisplay.at (missionx::strct_user_create_layer.iMissionSubCategoryPicked));
 }
 
 // -------------------------------------------
@@ -2842,55 +2907,55 @@ WinImguiBriefer::add_ui_auto_load_checkbox (const missionx::mx_window_actions &i
   ImGui::SameLine (0.0f, 10.0f);
   missionx::WinImguiBriefer::HelpMarker ("On flight start, the GPS waypoints will be loaded.\nThe setting will be saved into the preference file.", missionx::color::color_vec4_aqua);
   ImGui::SameLine ();
-  if (ImGui::Checkbox ("Auto Load Route.\n(not advisable for FMS)", &this->strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms)) // v25.04.2
+  if (ImGui::Checkbox ("Auto Load Route.\n(not advisable for FMS)", &missionx::strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms)) // v25.04.2
   {
     // ADD set option value
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), this->strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms);
+    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), missionx::strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms);
     this->execAction (inActionToExecute);
   }
 }
 // -------------------------------------------
 
-int
-WinImguiBriefer::add_ui_two_option_buttons (bool &bOptA, bool &bOptB, const int &returnValueForA, const int &returnValueForB)
-{
-  // Default colors are for the IFR
-  const ImVec4 picked_color = missionx::color::color_vec4_green;
-  const ImVec4 unpicked_color = missionx::color::color_vec4_gray;
-
-  ImVec4 option_A_button_color = picked_color;
-  ImVec4 option_B_button_color = unpicked_color;
-
-  if (this->strct_ils_layer.isVFR)
-  {
-    option_A_button_color = unpicked_color;
-    option_B_button_color = picked_color;
-  }
-
-  ImGui::PushStyleColor (ImGuiCol_Button, option_A_button_color);
-  if (ImGui::Button (" IFR "))
-  {
-    bOptA = true;
-    bOptB = false;
-  }
-  ImGui::PopStyleColor (1);
-
-  ImGui::SameLine (0.0f, 5.0f);
-
-  ImGui::PushStyleColor (ImGuiCol_Button, option_B_button_color);
-  if (ImGui::Button (" VFR "))
-  {
-    bOptA = false;
-    bOptB = true;
-  }
-  ImGui::PopStyleColor (1);
-
-  // We have to return a value even if no button was pressed
-  if (bOptA)
-    return returnValueForA;
-
-  return returnValueForB;
-}
+//int
+//WinImguiBriefer::add_ui_two_option_buttons (bool &bOptA, bool &bOptB, const int &returnValueForA, const int &returnValueForB)
+//{
+//  // Default colors are for the IFR
+//  const ImVec4 picked_color = missionx::color::color_vec4_green;
+//  const ImVec4 unpicked_color = missionx::color::color_vec4_gray;
+//
+//  ImVec4 option_A_button_color = picked_color;
+//  ImVec4 option_B_button_color = unpicked_color;
+//
+//  if (missionx::strct_ils_layer.isVFR)
+//  {
+//    option_A_button_color = unpicked_color;
+//    option_B_button_color = picked_color;
+//  }
+//
+//  ImGui::PushStyleColor (ImGuiCol_Button, option_A_button_color);
+//  if (ImGui::Button (" IFR "))
+//  {
+//    bOptA = true;
+//    bOptB = false;
+//  }
+//  ImGui::PopStyleColor (1);
+//
+//  ImGui::SameLine (0.0f, 5.0f);
+//
+//  ImGui::PushStyleColor (ImGuiCol_Button, option_B_button_color);
+//  if (ImGui::Button (" VFR "))
+//  {
+//    bOptA = false;
+//    bOptB = true;
+//  }
+//  ImGui::PopStyleColor (1);
+//
+//  // We have to return a value even if no button was pressed
+//  if (bOptA)
+//    return returnValueForA;
+//
+//  return returnValueForB;
+//}
 
 // -------------------------------------------
 
@@ -2965,31 +3030,31 @@ void WinImguiBriefer::add_ui_fps()
 
 // -------------------------------------------
 
-
-void
-WinImguiBriefer::callNavData (std::string_view inICAO, bool bNavigatingFromOtherLayer) // v24.03.1
-{
-  if (this->strct_ils_layer.fetch_nav_state != missionx::mxFetchState_enum::fetch_in_process)
-  {
-    this->strct_ils_layer.sNavICAO = inICAO;
-
-    auto size = sizeof this->strct_ils_layer.buf1;
-#ifdef IBM
-    strncpy_s (this->strct_ils_layer.buf1, sizeof this->strct_ils_layer.buf1, inICAO.data (), sizeof this->strct_ils_layer.buf1);
-#else
-    strncpy (this->strct_ils_layer.buf1, inICAO.data (), sizeof (this->strct_ils_layer.buf1) - 1);
-#endif
-    this->strct_ils_layer.flagForceNavDataTab = true;
-
-    this->strct_ils_layer.fetch_nav_state = missionx::mxFetchState_enum::fetch_not_started;
-    this->execAction (mx_window_actions::ACTION_FETCH_NAV_INFORMATION);
-
-    if (bNavigatingFromOtherLayer)
-      this->execAction (missionx::mx_window_actions::ACTION_OPEN_NAV_LAYER);
-  }
-  else
-    this->setMessage ("A previous request is running in the background.");
-}
+//
+//void
+//WinImguiBriefer::callNavData (std::string_view inICAO, bool bNavigatingFromOtherLayer) // v24.03.1
+//{
+//  if (missionx::strct_ils_layer.fetch_nav_state != missionx::mxFetchState_enum::fetch_in_process)
+//  {
+//    missionx::strct_ils_layer.sNavICAO = inICAO;
+//
+//    auto size = sizeof missionx::strct_ils_layer.buf1;
+//#ifdef IBM
+//    strncpy_s (missionx::strct_ils_layer.buf1, sizeof missionx::strct_ils_layer.buf1, inICAO.data (), sizeof missionx::strct_ils_layer.buf1);
+//#else
+//    strncpy (missionx::strct_ils_layer.buf1, inICAO.data (), sizeof (missionx::strct_ils_layer.buf1) - 1);
+//#endif
+//    missionx::strct_ils_layer.flagForceNavDataTab = true;
+//
+//    missionx::strct_ils_layer.fetch_nav_state = missionx::mxFetchState_enum::fetch_not_started;
+//    this->execAction (mx_window_actions::ACTION_FETCH_NAV_INFORMATION);
+//
+//    if (bNavigatingFromOtherLayer)
+//      this->execAction (missionx::mx_window_actions::ACTION_OPEN_NAV_LAYER);
+//  }
+//  else
+//    this->setMessage ("A previous request is running in the background.");
+//}
 
 // -------------------------------------------
 
@@ -3018,27 +3083,27 @@ void WinImguiBriefer::add_ui_semi_act_phase_1_pick()
           // Display big ICON image
           if (ImGui::ImageButton (btn_info.imgName.c_str(), data_manager::mapCachedPluginTextures[btn_info.imgName].gTexture, VEC2_BTN_SIZE))
           {
-            this->strct_user_create_layer.user_semi_act_picked = btn_info;
-            this->strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_accept;
+            missionx::strct_user_create_layer.user_semi_act_picked = btn_info;
+            missionx::strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_accept;
 
             // ---------------
             // Randomize max distance to use with the "tweak" slider
             // ---------------
-            this->strct_user_create_layer.user_semi_act_picked.randomize_max_distance();
+            missionx::strct_user_create_layer.user_semi_act_picked.randomize_max_distance();
             // ------------------------
             // Randomize how many "Flight Legs" to generate based on activity type
             // ------------------------
-            strct_user_create_layer.iNumberOfFlighLegs = this->strct_user_create_layer.user_semi_act_picked.randomize_no_of_legs();
+            strct_user_create_layer.iNumberOfFlighLegs = missionx::strct_user_create_layer.user_semi_act_picked.randomize_no_of_legs();
 
             // prepare detail description for "add_ui_semi_act_phase_2_detail()" function
-            this->strct_user_create_layer.user_semi_act_picked.prepare_the_semi_activity_description();
+            missionx::strct_user_create_layer.user_semi_act_picked.prepare_the_semi_activity_description();
 
             // web osm
-            if (this->strct_user_create_layer.user_semi_act_picked.activity == enums::mx_semi_activities_enum::act_helos_medevac_accident
-              || this->strct_user_create_layer.user_semi_act_picked.activity == enums::mx_semi_activities_enum::act_helos_medevac_surprise_me)
-              this->strct_user_create_layer.flag_use_web_osm          = true;
+            if (missionx::strct_user_create_layer.user_semi_act_picked.activity == enums::mx_semi_activities_enum::act_helos_medevac_accident
+              || missionx::strct_user_create_layer.user_semi_act_picked.activity == enums::mx_semi_activities_enum::act_helos_medevac_surprise_me)
+              missionx::strct_user_create_layer.flag_use_web_osm          = true;
             else
-              this->strct_user_create_layer.flag_use_web_osm          = false;
+              missionx::strct_user_create_layer.flag_use_web_osm          = false;
 
           }
           if (!btn_info.tip.empty ())
@@ -3086,8 +3151,8 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
     this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
     if (ImgWindow::ButtonTooltip(mxUtils::from_u8string(ICON_FA_REPLY).append("##BackButtonInSetup").c_str(), "Back", IM_COL32(255, 255, 0, 255), IM_COL32(0, 0, 0, 255), VEC2_BACK_BTN_SIZE)) //
     {
-      this->strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_pick;
-      this->strct_user_create_layer.user_semi_act_picked.reset();
+      missionx::strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_pick;
+      missionx::strct_user_create_layer.user_semi_act_picked.reset();
     }
     this->mxUiReleaseLastFont();
 
@@ -3097,7 +3162,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
     ImGui::TextColored(missionx::color::color_vec4_yellow, "%s", "Description");
     this->mxUiReleaseLastFont();
 
-    const auto table_flags = (this->strct_user_create_layer.user_semi_act_picked.activity != enums::mx_semi_activities_enum::act_helos_medevac_surprise_me)? ImGuiTableFlags_SizingFixedFit : ImGuiTableFlags_SizingStretchProp;
+    const auto table_flags = (missionx::strct_user_create_layer.user_semi_act_picked.activity != enums::mx_semi_activities_enum::act_helos_medevac_surprise_me)? ImGuiTableFlags_SizingFixedFit : ImGuiTableFlags_SizingStretchProp;
 
     ImGui::BeginTable("mission_description#table_phase2_detail", 2, table_flags);
     {
@@ -3106,12 +3171,12 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
       ImGui::TableNextColumn();
       {
         //  Display button image
-        ImGui::Image(data_manager::mapCachedPluginTextures[this->strct_user_create_layer.user_semi_act_picked.imgName].gTexture, VEC2_IMAGE_BTN_SIZE);
+        ImGui::Image(data_manager::mapCachedPluginTextures[missionx::strct_user_create_layer.user_semi_act_picked.imgName].gTexture, VEC2_IMAGE_BTN_SIZE);
       }
       ImGui::TableNextColumn();
       {
         this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG()); // set font size
-          ImGui::Text("%s", this->strct_user_create_layer.user_semi_act_picked.desc.c_str());
+          ImGui::Text("%s", missionx::strct_user_create_layer.user_semi_act_picked.desc.c_str());
         this->mxUiReleaseLastFont();
 
         // Display special message for SurpriseMe missions
@@ -3147,12 +3212,12 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
       }
       else if (!bPickedOilRigMission && !bPickedMedevacSurpriseMeMission)
       {
-        ImGui::Checkbox ("Start from plane position", &this->strct_cross_layer_properties.flag_start_from_plane_position);
+        ImGui::Checkbox ("Start from plane position", &missionx::strct_cross_layer_properties.flag_start_from_plane_position);
         ImGui::Spacing ();
       }
 
-      this->strct_user_create_layer.mapSemiOptionsHeaders[this->strct_user_create_layer.headerIndex].setState((ImGui::CollapsingHeader(this->strct_user_create_layer.mapSemiOptionsHeaders[this->strct_user_create_layer.headerIndex].title.c_str())));
-      if (this->strct_user_create_layer.mapSemiOptionsHeaders[this->strct_user_create_layer.headerIndex].bState)
+      missionx::strct_user_create_layer.mapSemiOptionsHeaders[missionx::strct_user_create_layer.headerIndex].setState((ImGui::CollapsingHeader(missionx::strct_user_create_layer.mapSemiOptionsHeaders[missionx::strct_user_create_layer.headerIndex].title.c_str())));
+      if (missionx::strct_user_create_layer.mapSemiOptionsHeaders[missionx::strct_user_create_layer.headerIndex].bState)
       {
         if (!bPickedOilRigMission && !bPickedMedevacSurpriseMeMission)
         {
@@ -3160,23 +3225,17 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
           // -- Restrict max distance
           // ------------------------
           // sliders
-          // We will the "strct_user_create_layer.user_semi_act_picked.max_distance_slider" to hold the max distance. This parameter is shared with "option a"
-
+          // We will use the "strct_user_create_layer.user_semi_act_picked.max_distance_slider" to hold the max distance. This parameter is shared with "option a"
           ImGui::TextColored ( missionx::color::color_vec4_yellow, "%s", "Pick Maximum Flight Leg Distance: ");
-          if (ImGui::SliderFloat ("##tweak_max_distance", &strct_user_create_layer.user_semi_act_picked.max_distance_slider_f, this->strct_user_create_layer.user_semi_act_picked.distance_min_max.lowest_max, this->strct_user_create_layer.user_semi_act_picked.distance_min_max.max, "%.2f nm"))
+          if (ImGui::SliderFloat ("##tweak_max_distance", &strct_user_create_layer.user_semi_act_picked.max_distance_slider_f, missionx::strct_user_create_layer.user_semi_act_picked.distance_min_max.lowest_max, missionx::strct_user_create_layer.user_semi_act_picked.distance_min_max.max, "%.2f nm"))
           {
-            // v26.04.2 deprecated. We define the "lowest max" value in the "st_distance" struct.
-            //// validate 10nm buffer between max slider and minimum distance
-            //if (strct_user_create_layer.user_semi_act_picked.max_distance_slider_f - 10.0f < this->strct_user_create_layer.user_semi_act_picked.distance_min_max.min )
-            //  strct_user_create_layer.user_semi_act_picked.max_distance_slider_f = this->strct_user_create_layer.user_semi_act_picked.distance_min_max.min + 10.0f;
-
             // refresh description
             strct_user_create_layer.user_semi_act_picked.prepare_the_semi_activity_description();
           }
         } // end oilrig and distance restriction
 
         // Customize the number of flight legs to generate.
-        WinImguiBriefer::add_ui_pick_how_many_legs(strct_user_create_layer.iNumberOfFlighLegs, "How Many Flight Legs ? ", this->strct_user_create_layer.user_semi_act_picked.legs_min_max.min, this->strct_user_create_layer.user_semi_act_picked.legs_min_max.max);
+        WinImguiBriefer::add_ui_pick_how_many_legs(strct_user_create_layer.iNumberOfFlighLegs, "How Many Flight Legs ? ", missionx::strct_user_create_layer.user_semi_act_picked.legs_min_max.min, missionx::strct_user_create_layer.user_semi_act_picked.legs_min_max.max);
       }
 
       ImGui::Spacing();
@@ -3204,14 +3263,14 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
     // Add Advance Configuration Button
     ImGui::NewLine();
     ImGui::SameLine(win_width_f - 230.0f);
-    this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked);
+    this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked);
 
     // Add [generate] button
     ImGui::SameLine(10.0f);
     this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
     {
 
-      if (missionx::data_manager::flag_generate_engine_is_running && this->sBottomMessage.empty())
+      if (missionx::data_manager::flag_generate_engine_is_running && missionx::sBottomMessage.empty())
       {
         this->setMessage("Random Engine is running, please wait...");
       }
@@ -3226,7 +3285,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
         bRerunRandomDateTime = add_ui_checkbox_rerun_random_date_and_time();
         ImGui::SameLine();
 
-        this->flag_generatedRandomFile_success = false;        
+        missionx::flag_generatedRandomFile_success = false;        
 
         // -----------------------
         // DISPLAY GENERATE BUTTON
@@ -3238,26 +3297,23 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
             this->execAction(missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
 
           // set template
-          this->strct_generate_template_layer.selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI();
-
+          missionx::strct_generate_template_layer.selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI();
 
           // ---------------------
           // Prepare layer data to be compatible with the - 
           // "action_prepare_dynamic_mission_properties_and_call_generate_action()" function properties
           // ---------------------
           
-          // type of mission
-          
-          //if (this->strct_user_create_layer.user_semi_act_picked.activity <= missionx::enums::mx_semi_activities_enum::act_helos_medevac_oilrig)
-          if (mxUtils::mx_between<missionx::enums::mx_semi_activities_enum>(this->strct_user_create_layer.user_semi_act_picked.activity, missionx::enums::mx_semi_activities_enum::act_none, missionx::enums::mx_semi_activities_enum::act_helos_medevac_oilrig, missionx::enums::mx_between_types::gt_min_eqles_max))
+          // type of mission          
+          if (mxUtils::mx_between<missionx::enums::mx_semi_activities_enum>(missionx::strct_user_create_layer.user_semi_act_picked.activity, missionx::enums::mx_semi_activities_enum::act_none, missionx::enums::mx_semi_activities_enum::act_helos_medevac_oilrig, missionx::enums::mx_between_types::gt_min_eqles_max))
             strct_user_create_layer.iRadioMissionTypePicked = 2; // oilrig
-          else if (this->strct_user_create_layer.user_semi_act_picked.activity < missionx::enums::mx_semi_activities_enum::act_props)
+          else if (missionx::strct_user_create_layer.user_semi_act_picked.activity < missionx::enums::mx_semi_activities_enum::act_props)
             strct_user_create_layer.iRadioMissionTypePicked = 0; // medevac
           else
             strct_user_create_layer.iRadioMissionTypePicked = 1; // cargo
 
           // subcategory
-          switch (this->strct_user_create_layer.user_semi_act_picked.activity)
+          switch (missionx::strct_user_create_layer.user_semi_act_picked.activity)
           {
           case missionx::enums::mx_semi_activities_enum::act_helos_medevac_accident:
             strct_user_create_layer.iMissionSubCategoryPicked = 1; // 0: any location, 1: accident, 2: surprise me
@@ -3275,11 +3331,11 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
           } // end switch subcategory
 
           // set plane type
-          strct_user_create_layer.iRadioPlaneType = this->strct_user_create_layer.user_semi_act_picked.plane_type;
+          strct_user_create_layer.iRadioPlaneType = missionx::strct_user_create_layer.user_semi_act_picked.plane_type;
 
           // set min/max distances
-          const auto [min, low_max, max] = this->strct_user_create_layer.user_semi_act_picked.get_mission_area();
-          this->action_prepare_dynamic_mission_properties_and_call_generate_action(min, max, this->strct_cross_layer_properties.flag_start_from_plane_position);
+          const auto [min, low_max, max] = missionx::strct_user_create_layer.user_semi_act_picked.get_mission_area();
+          this->action_prepare_dynamic_mission_properties_and_call_generate_action(min, max, missionx::strct_cross_layer_properties.flag_start_from_plane_position);
 
         } // end [generate button]
 
@@ -3299,7 +3355,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
         // -----------------------
         // DISPLAY [START] & [WARNING]
         // -----------------------
-        ImGui::SameLine((mxUiGetContentWidth() * 0.40f) - (ImGui::CalcTextSize(this->LBL_START_MISSION.c_str()).x * 0.5f));
+        ImGui::SameLine((mxUiGetContentWidth() * 0.40f) - (ImGui::CalcTextSize(missionx::LBL_START_MISSION.c_str()).x * 0.5f));
         this->add_ui_start_mission_button(missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
 
         this->add_ui_warning_messages_button(); // v26.1.1. Also change the "start" button position to clear space for the warning button.
@@ -3311,7 +3367,6 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
 
   } // end footer button group
   ImGui::EndGroup();
-
 
 }
 
@@ -3353,7 +3408,7 @@ Filter options:
 )", missionx::color::color_vec4_aqua);
   ImGui::SameLine ();
   ImGui::TextColored (missionx::color::color_vec4_yellow, "Choose a region to search for oil rigs:");
-  missionx::data_manager::ui_oilrig_globe_part_i = add_ui_dynamic_options_buttons (missionx::data_manager::ui_oilrig_globe_part_i, this->strct_user_create_layer.map_pick_oilrig_globe_part);
+  missionx::data_manager::ui_oilrig_globe_part_i = add_ui_dynamic_options_buttons (missionx::data_manager::ui_oilrig_globe_part_i, missionx::strct_user_create_layer.map_pick_oilrig_globe_part);
   ImGui::NewLine ();
 
 }
@@ -3378,7 +3433,7 @@ void WinImguiBriefer::add_ui_medevac_surprise_me_warning()
 void
 WinImguiBriefer::setMessage (const std::string &inMsg, int secToDisplayMessage)
 {
-  this->sBottomMessage = inMsg;
+  missionx::sBottomMessage = inMsg;
   missionx::Timer::start (this->timerMessage, static_cast<float> (secToDisplayMessage));
 }
 
@@ -3387,7 +3442,7 @@ WinImguiBriefer::setMessage (const std::string &inMsg, int secToDisplayMessage)
 void
 WinImguiBriefer::clearMessage ()
 {
-  this->sBottomMessage.clear ();
+  missionx::sBottomMessage.clear ();
   missionx::data_manager::set_found_missing_3D_object_files (false); // v3.0.255.3 reset missing 3D files state
 }
 
@@ -3396,7 +3451,6 @@ WinImguiBriefer::clearMessage ()
 void
 WinImguiBriefer::refreshNewMapsAndImages (missionx::Waypoint &inLeg)
 {
-  // for (auto& [mapName, mapNode] : data_manager::mapFlightLegs[data_manager::currentLegName].map2DMapsNodes) // v3.0.241.7.1
   for (auto &[mapName, mapNode] : inLeg.map2DMapsNodes)
   {
     if (mxUtils::isElementExists (data_manager::mapCurrentMissionTextures, mapName) == false) // if map keyName does not exists
@@ -3507,7 +3561,7 @@ WinImguiBriefer::draw_top_toolbar ()
     this->mxUiReleaseLastFont ();
 
     ///////// SETUP BUTTON
-    if (this->currentLayer != missionx::uiLayer_enum::option_setup_layer && this->currentLayer != missionx::uiLayer_enum::imgui_home_layer && !this->strct_ils_layer.flagNavigatedFromOtherLayer)
+    if (this->currentLayer != missionx::uiLayer_enum::option_setup_layer && this->currentLayer != missionx::uiLayer_enum::imgui_home_layer && !missionx::strct_ils_layer.flagNavigatedFromOtherLayer)
     {
       ImGui::SameLine (0.01f); // v3.0.253.9.1 we set to 0.01 since 0.0f do not display in popout window
 
@@ -3517,17 +3571,17 @@ WinImguiBriefer::draw_top_toolbar ()
       }
       this->mx_add_tooltip (missionx::color::color_vec4_white, "Setup Screen");
     }
-    else if ((this->currentLayer == missionx::uiLayer_enum::option_setup_layer && this->currentLayer != this->prevBrieferLayer) || this->strct_ils_layer.flagNavigatedFromOtherLayer)
+    else if ((this->currentLayer == missionx::uiLayer_enum::option_setup_layer && this->currentLayer != this->prevBrieferLayer) || missionx::strct_ils_layer.flagNavigatedFromOtherLayer)
     {
       ImGui::SameLine (0.01f); // v3.0.253.9.1 we set to 0.01 since 0.0f do not display in popout window // should be beginning of toolbar
 
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
       if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_REPLY).append ("##BackButtonInSetup").c_str (), "Back", IM_COL32 (255, 255, 0, 255), IM_COL32 (0, 0, 0, 255), ImVec2 (32.0f, 32.0f))) //
       {
-        this->strct_ils_layer.flagNavigatedFromOtherLayer = false; // v24025
+        missionx::strct_ils_layer.flagNavigatedFromOtherLayer = false; // v24025
         // change to last prev layer
         this->setLayer (this->prevBrieferLayer);
-        this->strct_setup_layer.is_first_time = true; // v3.0.253.6 force re-read of first time values like "overpass url" from options map
+        missionx::strct_setup_layer.is_first_time = true; // v3.0.253.6 force re-read of first time values like "overpass url" from options map
       }
       this->mxUiReleaseLastFont ();
 
@@ -3602,10 +3656,10 @@ WinImguiBriefer::draw_top_toolbar ()
     ImGui::SameLine ((win_width / 2.0f) - (vec2_sizeTopBtn.x / 2.0f));
     if (ImGui::ImageButton ("HomeButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_HOME ()].gTexture, this->vec2_sizeTopBtn)) // Home Button (will navigate dependent of the
     {
-      this->strct_generate_template_layer.user_pick_from_replaceOptions_combo_i = mxconst::INT_UNDEFINED; // v3.0.255.4 reset user pick
-      this->strct_ils_layer.flagNavigatedFromOtherLayer                         = false; // v24025
+      missionx::strct_generate_template_layer.user_pick_from_replaceOptions_combo_i = mxconst::INT_UNDEFINED; // v3.0.255.4 reset user pick
+      missionx::strct_ils_layer.flagNavigatedFromOtherLayer                         = false; // v24025
       this->strct_ext_layer.ext_screen                                          = mx_ext_fpln_screen::ext_home; // v25.03.3 reset external fpln to main screen
-      this->strct_user_create_layer.child_screen = mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_home; // v26.04.1
+      missionx::strct_user_create_layer.child_screen = mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_home; // v26.04.1
 
       switch (this->currentLayer)
       {
@@ -3794,7 +3848,6 @@ WinImguiBriefer::popup_draw_quit_mission (std::string_view inPopupWindowName)
         ImGui::Spacing ();
 
         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-        // ImGui::SetWindowFontScale(1.1f);
         if (ImGui::Button (std::string ("Yes Quit " + Utils::from_u8string (ICON_FA_SIGN_OUT_ALT)).c_str (), ImVec2 (90, 0)))
         {
           ImGui::CloseCurrentPopup ();
@@ -3817,8 +3870,6 @@ WinImguiBriefer::popup_draw_quit_mission (std::string_view inPopupWindowName)
         {
           ImGui::CloseCurrentPopup ();
         }
-
-        // ImGui::SetWindowFontScale(1.0f);
 
         ImGui::PopStyleColor (iStyle); // pop out before EndPopup
 
@@ -3916,7 +3967,7 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
           ImGui::TextColored (missionx::color::color_vec4_yellow, "Pick your preferred plane:");
           ImGui::NewLine ();
           int radio_btn_counter = 0;
-          for (const auto &planeTypeLabel : this->mapListPlaneRadioLabel | std::views::values) // v24.12.1
+          for (const auto &planeTypeLabel : missionx::mapListPlaneRadioLabel | std::views::values) // v24.12.1
           {
             if (planeTypeLabel.type == mx_plane_types_enum::plane_type_ga_floats)
               continue;
@@ -3939,30 +3990,30 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
             ImGui::SameLine ();
           }
 
-          ImGui::Checkbox ("Start from plane position", &this->strct_cross_layer_properties.flag_start_from_plane_position); // v3.0.253.11
+          ImGui::Checkbox ("Start from plane position", &missionx::strct_cross_layer_properties.flag_start_from_plane_position); // v3.0.253.11
           ImGui::Spacing ();
           ImgWindow::mxUiHelpMarker (missionx::color::color_vec4_aqua, "Will create a Departure and Arrival entries.");
           ImGui::SameLine ();
-          ImGui::Checkbox ("Generate GPS waypoints.", &this->strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12
+          ImGui::Checkbox ("Generate GPS waypoints.", &missionx::strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12
 
-          if (this->getCurrentLayer () == missionx::uiLayer_enum::flight_leg_info && this->strct_cross_layer_properties.flag_generate_gps_waypoints)
+          if (this->getCurrentLayer () == missionx::uiLayer_enum::flight_leg_info && missionx::strct_cross_layer_properties.flag_generate_gps_waypoints)
           {
             ImGui::Spacing ();
             ImGui::SameLine (0.0f, 10.0f);
             ImgWindow::mxUiHelpMarker (missionx::color::color_vec4_aqua, R"(Add the "Route Waypoints" to the Flight Plan.)");
             ImGui::SameLine ();
-            ImGui::Checkbox ("Add Route Waypoints.", &this->strct_cross_layer_properties.flag_add_route_waypoints); // v25.04.2
+            ImGui::Checkbox ("Add Route Waypoints.", &missionx::strct_cross_layer_properties.flag_add_route_waypoints); // v25.04.2
           }
           this->add_ui_auto_load_checkbox (); // v25.04.2
 
 
           ImGui::Spacing (); // v3.303.14.2 added default weight to the generate screen
-          ImGui::Checkbox ("Add default base weights.\n(Not advisable for planes > GAs)", &this->adv_settings_strct.flag_add_default_weight_settings);
+          ImGui::Checkbox ("Add default base weights.\n(Not advisable for planes > GAs)", &missionx::adv_settings_strct.flag_add_default_weight_settings);
           // v25.04.1
           ImGui::Spacing ();
-          this->add_ui_pick_subcategories (this->mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]);
+          this->add_ui_pick_subcategories (missionx::mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]);
           ImGui::Spacing ();
-          this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked);
+          this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked);
           ImGui::Spacing (); // v24.03.2
           add_designer_mode_checkbox (); // v24.03.2 Designer mode flag
         }
@@ -3988,18 +4039,18 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
 
           missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_FPLN_ID_PICKED (), picked_fpln_id_i);
           missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_PLANE_TYPE_I (), static_cast<int>( plane_type_i) );
-          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_START_FROM_PLANE_POSITION (), this->strct_cross_layer_properties.flag_start_from_plane_position); // v3.0.253.11 start from plane position
-          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), this->strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12 generate GPS waypoints
-          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), this->strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms); // v25.04.2
+          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_START_FROM_PLANE_POSITION (), missionx::strct_cross_layer_properties.flag_start_from_plane_position); // v3.0.253.11 start from plane position
+          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), missionx::strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12 generate GPS waypoints
+          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), missionx::strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms); // v25.04.2
 
           // v24.03.1 Sub Category Text
           // Store the label of the sub category, if the vector has the data
-          if (const auto vecToDisplay = this->mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]; static_cast<int>( vecToDisplay.size () ) > this->strct_user_create_layer.iMissionSubCategoryPicked)
-            missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_MISSION_SUBCATEGORY_LBL (), vecToDisplay.at (this->strct_user_create_layer.iMissionSubCategoryPicked));
+          if (const auto vecToDisplay = missionx::mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]; static_cast<int>( vecToDisplay.size () ) > missionx::strct_user_create_layer.iMissionSubCategoryPicked)
+            missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_MISSION_SUBCATEGORY_LBL (), vecToDisplay.at (missionx::strct_user_create_layer.iMissionSubCategoryPicked));
 
           // v25.04.2 check layer and add route waypoints
           auto current_layer = this->getCurrentLayer ();
-          if (this->getCurrentLayer () == missionx::uiLayer_enum::flight_leg_info && this->strct_cross_layer_properties.flag_add_route_waypoints)
+          if (this->getCurrentLayer () == missionx::uiLayer_enum::flight_leg_info && missionx::strct_cross_layer_properties.flag_add_route_waypoints)
           {
             // add the FMS waypoint
             if (!mxUtils::trim (std::string (this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints])).empty ())
@@ -4016,9 +4067,9 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
             missionx::data_manager::prop_userDefinedMission_ui.addChildText (mxconst::get_PROP_ADD_ROUTE_WAYPOINTS (), "false"); // v25.10.2
           }
 
-          this->addAdvancedSettingsPropertiesBeforeGeneratingRandomMission ();
+          missionx::addAdvancedSettingsPropertiesBeforeGeneratingRandomMission ();
 
-          this->strct_generate_template_layer.selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI ();
+          missionx::strct_generate_template_layer.selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI ();
           this->setMessage ("Generating mission is in progress, please wait...", 10);
 
           ImGui::CloseCurrentPopup ();
@@ -4043,82 +4094,8 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
 }
 
 
-
-// ------------ draw_conv_popup_which_global_settings_to_save
-
-// void
-// WinImguiBriefer::draw_conv_popup_which_global_settings_to_save (std::string_view inPopupWindowName)
-// {
-//   bool flagSave = false;
-//
-//   const ImVec2 center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f);
-//   ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
-//   ImGui::SetNextWindowSize (ImVec2 (550.0f, 150.0f));
-//
-//
-//   ImGui::PushStyleColor (ImGuiCol_ChildBg, missionx::color::color_vec4_black);
-//   {
-//     if (ImGui::BeginPopupModal (inPopupWindowName.data (), NULL, ImGuiWindowFlags_AlwaysAutoResize))
-//     {
-//       int iStyle = 0;
-//       ImGui::PushStyleColor (ImGuiCol_::ImGuiCol_ButtonHovered, missionx::color::color_vec4_green);
-//       iStyle++;
-//       ImGui::PushStyleColor (ImGuiCol_::ImGuiCol_Button, missionx::color::color_vec4_dodgerblue);
-//       iStyle++;
-//       ImGui::PushStyleColor (ImGuiCol_::ImGuiCol_Text, missionx::color::color_vec4_white);
-//       iStyle++;
-//       ImGui::PushStyleColor (ImGuiCol_::ImGuiCol_TextSelectedBg, missionx::color::color_vec4_black);
-//       iStyle++;
-//
-//       this->mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_POPUP ());
-//       ImGui::TextColored (missionx::color::color_vec4_yellow, "Pick which Global Settings you would like to save:\n---------------------------------------------------------\n1. The one you loaded from the converter save file, \tor\n2. Generate a new one based on the Advanced Settings.\n");
-//
-//       // ImGui::NewLine();
-//       ImGui::Separator ();
-//
-//       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-//       if (ImGui::Button ("Use existing Global Settings", ImVec2 (210, 0)))
-//       {
-//         flagSave                                                                  = true;
-//         this->strct_conv_layer.flag_use_loaded_globalSetting_from_conversion_file = true;
-//       }
-//       this->mx_add_tooltip (missionx::color::color_vec4_white, "The plugin will use the <global_settings> loaded from the \"converter.sav\" file.");
-//
-//       ImGui::SameLine (0.0f, 20.0f);
-//       ImGui::SetItemDefaultFocus ();
-//       if (ImGui::Button ("Generate a new Global Settings", ImVec2 (210, 0)))
-//       {
-//         flagSave                                                                  = true;
-//         this->strct_conv_layer.flag_use_loaded_globalSetting_from_conversion_file = false;
-//       }
-//       this->mx_add_tooltip (missionx::color::color_vec4_white, "The plugin will use the Advanced Settings information to generate a new <global_settings> element.\nThis includes weather/time and weight");
-//
-//       ImGui::SameLine (0.0f, 20.0f);
-//       ImGui::SetItemDefaultFocus ();
-//       if (ImGui::Button ("Cancel", ImVec2 (70, 0)))
-//       {
-//         flagSave = false;
-//         ImGui::CloseCurrentPopup ();
-//       }
-//
-//       ImGui::PopStyleColor (iStyle); // pop out before EndPopup
-//
-//       this->mxUiReleaseLastFont (2);
-//
-//       if (flagSave)
-//       {
-//         ImGui::CloseCurrentPopup ();
-//         this->setMessage ("Please wait while generating the mission from the Flight Plan.", 10);
-//         this->execAction (missionx::mx_window_actions::ACTION_GENERATE_MISSION_FROM_LNM_FPLN);
-//       }
-//
-//       ImGui::EndPopup ();
-//     } // end quit popup
-//   }
-//   ImGui::PopStyleColor ();
-// }
-
 // ------------ draw_globals_online_edit_popup
+
 
 void
 WinImguiBriefer::draw_globals_online_edit_popup (std::string_view inPopupWindowName, char inType, std::string inKey, std::string inVal)
@@ -4264,44 +4241,6 @@ WinImguiBriefer::draw_script_online_edit_popup (std::string_view inPopupWindowNa
   ImGui::PopStyleColor ();
 }
 
-// ------------ popup_draw_authorization_key
-
-// void
-// WinImguiBriefer::popup_draw_authorization_key(std::string_view inPopupWindowName)
-// {
-//   ImVec2 center(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f);
-//   ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-//
-//   ImGui::SetWindowFontScale(mxconst::DEFAULT_BASE_FONT_SCALE);
-//   ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_Text, missionx::color::color_vec4_antiquewhite); //
-//   {
-//     if (ImGui::BeginPopupModal(inPopupWindowName.data(), NULL, ImGuiWindowFlags_AlwaysAutoResize))
-//     {
-//       ImGui::Spacing ();
-//       ImGui::Separator ();
-//
-//       this->add_ui_flightplandb_key (true);
-//
-//       // Add Cancel button
-//       ImGui::SameLine(0.0f, 80.0f);
-//       ImGui::SetItemDefaultFocus();
-//
-//       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG());
-//       ImGui::PushStyleColor (ImGuiCol_::ImGuiCol_Button, missionx::color::color_vec4_darkgrey);
-//       ImGui::PushStyleColor (ImGuiCol_::ImGuiCol_Text, missionx::color::color_vec4_black);
-//       if (ImGui::Button ("Cancel", ImVec2 (80, 0)))
-//       {
-//         ImGui::CloseCurrentPopup();
-//       }
-//       ImGui::PopStyleColor (2);
-//       this->mxUiReleaseLastFont ();
-//
-//       ImGui::EndPopup();
-//     } // end AuthKey popup
-//   }   // end style
-//   ImGui::PopStyleColor(1);
-// }
-
 
 // -------------------------------------------
 // ------------ draw setup layer
@@ -4324,28 +4263,28 @@ WinImguiBriefer::draw_setup_layer ()
   //------------------------------------------------
   //                  First Time
   //------------------------------------------------
-  if (this->strct_setup_layer.is_first_time)
+  if (missionx::strct_setup_layer.is_first_time)
   {
     std::string stored_overpass_url = Utils::getNodeText_type_6 (missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_URL (), mxconst::get_DEFAULT_OVERPASS_URL ());
-    // std::memcpy (this->strct_setup_layer.overpass_url_buf, stored_overpass_url.c_str (), missionx::mx_setup_layer::OSM_BUFF_SIZE_I);
-    mxUtils::copy_string_to_buffer (stored_overpass_url, this->strct_setup_layer.overpass_url_buf[0], sizeof(this->strct_setup_layer.overpass_url_buf));
+    // std::memcpy (missionx::strct_setup_layer.overpass_url_buf, stored_overpass_url.c_str (), missionx::mx_setup_layer::OSM_BUFF_SIZE_I);
+    mxUtils::copy_string_to_buffer (stored_overpass_url, missionx::strct_setup_layer.overpass_url_buf[0], sizeof(missionx::strct_setup_layer.overpass_url_buf));
 
     // v3.303.9.1
     if (!missionx::data_manager::xMissionxProperties_node.getChildNode (mxconst::get_ELEMENT_SCORING ().c_str ()).isEmpty ())
     {
       IXMLNode    node          = missionx::data_manager::xMissionxProperties_node.getChildNode (mxconst::get_ELEMENT_SCORING ().c_str ());
       std::string nodeContent_s = Utils::xml_get_node_content_as_text (node);
-      // std::memcpy (this->strct_setup_layer.default_scoring_buf, nodeContent_s.c_str (), sizeof (this->strct_setup_layer.default_scoring_buf) - 1);
-      mxUtils::copy_string_to_buffer (nodeContent_s, this->strct_setup_layer.default_scoring_buf[0], sizeof (this->strct_setup_layer.default_scoring_buf) );
+      // std::memcpy (missionx::strct_setup_layer.default_scoring_buf, nodeContent_s.c_str (), sizeof (missionx::strct_setup_layer.default_scoring_buf) - 1);
+      mxUtils::copy_string_to_buffer (nodeContent_s, missionx::strct_setup_layer.default_scoring_buf[0], sizeof (missionx::strct_setup_layer.default_scoring_buf) );
 
     }
 
-    this->strct_setup_layer.flag_lock_overpass_url = Utils::getNodeText_type_1_5<bool> (missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_LOCK_OVERPASS_URL_TO_USER_PICK (), false);
+    missionx::strct_setup_layer.flag_lock_overpass_url = Utils::getNodeText_type_1_5<bool> (missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_LOCK_OVERPASS_URL_TO_USER_PICK (), false);
 
     // initialize the combo option from the preference file. Search for same URL string
-    for (auto i = static_cast<size_t> (0); i < this->strct_setup_layer.vecOverpassUrls_char.size (); ++i)
+    for (auto i = static_cast<size_t> (0); i < missionx::strct_setup_layer.vecOverpassUrls_char.size (); ++i)
     {
-      if (stored_overpass_url == this->strct_setup_layer.vecOverpassUrls_char.at (i))
+      if (stored_overpass_url == missionx::strct_setup_layer.vecOverpassUrls_char.at (i))
       {
         missionx::data_manager::overpass_user_picked_combo_i = static_cast<int> (i);
         break;
@@ -4354,11 +4293,11 @@ WinImguiBriefer::draw_setup_layer ()
 
 
     #ifdef LIN
-    this->strct_setup_layer.iLinuxFlavor_val = Utils::getNodeText_type_1_5<int> (missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_LINUX_FLAVOR_CODE_I (), 0); // v3.303.8.1
+    missionx::strct_setup_layer.iLinuxFlavor_val = Utils::getNodeText_type_1_5<int> (missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_LINUX_FLAVOR_CODE_I (), 0); // v3.303.8.1
     #endif
 
 
-    this->strct_setup_layer.is_first_time = false;
+    missionx::strct_setup_layer.is_first_time = false;
   } // end first time
 
 
@@ -4402,9 +4341,9 @@ WinImguiBriefer::draw_setup_layer ()
     this->mx_add_tooltip (missionx::color::color_vec4_white, "Press [Enter] to store value.");
     ImGui::SameLine ();
     ImGui::SetNextItemWidth (120.0f);
-    if (ImGui::InputTextWithHint ("##PilotNickName", "Pilot Nickname", this->strct_setup_layer.buf_pilotName, 10, ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_EnterReturnsTrue))
+    if (ImGui::InputTextWithHint ("##PilotNickName", "Pilot Nickname", missionx::strct_setup_layer.buf_pilotName, 10, ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_EnterReturnsTrue))
     {
-      Utils::xml_search_and_set_node_text (system_actions::pluginSetupOptions.node, mxconst::SETUP_PILOT_NAME, std::string (this->strct_setup_layer.buf_pilotName), this->mxcode.STRING, true);
+      Utils::xml_search_and_set_node_text (system_actions::pluginSetupOptions.node, mxconst::SETUP_PILOT_NAME, std::string (missionx::strct_setup_layer.buf_pilotName), this->mxcode.STRING, true);
       this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
     }
     ImGui::SameLine ();
@@ -4460,8 +4399,8 @@ WinImguiBriefer::draw_setup_layer ()
 
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
 
-    this->strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (this->strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (this->strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
       ImGui::TextColored (missionx::color::color_vec4_yellow, "GPS Waypoints & Markers:");
@@ -4483,10 +4422,10 @@ WinImguiBriefer::draw_setup_layer ()
       }
 
       // target markers
-      if (ImGui::Checkbox ("Display Target Markers", &this->strct_setup_layer.bDisplayTargetMarkers))
+      if (ImGui::Checkbox ("Display Target Markers", &missionx::strct_setup_layer.bDisplayTargetMarkers))
       {
         // ADD set option value
-        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_SETUP_DISPLAY_TARGET_MARKERS (), this->strct_setup_layer.bDisplayTargetMarkers);
+        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_SETUP_DISPLAY_TARGET_MARKERS (), missionx::strct_setup_layer.bDisplayTargetMarkers);
         this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
       }
 
@@ -4501,16 +4440,16 @@ WinImguiBriefer::draw_setup_layer ()
       missionx::WinImguiBriefer::HelpMarker ("Font Scale will resize font based on software interpolation code.\nIt is not the same as picking a larger font pixel.");
       ImGui::SameLine ();
       ImGui::PushItemWidth (100.0f);
-      if (ImGui::SliderFloat ("Preferred Font Scale, Example:", &this->strct_setup_layer.fPreferredFontScale, this->strct_setup_layer.fFontMinScaleSize, this->strct_setup_layer.fFontMaxScaleSize, "scale %.1f"))
+      if (ImGui::SliderFloat ("Preferred Font Scale, Example:", &missionx::strct_setup_layer.fPreferredFontScale, missionx::strct_setup_layer.fFontMinScaleSize, missionx::strct_setup_layer.fFontMaxScaleSize, "scale %.1f"))
       {
         // ADD set option value
-        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<float> (mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE (), this->strct_setup_layer.fPreferredFontScale);
+        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<float> (mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE (), missionx::strct_setup_layer.fPreferredFontScale);
         this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
       }
       ImGui::PopItemWidth ();
 
       ImGui::SameLine ();
-      ImGui::SetWindowFontScale (this->strct_setup_layer.fPreferredFontScale);
+      ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
       ImGui::TextColored (missionx::color::color_vec4_aqua, "Mission-X v3.x");
       ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
 
@@ -4535,11 +4474,11 @@ WinImguiBriefer::draw_setup_layer ()
       const bool bDisable = this->mxStartUiDisableState(true);
       ImGui::TextColored (missionx::color::color_vec4_yellow, "Pause X-Plane when Mission-X is open in VR Mode:");
       ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
-      if (ImGui::Checkbox ("(Deprecated, always on) Pause in VR mode", &this->strct_setup_layer.bPauseInVR))
+      if (ImGui::Checkbox ("(Deprecated, always on) Pause in VR mode", &missionx::strct_setup_layer.bPauseInVR))
       {
-        this->strct_setup_layer.bPauseInVR = false;
+        missionx::strct_setup_layer.bPauseInVR = false;
         // ADD set option value
-        // missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_AUTO_PAUSE_IN_VR (), this->strct_setup_layer.bPauseInVR);
+        // missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_AUTO_PAUSE_IN_VR (), missionx::strct_setup_layer.bPauseInVR);
         // this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
       }
       this->mxEndUiDisableState (bDisable);
@@ -4549,10 +4488,10 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::TextColored (missionx::color::color_vec4_yellow, "Cycle plugin log files:");
       missionx::WinImguiBriefer::HelpMarker ("Cycle Mission-X log file in every new session.\nThe plugin will keep few versions of the logfile for debug or as a reference.\n\nYou can find the files in the plugin folder.");
       ImGui::SameLine ();
-      if (ImGui::Checkbox ("Cycle log files", &this->strct_setup_layer.bCycleLogFiles))
+      if (ImGui::Checkbox ("Cycle log files", &missionx::strct_setup_layer.bCycleLogFiles))
       {
         // ADD set option value
-        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_CYCLE_LOG_FILES (), this->strct_setup_layer.bCycleLogFiles);
+        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_CYCLE_LOG_FILES (), missionx::strct_setup_layer.bCycleLogFiles);
         this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
       }
 
@@ -4569,8 +4508,8 @@ WinImguiBriefer::draw_setup_layer ()
     //------------------------------------------------
     ++indx; // 1
 
-    this->strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (this->strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (this->strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
       {
@@ -4594,8 +4533,8 @@ WinImguiBriefer::draw_setup_layer ()
 
     ImGui::PushStyleColor (ImGuiCol_Header, missionx::color::color_vec4_grey);
 
-    this->strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (this->strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (this->strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
     {
       std::string err;
 
@@ -4647,8 +4586,8 @@ WinImguiBriefer::draw_setup_layer ()
     ++indx; // 3
     ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
     // if (ImGui::CollapsingHeader("TOOLS"))
-    this->strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (this->strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (this->strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
     {
       constexpr const static float BTN_WIDTH_F = 300.0f; // v3.305.1
 
@@ -4769,8 +4708,8 @@ WinImguiBriefer::draw_setup_layer ()
 
     // v3.0.303.6
     // if (ImGui::CollapsingHeader("Normalize Mission Sound Volume"))
-    this->strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (this->strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (this->strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
@@ -4786,23 +4725,23 @@ WinImguiBriefer::draw_setup_layer ()
       }
       ImGui::PopStyleColor (1); // back to white
 
-      if (ImGui::Checkbox ("##normalizedCheckbox", &this->strct_setup_layer.bForceNormalizedVolume))
+      if (ImGui::Checkbox ("##normalizedCheckbox", &missionx::strct_setup_layer.bForceNormalizedVolume))
       {
-        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_SETUP_NORMALIZE_VOLUME_B (), this->strct_setup_layer.bForceNormalizedVolume);
+        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_SETUP_NORMALIZE_VOLUME_B (), missionx::strct_setup_layer.bForceNormalizedVolume);
         this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
       }
-      if (this->strct_setup_layer.bForceNormalizedVolume)
+      if (missionx::strct_setup_layer.bForceNormalizedVolume)
       {
         ImGui::SameLine (0.0f, 10.0f);
         ImGui::SetNextItemWidth (100.0f);
-        if (ImGui::InputInt ("(0..100)##volumeValue", &this->strct_setup_layer.iNormalizedVolume_val, 1, 2))
+        if (ImGui::InputInt ("(0..100)##volumeValue", &missionx::strct_setup_layer.iNormalizedVolume_val, 1, 2))
         {
-          if (this->strct_setup_layer.iNormalizedVolume_val < static_cast<int> (mxconst::MIN_SOUND_VOLUME_F))
-            this->strct_setup_layer.iNormalizedVolume_val = static_cast<int> (mxconst::MIN_SOUND_VOLUME_F);
-          else if (this->strct_setup_layer.iNormalizedVolume_val > static_cast<int> (mxconst::MAX_SOUND_VOLUME_F))
-            this->strct_setup_layer.iNormalizedVolume_val = static_cast<int> (mxconst::MAX_SOUND_VOLUME_F);
+          if (missionx::strct_setup_layer.iNormalizedVolume_val < static_cast<int> (mxconst::MIN_SOUND_VOLUME_F))
+            missionx::strct_setup_layer.iNormalizedVolume_val = static_cast<int> (mxconst::MIN_SOUND_VOLUME_F);
+          else if (missionx::strct_setup_layer.iNormalizedVolume_val > static_cast<int> (mxconst::MAX_SOUND_VOLUME_F))
+            missionx::strct_setup_layer.iNormalizedVolume_val = static_cast<int> (mxconst::MAX_SOUND_VOLUME_F);
 
-          missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<int> (mxconst::get_SETUP_NORMALIZED_VOLUME (), this->strct_setup_layer.iNormalizedVolume_val);
+          missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<int> (mxconst::get_SETUP_NORMALIZED_VOLUME (), missionx::strct_setup_layer.iNormalizedVolume_val);
           this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
         }
       }
@@ -4820,8 +4759,8 @@ WinImguiBriefer::draw_setup_layer ()
     //------------------------------------------------
     indx++; // 5 Overpass
     // if (ImGui::CollapsingHeader("OVERPASS Setup"))
-    this->strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (this->strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (this->strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
       ImGui::PushItemWidth (450.0f);
@@ -4830,14 +4769,14 @@ WinImguiBriefer::draw_setup_layer ()
         ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
         ImGui::TextColored (missionx::color::color_vec4_yellow, "Preferred Overpass URL:");
         ImGui::PushID ("##overpassCustomUrl");
-        if (ImGui::Combo ("##OverPassURLs", &missionx::data_manager::overpass_user_picked_combo_i, this->strct_setup_layer.vecOverpassUrls_char.data (), static_cast<int> (this->strct_setup_layer.vecOverpassUrls_char.size ())))
+        if (ImGui::Combo ("##OverPassURLs", &missionx::data_manager::overpass_user_picked_combo_i, missionx::strct_setup_layer.vecOverpassUrls_char.data (), static_cast<int> (missionx::strct_setup_layer.vecOverpassUrls_char.size ())))
         {
 #ifndef RELEASE
-          const std::string stored_overpass_url = this->strct_setup_layer.vecOverpassUrls_char.at (missionx::data_manager::overpass_user_picked_combo_i); // for debug purposes only
+          const std::string stored_overpass_url = missionx::strct_setup_layer.vecOverpassUrls_char.at (missionx::data_manager::overpass_user_picked_combo_i); // for debug purposes only
 #endif // !RELEASE
           missionx::data_manager::overpass_last_url_indx_used_i = missionx::data_manager::overpass_user_picked_combo_i; // v3.0.255.4.1 store user picked in last run so we will start from it during next run
 
-          Utils::xml_search_and_set_node_text (system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_URL (), std::string (this->strct_setup_layer.vecOverpassUrls_char.at (missionx::data_manager::overpass_user_picked_combo_i)), this->mxcode.STRING, true);
+          Utils::xml_search_and_set_node_text (system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_URL (), std::string (missionx::strct_setup_layer.vecOverpassUrls_char.at (missionx::data_manager::overpass_user_picked_combo_i)), this->mxcode.STRING, true);
 
           this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
         }
@@ -4845,9 +4784,9 @@ WinImguiBriefer::draw_setup_layer ()
         ImGui::PopItemWidth ();
         // Lock URL - checkbox
         ImGui::SameLine ();
-        if (ImGui::Checkbox ("Lock URL", &this->strct_setup_layer.flag_lock_overpass_url))
+        if (ImGui::Checkbox ("Lock URL", &missionx::strct_setup_layer.flag_lock_overpass_url))
         {
-          missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_SETUP_LOCK_OVERPASS_URL_TO_USER_PICK (), ((this->strct_setup_layer.flag_lock_overpass_url) ? true : false));
+          missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_SETUP_LOCK_OVERPASS_URL_TO_USER_PICK (), ((missionx::strct_setup_layer.flag_lock_overpass_url) ? true : false));
           this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
         }
 
@@ -4862,8 +4801,8 @@ WinImguiBriefer::draw_setup_layer ()
     //------------------------------------------------
     indx++; // 6 Medevac
     // if (ImGui::CollapsingHeader("Medevac Setup"))
-    this->strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (this->strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (this->strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
@@ -4888,8 +4827,8 @@ WinImguiBriefer::draw_setup_layer ()
     //------------------------------------------------
     // if (ImGui::CollapsingHeader("External Flight Plan Setup"))
     indx++; // 7 External Flight Plan
-    this->strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (this->strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (this->strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
@@ -4897,10 +4836,10 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::Text ("Override external flight plan location and write to X-Plane's 'FMS plans' folder");
       ImGui::Text ("(ignores fpln_folders.ini custom locations)");
       ImGui::PopStyleColor (1); // back to white
-      if (ImGui::Checkbox ("Ignore custom FPLN folders and write to X-Plane 'FMS Plans' instead.", &this->strct_setup_layer.bOverideCustomExternalFPLN_folders))
+      if (ImGui::Checkbox ("Ignore custom FPLN folders and write to X-Plane 'FMS Plans' instead.", &missionx::strct_setup_layer.bOverideCustomExternalFPLN_folders))
       {
         // ADD set option value
-        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_WRITE_CONVERTED_FPLN_TO_XPLANE_FOLDER (), this->strct_setup_layer.bOverideCustomExternalFPLN_folders);
+        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_WRITE_CONVERTED_FPLN_TO_XPLANE_FOLDER (), missionx::strct_setup_layer.bOverideCustomExternalFPLN_folders);
         this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
       }
 
@@ -4915,8 +4854,8 @@ WinImguiBriefer::draw_setup_layer ()
     //------------------------------------------------
     // if (ImGui::CollapsingHeader("Default Scoring"))
     indx++; // 8 Default Scoring
-    this->strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (this->strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (this->strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
@@ -4936,7 +4875,7 @@ WinImguiBriefer::draw_setup_layer ()
         ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_azure);
         if (ImGui::Button ("Parse and Store"))
         {
-          std::string scoringNode_s (this->strct_setup_layer.default_scoring_buf);
+          std::string scoringNode_s (missionx::strct_setup_layer.default_scoring_buf);
 
           IXMLDomParser iDomTemplate;
           IXMLResults   parse_result_strct;
@@ -4981,7 +4920,8 @@ WinImguiBriefer::draw_setup_layer ()
           {
             IXMLNode    node          = missionx::data_manager::xMissionxProperties_node.getChildNode (mxconst::get_ELEMENT_SCORING ().c_str ());
             std::string nodeContent_s = Utils::xml_get_node_content_as_text (node);
-            std::memcpy (this->strct_setup_layer.default_scoring_buf, nodeContent_s.c_str (), sizeof (this->strct_setup_layer.default_scoring_buf) - 1);
+            //std::memcpy (missionx::strct_setup_layer.default_scoring_buf, nodeContent_s.c_str (), sizeof (missionx::strct_setup_layer.default_scoring_buf) - 1);
+            mxUtils::copy_string_to_buffer(nodeContent_s, missionx::strct_setup_layer.default_scoring_buf[0], sizeof(missionx::strct_setup_layer.default_scoring_buf));
             this->setMessage ("Reset Data");
           }
           else
@@ -4991,8 +4931,8 @@ WinImguiBriefer::draw_setup_layer ()
 
 
       // Input Text
-      ImGui::InputTextMultiline ("##scoringMultiLine", this->strct_setup_layer.default_scoring_buf, sizeof (this->strct_setup_layer.default_scoring_buf), vec2_multiLine_dim);
-      ImGui::TextColored (missionx::color::color_vec4_beige, "%zu of %zu", std::string (this->strct_setup_layer.default_scoring_buf).length (), sizeof (this->strct_setup_layer.default_scoring_buf));
+      ImGui::InputTextMultiline ("##scoringMultiLine", missionx::strct_setup_layer.default_scoring_buf, sizeof (missionx::strct_setup_layer.default_scoring_buf), vec2_multiLine_dim);
+      ImGui::TextColored (missionx::color::color_vec4_beige, "%zu of %zu", std::string (missionx::strct_setup_layer.default_scoring_buf).length (), sizeof (missionx::strct_setup_layer.default_scoring_buf));
 
       ImGui::Separator (); // v3.305.1
       ImGui::NewLine (); // v3.305.1
@@ -5009,8 +4949,8 @@ WinImguiBriefer::draw_setup_layer ()
     // To change visual labeling you have to change the order in the mapSetupHeaders first.
 
     // if (ImGui::CollapsingHeader("Linux: Troubleshoot - only if X-Plane 12 crashes during exit or mission quit."))
-    this->strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (this->strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (this->strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
     {
 
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
@@ -5018,9 +4958,9 @@ WinImguiBriefer::draw_setup_layer ()
 
       ImGui::TextColored (missionx::color::color_vec4_yellow, "During X-Plane 12 tests, I found out that the FMOD library has issues in specific function cases.\nThe symptom was: X-Plane became unresponsive. ");
       ImGui::TextColored (missionx::color::color_vec4_yellow, "If that happens, please pick the Linux Distro version you are using and\nthe plugin will try to use a workaround for it.");
-      if (ImGui::Combo ("Linux Flavor##LinuxFlavorCombo", &this->strct_setup_layer.iLinuxFlavor_val, this->strct_setup_layer.vecLinuxComboCodes_s.data (), static_cast<int> (this->strct_setup_layer.vecLinuxComboCodes_s.size ())))
+      if (ImGui::Combo ("Linux Flavor##LinuxFlavorCombo", &missionx::strct_setup_layer.iLinuxFlavor_val, missionx::strct_setup_layer.vecLinuxComboCodes_s.data (), static_cast<int> (missionx::strct_setup_layer.vecLinuxComboCodes_s.size ())))
       {
-        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<int> (mxconst::get_SETUP_LINUX_FLAVOR_CODE_I (), this->strct_setup_layer.iLinuxFlavor_val);
+        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<int> (mxconst::get_SETUP_LINUX_FLAVOR_CODE_I (), missionx::strct_setup_layer.iLinuxFlavor_val);
         this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
       }
 
@@ -5038,8 +4978,8 @@ WinImguiBriefer::draw_setup_layer ()
 
     // if (ImGui::CollapsingHeader("Designer: Unsaved Options"))
     indx++; // 10 Unsaved Options
-    this->strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (this->strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (this->strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
@@ -5050,66 +4990,66 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::Separator ();
       {
         ImGui::SetNextItemWidth (100.0f);
-        ImGui::InputDouble ("##Latitude", &this->strct_setup_layer.coord.lat, 0.0, 0.0, "%.8f", ImGuiInputTextFlags_ReadOnly);
+        ImGui::InputDouble ("##Latitude", &missionx::strct_setup_layer.coord.lat, 0.0, 0.0, "%.8f", ImGuiInputTextFlags_ReadOnly);
         ImGui::SameLine ();
         ImGui::TextColored (missionx::color::color_vec4_greenyellow, "%s", "/");
         ImGui::SameLine ();
         ImGui::SetNextItemWidth (100.0f);
-        ImGui::InputDouble ("##Longitude", &this->strct_setup_layer.coord.lon, 0.0, 0.0, "%.8f", ImGuiInputTextFlags_ReadOnly);
+        ImGui::InputDouble ("##Longitude", &missionx::strct_setup_layer.coord.lon, 0.0, 0.0, "%.8f", ImGuiInputTextFlags_ReadOnly);
         ImGui::SameLine ();
         ImGui::TextColored (missionx::color::color_vec4_greenyellow, "%s", "Elv.");
         ImGui::SameLine ();
         ImGui::SetNextItemWidth (50.0f);
-        ImGui::InputDouble ("##Elevation", &this->strct_setup_layer.coord.elevation_ft, 0.0, 0.0, "%.0f", ImGuiInputTextFlags_ReadOnly);
+        ImGui::InputDouble ("##Elevation", &missionx::strct_setup_layer.coord.elevation_ft, 0.0, 0.0, "%.0f", ImGuiInputTextFlags_ReadOnly);
         ImGui::SameLine ();
         ImGui::TextColored (missionx::color::color_vec4_greenyellow, "%s", "psi");
         ImGui::SameLine ();
         ImGui::SetNextItemWidth (50.0f);
-        ImGui::InputFloat ("##Heading", &this->strct_setup_layer.coord.heading, 0.0, 0.0, "%.2f", ImGuiInputTextFlags_ReadOnly);
+        ImGui::InputFloat ("##Heading", &missionx::strct_setup_layer.coord.heading, 0.0, 0.0, "%.2f", ImGuiInputTextFlags_ReadOnly);
         ImGui::SameLine ();
 
         // Plane/Camera buttons switch
-        if (this->strct_setup_layer.bPressedPlane)
+        if (missionx::strct_setup_layer.bPressedPlane)
           ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_greenyellow);
         if (ImGui::Button ("Plane"))
         {
-          this->strct_setup_layer.coord           = missionx::data_manager::write_plane_position_to_log_file ();
-          this->strct_setup_layer.btn_coord_state = missionx::mx_btn_coordinate_state_enum::plane;
+          missionx::strct_setup_layer.coord           = missionx::data_manager::write_plane_position_to_log_file ();
+          missionx::strct_setup_layer.btn_coord_state = missionx::mx_btn_coordinate_state_enum::plane;
         }
-        if (this->strct_setup_layer.bPressedPlane)
+        if (missionx::strct_setup_layer.bPressedPlane)
           ImGui::PopStyleColor ();
 
         ImGui::SameLine ();
 
-        if (this->strct_setup_layer.bPressedCamera)
+        if (missionx::strct_setup_layer.bPressedCamera)
           ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_greenyellow);
         if (ImGui::Button ("Camera"))
         {
-          this->strct_setup_layer.coord           = missionx::data_manager::write_camera_position_to_log_file ();
-          this->strct_setup_layer.btn_coord_state = missionx::mx_btn_coordinate_state_enum::camera;
+          missionx::strct_setup_layer.coord           = missionx::data_manager::write_camera_position_to_log_file ();
+          missionx::strct_setup_layer.btn_coord_state = missionx::mx_btn_coordinate_state_enum::camera;
         }
-        if (this->strct_setup_layer.bPressedCamera)
+        if (missionx::strct_setup_layer.bPressedCamera)
           ImGui::PopStyleColor ();
 
 
-        switch (this->strct_setup_layer.btn_coord_state)
+        switch (missionx::strct_setup_layer.btn_coord_state)
         {
           case mx_btn_coordinate_state_enum::plane:
           {
-            this->strct_setup_layer.bPressedPlane  = true;
-            this->strct_setup_layer.bPressedCamera = false;
+            missionx::strct_setup_layer.bPressedPlane  = true;
+            missionx::strct_setup_layer.bPressedCamera = false;
           }
           break;
           case mx_btn_coordinate_state_enum::camera:
           {
-            this->strct_setup_layer.bPressedPlane  = false;
-            this->strct_setup_layer.bPressedCamera = true;
+            missionx::strct_setup_layer.bPressedPlane  = false;
+            missionx::strct_setup_layer.bPressedCamera = true;
           }
           break;
           default:
           {
-            this->strct_setup_layer.bPressedPlane  = false;
-            this->strct_setup_layer.bPressedCamera = false;
+            missionx::strct_setup_layer.bPressedPlane  = false;
+            missionx::strct_setup_layer.bPressedCamera = false;
           }
         } // end switch
       }
@@ -5377,8 +5317,8 @@ WinImguiBriefer::draw_home_layer ()
 
       if (btn.layer == missionx::uiLayer_enum::option_ils_layer)
       {
-        this->strct_ils_layer.flagIgnoreDistanceFilter = false; // v24.03.1 reset "ignore distance" option.
-        this->strct_ils_layer.to_icao.clear ();
+        missionx::strct_ils_layer.flagIgnoreDistanceFilter = false; // v24.03.1 reset "ignore distance" option.
+        missionx::strct_ils_layer.to_icao.clear ();
       }
 
       if (disabled)
@@ -5418,22 +5358,22 @@ WinImguiBriefer::draw_home_layer ()
           if (btn.layer == missionx::uiLayer_enum::option_user_generates_a_mission_layer)
           {
             // v3.303.8 initialize current clock when pressing the
-            if (this->strct_user_create_layer.flag_first_time)
+            if (missionx::strct_user_create_layer.flag_first_time)
             {
-              this->adv_settings_strct.iClockDayOfYearPicked = dataref_manager::getLocalDateDays ();
-              this->adv_settings_strct.iClockHourPicked      = dataref_manager::getLocalHour ();
-              this->strct_user_create_layer.flag_first_time  = false;
+              missionx::adv_settings_strct.iClockDayOfYearPicked = dataref_manager::getLocalDateDays ();
+              missionx::adv_settings_strct.iClockHourPicked      = dataref_manager::getLocalHour ();
+              missionx::strct_user_create_layer.flag_first_time  = false;
             }
 
-            this->strct_user_create_layer.iMissionSubCategoryPicked = 0; // v25.04.1
-            this->strct_user_create_layer.layer_state               = missionx::mx_layer_state_enum::not_initialized;
+            missionx::strct_user_create_layer.iMissionSubCategoryPicked = 0; // v25.04.1
+            missionx::strct_user_create_layer.layer_state               = missionx::mx_layer_state_enum::not_initialized;
             this->setMessage ("Please wait while validating presence of the data...", 3);
             missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::imgui_check_validity_of_db_file);
           }
           else if (btn.layer == missionx::uiLayer_enum::option_generate_mission_from_a_template_layer)
           {
-            this->strct_generate_template_layer.last_picked_template_key.clear (); // v24.12.2 Fix cases were re-entering template will not clean the right region and will show a phantom options from last pick.
-            this->strct_generate_template_layer.layer_state = missionx::mx_layer_state_enum::not_initialized;
+            missionx::strct_generate_template_layer.last_picked_template_key.clear (); // v24.12.2 Fix cases were re-entering template will not clean the right region and will show a phantom options from last pick.
+            missionx::strct_generate_template_layer.layer_state = missionx::mx_layer_state_enum::not_initialized;
             this->setMessage ("Please wait while validating presence of the data...", 3);
             missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::imgui_check_validity_of_db_file);
           }
@@ -5446,7 +5386,7 @@ WinImguiBriefer::draw_home_layer ()
           }
           else if (btn.layer == missionx::uiLayer_enum::option_external_fpln_layer)
           {
-            this->strct_user_create_layer.iMissionSubCategoryPicked = 0; // v25.04.1
+            missionx::strct_user_create_layer.iMissionSubCategoryPicked = 0; // v25.04.1
           }
           else if (btn.layer == missionx::uiLayer_enum::option_ils_layer) // extra layer of caution even though it should be disabled by default. TODO: determine if to remove this test after behavior checks
           {
@@ -5457,8 +5397,8 @@ WinImguiBriefer::draw_home_layer ()
             }
             else
             {
-              this->strct_user_create_layer.iMissionSubCategoryPicked = 0; // v25.04.1
-              this->strct_ils_layer.layer_state                       = missionx::mx_layer_state_enum::not_initialized;
+              missionx::strct_user_create_layer.iMissionSubCategoryPicked = 0; // v25.04.1
+              missionx::strct_ils_layer.layer_state                       = missionx::mx_layer_state_enum::not_initialized;
               this->setMessage ("Please wait while validating presence of the data...", 3);
               missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::imgui_check_presence_of_db_ils_data);
             }
@@ -5473,7 +5413,7 @@ WinImguiBriefer::draw_home_layer ()
         ImGui::PopStyleColor (2);
       }
       else
-        this->strct_user_create_layer.iMissionSubCategoryPicked = 0; // v25.04.1
+        missionx::strct_user_create_layer.iMissionSubCategoryPicked = 0; // v25.04.1
 
 
       // Tooltip
@@ -5522,13 +5462,13 @@ WinImguiBriefer::draw_home_layer ()
 void
 WinImguiBriefer::draw_dynamic_mission_creation_screen ()
 {
-  switch (this->strct_user_create_layer.child_screen)
+  switch (missionx::strct_user_create_layer.child_screen)
   {
   case mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_option_a:
     {
       // reset the "semi-automated" mission creation, since we share parameters (like dynSlider)
-      this->strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_pick;
-      this->strct_user_create_layer.user_semi_act_picked.reset();
+      missionx::strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_pick;
+      missionx::strct_user_create_layer.user_semi_act_picked.reset();
       draw_dynamic_mission_creation_screen_child_1 ();
     }
     break;
@@ -5569,8 +5509,8 @@ void WinImguiBriefer::draw_dynamic_mission_creation_screen_home()
       if (ImGui::ImageButton ("Full Control", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_FULL_CONTROL ()].gTexture, btn_size_vec2))
       {
         // flag we want to display Option A Screen
-        this->strct_user_create_layer.child_screen = mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_option_a;
-        this->refresh_slider_data_based_on_plane_type(this->strct_user_create_layer.iRadioPlaneType);
+        missionx::strct_user_create_layer.child_screen = mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_option_a;
+        this->refresh_slider_data_based_on_plane_type(missionx::strct_user_create_layer.iRadioPlaneType);
       } // end imageButton - flightplandb
       this->mx_add_tooltip (missionx::color::color_vec4_white, "Configure a random mission.");
       // bottom title
@@ -5583,7 +5523,7 @@ void WinImguiBriefer::draw_dynamic_mission_creation_screen_home()
       if (ImGui::ImageButton ("Some Control", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_SOME_CONTROL()].gTexture, btn_size_vec2))
       {
         // flag we want to display Option B Screen
-        this->strct_user_create_layer.child_screen = mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_option_b;
+        missionx::strct_user_create_layer.child_screen = mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_option_b;
       }
       this->mx_add_tooltip (missionx::color::color_vec4_white, "Pick the type to generate.");
       // bottom title
@@ -5604,7 +5544,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
 {
   const auto win_size_vec2 = this->mxUiGetWindowContentWxH ();
 
-  if (this->strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw)
+  if (missionx::strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw)
   {
     static constexpr float img_ps_f = 0.5f;
     float                  pos_x    = data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_LAB_24X18 ()].sImageData.getW_f () * img_ps_f;
@@ -5636,45 +5576,45 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
       ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", " Pick Type of Mission:");
 
       ImGui::SameLine (0.0f, 50.0f);
-      this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
+      this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
 
-      if (ImGui::RadioButton ("Medevac", this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_ui_mission_type::medevac)))
+      if (ImGui::RadioButton ("Medevac", missionx::strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_ui_mission_type::medevac)))
       {
-        this->strct_user_create_layer.iRadioMissionTypePicked   = static_cast<int> (missionx::mx_ui_mission_type::medevac);
-        this->strct_user_create_layer.iMissionSubCategoryPicked = 0; // reset sub category combo
-        this->strct_user_create_layer.flag_use_web_osm          = true;
-        this->strct_user_create_layer.iRadioPlaneType           = missionx::mx_plane_types_enum::plane_type_helos;
+        missionx::strct_user_create_layer.iRadioMissionTypePicked   = static_cast<int> (missionx::mx_ui_mission_type::medevac);
+        missionx::strct_user_create_layer.iMissionSubCategoryPicked = 0; // reset sub category combo
+        missionx::strct_user_create_layer.flag_use_web_osm          = true;
+        missionx::strct_user_create_layer.iRadioPlaneType           = missionx::mx_plane_types_enum::plane_type_helos;
 
-        this->refresh_slider_data_based_on_plane_type (this->strct_user_create_layer.iRadioPlaneType); // v3.303.14
+        this->refresh_slider_data_based_on_plane_type (missionx::strct_user_create_layer.iRadioPlaneType); // v3.303.14
       }
       ImGui::SameLine ();
-      if (ImGui::RadioButton ("Cargo/Passengers", this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_ui_mission_type::cargo)))
+      if (ImGui::RadioButton ("Cargo/Passengers", missionx::strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_ui_mission_type::cargo)))
       {
-        this->strct_user_create_layer.iRadioMissionTypePicked   = static_cast<int> (missionx::mx_ui_mission_type::cargo);
-        this->strct_user_create_layer.iMissionSubCategoryPicked = 0; // reset sub category combo
-        this->strct_user_create_layer.flag_use_web_osm          = false;
+        missionx::strct_user_create_layer.iRadioMissionTypePicked   = static_cast<int> (missionx::mx_ui_mission_type::cargo);
+        missionx::strct_user_create_layer.iMissionSubCategoryPicked = 0; // reset sub category combo
+        missionx::strct_user_create_layer.flag_use_web_osm          = false;
       }
 
       ImGui::SameLine ();
-      if (ImGui::RadioButton ("Oil Rig", this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_ui_mission_type::oil_rig)))
+      if (ImGui::RadioButton ("Oil Rig", missionx::strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_ui_mission_type::oil_rig)))
       {
-        this->strct_user_create_layer.iRadioMissionTypePicked   = static_cast<int> (missionx::mx_ui_mission_type::oil_rig);
-        this->strct_user_create_layer.iMissionSubCategoryPicked = 0; // reset sub category combo
-        this->strct_user_create_layer.flag_use_web_osm          = false;
-        this->strct_user_create_layer.iRadioPlaneType           = missionx::mx_plane_types_enum::plane_type_helos;
+        missionx::strct_user_create_layer.iRadioMissionTypePicked   = static_cast<int> (missionx::mx_ui_mission_type::oil_rig);
+        missionx::strct_user_create_layer.iMissionSubCategoryPicked = 0; // reset sub category combo
+        missionx::strct_user_create_layer.flag_use_web_osm          = false;
+        missionx::strct_user_create_layer.iRadioPlaneType           = missionx::mx_plane_types_enum::plane_type_helos;
 
-        this->refresh_slider_data_based_on_plane_type (this->strct_user_create_layer.iRadioPlaneType); // v3.303.14
+        this->refresh_slider_data_based_on_plane_type (missionx::strct_user_create_layer.iRadioPlaneType); // v3.303.14
       }
       ImGui::SameLine ();
       missionx::WinImguiBriefer::HelpMarker ("The plugin will place you randomly in a location near an Oil Rig.\nThe Oil Rig data is highly dependent on the Oil Rig information found in the apt.dat files, and not on what you see in your maps.");
       // sub categories
       {
-        const auto vecToDisplay = this->mapMissionCategories[this->strct_user_create_layer.iRadioMissionTypePicked];
+        const auto vecToDisplay = missionx::mapMissionCategories[missionx::strct_user_create_layer.iRadioMissionTypePicked];
         this->add_ui_pick_subcategories (vecToDisplay); // v25.04.1
       }
-      const bool bPickedOilRigMission            = this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_ui_mission_type::oil_rig);
-      const bool bPickedMedevacMission           = this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (mx_ui_mission_type::medevac);
-      const bool bPickedMedevacSurpriseMeMission = (bPickedMedevacMission && this->strct_user_create_layer.iMissionSubCategoryPicked == 2);
+      const bool bPickedOilRigMission            = missionx::strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_ui_mission_type::oil_rig);
+      const bool bPickedMedevacMission           = missionx::strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (mx_ui_mission_type::medevac);
+      const bool bPickedMedevacSurpriseMeMission = (bPickedMedevacMission && missionx::strct_user_create_layer.iMissionSubCategoryPicked == 2);
 
 
       if (bPickedMedevacSurpriseMeMission)
@@ -5713,7 +5653,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
 
         return "";
       };
-      const std::string Topic2_title = lmbda_get_title (this->strct_user_create_layer.iRadioMissionTypePicked);
+      const std::string Topic2_title = lmbda_get_title (missionx::strct_user_create_layer.iRadioMissionTypePicked);
 
       //------------------------------------------------
       //                  Topic 2 - plane type and area filter
@@ -5750,17 +5690,17 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
         ImGui::TextColored  ( missionx::color::color_vec4_yellow, "Pick The Plane Type You Will Fly:");
 
         int radio_btn_counter = 0;
-        for (const auto &planeTypeLabel : this->mapListPlaneRadioLabel | std::views::values) // v24.12.1
+        for (const auto &planeTypeLabel : missionx::mapListPlaneRadioLabel | std::views::values) // v24.12.1
         {
 
           // Filter out all plane types that are not Helos for Medevac and Oil Rig missions
-          if (this->strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_ui_mission_type::cargo) && planeTypeLabel.type != mx_plane_types_enum::plane_type_helos)
+          if (missionx::strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_ui_mission_type::cargo) && planeTypeLabel.type != mx_plane_types_enum::plane_type_helos)
             continue;
 
-          if (ImGui::RadioButton (planeTypeLabel.label.c_str (), this->strct_user_create_layer.iRadioPlaneType == planeTypeLabel.type))
+          if (ImGui::RadioButton (planeTypeLabel.label.c_str (), missionx::strct_user_create_layer.iRadioPlaneType == planeTypeLabel.type))
           {
-            this->strct_user_create_layer.iRadioPlaneType = planeTypeLabel.type;
-            this->refresh_slider_data_based_on_plane_type (this->strct_user_create_layer.iRadioPlaneType); // v24.12.1 deprecated
+            missionx::strct_user_create_layer.iRadioPlaneType = planeTypeLabel.type;
+            this->refresh_slider_data_based_on_plane_type (missionx::strct_user_create_layer.iRadioPlaneType); // v24.12.1 deprecated
           }
           radio_btn_counter++;
           if (radio_btn_counter%5 == 0)
@@ -5774,7 +5714,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
         // ------------------------
         // -- Helos only option to narrow ramp type
         // ------------------------
-        if (this->strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos)
+        if (missionx::strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos)
         {
           ImGui::NewLine ();
           ImGui::Checkbox ("Narrow helos ramp locations", &strct_user_create_layer.flag_narrow_helos_filtering);
@@ -5790,15 +5730,15 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
           ImGui::NewLine ();
 
           // Filter out type of runway for heavies type of plane.
-          if (this->strct_user_create_layer.iRadioPlaneType < missionx::mx_plane_types_enum::plane_type_airline )
+          if (missionx::strct_user_create_layer.iRadioPlaneType < missionx::mx_plane_types_enum::plane_type_airline )
           {
-            ImGui::Checkbox ("Pick Any Runway##filterRunways", &this->strct_user_create_layer.flag_pick_any_rw);
+            ImGui::Checkbox ("Pick Any Runway##filterRunways", &missionx::strct_user_create_layer.flag_pick_any_rw);
             // display the filter tree if changed to false
-            if (this->strct_user_create_layer.flag_pick_any_rw == false)
+            if (missionx::strct_user_create_layer.flag_pick_any_rw == false)
             {
               ImGui::Text ("Include airports that have:");
 
-              for (auto &[rw_lbl, b_picked] : this->strct_user_create_layer.map_filter_runways)
+              for (auto &[rw_lbl, b_picked] : missionx::strct_user_create_layer.map_filter_runways)
               {
                 ImGui::SameLine (0.0f, 10.0f); //
                 ImGui::Checkbox (rw_lbl.c_str (), &b_picked);
@@ -5806,8 +5746,8 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
                   count_filters_picked++;
               }
 
-              if (count_filters_picked == this->strct_user_create_layer.map_filter_runways.size ())
-                this->strct_user_create_layer.reset_filter_runways_flags ();
+              if (count_filters_picked == missionx::strct_user_create_layer.map_filter_runways.size ())
+                missionx::strct_user_create_layer.reset_filter_runways_flags ();
             }
 
           }
@@ -5839,7 +5779,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
 // )", missionx::color::color_vec4_aqua);
 //           ImGui::SameLine ();
 //           ImGui::TextColored (missionx::color::color_vec4_yellow, "Choose a region to search for oil rigs.:");
-//           missionx::data_manager::ui_oilrig_globe_part_i = add_ui_dynamic_options_buttons (missionx::data_manager::ui_oilrig_globe_part_i, this->strct_user_create_layer.map_pick_oilrig_globe_part);
+//           missionx::data_manager::ui_oilrig_globe_part_i = add_ui_dynamic_options_buttons (missionx::data_manager::ui_oilrig_globe_part_i, missionx::strct_user_create_layer.map_pick_oilrig_globe_part);
 //           ImGui::NewLine ();
         }
 
@@ -5850,12 +5790,12 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
             ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
             ImGui::Text ("Pick Minimum Flight Leg Distance: ");
             ImGui::PopStyleColor (1);
-            if (ImGui::SliderFloat (strct_user_create_layer.dyn_slider1_lbl.c_str (), &strct_user_create_layer.dyn_sliderVal1, this->mapListPlaneRadioLabel[this->strct_user_create_layer.iRadioPlaneType].from_slider_min, this->mapListPlaneRadioLabel[this->strct_user_create_layer.iRadioPlaneType].from_slider_max, "%.2f nm"))
+            if (ImGui::SliderFloat (strct_user_create_layer.dyn_slider1_lbl.c_str (), &strct_user_create_layer.dyn_sliderVal1, missionx::mapListPlaneRadioLabel[missionx::strct_user_create_layer.iRadioPlaneType].from_slider_min, missionx::mapListPlaneRadioLabel[missionx::strct_user_create_layer.iRadioPlaneType].from_slider_max, "%.2f nm"))
             {
               if (strct_user_create_layer.dyn_sliderVal2 <= strct_user_create_layer.dyn_sliderVal1)
                 strct_user_create_layer.dyn_sliderVal2 = strct_user_create_layer.dyn_sliderVal1 + 100.0f;
 
-              this->validate_sliders_values (this->strct_user_create_layer.iRadioPlaneType);
+              this->validate_sliders_values (missionx::strct_user_create_layer.iRadioPlaneType);
             }
 
             ImGui::NextColumn ();
@@ -5863,20 +5803,20 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
               ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
               ImGui::Text ("Pick Maximum Flight Leg Distance: ");
               ImGui::PopStyleColor (1);
-              if (ImGui::SliderFloat (strct_user_create_layer.dyn_slider2_lbl.c_str (), &strct_user_create_layer.dyn_sliderVal2, this->mapListPlaneRadioLabel[this->strct_user_create_layer.iRadioPlaneType].to_slider_min, this->mapListPlaneRadioLabel[this->strct_user_create_layer.iRadioPlaneType].to_slider_max, "%.2f nm"))
+              if (ImGui::SliderFloat (strct_user_create_layer.dyn_slider2_lbl.c_str (), &strct_user_create_layer.dyn_sliderVal2, missionx::mapListPlaneRadioLabel[missionx::strct_user_create_layer.iRadioPlaneType].to_slider_min, missionx::mapListPlaneRadioLabel[missionx::strct_user_create_layer.iRadioPlaneType].to_slider_max, "%.2f nm"))
               {
                 if (strct_user_create_layer.dyn_sliderVal1 > strct_user_create_layer.dyn_sliderVal2)
                   strct_user_create_layer.dyn_sliderVal1 = strct_user_create_layer.dyn_sliderVal2 - 100.0f;
 
-                this->validate_sliders_values (this->strct_user_create_layer.iRadioPlaneType);
+                this->validate_sliders_values (missionx::strct_user_create_layer.iRadioPlaneType);
               }
             }
           }
           ImGui::Columns ();
 
 
-          //if (strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (mx_mission_type::medevac) && (this->strct_user_create_layer.iMissionSubCategoryPicked > 0)) // > 0 = med_any_location
-          if (bPickedMedevacMission && (this->strct_user_create_layer.iMissionSubCategoryPicked > 0)) // > 0 = med_any_location
+          //if (strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (mx_mission_type::medevac) && (missionx::strct_user_create_layer.iMissionSubCategoryPicked > 0)) // > 0 = med_any_location
+          if (bPickedMedevacMission && (missionx::strct_user_create_layer.iMissionSubCategoryPicked > 0)) // > 0 = med_any_location
           {
             // display OSM WEB and OSM DB only if it is not cargo type
 
@@ -5934,14 +5874,16 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
                   std::string stored_filter = Utils::getNodeText_type_6 (missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_FILTER (), mxconst::get_DEFAULT_OVERPASS_WAYS_FILTER ());
                   if (stored_filter.empty ())
                   {
-                    stored_filter = this->strct_user_create_layer.overpass_original_filter;
+                    stored_filter = missionx::strct_user_create_layer.overpass_original_filter;
                     Utils::xml_search_and_set_node_text (system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_FILTER (), stored_filter, this->mxcode.STRING, true); // "6" = string type
                     this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
                   }
 
-                  std::memcpy (buf1, stored_filter.c_str (), OSM_BUFF_SIZE_I);
+                  //std::memcpy (buf1, stored_filter.c_str (), OSM_BUFF_SIZE_I);
+                  mxUtils::copy_string_to_buffer(stored_filter, buf1[0], sizeof(buf1));
 
-                  this->strct_user_create_layer.overpass_main_filter = stored_filter;
+
+                  missionx::strct_user_create_layer.overpass_main_filter = stored_filter;
                   b_first_time                                       = false;
                 }
 
@@ -5976,8 +5918,9 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
                   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
                   if (ImGui::Button ("reset##resetButton1"))
                   {
-                    std::memcpy (buf1, this->strct_user_create_layer.overpass_original_filter.c_str (), OSM_BUFF_SIZE_I);
-                    this->strct_user_create_layer.overpass_pre_apply_filter_s = this->strct_user_create_layer.overpass_original_filter;
+                    //std::memcpy (buf1, missionx::strct_user_create_layer.overpass_original_filter.c_str (), OSM_BUFF_SIZE_I);
+                    mxUtils::copy_string_to_buffer(missionx::strct_user_create_layer.overpass_original_filter, buf1[0], sizeof(buf1)); // v26.04.3
+                    missionx::strct_user_create_layer.overpass_pre_apply_filter_s = missionx::strct_user_create_layer.overpass_original_filter;
                   }
                   this->mxUiReleaseLastFont ();
 
@@ -5987,7 +5930,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
                   ImGui::PushID ("##overpassCustomFilter");
                   if (ImGui::InputTextWithHint ("", "way['key'='value']({{bbox}});out;", buf1, OSM_BUFF_SIZE_I)) // , ImGuiInputTextFlags_CharsNoBlank)) // , ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal);
                   {
-                    this->strct_user_create_layer.overpass_pre_apply_filter_s = std::string (buf1);
+                    missionx::strct_user_create_layer.overpass_pre_apply_filter_s = std::string (buf1);
                   }
                   ImGui::PopID ();
                   ImGui::PopItemWidth ();
@@ -6002,9 +5945,9 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
                   ImGui::SetItemDefaultFocus ();
                   if (ImGui::Button ("Apply", ImVec2 (150, 0)))
                   {
-                    this->strct_user_create_layer.overpass_pre_apply_filter_s = std::string (buf1);
-                    this->strct_user_create_layer.overpass_main_filter        = this->strct_user_create_layer.overpass_pre_apply_filter_s;
-                    Utils::xml_search_and_set_node_text (system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_FILTER (), this->strct_user_create_layer.overpass_main_filter, this->mxcode.STRING, true); // "6" = string type
+                    missionx::strct_user_create_layer.overpass_pre_apply_filter_s = std::string (buf1);
+                    missionx::strct_user_create_layer.overpass_main_filter        = missionx::strct_user_create_layer.overpass_pre_apply_filter_s;
+                    Utils::xml_search_and_set_node_text (system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_FILTER (), missionx::strct_user_create_layer.overpass_main_filter, this->mxcode.STRING, true); // "6" = string type
 
 
                     this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
@@ -6015,8 +5958,10 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
                   ImGui::SetItemDefaultFocus ();
                   if (ImGui::Button ("Cancel", ImVec2 (90, 0)))
                   {
-                    std::memcpy (buf1, this->strct_user_create_layer.overpass_main_filter.c_str (), OSM_BUFF_SIZE_I);
-                    this->strct_user_create_layer.overpass_pre_apply_filter_s = this->strct_user_create_layer.overpass_main_filter;
+                    //std::memcpy (buf1, missionx::strct_user_create_layer.overpass_main_filter.c_str (), OSM_BUFF_SIZE_I);
+                    mxUtils::copy_string_to_buffer(missionx::strct_user_create_layer.overpass_main_filter, buf1[0], sizeof(buf1)); // v26.04.3
+
+                    missionx::strct_user_create_layer.overpass_pre_apply_filter_s = missionx::strct_user_create_layer.overpass_main_filter;
                     ImGui::CloseCurrentPopup ();
                   }
 
@@ -6051,7 +5996,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
         int iMinLegsVal = 1;
         int iMaxLegsVal = 4;
         // calculate default number of flight legs per mission and plane type
-        //if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types::plane_type_helos && strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::_mission_type::medevac)) || (this->strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_mission_type::oil_rig)))
+        //if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types::plane_type_helos && strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::_mission_type::medevac)) || (missionx::strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_mission_type::oil_rig)))
         if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos && bPickedMedevacMission) || (bPickedOilRigMission))
         {
           iMinLegsVal                                = 2;
@@ -6066,7 +6011,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
           strct_user_create_layer.iNumberOfFlighLegs = iMinLegsVal; // we're automatically resetting the starting/picked legs to only one, for jets and heavies.
         }
 
-        //if (this->strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_mission_type::medevac) && this->strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_mission_type::oil_rig) && strct_user_create_layer.iRadioPlaneType < missionx::mx_plane_types::plane_type_jets)
+        //if (missionx::strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_mission_type::medevac) && missionx::strct_user_create_layer.iRadioMissionTypePicked != static_cast<int> (missionx::mx_mission_type::oil_rig) && strct_user_create_layer.iRadioPlaneType < missionx::mx_plane_types::plane_type_jets)
         if (!bPickedMedevacMission && !bPickedOilRigMission && !bPickedMedevacSurpriseMeMission && strct_user_create_layer.iRadioPlaneType < missionx::mx_plane_types_enum::plane_type_jets)
         {
           WinImguiBriefer::add_ui_pick_how_many_legs (strct_user_create_layer.iNumberOfFlighLegs, "How Many Flight Legs ? ", iMinLegsVal, iMaxLegsVal);
@@ -6108,7 +6053,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
     ImGui::BeginGroup ();
     {
 
-      if (missionx::data_manager::flag_generate_engine_is_running && this->sBottomMessage.empty ())
+      if (missionx::data_manager::flag_generate_engine_is_running && missionx::sBottomMessage.empty ())
       {
         this->setMessage ("Random Engine is running, please wait...");
       }
@@ -6124,7 +6069,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
 
         ImGui::SameLine ();
 
-        this->flag_generatedRandomFile_success = false;
+        missionx::flag_generatedRandomFile_success = false;
         //constexpr auto lbl                     = "Generate a Mission Based on User Preferences";
 
         // -----------------------
@@ -6138,7 +6083,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
           if (bRerunRandomDateTime) // v3.303.10
             this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
 
-          this->strct_generate_template_layer.selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI ();
+          missionx::strct_generate_template_layer.selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI ();
 
           this->action_prepare_dynamic_mission_properties_and_call_generate_action(strct_user_create_layer.dyn_sliderVal1, strct_user_create_layer.dyn_sliderVal2);
 
@@ -6156,7 +6101,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
 
       if (!this->asyncSecondMessageLine.empty ())
       {
-        ImGui::SameLine ((mxUiGetContentWidth () * 0.40f) - (ImGui::CalcTextSize (this->LBL_START_MISSION.c_str ()).x * 0.5f));
+        ImGui::SameLine ((mxUiGetContentWidth () * 0.40f) - (ImGui::CalcTextSize (missionx::LBL_START_MISSION.c_str ()).x * 0.5f));
         this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
 
         this->add_ui_warning_messages_button (); // v26.1.1. Also change the "start" button position to clear space for the warning button.
@@ -6168,13 +6113,13 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
     this->mxUiReleaseLastFont ();
 
 
-  } // end if (this->strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw)
-  else if (this->strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::failed_data_is_not_present || this->strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly)
+  } // end if (missionx::strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw)
+  else if (missionx::strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::failed_data_is_not_present || missionx::strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly)
   {
     /// TODO: consider removing this part of the code, since we always force the creation of the SQLite DB in order to use the plugin features.
     ImGui::NewLine ();
 
-    if (this->strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::failed_data_is_not_present)
+    if (missionx::strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::failed_data_is_not_present)
     {
       this->display_shared_message_when_optimized_data_is_not_present (missionx::mx_layer_state_enum::failed_data_is_not_present);
     }
@@ -6192,9 +6137,9 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
     this->mxUiReleaseLastFont (); // v3.303.14 release the last 2 fonts we pushed
 
 
-    if (this->strct_user_create_layer.layer_state < missionx::mx_layer_state_enum::validating_data)
+    if (missionx::strct_user_create_layer.layer_state < missionx::mx_layer_state_enum::validating_data)
     {
-      this->strct_user_create_layer.layer_state = missionx::mx_layer_state_enum::validating_data;
+      missionx::strct_user_create_layer.layer_state = missionx::mx_layer_state_enum::validating_data;
     }
   }
 
@@ -6208,7 +6153,7 @@ void WinImguiBriefer::draw_dynamic_mission_creation_screen_child_2()
   ///////// Main Layer Buttons
   ImGui::BeginChild ("draw_semi_auto_screen", ImVec2 (0.0f, ImGui::GetWindowHeight () - this->fBottomToolbarPadding_f - this->fTopToolbarPadding_f - win_padding));
   {
-    switch (this->strct_user_create_layer.act_phase_enum)
+    switch (missionx::strct_user_create_layer.act_phase_enum)
     {
     case mx_act_phase_enum::phase_pick:
       {
@@ -6237,7 +6182,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
   // auto win_size_vec2 = ImGui::GetContentRegionAvail();
   auto win_size_vec2 = this->mxUiGetWindowContentWxH ();
 
-  if (this->strct_generate_template_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw)
+  if (missionx::strct_generate_template_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw)
   {
     float pos_x = 0.0f;
 
@@ -6263,7 +6208,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
     //////////////////////////////////////////////////////////////////////////
     ///////// List of images and their details when pressed on image ////////
 
-    if (this->strct_generate_template_layer.bFinished_loading_templates)
+    if (missionx::strct_generate_template_layer.bFinished_loading_templates)
     {
       //
       // Holds the vertical regions width, [0]=Left, [1]=Right
@@ -6290,7 +6235,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
 
             // v3.303.12
             ImGui::SameLine (0.0f, 20.0f);
-            this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked, mxconst::get_TEXT_TYPE_TITLE_SMALLEST ());
+            this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked, mxconst::get_TEXT_TYPE_TITLE_SMALLEST ());
           }
           else
           {
@@ -6313,7 +6258,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
               int iStyle = 0;
               bool bSetKeyStyle = false;
 
-              if (!key.empty () && (this->strct_generate_template_layer.selectedTemplateKey == key || this->strct_generate_template_layer.last_picked_template_key == key))
+              if (!key.empty () && (missionx::strct_generate_template_layer.selectedTemplateKey == key || missionx::strct_generate_template_layer.last_picked_template_key == key))
               {
                 bSetKeyStyle = true;
                 ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_green);
@@ -6332,23 +6277,23 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                   constexpr auto combo_label_s = "Select an Option";
 
                   // prepare template briefer text so we will display it in the detailed region
-                  // this->strct_generate_template_layer.selectedTemplateKey                                    = key;
-                  this->strct_generate_template_layer.selectedTemplateKey      = key;
-                  this->strct_generate_template_layer.last_picked_template_key = key;
-                  this->setMessage ("Picked Template: " + this->strct_generate_template_layer.last_picked_template_key);
+                  // missionx::strct_generate_template_layer.selectedTemplateKey                                    = key;
+                  missionx::strct_generate_template_layer.selectedTemplateKey      = key;
+                  missionx::strct_generate_template_layer.last_picked_template_key = key;
+                  this->setMessage ("Picked Template: " + missionx::strct_generate_template_layer.last_picked_template_key);
 
                   // v3.0.255.4 display template inject options
-                  auto *pickedTemplateInfo_ptr = &missionx::data_manager::mapGenerateMissionTemplateFiles[this->strct_generate_template_layer.last_picked_template_key];
+                  auto *pickedTemplateInfo_ptr = &missionx::data_manager::mapGenerateMissionTemplateFiles[missionx::strct_generate_template_layer.last_picked_template_key];
                   assert (pickedTemplateInfo_ptr != nullptr && "1. Failed to map mapGenerateMissionTemplateFiles pointer!!!");
 
                   size_t longestText_i               = 0;
                   size_t longestTextInVector_array_i = 0;
                   size_t indx                        = 0;
-                  this->strct_generate_template_layer.vecReplaceOptions_char.clear ();
+                  missionx::strct_generate_template_layer.vecReplaceOptions_char.clear ();
 
                   for (auto &v : pickedTemplateInfo_ptr->vecReplaceOptions_s)
                   {
-                    this->strct_generate_template_layer.vecReplaceOptions_char.emplace_back (v.c_str ()); // store opt keyName
+                    missionx::strct_generate_template_layer.vecReplaceOptions_char.emplace_back (v.c_str ()); // store opt keyName
                     if (v.length () > longestText_i) // v3.0.303 calculate which cell has the longest text
                     {
                       longestTextInVector_array_i = indx;
@@ -6357,22 +6302,22 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                     ++indx;
                   }
 
-                  pickedTemplateInfo_ptr->size_of_vecReplaceOptions_n                       = this->strct_generate_template_layer.vecReplaceOptions_char.size ();
-                  this->strct_generate_template_layer.user_pick_from_replaceOptions_combo_i = (pickedTemplateInfo_ptr->size_of_vecReplaceOptions_n > 0) ? mxconst::INT_FIRST_0 : mxconst::INT_UNDEFINED; // reset user pick
+                  pickedTemplateInfo_ptr->size_of_vecReplaceOptions_n                       = missionx::strct_generate_template_layer.vecReplaceOptions_char.size ();
+                  missionx::strct_generate_template_layer.user_pick_from_replaceOptions_combo_i = (pickedTemplateInfo_ptr->size_of_vecReplaceOptions_n > 0) ? mxconst::INT_FIRST_0 : mxconst::INT_UNDEFINED; // reset user pick
 
                   // Calculate combo item length
-                  if (this->strct_generate_template_layer.user_pick_from_replaceOptions_combo_i > mxconst::INT_UNDEFINED)
+                  if (missionx::strct_generate_template_layer.user_pick_from_replaceOptions_combo_i > mxconst::INT_UNDEFINED)
                   {
                     // calculate text length in pixel + scale
-                    const auto combo_spacer_f                   = 35.0f * this->strct_setup_layer.fPreferredFontScale; // space that we want to add to string pixel length to have a better visually combo size
-                    const auto combo_label_s_pixel_length_f     = ImGui::CalcTextSize (combo_label_s).x * this->strct_setup_layer.fPreferredFontScale;
-                    const auto help_marker_width_pixel_length_f = ImGui::CalcTextSize (" (?) ").x * this->strct_setup_layer.fPreferredFontScale;
-                    const auto max_option_pixel_length_f        = ImGui::CalcTextSize (pickedTemplateInfo_ptr->vecReplaceOptions_s.at (longestTextInVector_array_i).c_str ()).x * this->strct_setup_layer.fPreferredFontScale; // v3.0.303.2 fixed length of combo
+                    const auto combo_spacer_f                   = 35.0f * missionx::strct_setup_layer.fPreferredFontScale; // space that we want to add to string pixel length to have a better visually combo size
+                    const auto combo_label_s_pixel_length_f     = ImGui::CalcTextSize (combo_label_s).x * missionx::strct_setup_layer.fPreferredFontScale;
+                    const auto help_marker_width_pixel_length_f = ImGui::CalcTextSize (" (?) ").x * missionx::strct_setup_layer.fPreferredFontScale;
+                    const auto max_option_pixel_length_f        = ImGui::CalcTextSize (pickedTemplateInfo_ptr->vecReplaceOptions_s.at (longestTextInVector_array_i).c_str ()).x * missionx::strct_setup_layer.fPreferredFontScale; // v3.0.303.2 fixed length of combo
 
                     if (max_option_pixel_length_f + combo_label_s_pixel_length_f + combo_spacer_f > region_width_arr[1])
-                      this->strct_generate_template_layer.vec2_replace_options_size.x = (region_width_arr[1] - (combo_label_s_pixel_length_f + help_marker_width_pixel_length_f)); // - (20.0f * this->strct_setup_layer.fPreferredFontScale)); // the 20.0f is for the (?) helper at the start of the line
+                      missionx::strct_generate_template_layer.vec2_replace_options_size.x = (region_width_arr[1] - (combo_label_s_pixel_length_f + help_marker_width_pixel_length_f)); // - (20.0f * missionx::strct_setup_layer.fPreferredFontScale)); // the 20.0f is for the (?) helper at the start of the line
                     else
-                      this->strct_generate_template_layer.vec2_replace_options_size.x = max_option_pixel_length_f + combo_spacer_f; // 25.0f represents the drop down combo icon
+                      missionx::strct_generate_template_layer.vec2_replace_options_size.x = max_option_pixel_length_f + combo_spacer_f; // 25.0f represents the drop down combo icon
                   }
 
 
@@ -6388,14 +6333,14 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                     // calculate text length in pixel + scale
                     if (strctOptInfo.user_pick_from_replaceOptions_combo_i > mxconst::INT_UNDEFINED)
                     {
-                      const auto combo_spacer_f = 35.0f * this->strct_setup_layer.fPreferredFontScale; // space that we want to add to string pixel length to have a better visually combo size
-                      // const auto combo_label_s_pixel_length_f = ImGui::CalcTextSize(combo_label_s).x * this->strct_setup_layer.fPreferredFontScale;
-                      const auto combo_label_s_pixel_length_f     = ImGui::CalcTextSize (strctOptInfo.combo_label_s.c_str ()).x * this->strct_setup_layer.fPreferredFontScale;
-                      const auto help_marker_width_pixel_length_f = ImGui::CalcTextSize (" (?) ").x * this->strct_setup_layer.fPreferredFontScale;
-                      const auto max_option_pixel_length_f        = ImGui::CalcTextSize (strctOptInfo.longestTextInVector_s.c_str ()).x * this->strct_setup_layer.fPreferredFontScale; // calculate combo length based on text size.
+                      const auto combo_spacer_f = 35.0f * missionx::strct_setup_layer.fPreferredFontScale; // space that we want to add to string pixel length to have a better visually combo size
+                      // const auto combo_label_s_pixel_length_f = ImGui::CalcTextSize(combo_label_s).x * missionx::strct_setup_layer.fPreferredFontScale;
+                      const auto combo_label_s_pixel_length_f     = ImGui::CalcTextSize (strctOptInfo.combo_label_s.c_str ()).x * missionx::strct_setup_layer.fPreferredFontScale;
+                      const auto help_marker_width_pixel_length_f = ImGui::CalcTextSize (" (?) ").x * missionx::strct_setup_layer.fPreferredFontScale;
+                      const auto max_option_pixel_length_f        = ImGui::CalcTextSize (strctOptInfo.longestTextInVector_s.c_str ()).x * missionx::strct_setup_layer.fPreferredFontScale; // calculate combo length based on text size.
 
                       if (max_option_pixel_length_f + combo_label_s_pixel_length_f + combo_spacer_f > region_width_arr[1])
-                        strctOptInfo.combo_width_f = (region_width_arr[1] - (combo_label_s_pixel_length_f + help_marker_width_pixel_length_f)); // (20.0f * this->strct_setup_layer.fPreferredFontScale)); // the 20.0f is for the (?) helper at the start of the line
+                        strctOptInfo.combo_width_f = (region_width_arr[1] - (combo_label_s_pixel_length_f + help_marker_width_pixel_length_f)); // (20.0f * missionx::strct_setup_layer.fPreferredFontScale)); // the 20.0f is for the (?) helper at the start of the line
                       else
                         strctOptInfo.combo_width_f = max_option_pixel_length_f + combo_spacer_f; // combo_spacer_f represents the drop down combo icon
                     }
@@ -6403,7 +6348,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                   // v24.12.2
 
                   #ifndef RELEASE
-                  Log::logMsg ("Picked: " + this->strct_generate_template_layer.last_picked_template_key); // debug
+                  Log::logMsg ("Picked: " + missionx::strct_generate_template_layer.last_picked_template_key); // debug
                   #endif
                 }
               }
@@ -6416,20 +6361,20 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
           }
           else
           { // Display the "picked" template description and options, or the "generated template info"
-            if (!this->strct_generate_template_layer.last_picked_template_key.empty ())
+            if (!missionx::strct_generate_template_layer.last_picked_template_key.empty ())
             {
               // after generated mission from the template, display the "info" text.
-              if (this->flag_generatedRandomFile_success)
+              if (missionx::flag_generatedRandomFile_success)
               {
-                const std::string fileName = (this->strct_generate_template_layer.last_picked_template_key.find (mxconst::get_XML_EXTENSION ()) == std::string::npos) ? this->strct_generate_template_layer.last_picked_template_key + mxconst::get_XML_EXTENSION () : this->strct_generate_template_layer.last_picked_template_key;
+                const std::string fileName = (missionx::strct_generate_template_layer.last_picked_template_key.find (mxconst::get_XML_EXTENSION ()) == std::string::npos) ? missionx::strct_generate_template_layer.last_picked_template_key + mxconst::get_XML_EXTENSION () : missionx::strct_generate_template_layer.last_picked_template_key;
 
-                ImGui::SetWindowFontScale (this->strct_setup_layer.fPreferredFontScale);
-                if (Utils::isElementExists (data_manager::mapGenerateMissionTemplateFiles, this->strct_generate_template_layer.last_picked_template_key))
+                ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
+                if (Utils::isElementExists (data_manager::mapGenerateMissionTemplateFiles, missionx::strct_generate_template_layer.last_picked_template_key))
                 {
 
                   // Display the mission briefing description after generating the mission file
                   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
-                  ImGui::TextWrapped ("%s", missionx::data_manager::mapGenerateMissionTemplateFiles[this->strct_generate_template_layer.last_picked_template_key].description.c_str ());
+                  ImGui::TextWrapped ("%s", missionx::data_manager::mapGenerateMissionTemplateFiles[missionx::strct_generate_template_layer.last_picked_template_key].description.c_str ());
                   this->mxUiResetAllFontsToDefault ();
                 }
                 ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
@@ -6437,12 +6382,12 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
               else
               { // Display the "template" options, and basic description.
 
-                ImGui::SetWindowFontScale (this->strct_setup_layer.fPreferredFontScale);
+                ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
                 // show options combo box
                 // v24.12.2 multi options
-                if (mxUtils::isElementExists (data_manager::mapGenerateMissionTemplateFiles, this->strct_generate_template_layer.last_picked_template_key))
+                if (mxUtils::isElementExists (data_manager::mapGenerateMissionTemplateFiles, missionx::strct_generate_template_layer.last_picked_template_key))
                 {
-                  auto *pickedTemplateInfo_ptr = &missionx::data_manager::mapGenerateMissionTemplateFiles[this->strct_generate_template_layer.last_picked_template_key];
+                  auto *pickedTemplateInfo_ptr = &missionx::data_manager::mapGenerateMissionTemplateFiles[missionx::strct_generate_template_layer.last_picked_template_key];
                   assert (pickedTemplateInfo_ptr != nullptr && "2. Failed to map mapGenerateMissionTemplateFiles pointer!!!");
 
                   if (!pickedTemplateInfo_ptr->mapOptionsInfo.empty ())
@@ -6476,7 +6421,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
 
                 // Display template mission info text
                 this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-                ImGui::TextWrapped ("%s", missionx::data_manager::mapGenerateMissionTemplateFiles[this->strct_generate_template_layer.last_picked_template_key].template_description.c_str ());
+                ImGui::TextWrapped ("%s", missionx::data_manager::mapGenerateMissionTemplateFiles[missionx::strct_generate_template_layer.last_picked_template_key].template_description.c_str ());
                 this->mxUiResetAllFontsToDefault ();
                 ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
               }
@@ -6502,9 +6447,9 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
       ImGui::SameLine ();
 
       ///// Display Generate or Start buttons
-      if (!this->strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running)
+      if (!missionx::strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running)
       {
-        this->flag_generatedRandomFile_success = false; // this will also assist in hiding the "start" button since we are generating
+        missionx::flag_generatedRandomFile_success = false; // this will also assist in hiding the "start" button since we are generating
         ImGui::SameLine (region_width_arr[0] + 10.0f);
         // v25.06.1 Add options button to display options that are not part of the template @randomuser
         ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_red);
@@ -6523,13 +6468,13 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
           const ImVec2 modal_center (mxUiGetContentWidth () * 0.5f, ImGui::GetWindowHeight () * 0.5f);
           if (ImGui::BeginPopupModal (GENERATE_TEMPLATE_QUESTION.c_str (), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
           {
-            ImGui::Checkbox ("Generate GPS waypoints.", &this->strct_cross_layer_properties.flag_generate_gps_waypoints);
+            ImGui::Checkbox ("Generate GPS waypoints.", &missionx::strct_cross_layer_properties.flag_generate_gps_waypoints);
             this->add_ui_auto_load_checkbox (); // v25.04.2
             ImGui::Spacing (); // v3.303.14.2 added default weight to the generate screen
-            ImGui::Checkbox ("Add default base weights.\n(Not advisable for planes > GAs)", &this->adv_settings_strct.flag_add_default_weight_settings);
+            ImGui::Checkbox ("Add default base weights.\n(Not advisable for planes > GAs)", &missionx::adv_settings_strct.flag_add_default_weight_settings);
             ImGui::Spacing ();
 
-            this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
+            this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
             ImGui::Spacing ();
             add_designer_mode_checkbox (); // v24.03.2 Designer mode flag
 
@@ -6566,13 +6511,13 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                   this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
 
                 // v3.303.12 added weather
-                switch (this->adv_settings_strct.iWeatherType_user_picked)
+                switch (missionx::adv_settings_strct.iWeatherType_user_picked)
                 {
                   case missionx::mx_ui_random_weather_options::pick_pre_defined:
                   {
                     // store values in the prop_userDefinedMission_ui. During Random mission generation the weather will be picked from the list
-                    missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_WEATHER_USER_PICKED (), this->adv_settings_strct.get_weather_picked_by_user ());
-                    missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_WEATHER_CHANGE_MODE_USER_PICKED (), this->adv_settings_strct.get_weather_change_mode_picked_by_user ()); // v3.303.13
+                    missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_WEATHER_USER_PICKED (), missionx::adv_settings_strct.get_weather_picked_by_user ());
+                    missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_WEATHER_CHANGE_MODE_USER_PICKED (), missionx::adv_settings_strct.get_weather_change_mode_picked_by_user ()); // v3.303.13
                   }
                   break;
                   case missionx::mx_ui_random_weather_options::use_xplane_weather_and_store:
@@ -6590,7 +6535,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                 }
 
                 // Prepare and call ACTION_GENERATE_RANDOM_MISSION
-                missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), this->strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12 generate GPS waypoints
+                missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), missionx::strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12 generate GPS waypoints
 
                 ImGui::CloseCurrentPopup ();
                 this->execAction (mx_window_actions::ACTION_GENERATE_RANDOM_MISSION);
@@ -6622,7 +6567,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
         ImGui::SameLine (region_width_arr[0] + 10.0f);
         this->add_ui_abort_mission_creation_button (); // Add Abort Random Engine
       }
-      else if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->flag_generatedRandomFile_success && this->strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
+      else if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && missionx::flag_generatedRandomFile_success && missionx::strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
       {
         ImGui::SameLine (region_width_arr[0] + 10.0f); // pad to the right so the button will better aligned with above frame.
         this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
@@ -6641,11 +6586,11 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
       this->mxUiReleaseLastFont (); // v3.303.14
     }
   }
-  else if (this->strct_generate_template_layer.layer_state == missionx::mx_layer_state_enum::failed_data_is_not_present || this->strct_generate_template_layer.layer_state == missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly)
+  else if (missionx::strct_generate_template_layer.layer_state == missionx::mx_layer_state_enum::failed_data_is_not_present || missionx::strct_generate_template_layer.layer_state == missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly)
   {
     ImGui::NewLine ();
 
-    if (this->strct_generate_template_layer.layer_state == missionx::mx_layer_state_enum::failed_data_is_not_present)
+    if (missionx::strct_generate_template_layer.layer_state == missionx::mx_layer_state_enum::failed_data_is_not_present)
     {
       this->display_shared_message_when_optimized_data_is_not_present (missionx::mx_layer_state_enum::failed_data_is_not_present);
     }
@@ -6664,9 +6609,9 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
     // ImGui::SetWindowFontScale(mxconst::DEFAULT_BASE_FONT_SCALE);
     this->mxUiReleaseLastFont (); // v3.303.14 release the last 2 fonts we pushed
 
-    if (this->strct_generate_template_layer.layer_state < missionx::mx_layer_state_enum::validating_data)
+    if (missionx::strct_generate_template_layer.layer_state < missionx::mx_layer_state_enum::validating_data)
     {
-      this->strct_generate_template_layer.layer_state = missionx::mx_layer_state_enum::validating_data;
+      missionx::strct_generate_template_layer.layer_state = missionx::mx_layer_state_enum::validating_data;
     }
   }
   this->mxUiResetAllFontsToDefault (); // v3.303.14
@@ -6767,7 +6712,7 @@ WinImguiBriefer::draw_flight_leg_info ()
   if ((Message::lineAction4ui.state == missionx::enum_mx_line_state::undefined) && (missionx::data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running))
   {
 
-    ImGui::SetWindowFontScale (this->strct_setup_layer.fPreferredFontScale); // v3.305.1
+    ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale); // v3.305.1
 
 
     // Left image
@@ -6891,7 +6836,7 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
     child_w[1] = 0.0f; // full window width
   }
 
-  ImGui::SetWindowFontScale (this->strct_setup_layer.fPreferredFontScale);
+  ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
 
   ImGuiTabBarFlags mainTab_bar_flags = ImGuiTabBarFlags_Reorderable; // ImGuiTabBarFlags_None;
   if (ImGui::BeginTabBar ("FlightLegInfo", mainTab_bar_flags))
@@ -7350,7 +7295,7 @@ void
 WinImguiBriefer::child_flight_leg_info_draw_inventory ()
 {
   std::string                   str;
-  ImVec2                        vec2_btnSize = { 250.0f, this->strct_setup_layer.fPreferredFontScale * data_manager::FONT_SIZE + 6.0f }; // need to be dynamic
+  ImVec2                        vec2_btnSize = { 250.0f, missionx::strct_setup_layer.fPreferredFontScale * data_manager::FONT_SIZE + 6.0f }; // need to be dynamic
   constexpr static const ImVec2 vec2_portrait (50.0f, 40.0f); // v3.0.303.5
 
   const auto window_content_xy = this->mxUiGetWindowContentWxH ();
@@ -7599,7 +7544,7 @@ WinImguiBriefer::child_draw_inv_plane_xp12 (Inventory &inoutPlaneInventory, cons
 {
   static constexpr ImVec2 vec2_portrait (50.0f, 40.0f);
 
-  const ImVec2 vec2_btnSize = { 250.0f, this->strct_setup_layer.fPreferredFontScale * data_manager::FONT_SIZE + 6.0f }; // need to be dynamic
+  const ImVec2 vec2_btnSize = { 250.0f, missionx::strct_setup_layer.fPreferredFontScale * data_manager::FONT_SIZE + 6.0f }; // need to be dynamic
 
   // loop over station containers and create "collapsible" widget for them
   for (auto &[station_id, acf_station] : inoutPlaneInventory.mapStations)
@@ -7749,7 +7694,7 @@ WinImguiBriefer::child_draw_inv_plane_xp12 (Inventory &inoutPlaneInventory, cons
 void
 WinImguiBriefer::child_draw_inv_plane_xp11 (const missionx::mx_ui_inv_regions &inRegionType, const ImVec2 &in_vec2_inv_child)
 {
-  ImVec2                  vec2_btnSize = { 250.0f, this->strct_setup_layer.fPreferredFontScale * data_manager::FONT_SIZE + 6.0f }; // need to be dynamic
+  ImVec2                  vec2_btnSize = { 250.0f, missionx::strct_setup_layer.fPreferredFontScale * data_manager::FONT_SIZE + 6.0f }; // need to be dynamic
   static constexpr ImVec2 vec2_portrait (50.0f, 40.0f);
 
   const int nItems = missionx::data_manager::planeInventoryCopy.node.nChildNode (mxconst::get_ELEMENT_ITEM ().c_str ());
@@ -7891,7 +7836,7 @@ WinImguiBriefer::child_draw_inv_plane_xp11 (const missionx::mx_ui_inv_regions &i
 void
 WinImguiBriefer::child_draw_inv_external_store (const ImVec2 &in_vec2_inv_child)
 {
-  const ImVec2            vec2_btnSize = { 250.0f, this->strct_setup_layer.fPreferredFontScale * data_manager::FONT_SIZE + 6.0f }; // need to be dynamic
+  const ImVec2            vec2_btnSize = { 250.0f, missionx::strct_setup_layer.fPreferredFontScale * data_manager::FONT_SIZE + 6.0f }; // need to be dynamic
   static constexpr ImVec2 vec2_portrait (50.0f, 40.0f);
 
   const bool bDisable = this->mxStartUiDisableState (this->strct_flight_leg_info.flagItemMoveWasPressedFromExternalInv);
@@ -8398,7 +8343,7 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
         {
           if (!this->strct_pick_layer.last_picked_key.empty ())
           {
-            ImGui::SetWindowFontScale (this->strct_setup_layer.fPreferredFontScale);
+            ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
             this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
 
             ImGui::Text ("Title: ");
@@ -8614,8 +8559,12 @@ WinImguiBriefer::draw_child_ext_fpln_home_screen ()
         if (this->strct_ext_layer.from_icao.empty ())
         {
           NavAidInfo nNavAid = data_manager::get_plane_airport_or_nearest_icao ();
-          if (!nNavAid.getID ().empty ())
-            std::memcpy (this->strct_ext_layer.buf_from_icao, nNavAid.ID, 10);
+          if (!nNavAid.getID().empty())
+          {
+            //std::memcpy(this->strct_ext_layer.buf_from_icao, nNavAid.ID, 10);
+            mxUtils::copy_string_to_buffer(nNavAid.getID(), this->strct_ext_layer.buf_from_icao[0], sizeof(this->strct_ext_layer.buf_from_icao)); // v26.04.3
+          }
+            
           // Change layer
           this->strct_ext_layer.from_icao = std::string (this->strct_ext_layer.buf_from_icao);
         }
@@ -8674,7 +8623,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
       this->strct_ext_layer.flag_flightplandatabase_auth_exists = true;
   }
 
-  ImGui::SetWindowFontScale (this->strct_setup_layer.fPreferredFontScale);
+  ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
 
   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.305.1
 
@@ -8717,8 +8666,11 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
       if (ImGui::Button ("From ICAO")) // first time initialization or manual ICAO fetch
       {
         NavAidInfo nNavAid = data_manager::get_plane_airport_or_nearest_icao ();
-        if (!nNavAid.getID ().empty ())
-          std::memcpy (this->strct_ext_layer.buf_from_icao, nNavAid.ID, 10);
+        if (!nNavAid.getID().empty())
+        {
+          //std::memcpy(this->strct_ext_layer.buf_from_icao, nNavAid.ID, 10);
+          mxUtils::copy_string_to_buffer(nNavAid.getID(), this->strct_ext_layer.buf_from_icao[0], sizeof(this->strct_ext_layer.buf_from_icao)); // v26.04.3
+        }
 
         this->strct_ext_layer.from_icao = std::string (this->strct_ext_layer.buf_from_icao); // first initialization
       }
@@ -8821,7 +8773,9 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
   // if ((this->strct_ext_layer.fetch_state != missionx::mxFetchState_enum::fetch_in_process && this->strct_ext_layer.fetch_state != missionx::mxFetchState_enum::fetch_ended && this->strct_ext_layer.fetch_state != missionx::mxFetchState_enum::fetch_guess_wp) && (!this->strct_ext_layer.from_icao.empty () || !this->strct_ext_layer.to_icao.empty ()))
 
   const bool are_we_processing_the_fetch = mxUtils::mx_between <int>(static_cast<int>( this->strct_ext_layer.fetch_state ), static_cast<int>(missionx::mxFetchState_enum::fetch_in_process), static_cast<int>( missionx::mxFetchState_enum::fetch_guess_wp), missionx::enums::mx_between_types::both_can_be_equal);
-  if ( are_we_processing_the_fetch == false && (!this->strct_ext_layer.from_icao.empty () || !this->strct_ext_layer.to_icao.empty ()))
+
+  // v26.06.3 disable button instead of hiding it.
+  const auto bDisableFetchButton = this->mxStartUiDisableState(missionx::data_manager::flag_generate_engine_is_running || are_we_processing_the_fetch || (this->strct_ext_layer.from_icao.empty() && this->strct_ext_layer.to_icao.empty()));
   {
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
 
@@ -8851,14 +8805,12 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
 
     this->mxUiReleaseLastFont ();
 
-    // // v3.303.10
-    // ImGui::SameLine(0.0f, 300.0f);
-    // this->add_ui_advance_settings_random_date_time_weather_and_weight_button(this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
   }
-  else
-  {
-    ImGui::NewLine ();
-  }
+  this->mxEndUiDisableState(bDisableFetchButton);
+  //else
+  //{
+  //  ImGui::NewLine ();
+  //}
 
 
   // ------------ Flight plan Table -----------------------
@@ -8944,7 +8896,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
             ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_mx_bluish);
             if (ImGui::Button (fmt::format ("{} ({})", rowData.toICAO_s, rowData.toName_s).c_str ()))
             {
-              this->callNavData (rowData.toICAO_s, true);
+              this->m_ui_nav_screen->callNavData(rowData.toICAO_s, true);
             }
             ImGui::PopStyleColor ();
 
@@ -9010,11 +8962,11 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
   // -- START BUTTON
   // ----------------------
 
-  // if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->strct_ext_layer.fetch_state == missionx::mxFetchState_enum::fetch_not_started && this->flag_generatedRandomFile_success && this->strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
+  // if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->strct_ext_layer.fetch_state == missionx::mxFetchState_enum::fetch_not_started && missionx::flag_generatedRandomFile_success && missionx::strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
   if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running
       && are_we_processing_the_fetch == false // v26.01.3
-      && this->flag_generatedRandomFile_success
-      && this->strct_generate_template_layer.selectedTemplateKey.empty ()
+      && missionx::flag_generatedRandomFile_success
+      && missionx::strct_generate_template_layer.selectedTemplateKey.empty ()
       && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
   {
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
@@ -9028,2508 +8980,1007 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
 // -----------------------------------------------
 // -----------------------------------------------
 
-void
-WinImguiBriefer::draw_ils_screen ()
-{
-  // constexpr const static float CHILD_SIZE_MODIFIER_F = 0.15f;
+//void
+//WinImguiBriefer::draw_ils_screen ()
+//{
+//  // constexpr const static float CHILD_SIZE_MODIFIER_F = 0.15f;
+//
+//  auto    win_size_vec2          = this->mxUiGetWindowContentWxH ();
+//  ImGuiID elevVerticalSlider_gid = 0;
+//
+//  ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
+//
+//  if (missionx::strct_ils_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw) // display the success screen - main search screen
+//  {
+//    // auto win_size_vec2 = ImGui::GetWindowSize(); // v3.305.1 removed
+//
+//    missionx::WinImguiBriefer::HelpMarker ("The NAV information screen, allows you to search for airports with ILS/VFR approaches.\nYou can filter which types of airports you are looking for or\nLet the plugin randomize the filtering for you.\n\nIt will not "
+//                                           "generate your FMS nor fetch the ILS Plates for you, this will be up to you.\n");
+//    ImGui::SameLine ();
+//    ImGui::TextUnformatted ("NAV information depends on the data collected from X-Plane and Custom Sceneries.");
+//
+//    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
+//    ImGui::BeginGroup ();
+//    ImGui::BeginChild ("##NavDataMainTabChild", ImVec2 (-5.0f, -35.0f));
+//    {
+//      if (ImGui::BeginTabBar ("NavDataMainTab", ImGuiTabBarFlags_None))
+//      {
+//        if (ImGui::BeginTabItem ("ILS Search"))
+//        {
+//          this->child_draw_ils_search ();
+//
+//          ImGui::EndTabItem ();
+//        }
+//
+//        const ImGuiTabItemFlags tabFlags = (!missionx::strct_ils_layer.flagForceNavDataTab) ? ImGuiTabItemFlags_None : ImGuiTabItemFlags_SetSelected; // v24.03.1
+//        if (ImGui::BeginTabItem ("Nav Information", nullptr, tabFlags))
+//        {
+//          this->child_draw_nav_search ();
+//
+//          missionx::strct_ils_layer.flagForceNavDataTab = false; // reset state
+//
+//          ImGui::EndTabItem ();
+//        }
+//
+//        ImGui::EndTabBar ();
+//      } // end Main Nav Tab
+//
+//    } // End Child
+//    ImGui::EndChild ();
+//    ImGui::EndGroup ();
+//    this->mxUiReleaseLastFont (); // v3.305.1
+//  }
+//  // Display failure message
+//  else if (missionx::strct_ils_layer.layer_state == missionx::mx_layer_state_enum::failed_data_is_not_present || missionx::strct_ils_layer.layer_state == missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly)
+//  {
+//    ImGui::NewLine ();
+//
+//    if (missionx::strct_ils_layer.layer_state == missionx::mx_layer_state_enum::failed_data_is_not_present)
+//    {
+//      this->display_shared_message_when_optimized_data_is_not_present (missionx::mx_layer_state_enum::failed_data_is_not_present);
+//    }
+//    else
+//    {
+//      this->display_shared_message_when_optimized_data_is_not_present (missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly);
+//    }
+//  }
+//  else // display wait
+//  {
+//    ImGui::NewLine ();
+//
+//    // ImGui::SetWindowFontScale(2.0f);
+//    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
+//    ImGui::TextColored (missionx::color::color_vec4_magenta, "Please wait while plugin tests the validity of the data.... ");
+//    this->mxUiReleaseLastFont ();
+//    ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+//
+//    if (missionx::strct_ils_layer.layer_state < missionx::mx_layer_state_enum::validating_data)
+//    {
+//      missionx::strct_ils_layer.layer_state = missionx::mx_layer_state_enum::validating_data;
+//    }
+//  }
+//
+//  ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
+//}
 
-  auto    win_size_vec2          = this->mxUiGetWindowContentWxH ();
-  ImGuiID elevVerticalSlider_gid = 0;
-
-  ImGui::SetWindowFontScale (this->strct_setup_layer.fPreferredFontScale);
-
-  if (this->strct_ils_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw) // display the success screen - main search screen
-  {
-    // auto win_size_vec2 = ImGui::GetWindowSize(); // v3.305.1 removed
-
-    missionx::WinImguiBriefer::HelpMarker ("The NAV information screen, allows you to search for airports with ILS/VFR approaches.\nYou can filter which types of airports you are looking for or\nLet the plugin randomize the filtering for you.\n\nIt will not "
-                                           "generate your FMS nor fetch the ILS Plates for you, this will be up to you.\n");
-    ImGui::SameLine ();
-    ImGui::TextUnformatted ("NAV information depends on the data collected from X-Plane and Custom Sceneries.");
-
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
-    ImGui::BeginGroup ();
-    ImGui::BeginChild ("##NavDataMainTabChild", ImVec2 (-5.0f, -35.0f));
-    {
-      if (ImGui::BeginTabBar ("NavDataMainTab", ImGuiTabBarFlags_None))
-      {
-        if (ImGui::BeginTabItem ("ILS Search"))
-        {
-          this->child_draw_ils_search ();
-
-          ImGui::EndTabItem ();
-        }
-
-        const ImGuiTabItemFlags tabFlags = (!this->strct_ils_layer.flagForceNavDataTab) ? ImGuiTabItemFlags_None : ImGuiTabItemFlags_SetSelected; // v24.03.1
-        if (ImGui::BeginTabItem ("Nav Information", nullptr, tabFlags))
-        {
-          this->child_draw_nav_search ();
-
-          this->strct_ils_layer.flagForceNavDataTab = false; // reset state
-
-          ImGui::EndTabItem ();
-        }
-
-        ImGui::EndTabBar ();
-      } // end Main Nav Tab
-
-    } // End Child
-    ImGui::EndChild ();
-    ImGui::EndGroup ();
-    this->mxUiReleaseLastFont (); // v3.305.1
-  }
-  // Display failure message
-  else if (this->strct_ils_layer.layer_state == missionx::mx_layer_state_enum::failed_data_is_not_present || this->strct_ils_layer.layer_state == missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly)
-  {
-    ImGui::NewLine ();
-
-    if (this->strct_ils_layer.layer_state == missionx::mx_layer_state_enum::failed_data_is_not_present)
-    {
-      this->display_shared_message_when_optimized_data_is_not_present (missionx::mx_layer_state_enum::failed_data_is_not_present);
-    }
-    else
-    {
-      this->display_shared_message_when_optimized_data_is_not_present (missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly);
-    }
-  }
-  else // display wait
-  {
-    ImGui::NewLine ();
-
-    // ImGui::SetWindowFontScale(2.0f);
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
-    ImGui::TextColored (missionx::color::color_vec4_magenta, "Please wait while plugin tests the validity of the data.... ");
-    this->mxUiReleaseLastFont ();
-    ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
-
-    if (this->strct_ils_layer.layer_state < missionx::mx_layer_state_enum::validating_data)
-    {
-      this->strct_ils_layer.layer_state = missionx::mx_layer_state_enum::validating_data;
-    }
-  }
-
-  ImGui::SetWindowFontScale (this->strct_setup_layer.fPreferredFontScale);
-}
-
-
-// -----------------------------------------------
-
-
-void
-WinImguiBriefer::child_draw_ils_search ()
-{
-
-  constexpr static auto  elevVerticalTreeNodeName = "Elev. slider";
-  constexpr static float CHILD_SIZE_MODIFIER_F    = 0.15f;
-
-
-  auto win_size_vec2    = this->mxUiGetWindowContentWxH ();
-  auto uiUpperChildInfo = ImGui::GetCurrentWindow ();
-
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
-  ImGui::BeginGroup (); // group 1
-  {
-    const auto child_vec2 = ImVec2 (this->mxUiGetWindowContentWxH ().x * 0.49f, this->mxUiGetWindowContentWxH ().y * 0.44f);
-
-    ImGui::BeginGroup ();
-    {
-      auto i_picked = this->add_ui_two_option_buttons (this->strct_ils_layer.isIFR, this->strct_ils_layer.isVFR, missionx::PICKED_IFR, missionx::PICKED_VFR);
-      if (i_picked != data_manager::ui_ifr_or_vfr_i)
-      {
-        data_manager::ui_ifr_or_vfr_i = i_picked;
-        switch (data_manager::ui_ifr_or_vfr_i)
-        {
-          case missionx::PICKED_VFR:
-          {
-            if (strct_ils_layer.ils_sliderVal2 > 50.0f) // search radius
-              strct_ils_layer.ils_sliderVal2 = 10.0f;
-            if (strct_ils_layer.slider_min_rw_length_i > 300) // runway length
-              strct_ils_layer.slider_min_rw_length_i = 300;
-            if (strct_ils_layer.slider_min_rw_width_i > 15) // runway width
-              strct_ils_layer.slider_min_rw_width_i = 15;
-          }
-          break;
-          case missionx::PICKED_IFR:
-            [[fallthrough]];
-          default:
-          {
-            if (strct_ils_layer.ils_sliderVal2 < 100.0f) // search radius
-              strct_ils_layer.ils_sliderVal2 = 100.0f;
-            if (strct_ils_layer.slider_min_rw_length_i < 800) // runway length
-              strct_ils_layer.slider_min_rw_length_i = 800;
-            if (strct_ils_layer.slider_min_rw_width_i < 45) // runway width
-              strct_ils_layer.slider_min_rw_width_i = 45;
-          }
-          break;
-        }
-      }
-    }
-
-    //------------------------------------------------
-    //     search ILS/VFR runways button
-    //------------------------------------------------
-    ImGui::SameLine (0.0f, 45.0f);
-    this->add_ui_ils_vfr_search_airports_button (missionx::mx_window_actions::ACTION_FETCH_ILS_AIRPORTS);
-    // Display START mission button
-    ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow);
-    ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_indigo);
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-    {
-      if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->flag_generatedRandomFile_success && this->strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
-      {
-        ImGui::SameLine (win_size_vec2.x * 0.5f + 130.0f);
-        this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
-      }
-    }
-    this->mxUiReleaseLastFont ();
-    ImGui::PopStyleColor (2);
-
-    ImGui::EndGroup ();
-
-    //
-    ImGui::BeginGroup ();
-    ImGui::BeginChild ("Left ILS", child_vec2, ImGuiChildFlags_Borders);
-    {
-      // From/To ICAO tree
-      if (ImGui::TreeNode (reinterpret_cast<void *>(static_cast<intptr_t> (1)), "%s", fmt::format ("From/To: {}/{}", this->strct_ils_layer.from_icao, this->strct_ils_layer.to_icao).c_str ()))
-      {
-        missionx::WinImguiBriefer::HelpMarker ("Enter optional starting ICAO airport.");
-        ImGui::SameLine ();
-        ImGui::PushItemWidth (100.0f);
-        if (ImGui::InputText ("##From_ILS_Icao_text", this->strct_ils_layer.buf1, 8, ImGuiInputTextFlags_CharsUppercase)) // , ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal);
-        {
-          this->strct_ils_layer.from_icao = std::string (this->strct_ils_layer.buf1);
-        }
-        this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Optional: enter departure airport ICAO code");
-
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-        {
-          ImGui::SameLine ();
-          if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).c_str (), "Clear From ICAO")) // should have been ImGui::ButtonTooltip
-          {
-            this->strct_ils_layer.from_icao.clear ();
-            memset (this->strct_ils_layer.buf1, 0, sizeof this->strct_ils_layer.buf1);
-          }
-        }
-        this->mxUiReleaseLastFont ();
-
-        ImGui::SameLine ();
-        if (ImGui::Button ("From ICAO") || this->strct_ils_layer.bFirstTime) // first time initialization or manual ICAO fetch
-        {
-          #ifdef IBM
-          this->strct_ils_layer.navaid = data_manager::get_plane_airport_or_nearest_icao ();
-          #else
-          auto tempNav                 = data_manager::get_plane_airport_or_nearest_icao ();
-          this->strct_ils_layer.navaid = tempNav;
-          #endif
-          if (!this->strct_ils_layer.navaid.getID ().empty ())
-            std::memcpy (this->strct_ils_layer.buf1, this->strct_ils_layer.navaid.ID, 10);
-
-          this->strct_ils_layer.from_icao  = std::string (this->strct_ils_layer.buf1); // first initialization
-          this->strct_ils_layer.sNavICAO   = this->strct_ils_layer.from_icao; // v24.03.2 NavData ICAO will also be initialized.
-          this->strct_ils_layer.bFirstTime = false;
-        }
-
-        //////////////////
-        // New Line
-        // TO input item
-        /////////////////
-        missionx::WinImguiBriefer::HelpMarker ("Enter optional destination ICAO airport.\nThe plugin will search for all ICAOs containing the string you entered.");
-        ImGui::SameLine ();
-        ImGui::PushItemWidth (100.0f);
-        if (ImGui::InputText ("##To_ILS_Icao_text", this->strct_ils_layer.buf2, 8, ImGuiInputTextFlags_CharsUppercase)) // , ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal);
-        {
-          this->strct_ils_layer.to_icao = mxUtils::trim (std::string (this->strct_ils_layer.buf2));
-        }
-        this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Optional: enter arrival airport ICAO code");
-        ImGui::SameLine ();
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-        {
-          ImGui::SameLine ();
-          ImGui::PushID ("##ClearICAO"); // v25.12.1 fix button do not respond to clicks
-          if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).c_str (), "Clear to ICAO"))
-          {
-            this->strct_ils_layer.to_icao.clear ();
-            memset (this->strct_ils_layer.buf2, 0, sizeof this->strct_ils_layer.buf2);
-          }
-          ImGui::PopID ();
-        }
-        this->mxUiReleaseLastFont ();
-        ImGui::SameLine ();
-        ImGui::TextColored (missionx::color::color_vec4_white, "To ICAO");
-
-        if (this->strct_ils_layer.to_icao.length () < 2) // v3.24.1 We can ignore distance only
-          this->strct_ils_layer.flagIgnoreDistanceFilter = false;
-
-        // ImGui::SameLine (0.0f, 5.0f); // v25.12.1 removed
-        missionx::WinImguiBriefer::HelpMarker ("You must enter Two or more search characters to enable the option to ignore 'precise distance' filter.\nThe search result will be limited to 250 rows.");
-        ImGui::SameLine ();
-        const bool bICAO_isEmpty = this->mxStartUiDisableState (this->strct_ils_layer.to_icao.length() < 2); // v24.03.1 disable line ?
-        ImGui::Checkbox ("Ignore Dist.", &this->strct_ils_layer.flagIgnoreDistanceFilter);
-        this->mxEndUiDisableState (bICAO_isEmpty); // v24.03.1 disable line ?
-
-
-        ImGui::TreePop ();
-      } // END FROM/TO Tree
-
-      // Min Distance
-      {
-        const bool bIgnoreDistanceFilter = this->mxStartUiDisableState (this->strct_ils_layer.flagIgnoreDistanceFilter); // v24.03.1 disable line ?
-
-        ImGui::TextColored (missionx::color::color_vec4_yellow, "Choose Route Range");
-        ImGui::PushID ("##Slider_ILS_MaxDistance");
-        {
-          if (ImGui::SliderFloat ("", &strct_ils_layer.ils_sliderVal2, mxconst::SLIDER_SHORTEST_MAX_ILS_SEARCH_RADIUS, mxconst::SLIDER_ILS_MAX_SEARCH_RADIUS, "%.0f nm"))
-          {
-            // calc and construct low/high label for slider
-            if (strct_ils_layer.ils_sliderVal2 / 500.0f > 1.0f)
-              strct_ils_layer.ils_sliderVal1 = strct_ils_layer.ils_sliderVal2 * 0.75f;
-            else if (strct_ils_layer.ils_sliderVal2 / 250.0f > 1.0f)
-              strct_ils_layer.ils_sliderVal1 = strct_ils_layer.ils_sliderVal2 * 0.5f;
-            else
-              strct_ils_layer.ils_sliderVal1 = mxconst::SLIDER_SHORTEST_MIN_ILS_SEARCH_RADIUS;
-
-            strct_ils_layer.ils_slider2_lbl = "[" + Utils::formatNumber<float> (strct_ils_layer.ils_sliderVal1, 0) + ".." + Utils::formatNumber<float> (strct_ils_layer.ils_sliderVal2, 0) + "]";
-          }
-        }
-        ImGui::PopID ();
-        ImGui::SameLine ();
-        ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", strct_ils_layer.ils_slider2_lbl.c_str ());
-
-        this->mxEndUiDisableState (bIgnoreDistanceFilter); // disable line ?
-
-      } // end Max Distance
-
-      // Minimum Runway Length && Minimum Runway Width mt.
-      {
-        // ImGui::NewLine();
-        ImGui::Spacing (); // v3.305.1
-
-        ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
-        ImGui::SliderInt ("Min Runway Length", &strct_ils_layer.slider_min_rw_length_i, mxconst::SLIDER_ILS_SHORTEST_RW_LENGTH_MT, mxconst::SLIDER_ILS_LONGEST_RW_LENGTH_MT, "%i meters");
-        ImGui::PopStyleColor (1);
-        this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Pick minimal runway Length filter");
-
-        // ImGui::NewLine();
-        ImGui::Spacing (); // v3.305.1
-
-        ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
-        ImGui::SliderInt ("Min Runway Width", &strct_ils_layer.slider_min_rw_width_i, mxconst::SLIDER_ILS_SHORTEST_RW_WIDTH_MT, mxconst::SLIDER_ILS_WIDEST_RW_WIDTH_MT, "%i meters");
-        ImGui::PopStyleColor (1);
-        this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Pick minimal runway Width filter");
-      } //  Minimum Runway Length && Minimum Runway Width mt.
-
-      // Limit Rows
-      {
-        ImGui::SetNextItemWidth (70.0f);
-        ImGui::Combo ("Limit rows", &this->strct_ils_layer.limit_indx, this->strct_ils_layer.limit_items, IM_ARRAYSIZE (this->strct_ils_layer.limit_items)); // default is 250 rows
-        ImGui::SameLine ();
-        missionx::WinImguiBriefer::mxUiHelpMarker (missionx::color::color_vec4_aquamarine, fmt::format ("How many rows to retrieve. Default {}.\nCan drastically affect FPS.", this->strct_ils_layer.limit_items[0]).c_str ());
-      } // limit rows
-    }
-    ImGui::EndChild (); // end left ILS child
-    ImGui::EndGroup (); // end left group
-
-    ImGui::SameLine (this->mxUiGetWindowContentWxH ().x * 0.5f);
-
-    ImGui::BeginGroup ();
-    ImGui::BeginChild ("Right ILS", child_vec2, ImGuiChildFlags_Borders);
-    {
-      // Which ILS types to search
-      if (data_manager::ui_ifr_or_vfr_i == missionx::PICKED_IFR)
-      {
-        const std::string ils_type_picked_s = strct_ils_layer.get_ils_types_picked ();
-        const std::string picked_lbl_s      = ((ils_type_picked_s.empty ()) ? "Any NAV type" : ils_type_picked_s);
-
-        ImGui::TextColored (missionx::color::color_vec4_yellow, "Type:");
-        ImGui::SameLine ();
-        ImGui::TextColored (missionx::color::color_vec4_white, "%s", picked_lbl_s.c_str ());
-
-        {
-          if (ImGui::TreeNode (reinterpret_cast<void *>(static_cast<intptr_t> (2)), "%s", "NAV Filtering"))
-          {
-            ImGui::NewLine ();
-
-            // loop over all ils in mapCheck_ILS_types and display state
-            int counter = 0;
-            for (auto &[keyType, bVal] : this->strct_ils_layer.mapCheck_ILS_types)
-            {
-              counter++;
-              if (counter % 4 == 0)
-                ImGui::NewLine ();
-
-              ImGui::SameLine (); // we always need same line. New line is special case
-
-              ImGui::Checkbox (missionx::mapILS_types[keyType].c_str (), &bVal); // no need to handle picked checkbox, since we are handling it prior to tree display
-            }
-            ImGui::Separator ();
-            ImGui::TreePop ();
-          }
-        }
-      } // end ILS types to search
-
-      // Minimum airport elevation
-      {
-        const std::string min_ap_elev_ft_s = "Min Airport Elevation:";
-
-        ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", min_ap_elev_ft_s.c_str ());
-        ImGui::SameLine ();
-        ImGui::TextColored (missionx::color::color_vec4_white, "%s", (Utils::formatNumber<int> (this->strct_ils_layer.slider_min_airport_elev_ft_i) + "ft").c_str ());
-
-        ImGui::SameLine (0.0f, 10.0f);
-
-        if (ImGui::TreeNode (reinterpret_cast<void *>(static_cast<intptr_t> (3)), "%s", "Elev. slider"))
-        {
-          if (this->strct_ils_layer.enum_elevSliderOpenState == missionx::enums::mx_treeNodeState::closed)
-            this->strct_ils_layer.enum_elevSliderOpenState = missionx::enums::mx_treeNodeState::opened;
-
-          static constexpr float vertical_slider_spacing_f = 180.0f;
-          static constexpr float vertical_slider_width_f   = 80.0f;
-          ImGui::NewLine ();
-          ImGui::SameLine (0.0f, vertical_slider_spacing_f);
-          ImGui::VSliderInt ("##airportElevSliderInt", ImVec2 (vertical_slider_width_f, 80.0f), &this->strct_ils_layer.slider_min_airport_elev_ft_i, mxconst::SLIDER_ILS_LOWEST_AIRPORT_ELEV_FT, mxconst::SLIDER_ILS_HIGHEST_AIRPORT_ELEV_FT, "%i");
-
-          ImGui::NewLine ();
-          ImGui::SameLine (0.0f, vertical_slider_spacing_f);
-          if (ImGui::Button ("Reset", ImVec2 (vertical_slider_width_f, 30.0f)))
-          {
-            this->strct_ils_layer.slider_min_airport_elev_ft_i = mxconst::SLIDER_ILS_STARTING_AIRPORT_ELEV_VALUE_FT;
-            ImGui::SetScrollHereY (1.0f);
-          }
-
-          if (this->strct_ils_layer.enum_elevSliderOpenState == missionx::enums::mx_treeNodeState::opened)
-          {
-            ImGui::SetScrollHereY (1.0f);
-            this->strct_ils_layer.enum_elevSliderOpenState = missionx::enums::mx_treeNodeState::was_opened;
-          }
-
-
-          ImGui::TreePop ();
-        }
-        else
-          this->strct_ils_layer.enum_elevSliderOpenState = missionx::enums::mx_treeNodeState::closed; // when close we must reset it
-
-      } // Minimum airport elevation
-    }
-    ImGui::EndChild ();
-    ImGui::EndGroup ();
-  }
-
-  // ImGui::EndChild (); // end outer child
-  ImGui::EndGroup ();
-
-  this->mxUiReleaseLastFont (); // v3.305.1
-
-  //------------------------------------------------
-  //     Status Messages
-  //------------------------------------------------
-  if (missionx::data_manager::flag_generate_engine_is_running && this->sBottomMessage.empty ())
-  {
-    this->setMessage ("Random Engine is running, please wait...");
-  }
-  else if (missionx::data_manager::flag_apt_dat_optimization_is_running && sBottomMessage.empty ())
-  {
-    this->setMessage ("Can't Generate mission, apt data optimization is currently running. Please wait for it to finish first !!!");
-  }
-
-
-  //------------------------------------------------
-  //     Airports Query Result Table
-  //------------------------------------------------
-
-  const float fStartButtonHeight = (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->flag_generatedRandomFile_success && this->strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running) ? 25.0f : 0.0f;
-
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
-
-  ImGui::BeginGroup ();
-  // ImGui::BeginChild ("draw_ils_layer_table_02", ImVec2 (0.0f, win_size_vec2.y - uiUpperChildSizeVec2.y - 0.0f /*buttons*/ - 10.0f /*bottom message space*/ - fStartButtonHeight /* Is StartButton visible */), ImGuiChildFlags_Borders); // Size relative to the upper child size
-  {
-    ImGui::PushStyleColor (ImGuiCol_TableRowBgAlt, IM_COL32 (0x1a, 0x1a, 0x1a, 0xff));
-    constexpr const static int COLUMN_NUM = 11;
-
-    if (ImGui::BeginTable ("TableILS", COLUMN_NUM, ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_Sortable | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingFixedFit
-                           // ImGuiTableFlags_ScrollFreezeTopRow | ImGuiTableFlags_ScrollFreezeLeftColumn
-                           ))
-    {
-      ImGui::TableSetupScrollFreeze (0, 1); // Make top row always visible
-
-      // Set up the columns of the table
-      ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow);
-      {
-        ImGui::TableSetupColumn ("TO", ImGuiTableColumnFlags_None, 210); // to ICAO + (keyName)
-        ImGui::TableSetupColumn ("Dist.", ImGuiTableColumnFlags_DefaultSort, 45);
-        ImGui::TableSetupColumn ("ILS Type", ImGuiTableColumnFlags_None, 70);
-        ImGui::TableSetupColumn ("Freq.", ImGuiTableColumnFlags_None, 50);
-        ImGui::TableSetupColumn ("RW", ImGuiTableColumnFlags_None, 30);
-        ImGui::TableSetupColumn ("Len mt", ImGuiTableColumnFlags_None, 55);
-        ImGui::TableSetupColumn ("Width", ImGuiTableColumnFlags_None, 50);
-        ImGui::TableSetupColumn ("Elev ft.", ImGuiTableColumnFlags_None, 65);
-        ImGui::TableSetupColumn ("Gen.", ImGuiTableColumnFlags_NoSort, 50); //
-        ImGui::TableSetupColumn ("Surface", ImGuiTableColumnFlags_NoSort, 90); // v3.0.253.13
-        ImGui::TableSetupColumn ("Bearing", ImGuiTableColumnFlags_NoSort, 50); // v3.0.253.13 bearing between start and target icao runway
-        ImGui::TableHeadersRow ();
-      }
-      ImGui::PopStyleColor ();
-
-      if (!missionx::data_manager::table_ILS_rows_vec.empty () && this->strct_ils_layer.fetch_ils_state != missionx::mxFetchState_enum::fetch_in_process && missionx::data_manager::s_thread_sync_mutex.locked_by_caller () == false)
-      {
-        // Sort the data if and as needed
-        ImGuiTableSortSpecs *sortSpecs = ImGui::TableGetSortSpecs ();
-        if (sortSpecs && sortSpecs->SpecsDirty && sortSpecs->Specs && sortSpecs->SpecsCount >= 1 && data_manager::table_ILS_rows_vec.size () > 1)
-        {
-          // tableDataListTy
-          // We sort only by one column, no multi-column sort
-          const ImGuiTableColumnSortSpecs &colSpec = *(sortSpecs->Specs);
-
-          // We directly sort the tableList: tableExternalFPLN_vec
-          std::ranges::sort (data_manager::table_ILS_rows_vec, // lambda function
-                             [colSpec] (const missionx::mx_ils_airport_row_strct &a, const missionx::mx_ils_airport_row_strct &b)
-                             {
-                               const int cmp = // less than 0 if a < b
-                                 colSpec.ColumnIndex == 0   ? a.toICAO_s.compare (b.toICAO_s)
-                                 : colSpec.ColumnIndex == 1 ? static_cast<int> (a.distnace_d - b.distnace_d)
-                                 : colSpec.ColumnIndex == 2 ? a.locType_s.compare (b.locType_s)
-                                 : colSpec.ColumnIndex == 3 ? 0
-                                                            : // no sorting
-                                   colSpec.ColumnIndex == 4 ? a.loc_rw_s.compare (b.loc_rw_s)
-                                 : colSpec.ColumnIndex == 5 ? a.rw_length_mt_i - b.rw_length_mt_i
-                                 : colSpec.ColumnIndex == 6 ? static_cast<int> (a.rw_width_d - b.rw_width_d)
-                                                            : // width of rw
-                                   colSpec.ColumnIndex == 7 ? a.ap_elev_ft_i - b.ap_elev_ft_i
-                                                            : // elevation ft.
-                                   // colSpec.ColumnIndex == 8 ? 0 // v24.03.1 info button - replaced localizer bearing
-                                   colSpec.ColumnIndex == 8 ? 0
-                                                            : // GEN button - don't sort
-                                   colSpec.ColumnIndex == 9 ? 0
-                                                            : // Surface - don't sort surface type v3.0.253.13
-                                   colSpec.ColumnIndex == 10 ? static_cast<int> (a.bearing_from_to_icao_d - b.bearing_from_to_icao_d)
-                                                             : // v3.0.253.13
-                                   0; // last option should have : 0 at the end like else
-
-                               return colSpec.SortDirection == ImGuiSortDirection_Ascending ? cmp < 0 : cmp > 0;
-                             });
-
-          sortSpecs->SpecsDirty = false;
-        } // end Sorting logic
-
-        // Add rows to the table
-        static int picked_fpln_id_i = -1;
-        for (const auto &rowData : data_manager::table_ILS_rows_vec)
-        {
-          int i = 0;
-          // auto& td = *td;
-          ImGui::TableNextRow ();
-          ImGui::TableSetColumnIndex (i);
-          i++;
-
-          ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_mx_bluish);
-          if (ImGui::Button (fmt::format ("{} ({}){}", rowData.toICAO_s, ((rowData.toName_s.length () > 23) ? rowData.toName_s.substr (0, 20) + "..." : rowData.toName_s), fmt::format ("##ButtonInfo{}", rowData.seq)).c_str ()))
-          {
-            this->callNavData (rowData.toICAO_s, false);
-          }
-          ImGui::PopStyleColor ();
-
-          ImGui::TableSetColumnIndex (i);
-          i++;
-          ImGui::Text ("%.0f", static_cast<float> (rowData.distnace_d));
-          this->mx_add_tooltip (missionx::color::color_vec4_beige, "Distance in nautical miles.");
-          ImGui::TableSetColumnIndex (i);
-          i++;
-          ImGui::TextUnformatted (rowData.locType_s.c_str ()); // Type
-          ImGui::TableSetColumnIndex (i);
-          i++;
-          const std::string sLocTypesToFormat = "VORDMENDBILS-CAT-IILS-CAT-IIIILS-CAT-IILOC";
-          const std::string locTypeUpperCase  = mxUtils::stringToUpper (rowData.locType_s);
-          const bool        bFormatFrq        = (sLocTypesToFormat.find (locTypeUpperCase) != std::string::npos);
-          std::string       frq_s             = mxUtils::formatNumber<int> (rowData.loc_frq_mhz);
-          frq_s                               = (bFormatFrq && frq_s.length () > 3) ? frq_s.insert (3, 1, '.') : frq_s; // v25.08.1 added length test for VFR
-          ImGui::TextUnformatted (frq_s.c_str ());
-          ImGui::TableSetColumnIndex (i);
-          i++;
-          ImGui::TextUnformatted (rowData.loc_rw_s.c_str ()); // on which rw
-          ImGui::TableSetColumnIndex (i);
-          i++;
-          ImGui::Text ("%i", rowData.rw_length_mt_i);
-          this->mx_add_tooltip (missionx::color::color_vec4_beige, "Runway length in meters.");
-          ImGui::TableSetColumnIndex (i);
-          i++;
-          ImGui::Text ("%.2f", static_cast<float> (rowData.rw_width_d));
-          ImGui::TableSetColumnIndex (i);
-          i++;
-          ImGui::Text ("%i", rowData.ap_elev_ft_i); // elevation ft.
-
-          ImGui::TableSetColumnIndex (i);
-          i++;
-
-          // Last field, the creation mission
-          // ---- Actions
-          if (ImGui::Button (fmt::format (" ... ###ButtonGen{}", rowData.seq).c_str ())) // v24.03.1 replaced buff with fmt::format
-          {
-            // display modal window and rest of information
-            picked_fpln_id_i = rowData.seq; // store picked seq
-
-            // Generate mission from this after showing "are you sure" modal window
-            IXMLNode node_ptr = missionx::data_manager::prop_userDefinedMission_ui.node;
-            missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_MED_CARGO_OR_OILRIG (), static_cast<int> (mx_ui_mission_type::cargo)); //, node_ptr, node_ptr.getName()); // always cargo
-            missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_NO_OF_LEGS (), 0); //, node_ptr, node_ptr.getName()); // legs will be dectated by RandomEngine. Should only be 1 and simmer will add the rest
-            missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MIN_DISTANCE_SLIDER (), strct_ils_layer.ils_sliderVal1); //, node_ptr, node_ptr.getName());
-            missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MAX_DISTANCE_SLIDER (), strct_ils_layer.ils_sliderVal2); //, node_ptr, node_ptr.getName());
-            missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_USE_OSM_CHECKBOX (), false); //, node_ptr, node_ptr.getName());     // always false
-            missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_USE_WEB_OSM_CHECKBOX (), false); //, node_ptr, node_ptr.getName()); // always false
-
-            missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_FROM_ICAO (), strct_ils_layer.navaid.getID ()); //, node_ptr, node_ptr.getName()); //
-            missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_TO_ICAO (), rowData.toICAO_s); //, node_ptr, node_ptr.getName());                 //
-
-            ImGui::OpenPopup (GENERATE_ILS_QUESTION.c_str ());
-          }
-
-          // v3.0.253.13 Other information about runway/airport
-          ImGui::TableSetColumnIndex (i);
-          i++;
-          ImGui::TextUnformatted (rowData.surfType_s.c_str ()); // Surface Type
-          ImGui::TableSetColumnIndex (i);
-          i++;
-          ImGui::Text ("%.0f", static_cast<float> (rowData.bearing_from_to_icao_d)); // bearing between start and target icao
-          this->mx_add_tooltip (missionx::color::color_vec4_beige, "Bearing to airport relative to plane position.");
-
-
-          // DISPLAY POPUP
-          ImVec2 center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f); // center of screen
-          ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
-          ImGui::SetNextWindowSize (ImVec2 (480.0f, 435.0f));
-
-          ImGui::PushStyleColor (ImGuiCol_PopupBg, missionx::color::color_vec4_black);
-          {
-            if (ImGui::BeginPopupModal (GENERATE_ILS_QUESTION.c_str (), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-            {
-              ImVec2 modal_center (mxUiGetContentWidth () * 0.5f, ImGui::GetWindowHeight () * 0.5f);
-              if (rowData.seq == picked_fpln_id_i)
-              {
-                this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-                ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", "To: ");
-                this->mxUiReleaseLastFont ();
-
-                ImGui::SameLine (0.0f, 1.0f); // one space
-                ImGui::TextColored (missionx::color::color_vec4_greenyellow, "%s", (rowData.toICAO_s + " - " + rowData.toName_s.substr (0, 30)).c_str ());
-
-                // Pick Plane Type
-                ImGui::NewLine ();
-                // label
-                ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
-                ImGui::Text ("Pick Preferred Plane:");
-                ImGui::PopStyleColor (1);
-                ImGui::NewLine ();
-
-                int radio_btn_counter = 0;
-                for (const auto &planeTypeLabel : this->mapListPlaneRadioLabel | std::views::values) // v24.12.1
-                {
-                  if (planeTypeLabel.type == mx_plane_types_enum::plane_type_helos || planeTypeLabel.type == mx_plane_types_enum::plane_type_ga_floats)
-                    continue;
-
-                  ImGui::SameLine ();
-                  if (ImGui::RadioButton (planeTypeLabel.label.c_str (), this->strct_ils_layer.iRadioPlaneType == planeTypeLabel.type))
-                  {
-                    this->strct_ils_layer.iRadioPlaneType = planeTypeLabel.type;
-                  }
-                  radio_btn_counter++;
-                  if (radio_btn_counter%4 == 0)
-                    ImGui::NewLine();
-
-                } // end loop over all plane types
-
-                ImGui::NewLine ();
-                ImGui::Checkbox ("Start from plane position", &this->strct_cross_layer_properties.flag_start_from_plane_position); // v3.0.253.11 // v3.0.253.12 reposition checkbox in the popup generate window
-                ImGui::Spacing ();
-                ImGui::Checkbox ("Generate GPS waypoints.", &this->strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12
-                this->add_ui_auto_load_checkbox (); // v25.04.2
-                ImGui::Spacing (); // v3.303.14.2 added default weight to the generate screen
-                ImGui::Checkbox ("Add default base weights.\n(Not advisable for planes > GAs)", &this->adv_settings_strct.flag_add_default_weight_settings);
-                ImGui::Spacing ();
-
-                this->add_ui_pick_subcategories (this->mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]);
-                ImGui::Spacing ();
-                // v3.303.10 // v25.04.1 moved advance button to the popup window for better flow
-                this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
-                ImGui::Spacing ();
-                add_designer_mode_checkbox (); // v24.03.2 Designer mode flag
-
-                ImGui::NewLine ();
-                ImGui::Separator ();
-                ImGui::NewLine ();
-                ImGui::NewLine ();
-                ImGui::SameLine (modal_center.x * 0.2f);
-                ImGui::SetItemDefaultFocus ();
-
-                // v3.303.10
-                static bool bRerunRandomDateTime{ false };
-
-                // display the option only if we are not in the middle of a running mission
-                if (missionx::data_manager::missionState != missionx::mx_mission_state_enum::mission_is_running)
-                {
-
-                  bRerunRandomDateTime = add_ui_checkbox_rerun_random_date_and_time ();
-                  ImGui::SameLine (0.0f, 5.0f);
-
-                  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-                }
-
-                if (missionx::data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
-                {
-                  ImGui::TextColored (missionx::color::color_vec4_aqua, "%s", "Can't generate at this time.");
-                }
-                else if (ImGui::Button (">> Generate <<", ImVec2 (120, 0)))
-                {
-                  if (bRerunRandomDateTime) // v3.303.10
-                    this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
-
-                  // Prepare and call ACTION_GENERATE_RANDOM_MISSION
-                  data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_FPLN_ID_PICKED (), picked_fpln_id_i);
-                  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_PLANE_TYPE_I (), static_cast<int> (strct_ils_layer.iRadioPlaneType)); // v25.04.1 moved into popup
-                  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_START_FROM_PLANE_POSITION (), this->strct_cross_layer_properties.flag_start_from_plane_position); // v3.0.253.11 start from plane position
-                  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), this->strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12 generate GPS waypoints
-
-
-                  if (const auto vecToDisplay = this->mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]; static_cast<int>(vecToDisplay.size ()) > this->strct_user_create_layer.iMissionSubCategoryPicked)
-                    missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_MISSION_SUBCATEGORY_LBL (), vecToDisplay.at (this->strct_user_create_layer.iMissionSubCategoryPicked));
-
-                  this->addAdvancedSettingsPropertiesBeforeGeneratingRandomMission (); // v3.303.14
-
-
-                  this->strct_generate_template_layer.selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI ();
-                  this->setMessage ("Generating mission is in progress, please wait...", 10);
-
-                  ImGui::CloseCurrentPopup ();
-                  this->execAction (mx_window_actions::ACTION_GENERATE_RANDOM_MISSION);
-                }
-                ImGui::SetItemDefaultFocus ();
-                ImGui::SameLine (modal_center.x * 1.40f);
-                // back button
-                if (ImGui::Button ("Back", ImVec2 (80, 0)))
-                {
-                  ImGui::CloseCurrentPopup ();
-                }
-                this->mxUiReleaseLastFont ();
-              }
-
-              ImGui::EndPopup ();
-            } // END POPUP ILS
-          }
-          ImGui::PopStyleColor ();
-        } // end for iteration loop
-      }
-
-      ImGui::EndTable ();
-    } // END ImGui::BeginTable
-
-    ImGui::PopStyleColor ();
-  }
-  // ImGui::EndChild ();
-  ImGui::EndGroup ();
-
-  this->mxUiReleaseLastFont ();
-
-  // END DRAW ILS SCREEN
-}
-
-// -----------------------------------------------
-
-void
-WinImguiBriefer::child_draw_nav_search ()
-{
-  const auto win_size_vec2 = this->mxUiGetWindowContentWxH ();
-
-  ImGui::BeginGroup ();
-  ImGui::PushItemWidth (100.0f);
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
-  {
-    ImGui::TextColored (missionx::color::color_vec4_aqua, "%s", "Enter airport ICAO:");
-    ImGui::SameLine ();
-    if (ImGui::InputText ("##NavInput", this->strct_ils_layer.buf1, 8, ImGuiInputTextFlags_CharsUppercase)) // , ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal);
-    {
-      this->strct_ils_layer.sNavICAO = std::string (this->strct_ils_layer.buf1);
-    }
-    this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Enter airport name to fetch its data.");
-  }
-  this->mxUiReleaseLastFont (); // release text regular
-
-  // ---------------
-  //  Row 1 - Search
-  // ---------------
-
-
-  // search button
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-  ImGui::SameLine ();
-  if (ImGui::Button (">> Search <<"))
-  {
-    if (this->strct_ils_layer.fetch_metar_state == missionx::mxFetchState_enum::fetch_in_process)
-    {
-      this->setMessage ("Active METAR fetch is in progress, please wait for it to finish or [Abort] the action.");
-    }
-    else
-    {
-      this->strct_ils_layer.sNavICAO = mxUtils::trim (this->strct_ils_layer.sNavICAO);
-
-      if (this->strct_ils_layer.sNavICAO.empty ())
-      {
-        this->setMessage ("Please enter a valid ICAO.", 6);
-      }
-      else
-      {
-        // get Navaid information
-        this->strct_ils_layer.navaid = missionx::data_manager::getICAO_info (this->strct_ils_layer.sNavICAO);
-        if (this->strct_ils_layer.navaid.navRef)
-        {
-          this->strct_ils_layer.fetch_nav_state = missionx::mxFetchState_enum::fetch_not_started;
-
-          this->execAction (mx_window_actions::ACTION_FETCH_NAV_INFORMATION);
-        }
-        else
-        {
-          this->setMessage ("Navaid: " + this->strct_ils_layer.sNavICAO + " is invalid.", 6);
-        }
-      }
-    }
-  }
-
-
-  this->mxUiReleaseLastFont (); // release title regular
-  ImGui::SameLine (0.0f, 5.0f);
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-  if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).append ("##ClearNavICAO").c_str (), "Clear Nav ICAO"))
-  {
-    this->strct_ils_layer.sNavICAO.clear ();
-    memset (this->strct_ils_layer.buf1, 0, sizeof this->strct_ils_layer.buf1);
-  }
-
-  // v24.03.2 abort button
-  if (this->strct_ils_layer.fetch_metar_state == missionx::mxFetchState_enum::fetch_in_process)
-  {
-    ImGui::SameLine (0.0f, 20.0f);
-    ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-    ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
-    ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_white);
-    if (ImGui::Button (" Abort Metar Request "))
-    {
-      missionx::data_manager::threadStateMetar.flagAbortThread = true;
-      this->setMessage ("Trying to abort Metar fetch thread. Give it a few seconds to be released.", 8);
-    }
-    ImGui::PopStyleColor (3);
-  }
-
-
-  this->mxUiReleaseLastFont ();
-
-
-  ImGui::EndGroup ();
-
-  ImGui::Separator ();
-
-  // ---------------
-  //  Row 2 - Nav Data to display
-  // ---------------
-
-
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
-  ImGui::BeginGroup ();
-  ImGui::BeginChild ("draw_nav_info_output", ImVec2 (0.0f, win_size_vec2.y - 55.0f), ImGuiChildFlags_Borders, ImGuiWindowFlags_AlwaysVerticalScrollbar);
-  {
-    if (!this->strct_ils_layer.mapNavaidData.empty () && this->strct_ils_layer.fetch_nav_state != missionx::mxFetchState_enum::fetch_in_process
-        /*&& missionx::data_manager::s_thread_sync_mutex.locked_by_caller() == false*/)
-    {
-      for (const auto &data : this->strct_ils_layer.mapNavaidData | std::views::values)
-      {
-        ////////////////////
-        // Print ICAO title
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
-        {
-
-          this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
-          {
-            ImGui::TextColored (missionx::color::color_vec4_orange, "%s, %.0fnm", data.sApDesc.c_str (), data.dDistance);
-            ImGui::SameLine ();
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-            ImGui::TextColored (missionx::color::color_vec4_dimgray, "(icao_id: %i)", data.icao_id);
-            this->mxUiReleaseLastFont ();
-          }
-          this->mxUiReleaseLastFont ();
-
-          ///////////////////////////////////
-          // v24.03.1 METAR information
-          this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
-          this->mxUiHelpMarker (missionx::color::color_vec4_greenyellow, "Place, Day+Time, COR/AUTO/NIL, Wind, Visibility, Weather, Clouds, Temperature, Air-Pressure, Trend\n\nhttps://metar-taf.com/explanation\nhttps://www.flightutilities.com/MRonline.aspx\n\nMETAR data is downloaded and dependent on flightplandatabase.com availability.\nThe site limits the number of anonymous requests to ~100 per hour, You can extend it to ~1000 if you will add your \"API authorization key\" in the External FPLN screen.");
-          this->mxUiReleaseLastFont ();
-
-          if (this->strct_ils_layer.fetch_metar_state >= missionx::mxFetchState_enum::fetch_in_process)
-          {
-            ImGui::SameLine ();
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-            if (this->strct_ils_layer.fetch_metar_state == missionx::mxFetchState_enum::fetch_in_process)
-              ImGui::TextColored (missionx::color::color_vec4_dimgray, "%s", "Fetching METAR... Please wait (will try 3 times with 5 sec sleep interval)." );
-            else
-            {
-              ImGui::TextColored (missionx::color::color_vec4_dimgray, "%s", (data.sMetar.empty ()) ? "No METAR data was found." : data.sMetar.c_str () );
-              if (!data.sTaf.empty ())
-                ImGui::TextColored (missionx::color::color_vec4_dimgray, "Taf: %s", data.sTaf.c_str () );
-            }
-            // ImGui::TextColored (missionx::color::color_vec4_dimgray, "%s", ((this->strct_ils_layer.fetch_metar_state == missionx::mxFetchState_enum::fetch_in_process) ? "Fetching METAR... Please wait (will try 3 times with 5 sec sleep interval)." : (data.sMetar.empty ()) ? "No METAR data was found." : data.sMetar.c_str ()));
-            this->mxUiReleaseLastFont ();
-          }
-
-
-          ///////////////////////////////////
-          // v24.03.1 Frequencies information
-          if (!data.listFrq.empty ())
-          {
-            ImGui::Spacing ();
-            ImGui::Spacing ();
-
-            // title
-            ImGui::TextColored (missionx::color::color_vec4_beige, "%s", "Tower Frequencies");
-
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
-            {
-              bool nonEven = true;
-              for (const auto &rw : data.listFrq)
-              {
-
-                ImGui::TextColored (missionx::color::color_vec4_navajowhite, "%s", rw.field2.c_str ());
-                if (nonEven)
-                  ImGui::SameLine (win_size_vec2.x * 0.5f);
-
-                nonEven ^= 1; // toggle
-              }
-
-              if (!nonEven)
-                ImGui::NewLine ();
-            }
-            this->mxUiReleaseLastFont ();
-          }
-
-          //////////////////////////////////
-          // Runway information
-          if (!data.mapRunwayData.empty ())
-          {
-            ImGui::NewLine ();
-            ImGui::Spacing ();
-
-            // title
-            ImGui::TextColored (missionx::color::color_vec4_beige, "%s", "Runways");
-
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
-            {
-              for (const auto &[key, rw] : data.mapRunwayData)
-              {
-                ImGui::TextColored (missionx::color::color_vec4_lemonchiffon, "%s", rw.desc.c_str ());
-                ImGui::SameLine ();
-                ImGui::TextColored (missionx::color::color_vec4_dimgray, "(%.0fnm)", rw.dDistance);
-              }
-            }
-            this->mxUiReleaseLastFont ();
-          }
-
-          // Nearby Navigation aids information
-          if (!data.listVor.empty ())
-          {
-            ImGui::NewLine ();
-            ImGui::Spacing ();
-
-            // title
-            ImGui::TextColored (missionx::color::color_vec4_beige, "%s", "Navigation Aids");
-
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
-            {
-              ImGui::TextColored (missionx::color::color_vec4_grey, "%s", "{ident} {frq}  ({brg. ap},{type}) {name} {dist. ap} ");
-            }
-            this->mxUiReleaseLastFont ();
-
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-            {
-              bool nonEven = true;
-              for (const auto &loc : data.listVor)
-              {
-                constexpr const int SPACING_FOR_NAVAIDS = 60;
-                ImGui::TextColored (missionx::color::color_vec4_cornsilk, "%s", loc.field1.c_str ());
-                ImGui::SameLine (((nonEven) ? SPACING_FOR_NAVAIDS : (win_size_vec2.x * 0.5f) + SPACING_FOR_NAVAIDS - 2)); // absolute position
-                ImGui::TextColored (missionx::color::color_vec4_cornsilk, "%s", loc.field2.c_str ());
-                ImGui::SameLine ();
-                ImGui::TextColored (missionx::color::color_vec4_dimgray, "(%.2fnm)", loc.dDistance);
-                if (nonEven)
-                  ImGui::SameLine (win_size_vec2.x * 0.5f);
-
-                nonEven ^= 1; // toggle
-              }
-
-              if (!nonEven)
-                ImGui::NewLine ();
-            }
-            this->mxUiReleaseLastFont ();
-          }
-
-          // Localizer information
-          if (!data.listLoc.empty ())
-          {
-            ImGui::NewLine ();
-            ImGui::Spacing ();
-
-            // title
-            ImGui::TextColored (missionx::color::color_vec4_beige, "%s", "Localizers");
-
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v24.06.1
-            {
-              ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "%s", "Will display ILS and LOC first and then the other localizer types."); // v24.06.1
-            }
-            this->mxUiReleaseLastFont (); // v24.06.1
-
-
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
-            {
-              // v24.06.1 visual separation between standard localizer frequencies and other type of navigation frequencies (LPV, VOR, DME).
-              int loc_type                      = 1; // 1 = ILS or LOC, if it is not equal to "one", then it is
-              int flag_loc_type_changed_x_times = 0; // I'll add "1" everytime I'll find a loc_type that is not equal to "one".
-
-              for (const auto &loc : data.listLoc)
-              {
-                // v24.06.1 special separation logic
-                if (loc.iField1 != 1)
-                  ++flag_loc_type_changed_x_times;
-
-                if (flag_loc_type_changed_x_times == 1)
-                {
-                  ImGui::Separator ();
-                  ImGui::Separator ();
-                  ImGui::Spacing ();
-                }
-
-                ImGui::TextColored (missionx::color::color_vec4_navajowhite, "%s", loc.field2.c_str ());
-                ImGui::SameLine ();
-                ImGui::TextColored (missionx::color::color_vec4_dimgray, "(%.0fnm)", loc.dDistance);
-                ImGui::Separator ();
-              }
-            }
-            this->mxUiReleaseLastFont ();
-          }
-
-          this->mxUiReleaseLastFont (); // release the TITLE BIG font
-        }
-
-        ImGui::Spacing ();
-        ImGui::Separator ();
-        ImGui::Separator ();
-        ImGui::Separator ();
-        ImGui::Spacing ();
-      } // end loop over Nav Data Map
-
-
-    } // end if async Query was done and we have Nav data
-  }
-  ImGui::EndChild ();
-  ImGui::EndGroup ();
-  this->mxUiReleaseLastFont ();
-}
 
 // -----------------------------------------------
 
 
 // void
-// WinImguiBriefer::draw_conv_popup_datarefs (IXMLNode &inXpData)
+// WinImguiBriefer::child_draw_ils_search ()
 // {
-//   auto         win_size_vec2 = ImGui::GetWindowSize (); // ImGui::GetContentRegionAvail();
-//   const auto   modal_w       = mxUiGetContentWidth ();
-//   const auto   modal_h       = ImGui::GetWindowHeight ();
-//   const ImVec2 modal_center (modal_w * 0.5f, modal_h * 0.5f);
-//   const ImVec2 vec2_multiLine_dim = ImVec2 (win_size_vec2.x - 25.0f, 120.0f);
 //
-//   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-//   ImGui::TextColored (missionx::color::color_vec4_yellow, R"(In this screen you can add datarefs to the <xpdata> main element.
-// You have to enter correct XML elements. Example:
-// <dataref name="gearForce" key="sim/flightmodel/forces/faxil_gear"/>
-// Other option is to add this information after generating the mission file, if you so prefer.)");
-//   this->mxUiReleaseLastFont ();
+//   constexpr static auto  elevVerticalTreeNodeName = "Elev. slider";
+//   constexpr static float CHILD_SIZE_MODIFIER_F    = 0.15f;
 //
-//   // close window button
-//   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
-//   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
-//   ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_azure);
-//   ImGui::NewLine ();
-//   ImGui::SameLine (win_size_vec2.x - 90.0f);
-//   if (ImGui::Button ("Close", ImVec2 (70.0f, 0.0f)))
-//     ImGui::CloseCurrentPopup ();
-//   ImGui::PopStyleColor (3);
 //
-//   ImGui::BeginGroup ();
-//   ImGui::BeginChild ("MultiLineTextEdit", ImVec2 (0.0f, vec2_multiLine_dim.y + 10.0f));
-//   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.303.14
-//   ImGui::InputTextMultiline ("##xpdataMultiLine", this->strct_conv_layer.buff_dataref, sizeof (this->strct_conv_layer.buff_dataref), vec2_multiLine_dim);
-//   this->mxUiReleaseLastFont ();
-//   ImGui::EndChild ();
-//   ImGui::EndGroup ();
+//   auto win_size_vec2    = this->mxUiGetWindowContentWxH ();
+//   auto uiUpperChildInfo = ImGui::GetCurrentWindow ();
 //
-//   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
-//   ImGui::TextColored (missionx::color::color_vec4_beige, "%zu of %zu", std::string (this->strct_conv_layer.buff_dataref).length (), sizeof (this->strct_conv_layer.buff_dataref));
-//
-//   // Parse and store button
-//   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
-//   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
-//   ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_azure);
-//   if (ImGui::Button ("Parse and Store", ImVec2 (110.0f, 0.0f)))
+//   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
+//   ImGui::BeginGroup (); // group 1
 //   {
-//     IXMLDomParser iDomTemplate;
-//     IXMLResults   parse_result_strct;
+//     const auto child_vec2 = ImVec2 (this->mxUiGetWindowContentWxH ().x * 0.49f, this->mxUiGetWindowContentWxH ().y * 0.44f);
 //
-//     std::string xpdata_s    = "<" + mxconst::get_ELEMENT_XPDATA () + "> " + std::string (this->strct_conv_layer.buff_dataref) + "</" + mxconst::get_ELEMENT_XPDATA () + ">"; // holds the user entered XML string
-//     IXMLNode    xpdata_node = iDomTemplate.parseString (xpdata_s.c_str (), mxconst::get_ELEMENT_XPDATA ().c_str (), &parse_result_strct).deepCopy (); // parse xml into ITCXMLNode
-//     if (parse_result_strct.errorCode == IXMLError_None)
+//     ImGui::BeginGroup ();
 //     {
-//       Utils::xml_delete_all_subnodes (inXpData, mxconst::get_ELEMENT_DATAREF ());
-//       for (int i1 = 0; i1 < xpdata_node.nChildNode (mxconst::get_ELEMENT_DATAREF ().c_str ()); ++i1)
-//         inXpData.addChild (xpdata_node.getChildNode (mxconst::get_ELEMENT_DATAREF ().c_str (), i1).deepCopy ()); // add all <dataref> childs to the global xpdata
-//
-//
-//       this->setMessage ("<xpdata> information was stored");
-//
-//       #ifndef RELEASE
-//       Log::logMsg ("Valid <xpdata>:\n" + xpdata_s);
-//       #endif // !RELEASE
+//       auto i_picked = this->add_ui_two_option_buttons (missionx::strct_ils_layer.isIFR, missionx::strct_ils_layer.isVFR, missionx::PICKED_IFR, missionx::PICKED_VFR);
+//       if (i_picked != data_manager::ui_ifr_or_vfr_i)
+//       {
+//         data_manager::ui_ifr_or_vfr_i = i_picked;
+//         switch (data_manager::ui_ifr_or_vfr_i)
+//         {
+//           case missionx::PICKED_VFR:
+//           {
+//             if (strct_ils_layer.ils_sliderVal2 > 50.0f) // search radius
+//               strct_ils_layer.ils_sliderVal2 = 10.0f;
+//             if (strct_ils_layer.slider_min_rw_length_i > 300) // runway length
+//               strct_ils_layer.slider_min_rw_length_i = 300;
+//             if (strct_ils_layer.slider_min_rw_width_i > 15) // runway width
+//               strct_ils_layer.slider_min_rw_width_i = 15;
+//           }
+//           break;
+//           case missionx::PICKED_IFR:
+//             [[fallthrough]];
+//           default:
+//           {
+//             if (strct_ils_layer.ils_sliderVal2 < 100.0f) // search radius
+//               strct_ils_layer.ils_sliderVal2 = 100.0f;
+//             if (strct_ils_layer.slider_min_rw_length_i < 800) // runway length
+//               strct_ils_layer.slider_min_rw_length_i = 800;
+//             if (strct_ils_layer.slider_min_rw_width_i < 45) // runway width
+//               strct_ils_layer.slider_min_rw_width_i = 45;
+//           }
+//           break;
+//         }
+//       }
 //     }
-//     else
+//
+//     //------------------------------------------------
+//     //     search ILS/VFR runways button
+//     //------------------------------------------------
+//     ImGui::SameLine (0.0f, 45.0f);
+//     this->add_ui_ils_vfr_search_airports_button (missionx::mx_window_actions::ACTION_FETCH_ILS_AIRPORTS);
+//     // Display START mission button
+//     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow);
+//     ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_indigo);
+//     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
 //     {
-//       std::string err_s = std::string (IXMLPullParser::getErrorMessage (parse_result_strct.errorCode)) + " [line/col:" + mxUtils::formatNumber<long long> (parse_result_strct.nLine) + "/" + mxUtils::formatNumber<int> (parse_result_strct.nColumn) + "]";
-//       this->setMessage (err_s);
-//       #ifndef RELEASE
-//       Log::logMsg (err_s);
-//       #endif // !RELEASE
-//
-//       Log::logMsg ("Not valid <xpdata>:\n" + xpdata_s);
+//       if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && missionx::flag_generatedRandomFile_success && missionx::strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
+//       {
+//         ImGui::SameLine (win_size_vec2.x * 0.5f + 130.0f);
+//         this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
+//       }
 //     }
-//   }
-//   ImGui::PopStyleColor (3);
-//
-//   this->mxUiResetAllFontsToDefault (); // v3.303.14
-//   this->mx_add_tooltip (missionx::color::color_vec4_yellow, "The XML string you entered must be valid or it won't be stored");
-//
-//   // v3.305.1
-//   this->add_message_text ();
-// }
-//
-// -----------------------------------------------
-
-// void
-// WinImguiBriefer::draw_conv_popup_globalSettings (IXMLNode &inOutGlobalSettingsNode)
-// {
-//   constexpr const static float min_multiLineWidth_px = 5000.0f;
-//   auto                         win_size_vec2         = ImGui::GetWindowSize (); // ImGui::GetContentRegionAvail();
-//   const auto                   modal_w               = mxUiGetContentWidth ();
-//   const auto                   modal_h               = ImGui::GetWindowHeight ();
-//   const ImVec2                 modal_center (modal_w * 0.5f, modal_h * 0.5f);
-//
-//   // const ImVec2 vec2_multiLine_dim = ImVec2((float)sizeof(this->strct_conv_layer.buff_globalSettings) + 10.0f, 200.0f);
-//   // Calculate the multi text width as a function of the text length relative to windows width. Minimal width is "current context windows" width.
-//   // const float  buff_length        = (float)std::string(this->strct_conv_layer.buff_globalSettings).length();
-//   const float  text_width_px      = ImGui::CalcTextSize (this->strct_conv_layer.buff_globalSettings).x;
-//   const ImVec2 vec2_multiLine_dim = ImVec2 (((text_width_px + 2000.0f) < min_multiLineWidth_px) ? min_multiLineWidth_px : text_width_px + min_multiLineWidth_px, 200.0f);
-//
-//   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-//   ImGui::TextColored (missionx::color::color_vec4_yellow, R"(In this screen you can edit the <global_settings> main element.
-// You have to enter correct XML elements.
-// Other option is to add this information after generating the mission file, if you so prefer.)");
-//   this->mxUiReleaseLastFont ();
-//
-//
-//   // close window button
-//   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-//   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
-//   ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_azure);
-//   ImGui::NewLine ();
-//   ImGui::SameLine (win_size_vec2.x - 90.0f);
-//   if (ImGui::Button ("Close", ImVec2 (70.0f, 0.0f)))
-//     ImGui::CloseCurrentPopup ();
-//   ImGui::PopStyleColor (3);
-//   this->mxUiReleaseLastFont ();
-//
-//
-//   ///// Draw multi line
-//   ImGui::BeginGroup ();
-//
-//   // ImGuiID child_id = ImGui::GetID("GlobalSettings##MultiLineTextEdit");
-//   // ImGui::BeginChild(child_id, ImVec2(0.0f, vec2_multiLine_dim.y), true, ImGuiWindowFlags_HorizontalScrollbar);
-//
-//   ImGui::BeginChild ("MultiLineTextEdit", ImVec2 (0.0f, vec2_multiLine_dim.y + 10.0f), ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysHorizontalScrollbar);
-//
-//   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
-//   ImGui::InputTextMultiline ("##texDataMultiLine", this->strct_conv_layer.buff_globalSettings, sizeof (this->strct_conv_layer.buff_globalSettings), vec2_multiLine_dim);
-//   this->mxUiReleaseLastFont ();
-//
-//   ImGui::EndChild ();
-//   ImGui::EndGroup ();
-//   ///// End draw multi line
-//
-//   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-//   ImGui::TextColored (missionx::color::color_vec4_beige, "%zu of %zu", std::string (this->strct_conv_layer.buff_globalSettings).length (), sizeof (this->strct_conv_layer.buff_globalSettings));
-//
-//   // Parse and store button
-//   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-//   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
-//   ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_azure);
-//   if (ImGui::Button ("Parse and Store", ImVec2 (110.0f, 0.0f)))
-//   {
-//     IXMLDomParser iDomTemplate;
-//     IXMLResults   parse_result_strct;
-//
-//     std::string xml_data_s  = "<" + mxconst::get_GLOBAL_SETTINGS () + "> " + std::string (this->strct_conv_layer.buff_globalSettings) + "</" + mxconst::get_GLOBAL_SETTINGS () + ">"; // holds the user entered XML string
-//     IXMLNode    xResultNode = iDomTemplate.parseString (xml_data_s.c_str (), mxconst::get_GLOBAL_SETTINGS ().c_str (), &parse_result_strct).deepCopy (); // parse xml into ITCXMLNode
-//     if (parse_result_strct.errorCode == IXMLError_None)
-//     {
-//       Utils::xml_delete_all_subnodes (inOutGlobalSettingsNode, "", true);
-//       for (int i1 = 0; i1 < xResultNode.nChildNode (); ++i1)
-//         inOutGlobalSettingsNode.addChild (xResultNode.getChildNode (i1).deepCopy ()); // add all <sub elements> childs to the global_settings element
-//
-//
-//       this->setMessage ("<global_settings> information was stored");
-//
-// #ifndef RELEASE
-//       Log::logMsg ("Valid <global_settings>:\n" + xml_data_s);
-// #endif // !RELEASE
-//     }
-//     else
-//     {
-//       std::string err_s = std::string (IXMLPullParser::getErrorMessage (parse_result_strct.errorCode)) + " [line/col:" + mxUtils::formatNumber<long long> (parse_result_strct.nLine) + "/" + mxUtils::formatNumber<int> (parse_result_strct.nColumn) + "]";
-//       this->setMessage (err_s);
-// #ifndef RELEASE
-//       Log::logMsg (err_s);
-// #endif // !RELEASE
-//
-//       Log::logMsg ("Not valid <global_settings>:\n" + xml_data_s);
-//     }
-//   }
-//   ImGui::PopStyleColor (3);
-//
-//   this->mxUiResetAllFontsToDefault (); // v3.303.14
-//   this->mx_add_tooltip (missionx::color::color_vec4_yellow, "The XML string you entered must be valid or it won't be stored.");
-//
-//   this->add_message_text ();
-// }
-
-// -----------------------------------------------
-// void
-// WinImguiBriefer::draw_conv_popup_flight_leg_detail (missionx::mx_local_fpln_strct &inLegData)
-// {
-//   auto         win_size_vec2 = ImGui::GetWindowSize (); // ImGui::GetContentRegionAvail();
-//   const auto   modal_w       = mxUiGetContentWidth ();
-//   const auto   modal_h       = ImGui::GetWindowHeight ();
-//   const ImVec2 modal_center (modal_w * 0.5f, modal_h * 0.5f);
-//   const ImVec2 vec2_multiLine_dim = ImVec2 (win_size_vec2.x - 50.0f, 40.0f);
-//
-//   // draw only the picked row data and not for every row
-//   if (this->strct_conv_layer.way_row_picked_i == inLegData.indx)
-//   {
-//     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
-//     // close window button
-//     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//     ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
-//     ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_azure);
-//     if (ImGui::Button ("Close", ImVec2 (120.0f, 0.0f)))
-//       ImGui::CloseCurrentPopup ();
-//     ImGui::PopStyleColor (3);
-//
-//     // Title
-//     ImGui::SameLine (modal_center.x - (ImGui::CalcTextSize (inLegData.getName ().c_str ()).x / 2.0f)); // position text in the middle of the screen
-//     ImGui::TextColored (missionx::color::color_vec4_lime, "%s", inLegData.getName ().c_str ());
-//
-//     int ii = 0; // i: tracks the array buffer, so we have to hardcode its value after each CollapsingHeader.
-//
-//     // welcome
-//     ImGui::TextColored (missionx::color::color_vec4_beige, "Enter information when en-route to: %s. Try not to overdo with information.", inLegData.getName ().c_str ());
-//     ImGui::TextColored (missionx::color::color_vec4_yellow, "En-Route Description:");
-//
-//     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
-//     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_purple);
-//     ImGui::PushStyleColor (ImGuiCol_FrameBg, missionx::color::color_vec4_beige);
-//     if (ImGui::InputTextMultiline ("###flightLegDesciption", inLegData.buff_arr[ii], sizeof (inLegData.buff_arr[ii]), vec2_multiLine_dim, ImGuiInputTextFlags_None))
-//     {
-//       Utils::xml_add_cdata (inLegData.xLeg, inLegData.buff_arr[ii]);
-//     }
+//     this->mxUiReleaseLastFont ();
 //     ImGui::PopStyleColor (2);
 //
-//     ImGui::NewLine ();
+//     ImGui::EndGroup ();
 //
-//
-//     ImGui::PushStyleColor (ImGuiCol_Header, missionx::color::color_vec4_orangered);
-//     ImGui::PushStyleColor (ImGuiCol_HeaderHovered, missionx::color::color_vec4_tomato);
-//     ImGui::PushStyleColor (ImGuiCol_HeaderActive, missionx::color::color_vec4_orangered);
+//     //
+//     ImGui::BeginGroup ();
+//     ImGui::BeginChild ("Left ILS", child_vec2, ImGuiChildFlags_Borders);
 //     {
-//       ++ii; // 1 - 4
-//       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
-//       if (ImGui::CollapsingHeader ("Actions at the start/end of the Flight Leg"))
+//       // From/To ICAO tree
+//       if (ImGui::TreeNode (reinterpret_cast<void *>(static_cast<intptr_t> (1)), "%s", fmt::format ("From/To: {}/{}", missionx::strct_ils_layer.from_icao, missionx::strct_ils_layer.to_icao).c_str ()))
 //       {
-//         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
-//
-//         // START
-//         ImGui::TextColored (missionx::color::color_vec4_yellow, "[optional] Send message at the start of the Flight Leg: ");
-//         if (ImGui::InputTextMultiline ("###messageSentOnFlightLegStart", inLegData.buff_arr[ii], sizeof (inLegData.buff_arr[ii]), vec2_multiLine_dim, ImGuiInputTextFlags_None))
+//         missionx::WinImguiBriefer::HelpMarker ("Enter optional starting ICAO airport.");
+//         ImGui::SameLine ();
+//         ImGui::PushItemWidth (100.0f);
+//         if (ImGui::InputText ("##From_ILS_Icao_text", missionx::strct_ils_layer.buf1, 8, ImGuiInputTextFlags_CharsUppercase)) // , ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal);
 //         {
-//           IXMLNode nodeChild, targetNode; // the targetNode is the node we are going to do work on
-//           IXMLNode node = Utils::xml_get_or_create_node_ptr (inLegData.xLeg, mxconst::get_ELEMENT_START_LEG_MESSAGE ()); // this is our main node
-//           assert (node.isEmpty () == false && "Failed creating node.");
+//           missionx::strct_ils_layer.from_icao = std::string (missionx::strct_ils_layer.buf1);
+//         }
+//         this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Optional: enter departure airport ICAO code");
 //
-//           if (node.nChildNode (mxconst::get_ELEMENT_MESSAGE ().c_str ()) == 0)
+//         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+//         {
+//           ImGui::SameLine ();
+//           if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).c_str (), "Clear From ICAO")) // should have been ImGui::ButtonTooltip
 //           {
-//             nodeChild = Utils::xml_get_or_create_node_ptr (node, mxconst::get_ELEMENT_MESSAGE ());
-//             assert (nodeChild.isEmpty () == false && "Failed creating nodeChild <message> for start_leg_message.");
-//
-//             const std::string val = inLegData.attribName + "_start_message";
-//             Utils::xml_set_attribute_in_node_asString (nodeChild, mxconst::get_ATTRIB_NAME (), val);
-//             node.updateAttribute (val.c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
+//             missionx::strct_ils_layer.from_icao.clear ();
+//             memset (missionx::strct_ils_layer.buf1, 0, sizeof missionx::strct_ils_layer.buf1);
 //           }
-//           else
-//             nodeChild = node.getChildNode (mxconst::get_ELEMENT_MESSAGE ().c_str ());
-//
-//           assert (nodeChild.isEmpty () == false && "Failed retrieving nodeChild.");
-//           targetNode = Utils::xml_get_or_create_node_ptr (nodeChild, mxconst::get_ELEMENT_MIX (), mxconst::get_ATTRIB_MESSAGE_MIX_TRACK_TYPE (), mxconst::get_CHANNEL_TYPE_TEXT ());
-//           Utils::xml_add_cdata (targetNode, inLegData.buff_arr[ii]);
-//
-// #ifndef RELEASE
-//           Utils::xml_print_node (inLegData.xLeg);
-// #endif // !RELEASE
 //         }
+//         this->mxUiReleaseLastFont ();
 //
-//         ImGui::NewLine ();
-//         ++ii;
-//
-//         ImGui::TextColored (missionx::color::color_vec4_yellow, "[optional] Commands to run at the start of the Flight Leg: ");
-//         if (ImGui::InputTextWithHint ("###commandsAtStartOfLeg", "sim/command/xxx", inLegData.buff_arr[ii], sizeof (inLegData.buff_arr[ii]), ImGuiInputTextFlags_None))
+//         ImGui::SameLine ();
+//         if (ImGui::Button ("From ICAO") || missionx::strct_ils_layer.bFirstTime) // first time initialization or manual ICAO fetch
 //         {
-//           IXMLNode node = Utils::xml_get_or_create_node_ptr (inLegData.xLeg, mxconst::get_ELEMENT_FIRE_COMMANDS_AT_LEG_START ());
-//           node.updateAttribute (inLegData.buff_arr[ii], mxconst::get_ATTRIB_COMMANDS ().c_str ());
-//         }
-//
-//         ImGui::NewLine ();
-//
-//
-//         // END
-//         ++ii;
-//         ImGui::TextColored (missionx::color::color_vec4_yellow, "[optional] Send message when arriving to the waypoint: ");
-//         if (ImGui::InputTextMultiline ("###messageSentatEndOfFlightLeg", inLegData.buff_arr[ii], sizeof (inLegData.buff_arr[ii]), vec2_multiLine_dim, ImGuiInputTextFlags_None))
-//         {
-//
-//           IXMLNode nodeChild, targetNode; // the targetNode is the node we are going to do work on
-//           IXMLNode node = Utils::xml_get_or_create_node_ptr (inLegData.xLeg, mxconst::get_ELEMENT_END_LEG_MESSAGE ()); // this is our main node
-//           assert (node.isEmpty () == false && "Failed creating node <end_leg_message>");
-//
-//           if (node.nChildNode (mxconst::get_ELEMENT_MESSAGE ().c_str ()) == 0)
+//           #ifdef IBM
+//           missionx::strct_ils_layer.navaid = data_manager::get_plane_airport_or_nearest_icao ();
+//           #else
+//           auto tempNav                 = data_manager::get_plane_airport_or_nearest_icao ();
+//           missionx::strct_ils_layer.navaid = tempNav;
+//           #endif
+//           if (!missionx::strct_ils_layer.navaid.getID().empty())
 //           {
-//             nodeChild = Utils::xml_get_or_create_node_ptr (node, mxconst::get_ELEMENT_MESSAGE ());
-//             assert (nodeChild.isEmpty () == false && "Failed creating nodeChild <element_message>");
-//
-//             const std::string val = inLegData.attribName + "_end_message";
-//             Utils::xml_set_attribute_in_node_asString (nodeChild, mxconst::get_ATTRIB_NAME (), val);
-//             node.updateAttribute (val.c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
+//             //std::memcpy(missionx::strct_ils_layer.buf1, missionx::strct_ils_layer.navaid.ID, 10);
+//             mxUtils::copy_string_to_buffer(missionx::strct_ils_layer.buf1, missionx::strct_ils_layer.navaid.ID[0], sizeof(missionx::strct_ils_layer.navaid.ID)); // v26.04.3
 //           }
-//           else
-//             nodeChild = node.getChildNode (mxconst::get_ELEMENT_MESSAGE ().c_str ());
 //
-//           assert (nodeChild.isEmpty () == false && "Failed retrieving nodeChild.");
-//           targetNode = Utils::xml_get_or_create_node_ptr (nodeChild, mxconst::get_ELEMENT_MIX (), mxconst::get_ATTRIB_MESSAGE_MIX_TRACK_TYPE (), mxconst::get_CHANNEL_TYPE_TEXT ());
-//           Utils::xml_add_cdata (targetNode, inLegData.buff_arr[ii]);
+//           missionx::strct_ils_layer.from_icao  = std::string (missionx::strct_ils_layer.buf1); // first initialization
+//           missionx::strct_ils_layer.sNavICAO   = missionx::strct_ils_layer.from_icao; // v24.03.2 NavData ICAO will also be initialized.
+//           missionx::strct_ils_layer.bFirstTime = false;
 //         }
-//         ImGui::NewLine ();
-//         ++ii;
 //
-//         ImGui::TextColored (missionx::color::color_vec4_yellow, "[optional] Commands to run when arriving to the waypoint: ");
-//         if (ImGui::InputTextWithHint ("###commandsAtEndOfLeg", "sim/command/xxx", inLegData.buff_arr[ii], sizeof (inLegData.buff_arr[ii]), ImGuiInputTextFlags_None))
+//         //////////////////
+//         // New Line
+//         // TO input item
+//         /////////////////
+//         missionx::WinImguiBriefer::HelpMarker ("Enter optional destination ICAO airport.\nThe plugin will search for all ICAOs containing the string you entered.");
+//         ImGui::SameLine ();
+//         ImGui::PushItemWidth (100.0f);
+//         if (ImGui::InputText ("##To_ILS_Icao_text", missionx::strct_ils_layer.buf2, 8, ImGuiInputTextFlags_CharsUppercase)) // , ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal);
 //         {
-//           IXMLNode node = Utils::xml_get_or_create_node_ptr (inLegData.xLeg, mxconst::get_ELEMENT_FIRE_COMMANDS_AT_LEG_END ());
-//           node.updateAttribute (inLegData.buff_arr[ii], mxconst::get_ATTRIB_COMMANDS ().c_str ());
+//           missionx::strct_ils_layer.to_icao = mxUtils::trim (std::string (missionx::strct_ils_layer.buf2));
 //         }
+//         this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Optional: enter arrival airport ICAO code");
+//         ImGui::SameLine ();
+//         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+//         {
+//           ImGui::SameLine ();
+//           ImGui::PushID ("##ClearICAO"); // v25.12.1 fix button do not respond to clicks
+//           if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).c_str (), "Clear to ICAO"))
+//           {
+//             missionx::strct_ils_layer.to_icao.clear ();
+//             memset (missionx::strct_ils_layer.buf2, 0, sizeof missionx::strct_ils_layer.buf2);
+//           }
+//           ImGui::PopID ();
+//         }
+//         this->mxUiReleaseLastFont ();
+//         ImGui::SameLine ();
+//         ImGui::TextColored (missionx::color::color_vec4_white, "To ICAO");
 //
-//       } // Tasks at start/end of the Flight Leg
+//         if (missionx::strct_ils_layer.to_icao.length () < 2) // v3.24.1 We can ignore distance only
+//           missionx::strct_ils_layer.flagIgnoreDistanceFilter = false;
+//
+//         // ImGui::SameLine (0.0f, 5.0f); // v25.12.1 removed
+//         missionx::WinImguiBriefer::HelpMarker ("You must enter Two or more search characters to enable the option to ignore 'precise distance' filter.\nThe search result will be limited to 250 rows.");
+//         ImGui::SameLine ();
+//         const bool bICAO_isEmpty = this->mxStartUiDisableState (missionx::strct_ils_layer.to_icao.length() < 2); // v24.03.1 disable line ?
+//         ImGui::Checkbox ("Ignore Dist.", &missionx::strct_ils_layer.flagIgnoreDistanceFilter);
+//         this->mxEndUiDisableState (bICAO_isEmpty); // v24.03.1 disable line ?
 //
 //
+//         ImGui::TreePop ();
+//       } // END FROM/TO Tree
 //
-//       // Waypoint Radius, Elevation & 3D Marker Settings
-//       ii = 5; // we start counting from 0
-//       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
-//       if (ImGui::CollapsingHeader ("Waypoint Radius, Elevation & 3D Marker settings when reaching the waypoint"))
+//       // Min Distance
 //       {
-//         static const std::vector<const char *> vecElevOptions = { "Ignore (plane in physical area)", "On Ground", "Restrict to min/max elevation", "lower than...", "above than...", "Highest allowed elev above ground", "Lowest allowed elev above ground" };
-//         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
+//         const bool bIgnoreDistanceFilter = this->mxStartUiDisableState (missionx::strct_ils_layer.flagIgnoreDistanceFilter); // v24.03.1 disable line ?
 //
-//         //// Trigger Area Radius ////
-//         ImGui::TextColored (missionx::color::color_vec4_greenyellow, "Pick Waypoint radius of effect (in meters): ");
-//         ImGui::SameLine (0.0f, 5.0f);
-//         if (ImGui::InputInt ("Waypoint area radius", &inLegData.target_trig_strct.radius_of_trigger_mt, 100))
+//         ImGui::TextColored (missionx::color::color_vec4_yellow, "Choose Route Range");
+//         ImGui::PushID ("##Slider_ILS_MaxDistance");
 //         {
-//           if (inLegData.target_trig_strct.radius_of_trigger_mt <= 0)
-//             inLegData.target_trig_strct.radius_of_trigger_mt = 100;
-//           if (inLegData.target_trig_strct.radius_of_trigger_mt > 500000)
-//             inLegData.target_trig_strct.radius_of_trigger_mt = 500000;
+//           if (ImGui::SliderFloat ("", &strct_ils_layer.ils_sliderVal2, mxconst::SLIDER_SHORTEST_MAX_ILS_SEARCH_RADIUS, mxconst::SLIDER_ILS_MAX_SEARCH_RADIUS, "%.0f nm"))
+//           {
+//             // calc and construct low/high label for slider
+//             if (strct_ils_layer.ils_sliderVal2 / 500.0f > 1.0f)
+//               strct_ils_layer.ils_sliderVal1 = strct_ils_layer.ils_sliderVal2 * 0.75f;
+//             else if (strct_ils_layer.ils_sliderVal2 / 250.0f > 1.0f)
+//               strct_ils_layer.ils_sliderVal1 = strct_ils_layer.ils_sliderVal2 * 0.5f;
+//             else
+//               strct_ils_layer.ils_sliderVal1 = mxconst::SLIDER_SHORTEST_MIN_ILS_SEARCH_RADIUS;
+//
+//             strct_ils_layer.ils_slider2_lbl = "[" + Utils::formatNumber<float> (strct_ils_layer.ils_sliderVal1, 0) + ".." + Utils::formatNumber<float> (strct_ils_layer.ils_sliderVal2, 0) + "]";
+//           }
 //         }
+//         ImGui::PopID ();
+//         ImGui::SameLine ();
+//         ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", strct_ils_layer.ils_slider2_lbl.c_str ());
 //
-//         ImGui::NewLine ();
+//         this->mxEndUiDisableState (bIgnoreDistanceFilter); // disable line ?
 //
-//         //// Target elevation rules ////
-//         ImGui::TextColored (missionx::color::color_vec4_greenyellow, "Elevation you want the plane to be when reaching the waypoint (overrides waypoint table on ground option): ");
-//         ImGui::SetNextItemWidth (350.0f);
-//         if (ImGui::Combo ("###ComboWhereDoYouWantPlane", &inLegData.target_trig_strct.elev_combo_picked_i, vecElevOptions.data (), static_cast<int> (vecElevOptions.size ())))
-//           inLegData.target_trig_strct.elev_lower_upper.clear ();
+//       } // end Max Distance
 //
-//         // Show/Hide 3D Marker checkbox
-//         ImGui::SameLine (0.0f, 30.0f);
-//         ImGui::Checkbox ("Display 3D Marker##displayMarkerInHeader", &inLegData.flag_add_marker);
+//       // Minimum Runway Length && Minimum Runway Width mt.
+//       {
+//         // ImGui::NewLine();
+//         ImGui::Spacing (); // v3.305.1
 //
-//         // Display sliders/options based on user pick
-//         switch (inLegData.target_trig_strct.elev_combo_picked_i)
+//         ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
+//         ImGui::SliderInt ("Min Runway Length", &strct_ils_layer.slider_min_rw_length_i, mxconst::SLIDER_ILS_SHORTEST_RW_LENGTH_MT, mxconst::SLIDER_ILS_LONGEST_RW_LENGTH_MT, "%i meters");
+//         ImGui::PopStyleColor (1);
+//         this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Pick minimal runway Length filter");
+//
+//         // ImGui::NewLine();
+//         ImGui::Spacing (); // v3.305.1
+//
+//         ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
+//         ImGui::SliderInt ("Min Runway Width", &strct_ils_layer.slider_min_rw_width_i, mxconst::SLIDER_ILS_SHORTEST_RW_WIDTH_MT, mxconst::SLIDER_ILS_WIDEST_RW_WIDTH_MT, "%i meters");
+//         ImGui::PopStyleColor (1);
+//         this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Pick minimal runway Width filter");
+//       } //  Minimum Runway Length && Minimum Runway Width mt.
+//
+//       // Limit Rows
+//       {
+//         ImGui::SetNextItemWidth (70.0f);
+//         ImGui::Combo ("Limit rows", &missionx::strct_ils_layer.limit_indx, missionx::strct_ils_layer.limit_items, IM_ARRAYSIZE (missionx::strct_ils_layer.limit_items)); // default is 250 rows
+//         ImGui::SameLine ();
+//         missionx::WinImguiBriefer::mxUiHelpMarker (missionx::color::color_vec4_aquamarine, fmt::format ("How many rows to retrieve. Default {}.\nCan drastically affect FPS.", missionx::strct_ils_layer.limit_items[0]).c_str ());
+//       } // limit rows
+//     }
+//     ImGui::EndChild (); // end left ILS child
+//     ImGui::EndGroup (); // end left group
+//
+//     ImGui::SameLine (this->mxUiGetWindowContentWxH ().x * 0.5f);
+//
+//     ImGui::BeginGroup ();
+//     ImGui::BeginChild ("Right ILS", child_vec2, ImGuiChildFlags_Borders);
+//     {
+//       // Which ILS types to search
+//       if (data_manager::ui_ifr_or_vfr_i == missionx::PICKED_IFR)
+//       {
+//         const std::string ils_type_picked_s = strct_ils_layer.get_ils_types_picked ();
+//         const std::string picked_lbl_s      = ((ils_type_picked_s.empty ()) ? "Any NAV type" : ils_type_picked_s);
+//
+//         ImGui::TextColored (missionx::color::color_vec4_yellow, "Type:");
+//         ImGui::SameLine ();
+//         ImGui::TextColored (missionx::color::color_vec4_white, "%s", picked_lbl_s.c_str ());
+//
 //         {
-//           case 0: // ignore
-//             inLegData.target_trig_strct.elev_rule_s.clear ();
-//             inLegData.target_trig_strct.flag_on_ground = false;
-//             break;
-//           case 1: // onGround
-//             inLegData.target_trig_strct.elev_rule_s    = mxconst::get_MX_TRUE ();
-//             inLegData.target_trig_strct.flag_on_ground = true;
-//             break;
-//           case 2: // min/max
+//           if (ImGui::TreeNode (reinterpret_cast<void *>(static_cast<intptr_t> (2)), "%s", "NAV Filtering"))
 //           {
-//             inLegData.target_trig_strct.elev_rule_s    = mxconst::get_MX_FALSE ();
-//             inLegData.target_trig_strct.flag_on_ground = false;
+//             ImGui::NewLine ();
 //
-//             ImGui::TextColored (missionx::color::color_vec4_greenyellow, "Pick min/max elevation volume (-4000ft..15000ft) ");
-//             if (ImGui::InputInt ("Min. Elevation###MinElevationTrig", &inLegData.target_trig_strct.elev_min, 100))
+//             // loop over all ils in mapCheck_ILS_types and display state
+//             int counter = 0;
+//             for (auto &[keyType, bVal] : missionx::strct_ils_layer.mapCheck_ILS_types)
 //             {
-//               if (inLegData.target_trig_strct.elev_min >= inLegData.target_trig_strct.elev_max)
-//                 inLegData.target_trig_strct.elev_max = inLegData.target_trig_strct.elev_min + 1000;
-//               else if (inLegData.target_trig_strct.elev_min > 20000)
-//                 inLegData.target_trig_strct.elev_min = 20000;
-//               else if (inLegData.target_trig_strct.elev_min < -4000)
-//                 inLegData.target_trig_strct.elev_min = -4000;
+//               counter++;
+//               if (counter % 4 == 0)
+//                 ImGui::NewLine ();
+//
+//               ImGui::SameLine (); // we always need same line. New line is special case
+//
+//               ImGui::Checkbox (missionx::mapILS_types[keyType].c_str (), &bVal); // no need to handle picked checkbox, since we are handling it prior to tree display
 //             }
-//             ImGui::SameLine ();
-//             ImGui::TextUnformatted (" .. ");
-//             ImGui::SameLine ();
-//             if (ImGui::InputInt ("Max. Elevation###MaxElevationTrig", &inLegData.target_trig_strct.elev_max, 100))
-//             {
-//               if (inLegData.target_trig_strct.elev_max <= inLegData.target_trig_strct.elev_min)
-//                 inLegData.target_trig_strct.elev_min = inLegData.target_trig_strct.elev_max - 1000;
-//               else if (inLegData.target_trig_strct.elev_max < 1000)
-//                 inLegData.target_trig_strct.elev_max = 1000;
-//               else if (inLegData.target_trig_strct.elev_max > 150000)
-//                 inLegData.target_trig_strct.elev_max = 150000;
-//             }
-//             inLegData.target_trig_strct.elev_lower_upper = mxUtils::formatNumber<int> (inLegData.target_trig_strct.elev_min) + "|" + mxUtils::formatNumber<int> (inLegData.target_trig_strct.elev_max);
+//             ImGui::Separator ();
+//             ImGui::TreePop ();
 //           }
-//           break;
-//           case 3: // lower than
-//           {
-//             inLegData.target_trig_strct.elev_rule_s = mxconst::get_MX_FALSE ();
-//             ImGui::TextColored (missionx::color::color_vec4_greenyellow, "Pick upper elevation (plane should fly below it): ");
+//         }
+//       } // end ILS types to search
 //
-//             ImGui::SameLine (0.0f, 30.0f);
-//             if (ImGui::InputInt ("###InputUpperElevSlider", &inLegData.target_trig_strct.slider_elev_value_i, 100))
-//               inLegData.target_trig_strct.elev_lower_upper = "--" + mxUtils::formatNumber<int> (inLegData.target_trig_strct.slider_elev_value_i);
+//       // Minimum airport elevation
+//       {
+//         const std::string min_ap_elev_ft_s = "Min Airport Elevation:";
 //
-//             ImGui::SameLine (0.0f, 30.0f);
-//             ImGui::TextColored (missionx::color::color_vec4_white, "%s", inLegData.target_trig_strct.elev_lower_upper.c_str ());
-//           }
-//           break;
-//           case 4: // above than
-//           {
-//             inLegData.target_trig_strct.elev_rule_s = mxconst::get_MX_FALSE ();
-//             ImGui::TextColored (missionx::color::color_vec4_greenyellow, "Pick lowest elevation (plane should fly above it): ");
+//         ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", min_ap_elev_ft_s.c_str ());
+//         ImGui::SameLine ();
+//         ImGui::TextColored (missionx::color::color_vec4_white, "%s", (Utils::formatNumber<int> (missionx::strct_ils_layer.slider_min_airport_elev_ft_i) + "ft").c_str ());
 //
-//             ImGui::SameLine (0.0f, 30.0f);
-//             if (ImGui::InputInt ("###InputLowestElevSlider", &inLegData.target_trig_strct.slider_elev_value_i, 100))
-//               inLegData.target_trig_strct.elev_lower_upper = "++" + mxUtils::formatNumber<int> (inLegData.target_trig_strct.slider_elev_value_i);
+//         ImGui::SameLine (0.0f, 10.0f);
 //
-//             ImGui::SameLine (0.0f, 30.0f);
-//             ImGui::TextColored (missionx::color::color_vec4_white, "%s", inLegData.target_trig_strct.elev_lower_upper.c_str ());
-//           }
-//           break;
-//           case 5: // highest allowed elev above ground
-//           {
-//             inLegData.target_trig_strct.elev_rule_s = mxconst::get_MX_FALSE ();
-//             ImGui::TextColored (missionx::color::color_vec4_beige, "Pick elevation above ground - plane should fly below that elevation:");
-//
-//             if (ImGui::InputInt ("###RelativeElevAboveGround_flyBelow", &inLegData.target_trig_strct.slider_elev_value_i, 100))
-//               inLegData.target_trig_strct.elev_lower_upper = "---" + mxUtils::formatNumber<int> (inLegData.target_trig_strct.slider_elev_value_i);
-//
-//             ImGui::SameLine (0.0f, 10.0f);
-//             ImGui::TextColored (missionx::color::color_vec4_white, "%s", inLegData.target_trig_strct.elev_lower_upper.c_str ());
-//           }
-//           break;
-//           case 6: // lowest allowed elevation above ground
-//           {
-//             inLegData.target_trig_strct.elev_rule_s = mxconst::get_MX_FALSE ();
-//             ImGui::TextColored (missionx::color::color_vec4_beige, "Pick elevation above ground - plane should fly above that elevation:");
-//
-//             if (ImGui::InputInt ("###RelativeElevAboveGround_flyAbove", &inLegData.target_trig_strct.slider_elev_value_i, 100))
-//               inLegData.target_trig_strct.elev_lower_upper = "+++" + mxUtils::formatNumber<int> (inLegData.target_trig_strct.slider_elev_value_i);
-//
-//             ImGui::SameLine (0.0f, 10.0f);
-//
-//             ImGui::TextColored (missionx::color::color_vec4_white, "%s", inLegData.target_trig_strct.elev_lower_upper.c_str ());
-//           }
-//           break;
-//         } // end switch
-//
-//
-//
-//         if (inLegData.flag_add_marker)
+//         if (ImGui::TreeNode (reinterpret_cast<void *>(static_cast<intptr_t> (3)), "%s", "Elev. slider"))
 //         {
+//           if (missionx::strct_ils_layer.enum_elevSliderOpenState == missionx::enums::mx_treeNodeState::closed)
+//             missionx::strct_ils_layer.enum_elevSliderOpenState = missionx::enums::mx_treeNodeState::opened;
+//
+//           static constexpr float vertical_slider_spacing_f = 180.0f;
+//           static constexpr float vertical_slider_width_f   = 80.0f;
 //           ImGui::NewLine ();
-//           ImGui::TextColored (missionx::color::color_vec4_greenyellow, "How do you want to set the 3D Marker:");
+//           ImGui::SameLine (0.0f, vertical_slider_spacing_f);
+//           ImGui::VSliderInt ("##airportElevSliderInt", ImVec2 (vertical_slider_width_f, 80.0f), &missionx::strct_ils_layer.slider_min_airport_elev_ft_i, mxconst::SLIDER_ILS_LOWEST_AIRPORT_ELEV_FT, mxconst::SLIDER_ILS_HIGHEST_AIRPORT_ELEV_FT, "%i");
 //
-//           ImGui::TextUnformatted ("Marker Type: ");
-//           ImGui::SameLine ();
-//           ImGui::SetNextItemWidth (250.0f);
-//           ImGui::Combo ("###3DMarkerTypes", &inLegData.marker_type_i, mxconst::get_vecMarkerTypeOptions ().data (), static_cast<int> (mxconst::get_vecMarkerTypeOptions ().size ()));
-//
-//           ImGui::TextUnformatted ("Distance to display marker in Nautical Miles (2-50): ");
-//           ImGui::SameLine ();
-//           ImGui::SetNextItemWidth (100.0f);
-//           if (ImGui::InputFloat ("##Distance to display marker", &inLegData.radius_to_display_3D_marker_in_nm_f, 0.5, 1.0, "%.2f")) // minimum 2.0 nm
+//           ImGui::NewLine ();
+//           ImGui::SameLine (0.0f, vertical_slider_spacing_f);
+//           if (ImGui::Button ("Reset", ImVec2 (vertical_slider_width_f, 30.0f)))
 //           {
-//             if (inLegData.radius_to_display_3D_marker_in_nm_f < 2.0f)
-//               inLegData.radius_to_display_3D_marker_in_nm_f = 2.0f;
-//             else if (inLegData.radius_to_display_3D_marker_in_nm_f > 50.0f)
-//               inLegData.radius_to_display_3D_marker_in_nm_f = 50.0f;
+//             missionx::strct_ils_layer.slider_min_airport_elev_ft_i = mxconst::SLIDER_ILS_STARTING_AIRPORT_ELEV_VALUE_FT;
+//             ImGui::SetScrollHereY (1.0f);
 //           }
+//
+//           if (missionx::strct_ils_layer.enum_elevSliderOpenState == missionx::enums::mx_treeNodeState::opened)
+//           {
+//             ImGui::SetScrollHereY (1.0f);
+//             missionx::strct_ils_layer.enum_elevSliderOpenState = missionx::enums::mx_treeNodeState::was_opened;
+//           }
+//
+//
+//           ImGui::TreePop ();
 //         }
-//       } // elevation & 3D Marker header
-//
-//
-//       // Triggers
-//       ii = 5;
-//       {
-//         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
-//         if (ImGui::CollapsingHeader ("Triggers / Events during en-route"))
-//         {
-//           this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
-//           subDraw_ui_xTrigger_main (inLegData, this->strct_conv_layer.flag_refreshTriggerListFrom_xNode, inLegData.indx, this->strct_conv_layer.mapOfGlobalTriggers, this->strct_conv_layer.vecGlobalTriggers_names);
-//         }
-//       }
-//       ii = 5;
-//     } // end pushStyle
-//     ImGui::PopStyleColor (3);
-//
-//     this->mxUiResetAllFontsToDefault (); // v3.303.14
-//   }
-// } // draw_conv_popup_flight_leg_detail
-//
-
-
-// -----------------------------------------------
-//
-// void
-// WinImguiBriefer::draw_conv_popup_briefer (missionx::mx_local_fpln_strct &inLegData)
-// {
-//   auto         win_size_vec2 = ImGui::GetContentRegionAvail ();
-//   const ImVec2 modal_center (win_size_vec2.x * 0.5f, win_size_vec2.y * 0.5f);
-//
-//   if (this->strct_conv_layer.way_row_picked_i == inLegData.indx)
-//   {
-//     // int ii = 0;
-//     inLegData.iCurrentBuf = 0;
-//
-//     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
-//     // close window button
-//     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//     ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
-//     ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_azure);
-//     if (ImGui::Button ("Close", ImVec2 (120, 0)))
-//       ImGui::CloseCurrentPopup ();
-//     ImGui::PopStyleColor (3);
-//
-//     // Title
-//     constexpr static const char *title_s = "Briefer and Mission Information";
-//     ImGui::SameLine (modal_center.x - (ImGui::CalcTextSize (title_s).x / 2.0f));
-//     ImGui::TextColored (missionx::color::color_vec4_lime, title_s);
-//
-//     // welcome
-//     ImGui::TextColored (missionx::color::color_vec4_beige, "Enter the mission information (what user sees when they click on the mission image) and Enter the briefer description");
-//     ImGui::NewLine ();
-//
-//     ImGui::PushStyleColor (ImGuiCol_Header, missionx::color::color_vec4_orangered);
-//     ImGui::PushStyleColor (ImGuiCol_HeaderHovered, missionx::color::color_vec4_tomato);
-//     ImGui::PushStyleColor (ImGuiCol_HeaderActive, missionx::color::color_vec4_orangered);
-//     {
-//       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
-//       if (ImGui::CollapsingHeader ("< Mission Info >"))
-//       {
-//         ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_purple);
-//         ImGui::PushStyleColor (ImGuiCol_FrameBg, missionx::color::color_vec4_beige);
-//         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
-//         ImGui::TextColored (missionx::color::color_vec4_yellow, "Written By: ");
-//         ImGui::SameLine ();
-//         if (ImGui::InputTextWithHint ("###WrittenBy", "== your name ==", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), ImGuiInputTextFlags_None))
-//         {
-//           this->strct_conv_layer.xConvInfo.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_WRITTEN_BY ().c_str (), mxconst::get_ATTRIB_WRITTEN_BY ().c_str ()); // 0
-//         }
-//         ++inLegData.iCurrentBuf;
-//
-//         ImGui::SameLine (0.0f, 20.0f);
-//         ImGui::TextColored (missionx::color::color_vec4_yellow, "Estimate Time: ");
-//         ImGui::SameLine ();
-//         if (ImGui::InputTextWithHint ("###EstimateTime", "~45min, ~60min, ~90min etc..", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), ImGuiInputTextFlags_None))
-//         {
-//           this->strct_conv_layer.xConvInfo.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_ESTIMATE_TIME ().c_str (), mxconst::get_ATTRIB_ESTIMATE_TIME ().c_str ()); // 1
-//         }
-//         ++inLegData.iCurrentBuf;
-//
-//         ImGui::NewLine ();
-//
-//         ImGui::TextColored (missionx::color::color_vec4_yellow, "Weather Settings: ");
-//         ImGui::SameLine ();
-//         ImGui::SetNextItemWidth (250.0f);
-//         if (ImGui::InputTextWithHint ("###WeatherSettings", "User Preferred Settings / Set to Overcast", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), ImGuiInputTextFlags_None))
-//         {
-//           this->strct_conv_layer.xConvInfo.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_WEATHER_SETTINGS ().c_str (), mxconst::get_ATTRIB_WEATHER_SETTINGS ().c_str ()); // 3
-//         }
-//         ++inLegData.iCurrentBuf;
-//
-//         ImGui::NewLine ();
-//         ImGui::TextColored (missionx::color::color_vec4_yellow, "Other settings: ");
-//         ImVec2 vec2_dimentions = ImVec2 (win_size_vec2.x - 50.0f, 60.0f);
-//
-//         if (ImGui::InputTextMultiline ("###OtherSettings", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), vec2_dimentions))
-//         {
-//           this->strct_conv_layer.xConvInfo.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_OTHER_SETTINGS ().c_str (), mxconst::get_ATTRIB_OTHER_SETTINGS ().c_str ()); // 4
-//         }
-//         ++inLegData.iCurrentBuf;
-//
-//         ImGui::PopStyleColor (2);
-//
-//         ImGui::NewLine ();
-//       } // < Mission Info >
-//
-//       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
-//       inLegData.iCurrentBuf = 4; // we ned this since when the "collapse header" is closed, the code won't run so the numbering will start in 0 and not in the correct buffer
-//       if (ImGui::CollapsingHeader ("< briefer > and Starting location"))
-//       {
-//         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
-//         // inLegData.iCurrentBuf is used through the next few widgets
-//         ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_purple);
-//         ImGui::PushStyleColor (ImGuiCol_FrameBg, missionx::color::color_vec4_beige);
-//
-//         ImGui::TextColored (missionx::color::color_vec4_yellow, "Start Heading: ");
-//         ImGui::SameLine ();
-//         if (ImGui::InputTextWithHint ("###BrieferStartHeading", "0..359", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), ImGuiInputTextFlags_CharsDecimal))
-//         {
-//           inLegData.xLeg.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_HEADING_PSI ().c_str (), mxconst::get_ATTRIB_HEADING_PSI ().c_str ()); // 3
-//         }
-//         ImGui::SameLine (0.0f, 5.0f);
-//
-//         const auto lmbda_getAndSetHeading = [&inLegData] (XPLMDataRef inRef)
-//         {
-//           auto        heading_f = XPLMGetDataf (inRef);
-//           std::string heading_s = mxUtils::formatNumber<int> (static_cast<int> (heading_f), 0);
-//           inLegData.setBuff (inLegData.iCurrentBuf, heading_s);
-//
-//           inLegData.xLeg.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_HEADING_PSI ().c_str (), mxconst::get_ATTRIB_HEADING_PSI ().c_str ());
-//         };
-//
-//         ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow);
-//         if (ImGui::Button ("P"))
-//         {
-//           lmbda_getAndSetHeading (missionx::drefConst.dref_heading_true_psi_f);
-//         }
-//         this->mx_add_tooltip (missionx::color::color_vec4_white, "Get Plane Heading.");
-//         ImGui::SameLine (0.0f, 5.0f);
-//         if (ImGui::Button ("C"))
-//         {
-//           const XPLMDataRef dref = XPLMFindDataRef ("sim/graphics/view/view_heading"); // camera heading
-//
-//           lmbda_getAndSetHeading (dref);
-//         }
-//         this->mx_add_tooltip (missionx::color::color_vec4_white, "Get Camera Heading.");
-//         ImGui::PopStyleColor ();
-//         // end of same inLegData.iCurrentBuf
-//
-//         ++inLegData.iCurrentBuf;
-//
-//         ImGui::NewLine ();
-//
-//         ImGui::TextColored (missionx::color::color_vec4_yellow, "Mission Description (%i chars): ", missionx::LOG_BUFF_SIZE);
-//         ImGui::TextColored (missionx::color::color_vec4_beige, "%zu", std::string (inLegData.buff_arr[inLegData.iCurrentBuf]).length ());
-//         const ImVec2 vec2_dimentions = ImVec2 (win_size_vec2.x - 50.0f, 60.0f);
-//         if (ImGui::InputTextMultiline ("###BrieferMissionDesc", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), vec2_dimentions)) // 5
-//         {
-//           Utils::xml_add_cdata (inLegData.xLeg, inLegData.buff_arr[inLegData.iCurrentBuf]);
-//         }
-//
-//         ImGui::PopStyleColor (2);
-//
-//         ImGui::NewLine ();
-//       } // < Mission Info >
-//
-//       inLegData.iCurrentBuf = 6;
-//     }
-//     ImGui::PopStyleColor (3);
-//
-//     this->mxUiResetAllFontsToDefault ();
-//   }
-// }
-
-// // -----------------------------------------------
-//
-// void
-// WinImguiBriefer::subDraw_popup_user_lat_lon (mx_trig_strct_ &inout_trig)
-// {
-//   static ImVec2 vec2Pos;
-//   auto          win_size_vec2 = ImGui::GetWindowSize ();
-//   const ImVec2  center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f);
-//   ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
-//   ImGui::SetNextWindowSize (ImVec2 (win_size_vec2.x / 2.0f, 100.0f));
-//
-//   {
-//     //// draw 2 text items as lat and long
-//     ImGui::TextColored (missionx::color::color_vec4_yellow, "Enter Latitude / Longitude");
-//     ImGui::TextColored (missionx::color::color_vec4_yellow, "Lat/Lon ");
-//     ImGui::SameLine ();
-//     ImGui::InputFloat ("##userCustomLat", &vec2Pos.x);
-//     ImGui::SameLine (0.0f, 2.0f);
-//     ImGui::TextColored (missionx::color::color_vec4_yellow, "/");
-//     ImGui::SameLine ();
-//     ImGui::InputFloat ("##userCustomLon", &vec2Pos.y);
-//
-//     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//     ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgrey);
-//     ImGui::PushStyleColor (ImGuiCol_ButtonActive, missionx::color::color_vec4_grey);
-//     ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_green);
-//     if (ImGui::Button ("Apply##ApplyUserLatLon"))
-//     {
-//       Point p (vec2Pos.x, vec2Pos.y);
-//       inout_trig.setBuff (inout_trig.iCurrentBuf, p.get_point_lat_lon_as_string ());
-//       ImGui::CloseCurrentPopup ();
-//     }
-//     ImGui::PopStyleColor (4);
-//
-//     ImGui::SameLine (ImGui::GetWindowWidth () - 80.0f);
-//     if (ImGui::Button ("Cancel##CancelUserLatLon"))
-//       ImGui::CloseCurrentPopup ();
-//   }
-// }
-
-// -----------------------------------------------
-//
-// void
-// WinImguiBriefer::subDraw_popup_outcome (mx_trig_strct_ &inout_trig, IXMLNode &inMessageTemplates)
-// {
-//   IXMLNode xOutcome = Utils::xml_get_or_create_node_ptr (inout_trig.node_ptr, mxconst::get_ELEMENT_OUTCOME ());
-//
-//   assert (xOutcome.isEmpty () == false && "<outcome> element can't be empty.");
-//
-//   const auto lmbda_get_outcome_list_of_attributes_from_node = [] (IXMLNode &in_xOutcome)
-//   {
-//     std::vector<const char *> vecOutcomeAttributes;
-//     for (int i1 = 0; i1 < in_xOutcome.nAttribute (); ++i1)
-//     {
-//       vecOutcomeAttributes.emplace_back (in_xOutcome.getAttributeName (i1));
-//     }
-//
-//     return vecOutcomeAttributes;
-//   };
-//
-//   static int  attrib_picked_i = -1;
-//   std::string attrib_label_cc;
-//   const auto  vecAttributeList = lmbda_get_outcome_list_of_attributes_from_node (xOutcome); // we fill vector from <outcome> element attribute names. When we update its attribute the memory address changes, therefore we must refresh the vector every time. We can solve that if we will create the attributes ahead of time and not dynamically based on the XML header.
-//
-//   // List of options
-//   ImGui::SetNextItemWidth (180.0f);
-//   ImGui::Combo ("##comboListOfOutcomeAttribs", &attrib_picked_i, vecAttributeList.data (), static_cast<int> (vecAttributeList.size ()));
-//   // close button
-//   ImGui::SameLine (ImGui::GetWindowWidth () - 100.0f);
-//   if (ImGui::Button ("Close##closeOutcomePopup"))
-//     ImGui::CloseCurrentPopup ();
-//
-//   if (attrib_picked_i > -1 && attrib_picked_i < (static_cast<int> (vecAttributeList.size ()) - 1))
-//     attrib_label_cc = std::string (vecAttributeList[attrib_picked_i]);
-//
-//   if (attrib_label_cc.empty () == false)
-//   {
-//     // first input text, represent keyName or value (if index < 2 than it represent keyName)
-//     ImGui::InputText (attrib_label_cc.c_str (), inout_trig.buffArray[inout_trig.iCurrentBuf], sizeof (inout_trig.buffArray[inout_trig.iCurrentBuf]));
-//     if (attrib_picked_i < 2)
-//       this->mx_add_tooltip (missionx::color::color_vec4_beige, "Enter an alias to the message"); // TODO maybe create the keyName internaly so simmer will only focus on the text
-//     else if (attrib_picked_i < 4)
-//       this->mx_add_tooltip (missionx::color::color_vec4_beige, "Enter an alias to the script you will create later / or the  script exists"); // TODO maybe create the keyName internaly so simmer will only focus on the text
-//     else
-//       this->mx_add_tooltip (missionx::color::color_vec4_beige, "Enter text that represent the option you picked (command or dataref list divided by comma (\",\")");
-//
-//     // second input text only if outcome is message
-//     if (attrib_picked_i < 2) // create message for options 0,1 in combo
-//     {
-//       ++inout_trig.iCurrentBuf;
-//       ImGui::SetNextItemWidth (300.0f);
-//       ImGui::InputText ("Enter Message Text##outcomeText", inout_trig.buffArray[inout_trig.iCurrentBuf], sizeof (inout_trig.buffArray[inout_trig.iCurrentBuf]));
-//       this->mx_add_tooltip (missionx::color::color_vec4_beige, "Enter message text"); // TODO maybe create the keyName internaly so simmer will only focus on the text
-//     }
-//
-//     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//     ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgrey);
-//     ImGui::PushStyleColor (ImGuiCol_ButtonActive, missionx::color::color_vec4_grey);
-//     ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_green);
-//     if (ImGui::Button ("Apply##ApplyOutcomeChanges"))
-//     {
-//       std::string attrib_val1_s = (attrib_picked_i < 2) ? inout_trig.getBuff (inout_trig.iCurrentBuf - 1) : inout_trig.getBuff (inout_trig.iCurrentBuf); // if user picked options 0,1 in combo then we have 2 input text
-//       if (attrib_picked_i < 2) // trig_fire or trig_left
-//       {
-//         std::string attrib_val2_s = inout_trig.getBuff (inout_trig.iCurrentBuf); // message text
-//
-//         if (attrib_val1_s.empty ()) // if empty then reset <outcome> attrib
-//           xOutcome.updateAttribute ("", attrib_label_cc.c_str (), attrib_label_cc.c_str ());
 //         else
-//         {
-//           xOutcome.updateAttribute (attrib_val1_s.c_str (), attrib_label_cc.c_str (), attrib_label_cc.c_str ()); // this will allow to assign message keyName without text, in cases where messages was created already.
-//           if (!attrib_val2_s.empty ())
-//           {
-//             IXMLNode xMessage = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (inMessageTemplates, mxconst::get_ELEMENT_MESSAGE (), mxconst::get_ATTRIB_NAME (), attrib_val1_s, false);
+//           missionx::strct_ils_layer.enum_elevSliderOpenState = missionx::enums::mx_treeNodeState::closed; // when close we must reset it
 //
-//             if (xMessage.isEmpty ()) // not found
-//               xMessage = Utils::xml_create_message (attrib_val1_s, attrib_val2_s);
-//
-//             if (xMessage.isEmpty () == false)
-//               inMessageTemplates.addChild (xMessage);
-//           }
-//         }
-//       }
-//       else
-//         xOutcome.updateAttribute (attrib_val1_s.c_str (), attrib_label_cc.c_str (), attrib_label_cc.c_str ()); // this will allow to assign the text or reset it if empty for <script> and <commands>
-//     }
-//     ImGui::PopStyleColor (4);
-//   }
-//
-//
-//   ImGui::PushStyleColor (ImGuiCol_Separator, missionx::color::color_vec4_white);
-//   ImGui::Separator ();
-//   ImGui::PopStyleColor ();
-//
-//   if (!xOutcome.isEmpty ())
-//   {
-//     IXMLRenderer xmlRenderer;
-//     std::string  outcom_s = xmlRenderer.getString (xOutcome);
-//     char         buf[missionx::LOG_BUFF_SIZE]{ 0 };
-// #ifdef IBM
-//     memcpy_s (buf, sizeof (buf), outcom_s.c_str (), (sizeof (buf) > outcom_s.length ()) ? outcom_s.length () : sizeof (buf));
-// #else
-//     memcpy (buf, outcom_s.c_str (), (sizeof (buf) > outcom_s.length ()) ? outcom_s.length () : sizeof (buf));
-// #endif
-//
-//     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//     ImGui::PushStyleColor (ImGuiCol_ChildBg, missionx::color::color_vec4_antiquewhite);
-//     ImGui::BeginChild ("##outcomeXML_text", ImVec2 (ImGui::GetContentRegionAvail ().x, 60.0f));
-//     {
-//       ImGui::TextWrapped ("%s", xmlRenderer.getString (xOutcome));
+//       } // Minimum airport elevation
 //     }
 //     ImGui::EndChild ();
-//     ImGui::PopStyleColor (2);
-//
-//     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_white);
-//     ImGui::InputTextMultiline ("##trigOutcomeMultiLine", buf, sizeof (buf), ImVec2 (ImGui::GetContentRegionAvail ().x, 30.0f), ImGuiInputTextFlags_ReadOnly);
-//     ImGui::PopStyleColor ();
-//     this->mx_add_tooltip (missionx::color::color_vec4_yellow, "You can copy the <outcome> text.");
-//   }
-// }
-
-// // -----------------------------------------------
-//
-// void
-// WinImguiBriefer::subDraw_fpln_table (IXMLNode &inMainNode, std::map<int, missionx::mx_local_fpln_strct> &in_map_tableOfParsedFpln)
-// {
-//   {
-//
-//     auto win_size_vec2 = ImGui::GetWindowSize ();
-//
-//     // Alternating rows slightly grayish
-//     ImGui::PushStyleColor (ImGuiCol_TableRowBg, IM_COL32 (0x20, 0x20, 0x20, 0xff));
-//     ImGui::PushStyleColor (ImGuiCol_TableRowBgAlt, IM_COL32 (0x30, 0x30, 0x30, 0xff));
-//     constexpr int col_i      = 10;
-//     int           COLUMN_NUM = (this->strct_conv_layer.flag_foundBriefer_index0) ? col_i : col_i + 1;
-//     {
-//
-//       missionx::WinImguiBriefer::HelpMarker ("The table holds the list of waypoints from the imported flight plan.\n\"Leg\": Mark as a waypoints you must reach.\n\t\tIndex 0 is your 'start' location.\n\"GD\": Flag flight leg to be on ground.\n\"BR\": Convert Index 1 waypoint to briefer, only if index 0 is unavailable.\n\"Details\": Opens a popup.\n\"IG\": Ignore this "
-//                                              "waypoint. Won't be part of the GPS.");
-//       if (ImGui::BeginTable ("Table_fpln_lnm", COLUMN_NUM, ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingFixedFit))
-//       {
-//         ImGui::TableSetupScrollFreeze (0, 1); // Make top row always visible
-//
-//         // Set up the columns of the table - TBD
-//         ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow);
-//         {
-//           ImGui::TableSetupColumn ("Indx", ImGuiTableColumnFlags_None, 20.0f); // Index, row number
-//           ImGui::TableSetupColumn ("Ident", ImGuiTableColumnFlags_None, 100.0f); // to ICAO + (keyName)
-//           ImGui::TableSetupColumn ("Type", ImGuiTableColumnFlags_None, 75.0f);
-//
-//           ImGui::TableSetupColumn ("Leg", ImGuiTableColumnFlags_None, 30.0f); // Is this a flight leg ?
-//           ImGui::TableSetupColumn ("GD", ImGuiTableColumnFlags_None, 30.0f); // on ground ?
-//
-//           if (this->strct_conv_layer.flag_foundBriefer_index0 == false)
-//             ImGui::TableSetupColumn ("BR", ImGuiTableColumnFlags_None, 30.0f); // Convert to briefer so we will have our departure data if we have no briefer waypoint
-//
-//           ImGui::TableSetupColumn ("Lat / Lon", ImGuiTableColumnFlags_None, 150.0f);
-//           ImGui::TableSetupColumn ("Distance nm", ImGuiTableColumnFlags_None, 85.0f); // distance between waypoints
-//
-//           ImGui::TableSetupColumn ("Settings", ImGuiTableColumnFlags_None, 70.0f); // will open modal window that will display lat/lon + notes
-//           ImGui::TableSetupColumn ("Marker", ImGuiTableColumnFlags_None, 30.0f); // v3.0.303.2 Display Marker at leg location
-//           ImGui::TableSetupColumn ("IG", ImGuiTableColumnFlags_None, 30.0f); // ignore the waypoint during mission build
-//           ImGui::TableHeadersRow ();
-//         }
-//         ImGui::PopStyleColor ();
-//
-//
-//         //// Add ROWS to the table
-//         for (auto &[indx, legData] : in_map_tableOfParsedFpln)
-//         {
-//           int  i1                  = 0;
-//           bool flagDisableRowColor = false;
-//           if (legData.flag_ignore_leg)
-//           {
-//             flagDisableRowColor = true;
-//             ImGui::PushStyleColor (ImGuiCol_Text, ImGui::GetColorU32 (ImGuiCol_ScrollbarGrabActive)); // dark gray
-//           }
-//
-//
-//           ImGui::TableNextRow ();
-//           ImGui::TableSetColumnIndex (i1); // 0
-//           ImGui::TextUnformatted (mxUtils::formatNumber<int> (indx).c_str ());
-//
-//           ++i1;
-//           ImGui::TableSetColumnIndex (i1); // 1 keyName (ident)
-//
-//           if (flagDisableRowColor == false)
-//           {
-//             ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_bisque);
-//           }
-//           if (legData.name.empty ())
-//             ImGui::Text ("%s", legData.ident.c_str ());
-//           else
-//             ImGui::Text ("%s", (std::string (legData.name) + ((legData.ident.compare (legData.name) == 0) ? "" : "(" + legData.ident + ")")).c_str ());
-//
-//           if (flagDisableRowColor == false)
-//             ImGui::PopStyleColor ();
-//
-//           ++i1;
-//           ImGui::TableSetColumnIndex (i1); // 2 type
-//           ImGui::Text ("%s", legData.type.c_str ());
-//
-//           ++i1;
-//           ImGui::TableSetColumnIndex (i1); // 3 is leg checkbox
-//           if (legData.indx > 0 && !legData.flag_convertToBriefer) // briefer won't be a leg
-//           {
-//             char buf[64];
-//             snprintf (buf, sizeof (buf) - 1, "###isLeg%i", legData.indx);
-//             if (ImGui::Checkbox (buf, &legData.flag_isLeg))
-//               this->strct_conv_layer.flag_refresh_table_from_file = true;
-//
-//             this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Is this waypoint a location you must reach ?\nIf not then it will be a waypoint in your GPS (optional).\nTip: In most cases first two rows are probably briefer and starting locations.");
-//           }
-//
-//           ++i1;
-//           ImGui::TableSetColumnIndex (i1); // 4 on Ground / Airborne
-//           if (legData.indx > 0 && !legData.flag_convertToBriefer) // skip briefer
-//           {
-//             char buf[64];
-//             snprintf (buf, sizeof (buf) - 1, "###onGroundOrAirborne%i", legData.indx);
-//             if (ImGui::Checkbox (buf, &legData.target_trig_strct.flag_on_ground))
-//               legData.target_trig_strct.elev_rule_s = (legData.target_trig_strct.flag_on_ground) ? "true" : "false";
-//             this->mx_add_tooltip (missionx::color::color_vec4_yellow, "On Ground");
-//           }
-//
-//           if (this->strct_conv_layer.flag_foundBriefer_index0 == false) // convert to briefer Hide Show Column
-//           {
-//             ++i1;
-//             ImGui::TableSetColumnIndex (i1); // convert to briefer - depends on >strct_conv_layer.flag_foundBriefer_index0
-//             if (legData.indx == 1) // skip briefer
-//             {
-//               char buf[64];
-//               snprintf (buf, sizeof (buf) - 1, "###ConvertToBriefer%i", legData.indx);
-//               if (ImGui::Checkbox (buf, &legData.flag_convertToBriefer))
-//                 this->strct_conv_layer.flag_refresh_table_from_file = true;
-//
-//               this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Convert Leg to Briefer");
-//             }
-//           }
-//
-//
-//           ++i1;
-//           ImGui::TableSetColumnIndex (i1); // lat/lon (alt)
-//           {
-//             char buf[64];
-//             char bufLatLon[30];
-//
-//             snprintf (buf, sizeof (buf) - 1, "###lnmLatLon%i", legData.indx);
-//             snprintf (bufLatLon, sizeof (bufLatLon) - 1, "%.6f/%.6f", static_cast<float> (legData.p.getLat ()), static_cast<float> (legData.p.getLon ()));
-//
-//             ImGui::SetNextItemWidth (180.0f);
-//             if (legData.indx % 2 == 0)
-//               ImGui::PushStyleColor (ImGuiCol_FrameBg, IM_COL32 (0x20, 0x20, 0x20, 0xff));
-//             else
-//               ImGui::PushStyleColor (ImGuiCol_FrameBg, IM_COL32 (0x30, 0x30, 0x30, 0xff));
-//
-//             ImGui::InputText (buf, bufLatLon, sizeof (bufLatLon), ImGuiInputTextFlags_ReadOnly);
-//             ImGui::PopStyleColor ();
-//           }
-//
-//           ++i1;
-//           ImGui::TableSetColumnIndex (i1); // distance
-//           {
-//             ImGui::TextColored (missionx::color::color_vec4_bisque, "%.2f (%.2f)", legData.distToPrevWaypoint, legData.cumulativeDist);
-//           }
-//
-//           ++i1;
-//           ImGui::TableSetColumnIndex (i1); // popup - details
-//           if (flagDisableRowColor == false)
-//           {
-//             if (legData.indx == 0 || legData.flag_isLeg || legData.flag_convertToBriefer)
-//             {
-//
-//               char buf[64];
-//               if (legData.indx == 0 || (legData.indx == 1 && legData.flag_convertToBriefer)) // briefer row
-//                 snprintf (buf, sizeof (buf) - 1, "Briefer###LegSetting%i", legData.indx);
-//               else
-//                 snprintf (buf, sizeof (buf) - 1, "Flight Leg###LegSetting%i", legData.indx);
-//
-//
-//               if (ImGui::Button (buf))
-//               {
-//                 this->strct_conv_layer.way_row_picked_i = legData.indx;
-//
-//                 if (legData.indx == 0 || (legData.indx == 1 && legData.flag_convertToBriefer)) // briefer popup
-//                   ImGui::OpenPopup (POPUP_BRIEFER_SETTINGS.c_str ());
-//                 else
-//                 {
-//                   this->strct_conv_layer.flag_refreshTriggerListFrom_xNode = true;
-//                   ImGui::OpenPopup (POPUP_FLIGHT_LEG_SETTINGS.c_str ());
-//                 }
-//               } // button
-//
-//             } // end if to display button
-//           } // ignore
-//
-//
-//           ++i1; // v3.0.303.2
-//           ImGui::TableSetColumnIndex (i1); // 3D marker
-//           if (legData.indx && legData.flag_isLeg && !legData.flag_convertToBriefer && !legData.flag_ignore_leg) // Show option only for picked legs that are not briefer or ignored
-//           {
-//             char buf[64];
-//             snprintf (buf, sizeof (buf) - 1, "###add3DMarker%i", legData.indx);
-//
-//             ImGui::Checkbox (buf, &legData.flag_add_marker);
-//             this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Place 3D marker at leg location.");
-//           }
-//
-//
-//           ++i1;
-//           ImGui::TableSetColumnIndex (i1); // Checkbox: Ignore waypoint line when build mission file
-//           if (legData.indx && legData.flag_convertToBriefer == false) // briefer won't be a leg
-//           {
-//             char buf[64];
-//             snprintf (buf, sizeof (buf) - 1, "###ignoreWaypoint%i", legData.indx);
-//
-//             ImGui::Checkbox (buf, &legData.flag_ignore_leg);
-//             this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Ignore this waypoint when building the mission file?");
-//           }
-//           //// End of table columns
-//
-//
-//           ///// FLIGHT LEG DETAIL POPUP
-//           ImGui::PushStyleColor (ImGuiCol_PopupBg, missionx::color::color_vec4_blue);
-//           {
-//
-//             const auto popupHeight_f = ImGui::GetIO ().DisplaySize.y * 0.85f;
-//
-//             const ImVec2 center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f - 30.0f);
-//             ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
-//             ImGui::SetNextWindowSize (ImVec2 (win_size_vec2.x - 20.0f, popupHeight_f));
-//
-//             if (ImGui::BeginPopupModal (POPUP_FLIGHT_LEG_SETTINGS.c_str (), NULL, ImGuiWindowFlags_AlwaysAutoResize))
-//             {
-//               draw_conv_popup_flight_leg_detail (legData);
-//               ImGui::EndPopup ();
-//             }
-//
-//             ///// FLIGHT LEG DETAIL POPUP
-//             ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
-//             ImGui::SetNextWindowSize (ImVec2 (win_size_vec2.x - 20.0f, popupHeight_f));
-//
-//             if (ImGui::BeginPopupModal (POPUP_BRIEFER_SETTINGS.c_str (), NULL, ImGuiWindowFlags_AlwaysAutoResize))
-//             {
-//
-//               draw_conv_popup_briefer (legData);
-//               ImGui::EndPopup ();
-//             }
-//
-//           } // end popup block code handling
-//           ImGui::PopStyleColor ();
-//
-//
-//           if (flagDisableRowColor) // if we ignored line then reset style
-//             ImGui::PopStyleColor ();
-//         } // end loop over table rows
-//
-//         if (this->strct_conv_layer.flag_refresh_table_from_file)
-//         {
-//           auto table_ptr = ImGui::GetCurrentTable ();
-//           ImGui::TableSetColumnWidthAutoAll (table_ptr);
-//           this->strct_conv_layer.flag_refresh_table_from_file = false;
-//         }
-//         // End of table
-//         ImGui::EndTable ();
-//       } // END ImGui::BeginTable
-//     }
-//     ImGui::PopStyleColor (2);
-//   }
-// }
-//
-
-// -----------------------------------------------
-//
-//
-// bool
-// WinImguiBriefer::validate_conversion_table (IXMLNode &inMainNode, std::map<int, missionx::mx_local_fpln_strct> in_map_tableOfParsedFpln)
-// {
-//
-//   // check if we have at least one flight leg, if not then the last one will be the active flight plan
-//   bool flag_found_active_flight_leg{ false };
-//   for (auto &[indx, legData] : in_map_tableOfParsedFpln)
-//   {
-//     if (indx == 0) // ignore briefer
-//       continue;
-//
-//     if (legData.flag_ignore_leg)
-//       continue;
-//
-//     if (legData.flag_isLeg)
-//       flag_found_active_flight_leg = true;
-//   }
-//   if (flag_found_active_flight_leg == false)
-//   {
-//     this->setMessage ("Could not find any active flight leg. Flag at least one waypoint as a \"Leg\"", 8);
-//     return false;
+//     ImGui::EndGroup ();
 //   }
 //
-//   return true;
-// }
-//
-
-// -----------------------------------------------
-
-// void
-// WinImguiBriefer::draw_conv_main_fpln_to_mission_window ()
-// {
-//   auto win_size_vec2 = ImGui::GetContentRegionAvail ();
-//
-//   ImGui::SetWindowFontScale (this->strct_setup_layer.fPreferredFontScale);
-//
-//   // First Time code
-//   if (this->strct_conv_layer.flag_first_time)
-//   {
-//     this->strct_conv_layer.conv_sub_ui = mx_conv_sub_ui::conv_pick_fpln; // enum value
-//
-//     this->strct_conv_layer.file_picked_i    = -1;
-//     this->strct_conv_layer.way_row_picked_i = -1;
-//     this->strct_conv_layer.vecFileList_char.clear ();
-//     this->strct_conv_layer.mapFileList.clear ();
-//     this->strct_conv_layer.set_conv_map_files (this->read_fpln_files ()); // set the mapFileList and the vecFileList_char
-//
-//     this->strct_conv_layer.flag_first_time = false;
-//   }
-//
-//
-//   constexpr static std::string_view welcome_str_vu             = R"(Welcome to flight plan conversion screen. This screen should be used only in 2D mode and not in VR.
-// In this screen you will pick a flight plan based on LittleNavMap (".lnmpln") from X-Plane FPLN folder ("Output/FMS plans").
-// )";
-//   constexpr static std::string_view design_mission_fpln_str_vu = R"(Design the mission Flight Plan based on the parsed LittleNavMap file.
-// 1. Your briefer waypoint is your starting location (usually line 0. If it is absent, you can convert line 1 to be a briefer "BR")
-// 2. Pick waypoints that are mandatory to pass, you must have at least one. Fill the information of that flight leg using the respective button in the "details column".
-// 3. Once you [Generate] the mission, you can load it from "Load Mission" screen (Pick the Random image - the first one, in that screen).
-// )";
-//
-//   constexpr static std::string_view triggers_fpln_str_vu = R"(The "Trigger or Event screen" allows you to define different ways to interact with the simmer.
-// You can define: "Radius, Polygonal, Script or even Camera" based areas of effect, depends on your needs.
-// Each trigger must have a unique name in all the mission file.
-// )";
-//
-//   constexpr static std::string_view features_not_implemented_str_vu = R"(The list of features that were not implemented:
-// > start/end screen.
-// > script editor.
-// > tasks - there is only the mandatory task.
-// > choices
-//
-// There are other options that are best handle manually inside an editor and not in the Mission-X Conversion window.
-// (Read the designer guide))";
-//
-//
-//   // Display Welcome text //
-//   ImGui::BeginGroup ();
-//   {
-//     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
-//     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_aquamarine);
-//     ImGui::TextWrapped ("%s", (this->strct_conv_layer.conv_sub_ui == mx_conv_sub_ui::conv_pick_fpln) ? welcome_str_vu.data () : (this->strct_conv_layer.conv_sub_ui == mx_conv_sub_ui::conv_design_fpln) ? design_mission_fpln_str_vu.data () : triggers_fpln_str_vu.data ());
-//     ImGui::PopStyleColor ();
-//     this->mxUiReleaseLastFont (); // v3.303.14
-//   }
-//   ImGui::Separator ();
-//
+//   // ImGui::EndChild (); // end outer child
 //   ImGui::EndGroup ();
 //
+//   this->mxUiReleaseLastFont (); // v3.305.1
 //
-//
-//   // Display list of fpln or design mission //
-//   switch (this->strct_conv_layer.conv_sub_ui)
+//   //------------------------------------------------
+//   //     Status Messages
+//   //------------------------------------------------
+//   if (missionx::data_manager::flag_generate_engine_is_running && missionx::sBottomMessage.empty ())
 //   {
-//     case (mx_conv_sub_ui::conv_pick_fpln):
+//     this->setMessage ("Random Engine is running, please wait...");
+//   }
+//   else if (missionx::data_manager::flag_apt_dat_optimization_is_running && sBottomMessage.empty ())
+//   {
+//     this->setMessage ("Can't Generate mission, apt data optimization is currently running. Please wait for it to finish first !!!");
+//   }
+//
+//
+//   //------------------------------------------------
+//   //     Airports Query Result Table
+//   //------------------------------------------------
+//
+//   const float fStartButtonHeight = (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && missionx::flag_generatedRandomFile_success && missionx::strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running) ? 25.0f : 0.0f;
+//
+//   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
+//
+//   ImGui::BeginGroup ();
+//   // ImGui::BeginChild ("draw_ils_layer_table_02", ImVec2 (0.0f, win_size_vec2.y - uiUpperChildSizeVec2.y - 0.0f /*buttons*/ - 10.0f /*bottom message space*/ - fStartButtonHeight /* Is StartButton visible */), ImGuiChildFlags_Borders); // Size relative to the upper child size
+//   {
+//     ImGui::PushStyleColor (ImGuiCol_TableRowBgAlt, IM_COL32 (0x1a, 0x1a, 0x1a, 0xff));
+//     constexpr const static int COLUMN_NUM = 11;
+//
+//     if (ImGui::BeginTable ("TableILS", COLUMN_NUM, ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_Sortable | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingFixedFit
+//                            // ImGuiTableFlags_ScrollFreezeTopRow | ImGuiTableFlags_ScrollFreezeLeftColumn
+//                            ))
 //     {
-//       ImGui::BeginGroup ();
+//       ImGui::TableSetupScrollFreeze (0, 1); // Make top row always visible
+//
+//       // Set up the columns of the table
+//       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow);
 //       {
-//         missionx::WinImguiBriefer::HelpMarker (features_not_implemented_str_vu.data ()); // v3.0.301 B4 added unsupported features example
+//         ImGui::TableSetupColumn ("TO", ImGuiTableColumnFlags_None, 210); // to ICAO + (keyName)
+//         ImGui::TableSetupColumn ("Dist.", ImGuiTableColumnFlags_DefaultSort, 45);
+//         ImGui::TableSetupColumn ("ILS Type", ImGuiTableColumnFlags_None, 70);
+//         ImGui::TableSetupColumn ("Freq.", ImGuiTableColumnFlags_None, 50);
+//         ImGui::TableSetupColumn ("RW", ImGuiTableColumnFlags_None, 30);
+//         ImGui::TableSetupColumn ("Len mt", ImGuiTableColumnFlags_None, 55);
+//         ImGui::TableSetupColumn ("Width", ImGuiTableColumnFlags_None, 50);
+//         ImGui::TableSetupColumn ("Elev ft.", ImGuiTableColumnFlags_None, 65);
+//         ImGui::TableSetupColumn ("Gen.", ImGuiTableColumnFlags_NoSort, 50); //
+//         ImGui::TableSetupColumn ("Surface", ImGuiTableColumnFlags_NoSort, 90); // v3.0.253.13
+//         ImGui::TableSetupColumn ("Bearing", ImGuiTableColumnFlags_NoSort, 50); // v3.0.253.13 bearing between start and target icao runway
+//         ImGui::TableHeadersRow ();
+//       }
+//       ImGui::PopStyleColor ();
 //
-//         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
-//
-//         ImGui::TextColored (missionx::color::color_vec4_yellow, "Pick a file from the list:");
-//
-//         ImGui::SameLine (win_size_vec2.x * 0.75f);
-//         ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//         ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
-//         ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_azure);
-//         if (ImGui::Button (" Load Saved State File "))
+//       if (!missionx::data_manager::table_ILS_rows_vec.empty () && missionx::strct_ils_layer.fetch_ils_state != missionx::mxFetchState_enum::fetch_in_process && missionx::data_manager::s_thread_sync_mutex.locked_by_caller () == false)
+//       {
+//         // Sort the data if and as needed
+//         ImGuiTableSortSpecs *sortSpecs = ImGui::TableGetSortSpecs ();
+//         if (sortSpecs && sortSpecs->SpecsDirty && sortSpecs->Specs && sortSpecs->SpecsCount >= 1 && data_manager::table_ILS_rows_vec.size () > 1)
 //         {
-//           this->strct_conv_layer.flag_load_conversion_file = true; // will cause the file information to be refreshed in the next run
-//           this->strct_conv_layer.file_picked_i             = -1; // reset pick state so we will only see the "converter" file keyName
-//           std::string conv_file                            = Utils::getMissionxCustomSceneryFolderPath_WithSep (true) + "/random/briefer/" + mxconst::get_CONVERTER_FILE ();
-//         }
-//         ImGui::PopStyleColor (3);
+//           // tableDataListTy
+//           // We sort only by one column, no multi-column sort
+//           const ImGuiTableColumnSortSpecs &colSpec = *(sortSpecs->Specs);
 //
-//         this->mxUiReleaseLastFont (); // v3.303.14
+//           // We directly sort the tableList: tableExternalFPLN_vec
+//           std::ranges::sort (data_manager::table_ILS_rows_vec, // lambda function
+//                              [colSpec] (const missionx::mx_ils_airport_row_strct &a, const missionx::mx_ils_airport_row_strct &b)
+//                              {
+//                                const int cmp = // less than 0 if a < b
+//                                  colSpec.ColumnIndex == 0   ? a.toICAO_s.compare (b.toICAO_s)
+//                                  : colSpec.ColumnIndex == 1 ? static_cast<int> (a.distnace_d - b.distnace_d)
+//                                  : colSpec.ColumnIndex == 2 ? a.locType_s.compare (b.locType_s)
+//                                  : colSpec.ColumnIndex == 3 ? 0
+//                                                             : // no sorting
+//                                    colSpec.ColumnIndex == 4 ? a.loc_rw_s.compare (b.loc_rw_s)
+//                                  : colSpec.ColumnIndex == 5 ? a.rw_length_mt_i - b.rw_length_mt_i
+//                                  : colSpec.ColumnIndex == 6 ? static_cast<int> (a.rw_width_d - b.rw_width_d)
+//                                                             : // width of rw
+//                                    colSpec.ColumnIndex == 7 ? a.ap_elev_ft_i - b.ap_elev_ft_i
+//                                                             : // elevation ft.
+//                                    // colSpec.ColumnIndex == 8 ? 0 // v24.03.1 info button - replaced localizer bearing
+//                                    colSpec.ColumnIndex == 8 ? 0
+//                                                             : // GEN button - don't sort
+//                                    colSpec.ColumnIndex == 9 ? 0
+//                                                             : // Surface - don't sort surface type v3.0.253.13
+//                                    colSpec.ColumnIndex == 10 ? static_cast<int> (a.bearing_from_to_icao_d - b.bearing_from_to_icao_d)
+//                                                              : // v3.0.253.13
+//                                    0; // last option should have : 0 at the end like else
 //
-//         this->mx_add_tooltip (missionx::color::color_vec4_yellowgreen, "Only loads last conversion 'saved state' file - if exists.");
+//                                return colSpec.SortDirection == ImGuiSortDirection_Ascending ? cmp < 0 : cmp > 0;
+//                              });
 //
+//           sortSpecs->SpecsDirty = false;
+//         } // end Sorting logic
 //
-//         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
-//         if (ImGui::BeginListBox ("##ListOfFlightPlanFiles"))
+//         // Add rows to the table
+//         static int picked_fpln_id_i = -1;
+//         for (const auto &rowData : data_manager::table_ILS_rows_vec)
 //         {
-//           for (int n = 0; n < static_cast<int> (this->strct_conv_layer.vecFileList_char.size ()); n++)
+//           int i = 0;
+//           // auto& td = *td;
+//           ImGui::TableNextRow ();
+//           ImGui::TableSetColumnIndex (i);
+//           i++;
+//
+//           ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_mx_bluish);
+//           if (ImGui::Button (fmt::format ("{} ({}){}", rowData.toICAO_s, ((rowData.toName_s.length () > 23) ? rowData.toName_s.substr (0, 20) + "..." : rowData.toName_s), fmt::format ("##ButtonInfo{}", rowData.seq)).c_str ()))
 //           {
-//             const bool is_selected = (this->strct_conv_layer.file_picked_i == n);
-//             if (ImGui::Selectable (this->strct_conv_layer.vecFileList_char.at (n), is_selected)) // , 0, ImVec2(350.0f, 150.0f)
-//               this->strct_conv_layer.file_picked_i = n;
-//
-//             // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-//             if (is_selected)
-//               ImGui::SetItemDefaultFocus ();
+//             this->m_ui_nav_screen->callNavData(rowData.toICAO_s, false);
 //           }
-//           ImGui::EndListBox ();
-//         }
-//         this->mxUiReleaseLastFont (); // v3.303.14
+//           ImGui::PopStyleColor ();
 //
-//         // bottom buttons
-//         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
-//         if (ImGui::Button (" Refresh File List "))
-//         {
-//           this->strct_conv_layer.flag_first_time = true; // will cause the file information to be refreshed in the next run
-//         }
-//         if (this->strct_conv_layer.file_picked_i > -1 || this->strct_conv_layer.flag_load_conversion_file)
-//         {
-//           ImGui::SameLine (0.0f, 20.0f);
-//           if (ImGui::Button ("  Read Flight Plan File and continue to step 2...  ") || this->strct_conv_layer.flag_load_conversion_file)
+//           ImGui::TableSetColumnIndex (i);
+//           i++;
+//           ImGui::Text ("%.0f", static_cast<float> (rowData.distnace_d));
+//           this->mx_add_tooltip (missionx::color::color_vec4_beige, "Distance in nautical miles.");
+//           ImGui::TableSetColumnIndex (i);
+//           i++;
+//           ImGui::TextUnformatted (rowData.locType_s.c_str ()); // Type
+//           ImGui::TableSetColumnIndex (i);
+//           i++;
+//           const std::string sLocTypesToFormat = "VORDMENDBILS-CAT-IILS-CAT-IIIILS-CAT-IILOC";
+//           const std::string locTypeUpperCase  = mxUtils::stringToUpper (rowData.locType_s);
+//           const bool        bFormatFrq        = (sLocTypesToFormat.find (locTypeUpperCase) != std::string::npos);
+//           std::string       frq_s             = mxUtils::formatNumber<int> (rowData.loc_frq_mhz);
+//           frq_s                               = (bFormatFrq && frq_s.length () > 3) ? frq_s.insert (3, 1, '.') : frq_s; // v25.08.1 added length test for VFR
+//           ImGui::TextUnformatted (frq_s.c_str ());
+//           ImGui::TableSetColumnIndex (i);
+//           i++;
+//           ImGui::TextUnformatted (rowData.loc_rw_s.c_str ()); // on which rw
+//           ImGui::TableSetColumnIndex (i);
+//           i++;
+//           ImGui::Text ("%i", rowData.rw_length_mt_i);
+//           this->mx_add_tooltip (missionx::color::color_vec4_beige, "Runway length in meters.");
+//           ImGui::TableSetColumnIndex (i);
+//           i++;
+//           ImGui::Text ("%.2f", static_cast<float> (rowData.rw_width_d));
+//           ImGui::TableSetColumnIndex (i);
+//           i++;
+//           ImGui::Text ("%i", rowData.ap_elev_ft_i); // elevation ft.
+//
+//           ImGui::TableSetColumnIndex (i);
+//           i++;
+//
+//           // Last field, the creation mission
+//           // ---- Actions
+//           if (ImGui::Button (fmt::format (" ... ###ButtonGen{}", rowData.seq).c_str ())) // v24.03.1 replaced buff with fmt::format
 //           {
+//             // display modal window and rest of information
+//             picked_fpln_id_i = rowData.seq; // store picked seq
 //
-//             std::string file;
-//             std::string filePath;
+//             // Generate mission from this after showing "are you sure" modal window
+//             IXMLNode node_ptr = missionx::data_manager::prop_userDefinedMission_ui.node;
+//             missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_MED_CARGO_OR_OILRIG (), static_cast<int> (mx_ui_mission_type::cargo)); //, node_ptr, node_ptr.getName()); // always cargo
+//             missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_NO_OF_LEGS (), 0); //, node_ptr, node_ptr.getName()); // legs will be dectated by RandomEngine. Should only be 1 and simmer will add the rest
+//             missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MIN_DISTANCE_SLIDER (), strct_ils_layer.ils_sliderVal1); //, node_ptr, node_ptr.getName());
+//             missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MAX_DISTANCE_SLIDER (), strct_ils_layer.ils_sliderVal2); //, node_ptr, node_ptr.getName());
+//             missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_USE_OSM_CHECKBOX (), false); //, node_ptr, node_ptr.getName());     // always false
+//             missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_USE_WEB_OSM_CHECKBOX (), false); //, node_ptr, node_ptr.getName()); // always false
 //
-//             // v3.305.1 reset xSavedGlobalSettingsNode Node
-//             this->strct_conv_layer.xSavedGlobalSettingsNode = IXMLNode ();
+//             missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_FROM_ICAO (), strct_ils_layer.navaid.getID ()); //, node_ptr, node_ptr.getName()); //
+//             missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_TO_ICAO (), rowData.toICAO_s); //, node_ptr, node_ptr.getName());                 //
 //
-//             if (this->strct_conv_layer.flag_load_conversion_file)
+//             ImGui::OpenPopup (GENERATE_ILS_QUESTION.c_str ());
+//           }
+//
+//           // v3.0.253.13 Other information about runway/airport
+//           ImGui::TableSetColumnIndex (i);
+//           i++;
+//           ImGui::TextUnformatted (rowData.surfType_s.c_str ()); // Surface Type
+//           ImGui::TableSetColumnIndex (i);
+//           i++;
+//           ImGui::Text ("%.0f", static_cast<float> (rowData.bearing_from_to_icao_d)); // bearing between start and target icao
+//           this->mx_add_tooltip (missionx::color::color_vec4_beige, "Bearing to airport relative to plane position.");
+//
+//
+//           // DISPLAY POPUP
+//           ImVec2 center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f); // center of screen
+//           ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
+//           ImGui::SetNextWindowSize (ImVec2 (480.0f, 435.0f));
+//
+//           ImGui::PushStyleColor (ImGuiCol_PopupBg, missionx::color::color_vec4_black);
+//           {
+//             if (ImGui::BeginPopupModal (GENERATE_ILS_QUESTION.c_str (), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 //             {
-//               file     = mxconst::get_CONVERTER_FILE ();
-//               filePath = Utils::getMissionxCustomSceneryFolderPath_WithSep (true) + "/random/briefer/" + file;
-//             }
-//             else if (this->strct_conv_layer.file_picked_i > -1)
-//             {
-//               file     = this->strct_conv_layer.vecFileList_char.at (this->strct_conv_layer.file_picked_i);
-//               filePath = this->strct_conv_layer.mapFileList[file];
-//             }
-//             else
-//               break;
-//
-//             missionx::data_manager::map_tableOfParsedFpln.clear ();
-//
-//             if (this->strct_conv_layer.flag_load_conversion_file)
-//             {
-//               // call read_and_parse_conversion_file
-//               missionx::data_manager::map_tableOfParsedFpln = read_and_parse_saved_state (filePath); // will update this->strct_conv_layer.xXPlaneDataRef_global and this->strct_conv_layer.xSavedGlobalSettingsNode
-//             }
-//             else
-//               missionx::data_manager::map_tableOfParsedFpln = missionx::data_manager::read_and_parse_littleNavMap_fpln (filePath);
-//
-//
-//             if (missionx::data_manager::map_tableOfParsedFpln.size () == static_cast<size_t> (0))
-//             {
-//               this->setMessage ("No information was loaded.");
-//             }
-//             else // prepare a new in memory XML
-//             {
-//               this->strct_conv_layer.xConvMainNode = IXMLNode::createXMLTopNode ("xml", TRUE);
-//               this->strct_conv_layer.xConvMainNode.addAttribute (mxconst::get_ATTRIB_VERSION ().c_str (), "1.0");
-//               this->strct_conv_layer.xConvMainNode.addAttribute ("encoding", "ASCII"); // "ISO-8859-1");
-//               this->strct_conv_layer.xConvMainNode.addClear ("\n\tFile has been created by Mission-X plug-in.\n\tAny modification might break or invalidate the file.\n\t", "<!--", "-->");
-//
-//               IXMLDomParser iDomTemplate;
-//               IXMLResults   parse_result_strct;
-//               this->strct_conv_layer.xConvDummy = iDomTemplate.parseString (std::string (this->strct_conv_layer.DUMMY_SKELATON_ELEMENT.data ()).c_str (), mxconst::get_DUMMY_ROOT_DOC ().c_str (), &parse_result_strct).deepCopy (); // parse xml into ITCXMLNode
-//               this->strct_conv_layer.xConvMainNode.addChild (this->strct_conv_layer.xConvDummy);
-//
-//               // Add mission info
-//               if (!this->strct_conv_layer.xConvInfo.isEmpty ())
-//                 this->strct_conv_layer.xConvInfo.deleteNodeContent ();
-//
-//               this->strct_conv_layer.xConvInfo = this->strct_conv_layer.xConvDummy.addChild (mxconst::get_ELEMENT_MISSION_INFO ().c_str ());
-//               Utils::xml_add_comment (this->strct_conv_layer.xConvDummy, " ----------------- ");
-//
-//               // main <xpdata>
-//               if (this->strct_conv_layer.flag_load_conversion_file)
-//                 this->strct_conv_layer.xConvDummy.addChild (this->strct_conv_layer.xXPlaneDataRef_global);
-//               else
-//                 this->strct_conv_layer.xXPlaneDataRef_global = this->strct_conv_layer.xConvDummy.addChild (mxconst::get_ELEMENT_XPDATA ().c_str ());
-//
-//               Utils::xml_add_comment (this->strct_conv_layer.xConvDummy, " ----------------- ");
-//
-//
-//               // main <triggers>
-//               if (!this->strct_conv_layer.xTriggers_global.isEmpty ())
-//                 this->strct_conv_layer.xTriggers_global.deleteNodeContent ();
-//
-//               this->strct_conv_layer.xTriggers_global = this->strct_conv_layer.xConvDummy.addChild (mxconst::get_ELEMENT_TRIGGERS ().c_str ());
-//               Utils::xml_add_comment (this->strct_conv_layer.xConvDummy, " ----------------- ");
-//
-//
-//
-//               // flag if we have index 0 or not (briefer)
-//               this->strct_conv_layer.flag_foundBriefer_index0     = Utils::isElementExists (data_manager::map_tableOfParsedFpln, 0); // do we have index 0 (key = 0) in the map ?
-//               this->strct_conv_layer.flag_refresh_table_from_file = true;
-//
-//               // make sure we have xLeg IXMLNode for each row
-//               bool   isNotFirstTime{ false };
-//               double last_cumulative = 0.0;
-//               Point  pPrev;
-//               for (auto &[indx, legData] : data_manager::map_tableOfParsedFpln)
+//               ImVec2 modal_center (mxUiGetContentWidth () * 0.5f, ImGui::GetWindowHeight () * 0.5f);
+//               if (rowData.seq == picked_fpln_id_i)
 //               {
-//                 if (legData.xLeg.isEmpty () || this->strct_conv_layer.flag_load_conversion_file)
+//                 this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+//                 ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", "To: ");
+//                 this->mxUiReleaseLastFont ();
+//
+//                 ImGui::SameLine (0.0f, 1.0f); // one space
+//                 ImGui::TextColored (missionx::color::color_vec4_greenyellow, "%s", (rowData.toICAO_s + " - " + rowData.toName_s.substr (0, 30)).c_str ());
+//
+//                 // Pick Plane Type
+//                 ImGui::NewLine ();
+//                 // label
+//                 ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
+//                 ImGui::Text ("Pick Preferred Plane:");
+//                 ImGui::PopStyleColor (1);
+//                 ImGui::NewLine ();
+//
+//                 int radio_btn_counter = 0;
+//                 for (const auto &planeTypeLabel : missionx::mapListPlaneRadioLabel | std::views::values) // v24.12.1
 //                 {
-//                   legData.xFlightPlan = this->strct_conv_layer.xConvDummy.addChild (mxconst::get_ELEMENT_FLIGHT_PLAN ().c_str ());
+//                   if (planeTypeLabel.type == mx_plane_types_enum::plane_type_helos || planeTypeLabel.type == mx_plane_types_enum::plane_type_ga_floats)
+//                     continue;
 //
-//                   // Add <leg>
-//                   if (this->strct_conv_layer.flag_load_conversion_file)
+//                   ImGui::SameLine ();
+//                   if (ImGui::RadioButton (planeTypeLabel.label.c_str (), missionx::strct_ils_layer.iRadioPlaneType == planeTypeLabel.type))
 //                   {
-//                     legData.xFlightPlan.addChild (legData.xLeg); // use the <leg> from "saved state" file.
-//
-//                     // v3.0.303.7 move all loaded <scriptlet> inside <scripts> to flightPlan
-//                     int iScriptlets = legData.xLoadedScripts.nChildNode (mxconst::get_ELEMENT_SCRIPTLET ().c_str ());
-//                     for (int i1 = 0; i1 < iScriptlets; ++i1)
-//                       legData.xFlightPlan.addChild (legData.xLoadedScripts.getChildNode (mxconst::get_ELEMENT_SCRIPTLET ().c_str (), i1)); // move <scriptlets> from <script> to <flight_plan> element
+//                     missionx::strct_ils_layer.iRadioPlaneType = planeTypeLabel.type;
 //                   }
-//                   else
-//                   {
-//                     legData.xLeg       = legData.xFlightPlan.addChild (mxconst::get_ELEMENT_LEG ().c_str ());
-//                     legData.attribName = mxconst::get_ELEMENT_LEG () + Utils::formatNumber<int> (legData.indx);
-//                     legData.xLeg.updateAttribute (legData.attribName.c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
-//                   }
+//                   radio_btn_counter++;
+//                   if (radio_btn_counter%4 == 0)
+//                     ImGui::NewLine();
 //
-//                   // <objectives>
-//                   legData.xObjectives = legData.xFlightPlan.addChild (mxconst::get_ELEMENT_OBJECTIVES ().c_str ());
+//                 } // end loop over all plane types
 //
-//                   // Add <triggers>
-//                   if (legData.xTriggers.isEmpty ()) // v3.0.303.4
-//                     legData.xTriggers = legData.xFlightPlan.addChild (mxconst::get_ELEMENT_TRIGGERS ().c_str ());
-//                   else
-//                     legData.xFlightPlan.addChild (legData.xTriggers);
+//                 ImGui::NewLine ();
+//                 ImGui::Checkbox ("Start from plane position", &missionx::strct_cross_layer_properties.flag_start_from_plane_position); // v3.0.253.11 // v3.0.253.12 reposition checkbox in the popup generate window
+//                 ImGui::Spacing ();
+//                 ImGui::Checkbox ("Generate GPS waypoints.", &missionx::strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12
+//                 this->add_ui_auto_load_checkbox (); // v25.04.2
+//                 ImGui::Spacing (); // v3.303.14.2 added default weight to the generate screen
+//                 ImGui::Checkbox ("Add default base weights.\n(Not advisable for planes > GAs)", &missionx::adv_settings_strct.flag_add_default_weight_settings);
+//                 ImGui::Spacing ();
 //
-//                   // Add <message_templates>
-//                   if (legData.xMessageTmpl.isEmpty ()) // v3.0.303.4
-//                     legData.xMessageTmpl = legData.xFlightPlan.addChild (mxconst::get_ELEMENT_MESSAGE_TEMPLATES ().c_str ());
-//                   else
-//                     legData.xFlightPlan.addChild (legData.xMessageTmpl);
-//                 }
-//                 // calculate distances
-//                 if (isNotFirstTime)
+//                 this->add_ui_pick_subcategories (missionx::mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]);
+//                 ImGui::Spacing ();
+//                 // v3.303.10 // v25.04.1 moved advance button to the popup window for better flow
+//                 this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
+//                 ImGui::Spacing ();
+//                 add_designer_mode_checkbox (); // v24.03.2 Designer mode flag
+//
+//                 ImGui::NewLine ();
+//                 ImGui::Separator ();
+//                 ImGui::NewLine ();
+//                 ImGui::NewLine ();
+//                 ImGui::SameLine (modal_center.x * 0.2f);
+//                 ImGui::SetItemDefaultFocus ();
+//
+//                 // v3.303.10
+//                 static bool bRerunRandomDateTime{ false };
+//
+//                 // display the option only if we are not in the middle of a running mission
+//                 if (missionx::data_manager::missionState != missionx::mx_mission_state_enum::mission_is_running)
 //                 {
-//                   legData.distToPrevWaypoint = Point::calcDistanceBetween2Points (pPrev, legData.p);
-//                   legData.cumulativeDist     = last_cumulative + legData.distToPrevWaypoint;
+//
+//                   bRerunRandomDateTime = add_ui_checkbox_rerun_random_date_and_time ();
+//                   ImGui::SameLine (0.0f, 5.0f);
+//
+//                   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
 //                 }
-//                 pPrev           = legData.p;
-//                 last_cumulative = legData.cumulativeDist;
-//                 isNotFirstTime  = true;
+//
+//                 if (missionx::data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
+//                 {
+//                   ImGui::TextColored (missionx::color::color_vec4_aqua, "%s", "Can't generate at this time.");
+//                 }
+//                 else if (ImGui::Button (">> Generate <<", ImVec2 (120, 0)))
+//                 {
+//                   if (bRerunRandomDateTime) // v3.303.10
+//                     this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
+//
+//                   // Prepare and call ACTION_GENERATE_RANDOM_MISSION
+//                   data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_FPLN_ID_PICKED (), picked_fpln_id_i);
+//                   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_PLANE_TYPE_I (), static_cast<int> (strct_ils_layer.iRadioPlaneType)); // v25.04.1 moved into popup
+//                   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_START_FROM_PLANE_POSITION (), missionx::strct_cross_layer_properties.flag_start_from_plane_position); // v3.0.253.11 start from plane position
+//                   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), missionx::strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12 generate GPS waypoints
+//
+//
+//                   if (const auto vecToDisplay = missionx::mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]; static_cast<int>(vecToDisplay.size ()) > missionx::strct_user_create_layer.iMissionSubCategoryPicked)
+//                     missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_MISSION_SUBCATEGORY_LBL (), vecToDisplay.at (missionx::strct_user_create_layer.iMissionSubCategoryPicked));
+//
+//                   missionx::addAdvancedSettingsPropertiesBeforeGeneratingRandomMission (); // v3.303.14
+//
+//
+//                   missionx::strct_generate_template_layer.selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI ();
+//                   this->setMessage ("Generating mission is in progress, please wait...", 10);
+//
+//                   ImGui::CloseCurrentPopup ();
+//                   this->execAction (mx_window_actions::ACTION_GENERATE_RANDOM_MISSION);
+//                 }
+//                 ImGui::SetItemDefaultFocus ();
+//                 ImGui::SameLine (modal_center.x * 1.40f);
+//                 // back button
+//                 if (ImGui::Button ("Back", ImVec2 (80, 0)))
+//                 {
+//                   ImGui::CloseCurrentPopup ();
+//                 }
+//                 this->mxUiReleaseLastFont ();
 //               }
 //
-//               this->strct_conv_layer.conv_sub_ui = mx_conv_sub_ui::conv_design_fpln;
-//             } // end else if map table holds values
-//           } // end pressed "read lnvmap flight plan"
-//         }
-//         this->mxUiReleaseLastFont (); // v3.303.14
+//               ImGui::EndPopup ();
+//             } // END POPUP ILS
+//           }
+//           ImGui::PopStyleColor ();
+//         } // end for iteration loop
 //       }
-//       ImGui::EndGroup ();
-//       // v3.0.301 B4
 //
-//       // features not supported
+//       ImGui::EndTable ();
+//     } // END ImGui::BeginTable
 //
-//     } // conv_pick_fpln
-//     break;
+//     ImGui::PopStyleColor ();
+//   }
+//   // ImGui::EndChild ();
+//   ImGui::EndGroup ();
 //
+//   this->mxUiReleaseLastFont ();
 //
+//   // END DRAW ILS SCREEN
+// }
+
+// -----------------------------------------------
+
+// void
+// WinImguiBriefer::child_draw_nav_search ()
+// {
+//   const auto win_size_vec2 = this->mxUiGetWindowContentWxH ();
 //
-//     case (mx_conv_sub_ui::conv_design_fpln):
+//   ImGui::BeginGroup ();
+//   ImGui::PushItemWidth (100.0f);
+//   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+//   {
+//     ImGui::TextColored (missionx::color::color_vec4_aqua, "%s", "Enter airport ICAO:");
+//     ImGui::SameLine ();
+//     if (ImGui::InputText ("##NavInput", missionx::strct_ils_layer.buf1, 8, ImGuiInputTextFlags_CharsUppercase)) // , ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal);
 //     {
-//       static bool  bRerunRandomDateTime{ false };
-//       const ImVec2 child_size_vec2 = ImVec2 (win_size_vec2.x - 10.0f, 250.0f);
+//       missionx::strct_ils_layer.sNavICAO = std::string (missionx::strct_ils_layer.buf1);
+//     }
+//     this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Enter airport name to fetch its data.");
+//   }
+//   this->mxUiReleaseLastFont (); // release text regular
 //
-//       ImGui::BeginGroup ();
-//       ImGui::BeginChild ("TableOfLNM_Waypoints", child_size_vec2, ImGuiChildFlags_Borders);
+//   // ---------------
+//   //  Row 1 - Search
+//   // ---------------
+//
+//
+//   // search button
+//   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+//   ImGui::SameLine ();
+//   if (ImGui::Button (">> Search <<"))
+//   {
+//     if (missionx::strct_ils_layer.fetch_metar_state == missionx::mxFetchState_enum::fetch_in_process)
+//     {
+//       this->setMessage ("Active METAR fetch is in progress, please wait for it to finish or [Abort] the action.");
+//     }
+//     else
+//     {
+//       missionx::strct_ils_layer.sNavICAO = mxUtils::trim (missionx::strct_ils_layer.sNavICAO);
+//
+//       if (missionx::strct_ils_layer.sNavICAO.empty ())
 //       {
-//         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
-//         ImGui::TextColored (missionx::color::color_vec4_bisque, "Picked File: ");
-//         ImGui::SameLine (0.0f, 2.0f);
-//
-//         if (this->strct_conv_layer.file_picked_i > -1)
+//         this->setMessage ("Please enter a valid ICAO.", 6);
+//       }
+//       else
+//       {
+//         // get Navaid information
+//         missionx::strct_ils_layer.navaid = missionx::data_manager::getICAO_info (missionx::strct_ils_layer.sNavICAO);
+//         if (missionx::strct_ils_layer.navaid.navRef)
 //         {
-//           ImGui::TextColored (missionx::color::color_vec4_green, "%s", this->strct_conv_layer.vecFileList_char.at (this->strct_conv_layer.file_picked_i));
+//           missionx::strct_ils_layer.fetch_nav_state = missionx::mxFetchState_enum::fetch_not_started;
+//
+//           this->execAction (mx_window_actions::ACTION_FETCH_NAV_INFORMATION);
 //         }
 //         else
 //         {
-//           ImGui::TextColored (missionx::color::color_vec4_green, "%s", mxconst::get_CONVERTER_FILE ().c_str ());
-//         }
-//         this->mxUiReleaseLastFont ();
-//
-//
-//         /////// BUTTONS //////
-//         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
-//
-//         ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//         ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
-//         ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_azure);
-//         if (ImGui::Button ("Cancel"))
-//         {
-//           this->strct_conv_layer.flag_load_conversion_file = false; // v3.0.303.4  reset "reset conversion state"
-//           this->strct_conv_layer.conv_sub_ui               = mx_conv_sub_ui::conv_pick_fpln;
-//         }
-//         ImGui::PopStyleColor (3);
-//
-//         ImGui::SameLine (win_size_vec2.x - 230.0f); // draw button from right
-//
-//         ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//         ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgreen);
-//         ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_azure);
-//         if (ImGui::Button (">> Generate <<"))
-//         {
-//           if (bRerunRandomDateTime) // v3.303.10
-//             this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
-//
-//           if (this->strct_conv_layer.xSavedGlobalSettingsNode.isEmpty ())
-//           {
-//             this->strct_conv_layer.flag_use_loaded_globalSetting_from_conversion_file = false; // v3.305.1
-//             this->setMessage ("Please wait while generating the mission from the Flight Plan.", 10);
-//             this->execAction (missionx::mx_window_actions::ACTION_GENERATE_MISSION_FROM_LNM_FPLN);
-//           }
-//           else // open popup
-//           {
-//             ImGui::OpenPopup (POPUP_PICK_GLOBAL_SETTING_NODE.c_str ());
-//           }
-//         }
-//         ImGui::PopStyleColor (3);
-//
-//         ImGui::SameLine (); // draw button from right
-//         ImGui::Checkbox ("Store State##conversionScreen", &this->strct_conv_layer.flag_store_state);
-//
-//         this->mxUiReleaseLastFont ();
-//
-//         // ------------ Little Nav Map Table -----------------------
-//
-//         subDraw_fpln_table (this->strct_conv_layer.xConvMainNode, missionx::data_manager::map_tableOfParsedFpln);
-//
-//       } // end table group
-//
-//       // display POPUP
-//       draw_conv_popup_which_global_settings_to_save (POPUP_PICK_GLOBAL_SETTING_NODE);
-//
-//
-//       ImGui::EndChild ();
-//       ImGui::EndGroup ();
-//
-//
-//       // ------------ Bottom Table Buttons -----------------------
-//
-//       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
-//
-//       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//       ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
-//       ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_azure);
-//
-//       if (ImGui::Button ("Dataref Editor"))
-//       {
-//         ImGui::OpenPopup (POPUP_DATAREF_SETTINGS.c_str ());
-//       }
-//
-//       // v3.305.1 [Global Settings] editor button
-//       if (!(this->strct_conv_layer.xSavedGlobalSettingsNode.isEmpty ()))
-//       {
-//         ImGui::SameLine (0.0f, 10.0f);
-//         if (ImGui::Button ("GlobalSettings Editor"))
-//         {
-//           ImGui::OpenPopup (POPUP_GLOBAL_SETTINGS.c_str ());
+//           this->setMessage ("Navaid: " + missionx::strct_ils_layer.sNavICAO + " is invalid.", 6);
 //         }
 //       }
-//
-//
-//       ImGui::PopStyleColor (3);
-//
-//       this->mxUiReleaseLastFont ();
-//
-//       // v3.303.14 add the advance window that hold: date and weather settings
-//       ImGui::SameLine (0.0f, 50.0f);
-//       bRerunRandomDateTime = add_ui_checkbox_rerun_random_date_and_time ();
-//       ImGui::SameLine ();
-//       this->add_ui_advance_settings_random_date_time_weather_and_weight_button (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked);
-//
-//       ImGui::SameLine (0.0f, 25.0f);
-//       missionx::WinImguiBriefer::add_designer_mode_checkbox (); // v24.03.2
-//
-//
-//       // display POPUP
-//       const auto popupHeight_f = ImGui::GetIO ().DisplaySize.y * 0.75f;
-//
-//       const ImVec2 center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f);
-//       ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
-//       ImGui::SetNextWindowSize (ImVec2 (win_size_vec2.x - 20.0f, popupHeight_f));
-//       ImGui::PushStyleColor (ImGuiCol_PopupBg, missionx::color::color_vec4_blue);
-//       {
-//         if (ImGui::BeginPopupModal (POPUP_DATAREF_SETTINGS.c_str (), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-//         {
-//           draw_conv_popup_datarefs (this->strct_conv_layer.xXPlaneDataRef_global);
-//           ImGui::EndPopup ();
-//         }
-//
-//         // v3.305.1 GlobalSettings Popup
-//         ImGui::SetNextWindowSize (ImVec2 (win_size_vec2.x - 20.0f, popupHeight_f));
-//         if (ImGui::BeginPopupModal (POPUP_GLOBAL_SETTINGS.c_str (), NULL, ImGuiWindowFlags_AlwaysAutoResize))
-//         {
-//           draw_conv_popup_globalSettings (this->strct_conv_layer.xSavedGlobalSettingsNode);
-//           ImGui::EndPopup ();
-//         }
-//       }
-//       ImGui::PopStyleColor ();
 //     }
-//     break;
+//   }
 //
-//     default:
+//
+//   this->mxUiReleaseLastFont (); // release title regular
+//   ImGui::SameLine (0.0f, 5.0f);
+//   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+//   if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).append ("##ClearNavICAO").c_str (), "Clear Nav ICAO"))
+//   {
+//     missionx::strct_ils_layer.sNavICAO.clear ();
+//     memset (missionx::strct_ils_layer.buf1, 0, sizeof missionx::strct_ils_layer.buf1);
+//   }
+//
+//   // v24.03.2 abort button
+//   if (missionx::strct_ils_layer.fetch_metar_state == missionx::mxFetchState_enum::fetch_in_process)
+//   {
+//     ImGui::SameLine (0.0f, 20.0f);
+//     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
+//     ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
+//     ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_white);
+//     if (ImGui::Button (" Abort Metar Request "))
 //     {
+//       missionx::data_manager::threadStateMetar.flagAbortThread = true;
+//       this->setMessage ("Trying to abort Metar fetch thread. Give it a few seconds to be released.", 8);
 //     }
-//     break;
-//   } // end switch between layers
+//     ImGui::PopStyleColor (3);
+//   }
 //
-//   ImGui::SetWindowFontScale (this->strct_setup_layer.fPreferredFontScale);
+//
+//   this->mxUiReleaseLastFont ();
+//
+//
+//   ImGui::EndGroup ();
+//
+//   ImGui::Separator ();
+//
+//   // ---------------
+//   //  Row 2 - Nav Data to display
+//   // ---------------
+//
+//
+//   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+//   ImGui::BeginGroup ();
+//   ImGui::BeginChild ("draw_nav_info_output", ImVec2 (0.0f, win_size_vec2.y - 55.0f), ImGuiChildFlags_Borders, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+//   {
+//     if (!missionx::strct_ils_layer.mapNavaidData.empty () && missionx::strct_ils_layer.fetch_nav_state != missionx::mxFetchState_enum::fetch_in_process
+//         /*&& missionx::data_manager::s_thread_sync_mutex.locked_by_caller() == false*/)
+//     {
+//       for (const auto &data : missionx::strct_ils_layer.mapNavaidData | std::views::values)
+//       {
+//         ////////////////////
+//         // Print ICAO title
+//         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
+//         {
+//
+//           this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+//           {
+//             ImGui::TextColored (missionx::color::color_vec4_orange, "%s, %.0fnm", data.sApDesc.c_str (), data.dDistance);
+//             ImGui::SameLine ();
+//             this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+//             ImGui::TextColored (missionx::color::color_vec4_dimgray, "(icao_id: %i)", data.icao_id);
+//             this->mxUiReleaseLastFont ();
+//           }
+//           this->mxUiReleaseLastFont ();
+//
+//           ///////////////////////////////////
+//           // v24.03.1 METAR information
+//           this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+//           this->mxUiHelpMarker (missionx::color::color_vec4_greenyellow, "Place, Day+Time, COR/AUTO/NIL, Wind, Visibility, Weather, Clouds, Temperature, Air-Pressure, Trend\n\nhttps://metar-taf.com/explanation\nhttps://www.flightutilities.com/MRonline.aspx\n\nMETAR data is downloaded and dependent on flightplandatabase.com availability.\nThe site limits the number of anonymous requests to ~100 per hour, You can extend it to ~1000 if you will add your \"API authorization key\" in the External FPLN screen.");
+//           this->mxUiReleaseLastFont ();
+//
+//           if (missionx::strct_ils_layer.fetch_metar_state >= missionx::mxFetchState_enum::fetch_in_process)
+//           {
+//             ImGui::SameLine ();
+//             this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+//             if (missionx::strct_ils_layer.fetch_metar_state == missionx::mxFetchState_enum::fetch_in_process)
+//               ImGui::TextColored (missionx::color::color_vec4_dimgray, "%s", "Fetching METAR... Please wait (will try 3 times with 5 sec sleep interval)." );
+//             else
+//             {
+//               ImGui::TextColored (missionx::color::color_vec4_dimgray, "%s", (data.sMetar.empty ()) ? "No METAR data was found." : data.sMetar.c_str () );
+//               if (!data.sTaf.empty ())
+//                 ImGui::TextColored (missionx::color::color_vec4_dimgray, "Taf: %s", data.sTaf.c_str () );
+//             }
+//             // ImGui::TextColored (missionx::color::color_vec4_dimgray, "%s", ((missionx::strct_ils_layer.fetch_metar_state == missionx::mxFetchState_enum::fetch_in_process) ? "Fetching METAR... Please wait (will try 3 times with 5 sec sleep interval)." : (data.sMetar.empty ()) ? "No METAR data was found." : data.sMetar.c_str ()));
+//             this->mxUiReleaseLastFont ();
+//           }
+//
+//
+//           ///////////////////////////////////
+//           // v24.03.1 Frequencies information
+//           if (!data.listFrq.empty ())
+//           {
+//             ImGui::Spacing ();
+//             ImGui::Spacing ();
+//
+//             // title
+//             ImGui::TextColored (missionx::color::color_vec4_beige, "%s", "Tower Frequencies");
+//
+//             this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+//             {
+//               bool nonEven = true;
+//               for (const auto &rw : data.listFrq)
+//               {
+//
+//                 ImGui::TextColored (missionx::color::color_vec4_navajowhite, "%s", rw.field2.c_str ());
+//                 if (nonEven)
+//                   ImGui::SameLine (win_size_vec2.x * 0.5f);
+//
+//                 nonEven ^= 1; // toggle
+//               }
+//
+//               if (!nonEven)
+//                 ImGui::NewLine ();
+//             }
+//             this->mxUiReleaseLastFont ();
+//           }
+//
+//           //////////////////////////////////
+//           // Runway information
+//           if (!data.mapRunwayData.empty ())
+//           {
+//             ImGui::NewLine ();
+//             ImGui::Spacing ();
+//
+//             // title
+//             ImGui::TextColored (missionx::color::color_vec4_beige, "%s", "Runways");
+//
+//             this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+//             {
+//               for (const auto &[key, rw] : data.mapRunwayData)
+//               {
+//                 ImGui::TextColored (missionx::color::color_vec4_lemonchiffon, "%s", rw.desc.c_str ());
+//                 ImGui::SameLine ();
+//                 ImGui::TextColored (missionx::color::color_vec4_dimgray, "(%.0fnm)", rw.dDistance);
+//               }
+//             }
+//             this->mxUiReleaseLastFont ();
+//           }
+//
+//           // Nearby Navigation aids information
+//           if (!data.listVor.empty ())
+//           {
+//             ImGui::NewLine ();
+//             ImGui::Spacing ();
+//
+//             // title
+//             ImGui::TextColored (missionx::color::color_vec4_beige, "%s", "Navigation Aids");
+//
+//             this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
+//             {
+//               ImGui::TextColored (missionx::color::color_vec4_grey, "%s", "{ident} {frq}  ({brg. ap},{type}) {name} {dist. ap} ");
+//             }
+//             this->mxUiReleaseLastFont ();
+//
+//             this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+//             {
+//               bool nonEven = true;
+//               for (const auto &loc : data.listVor)
+//               {
+//                 constexpr const int SPACING_FOR_NAVAIDS = 60;
+//                 ImGui::TextColored (missionx::color::color_vec4_cornsilk, "%s", loc.field1.c_str ());
+//                 ImGui::SameLine (((nonEven) ? SPACING_FOR_NAVAIDS : (win_size_vec2.x * 0.5f) + SPACING_FOR_NAVAIDS - 2)); // absolute position
+//                 ImGui::TextColored (missionx::color::color_vec4_cornsilk, "%s", loc.field2.c_str ());
+//                 ImGui::SameLine ();
+//                 ImGui::TextColored (missionx::color::color_vec4_dimgray, "(%.2fnm)", loc.dDistance);
+//                 if (nonEven)
+//                   ImGui::SameLine (win_size_vec2.x * 0.5f);
+//
+//                 nonEven ^= 1; // toggle
+//               }
+//
+//               if (!nonEven)
+//                 ImGui::NewLine ();
+//             }
+//             this->mxUiReleaseLastFont ();
+//           }
+//
+//           // Localizer information
+//           if (!data.listLoc.empty ())
+//           {
+//             ImGui::NewLine ();
+//             ImGui::Spacing ();
+//
+//             // title
+//             ImGui::TextColored (missionx::color::color_vec4_beige, "%s", "Localizers");
+//
+//             this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v24.06.1
+//             {
+//               ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "%s", "Will display ILS and LOC first and then the other localizer types."); // v24.06.1
+//             }
+//             this->mxUiReleaseLastFont (); // v24.06.1
+//
+//
+//             this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+//             {
+//               // v24.06.1 visual separation between standard localizer frequencies and other type of navigation frequencies (LPV, VOR, DME).
+//               int loc_type                      = 1; // 1 = ILS or LOC, if it is not equal to "one", then it is
+//               int flag_loc_type_changed_x_times = 0; // I'll add "1" everytime I'll find a loc_type that is not equal to "one".
+//
+//               for (const auto &loc : data.listLoc)
+//               {
+//                 // v24.06.1 special separation logic
+//                 if (loc.iField1 != 1)
+//                   ++flag_loc_type_changed_x_times;
+//
+//                 if (flag_loc_type_changed_x_times == 1)
+//                 {
+//                   ImGui::Separator ();
+//                   ImGui::Separator ();
+//                   ImGui::Spacing ();
+//                 }
+//
+//                 ImGui::TextColored (missionx::color::color_vec4_navajowhite, "%s", loc.field2.c_str ());
+//                 ImGui::SameLine ();
+//                 ImGui::TextColored (missionx::color::color_vec4_dimgray, "(%.0fnm)", loc.dDistance);
+//                 ImGui::Separator ();
+//               }
+//             }
+//             this->mxUiReleaseLastFont ();
+//           }
+//
+//           this->mxUiReleaseLastFont (); // release the TITLE BIG font
+//         }
+//
+//         ImGui::Spacing ();
+//         ImGui::Separator ();
+//         ImGui::Separator ();
+//         ImGui::Separator ();
+//         ImGui::Spacing ();
+//       } // end loop over Nav Data Map
+//
+//
+//     } // end if async Query was done and we have Nav data
+//   }
+//   ImGui::EndChild ();
+//   ImGui::EndGroup ();
+//   this->mxUiReleaseLastFont ();
 // }
 
 // -----------------------------------------------
@@ -11537,7 +9988,6 @@ WinImguiBriefer::child_draw_nav_search ()
 void
 WinImguiBriefer::add_landing_rate_ui (const missionx::mx_enrout_stats_strct &inStats)
 {
-  //  const auto pctTdWeight_f = inStats.fTouchDownWeight / inStats.fTouchDown_acf_m_max;
   ImGui::TextColored (missionx::color::color_vec4_aqua, "Touch Down rate: %.2ffpm(%.2f m/s), AVG 15m Landing rate: %.2ffpm(%.2f m/s) (Hard Landing > 2 m/s)", inStats.fTouchDown_landing_rate_vh_ind_fpm, inStats.fTouchDown_landing_rate_vh_ind_fpm * missionx::fpm2ms, inStats.fLanding_vh_ind_fpm_avg_15_meters, inStats.fLanding_vh_ind_fpm_avg_15_meters * missionx::fpm2ms);
 
   ImGui::TextColored (missionx::color::color_vec4_chocolate, "Touch Down G: %.2f, AVG last 15m G: %.2f", inStats.fTouchDown_gforce_normal, inStats.fLanding_gforce_normal_avg_15_meters);
@@ -11551,7 +10001,6 @@ WinImguiBriefer::add_ui_stats_child (const bool isEmbedded)
 {
   const auto      strctCurrentStats = missionx::data_manager::gather_stats.get_stats_object ();
   const auto      fuel_usage_kg     = missionx::dataref_manager::getDataRefValue<float> ("sim/cockpit2/fuel/fuel_totalizer_sum_kg");
-
 
   ImGui::BeginGroup ();
 
@@ -11762,11 +10211,11 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
 
             for (const auto &[type, label, toolTip] : this->listRandomCalendarRadioLabel)
             {
-              if (ImGui::RadioButton (label.c_str (), type == this->adv_settings_strct.iRadioRandomDateTime_pick))
+              if (ImGui::RadioButton (label.c_str (), type == missionx::adv_settings_strct.iRadioRandomDateTime_pick))
               {
-                this->adv_settings_strct.iRadioRandomDateTime_pick = type;
+                missionx::adv_settings_strct.iRadioRandomDateTime_pick = type;
 
-                switch (this->adv_settings_strct.iRadioRandomDateTime_pick)
+                switch (missionx::adv_settings_strct.iRadioRandomDateTime_pick)
                 {
                   case missionx::mx_ui_random_date_time_type::xplane_day_and_time:
                   {
@@ -11802,11 +10251,11 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
             // --------- Draw User Options  -----------
             ImGui::NewLine ();
             ImGui::Separator ();
-            switch (this->adv_settings_strct.iRadioRandomDateTime_pick)
+            switch (missionx::adv_settings_strct.iRadioRandomDateTime_pick)
             {
               case missionx::mx_ui_random_date_time_type::any_day_time:
               {
-                if (ImGui::Checkbox ("##checkIncludeNightHours", &this->adv_settings_strct.flag_includeNightHours))
+                if (ImGui::Checkbox ("##checkIncludeNightHours", &missionx::adv_settings_strct.flag_includeNightHours))
                 {
                   this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
                 }
@@ -11841,20 +10290,20 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
 
                 ImGui::SameLine ();
                 ImGui::SetNextItemWidth (80.0f);
-                ImGui::Combo ("##DayOfYear", &out_iClockDayOfYearPicked, this->clockDayOfYear_arr, IM_ARRAYSIZE (this->clockDayOfYear_arr));
+                ImGui::Combo ("##DayOfYear", &out_iClockDayOfYearPicked, missionx::clockDayOfYear_arr, IM_ARRAYSIZE (missionx::clockDayOfYear_arr));
 
                 ImGui::SameLine (0.0f, 10.0f);
                 ImGui::TextColored (missionx::color::color_vec4_yellow, "HH:mm");
                 ImGui::SameLine ();
 
                 ImGui::SetNextItemWidth (50.0f);
-                ImGui::Combo ("##StartHours", &out_iClockHourPicked, this->clockHours_arr, IM_ARRAYSIZE (this->clockHours_arr));
+                ImGui::Combo ("##StartHours", &out_iClockHourPicked, missionx::clockHours_arr, IM_ARRAYSIZE (missionx::clockHours_arr));
                 ImGui::SameLine ();
                 ImGui::TextColored (missionx::color::color_vec4_yellow, ":");
                 ImGui::SameLine ();
                 ImGui::SetNextItemWidth (50.0f);
                 static int st_minutes_picked = -1; // v25.04.2 added static variable
-                ImGui::Combo ("##StartMinutes", &st_minutes_picked, this->clockMinutes_arr, IM_ARRAYSIZE (this->clockMinutes_arr));
+                ImGui::Combo ("##StartMinutes", &st_minutes_picked, missionx::clockMinutes_arr, IM_ARRAYSIZE (missionx::clockMinutes_arr));
                 if (st_minutes_picked >= 0)
                   out_iClockMinutesPicked = st_minutes_picked * 5;
               }
@@ -11865,7 +10314,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                 ImGui::BeginGroup ();
                 {
                   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellowgreen);
-                  ImGui::Checkbox ("Pick Any Month", &this->adv_settings_strct.flag_checkAnyMonth);
+                  ImGui::Checkbox ("Pick Any Month", &missionx::adv_settings_strct.flag_checkAnyMonth);
                   ImGui::PopStyleColor ();
 
 
@@ -11875,10 +10324,10 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                       if (x > 0)
                         ImGui::SameLine ();
                       ImGui::PushID (y * 4 + x);
-                      if (ImGui::Selectable (this->adv_settings_strct.selected_lbl[y][x].c_str (), this->adv_settings_strct.selected_dateTime_by_user_arr[y][x] != 0, (this->adv_settings_strct.flag_checkAnyMonth) ? ImGuiSelectableFlags_Disabled : 0, ImVec2 (30.0f, 30.0f)))
+                      if (ImGui::Selectable (missionx::adv_settings_strct.selected_lbl[y][x].c_str (), missionx::adv_settings_strct.selected_dateTime_by_user_arr[y][x] != 0, (missionx::adv_settings_strct.flag_checkAnyMonth) ? ImGuiSelectableFlags_Disabled : 0, ImVec2 (30.0f, 30.0f)))
                       {
                         // Toggle clicked cell
-                        this->adv_settings_strct.selected_dateTime_by_user_arr[y][x] ^= 1;
+                        missionx::adv_settings_strct.selected_dateTime_by_user_arr[y][x] ^= 1;
                       }
                       ImGui::PopID ();
                     } // end X loop
@@ -11902,7 +10351,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                 ImGui::BeginGroup ();
                 {
                   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellowgreen);
-                  ImGui::Checkbox ("Pick Any Hour", &this->adv_settings_strct.checkPartOfDay_b);
+                  ImGui::Checkbox ("Pick Any Hour", &missionx::adv_settings_strct.checkPartOfDay_b);
                   ImGui::PopStyleColor ();
 
                   if (ImGui::BeginTable ("Pick Any Hour Table", 2, ImGuiTableFlags_Borders)) // ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_Borders))
@@ -11914,10 +10363,10 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
 
                         ImGui::PushID (y * 4 + x);
 
-                        if (ImGui::Selectable (this->adv_settings_strct.selected_time_lbl[y][x].c_str (), this->adv_settings_strct.selectedTime[y][x] != 0, (this->adv_settings_strct.checkPartOfDay_b) ? ImGuiSelectableFlags_Disabled : 0, ImVec2 (200.0f, 25.0f)))
+                        if (ImGui::Selectable (missionx::adv_settings_strct.selected_time_lbl[y][x].c_str (), missionx::adv_settings_strct.selectedTime[y][x] != 0, (missionx::adv_settings_strct.checkPartOfDay_b) ? ImGuiSelectableFlags_Disabled : 0, ImVec2 (200.0f, 25.0f)))
                         {
                           // Toggle clicked cell
-                          this->adv_settings_strct.selectedTime[y][x] ^= 1; // I think this means shift 1
+                          missionx::adv_settings_strct.selectedTime[y][x] ^= 1; // I think this means shift 1
                         }
                         ImGui::PopID ();
                       }
@@ -11955,9 +10404,9 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
             this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.303.14
             for (const auto &radio : this->listRandomWeatherRadioLabel)
             {
-              if (ImGui::RadioButton (radio.label.c_str (), radio.type == this->adv_settings_strct.iWeatherType_user_picked))
+              if (ImGui::RadioButton (radio.label.c_str (), radio.type == missionx::adv_settings_strct.iWeatherType_user_picked))
               {
-                this->adv_settings_strct.iWeatherType_user_picked = radio.type;
+                missionx::adv_settings_strct.iWeatherType_user_picked = radio.type;
                 if (radio.type == missionx::mx_ui_random_weather_options::pick_pre_defined)
                 {
                   // reset weather mode change to default static
@@ -11965,9 +10414,9 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                     for (int x = 0; x < missionx::mx_popup_adv_settings_strct::weather_mode_x; x++)
                     {
                       if (y == missionx::mx_popup_adv_settings_strct::DEFAULT_WEATHER_MODE_Y && x == missionx::mx_popup_adv_settings_strct::DEFAULT_WEATHER_MODE_X)
-                        this->adv_settings_strct.selected_weather_mode_by_user_arr_0_1_xp12[y][x] = 1; // static is highlighted
+                        missionx::adv_settings_strct.selected_weather_mode_by_user_arr_0_1_xp12[y][x] = 1; // static is highlighted
                       else
-                        this->adv_settings_strct.selected_weather_mode_by_user_arr_0_1_xp12[y][x] = 0; // not picked
+                        missionx::adv_settings_strct.selected_weather_mode_by_user_arr_0_1_xp12[y][x] = 0; // not picked
                     }
                 }
               }
@@ -11983,7 +10432,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
 
             ImGui::NewLine ();
             ImGui::Separator ();
-            switch (this->adv_settings_strct.iWeatherType_user_picked)
+            switch (missionx::adv_settings_strct.iWeatherType_user_picked)
             {
               case missionx::mx_ui_random_weather_options::pick_pre_defined:
               {
@@ -11999,13 +10448,13 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                         ImGui::TableNextColumn ();
 
                         ImGui::PushID (y * missionx::mx_popup_adv_settings_strct::weather_x + x);
-                        if (ImGui::Selectable ((*this->adv_settings_strct.ptr_selected_weather_lbl)[y][x].c_str (), (*this->adv_settings_strct.ptr_selected_weather_by_user_arr)[y][x] != 0, 0, ImVec2 (95.0f, 25.0f))) //(this->flag_pickAnyWeatherType) ? ImGuiSelectableFlags_Disabled : 0, ImVec2(85.0f, 25.0f)))
+                        if (ImGui::Selectable ((*missionx::adv_settings_strct.ptr_selected_weather_lbl)[y][x].c_str (), (*missionx::adv_settings_strct.ptr_selected_weather_by_user_arr)[y][x] != 0, 0, ImVec2 (95.0f, 25.0f))) //(this->flag_pickAnyWeatherType) ? ImGuiSelectableFlags_Disabled : 0, ImVec2(85.0f, 25.0f)))
                         {
                           // Toggle clicked cell
-                          if ((*this->adv_settings_strct.ptr_selected_weather_code)[y][x] >= 0)
-                            (*this->adv_settings_strct.ptr_selected_weather_by_user_arr)[y][x] ^= 1;
+                          if ((*missionx::adv_settings_strct.ptr_selected_weather_code)[y][x] >= 0)
+                            (*missionx::adv_settings_strct.ptr_selected_weather_by_user_arr)[y][x] ^= 1;
 
-                          // Log::logMsg("Clicked: " + this->adv_settings_strct.selected_weather_lbl_xp12[y][x]); // debug
+                          // Log::logMsg("Clicked: " + missionx::adv_settings_strct.selected_weather_lbl_xp12[y][x]); // debug
                         }
                         ImGui::PopID ();
                       } // end X loop over weather array and // end Y loop over weather array
@@ -12070,7 +10519,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
     ImGui::SetCursorPosY (ImGui::GetCursorPos ().y + 5.0f);
     ImGui::TextColored (missionx::color::color_vec4_lightgoldenrodyellow, "Picked Day: %i, %i:%i", out_iClockDayOfYearPicked, out_iClockHourPicked, out_iClockMinutesPicked);
     // v25.09.2
-    const std::string_view time_comment_vu = (this->adv_settings_strct.iRadioRandomDateTime_pick == missionx::mx_ui_random_date_time_type::xplane_day_and_time)? "\nTime will be re-read once [generate] button is pressed." : "";
+    const std::string_view time_comment_vu = (missionx::adv_settings_strct.iRadioRandomDateTime_pick == missionx::mx_ui_random_date_time_type::xplane_day_and_time)? "\nTime will be re-read once [generate] button is pressed." : "";
     this->mx_add_tooltip (missionx::color::color_vec4_lightyellow, fmt::format("Day of Year, Hour and Minutes{}.", time_comment_vu) );
     ImGui::EndGroup ();
 
@@ -12176,1126 +10625,6 @@ WinImguiBriefer::add_missing_3d_files_message ()
   }
 }
 
-// -----------------------------------------------
-
-//
-// void
-// WinImguiBriefer::subDraw_ui_xRadius (IXMLNode &node, int pad_x_i)
-// {
-//   int val_i = Utils::readNodeNumericAttrib<int> (node, mxconst::get_ATTRIB_LENGTH_MT (), missionx::MIN_RAD_UI_VALUE_MT);
-//
-//   ImGui::SetNextItemWidth (ImGui::GetContentRegionAvail ().x - pad_x_i);
-//
-//   ImGui::SetNextItemWidth (120.0f);
-//   if (ImGui::InputInt ("##TrigRadius", &val_i, 100))
-//   {
-//     if (val_i < missionx::MIN_RAD_UI_VALUE_MT)
-//       val_i = missionx::MIN_RAD_UI_VALUE_MT; // validate value
-//     if (val_i > missionx::MAX_RAD_UI_VALUE_MT)
-//       val_i = missionx::MAX_RAD_UI_VALUE_MT; // validate value
-//
-//     const std::string val_s = mxUtils::formatNumber<int> (val_i);
-//     node.updateAttribute (val_s.c_str (), mxconst::get_ATTRIB_LENGTH_MT ().c_str (), mxconst::get_ATTRIB_LENGTH_MT ().c_str ());
-//   }
-//
-//   this->mx_add_tooltip (missionx::color::color_vec4_darkorange, mxUtils::formatNumber<float> ((static_cast<float> (val_i) * missionx::meter2nm), 2) + " nm");
-//
-//   ImGui::SameLine (0.0f, 3.0f);
-//   ImGui::TextColored (missionx::color::color_vec4_cyan, "meters");
-// }
-//
-//
-// // -----------------------------------------------
-//
-//
-// void
-// WinImguiBriefer::subDraw_ui_xPolyBox (IXMLNode &pNode, mx_trig_strct_ &inTrig_ptr) // xLocAndElev, inTrig_ptr
-// {
-//   assert (pNode.isEmpty () == false && "[polyBox] Parent Node could not be empty");
-//   // p1 = trig_ptr.pos
-//   // p2-------------p3
-//   // |              |
-//   // p1-------------p4
-//
-//   //        "*" = pCenter = center of box
-//   // p2-------------p3
-//   // |       *      |
-//   // p1-------------p4
-//
-//   // store first Point as the starting calculation point to display to the user - if exists
-//   // Display starting lat/lon   // display heading of boxed trigger
-//   // Display Meters %heading    // display Meters %heading - 90.0
-//   // Apply button - will delete all existing <points> and then construct new ones
-//
-//   static float heading_f{ 0.0f };
-//   static int   iMetersVector1{ 100 };
-//   static int   iMetersVector2{ 100 };
-//   static int   iVectorLengthBT_StoredInTrigger{ 0 };
-//   static int   iVectorLengthLR_StoredInTrigger{ 0 };
-//   IXMLNode     buttomLeft_or_center_xPoint_ptr = Utils::xml_get_or_create_node_ptr (pNode, mxconst::get_ELEMENT_POINT ()); // get or create first elemnt <point>, can represent the bottomLeft or center of the trigers triangle area
-//
-//   inTrig_ptr.pos.setLat (Utils::readNumericAttrib (buttomLeft_or_center_xPoint_ptr, mxconst::get_ATTRIB_LAT (), 0.0));
-//   inTrig_ptr.pos.setLon (Utils::readNumericAttrib (buttomLeft_or_center_xPoint_ptr, mxconst::get_ATTRIB_LONG (), 0.0));
-//   inTrig_ptr.pos.setElevationFt (Utils::readNumericAttrib (buttomLeft_or_center_xPoint_ptr, mxconst::get_ATTRIB_ELEV_FT (), 0.0));
-//   inTrig_ptr.setBuff (inTrig_ptr.iCurrentBuf, inTrig_ptr.pos.get_point_lat_lon_as_string ());
-//
-//   iVectorLengthBT_StoredInTrigger = Utils::readNodeNumericAttrib<int> (inTrig_ptr.node_ptr, mxconst::get_ATTRIB_VECTOR_BT_LENGTH_MT (), 0);
-//   iVectorLengthLR_StoredInTrigger = Utils::readNodeNumericAttrib<int> (inTrig_ptr.node_ptr, mxconst::get_ATTRIB_VECTOR_LR_LENGTH_MT (), 0);
-//
-//   ImGui::Checkbox ("Plane in center of box", &inTrig_ptr.flag_first_point_is_center_cbox);
-//
-//
-//
-//   // Position of Plane
-//   ImGui::TextColored (missionx::color::color_vec4_yellow, "Calculate the trigger's boundaries");
-//   if (inTrig_ptr.flag_first_point_is_center_cbox) // v3.0.301 B4
-//     ImGui::TextColored (missionx::color::color_vec4_yellow, "Center of trigger area:");
-//   else
-//     ImGui::TextColored (missionx::color::color_vec4_yellow, "Bottom Left Position: ");
-//
-//   ImGui::SameLine ();
-//   ImGui::InputText ("###trigBoxPolyBottomLeftPos", inTrig_ptr.buffArray[inTrig_ptr.iCurrentBuf], sizeof (inTrig_ptr.buffArray[inTrig_ptr.iCurrentBuf]), ImGuiInputTextFlags_ReadOnly);
-//   ImGui::SameLine ();
-//   if (ImGui::Button ("C##cBoxTrig"))
-//   {
-//     inTrig_ptr.pos = missionx::data_manager::getPlane_or_Camera_position_as_Point ('c'); // c = camera
-//     inTrig_ptr.setBuff (inTrig_ptr.iCurrentBuf, inTrig_ptr.pos.get_point_lat_lon_as_string ()); // camera pos
-//     if (buttomLeft_or_center_xPoint_ptr.isEmpty () == false)
-//     {
-//       buttomLeft_or_center_xPoint_ptr.updateAttribute (inTrig_ptr.pos.getLat_s ().c_str (), mxconst::get_ATTRIB_LAT ().c_str (), mxconst::get_ATTRIB_LAT ().c_str ());
-//       buttomLeft_or_center_xPoint_ptr.updateAttribute (inTrig_ptr.pos.getLon_s ().c_str (), mxconst::get_ATTRIB_LONG ().c_str (), mxconst::get_ATTRIB_LONG ().c_str ());
-//       buttomLeft_or_center_xPoint_ptr.updateAttribute (inTrig_ptr.pos.getElevFt_s ().c_str (), mxconst::get_ATTRIB_ELEV_FT ().c_str (), mxconst::get_ATTRIB_ELEV_FT ().c_str ());
-//     }
-//     if (inTrig_ptr.flag_first_point_is_center_cbox)
-//     {
-//       inTrig_ptr.node_ptr.updateAttribute (inTrig_ptr.pos.getLat_s ().c_str (), mxconst::get_ATTRIB_LAT ().c_str (), mxconst::get_ATTRIB_LAT ().c_str ());
-//       inTrig_ptr.node_ptr.updateAttribute (inTrig_ptr.pos.getLon_s ().c_str (), mxconst::get_ATTRIB_LONG ().c_str (), mxconst::get_ATTRIB_LONG ().c_str ());
-//     }
-//   }
-//   this->mx_add_tooltip (missionx::color::color_vec4_white, "Get Camera position.");
-//
-//   // heading
-//
-//   ImGui::TextColored (missionx::color::color_vec4_orange, "First Vector Heading:");
-//   this->mx_add_tooltip (missionx::color::color_vec4_yellow, "The plugin will calculate the box as Heading and Heading + 90 deg vectors");
-//   ImGui::SameLine ();
-//   ImGui::SetNextItemWidth (110.0f);
-//   if (ImGui::InputFloat ("###trigBoxVectorHeading", &heading_f))
-//   {
-//     if (heading_f < 0.0f)
-//       heading_f = 359.0f;
-//     if (heading_f > 359.0f)
-//       heading_f = 0.0f;
-//   }
-//
-//   ImGui::SameLine ();
-//   if (ImGui::Button ("C##trigBoxCameraHading"))
-//   {
-//     const XPLMDataRef dref = XPLMFindDataRef ("sim/graphics/view/view_heading"); // camera heading
-//     heading_f              = XPLMGetDataf (dref);
-//     inTrig_ptr.setBuff (inTrig_ptr.iCurrentBuf, mxUtils::formatNumber<float> (heading_f, 2));
-//   }
-//   this->mx_add_tooltip (missionx::color::color_vec4_white, "Get Camera Heading.");
-//   ImGui::SameLine (0.0f, 10.0f);
-//   ImGui::TextColored (missionx::color::color_vec4_white, "Second vector heading = +90deg = %.2fdeg", (heading_f + 90.0f > 359.0f) ? heading_f + 90.0f - 360.0f : heading_f + 90.0f);
-//
-//   // Vector Length
-//   if (inTrig_ptr.flag_first_point_is_center_cbox) // v3.0.301 B4
-//     ImGui::TextColored (missionx::color::color_vec4_antiquewhite, "Final length will be twice the vector's entered numbers.");
-//
-//   ImGui::TextColored (missionx::color::color_vec4_orange, "First Vector Length (mt):");
-//   ImGui::SameLine ();
-//   ImGui::SetNextItemWidth (80.0f);
-//   if (ImGui::InputInt ("###trigBoxVectorLength1", &iMetersVector1, 25, ImGuiInputTextFlags_ReadOnly))
-//   {
-//     if (iMetersVector1 < 5)
-//       iMetersVector1 = 5;
-//     if (iMetersVector1 > 90000)
-//       iMetersVector1 = 90000;
-//   }
-//   if (inTrig_ptr.flag_first_point_is_center_cbox) // v3.0.301 B4
-//     this->mx_add_tooltip (missionx::color::color_vec4_darkorange, "Length = 2 * " + mxUtils::formatNumber<float> ((static_cast<float> (iMetersVector1) * missionx::meter2nm), 2) + " nm");
-//   else
-//     this->mx_add_tooltip (missionx::color::color_vec4_darkorange, mxUtils::formatNumber<float> ((static_cast<float> (iMetersVector1) * missionx::meter2nm), 2) + " nm");
-//
-//   ImGui::SameLine (0.0f, 10.0f);
-//
-//   ImGui::TextColored (missionx::color::color_vec4_orange, "Second Vector Length (mt):");
-//   ImGui::SameLine ();
-//   ImGui::SetNextItemWidth (80.0f);
-//   if (ImGui::InputInt ("###trigBoxVectorLength2", &iMetersVector2, 25, ImGuiInputTextFlags_ReadOnly))
-//   {
-//     if (iMetersVector2 < 5)
-//       iMetersVector2 = 5;
-//     if (iMetersVector2 > 90000)
-//       iMetersVector2 = 90000;
-//   }
-//   this->mx_add_tooltip (missionx::color::color_vec4_darkorange, mxUtils::formatNumber<float> ((static_cast<float> (iMetersVector2) * missionx::meter2nm), 2) + " nm");
-//
-//   ImGui::SameLine (0.0f, 10.0f);
-//   if (ImGui::Button ("C##distanceRelativeToPlane"))
-//   {
-//     if (inTrig_ptr.pos.getLat () == 0.0 || inTrig_ptr.pos.getLon () == 0.0)
-//     {
-//       this->setMessage ("Your starting position is not valid.", 10);
-//     }
-//     else
-//     {
-//       Point plane    = missionx::data_manager::getPlane_or_Camera_position_as_Point ('c'); // p = plane
-//       iMetersVector2 = static_cast<int> (plane.calcDistanceBetween2Points (inTrig_ptr.pos, missionx::mx_units_of_measure::meter));
-//     }
-//   }
-//   this->mx_add_tooltip (missionx::color::color_vec4_darkorange, "Calculate Second vector distance relative to camera location (camera.pos - start.pos)\nUse camera in plane for easier positioning using the map.");
-//
-//   // display original vector lengths
-//   if (iVectorLengthBT_StoredInTrigger)
-//   {
-//     ImGui::TextColored (missionx::color::color_vec4_cyan, "Current Trigger stored vector Lengths are: %i and %i respectively", iVectorLengthBT_StoredInTrigger, iVectorLengthLR_StoredInTrigger);
-//   }
-//
-//   // APPLY
-//   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgrey);
-//   ImGui::PushStyleColor (ImGuiCol_ButtonActive, missionx::color::color_vec4_grey);
-//   ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_green);
-//   if (ImGui::Button ("Calculate Trigger Boundaries##trigBoxApply"))
-//   {
-//     if (inTrig_ptr.pos.getLat () == 0.0 || inTrig_ptr.pos.getLat () == 0.0)
-//     {
-//       this->setMessage ("Your starting position is not valid.", 10);
-//     }
-//     else
-//     {
-//       // p1 = trig_ptr.pos = bottom left
-//       // p2-------------p3
-//       // |              |
-//       // p1-------------p4
-//       //       "*" = pCenter = center of box
-//       // p2-------------p3
-//       // |       *      |
-//       // p1-------------p4
-//       std::string DUMMY_SKELATON_ELEMENT{};
-//       // Point p1; // p2, p3, p4;
-//
-//       if (inTrig_ptr.flag_first_point_is_center_cbox)
-//       {
-//         // store special info on the triggers main element
-//         inTrig_ptr.node_ptr.updateAttribute ("true", mxconst::get_ATTRIB_FIRST_POINT_IS_CENTER_B ().c_str (), mxconst::get_ATTRIB_FIRST_POINT_IS_CENTER_B ().c_str ());
-//         inTrig_ptr.node_ptr.updateAttribute (inTrig_ptr.pos.getLat_s ().c_str (), mxconst::get_ATTRIB_LAT ().c_str (), mxconst::get_ATTRIB_LAT ().c_str ());
-//         inTrig_ptr.node_ptr.updateAttribute (inTrig_ptr.pos.getLon_s ().c_str (), mxconst::get_ATTRIB_LONG ().c_str (), mxconst::get_ATTRIB_LONG ().c_str ());
-//
-//         DUMMY_SKELATON_ELEMENT = "<DUMMY> " + inTrig_ptr.pos.get_point_lat_lon_as_string () + " </DUMMY>";
-//       }
-//       else
-//       {
-//
-//         //// store special info on the triggers main element
-//         inTrig_ptr.node_ptr.updateAttribute ("", mxconst::get_ATTRIB_FIRST_POINT_IS_CENTER_B ().c_str (), mxconst::get_ATTRIB_FIRST_POINT_IS_CENTER_B ().c_str ());
-//         inTrig_ptr.node_ptr.updateAttribute ("", mxconst::get_ATTRIB_LAT ().c_str (), mxconst::get_ATTRIB_LAT ().c_str ());
-//         inTrig_ptr.node_ptr.updateAttribute ("", mxconst::get_ATTRIB_LONG ().c_str (), mxconst::get_ATTRIB_LONG ().c_str ());
-//
-//
-//         DUMMY_SKELATON_ELEMENT = "<DUMMY> " + inTrig_ptr.pos.get_point_lat_lon_as_string () + " </DUMMY>";
-//       }
-//
-//       inTrig_ptr.node_ptr.updateAttribute (mxUtils::formatNumber<int> (iMetersVector1).c_str (), mxconst::get_ATTRIB_VECTOR_BT_LENGTH_MT ().c_str (), mxconst::get_ATTRIB_VECTOR_BT_LENGTH_MT ().c_str ());
-//       inTrig_ptr.node_ptr.updateAttribute (mxUtils::formatNumber<int> (iMetersVector2).c_str (), mxconst::get_ATTRIB_VECTOR_LR_LENGTH_MT ().c_str (), mxconst::get_ATTRIB_VECTOR_LR_LENGTH_MT ().c_str ());
-//
-//       IXMLNode xRectangle = Utils::xml_get_or_create_node_ptr (pNode, mxconst::get_ELEMENT_RECTANGLE ());
-//       assert (xRectangle.isEmpty () == false && (std::string (__func__).append (": ").append (pNode.getName ()).append (" - Failed to create node: ").c_str ()));
-//
-//       xRectangle.updateAttribute (mxUtils::formatNumber<float> (heading_f, 2).c_str (), mxconst::get_ATTRIB_HEADING_PSI ().c_str (), mxconst::get_ATTRIB_HEADING_PSI ().c_str ());
-//       xRectangle.updateAttribute ((mxUtils::formatNumber<int> (iMetersVector1) + "|" + mxUtils::formatNumber<int> (iMetersVector2)).c_str (), mxconst::get_ATTRIB_DIMENSIONS ().c_str (), mxconst::get_ATTRIB_DIMENSIONS ().c_str ());
-//       xRectangle.updateAttribute ((inTrig_ptr.flag_first_point_is_center_cbox) ? mxconst::get_MX_TRUE ().c_str () : mxconst::get_MX_FALSE ().c_str (), mxconst::get_ATTRIB_FIRST_POINT_IS_CENTER_B ().c_str (), mxconst::get_ATTRIB_FIRST_POINT_IS_CENTER_B ().c_str ());
-//
-//
-//
-// #ifndef RELEASE
-//       Log::logMsg ("Rectangular main point: " + inTrig_ptr.pos.get_point_lat_lon_as_string ());
-// #endif // !RELEASE
-//
-//
-//
-//       Utils::xml_delete_all_subnodes (pNode, mxconst::get_ELEMENT_POINT ()); // delete all <point> sub nodes
-//
-//       // this part is only to simplify and beautify the trigger output
-//       IXMLResults   parse_result_strct;
-//       IXMLDomParser iDomTemplate;
-//       auto          xDummy = iDomTemplate.parseString (DUMMY_SKELATON_ELEMENT.c_str (), mxconst::get_DUMMY_ROOT_DOC ().c_str (), &parse_result_strct).deepCopy (); // parse xml into ITCXMLNode
-//
-//       if (xDummy.nChildNode (mxconst::get_ELEMENT_POINT ().c_str ()) > 0)
-//       {
-//         inTrig_ptr.setBuff (inTrig_ptr.iCurrentBuf, inTrig_ptr.pos.get_point_lat_lon_as_string ()); // camera pos, reformat point to have lat/lon/elev information
-//         pNode.addChild (xDummy.getChildNode (mxconst::get_ELEMENT_POINT ().c_str (), 0).deepCopy ()); // this is the starting position of the rectangular shape
-//
-//         if (inTrig_ptr.flag_first_point_is_center_cbox)
-//           this->setMessage ("Calculated triggers boundaries for center rectangular point.", 10);
-//         else
-//           this->setMessage ("Calculated triggers boundaries for bottomLeft rectangular point.", 10);
-//       }
-//       else
-//         this->setMessage ("Failed calculation, not enough points, try to rerun the trigger calculation button.", 10);
-//     }
-//   }
-//   ImGui::PopStyleColor (4);
-// }
-//
-//
-// // -----------------------------------------------
-//
-//
-// void
-// WinImguiBriefer::subDraw_ui_xTrigger_elev (mx_trig_strct_ &inTrig_ptr, IXMLNode &node, bool inResetPick)
-// {
-//
-//   static const std::vector<const char *> vecElevOptions           = { "min/max elev", "lower than..", "above than..", "max elev above ground", "min elev above ground" };
-//   static const std::vector<const char *> vecElevOptions_sign_trns = { "|", "--", "++", "---", "+++" };
-//   static int                             elev_ft_arr[2]           = { 0, 0 };
-//   static std::string                     elev_s{ "" };
-//
-//   if (inResetPick)
-//   {
-//     elev_s.clear ();
-//   }
-//
-//   ImGui::SetNextItemWidth (140.0f);
-//   if (ImGui::Combo ("##dynElevPick", &inTrig_ptr.trig_ui_elev_type_combo_indx, vecElevOptions.data (), static_cast<int> (vecElevOptions.size ())))
-//   {
-//     elev_s.clear ();
-//     inTrig_ptr.node_ptr.updateAttribute (mxUtils::formatNumber<int> (inTrig_ptr.trig_ui_elev_type_combo_indx).c_str (), mxconst::get_CONV_ATTRIB_trig_ui_elev_type_combo_indx ().c_str (), mxconst::get_CONV_ATTRIB_trig_ui_elev_type_combo_indx ().c_str ());
-//   }
-//
-//   if (inTrig_ptr.trig_ui_elev_type_combo_indx > -1)
-//     ImGui::SameLine ();
-//
-//   switch (inTrig_ptr.trig_ui_elev_type_combo_indx)
-//   {
-//     case 0: // min/max
-//     {
-//       ImGui::SetNextItemWidth (160.0f);
-//       if (ImGui::InputInt2 ("ft.##TrigElevFt", elev_ft_arr))
-//       {
-//       }
-//       // validation
-//       if ((elev_ft_arr[1] - elev_ft_arr[0]) < 500)
-//       {
-//         elev_ft_arr[1] = elev_ft_arr[0] + 500; // we make sure that the min/max elevation is no less than 500ft
-//       }
-//       elev_s = mxUtils::formatNumber<int> (elev_ft_arr[0]) + "|" + mxUtils::formatNumber<int> (elev_ft_arr[1]);
-//     }
-//     break;
-//     case 1:
-//     case 2:
-//     case 3:
-//     case 4:
-//     {
-//       ImGui::SetNextItemWidth (120.0f);
-//       ImGui::InputInt ("##TrigElevFt", &elev_ft_arr[0], 100);
-//       if (elev_ft_arr[0] < 0) // make sure value is not negative so we won't have: "++-200" or "---200" when we wanted "--200"
-//         elev_ft_arr[0] = 0;
-//
-//       elev_s = vecElevOptions_sign_trns.at (inTrig_ptr.trig_ui_elev_type_combo_indx) + mxUtils::formatNumber<int> (elev_ft_arr[0]);
-//     }
-//     break;
-//     default:
-//       break;
-//   } // end switch
-//
-//
-//   node.updateAttribute (elev_s.c_str (), mxconst::get_ATTRIB_ELEV_LOWER_UPPER_FT ().c_str (), mxconst::get_ATTRIB_ELEV_LOWER_UPPER_FT ().c_str ());
-// }
-//
-//
-// // ------------ ui scriptlet editing widget --------------
-//
-// void
-// WinImguiBriefer::subDraw_ui_xScriptlet (IXMLNode &pNode, mxTrig_ui_mode_enm &inMode, mx_trig_strct_ *inTrig_ptr, const std::string inScriptInputLabel, missionx::mx_local_fpln_strct *inLegData, char *inOutBuff)
-// {
-//   static int  script_index = 0;
-//   static char buff[missionx::LOG_BUFF_SIZE]{ 0 };
-//
-//   const auto lmbda_get_buff = [&] ()
-//   {
-//     if (inTrig_ptr == nullptr)
-//     {
-//       if (inOutBuff == nullptr)
-//         return buff;
-//       else
-//         return inOutBuff;
-//     }
-//
-//     return inTrig_ptr->buffArray[inTrig_ptr->iCurrentBuf];
-//   };
-//
-//   auto working_buff = lmbda_get_buff ();
-//
-//   int leg_index_i = (inLegData == nullptr) ? 0 : inLegData->indx;
-//
-//   // extract xCondition if available
-//   auto        xConditions_ptr  = (inTrig_ptr == nullptr) ? IXMLNode::emptyIXMLNode : Utils::xml_get_or_create_node_ptr (inTrig_ptr->node_ptr, mxconst::get_ELEMENT_CONDITIONS ());
-//   std::string scriptlet_name_s = Utils::readAttrib (xConditions_ptr, mxconst::get_ATTRIB_COND_SCRIPT (), "");
-//   if (scriptlet_name_s.empty ())
-//   {
-//     scriptlet_name_s = "leg_" + mxUtils::formatNumber<int> (leg_index_i) + "_scriptlet_" + mxUtils::formatNumber<int> (script_index);
-//
-//     xConditions_ptr.updateAttribute (scriptlet_name_s.c_str (), mxconst::get_ATTRIB_COND_SCRIPT ().c_str (), mxconst::get_ATTRIB_COND_SCRIPT ().c_str ());
-//
-//     ++script_index;
-//   }
-//
-//
-//   IXMLNode xScriptlet_ptr = (scriptlet_name_s.empty ()) ? IXMLNode::emptyIXMLNode : Utils::xml_get_node_pointer_from_node_tree_by_attrib_name_and_value_IXMLNode (pNode, mxconst::get_ELEMENT_SCRIPTLET (), mxconst::get_ATTRIB_NAME (), scriptlet_name_s);
-//   if (xScriptlet_ptr.isEmpty ())
-//     xScriptlet_ptr = Utils::xml_get_or_create_node_ptr (pNode, mxconst::get_ELEMENT_SCRIPTLET (), mxconst::get_ATTRIB_NAME (), scriptlet_name_s);
-//
-//   assert (xScriptlet_ptr.isEmpty () == false && " scriptlet cNode can't be empty");
-//
-//   // std::string script_cdata_s = (xScriptlet_ptr.isEmpty ()) ? "" : Utils::xml_read_cdata_node (xScriptlet_ptr, "");
-//   std::string script_cdata_s = (xScriptlet_ptr.isEmpty ()) ? "" : Utils::xml_get_text_or_cdata_text (xScriptlet_ptr, "");
-//   if (inTrig_ptr)
-//     inTrig_ptr->setBuff (inTrig_ptr->iCurrentBuf, script_cdata_s);
-//
-//
-//
-//   ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", ((inScriptInputLabel.empty ()) ? "Enter <scriptlet> Code:" : inScriptInputLabel.c_str ()));
-//   this->mx_add_tooltip (missionx::color::color_vec4_white, "The script must handle when to fire the trigger.\nIt can also manage messages and other supported commands.\nIt is up to you to decide the complexity of the code.\nBest practice: use \"Trigger Outcome\" to handle messages and post fire staff.\n\nCheck \"Designer Guide\" for more explanations.");
-//
-//   if (ImGui::InputTextMultiline ("##scriptletUi", working_buff, missionx::LOG_BUFF_SIZE, ImVec2 (ImGui::GetContentRegionAvail ().x - 10.0f, 60.0f), ImGuiInputTextFlags_AllowTabInput))
-//   {
-//     std::string buff_s = std::string (working_buff);
-//
-//     assert (scriptlet_name_s.empty () == false && "scriptlet name attribute can't be empty");
-//
-//     Utils::xml_add_cdata (xScriptlet_ptr, buff_s);
-//
-//   } // update origin node and buff after each change
-//
-//
-//   // display characters left to write
-//   ImGui::TextColored (missionx::color::color_vec4_floralwhite, "%zu", missionx::LOG_BUFF_SIZE - std::string_view (working_buff).length ());
-//
-// } // subDraw_ui_xScriptlet
-//
-
-
-// ------------ ui Trigger main code --------------
-
-
-
-// void
-// WinImguiBriefer::subDraw_ui_xTrigger_main (missionx::mx_local_fpln_strct &inLegData, bool &in_out_needRefresh_b, int inLegIndex, std::map<int, missionx::mx_trig_strct_> &inMapOfGlobalTriggers, std::vector<std::string> &inVecGlobalTriggers_names)
-// {
-//   static mx_trig_strct_ *trig_ptr = nullptr;
-//
-//   assert (inLegData.xTriggers.isEmpty () == false && "[subDraw_ui_xTrigger_main] Leg triggers can't be empty");
-//
-//   // parse xTriggers
-//   if (in_out_needRefresh_b)
-//   {
-//     trig_ptr                             = nullptr; // static pointer reset
-//     int index                            = 0;
-//     this->strct_conv_layer.trig_picked_i = -1; // no pick
-//     in_out_needRefresh_b                 = false;
-//     inMapOfGlobalTriggers.clear ();
-//     inVecGlobalTriggers_names.clear ();
-//     for (int i1 = 0; i1 < inLegData.xTriggers.nChildNode (mxconst::get_ELEMENT_TRIGGER ().c_str ()); ++i1)
-//     {
-//       missionx::mx_trig_strct_ trig;
-//       auto                     nodeTrig = inLegData.xTriggers.getChildNode (mxconst::get_ELEMENT_TRIGGER ().c_str (), i1);
-//       trig.trig_name_s                  = Utils::readAttrib (nodeTrig, mxconst::get_ATTRIB_NAME (), "");
-//       trig.trig_type_s                  = Utils::readAttrib (nodeTrig, mxconst::get_ATTRIB_TYPE (), "");
-//       trig.trig_onGround_s              = Utils::readAttrib (nodeTrig, mxconst::get_ATTRIB_PLANE_ON_GROUND (), "");
-//
-//       if (trig.trig_name_s.empty ())
-//       {
-//         Log::logMsg ("Found trigger without name. skipping");
-//         continue;
-//       }
-//       else if (Utils::isElementExistsInVec (inVecGlobalTriggers_names, trig.trig_name_s))
-//       {
-//         Log::logMsg ("Trigger by the name: " + trig.trig_name_s + " is already exists. Skipping...");
-//         continue;
-//       }
-//
-//       if (mxconst::get_TRIG_TYPE_RAD ().compare (trig.trig_type_s) == 0)
-//         trig.trig_type_indx = 0;
-//       else if (mxconst::get_TRIG_TYPE_SCRIPT ().compare (trig.trig_type_s) == 0)
-//         trig.trig_type_indx = 1;
-//       else if (mxconst::get_TRIG_TYPE_POLY ().compare (trig.trig_type_s) == 0)
-//         trig.trig_type_indx = 2;
-//       else if (mxconst::get_TRIG_TYPE_CAMERA ().compare (trig.trig_type_s) == 0) // v3.0.303.7 fix unsupported camera type trigger
-//         trig.trig_type_indx = 3;
-//       else
-//       {
-//         Log::logMsg ("Reading tirgger: " + trig.trig_name_s + " has unsupporte trigger type, by this UI screen. It might be supported by the plugin though. Check designer guide. Skipping...");
-//         continue;
-//       }
-//
-//
-//       trig.flag_first_point_is_center_cbox = Utils::readBoolAttrib (nodeTrig, mxconst::get_ATTRIB_FIRST_POINT_IS_CENTER_B (), false); // v3.0.303.4 // boolean
-//
-//
-//       trig.indx     = index;
-//       trig.node_ptr = nodeTrig;
-//       inVecGlobalTriggers_names.emplace_back (trig.trig_name_s);
-//       Utils::addElementToMap (inMapOfGlobalTriggers, index, trig);
-//       ++index;
-//
-//     } // end loop over all triggers
-//
-//   } // end re-read xNode information for <trigger>
-//
-//   //////////// Side by Side
-//
-//   static std::string suggested_name;
-//   // Child 1: no border, enable horizontal scrollbar
-//   {
-//     ////// Trigger information
-//     if (this->strct_conv_layer.trig_ui_mode == mxTrig_ui_mode_enm::naTrigger)
-//       ImGui::TextColored (missionx::color::color_vec4_yellow, "[opt] Add custom Events/Triggers");
-//     else
-//       ImGui::TextColored (missionx::color::color_vec4_yellow, "Trigger Information: ");
-//
-//     ImGui::BeginChild ("left_ChildListTriggers", ImVec2 (ImGui::GetContentRegionAvail ().x * 0.22f, 100.0f), ImGuiChildFlags_None, ImGuiWindowFlags_None); // v24.06.1 replaced "GetWindowContentRegionMax()" with "GetContentRegionAvail()"
-//     {
-//       //// LIST
-//       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//       ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgrey);
-//       ImGui::PushStyleColor (ImGuiCol_ButtonActive, missionx::color::color_vec4_grey);
-//       ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_green);
-//       {
-//         //// Show Add / Cancel addition of new trigger
-//         if (this->strct_conv_layer.trig_ui_mode > mxTrig_ui_mode_enm::naTrigger)
-//         {
-//           if (ImGui::Button (" Cancel Operation "))
-//           {
-//             if (trig_ptr)
-//             {
-//               if (trig_ptr->node_ptr.isEmpty () == false && trig_ptr->copyOfNode_ptr.isEmpty () == false)
-//               {
-//                 if (this->strct_conv_layer.trig_ui_mode == mxTrig_ui_mode_enm::newTrigger)
-//                 {
-//                   trig_ptr->node_ptr.deleteNodeContent ();
-//                   trig_ptr->init ();
-//                 }
-//                 else if (this->strct_conv_layer.trig_ui_mode == mxTrig_ui_mode_enm::editTrigger)
-//                 {
-//                   auto pNode = trig_ptr->node_ptr.getParentNode ();
-//                   if (!pNode.isEmpty ())
-//                   {
-//                     trig_ptr->node_ptr.deleteNodeContent ();
-//                     trig_ptr->node_ptr = trig_ptr->copyOfNode_ptr.deepCopy ();
-//                     pNode.addChild (trig_ptr->node_ptr, trig_ptr->indx);
-//                   }
-//
-//                 } // end cancel operation
-//               }
-//               in_out_needRefresh_b = true; // refresh after cancel
-//             }
-//
-//             this->strct_conv_layer.trig_ui_mode = mxTrig_ui_mode_enm::naTrigger;
-//           }
-//         }
-//         else if (this->strct_conv_layer.trig_ui_mode == mxTrig_ui_mode_enm::naTrigger)
-//         {
-//           if (ImGui::Button (" +++ Add Trigger +++"))
-//           {
-//             this->strct_conv_layer.trig_ui_mode = mxTrig_ui_mode_enm::newTrigger;
-//             this->strct_conv_layer.trigger.init ();
-//             this->strct_conv_layer.trigger.node_ptr = Utils::xml_get_node_from_XSD_map_as_a_copy (mxconst::get_ELEMENT_TRIGGER ());
-//             this->strct_conv_layer.trigger.indx     = this->strct_conv_layer.trig_seq;
-//             // v3.0.303.7
-//             auto              xLocElevData = Utils::xml_get_or_create_node_ptr (this->strct_conv_layer.trigger.node_ptr, mxconst::get_ELEMENT_LOC_AND_ELEV_DATA ());
-//             auto              xRadius      = Utils::xml_get_or_create_node_ptr (xLocElevData, mxconst::get_ELEMENT_RADIUS ());
-//             int               val_i        = Utils::readNodeNumericAttrib<int> (xRadius, mxconst::get_ATTRIB_LENGTH_MT (), missionx::MIN_RAD_UI_VALUE_MT);
-//             const std::string val_s        = mxUtils::formatNumber<int> (val_i);
-//             xRadius.updateAttribute (val_s.c_str (), mxconst::get_ATTRIB_LENGTH_MT ().c_str (), mxconst::get_ATTRIB_LENGTH_MT ().c_str ());
-//             // end v3.0.303.7
-//
-//             trig_ptr                 = &this->strct_conv_layer.trigger;
-//             trig_ptr->copyOfNode_ptr = trig_ptr->node_ptr.deepCopy (); // store a copy to revert to
-//             ++this->strct_conv_layer.trig_seq;
-//
-//             suggested_name = "trig_" + mxUtils::formatNumber<int> (inLegIndex) + "_" + mxUtils::formatNumber<int> (this->strct_conv_layer.trig_seq) + "_" + Utils::get_hash_string (Utils::get_time_as_string ());
-//
-//             (*trig_ptr).node_ptr.updateAttribute (suggested_name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
-//           }
-//         }
-//       } // end style colors
-//       ImGui::PopStyleColor (4);
-//
-//       // Display list of triggers
-//       bool vDisableCombo = false;
-//       if (this->strct_conv_layer.trig_ui_mode != mxTrig_ui_mode_enm::naTrigger) // newTrigger / editTrigger
-//       {
-//         ImGui::BeginDisabled ();
-//         vDisableCombo = true;
-//       }
-//
-//       ImGui::SetNextItemWidth (ImGui::GetContentRegionAvail ().x);
-//       if (ImGui::BeginListBox ("##ListOfTriggerNames"))
-//       {
-//         for (auto &[indx, data] : inMapOfGlobalTriggers)
-//         {
-//           const bool is_selected = (this->strct_conv_layer.trig_picked_i == indx);
-//           if (ImGui::Selectable (data.trig_name_s.c_str (), is_selected))
-//           {
-//
-//             this->strct_conv_layer.trig_picked_i = indx;
-//             trig_ptr                             = &this->strct_conv_layer.mapOfGlobalTriggers[indx];
-//             trig_ptr->copyOfNode_ptr             = trig_ptr->node_ptr.deepCopy (); // store a copy to revert to
-//
-//             this->strct_conv_layer.trig_ui_mode = mxTrig_ui_mode_enm::editTrigger;
-//             suggested_name                      = trig_ptr->trig_name_s;
-//           }
-//           // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-//           if (is_selected)
-//             ImGui::SetItemDefaultFocus ();
-//         }
-//         ImGui::EndListBox ();
-//       } // end ListBox
-//
-//       if (vDisableCombo)
-//         ImGui::EndDisabled ();
-//     }
-//     ImGui::EndChild ();
-//   }
-//
-//   // Child 2:
-//   if (trig_ptr != nullptr && this->strct_conv_layer.trig_ui_mode > mxTrig_ui_mode_enm::naTrigger)
-//   {
-//     subDraw_ui_xTrigger_detail ((*trig_ptr), in_out_needRefresh_b, suggested_name, inLegData);
-//   }
-// }
-
-// ---------------------------------------------
-// ------------ ui Trigger detail --------------
-//
-// void
-// WinImguiBriefer::subDraw_ui_xTrigger_detail (mx_trig_strct_ &inTrig_ptr, bool &in_out_needRefresh_b, std::string &suggested_name, missionx::mx_local_fpln_strct &inLegData)
-// {
-//   bool                   flag_create_trigger = false; // used with the button "create/update" trigger
-//   const std::string_view btnStoreLabel_sv    = (this->strct_conv_layer.trig_ui_mode == mxTrig_ui_mode_enm::newTrigger) ? "Create Trigger##CreateOrUpdateTriggerButton" : "Update Trigger##CreateOrUpdateTriggerButton";
-//
-//   const auto lmbda_update_trig_type = [&] ()
-//   {
-//     inTrig_ptr.trig_type_s = std::string (this->strct_conv_layer.vecTrigType_list.at (inTrig_ptr.trig_type_indx)); // debug
-//     inTrig_ptr.node_ptr.updateAttribute (this->strct_conv_layer.vecTrigType_list_trans.at (inTrig_ptr.trig_type_indx), mxconst::get_ATTRIB_TYPE ().c_str (), mxconst::get_ATTRIB_TYPE ().c_str ());
-//
-//     inTrig_ptr.node_ptr.updateAttribute (mxUtils::formatNumber<int> (inTrig_ptr.trig_type_indx).c_str (), mxconst::get_CONV_ATTRIB_trig_ui_type_combo_indx ().c_str (), mxconst::get_CONV_ATTRIB_trig_ui_type_combo_indx ().c_str ());
-//   };
-//
-//   inTrig_ptr.iCurrentBuf = 0;
-//
-//   ImGuiWindowFlags window_flags = ImGuiWindowFlags_HorizontalScrollbar;
-//   ImGui::SameLine ();
-//
-//   ImGui::BeginChild ("right_ChildTriggerDetails", ImVec2 (ImGui::GetContentRegionAvail ().x - 10.0f, 300.0f), ImGuiChildFlags_None, window_flags); // v24.06.1 replaced: "GetContentRegionMax()" with "GetContentRegionAvail()"
-//   {
-//
-//     // draw trigger element
-//     if (this->strct_conv_layer.trig_ui_mode == mxTrig_ui_mode_enm::editTrigger)
-//     {
-//       ImGui::PushStyleColor (ImGuiCol_FrameBg, missionx::color::color_vec4_maroon);
-//
-//       IXMLRenderer      xmlRenderer;
-//       const std::string print_s = xmlRenderer.getString (inTrig_ptr.node_ptr);
-//       char              print_buff[2048]; // { 0 };
-// #ifdef IBM
-//       memcpy_s (print_buff, sizeof (print_buff), print_s.c_str (), (print_s.length () > sizeof (print_buff)) ? sizeof (print_buff) : print_s.length ());
-// #else
-//       memcpy (print_buff, print_s.c_str (), (print_s.length () > sizeof (print_buff)) ? sizeof (print_buff) : print_s.length ());
-// #endif // IBM
-//
-//       // readonly multi line input. We display 10 rows
-//       ImGui::InputTextMultiline ("###triggerXMLoutput", print_buff, sizeof (print_buff), ImVec2 (ImGui::GetContentRegionAvail ().x, ImGui::GetTextLineHeight () * 12.0f), ImGuiInputTextFlags_ReadOnly);
-//
-//       ImGui::PopStyleColor ();
-//
-//       // CREATE Trigger Button
-//       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//       ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
-//       ImGui::PushStyleColor (ImGuiCol_ButtonActive, missionx::color::color_vec4_grey);
-//       ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_green);
-//       if (ImGui::Button (btnStoreLabel_sv.data ()))
-//         flag_create_trigger = true;
-//       ImGui::PopStyleColor (4); // create trigger button
-//
-//
-//       ImGui::PushStyleColor (ImGuiCol_Separator, missionx::color::color_vec4_white);
-//       ImGui::Separator ();
-//       ImGui::PopStyleColor ();
-//     }
-//
-//
-//     ImGui::TextColored (missionx::color::color_vec4_yellow, "Type:");
-//     ImGui::SameLine ();
-//     ImGui::SetNextItemWidth (85.0f);
-//     if (ImGui::Combo ("##TriggerTypeCombo", &inTrig_ptr.trig_type_indx, this->strct_conv_layer.vecTrigType_list.data (), static_cast<int> (this->strct_conv_layer.vecTrigType_list.size ())))
-//     {
-//       lmbda_update_trig_type ();
-//
-//       // v3.0.303.7 initialize RAD/Camera based trigger
-//       if (inTrig_ptr.trig_type_indx == static_cast<int> (missionx::mx_trig_type_enum::rad) || inTrig_ptr.trig_type_indx == static_cast<int> (missionx::mx_trig_type_enum::camera))
-//       {
-//         auto              xLocElevData = Utils::xml_get_or_create_node_ptr (inTrig_ptr.node_ptr, mxconst::get_ELEMENT_LOC_AND_ELEV_DATA ());
-//         auto              xRadius      = Utils::xml_get_or_create_node_ptr (xLocElevData, mxconst::get_ELEMENT_RADIUS ());
-//         int               val_i        = Utils::readNodeNumericAttrib<int> (xRadius, mxconst::get_ATTRIB_LENGTH_MT (), missionx::MIN_RAD_UI_VALUE_MT);
-//         const std::string val_s        = mxUtils::formatNumber<int> (val_i);
-//         xRadius.updateAttribute (val_s.c_str (), mxconst::get_ATTRIB_LENGTH_MT ().c_str (), mxconst::get_ATTRIB_LENGTH_MT ().c_str ());
-//       }
-//
-//       // clear buff[0] data
-//       inTrig_ptr.resetBuff (inTrig_ptr.iCurrentBuf);
-//     }
-//
-//     // display radius widget if trigger type is rad
-//     if (inTrig_ptr.trig_type_indx == static_cast<int> (missionx::mx_trig_type_enum::rad) || inTrig_ptr.trig_type_indx == static_cast<int> (missionx::mx_trig_type_enum::camera))
-//     {
-//       auto xLocElevData = Utils::xml_get_or_create_node_ptr (inTrig_ptr.node_ptr, mxconst::get_ELEMENT_LOC_AND_ELEV_DATA ());
-//       auto xRadius      = Utils::xml_get_or_create_node_ptr (xLocElevData, mxconst::get_ELEMENT_RADIUS ());
-//       ImGui::SameLine ();
-//       subDraw_ui_xRadius (xRadius, 15);
-//     }
-//
-//     // Constraint // no buff
-//     if (inTrig_ptr.trig_type_indx != static_cast<int> (missionx::mx_trig_type_enum::script) && inTrig_ptr.trig_type_indx != static_cast<int> (missionx::mx_trig_type_enum::camera)) // if not camera then no elevation info is needed, will always be ignored
-//     {
-//       ImGui::TextColored (missionx::color::color_vec4_yellow, "Elev ft:");
-//       ImGui::SameLine ();
-//       ImGui::SetNextItemWidth (100.0f);
-//       if (ImGui::Combo ("###ConstraintPosition", &inTrig_ptr.trig_plane_pos_combo_indx, this->strct_conv_layer.vecTrigOnGround_list.data (), static_cast<int> (this->strct_conv_layer.vecTrigOnGround_list.size ())))
-//       {
-//         inTrig_ptr.trig_onGround_s = std::string (this->strct_conv_layer.vecTrigOnGround_list.at (inTrig_ptr.trig_plane_pos_combo_indx)); // debug
-//         Utils::xml_search_and_set_attribute_in_IXMLNode (inTrig_ptr.node_ptr, mxconst::get_ATTRIB_PLANE_ON_GROUND (), this->strct_conv_layer.vecTrigOnGround_list_trans.at (inTrig_ptr.trig_plane_pos_combo_indx), mxconst::get_ELEMENT_CONDITIONS ());
-//         Utils::xml_search_and_set_attribute_in_IXMLNode (inTrig_ptr.node_ptr, mxconst::get_CONV_ATTRIB_trig_ui_plane_pos_combo_indx (), mxUtils::formatNumber<int> (inTrig_ptr.trig_plane_pos_combo_indx), inTrig_ptr.node_ptr.getName ());
-//       }
-//       if (inTrig_ptr.trig_plane_pos_combo_indx == 2) // 2 = airborne
-//       {
-//         ImGui::SameLine (0.0f, 10.0f);
-//         auto xLocElevData = Utils::xml_get_or_create_node_ptr (inTrig_ptr.node_ptr, mxconst::get_ELEMENT_LOC_AND_ELEV_DATA ());
-//         auto xElevVolume  = Utils::xml_get_or_create_node_ptr (xLocElevData, mxconst::get_ELEMENT_ELEVATION_VOLUME ());
-//         subDraw_ui_xTrigger_elev (inTrig_ptr, xElevVolume);
-//       }
-//     }
-//
-//     // lat/lon  // use buff
-//     if (inTrig_ptr.trig_type_indx == static_cast<int> (missionx::mx_trig_type_enum::rad) || inTrig_ptr.trig_type_indx == static_cast<int> (missionx::mx_trig_type_enum::camera))
-//     {
-//       if (this->strct_conv_layer.trig_ui_mode == mxTrig_ui_mode_enm::newTrigger)
-//         ImGui::TextColored (missionx::color::color_vec4_yellow, "Enter center of event:");
-//       else
-//         ImGui::TextColored (missionx::color::color_vec4_yellow, "Update center of event: "); // mxTrig_ui_mode_enm::editTrigger
-//
-//       ImGui::InputText ("###trigCenterPosition", inTrig_ptr.buffArray[inTrig_ptr.iCurrentBuf], sizeof (inTrig_ptr.buffArray[inTrig_ptr.iCurrentBuf]), ImGuiInputTextFlags_ReadOnly); // buffArray  // we will store the points only when clicking apply
-//
-//
-//       //// position // use buff based on rad
-//       ImGui::SameLine ();
-//       if (ImGui::Button ("P##pTrig"))
-//       {
-//         inTrig_ptr.setBuff (inTrig_ptr.iCurrentBuf, missionx::data_manager::getPoint_as_stringFromPlaneCamera ("sim/flightmodel/position/latitude", "sim/flightmodel/position/longitude"));
-//       }
-//       this->mx_add_tooltip (missionx::color::color_vec4_darkorange, "plane position");
-//
-//       ImGui::SameLine ();
-//       if (ImGui::Button ("C##cTrig"))
-//       {
-//         inTrig_ptr.setBuff (inTrig_ptr.iCurrentBuf, missionx::data_manager::getPoint_as_stringFromPlaneCamera ("sim/graphics/view/view_x", "sim/graphics/view/view_y", 'c')); // camera pos
-//       }
-//       ImGui::SameLine (0.0f, 5.0f);
-//       this->mx_add_tooltip (missionx::color::color_vec4_darkorange, "camera position");
-//
-//       ImGui::SameLine ();
-//       if (ImGui::Button ("U##uTrig"))
-//       {
-//         ImGui::OpenPopup (POPUP_USER_LAT_LON.c_str ());
-//       }
-//       ImGui::SameLine (0.0f, 5.0f);
-//       this->mx_add_tooltip (missionx::color::color_vec4_darkorange, "User defined position");
-//
-//       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//       ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgrey);
-//       ImGui::PushStyleColor (ImGuiCol_ButtonActive, missionx::color::color_vec4_grey);
-//       ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_green);
-//       if (ImGui::Button ("Apply Position##applyToLocAndElev"))
-//       {
-//         auto loc_and_elev_ptr = inTrig_ptr.node_ptr.getChildNode (mxconst::get_ELEMENT_LOC_AND_ELEV_DATA ().c_str ());
-//         Utils::xml_delete_all_subnodes (loc_and_elev_ptr, mxconst::get_ELEMENT_POINT ());
-//
-//         std::string val_buff_s = inTrig_ptr.getBuff (inTrig_ptr.iCurrentBuf);
-//         auto        childNode  = Utils::xml_create_node_from_string (val_buff_s);
-//
-//         if (childNode.isEmpty ())
-//           this->setMessage ("Point is not valid: " + inTrig_ptr.getBuff (inTrig_ptr.iCurrentBuf), 10);
-//         else
-//         {
-//           loc_and_elev_ptr.addChild (childNode);
-//           this->setMessage ("", 1);
-//         }
-//       }
-//       ImGui::PopStyleColor (4);
-//
-//       ImGui::PushStyleColor (ImGuiCol_ChildBg, missionx::color::color_vec4_black);
-//       if (ImGui::BeginPopupModal (POPUP_USER_LAT_LON.c_str (), NULL, ImGuiWindowFlags_AlwaysAutoResize))
-//       {
-//         subDraw_popup_user_lat_lon (inTrig_ptr);
-//         ImGui::EndPopup ();
-//       }
-//       ImGui::PopStyleColor ();
-//
-//       ++inTrig_ptr.iCurrentBuf; // if we display positioning we should increment the buff array position too
-//
-//       // End positioning of trigger
-//     }
-//     else if (inTrig_ptr.trig_type_indx == static_cast<int> (missionx::mx_trig_type_enum::poly)) // v3.0.301 B3
-//     {
-//       auto xLocAndElev = Utils::xml_get_or_create_node_ptr (inTrig_ptr.node_ptr, mxconst::get_ELEMENT_LOC_AND_ELEV_DATA ());
-//
-//       ImGui::PushStyleColor (ImGuiCol_Separator, missionx::color::color_vec4_white);
-//       ImGui::Separator ();
-//       ImGui::PopStyleColor ();
-//
-//       subDraw_ui_xPolyBox (xLocAndElev, inTrig_ptr);
-//       ++inTrig_ptr.iCurrentBuf;
-//     }
-//     else if (inTrig_ptr.trig_type_indx == static_cast<int> (missionx::mx_trig_type_enum::script)) // v3.0.301 B3
-//     {
-//       ImGui::PushStyleColor (ImGuiCol_Separator, missionx::color::color_vec4_white);
-//       ImGui::Separator ();
-//       ImGui::PopStyleColor ();
-//
-//
-//       subDraw_ui_xScriptlet (inLegData.xFlightPlan, this->strct_conv_layer.trig_ui_mode, &inTrig_ptr, "Enter the trigger's condition <scriptlet> code to fire the trigger:", &inLegData, inTrig_ptr.buffArray[inTrig_ptr.iCurrentBuf]);
-//       ++inTrig_ptr.iCurrentBuf;
-//     }
-//
-//
-//
-//     ImGui::PushStyleColor (ImGuiCol_Separator, missionx::color::color_vec4_white);
-//     ImGui::Separator ();
-//     ImGui::PopStyleColor ();
-//     // Outcome button + popup // use buff
-//
-//     // calculate position
-//     ImGui::NewLine ();
-//     ImGui::SameLine (0.0, ImGui::GetContentRegionAvail ().x * 0.33f);
-//
-//     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//     ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgrey);
-//     ImGui::PushStyleColor (ImGuiCol_ButtonActive, missionx::color::color_vec4_grey);
-//     ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_green);
-//     if (ImGui::Button ("Trigger Outcome Settings##btnOutcomeTrigPopup"))
-//     {
-//       ImGui::OpenPopup (POPUP_TRIG_OUTCOME.c_str ());
-//     }
-//     ImGui::PopStyleColor (4);
-//
-//     { // POPUP Outcome
-//       const auto   win_size_vec2 = ImGui::GetWindowSize ();
-//       const ImVec2 center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f);
-//       ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
-//       ImGui::SetNextWindowSize (ImVec2 (win_size_vec2.x * 0.85f, 220.0f));
-//       if (ImGui::BeginPopupModal (POPUP_TRIG_OUTCOME.c_str (), NULL, ImGuiWindowFlags_AlwaysAutoResize))
-//       {
-//         subDraw_popup_outcome (inTrig_ptr, inLegData.xMessageTmpl);
-//         ImGui::EndPopup ();
-//         ++inTrig_ptr.iCurrentBuf;
-//       }
-//     }
-//
-//
-//     // draw trigger element
-//     if (this->strct_conv_layer.trig_ui_mode != mxTrig_ui_mode_enm::editTrigger)
-//     {
-//
-//       ImGui::PushStyleColor (ImGuiCol_Separator, missionx::color::color_vec4_white);
-//       ImGui::Separator ();
-//       ImGui::PopStyleColor ();
-//
-//       // CREATE Trigger Button
-//       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
-//       ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
-//       ImGui::PushStyleColor (ImGuiCol_ButtonActive, missionx::color::color_vec4_grey);
-//       ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_green);
-//       if (ImGui::Button (btnStoreLabel_sv.data ()))
-//         flag_create_trigger = true;
-//       ImGui::PopStyleColor (4); // create trigger button
-//
-//
-//
-//       IXMLRenderer      xmlRenderer;
-//       const std::string print_s = xmlRenderer.getString (inTrig_ptr.node_ptr);
-//       char              print_buff[2048]; // { 0 };
-// #ifdef IBM
-//       memcpy_s (print_buff, sizeof (print_buff), print_s.c_str (), (print_s.length () > sizeof (print_buff)) ? sizeof (print_buff) : print_s.length ());
-// #else
-//       memcpy (print_buff, print_s.c_str (), (print_s.length () > sizeof (print_buff)) ? sizeof (print_buff) : print_s.length ());
-// #endif // IBM
-//
-//       // readonly multi line input. We display 10 rows
-//       ImGui::InputTextMultiline ("###triggerXMLoutput", print_buff, sizeof (print_buff), ImVec2 (ImGui::GetContentRegionAvail ().x, ImGui::GetTextLineHeight () * 12.0f), ImGuiInputTextFlags_ReadOnly);
-//     }
-//
-//
-//   } // end Right Child
-//   ImGui::EndChild ();
-//
-//
-//
-//   // Create/Update the trigger node
-//   if (flag_create_trigger)
-//   {
-//     bool flag_trig_is_valid = true;
-//     // do validation
-//     if (inTrig_ptr.trig_type_indx == static_cast<int> (missionx::mx_trig_type_enum::rad) || inTrig_ptr.trig_type_indx == static_cast<int> (missionx::mx_trig_type_enum::camera))
-//     {
-//
-//       // v3.0.301 B3
-//       // remove the cond_script attribute from <conditions>, this should only be used with "script based trigger"
-//       auto xConditions = Utils::xml_get_or_create_node_ptr (inTrig_ptr.node_ptr, mxconst::get_ELEMENT_CONDITIONS ());
-//       xConditions.updateAttribute ("", mxconst::get_ATTRIB_COND_SCRIPT ().c_str (), mxconst::get_ATTRIB_COND_SCRIPT ().c_str ());
-//
-//       auto   xLocElevData = Utils::xml_get_or_create_node_ptr (inTrig_ptr.node_ptr, mxconst::get_ELEMENT_LOC_AND_ELEV_DATA ());
-//       auto   xPoint       = Utils::xml_get_or_create_node_ptr (xLocElevData, mxconst::get_ELEMENT_POINT ());
-//       double lat          = Utils::readNumericAttrib (xPoint, mxconst::get_ATTRIB_LAT (), 0.0f);
-//       double lon          = Utils::readNumericAttrib (xPoint, mxconst::get_ATTRIB_LONG (), 0.0f);
-//       if (lat == 0.0 || lon == 0.0)
-//       {
-//         flag_trig_is_valid = false;
-//         this->setMessage ("Trigger is not valid. Position data is not valid");
-//       }
-//
-//       // v3.0.304.4 validate radius value
-//       [[maybe_unused]] bool flag_found = false;
-//       if (Utils::xml_get_attribute_value_drill (xLocElevData, mxconst::get_ATTRIB_LENGTH_MT (), flag_found, mxconst::get_ELEMENT_RADIUS ()).empty ())
-//       {
-//         flag_trig_is_valid = false;
-//         this->setMessage ("Trigger is not valid. Set Radius");
-//       }
-//
-//       // v3.0.303.7 if trig type = camera then reset on_ground attribute to empty (which means ignore elevation), we might consider ---10 instead
-//       if (inTrig_ptr.trig_type_indx == static_cast<int> (missionx::mx_trig_type_enum::camera))
-//         Utils::xml_search_and_set_attribute_in_IXMLNode (inTrig_ptr.node_ptr, mxconst::get_ATTRIB_PLANE_ON_GROUND (), "", mxconst::get_ELEMENT_CONDITIONS ());
-//     }
-//     else if (inTrig_ptr.trig_type_indx == static_cast<int> (missionx::mx_trig_type_enum::poly))
-//     {
-//       auto xLocAndElev = Utils::xml_get_or_create_node_ptr (inTrig_ptr.node_ptr, mxconst::get_ELEMENT_LOC_AND_ELEV_DATA ());
-//       assert (xLocAndElev.isEmpty () == false && "<Trigger> must have <loc_and_elev_data> element.");
-//
-//       if (xLocAndElev.nChildNode (mxconst::get_ELEMENT_POINT ().c_str ()) > 0)
-//       {
-//         flag_trig_is_valid = true;
-//       }
-//       else
-//       {
-//         this->setMessage ("Trigger is not valid. Not enough <point> elements.");
-//         flag_trig_is_valid = false;
-//       }
-//     }
-//     else // v3.0.303.7 remove <loc_and_elev_data> since it is a script based
-//     {
-//       Utils::xml_delete_all_subnodes (inTrig_ptr.node_ptr, mxconst::get_ELEMENT_LOC_AND_ELEV_DATA ());
-//     }
-//
-//
-//     if (flag_trig_is_valid)
-//     {
-//       lmbda_update_trig_type ();
-//
-//       in_out_needRefresh_b = true;
-//
-//       if (this->strct_conv_layer.trig_ui_mode == mxTrig_ui_mode_enm::newTrigger)
-//       {
-//
-//         inLegData.xTriggers.addChild (inTrig_ptr.node_ptr.deepCopy ());
-//         if (inLegData.xLeg.isEmpty () == false)
-//         {
-//           auto xLink = inLegData.xLeg.addChild (mxconst::get_ELEMENT_LINK_TO_TRIGGER ().c_str ());
-//           xLink.updateAttribute (suggested_name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
-//
-//           this->setMessage ("Added Trigger: " + suggested_name, 5);
-//         }
-//       }
-//       else if (this->strct_conv_layer.trig_ui_mode == mxTrig_ui_mode_enm::editTrigger)
-//       {
-//         this->setMessage ("Updated Trigger: " + suggested_name, 5);
-//       }
-//       else
-//         this->setMessage ("", 1);
-//
-//
-//       this->strct_conv_layer.trig_ui_mode = mxTrig_ui_mode_enm::naTrigger; // reset the trigger creation ui status
-//     } // finish save changes
-//   }
-//   // END CREATE TRIGGER NODE
-// }
-//
-// -----------------------------------------------
-
-// std::map<int, missionx::mx_local_fpln_strct>
-// WinImguiBriefer::read_and_parse_saved_state (const std::string inPathAndFile)
-// {
-//   std::string                                  errMsg;
-//   std::map<int, missionx::mx_local_fpln_strct> fpln;
-//
-//
-//   // Read Little Nav Map flight plan
-//   Log::logMsg ("[Load] Reading Stored Conversion Screen Saved State File: " + inPathAndFile); // debug
-//   IXMLDomParser iDom;
-//   ITCXMLNode    xMainNode = iDom.openFileHelper (inPathAndFile.c_str (), mxconst::get_CONVERSION_ROOT_DOC ().c_str (), &errMsg);
-//
-//   if (errMsg.empty () == false) // error
-//   {
-//     this->strct_conv_layer.flag_load_conversion_file = false;
-//     Log::logMsg (errMsg);
-//   }
-//   else
-//   {
-//     int legCounter       = xMainNode.nChildNode (mxconst::get_ELEMENT_FPLN ().c_str ());
-//     int triggerCounter_i = 0;
-//
-//     for (int i1 = 0; i1 < legCounter; ++i1)
-//     {
-//       missionx::mx_local_fpln_strct leg;
-//       auto                          xLeg = xMainNode.getChildNode (mxconst::get_ELEMENT_FPLN ().c_str (), i1).deepCopy ();
-//
-//       xLeg.updateName (mxconst::get_ELEMENT_LEG ().c_str ());
-//       leg.xLeg = xLeg.deepCopy ();
-//
-//
-//       if (xLeg.isEmpty () == false)
-//       {
-//         leg.indx       = Utils::readNodeNumericAttrib<int> (xLeg, mxconst::get_ATTRIB_INDEX (), i1);
-//         leg.name       = Utils::readAttrib (xLeg, mxconst::get_ELEMENT_LNM_Name (), std::string ("NAME").append (mxUtils::formatNumber<int> (i1)));
-//         leg.ident      = Utils::readAttrib (xLeg, mxconst::get_ELEMENT_LNM_Ident (), leg.name);
-//         leg.attribName = Utils::readAttrib (xLeg, mxconst::get_ATTRIB_NAME (), std::string ("NAME").append (mxUtils::formatNumber<int> (i1)));
-//         leg.type       = Utils::readAttrib (xLeg, mxconst::get_ELEMENT_LNM_Type (), "");
-//
-//         leg.flag_isLeg            = Utils::readBoolAttrib (xLeg, mxconst::get_CONV_ATTRIB_isLeg (), false);
-//         leg.flag_isLast           = Utils::readBoolAttrib (xLeg, mxconst::get_CONV_ATTRIB_isLast (), false);
-//         leg.flag_ignore_leg       = Utils::readBoolAttrib (xLeg, mxconst::get_CONV_ATTRIB_ignore_leg (), false);
-//         leg.flag_convertToBriefer = Utils::readBoolAttrib (xLeg, mxconst::get_CONV_ATTRIB_convertToBriefer (), false);
-//         leg.flag_add_marker       = Utils::readBoolAttrib (xLeg, mxconst::get_CONV_ATTRIB_add_marker (), false);
-//
-//         leg.marker_type_i                       = Utils::readNodeNumericAttrib<int> (xLeg, mxconst::get_CONV_ATTRIB_markerType (), 0); // 0 = default marker in combo
-//         leg.radius_to_display_3D_marker_in_nm_f = Utils::readNodeNumericAttrib<float> (xLeg, mxconst::get_CONV_ATTRIB_radius_to_display_marker (), 10.0f); // 10 = default display radius
-//
-//         // Target Point
-//         auto xPoint = xLeg.getChildNode (mxconst::get_ELEMENT_POINT ().c_str ());
-//         if (!xPoint.isEmpty ())
-//         {
-//           leg.p.node = xPoint.deepCopy ();
-//           leg.p.parse_node ();
-//         }
-//
-//         // Target elevation
-//         auto xTargetTrig = xLeg.getChildNode (mxconst::get_ELEMENT_TRIGGER ().c_str ());
-//         if (!xTargetTrig.isEmpty ())
-//         {
-//
-//           leg.target_trig_strct.elev_combo_picked_i  = Utils::readNodeNumericAttrib<int> (xTargetTrig, mxconst::get_CONV_ATTRIB_elev_combo_picked_i (), 0);
-//           leg.target_trig_strct.slider_elev_value_i  = Utils::readNodeNumericAttrib<int> (xTargetTrig, mxconst::get_CONV_ATTRIB_slider_elev_value_i (), 0);
-//           leg.target_trig_strct.radius_of_trigger_mt = Utils::readNodeNumericAttrib<int> (xTargetTrig, mxconst::get_ATTRIB_LENGTH_MT (), 100); // trigger area, if not set than use 2000 meters
-//
-//           leg.target_trig_strct.elev_min         = Utils::readNodeNumericAttrib<int> (xTargetTrig, mxconst::get_ATTRIB_ELEV_MIN_FT (), 0);
-//           leg.target_trig_strct.elev_max         = Utils::readNodeNumericAttrib<int> (xTargetTrig, mxconst::get_ATTRIB_ELEV_MAX_FT (), 0);
-//           leg.target_trig_strct.elev_rule_s      = Utils::readAttrib (xTargetTrig, mxconst::get_CONV_ATTRIB_elev_rule_s (), "");
-//           leg.target_trig_strct.elev_lower_upper = Utils::readAttrib (xTargetTrig, mxconst::get_ATTRIB_ELEV_MIN_MAX_FT (), "");
-//           leg.target_trig_strct.flag_on_ground   = Utils::readBoolAttrib (xTargetTrig, mxconst::get_CONV_ATTRIB_on_ground (), false);
-//         }
-//
-//         // read <BUFFERS>
-//         const auto buf_i = xLeg.getChildNode (mxconst::get_ELEMENT_BUFFERS ().c_str ()).nChildNode (mxconst::get_ELEMENT_BUFF ().c_str ());
-//
-//         assert (buf_i <= leg.MAX_ARRAY && "Convert state has more buffers than allowed.");
-//
-//         for (int i2 = 0; i2 < buf_i; ++i2)
-//         {
-//           // std::string buf_s = Utils::xml_read_cdata_node (xLeg.getChildNode (mxconst::get_ELEMENT_BUFFERS ().c_str ()).getChildNode (mxconst::get_ELEMENT_BUFF ().c_str (), i2), "");
-//           std::string buf_s = Utils::xml_get_text_or_cdata_text (xLeg.getChildNode (mxconst::get_ELEMENT_BUFFERS ().c_str ()).getChildNode (mxconst::get_ELEMENT_BUFF ().c_str (), i2), "");
-//           leg.setBuff (i2, buf_s);
-//         }
-//
-//         // read <triggers>
-//         leg.xTriggers = xLeg.getChildNode (mxconst::get_ELEMENT_TRIGGERS ().c_str ()).deepCopy ();
-//         triggerCounter_i += leg.xTriggers.nChildNode (mxconst::get_ELEMENT_TRIGGER ().c_str ()); // count triggers
-//
-//         // read <message_templates>
-//         leg.xMessageTmpl = xLeg.getChildNode (mxconst::get_ELEMENT_MESSAGE_TEMPLATES ().c_str ()).deepCopy ();
-//
-//         // v3.0.303.7 Add Scriptlets
-//         leg.xLoadedScripts = Utils::xml_get_or_create_node (xLeg, mxconst::get_ELEMENT_SCRIPTS ());
-//
-//         assert (leg.xLoadedScripts.isEmpty () == false && " Scripts node is empty()");
-//
-//         for (int i3 = 0; i3 < xLeg.nChildNode (mxconst::get_ELEMENT_SCRIPTLET ().c_str ()); ++i3)
-//         {
-//           leg.xLoadedScripts.addChild (xLeg.getChildNode (mxconst::get_ELEMENT_SCRIPTLET ().c_str (), i3).deepCopy ());
-// #ifndef RELEASE
-//           Utils::xml_print_node (leg.xLoadedScripts);
-// #endif // !RELEASE
-//         }
-//
-//
-//         // delete <leg>
-//         Utils::xml_delete_all_subnodes (leg.xLeg, "", true); // delete all child nodes including cdata This should allow a clean save format after loading the saved state
-//
-//         Utils::addElementToMap (fpln, leg.indx, leg);
-//       } // if leg is valid
-//
-//     } // end loop
-//
-//     // set the trigger sequence:
-//     this->strct_conv_layer.trig_seq = triggerCounter_i + 1; // v3.0.304.4
-//
-//
-//     // Dataref information
-//     IXMLNode xXpdata = xMainNode.getChildNode (mxconst::get_ELEMENT_XPDATA ().c_str ()).deepCopy ();
-//     if (!xXpdata.isEmpty ())
-//     {
-//       std::string xpdata_4096_s;
-//       this->strct_conv_layer.xXPlaneDataRef_global = xXpdata.deepCopy ();
-//       for (int i1 = 0; i1 < xXpdata.nChildNode (mxconst::get_ELEMENT_DATAREF ().c_str ()); ++i1)
-//       {
-//         IXMLRenderer render;
-//         xpdata_4096_s += render.getString (xXpdata.getChildNode (mxconst::get_ELEMENT_DATAREF ().c_str (), i1));
-//       }
-//
-// #ifdef IBM
-//       memcpy_s (this->strct_conv_layer.buff_dataref, sizeof (this->strct_conv_layer.buff_dataref), xpdata_4096_s.c_str (), sizeof (this->strct_conv_layer.buff_dataref) - 1);
-// #else
-//       memcpy (this->strct_conv_layer.buff_dataref, xpdata_4096_s.c_str (), sizeof (this->strct_conv_layer.buff_dataref) - 1);
-// #endif
-//       this->strct_conv_layer.xXPlaneDataRef_global = xXpdata.deepCopy ();
-//     }
-//
-//     // v3.305.1 store <global_settings> sub nodes in buffer
-//     auto xGlobalSetting = xMainNode.getChildNode (mxconst::get_GLOBAL_SETTINGS ().c_str ()).deepCopy ();
-//     if (!xGlobalSetting.isEmpty ())
-//     {
-//       std::string data_4096_s;
-//       for (int i1 = 0; i1 < xGlobalSetting.nChildNode (); ++i1) // read all sub elements
-//       {
-//         IXMLRenderer render;
-//         data_4096_s += render.getString (xGlobalSetting.getChildNode (i1));
-//       }
-//
-// #ifdef IBM
-//       memcpy_s (this->strct_conv_layer.buff_globalSettings, sizeof (this->strct_conv_layer.buff_globalSettings), data_4096_s.c_str (), sizeof (this->strct_conv_layer.buff_globalSettings) - 1);
-// #else
-//       memcpy (this->strct_conv_layer.buff_globalSettings, data_4096_s.c_str (), sizeof (this->strct_conv_layer.buff_globalSettings) - 1);
-// #endif
-//
-//       this->strct_conv_layer.xSavedGlobalSettingsNode = xGlobalSetting.deepCopy ();
-//     }
-//
-//   } // end else if
-//
-//
-//   return fpln;
-// }
-
 
 
 // ------------ execActions --------------
@@ -13324,12 +10653,12 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
     break;
     case missionx::mx_window_actions::ACTION_TOGGLE_BRIEFER:
     {
-      if (this->adv_settings_strct.flag_firstTimeOpenBriefer)
+      if (missionx::adv_settings_strct.flag_firstTimeOpenBriefer)
       {
         // Initialize local day
-        this->adv_settings_strct.iClockDayOfYearPicked = dataref_manager::getLocalDateDays ();
-        this->adv_settings_strct.iClockHourPicked      = dataref_manager::getLocalHour ();
-        this->adv_settings_strct.flag_firstTimeOpenBriefer ^= 1;
+        missionx::adv_settings_strct.iClockDayOfYearPicked = dataref_manager::getLocalDateDays ();
+        missionx::adv_settings_strct.iClockHourPicked      = dataref_manager::getLocalHour ();
+        missionx::adv_settings_strct.flag_firstTimeOpenBriefer ^= 1;
 
         // v24.03.1
         missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::load_notes_info);
@@ -13369,7 +10698,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
     break;
     case missionx::mx_window_actions::ACTION_POST_TEMPLATE_LOAD_DISPLAY_IMGUI_GENERATE_TEMPLATES_IMAGES:
     {
-      this->strct_generate_template_layer.bFinished_loading_templates = true;
+      missionx::strct_generate_template_layer.bFinished_loading_templates = true;
     }
     break;
     case missionx::mx_window_actions::ACTION_GENERATE_RANDOM_MISSION:
@@ -13453,31 +10782,31 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
     break;
     case missionx::mx_window_actions::ACTION_FETCH_ILS_AIRPORTS:
     {
-      if (this->strct_ils_layer.fetch_ils_state == missionx::mxFetchState_enum::fetch_not_started)
+      if (missionx::strct_ils_layer.fetch_ils_state == missionx::mxFetchState_enum::fetch_not_started)
       {
         missionx::data_manager::table_ILS_rows_vec.clear ();
         missionx::data_manager::indexPointer_for_ILS_rows_tableVector.clear ();
 
-        this->strct_ils_layer.asyncFetchMsg_s.clear ();
-        this->strct_ils_layer.fetch_ils_state = missionx::mxFetchState_enum::fetch_in_process;
+        missionx::strct_ils_layer.asyncFetchMsg_s.clear ();
+        missionx::strct_ils_layer.fetch_ils_state = missionx::mxFetchState_enum::fetch_in_process;
 
-        missionx::data_manager::mFetchFutures.push_back (std::async (std::launch::async, missionx::data_manager::fetch_ils_rw_from_sqlite, &this->strct_ils_layer.navaid, &this->strct_ils_layer.filter_query_s, &this->strct_ils_layer.fetch_ils_state, &this->strct_ils_layer.asyncFetchMsg_s));
+        missionx::data_manager::mFetchFutures.push_back (std::async (std::launch::async, missionx::data_manager::fetch_ils_rw_from_sqlite, &missionx::strct_ils_layer.navaid, &missionx::strct_ils_layer.filter_query_s, &missionx::strct_ils_layer.fetch_ils_state, &missionx::strct_ils_layer.asyncFetchMsg_s));
       }
     }
     break;
     case missionx::mx_window_actions::ACTION_FETCH_NAV_INFORMATION:
     {
-      if (this->strct_ils_layer.fetch_nav_state == missionx::mxFetchState_enum::fetch_not_started)
+      if (missionx::strct_ils_layer.fetch_nav_state == missionx::mxFetchState_enum::fetch_not_started)
       {
-        this->strct_ils_layer.mapNavaidData.clear (); // clear container data before filling it
-        this->strct_ils_layer.asyncFetchMsg_s.clear (); // clear the progress message from the thread
+        missionx::strct_ils_layer.mapNavaidData.clear (); // clear container data before filling it
+        missionx::strct_ils_layer.asyncFetchMsg_s.clear (); // clear the progress message from the thread
         this->asyncSecondMessageLine.clear (); // clear the second type of message from the thread
 
-        this->strct_ils_layer.fetch_metar_state = missionx::mxFetchState_enum::fetch_not_started; // we will call metar after Nav info will be fetched.
-        this->strct_ils_layer.fetch_nav_state   = missionx::mxFetchState_enum::fetch_in_process; // change the state of the "fetch" task to "in progress"
-        this->strct_ils_layer.planePos          = missionx::dataref_manager::getPlanePointLocationThreadSafe (); // get plane position for distance calculations
+        missionx::strct_ils_layer.fetch_metar_state = missionx::mxFetchState_enum::fetch_not_started; // we will call metar after Nav info will be fetched.
+        missionx::strct_ils_layer.fetch_nav_state   = missionx::mxFetchState_enum::fetch_in_process; // change the state of the "fetch" task to "in progress"
+        missionx::strct_ils_layer.planePos          = missionx::dataref_manager::getPlanePointLocationThreadSafe (); // get plane position for distance calculations
 
-        missionx::data_manager::mFetchFutures.push_back (std::async (std::launch::async, missionx::data_manager::fetch_nav_data_from_sqlite, &this->strct_ils_layer.mapNavaidData, &this->strct_ils_layer.sNavICAO, &this->strct_ils_layer.planePos, &this->strct_ils_layer.fetch_nav_state, &this->strct_ils_layer.asyncNavFetchMsg_s));
+        missionx::data_manager::mFetchFutures.push_back (std::async (std::launch::async, missionx::data_manager::fetch_nav_data_from_sqlite, &missionx::strct_ils_layer.mapNavaidData, &missionx::strct_ils_layer.sNavICAO, &missionx::strct_ils_layer.planePos, &missionx::strct_ils_layer.fetch_nav_state, &missionx::strct_ils_layer.asyncNavFetchMsg_s));
       }
     }
     break;
@@ -13509,13 +10838,13 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
       if (this->IsPoppedOut () == false && val_pause_in_2d && missionx::mxvr::vr_display_missionx_in_vr_mode == false) // v3.0.253.9.1 add more rules when to hide missionx main window
         this->execAction (missionx::mx_window_actions::ACTION_HIDE_WINDOW); // v3.0.219.3 fix bug where window was not displayed but mouse did not register right click actions.
 
-#ifndef RELEASE
+      #ifndef RELEASE
       missionx::Log::logDebugBO ("[imguiWinBriefer] Pressed Start Random Mission. Will call Load and Start Mission too."); // debug
-#endif
-      if (this->strct_generate_template_layer.last_picked_template_key.find (mxconst::get_XML_EXTENSION ()) != std::string::npos)
+      #endif
+      if (missionx::strct_generate_template_layer.last_picked_template_key.find (mxconst::get_XML_EXTENSION ()) != std::string::npos)
         missionx::data_manager::selectedMissionKey = mxconst::get_RANDOM_MISSION_DATA_FILE_NAME ();
       else
-        missionx::data_manager::selectedMissionKey = this->strct_generate_template_layer.last_picked_template_key + mxconst::get_XML_EXTENSION (); // lastSelectedTemplateKey holds the folder keyName so we ned to add the extension
+        missionx::data_manager::selectedMissionKey = missionx::strct_generate_template_layer.last_picked_template_key + mxconst::get_XML_EXTENSION (); // lastSelectedTemplateKey holds the folder keyName so we ned to add the extension
 
       missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::start_random_mission); // place action in Queue. Mission class will pick it and handle it.
 
@@ -13634,8 +10963,6 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
       // 1.2 if briefer is open - set brieferLayer to "inventory"
       // 1.3 if briefer in "Inventory" layer then close
 
-      // missionx::data_manager::prepareInventoryCopies(this->strct_flight_leg_info.externalInventoryName);
-
       this->strct_flight_leg_info.reset_inv_image_zoom (); // v3.0.303.5 reset all zoom indexes to "-1"
       this->strct_flight_leg_info.resetItemMove (); // v24.12.2
 
@@ -13738,8 +11065,6 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
         data_manager::internally_calculateAndStorePlaneWeight (data_manager::mapInventories[mxconst::get_ELEMENT_PLANE ()], true, missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i); // v3.0.213.3 set weight according to mission
       }
 
-      // missionx::Log::logDebugBO("return to flight_leg_info layer."); //
-      // this->execAction(mx_window_actions::ACTION_TOGGLE_BRIEFER); // v25.03.3 disable closing inventory back to leg info
     }
     break;
     case missionx::mx_window_actions::ACTION_SHOW_END_SUMMARY_LAYER:
@@ -13779,7 +11104,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
         if (this->m_ui_conv_screen->validate_conversion_table(this->m_ui_conv_screen->strct_conv_layer.xConvMainNode, missionx::data_manager::map_tableOfParsedFpln))
       {
         // v3.303.14 added advance weather/time settings
-        this->addAdvancedSettingsPropertiesBeforeGeneratingRandomMission ();
+        missionx::addAdvancedSettingsPropertiesBeforeGeneratingRandomMission ();
 
         missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::generate_mission_from_littlenavmap_fpln);
         this->asyncSecondMessageLine.clear (); // v3.303.8 erase last flight plan string. This is important since once we generate a mission file it is also the random mission in the "load mission" screen.
@@ -13788,7 +11113,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
     break;
     case missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME: // v3.0.303.11
     {
-      this->generate_mission_date_based_on_user_preference (this->adv_settings_strct.iClockDayOfYearPicked, this->adv_settings_strct.iClockHourPicked, this->adv_settings_strct.iClockMinutesPicked, this->adv_settings_strct.flag_includeNightHours);
+      this->generate_mission_date_based_on_user_preference (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked, missionx::adv_settings_strct.flag_includeNightHours);
     }
     break;
     case missionx::mx_window_actions::ACTION_RESET_BRIEFER_POSITION: // v3.305.1
@@ -13799,13 +11124,13 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
     break;
     case missionx::mx_window_actions::ACTION_OPEN_NAV_LAYER: // v24025
     {
-      if (this->strct_ils_layer.layer_state != missionx::mx_layer_state_enum::success_can_draw)
+      if (missionx::strct_ils_layer.layer_state != missionx::mx_layer_state_enum::success_can_draw)
       {
-        this->strct_ils_layer.layer_state = missionx::mx_layer_state_enum::not_initialized;
+        missionx::strct_ils_layer.layer_state = missionx::mx_layer_state_enum::not_initialized;
         missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::imgui_check_presence_of_db_ils_data);
       }
 
-      this->strct_ils_layer.flagNavigatedFromOtherLayer = true;
+      missionx::strct_ils_layer.flagNavigatedFromOtherLayer = true;
       this->setLayer (missionx::uiLayer_enum::option_ils_layer);
     }
     break;

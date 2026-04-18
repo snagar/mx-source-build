@@ -12,7 +12,7 @@ namespace missionx {
 
 typedef struct trig_table_strct_
 {
-  static const int MAX_ARRAY = 10;
+  static constexpr int MAX_ARRAY = 10;
 
   bool flag_first_point_is_center_cbox{ false };
 
@@ -24,9 +24,9 @@ typedef struct trig_table_strct_
   int  iCurrentBuf{ 0 };
   char buffArray[MAX_ARRAY][512] = { { '\0' } }; // holds all trigger arrays. [0]=name(reserved)
 
-  std::string trig_type_s{ "" }; // type string
-  std::string trig_onGround_s{ "" }; // on ground string
-  std::string trig_name_s{ "" };
+  std::string trig_type_s; // type string
+  std::string trig_onGround_s; // on ground string
+  std::string trig_name_s;
 
   IXMLNode node_ptr{ IXMLNode::emptyIXMLNode };
   IXMLNode copyOfNode_ptr{ IXMLNode::emptyIXMLNode };
@@ -43,21 +43,22 @@ typedef struct trig_table_strct_
     trig_onGround_s.clear (); // on ground string
     trig_name_s.clear ();
 
-    for (size_t i = 0; i < 10; ++i)
+    // for (size_t i = 0; i < 10; ++i)
+    for (auto & i : buffArray)
     {
-      buffArray[i][0] = '\0'; // holds all trigger arrays
-      memset (buffArray[i], '\0', sizeof (buffArray[i]));
+      i[0] = '\0'; // holds all trigger arrays
+      memset (i, '\0', sizeof (i));
     }
 
     node_ptr = IXMLNode::emptyIXMLNode;
   }
 
   // reset buff
-  void resetBuff (int indx)
+  void resetBuff (const int in_index)
   {
-    assert (indx < MAX_ARRAY && "Tried to reset a cell not in array.");
+    assert (in_index < MAX_ARRAY && "Tried to reset a cell not in array.");
 
-    memset (buffArray[indx], '\0', sizeof (buffArray[indx]));
+    memset (buffArray[in_index], '\0', sizeof (buffArray[in_index]));
   }
 
   // get buff
@@ -65,19 +66,23 @@ typedef struct trig_table_strct_
   {
     assert (i < MAX_ARRAY && "Tried to access cell not in array.");
 
-    return std::string (buffArray[i]);
+    // return std::string(buffArray[i]);
+    return {buffArray[i]};
   }
   // set buff array
-  void setBuff (int indx, std::string inVal_s)
+  void setBuff (int in_indx, const std::string& inVal_s)
   {
-    if (indx < MAX_ARRAY)
+    if (in_indx < MAX_ARRAY)
     {
-      resetBuff (indx);
-      #ifdef IBM
-      memcpy_s (buffArray[indx], sizeof (buffArray[indx]), inVal_s.c_str (), (inVal_s.length () > sizeof (buffArray[indx]) ? sizeof (buffArray[indx]) : inVal_s.length ())); // we copy the memory based on which buffer do not exceeds the buffer.
-      #else
-      memcpy (buffArray[indx], inVal_s.c_str (), inVal_s.length ());
-      #endif
+      // resetBuff (indx);
+      // #ifdef IBM
+      // memcpy_s (buffArray[indx], sizeof (buffArray[indx]), inVal_s.c_str (), (inVal_s.length () > sizeof (buffArray[indx]) ? sizeof (buffArray[indx]) : inVal_s.length ())); // we copy the memory based on which buffer do not exceeds the buffer.
+      // #else
+      // memcpy (buffArray[indx], inVal_s.c_str (), inVal_s.length ());
+      // #endif
+
+      // v26.04.3
+      mxUtils::copy_string_to_buffer(inVal_s, buffArray[in_indx][0], sizeof(buffArray[in_indx]));
 
     } // end if in boundaries
 
@@ -116,20 +121,15 @@ private:
   // I am window number...
   const int myWinNum;
 
-  mx_setup_layer* strct_setup_layer;
-  mx_popup_adv_settings_strct* adv_settings_strct;
-
 public:
 // --------- Constructors ----------
 
   ui_conv_screen(const int left, const int top, const int right, const int bot, const XPLMWindowDecoration decoration, const XPLMWindowLayer layer
                 , const int &in_win_num
-                , mx_setup_layer* inout_strct_setup_layer
-                , mx_popup_adv_settings_strct* inout_adv_settings_strct)
+                )
                 : ImgWindow (left, top, right, bot, decoration, layer)
                   , myWinNum(in_win_num)
-                  , strct_setup_layer(inout_strct_setup_layer)
-                  , adv_settings_strct(inout_adv_settings_strct) {};
+                 {};
 
 
 // ----- virtual functions ----------------
@@ -189,16 +189,18 @@ public:
     std::map<std::string, std::string> mapFileList;
     std::vector<const char *>          vecFileList_char; // convert to
 
-    void set_conv_map_files (const std::map<std::string, std::string> inMapFileList)
+    void set_conv_map_files (const std::map<std::string, std::string>& inMapFileList)
     {
       mapFileList.clear ();
       mapFileList = inMapFileList;
       convert_map_files_to_const_char_vector ();
     }
+
     void convert_map_files_to_const_char_vector ()
     {
       vecFileList_char.clear ();
-      for (auto &[f, p] : mapFileList)
+      // for (auto &[f, p] : mapFileList)
+      for (const auto& f : mapFileList | std::views::keys)
       {
         vecFileList_char.emplace_back (f.c_str ());
       }
@@ -225,7 +227,7 @@ public:
 
     mx_trig_strct_ trigger;
 
-    void set_global_settings_into_buffer (IXMLNode &in_xGlobalSettings) // v3.305.1
+    void set_global_settings_into_buffer (const IXMLNode &in_xGlobalSettings) // v3.305.1
     {
       if (!in_xGlobalSettings.isEmpty ())
       {
@@ -236,11 +238,15 @@ public:
           data_4096_s += render.getString (in_xGlobalSettings.getChildNode (i1));
         }
 
-        #ifdef IBM
-        memcpy_s (buff_globalSettings, sizeof (buff_globalSettings), data_4096_s.c_str (), sizeof (buff_globalSettings) - 1);
-        #else
-        memcpy (buff_globalSettings, data_4096_s.c_str (), sizeof (buff_globalSettings) - 1);
-        #endif
+        // #ifdef IBM
+        // memcpy_s (buff_globalSettings, sizeof (buff_globalSettings), data_4096_s.c_str (), sizeof (buff_globalSettings) - 1);
+        // #else
+        // memcpy (buff_globalSettings, data_4096_s.c_str (), sizeof (buff_globalSettings) - 1);
+        // #endif
+
+        // v26.04.3
+        mxUtils::copy_string_to_buffer(data_4096_s, buff_globalSettings[0], sizeof(buff_globalSettings));
+
 
         xSavedGlobalSettingsNode = in_xGlobalSettings.deepCopy ();
       }

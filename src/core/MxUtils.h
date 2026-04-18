@@ -622,6 +622,7 @@ public:
   static std::mt19937 create_random_engine();
 
   // Copy a string to aan array buffer
+  static void reset_buffer (char& out_value_array, size_t in_value_array_size, const char &in_reset_char = '\0');
   static size_t copy_string_to_buffer (const std::string &in_source, char& out_value_array, const size_t in_value_array_size);
 
 };

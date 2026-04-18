@@ -842,8 +842,8 @@ missionx::OptimizeAptDat::prepare_sqlite_db_tables(strct_thread_state* inThreadS
 WITH helipads_view as (select icao_id, count(1) as helipad_counter from xp_helipads group by icao_id),
      oilrig_view as (select t1.icao_id, t1.icao, 1 as is_oilrig  from xp_helipads t1,  xp_ap_metadata t2 where t1.icao_id = t2.icao_id  and t2.key_col = 'is_oilrig' and t2.val_col = '1'  group by t1.icao_id, t1.icao),
      heli_ramps_view as (select icao_id, count(1) as ramp_helis from xp_ap_ramps where for_planes like '%helos%' or lower(ramp_uq_name) like '%heli%' group by icao_id),
-     plane_ramps_view as (select icao_id, count(1) as ramp_planes from xp_ap_ramps where (for_planes <> 'helos' or for_planes is null) and lower(ramp_uq_name) not like '%heli%' and lower(ramp_uq_name) not like '%hold short%' group by icao_id),
-     props_ramps_view as (select icao_id, count(1) as ramp_planes from xp_ap_ramps where for_planes like '%props%' group by icao_id),
+     plane_ramps_view as (select icao_id, count(1) as ramp_planes from xp_ap_ramps where (for_planes <> '|helos|' or for_planes is null) and lower(ramp_uq_name) not like '%heli%' and lower(ramp_uq_name) not like '%hold%' group by icao_id),
+     props_ramps_view as (select icao_id, count(1) as ramp_planes from xp_ap_ramps where for_planes like '%|props|%' group by icao_id),
      turboprop_ramps_view as (select icao_id, count(1) as ramp_planes from xp_ap_ramps where for_planes like '%turboprops%' group by icao_id),
      jets_heavy_ramps_view as (select icao_id, count(1) as ramp_planes from xp_ap_ramps where for_planes like '%jets%' or for_planes like '%heavy%' group by icao_id),
      fighter_ramps_view as (select icao_id, count(1) as ramp_planes from xp_ap_ramps where for_planes like '%fighter%' group by icao_id),
@@ -892,7 +892,7 @@ SELECT t1.icao_id,
 SELECT icao_id, icao, ramp_lat as lat, ramp_lon as lon, ramp_heading_true heading, ramp_uq_name as name, for_planes, icao_width_code, operation_type
      -- All the last "OR" logic in each case statements is for compatibility with old scenery files codes and format. We try to guess the ramp type
      , case when (instr( lower(IFNULL(for_planes,'')), 'helos') > 0) or (instr( lower(IFNULL(ramp_uq_name,'')), 'heli') > 0) then 1  else 0 END as helos
-     , case when instr( lower(IFNULL(for_planes,'')), 'props') > 0 or  (instr( lower(IFNULL(ramp_uq_name,'')), 'general') > 0) then 1 else 0 END as props
+     , case when instr( lower(IFNULL(for_planes,'')), '|props|') > 0 or  (instr( lower(IFNULL(ramp_uq_name,'')), 'general') > 0) then 1 else 0 END as props
      , case when instr( lower(IFNULL(for_planes,'')), 'turboprops') > 0 then 1 else 0 END as turboprops
      , case when instr( lower(IFNULL(for_planes,'')), 'jet') > 0 then 1 else 0 END as jet
      , case when instr( lower(IFNULL(for_planes,'')), 'heavy') > 0  then 1 else 0 END as heavy
@@ -939,7 +939,7 @@ missionx::OptimizeAptDat::sqlite_post_tables_copy(missionx::dbase* inDB_ptr)
   inDB_ptr->execute_stmt("insert into dual ( feature_version ) values ( " + mxUtils::formatNumber<int>(missionx::MX_FEATURES_VERSION) + " ) ");
 
 
-          // THE LENGTH OF THE QUERY IS IMPORTANT - Try to stay below 1024 characters
+  // THE LENGTH OF THE QUERY IS IMPORTANT - Try to stay below 1024 characters
   // -- delete all duplicate ICAOs based on the distance between duplicate ICAOs or if they are in same major coordinates like (40, -74)
   // Currently min distance is 5 nautical miles
   // -- Remove the higher icao_id rows since their scenery apt.dat is lower in the scenery hierarchy
@@ -1165,6 +1165,15 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(strct_thread_state* inThreadSt
             prep_stmt_key_s = "ins_xp_ap_ramps_1300";
             if (!list_of_fields.empty())
             {
+
+              // add "|" at the start and end of the field "for_planes"
+              for (auto &field: list_of_fields)
+                if (field.col_name == "for_planes")
+                {
+                  field.value_s = fmt::format("|{}|", field.value_s);
+                  break; // exit loop
+                }
+
               db.bind_and_execute_ins_stmt(prep_stmt_key_s, " xp_ap_ramps ", list_of_fields);
             }
           }

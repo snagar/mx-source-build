@@ -2618,7 +2618,8 @@ RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_targe
       case missionx::mx_plane_types_enum::plane_type_ga_floats:
       case missionx::mx_plane_types_enum::plane_type_ga:
       case missionx::mx_plane_types_enum::plane_type_props:
-        ramp_filter_stmt_s = " and props + turboprops > 0 "; // make sure only props locations are picked exclude "fighter" ramps
+      case missionx::mx_plane_types_enum::plane_type_prop_floats:
+        ramp_filter_stmt_s = " and props > 0 "; // make sure only props locations are picked exclude "fighter" ramps
         break;
       case missionx::mx_plane_types_enum::plane_type_turboprops:
         ramp_filter_stmt_s = " and props + turboprops > 0 "; // make sure only airports are being picked with at list 1 ramp for planes (not heliport or sea airports)
@@ -2655,8 +2656,8 @@ RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_targe
       if (local_plane_type_enum_to_search != missionx::mx_plane_types_enum::plane_type_fighter)
         ramp_filter_stmt_s += " and fighters = 0 ";
 
-      // const std::string select_s     = "select * from ramps_vu where 1 = 1 and icao_id = " + ap_row["icao_id"];
-      const std::string select_s     = fmt::format("select * from ramps_vu where 1 = 1 and icao_id = {} ", inout_target_navaid.icao_id);
+      // v26.04.3 filter out "ramp holding" as a starting position or end position.
+      const std::string select_s     = fmt::format("select * from ramps_vu where 1 = 1 and lower(name) not like '%hold%' and icao_id = {} ", inout_target_navaid.icao_id);
       const std::string filter_ramps = ramp_filter_stmt_s;
       const std::string sql_ramp     = select_s + filter_ramps + " ORDER BY RANDOM() limit 1";
 

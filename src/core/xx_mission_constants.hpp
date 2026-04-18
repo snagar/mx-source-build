@@ -30,26 +30,26 @@ namespace missionx
 
 #define ENABLE_GATHER_RANDOM_AIRPORTS_FROM_MAIN_THREAD_CALL 0
 
-constexpr static const int MX_FEATURES_VERSION = 20260301; // Added min/max rw length to airports_vu // 20250501; //20241212; //20230917; // 330491; //302564;  // added SETUP_LOCK_OVERPASS_URL_TO_USER_PICK
+inline constexpr const int MX_FEATURES_VERSION = 20260301; // Added min/max rw length to airports_vu // 20250501; //20241212; //20230917; // 330491; //302564;  // added SETUP_LOCK_OVERPASS_URL_TO_USER_PICK
 
 #define SPECIAL_BUILD ""
 
-inline constexpr static auto PLUGIN_VER_MAJOR                  = "26"; // year
-inline constexpr static auto PLUGIN_VER_MINOR                  = "04"; // month
-inline constexpr static auto PLUGIN_VER_SUB                    = "2"; // sub-version
-inline constexpr static auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
-inline constexpr static auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
+inline constexpr auto PLUGIN_VER_MAJOR                  = "26"; // year
+inline constexpr auto PLUGIN_VER_MINOR                  = "04"; // month
+inline constexpr auto PLUGIN_VER_SUB                    = "3"; // sub-version
+inline constexpr auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
+inline constexpr auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 
 
 #ifdef RELEASE
-constexpr static auto PLUGIN_DEV_BUILD = "";
+inline constexpr auto PLUGIN_DEV_BUILD = "";
 #else
-constexpr static auto PLUGIN_DEV_BUILD = "D"; // The char "D", won't interfere with plugin version number when we write it to the preference file.
+inline constexpr auto PLUGIN_DEV_BUILD = "D"; // The char "D", won't interfere with plugin version number when we write it to the preference file.
 #endif
 
-constexpr static int XP12_VERSION_NO = 120000;
-constexpr static int XP11_COMPATIBILITY = 11;
-constexpr static int XP12_COMPATIBILITY = 12;
+inline constexpr int XP12_VERSION_NO = 120000;
+inline constexpr int XP11_COMPATIBILITY = 11;
+inline constexpr int XP12_COMPATIBILITY = 12;
 
 // const static auto PLUGIN_VERSION_S = fmt::format("{} {} {}", PLUGIN_VER_MAJOR, PLUGIN_VER_MINOR, PLUGIN_REVISION_S).c_str ();
 
@@ -61,98 +61,98 @@ constexpr static int XP12_COMPATIBILITY = 12;
   const static auto FULL_VERSION_ABOUT = std::string(PLUGIN_VER_MAJOR).append(".").append(PLUGIN_VER_MINOR).append(".").append(PLUGIN_VER_SUB).append( PLUGIN_DEV_BUILD).append(" ").append(PLUGIN_VER_BUILD_DETAILS);
 
 
-inline constexpr static auto APP_NAME = "Mission-X Plugin";
+inline constexpr auto APP_NAME = "Mission-X Plugin";
 
-inline constexpr static auto PLUGIN_DIR_NAME     = "missionx";
-inline constexpr static auto PLUGIN_FILE_VER     = "312"; // v24.12.2
-inline constexpr static auto PLUGIN_FILE_VER_XP11= "301";
-inline constexpr static auto RANDOM_TEMPLATE_VER = "301";
+inline constexpr auto PLUGIN_DIR_NAME     = "missionx";
+inline constexpr auto PLUGIN_FILE_VER     = "312"; // v24.12.2
+inline constexpr auto PLUGIN_FILE_VER_XP11= "301";
+inline constexpr auto RANDOM_TEMPLATE_VER = "301";
 
 const static std::list<int> lsSupportedMissionFileVersions = { 301,312 }; // v24.12.2 used when reading missions files.
 
-inline constexpr static auto TEXTURE_DIR_NAME            = "bitmap";
-inline constexpr static auto XPLANE_SCENERY_INI_FILENAME = "scenery_packs.ini";
-inline constexpr static auto SCENERY_PACK_               = "SCENERY_PACK ";
-inline constexpr static auto CARGO_DATA_FILE             = "cargo_data.xml";
+inline constexpr auto TEXTURE_DIR_NAME            = "bitmap";
+inline constexpr auto XPLANE_SCENERY_INI_FILENAME = "scenery_packs.ini";
+inline constexpr auto SCENERY_PACK_               = "SCENERY_PACK ";
+inline constexpr auto CARGO_DATA_FILE             = "cargo_data.xml";
 
-inline constexpr static int MAX_COORDS (360 * 180);
+inline constexpr int MAX_COORDS (360 * 180);
 
 // GLOBAL CONSTANTS
-inline static constexpr double PI  = 3.1415926535897932384626433832795; // from windows calculator
-inline static constexpr double PI2 = 6.283185307179586476925286766559;  // FOR DROPPING calculation
+inline constexpr double PI  = 3.1415926535897932384626433832795; // from windows calculator
+inline constexpr double PI2 = 6.283185307179586476925286766559;  // FOR DROPPING calculation
 
 // static double Gravity=-9.81;
 
 // 21638.7 Nautical Miles; 40075.0 km  24901.5 miles
-inline static constexpr float  EQUATOR_LEN_NM                  = 21638.7f;
-inline static constexpr float  EARTH_AVG_RADIUS_NM             = 3440.07f;
-inline static constexpr float  EARTH_RADIUS_M                  = 6378145.0f;
-inline static constexpr double LOWEST_GROUND_ELEV_FOR_TRIGGERS = -3000.0; // v3.0.253.5 used in cases we need to configure triggers with "--" or "---" signs
+inline constexpr float  EQUATOR_LEN_NM                  = 21638.7f;
+inline constexpr float  EARTH_AVG_RADIUS_NM             = 3440.07f;
+inline constexpr float  EARTH_RADIUS_M                  = 6378145.0f;
+inline constexpr double LOWEST_GROUND_ELEV_FOR_TRIGGERS = -3000.0; // v3.0.253.5 used in cases we need to configure triggers with "--" or "---" signs
 
 
-inline static constexpr float RadToDeg             = (float)(180.0f / PI); // 57.295779513082320876798154814105
-inline static constexpr float DegToRad             = 1.0f / RadToDeg;      // 0.01745329251994329576923690768489
-inline static constexpr float feet2meter           = 0.3048f;              // 1.0f / 3.28083f;
-inline static constexpr float meter2feet           = 3.28083f;
-inline static constexpr float meter2nm             = 0.000539957f;
-inline static constexpr float nm2meter             = 1852.0f;
-inline static constexpr float nm2km                = 1.852f;
-inline static constexpr float km2nm                = 0.539957f;
-inline static constexpr float OneNmh2meterInSecond = 0.5144444f;
+inline constexpr float RadToDeg             = (float)(180.0f / PI); // 57.295779513082320876798154814105
+inline constexpr float DegToRad             = 1.0f / RadToDeg;      // 0.01745329251994329576923690768489
+inline constexpr float feet2meter           = 0.3048f;              // 1.0f / 3.28083f;
+inline constexpr float meter2feet           = 3.28083f;
+inline constexpr float meter2nm             = 0.000539957f;
+inline constexpr float nm2meter             = 1852.0f;
+inline constexpr float nm2km                = 1.852f;
+inline constexpr float km2nm                = 0.539957f;
+inline constexpr float OneNmh2meterInSecond = 0.5144444f;
 constexpr double              NM_TO_DEG_LAT        = (1.0 / 60.0); // v25.06.1
 
-inline static constexpr float seconds2minutes_f = 0.0166f; // v3.305.3
+inline constexpr float seconds2minutes_f = 0.0166f; // v3.305.3
 
-inline static constexpr float fpm2ms  = 0.005f; // fpm * feetPerMin2MeterSec = meters per seconds
+inline constexpr float fpm2ms  = 0.005f; // fpm * feetPerMin2MeterSec = meters per seconds
 
-inline static constexpr float kmh2fts = 0.911344f; // v3.0.202
-inline static constexpr float kmh2mts = 0.27777778f; // v26.03.1
-inline static constexpr float fts2kmh = 1.09728f;  // v3.0.202
-inline static constexpr float mts2kmh = 3.6f;  // v3.0.202
+inline constexpr float kmh2fts = 0.911344f; // v3.0.202
+inline constexpr float kmh2mts = 0.27777778f; // v26.03.1
+inline constexpr float fts2kmh = 1.09728f;  // v3.0.202
+inline constexpr float mts2kmh = 3.6f;  // v3.0.202
 
 
-inline static constexpr int   OUT_OF_BOUNDING_ALERT_TIMER_SEC = 30; // 30 sec. alert will broadcast every 30 seconds
-inline static constexpr float MISSIONX_DOUBLE_CLICK           = 0.9f;
+inline constexpr int   OUT_OF_BOUNDING_ALERT_TIMER_SEC = 30; // 30 sec. alert will broadcast every 30 seconds
+inline constexpr float MISSIONX_DOUBLE_CLICK           = 0.9f;
 
 inline const static std::string EMPTY_STRING;
 inline const static std::string PREF_FILE_NAME = "missionx_pref.xml";
 
-inline static constexpr int BRIEFER_DESC_CHAR_WIDTH = 70;
+inline constexpr int BRIEFER_DESC_CHAR_WIDTH = 70;
 
 // Global Char Buffer for Login
-inline static constexpr int LOG_BUFF_SIZE = 2048;
+inline constexpr int LOG_BUFF_SIZE = 2048;
 [[maybe_unused]]
 inline static char      LOG_BUFF[LOG_BUFF_SIZE];
 
 
-inline static constexpr float    DEGREES_IN_CIRCLE    = 360.0f;
-inline static constexpr intptr_t DAYS_IN_YEAR_365      = 365;
-inline static constexpr intptr_t SECONDS_IN_1HOUR_3600 = 3600;
-inline static constexpr intptr_t SECONDS_IN_1MINUTE    = 60;
-inline static constexpr float    SECONDS_IN_1MINUTE_F  = 60.0f;
-inline static constexpr intptr_t SECONDS_IN_1DAY       = 86400;
-inline static constexpr intptr_t HOURS_IN_A_DAY_24     = 24;
+inline constexpr float    DEGREES_IN_CIRCLE    = 360.0f;
+inline constexpr intptr_t DAYS_IN_YEAR_365      = 365;
+inline constexpr intptr_t SECONDS_IN_1HOUR_3600 = 3600;
+inline constexpr intptr_t SECONDS_IN_1MINUTE    = 60;
+inline constexpr float    SECONDS_IN_1MINUTE_F  = 60.0f;
+inline constexpr intptr_t SECONDS_IN_1DAY       = 86400;
+inline constexpr intptr_t HOURS_IN_A_DAY_24     = 24;
 
-inline static constexpr double NEARLY_ZERO = 0.0000000001; // dataref_manager
+inline constexpr double NEARLY_ZERO = 0.0000000001; // dataref_manager
 
 
 #ifdef DEBUG_WRONG_TERRAIN_ELEV
 inline const static unsigned int NUM_CIRCLE_POINTS = 25; // v3.0.253.1
 #else
-inline static constexpr unsigned int NUM_CIRCLE_POINTS        = 25; // v3.0.253.7 decreased from 359; // v3.0.202a
-inline static constexpr unsigned int NUM_CIRCLE_POINTS_3D_OBJ = 8;  // v3.0.253.7 decreased from 359; // v3.0.202a
+inline constexpr unsigned int NUM_CIRCLE_POINTS        = 25; // v3.0.253.7 decreased from 359; // v3.0.202a
+inline constexpr unsigned int NUM_CIRCLE_POINTS_3D_OBJ = 8;  // v3.0.253.7 decreased from 359; // v3.0.202a
 
-inline static constexpr size_t MAX_MX_PAD_MESSAGES = 20; // v3.0.110
+inline constexpr size_t MAX_MX_PAD_MESSAGES = 20; // v3.0.110
 
 // v25.08.1
-constexpr static int PICKED_IFR = 0;
-constexpr static int PICKED_VFR = 1;
+inline constexpr int PICKED_IFR = 0;
+inline constexpr int PICKED_VFR = 1;
 
-constexpr static int PICKED_GLOBE = 1;
-constexpr static int PICKED_HALF_GLOBE = 2;
-constexpr static int PICKED_QUARTER_GLOBE = 3;
-constexpr static int PICKED_LOCAL_REGION_GLOBE = 4;
-constexpr static int PICKED_IN_MY_AREA = 5; // v25.09.2 dsf +/- 1 relative to plane
+inline constexpr int PICKED_GLOBE = 1;
+inline constexpr int PICKED_HALF_GLOBE = 2;
+inline constexpr int PICKED_QUARTER_GLOBE = 3;
+inline constexpr int PICKED_LOCAL_REGION_GLOBE = 4;
+inline constexpr int PICKED_IN_MY_AREA = 5; // v25.09.2 dsf +/- 1 relative to plane
 
 
 #endif

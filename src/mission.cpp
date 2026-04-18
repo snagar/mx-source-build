@@ -864,20 +864,20 @@ missionx::Mission::init()
 //     // {
 //     //
 //     //   float fScale = static_cast<float> (Utils::getNodeText_type_1_5<double> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE (), (double)mxconst::DEFAULT_BASE_FONT_SCALE)); // default scale size
-//     //   if (fScale < missionx::Mission::uiImGuiBriefer->strct_setup_layer.fFontMinScaleSize || fScale > missionx::Mission::uiImGuiBriefer->strct_setup_layer.fFontMaxScaleSize)
+//     //   if (fScale < missionx::missionx::strct_setup_layer.fFontMinScaleSize || fScale > missionx::missionx::strct_setup_layer.fFontMaxScaleSize)
 //     //     fScale = mxconst::DEFAULT_BASE_FONT_SCALE; // default size = no change in pixel scale
 //     //
-//     //   Mission::uiImGuiBriefer->strct_setup_layer.fPreferredFontScale = fScale;
+//     //   missionx::strct_setup_layer.fPreferredFontScale = fScale;
 //     // }
 //     //
-//     // Mission::uiImGuiBriefer->strct_setup_layer.bPlaceMarkersAwayFromTarget =
+//     // missionx::strct_setup_layer.bPlaceMarkersAwayFromTarget =
 //     //   Utils::getNodeText_type_1_5<bool>(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET(), false); // display target away from target
 //     //
 //     // Mission::uiImGuiBriefer->set_vecOverpassUrls_char(missionx::data_manager::vecOverpassUrls); // v3.0.255.4.1 initialize overpass url from conf file
 //     //
 //     // // v3.303.8.3 add authorization key to the Briefer screen
 //     // const std::string authKey_s = Utils::getNodeText_type_6(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY(), "");
-//     // std::memcpy(missionx::Mission::uiImGuiBriefer->strct_ext_layer.buf_authorization, authKey_s.substr(0, 255).c_str(), 255); // copy no more than 255 characters because our buffer is 256 in size
+//     // std::memcpy(missionx::missionx::strct_ext_layer.buf_authorization, authKey_s.substr(0, 255).c_str(), 255); // copy no more than 255 characters because our buffer is 256 in size
 //   } // end if uiImGuiBriefer was init
 //
 // } // initImguiParametersAtPluginsStart
@@ -1182,7 +1182,8 @@ missionx::Mission::START_MISSION()
     missionx::data_manager::write_fpln_to_external_folder(map_fms_entries); // v3.0.241.2
 
     // v24.12.2 if-init-statement cLion
-    if (const bool val_pause_in_2d = Utils::getNodeText_type_1_5<bool>(system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_PAUSE_IN_2D(), mxconst::DEFAULT_AUTO_PAUSE_IN_2D); missionx::mxvr::vr_display_missionx_in_vr_mode || Mission::uiImGuiBriefer->IsPoppedOut() || (missionx::mxvr::vr_display_missionx_in_vr_mode == false && val_pause_in_2d == false)) // v3.0.253.9.1 do not hide briefer in 2D mode always
+    if (const bool val_pause_in_2d = Utils::getNodeText_type_1_5<bool>(system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_PAUSE_IN_2D(), mxconst::DEFAULT_AUTO_PAUSE_IN_2D)
+      ; missionx::mxvr::vr_display_missionx_in_vr_mode || Mission::uiImGuiBriefer->IsPoppedOut() || (missionx::mxvr::vr_display_missionx_in_vr_mode == false && val_pause_in_2d == false)) // v3.0.253.9.1 do not hide briefer in 2D mode always
       Mission::uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_SHOW_WINDOW);                                                              // keep window open. Do not hide it
     else
       Mission::uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_HIDE_WINDOW); // fix bug where window was not displayed but mouse did not register the right click actions.
@@ -1680,7 +1681,7 @@ missionx::Mission::flc()
           data_manager::strct_currentLegStats4UIDisplay.vecgForce15Meters.emplace_back(data_manager::gather_stats.get_stats_object().gforce_normal); // store gForce data
         }
 
-        if (missionx::data_manager::strct_sceneryOrPlaneLoadState.getCanPluginContinueEvaluation())
+        if (missionx::data_manager::strct_mx_xplane_metadata.getCanPluginContinueEvaluation())
           Mission::flc_legs();
 
 
@@ -1854,9 +1855,12 @@ missionx::Mission::flc_threads()
 
     missionx::data_manager::flag_generate_engine_is_running = false;
 
-    Mission::uiImGuiBriefer->flag_generatedRandomFile_success = false; // we should remove this flag, and only use "missionx::data_manager::flag_generate_engine_is_running"
-    Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey.clear();              // reset and hide generate file button
-    Mission::uiImGuiBriefer->strct_generate_template_layer.last_picked_template_key.clear();          // reset and hide generate file button
+    missionx::flag_generatedRandomFile_success = false; // we should remove this flag, and only use "missionx::data_manager::flag_generate_engine_is_running"
+    missionx::strct_generate_template_layer.selectedTemplateKey.clear();              // reset and hide generate file button
+    missionx::strct_generate_template_layer.last_picked_template_key.clear();          // reset and hide generate file button
+    //Mission::uiImGuiBriefer->flag_generatedRandomFile_success = false; // we should remove this flag, and only use "missionx::data_manager::flag_generate_engine_is_running"
+    //Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey.clear();              // reset and hide generate file button
+    //Mission::uiImGuiBriefer->strct_generate_template_layer.last_picked_template_key.clear();          // reset and hide generate file button
 
     missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::enable_generator_menu);
 
@@ -1867,7 +1871,8 @@ missionx::Mission::flc_threads()
     if (RandomEngine::random_thread_state.flagIsActive && !RandomEngine::random_thread_state.flagThreadDoneWork)
     {
       missionx::data_manager::flag_generate_engine_is_running   = true;
-      Mission::uiImGuiBriefer->flag_generatedRandomFile_success = false; // we should remove this flag, and only use "missionx::data_manager::flag_generate_engine_is_running"
+      //Mission::uiImGuiBriefer->flag_generatedRandomFile_success = false; // we should remove this flag, and only use "missionx::data_manager::flag_generate_engine_is_running"
+      missionx::flag_generatedRandomFile_success = false; // we should remove this flag, and only use "missionx::data_manager::flag_generate_engine_is_running"
 
       missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::disable_generator_menu);
     }
@@ -1887,7 +1892,7 @@ missionx::Mission::flc_threads()
         RandomEngine::random_thread_state.init();
         missionx::data_manager::flag_generate_engine_is_running = false;
 
-        Mission::uiImGuiBriefer->setMessage(fmt::format("Finished Generating mission file. [Destinations: {}] Based on \"{}\"", this->engine.get_num_of_flight_legs(), Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey ),  8);
+        Mission::uiImGuiBriefer->setMessage(fmt::format("Finished Generating mission file. [Destinations: {}] Based on \"{}\"", this->engine.get_num_of_flight_legs(), missionx::strct_generate_template_layer.selectedTemplateKey ),  8);
 
         if (missionx::data_manager::getGeneratedFromLayer() == missionx::uiLayer_enum::option_external_fpln_layer )
           Mission::uiImGuiBriefer->asyncSecondMessageLine.clear(); // Do not display Flight Plan in "option_external_fpln_layer" layer since we know the route.
@@ -1897,7 +1902,7 @@ missionx::Mission::flc_threads()
         Log::logMsg(Mission::uiImGuiBriefer->asyncSecondMessageLine); // v3.0.255.5 added flight plan to log
 
         // v3.0.223.1 add briefing information
-        if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && !Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey.empty()) //
+        if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && !missionx::strct_generate_template_layer.selectedTemplateKey.empty()) //
         {
           IXMLNode xBriefer = this->engine.getBrieferNode();
           if (!xBriefer.isEmpty())
@@ -1910,22 +1915,23 @@ missionx::Mission::flc_threads()
               {
 
                 //// set Mission Briefer Info for random
-                if (Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey.find(mxconst::get_XML_EXTENSION()) !=
+                if (missionx::strct_generate_template_layer.selectedTemplateKey.find(mxconst::get_XML_EXTENSION()) !=
                     std::string::npos) // file ends with XML (means predefined template and not based on "template mission folder" file which ends with no extension.
                 {
-                  if (Utils::isElementExists(data_manager::mapBrieferMissionList, mxconst::get_RANDOM_MISSION_DATA_FILE_NAME()))
+                  if (data_manager::mapBrieferMissionList.contains( mxconst::get_RANDOM_MISSION_DATA_FILE_NAME()) )
                   {
                     data_manager::mapBrieferMissionList[mxconst::get_RANDOM_MISSION_DATA_FILE_NAME()].setBrieferDescription(desc_s);
                   }
                   // v3.0.251.1 also add the description to the original BrieferInfo
-                  if (Utils::isElementExists(data_manager::mapBrieferMissionList, Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey))
+                  if (data_manager::mapBrieferMissionList.contains( missionx::strct_generate_template_layer.selectedTemplateKey))
                   {
-                    data_manager::mapBrieferMissionList[Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey].setBrieferDescription(desc_s);
+                    data_manager::mapBrieferMissionList[missionx::strct_generate_template_layer.selectedTemplateKey].setBrieferDescription(desc_s);
                   }
                 }
-                else if (Utils::isElementExists(data_manager::mapBrieferMissionList, (Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey + mxconst::get_XML_EXTENSION())))
+                else if (auto key = missionx::strct_generate_template_layer.selectedTemplateKey + mxconst::get_XML_EXTENSION();
+                  data_manager::mapBrieferMissionList.contains (key))
                 {
-                  data_manager::mapBrieferMissionList[(Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey + mxconst::get_XML_EXTENSION())].setBrieferDescription(desc_s);
+                  data_manager::mapBrieferMissionList[(missionx::strct_generate_template_layer.selectedTemplateKey + mxconst::get_XML_EXTENSION())].setBrieferDescription(desc_s);
                 }
                 else
                   Log::logMsgWarn("Failed to write generated mission description into BrieferInfo !!!\n" + desc_s);
@@ -1940,9 +1946,9 @@ missionx::Mission::flc_threads()
         }
 
 
-        Mission::uiImGuiBriefer->flag_generatedRandomFile_success = true;
-        Mission::uiImGuiBriefer->strct_generate_template_layer.last_picked_template_key          = Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey; // reset and hide generate file button
-        Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey.clear();                                                     // reset and hide generate file button after successful creation
+        missionx::flag_generatedRandomFile_success = true;
+        missionx::strct_generate_template_layer.last_picked_template_key          = missionx::strct_generate_template_layer.selectedTemplateKey; // reset and hide generate file button
+        missionx::strct_generate_template_layer.selectedTemplateKey.clear();                                                     // reset and hide generate file button after successful creation
 
         missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::enable_generator_menu);
 
@@ -4409,19 +4415,19 @@ missionx::Mission::flcPRE()
 
         assert(Mission::uiImGuiBriefer && "uiImGuiBriefer was NOT initialized. Fix initialization in plugin.cpp");
 
-        if (Utils::isElementExists(missionx::data_manager::mapGenerateMissionTemplateFiles, Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey)
-                                  || (Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey) == mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI())
+        if (missionx::data_manager::mapGenerateMissionTemplateFiles.contains( missionx::strct_generate_template_layer.selectedTemplateKey )
+                                  || (missionx::strct_generate_template_layer.selectedTemplateKey) == mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI())
         {
-          if (Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey == mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI())
+          if (missionx::strct_generate_template_layer.selectedTemplateKey == mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI())
           {
-            bool bTemplateExists = Utils::isElementExists(missionx::data_manager::mapGenerateMissionTemplateFiles, Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey);
+            bool bTemplateExists = missionx::data_manager::mapGenerateMissionTemplateFiles.contains( missionx::strct_generate_template_layer.selectedTemplateKey );
 
             if (!bTemplateExists) // try to load the missing template
               bTemplateExists = missionx::data_manager::find_and_read_template_file(mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI());
 
             // Initialize RandomEngine template pointer, base on bTemplateExists
             if (bTemplateExists) // if we were able to load the template file or Template exists in mapGenerateMissionTemplateFiles
-              missionx::RandomEngine::working_tempFile_ptr = &missionx::data_manager::mapGenerateMissionTemplateFiles[Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey];
+              missionx::RandomEngine::working_tempFile_ptr = &missionx::data_manager::mapGenerateMissionTemplateFiles[missionx::strct_generate_template_layer.selectedTemplateKey];
             else
               missionx::RandomEngine::working_tempFile_ptr = &missionx::data_manager::user_driven_template_info; // use a dummy template file, to fail the RandomEngine later on.
 
@@ -4430,19 +4436,19 @@ missionx::Mission::flcPRE()
           }
           else
           {
-            missionx::data_manager::mapGenerateMissionTemplateFiles[Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey].prepareSentenceBasedOnString(""); // v3.303.14 no need for length values //, 1, 1); // the line width and maxLines values are dummy since empty string will be ignored by the function.
-            missionx::RandomEngine::working_tempFile_ptr          = &missionx::data_manager::mapGenerateMissionTemplateFiles[Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey];
+            missionx::data_manager::mapGenerateMissionTemplateFiles[missionx::strct_generate_template_layer.selectedTemplateKey].prepareSentenceBasedOnString(""); // v3.303.14 no need for length values //, 1, 1); // the line width and maxLines values are dummy since empty string will be ignored by the function.
+            missionx::RandomEngine::working_tempFile_ptr          = &missionx::data_manager::mapGenerateMissionTemplateFiles[missionx::strct_generate_template_layer.selectedTemplateKey];
             engine.flag_rules_defined_by_user_ui = false;
           }
 
-          if (engine.exec_generate_mission_thread(Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey))
+          if (engine.exec_generate_mission_thread(missionx::strct_generate_template_layer.selectedTemplateKey))
           {
-            Mission::uiImGuiBriefer->setMessage("The mission is created in the background. Please wait until it finishes. file:'" + Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey + "'", 20);
+            Mission::uiImGuiBriefer->setMessage("The mission is created in the background. Please wait until it finishes. file:'" + missionx::strct_generate_template_layer.selectedTemplateKey + "'", 20);
             missionx::data_manager::flag_generate_engine_is_running = true;
           }
           else
           {
-            Mission::uiImGuiBriefer->flag_generatedRandomFile_success = false; // it might be still running
+            missionx::flag_generatedRandomFile_success = false; // it might be still running
             Mission::uiImGuiBriefer->setMessage(missionx::RandomEngine::getErrorMsg(), 6);
           }
         }
@@ -4511,28 +4517,28 @@ missionx::Mission::flcPRE()
 
           if (counter > 1)
           {
-            Mission::uiImGuiBriefer->strct_user_create_layer.layer_state       = missionx::mx_layer_state_enum::success_can_draw;
-            Mission::uiImGuiBriefer->strct_generate_template_layer.layer_state = missionx::mx_layer_state_enum::success_can_draw;
+            missionx::strct_user_create_layer.layer_state       = missionx::mx_layer_state_enum::success_can_draw;
+            missionx::strct_generate_template_layer.layer_state = missionx::mx_layer_state_enum::success_can_draw;
 
             if (Mission::uiImGuiBriefer->getCurrentLayer() == missionx::uiLayer_enum::option_generate_mission_from_a_template_layer)
             {
-              Mission::uiImGuiBriefer->strct_generate_template_layer.bFinished_loading_templates = false;
+              missionx::strct_generate_template_layer.bFinished_loading_templates = false;
               Mission::uiImGuiBriefer->setMessage("Please wait while loading mission templates...", 8);
               missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::imgui_reload_templates_data_and_images);
             }
           }
           else
           {
-            Mission::uiImGuiBriefer->strct_user_create_layer.layer_state       = missionx::mx_layer_state_enum::failed_data_is_not_present;
-            Mission::uiImGuiBriefer->strct_generate_template_layer.layer_state = missionx::mx_layer_state_enum::failed_data_is_not_present;
+            missionx::strct_user_create_layer.layer_state       = missionx::mx_layer_state_enum::failed_data_is_not_present;
+            missionx::strct_generate_template_layer.layer_state = missionx::mx_layer_state_enum::failed_data_is_not_present;
             Mission::uiImGuiBriefer->setMessage("Failed to validate the presence of OPTIMIZED Database. Suggestion: Re-Run apt data optimization.");
           }
         }
         else
         {
           // Failure to initiate the database
-          Mission::uiImGuiBriefer->strct_user_create_layer.layer_state       = missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly;
-          Mission::uiImGuiBriefer->strct_generate_template_layer.layer_state = missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly;
+          missionx::strct_user_create_layer.layer_state       = missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly;
+          missionx::strct_generate_template_layer.layer_state = missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly;
           Mission::uiImGuiBriefer->setMessage("ERROR!!! Mission-X plugin failed to load/open the local database in {missionx/db} folder. Try to delete it and rerun apt data optimization.");
         }
       }
@@ -4597,19 +4603,19 @@ missionx::Mission::flcPRE()
           // Decisions
           if (counter <= 0)
           {
-            Mission::uiImGuiBriefer->strct_ils_layer.layer_state = missionx::mx_layer_state_enum::failed_data_is_not_present;
+            missionx::strct_ils_layer.layer_state = missionx::mx_layer_state_enum::failed_data_is_not_present;
             Mission::uiImGuiBriefer->setMessage("Failed to validate the presence of valid ILS data information. Suggestion: Re-Run apt data optimization.");
           }
           else
           {
-            Mission::uiImGuiBriefer->strct_ils_layer.layer_state = missionx::mx_layer_state_enum::success_can_draw;
+            missionx::strct_ils_layer.layer_state = missionx::mx_layer_state_enum::success_can_draw;
           }
 
         } // end if airports_db is open and ready
         else
         {
           // Failure to initiate the database
-          Mission::uiImGuiBriefer->strct_ils_layer.layer_state = missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly;
+          missionx::strct_ils_layer.layer_state = missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly;
           Mission::uiImGuiBriefer->setMessage("ERROR!!! Mission-X plugin failed to load/open the local database in {missionx/db} folder. Try to delete it and rerun apt data optimization.");
         }
       }
@@ -5771,28 +5777,10 @@ missionx::Mission::flcPRE()
           }
           else
           {
-            // #ifndef RELEASE
-            // using GetMetarPtr = void(*)(const char *id, XPLMFixedString150_t *outMETAR);
-            // if (data_manager::xplm_version >= 400)
-            // {
-            //   data_manager::shared_navaid_between_threads.init();
-            //
-            //   GetMetarPtr getMetar_func{};
-            //   getMetar_func = reinterpret_cast<GetMetarPtr>( XPLMFindSymbol("XPLMGetMETARForAirport") );
-            //   if (getMetar_func)
-            //   {
-            //     XPLMFixedString150_t strct_metar;
-            //     getMetar_func(data_manager::shared_navaid_between_threads.ID , &strct_metar );
-            //     data_manager::shared_navaid_between_threads.sMetar = mxUtils::trim ( std::string(strct_metar.buffer) );
-            //   }
-            // }
-            // #endif
-
-
             bool bLock = true;
             data_manager::threadStateMetar.init();
             missionx::data_manager::mFetchFutures.push_back(
-              std::async(std::launch::async, missionx::data_manager::fetch_METAR, &missionx::Mission::uiImGuiBriefer->strct_ils_layer.mapNavaidData, &missionx::Mission::uiImGuiBriefer->strct_ils_layer.fetch_metar_state, &missionx::Mission::uiImGuiBriefer->strct_ils_layer.asyncMetarFetchMsg_s, &Mission::uiImGuiBriefer->asyncSecondMessageLine, &bLock));
+              std::async(std::launch::async, missionx::data_manager::fetch_METAR, &missionx::strct_ils_layer.mapNavaidData, &missionx::strct_ils_layer.fetch_metar_state, &missionx::strct_ils_layer.asyncMetarFetchMsg_s, &Mission::uiImGuiBriefer->asyncSecondMessageLine, &bLock));
           }
         }
       }
