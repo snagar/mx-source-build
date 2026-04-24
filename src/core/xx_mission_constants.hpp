@@ -36,7 +36,7 @@ inline constexpr const int MX_FEATURES_VERSION = 20260403; // Added min/max rw l
 
 inline constexpr auto PLUGIN_VER_MAJOR                  = "26"; // year
 inline constexpr auto PLUGIN_VER_MINOR                  = "04"; // month
-inline constexpr auto PLUGIN_VER_SUB                    = "3"; // sub-version
+inline constexpr auto PLUGIN_VER_SUB                    = "4"; // sub-version
 inline constexpr auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 
@@ -226,13 +226,13 @@ typedef enum class rnd_mission_phase_enum : uint8_t
 
 
 
-typedef enum class mx_osm_regions_enum : uint8_t
+enum class mx_osm_region_enum : uint8_t
 {
   nw = 1,
   ne = 2,
   se = 3,
   sw = 4
-} mx_osm_region;
+} ;
 
 typedef enum class _mx_between_types : uint8_t
 {

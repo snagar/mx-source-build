@@ -106,20 +106,6 @@ public:
   {
     missionx::color::func::flcDebugColors(this->flagWasCalled, this->timePassed, this->color, this->last_run_os_clock);
 
-    //auto       os_clock = std::chrono::steady_clock::now();
-    //// calc duration only if we did not cross the BASE_DURATION_LL * 3 timer. This will allow Four color phases
-    //const auto duration = (this->timePassed <= missionx::color::BASE_DURATION_LL * 3) ? std::chrono::duration_cast<std::chrono::seconds>(os_clock - this->last_run_os_clock).count() : missionx::color::BASE_DURATION_LL * 10;
-
-    //if (this->flagWasCalled) // there is no use in calculating 
-    //{
-    //  this->timePassed = duration;
-    //  color            = missionx::color::func::get_color_based_on_dimnish_through_time(duration, color);
-    //   
-    //  return;
-    //}
-    //
-    //color = missionx::color::color_vec4_white; // no executed
-
   }
 
 // ----------------------

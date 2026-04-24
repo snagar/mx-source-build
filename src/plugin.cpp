@@ -29,7 +29,6 @@ void    MissionMenuHandler (void *inMenuRef, void *inItemRef);
 void    OptionsMenuHandler (void *inMenuRef, void *inItemRef); // v3.0.219.12+
 void    toolsMenuHandler (void *inMenuRef, void *inItemRef); // v3.0.219.15rc3.4
 
-// XPLMFlightLoopID cb_draw_flightloop_id;
 static float pluginCallback (float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void *inRefcon); // missionx FLC
 static float pluginCallback_draw (float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void *inRefcon); // missionx FLC
 
@@ -72,9 +71,6 @@ XPLMDataRef gHeadingPsiRef = nullptr; // heading - true north
 static void MyDataChangedCallback (void *inRefcon);
 static bool setSharedDataRef (std::string inDataName, XPLMDataTypeID inDataType, XPLMDataChanged_f inNotificationFunc, double inValue = 0.0);
 
-// v3.303.8 deprecated function
-//static bool setSharedDataRef_array(std::string inDataName, XPLMDataTypeID inDataType, XPLMDataChanged_f inNotificationFunc, void *inArray, size_t inArraySize);
-
 static int MyKeySniffer (char inChar, XPLMKeyFlags inFlags, char inVirtualKey, void *inRefcon);
 }
 
@@ -98,7 +94,6 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
   // data_manager::device_init(data_manager::mx_device_nk); // moved from read fonts nk. seem more suitable
 
   data_manager::readPluginTextures (); // v3.0.118
-  // data_manager::queFlcActions.push (missionx::mx_flc_pre_command::load_briefer_textures); // v25.04.2
 
   std::memset (missionx::LOG_BUFF, '\0', missionx::LOG_BUFF_SIZE); // First time initialization of LOG_BUFF so it will have a concrete set of memory to work on.
   missionx::Timer t1;
@@ -143,12 +138,6 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
   // register callbacks
   XPLMRegisterFlightLoopCallback (pluginCallback, -1.0f, nullptr);
 
-  // XPLMCreateFlightLoop_t cb_draw_t;
-  // cb_draw_t.structSize = sizeof (XPLMCreateFlightLoop_t);
-  // cb_draw_t.phase = xplm_FlightLoop_Phase_BeforeFlightModel;
-  // cb_draw_t.callbackFunc = pluginCallback_draw;
-  // cb_draw_t.refcon = nullptr;
-  // cb_draw_flightloop_id = XPLMCreateFlightLoop (&cb_draw_t);
   XPLMRegisterFlightLoopCallback (pluginCallback_draw, -1.0f, nullptr);
 
   const dataref_const dc;
@@ -218,7 +207,6 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
   // COMMANDS
   // Create and Register our custom command
   // 1. in command string name - ad hock 2. function handler.   3. Receive input before plugin windows., 4. inRefcon <- I think when using C++ function we should do something like the following: "MXCKeySniffer * me =
-  // reinterpret_cast<MXCKeySniffer *>(inRefCon);"
   mapMxCommands["BriefCommand"] = XPLMCreateCommand ("missionx/general/missionx-toggle_briefer_window", "Toggle Mission-X Window.");
   XPLMRegisterCommandHandler (mapMxCommands["BriefCommand"], BriefCommandHandler, 1, (void *)nullptr);
   mapMxCommands["mxpadShowHideCommand"] = XPLMCreateCommand ("missionx/general/missionx-toggle_mxpad_window", "Toggle Mission-X MXPAD Window.");
@@ -308,12 +296,12 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
   XPLMAppendMenuSeparator (mission.missionMenuOptionsEntry);
   mission.mx_menu.optionDisablePluginColdAndDark = XPLMAppendMenuItem (mission.missionMenuOptionsEntry, "Disable Plugin Cold and Dark at mission start", reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_OPTION_DISABLE_PLUGIN_COLD_AND_DARK), 1); // v3.0.221.6 Allow auto pause when in VR mode
 
-  //if (missionx::data_manager::xplane_ver_i < missionx::XP12_VERSION_NO)
-  {
-    XPLMAppendMenuSeparator (mission.missionMenuOptionsEntry);
-    mission.mx_menu.optionToggleDesignerMode = XPLMAppendMenuItemWithCommand (mission.missionMenuOptionsEntry, "Toggle Designer Mode", XPLMFindCommand ("missionx/designer/missionx-toggle_Designer_Mode")); // v3.0.211.2
-    mission.mx_menu.optionToggleCueInfo      = XPLMAppendMenuItemWithCommand (mission.missionMenuOptionsEntry, "Toggle CueInfo", XPLMFindCommand ("missionx/designer/missionx-toggle_Cue_Info")); // v3.0.211.2
-  }
+  
+  XPLMAppendMenuSeparator (mission.missionMenuOptionsEntry);
+  mission.mx_menu.optionToggleDesignerMode = XPLMAppendMenuItemWithCommand (mission.missionMenuOptionsEntry, "Toggle Designer Mode", XPLMFindCommand ("missionx/designer/missionx-toggle_Designer_Mode")); // v3.0.211.2
+  mission.mx_menu.optionToggleCueInfo      = XPLMAppendMenuItemWithCommand (mission.missionMenuOptionsEntry, "Toggle CueInfo", XPLMFindCommand ("missionx/designer/missionx-toggle_Cue_Info")); // v3.0.211.2
+  
+
   XPLMAppendMenuSeparator (mission.missionMenuEntry); // v3.0.219.12
 
   #ifdef IBM
@@ -648,7 +636,7 @@ MissionMenuHandler (void *inMenuRef, void *inItemRef)
     case Mission::mx_menuIdRefs::MENU_TOGGLE_MISSIONX_BRIEFER:
     {
       #ifndef RELEASE
-      missionx::Log::logMsg ( fmt::format("[{}] Menu toggle briefer.", __FUNCTION__) );
+      missionx::Log::logMsg ( fmt::format("[{}] Menu toggle briefer.", __func__) );
       #endif
       BriefCommandHandler (nullptr, xplm_CommandBegin, nullptr);
     }
@@ -656,7 +644,7 @@ MissionMenuHandler (void *inMenuRef, void *inItemRef)
     case Mission::mx_menuIdRefs::MENU_RESET_BRIEFER_POSITION:
     {
       #ifndef RELEASE
-      missionx::Log::logMsg (fmt::format("[{}] Reset Briefer Position to Center.", __FUNCTION__ ) );
+      missionx::Log::logMsg (fmt::format("[{}] Reset Briefer Position to Center.", __func__ ) );
       #endif
       if (missionx::Mission::uiImGuiBriefer)
         missionx::Mission::uiImGuiBriefer->execAction (missionx::mx_window_actions::ACTION_RESET_BRIEFER_POSITION);
@@ -665,7 +653,7 @@ MissionMenuHandler (void *inMenuRef, void *inItemRef)
     case Mission::mx_menuIdRefs::MENU_TOGGLE_MXPAD:
     {
       #ifndef RELEASE
-      missionx::Log::logMsg (fmt::format("[{}] Menu toggle mxpad.", __FUNCTION__ ) );
+      missionx::Log::logMsg (fmt::format("[{}] Menu toggle mxpad.", __func__ ) );
       #endif
       mxpadShowHideCommandHandler (nullptr, xplm_CommandBegin, nullptr);
     }
@@ -673,7 +661,7 @@ MissionMenuHandler (void *inMenuRef, void *inItemRef)
     case Mission::mx_menuIdRefs::MENU_TOGGLE_MAP:
     {
       #ifndef RELEASE
-      missionx::Log::logMsg (fmt::format("[{}] Menu toggle mission map.", __FUNCTION__ ));
+      missionx::Log::logMsg (fmt::format("[{}] Menu toggle mission map.", __func__ ));
       #endif
       toggleMapCommandHandler (nullptr, xplm_CommandBegin, nullptr);
     }
@@ -681,7 +669,7 @@ MissionMenuHandler (void *inMenuRef, void *inItemRef)
     case Mission::mx_menuIdRefs::MENU_APT_DAT_OPTIMIZATION:
     {
       #ifndef RELEASE
-      missionx::Log::logMsg (fmt::format("[{}] Menu Optimize 'apt.dat' files (should take 1-2min, depends on machine, runs in the background).", __FUNCTION__ ));
+      missionx::Log::logMsg (fmt::format("[{}] Menu Optimize 'apt.dat' files (should take 1-2min, depends on machine, runs in the background).", __func__ ));
       #endif
       missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::exec_apt_dat_optimization); // v3.0.253.6
     }
@@ -689,7 +677,7 @@ MissionMenuHandler (void *inMenuRef, void *inItemRef)
     case Mission::mx_menuIdRefs::MENU_TOGGLE_CHOICE_WINDOW:
     {
       #ifndef RELEASE
-      missionx::Log::logMsg (fmt::format("[{}] Toggle Choice window.", __FUNCTION__ ));
+      missionx::Log::logMsg (fmt::format("[{}] Toggle Choice window.", __func__ ));
       #endif
       toggleCoiceWindow_CommandHandler (nullptr, xplm_CommandBegin, nullptr);
     }

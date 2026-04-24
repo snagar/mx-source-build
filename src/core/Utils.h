@@ -407,11 +407,72 @@ public:
 
   // -------------------------------------------
 
-  std::vector<int> static getShuffledIndexVector(const int &inNumbersInVector);
+  //std::vector<int> static getShuffledIndexVector(const int &in_how_many_values_in_vector);
+
+  // -------------------------------------------
+  template <class T>
+  std::vector<T> static getShuffledIndexVector_byType(const T& in_how_many_values_in_vector)
+  {
+    // init random seed
+    std::random_device rd;
+    std::mt19937       g(rd()); // Mersenne Twister engine seeded by random_device
+
+    std::vector<T> shuffled_indx_vec(in_how_many_values_in_vector);
+    std::iota(shuffled_indx_vec.begin(), shuffled_indx_vec.end(), static_cast<T>(0) );
+
+    // Shuffle Vector
+    std::ranges::shuffle(shuffled_indx_vec, g);
+
+    return shuffled_indx_vec;
+
+  }
+
+  // -------------------------------------------
+  template <class T>
+  static std::vector<T> get_shuffled_numbers_by_min_max_values(const T& min, const T& max)
+  {
+    // 1. Handle invalid ranges
+    if (min > max) {
+      return {};
+    }
+
+    // 2. Prepare the vector with the correct size
+    std::vector<T> numbers(static_cast<size_t>(max - min + 1));
+
+    // 3. Fill with sequential values (min, min+1, ..., max)
+    std::iota(numbers.begin(), numbers.end(), min);
+
+    // 4. Set up a high-quality random number generator
+    std::random_device rd;  // Seed
+    std::mt19937 g(rd());   // Mersenne Twister engine
+
+    // 5. Shuffle the contents
+    std::shuffle(numbers.begin(), numbers.end(), g);
+
+    return numbers;
+
+  }
 
   // -------------------------------------------
 
-  std::string static get_shuffled_value_from_string_value (const std::string & in_value_to_split);
+template <class T>
+static T get_random_number_by_type (const T inMin, const T inMax)
+  {
+    if (inMin > inMax)
+      return inMin;
+
+    // Seed with a real random value, if available
+    std::random_device              rd;
+    std::mt19937                    gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+    std::uniform_int_distribution<> dis(inMin, inMax);
+
+    return static_cast<T>( dis(gen) );
+  }
+
+
+  // -------------------------------------------
+
+  std::string static get_one_shuffled_value_from_string_value (const std::string & in_value_to_split);
 
   // -------------------------------------------
 
@@ -1021,6 +1082,9 @@ public:
   static void read_external_sql_query_file(std::map<std::string, std::string>& mapQueries, const std::string& inRootNodeName, const std::string& inFilePath = "Resources/plugins/missionx/libs/sql.xml"); // the function will read the external <query> content and override the container
   static std::vector<std::string> read_external_categories(const std::string& inRootNodeName, const std::string& inFilePath = fmt::format ("Resources/plugins/missionx/libs/{}", missionx::CARGO_DATA_FILE) ); // v24.05.1
   static IXMLNode                 read_external_blueprint_items(const std::string& inRootNodeName, const std::string& inSearchTagName, const std::string &inSubCategoryType, bool inThread = false, bool inCaseSensitive = true, const std::string& inFilePath = fmt::format( "Resources/plugins/missionx/libs/{}", missionx::CARGO_DATA_FILE) ); // v24.05.1
+
+  // -------------------------------------------
+  static uint64_t get_file_hash(const std::filesystem::path& file_path);
 
 
   ////////////////////////////////////////

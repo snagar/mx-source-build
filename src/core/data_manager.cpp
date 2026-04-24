@@ -21,10 +21,7 @@ namespace fs = std::filesystem;
 #include "../io/OptimizeAptDat.h"                       // v3.303.14
 #include "../io/system_actions.h"                       // v3.0.241.1
 #include "../ui/core/BitmapReader.h"                    // v3.303.14
-
 #include "coordinate/NavAidInfo.hpp"
-// #include "../core/coordinate/UtilsGraph.hpp"
-
 
 
 namespace missionx
@@ -220,14 +217,14 @@ mutex data_manager::s_StoryImageLoadMutex; // v3.305.1 Used in loadStoryImages()
 mutex data_manager::mt_SortTriggersMutex;  // v3.305.2 Used in sort
 mutex data_manager::mt_request_get_curl_request_respond_mutex; // v26.06.4 Used in get_curl_request_respond()
 
-int                      data_manager::overpass_counter_i;                                      // v3.0.255.4.1
+int                      data_manager::curl_call_counter_i;                                      // v3.0.255.4.1
 std::vector<std::string> data_manager::vecOverpassUrls;                                         // v3.0.255.4.1
 int                      data_manager::overpass_user_picked_combo_i;                            // v3.0.255.4.1
 int                      data_manager::overpass_last_url_indx_used_i{ mxconst::INT_UNDEFINED }; // v3.0.255.4.1
                                                                                                           // #ifdef USE_CURL
 CURL*       data_manager::curl = nullptr;
 std::string data_manager::curl_result_s;
-std::string data_manager::overpass_fetch_err; // v3.0.255.4
+//std::string data_manager::error_message_line3; // v3.0.255.4
 
 float data_manager::Max_Slope_To_Land_On{ mxconst::DEFAULT_MAX_SLOPE_TO_LAND_ON };
 
@@ -905,7 +902,8 @@ std::string missionx::data_manager::active_acf;
 std::string missionx::data_manager::prev_acf;
 
 // v25.05.1
-missionx::data_manager::strct_ui_share_data_def missionx::data_manager::strct_ui_share_data;
+//missionx::data_manager::ui_shared_data_def_struct missionx::data_manager::strct_ui_share_data;
+//std::string missionx::data_manager::ui_shared_data_def_struct::error_message_line3; // v26.04.4 when resides inside an inline static struct, there is no need for further declaraion.
 
 // v25.09.1
 missionx::NavAidInfo                missionx::data_manager::shared_navaid_between_threads;
@@ -1145,11 +1143,6 @@ data_manager::readPluginTextures()
       // v25.08.1
       const std::string feedback = fmt::format("Loaded bitmap: {} [{}]\n", tFile.getAbsoluteFileLocation (), tFile.texture_hash_simple); // debug
       Log::logXPLMDebugString(feedback, false); // debug
-
-      // Log::logXPLMDebugString("Loaded bitmap: " + tFile.getAbsoluteFileLocation() + "\n"); // debug
-
-
-
     }
   }
 }
@@ -2686,7 +2679,6 @@ data_manager::validateObjective(Objective& inObj, std::string& outError, std::st
           if (!bScript.script_is_valid)
           {
             inObj.mapTasks[cTaskName].task_type = mx_task_type::undefined_task;
-            // inObj.mapTasks[cTaskName].errReason += "Script: " + mxconst::get_QM() + scriptName + mxconst::get_QM() + ", is not valid. Please fix it. In task: " + mxconst::get_QM() + cTaskName + mxconst::get_QM() + ", marked as undefined.";
 
             const std::string txt = fmt::format("Script: '{}', is not valid. Please fix it. In task: '{}', it was marked as undefined.", scriptName, cTaskName); // v3.305.3
             Utils::xml_add_error_child(cLogNode, txt);                                                                                                    // v3.305.3
@@ -2756,7 +2748,6 @@ data_manager::validateFlightLegs(std::string& outError, std::string& outMsg)
     IXMLNode xDesc = leg.node.getChildNode(mxconst::get_ELEMENT_DESC().c_str()); // v3.303.14
 
     std::string flightLegName = leg.getName();
-    // std::string desc          = Utils::xml_read_cdata_node(xDesc, Utils::xml_read_cdata_node(leg.node, "")); // v3.305.3 fixing wrong info that there is no description, we take into consideration dorect description // v3.303.14 fixed desc warning //   leg.getAttribStringValue(mxconst::get_ELEMENT_DESC(), "" , data_manager::errStr);
     std::string desc          = Utils::xml_get_text_or_cdata_text(xDesc, Utils::xml_get_text_or_cdata_text(leg.node, "")); // v3.305.3 fixing wrong info that there is no description, we take into consideration dorect description // v3.303.14 fixed desc warning //   leg.getAttribStringValue(mxconst::get_ELEMENT_DESC(), "" , data_manager::errStr);
     std::string nextLeg       = leg.getAttribStringValue(mxconst::get_ATTRIB_NEXT_LEG(), "", errStr);
     std::string target_pos;
@@ -3121,8 +3112,6 @@ data_manager::prepareInventoryCopies(const std::string& inInventoryName)
   #endif
 
 
-  //data_manager::xmlPlaneInventoryCopy = planeInventoryCopy; // XP11 compatibility. Keep pointer to the copied inventory XML node and not to the original plane xml node.
-
   // v3.0.221.9 calculate but do not apply to dataref since we did not commit
   // v24.12.2 added "force inventory layout"
   current_plane_payload_weight_f = calculatePlaneWeight(planeInventoryCopy, false, Inventory::opt_forceInventoryLayoutBasedOnVersion_i);
@@ -3383,7 +3372,6 @@ data_manager::saveCheckpoint(IXMLNode& inParent)
   IXMLNode xMessages = inParent.addChild(mxconst::get_ELEMENT_MESSAGE_TEMPLATES ().c_str());
   for ( auto &m : mapMessages | std::views::values )
   {
-    // std::string debugMode = Utils::readAttrib(m.node, mxconst::get_ATTRIB_MODE(), ""); // v3.305.1 debug why "mode" attribute is reset
     m.saveCheckpoint(xMessages);
   }
 
@@ -3462,9 +3450,6 @@ data_manager::saveCheckpoint(IXMLNode& inParent)
   Utils::xml_add_comment(inParent, " ===== Choices info ===== ");
   if (!xmlChoices.isEmpty())
   {
-    // int n = missionx::data_manager::xmlChoices.nChildNode();
-    // Utils::xml_print_node(missionx::data_manager::xmlChoices);
-
     xmlChoices.updateAttribute(mxChoice.currentChoiceName_beingDisplayed_s.c_str(), mxconst::get_ATTRIB_ACTIVE_CHOICE().c_str(), mxconst::get_ATTRIB_ACTIVE_CHOICE().c_str());
     inParent.addChild(xmlChoices.deepCopy());
     xmlChoices.updateAttribute("", mxconst::get_ATTRIB_ACTIVE_CHOICE().c_str(), mxconst::get_ATTRIB_ACTIVE_CHOICE().c_str()); // remove the setting. Only for checkpoint
@@ -3561,7 +3546,6 @@ data_manager::flc_cue(cue_actions_enum inAction)
   // 1. Is trigger part of current leg.
   // 2. Define line color based on pertinence to the task or leg
   // 3. prepare the coordinates to display GL lines include Elevation
-  //  bool flag_found = true;
 
   if (currentLegName.empty())
     return;
@@ -3784,7 +3768,6 @@ data_manager::flc_cue(cue_actions_enum inAction)
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     /////// Calculate Elevation and points depending on Area Type (radius/Poly)
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // bool    isOnGround = true; // always for inventories
     // Check if Inventory is based on RADIUS
     if (mxconst::get_TRIG_TYPE_RAD() == invType && !mapInventories[invName].deqPoints.empty())
     {
@@ -3899,7 +3882,7 @@ data_manager::drawCueInfo()
             }
             // draw point, will be enclosed by the GL_LINE_LOOP
             glVertex3f( static_cast<float> ( it.local_x ), static_cast<float> ( it.local_y ), static_cast<float> ( it.local_z ) );
-          }        // iterate over Points
+          } // end iterate over Points
           glEnd(); // end draw
         }
         break;
@@ -3930,7 +3913,6 @@ data_manager::drawCueInfoOn2DMap(const float* inMapBoundsLeftTopRightBottom, con
   float x, y;
   for (auto& cue_ptr : mapFlightLegs[currentLegName].listCueInfoToDisplayInFlightLeg) //
   {
-    // bool calculated = false;
     if (cue_ptr.canBeRendered)
     {
       switch (cue_ptr.cueType)
@@ -3944,7 +3926,6 @@ data_manager::drawCueInfoOn2DMap(const float* inMapBoundsLeftTopRightBottom, con
             glLineWidth(2.0);
           glBegin(GL_LINE_LOOP);
 
-          // auto itEnd   = cue_ptr.vecPoints.end();
           int  counter = 0;
 
           for (auto& point : cue_ptr.vecPoints)
@@ -3963,7 +3944,6 @@ data_manager::drawCueInfoOn2DMap(const float* inMapBoundsLeftTopRightBottom, con
 
             // draw point, will be enclosed by the GL_LINE_LOOP
             XPLMMapProject((*projection_ptr), point.getLat(), point.getLon(), &x, &y);
-            // if (mxUtils::coord_in_rect(x, y, inMapBoundsLeftTopRightBottom)) // cooling
             glVertex2f(x, y);
 
           } // iterate over Points
@@ -3982,7 +3962,6 @@ data_manager::drawCueInfoOn2DMap(const float* inMapBoundsLeftTopRightBottom, con
           {
             // draw point, will be enclosed by the GL_LINE_LOOP
             XPLMMapProject((*projection_ptr), point.getLat(), point.getLon(), &x, &y);
-            // if (mxUtils::coord_in_rect(x, y, inMapBoundsLeftTopRightBottom)) // cooling
             glVertex2f(x, y);
 
           }        // iterate over Points
@@ -4002,7 +3981,6 @@ data_manager::drawCueInfoOn2DMap(const float* inMapBoundsLeftTopRightBottom, con
 std::map<int, missionx::NavAidInfo>
 data_manager::setGPS()
 {
-  // bool              flag_found      = false;
   const bool        bUseGPS         = (xmlLoadedFMS.isEmpty ()) ? true : false; // v25.04.2 decide if to use GPS or FMS, we will use the bool value to decide if to read the auto_load option or not.
   const IXMLNode    xFMS_ptr        = (bUseGPS) ? xmlGPS : xmlLoadedFMS; // pick the FMS element or GPS dependent on availability in the mission/checkpoint file.
   const std::string mission_state_s = Utils::readAttrib (mx_global_settings.node, mxconst::get_PROP_MISSION_STATE (), ""); // empty value means new mission and not loaded checkpoint
@@ -4022,7 +4000,6 @@ data_manager::setGPS()
 
   // v3.0.303.2
   const auto nodeLocationAdjust_ptr = xMainNode.getChildNodeByPath ((mxconst::get_ELEMENT_BRIEFER () + "/" + mxconst::get_ELEMENT_LOCATION_ADJUST ()).c_str ());
-  // const bool b_locationTypeIsPlane  = mxconst::get_ELEMENT_PLANE () == Utils::readAttrib (nodeLocationAdjust_ptr, mxconst::get_ATTRIB_LOCATION_TYPE (), "");
   // clear GPS
   clearFMSEntries(); // v3.0.253.7
 
@@ -4043,8 +4020,6 @@ data_manager::setGPS()
     auto              lat_f              = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LAT (), 0.0f);
     auto              lon_f              = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LONG (), 0.0f);
     const auto        elev_ft_f          = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_ELEV_FT (), 0.0f); // v3.0.241.3
-    // const std::string icao               = Utils::xml_get_attribute_value (cNode_ptr, mxconst::get_ELEMENT_ICAO (), flag_found);
-    // const int         navType_fromNode_i = Utils::readNodeNumericAttrib<int> (cNode_ptr, mxconst::get_ATTRIB_NAV_TYPE (), xplm_Nav_Unknown); // v3.0.255.4
 
     navInfo.navRef    = Utils::readNodeNumericAttrib<int> (cNode_ptr, mxconst::get_ATTRIB_NAVREF (), XPLM_NAV_NOT_FOUND); // v25.05.1
     navInfo.lat       = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LAT (), 0.0f);
@@ -4830,11 +4805,6 @@ data_manager::parse_leg_DisplayObjects(Waypoint& inLeg)
         const std::string val        = attrib.sValue;
         const std::string attribName = mxUtils::stringToLower(attrib.sName);
 
-        // #ifndef RELEASE
-        // if (attribName == mxconst::get_ATTRIB_REPLACE_HEADING_PSI())
-        //   bool b_found = true;
-        // #endif
-
         if (attribName.find(mxconst::get_PREFIX_REPLACE_()) == static_cast<size_t> ( 0 ) ) // v3.0.217.3 use "find" instead of "find_first_of". Fixed bug when replacing "replace_xxx" attribute. Also fixed in v3.0.215.7
         {
           if (attribName.length() <= mxconst::get_PREFIX_REPLACE_().length())
@@ -4852,40 +4822,6 @@ data_manager::parse_leg_DisplayObjects(Waypoint& inLeg)
             Utils::xml_add_warning_child(cLogNode, txt);
             continue;
           }
-
-          // v26.01.5 DEPRECATED, I don't see the added value of the switch, seems duplicate coe, since we rename the attributes few lines above and keep the value itself.
-          // // set node value based on datatype.
-          // switch (propIter->second)
-          // {
-          //   case mx_property_type::MX_STRING:
-          //   {
-          //     instProp.setStringProperty(propIter->first, val);
-          //   }
-          //   break;
-          //   case mx_property_type::MX_DOUBLE:
-          //   {
-          //     if (!val.empty()) // v3.303.11
-          //     {
-          //       auto val_n = Utils::stringToNumber<double>(val);
-          //       instProp.setNodeProperty<double>(propIter->first, val_n);
-          //     }
-          //   }
-          //   break;
-          //   case mx_property_type::MX_INT:
-          //   {
-          //     if (!val.empty()) // v3.303.11
-          //     {
-          //       int val_n = Utils::stringToNumber<int>(val);
-          //       instProp.setNodeProperty<int>(propIter->first, val_n);
-          //     }
-          //   }
-          //   break;
-          //   default:
-          //   {
-          //     // Log::logMsgWarn("Attribute: " + mxconst::get_QM() + attribWithoutPrefix + mxconst::get_QM() + ", is not a valid replace attribute. skipping...");
-          //   }
-          //   break;
-          // } // end switch
 
         } // end if found prefix_
       }   // end loop over attributes
@@ -4922,10 +4858,6 @@ data_manager::parse_leg_DisplayObjects(Waypoint& inLeg)
 
   } // end loop <display_object>
 
-  // #ifndef RELEASE
-  // for (const auto& [key, obj3d] : map3dObj)
-  //   Log::logMsg(fmt::format("[{}] Stored Obj3D: {}\n", __func__, Utils::xml_get_node_content_as_text(obj3d.node) ) );
-  // #endif
 }
 
 // -------------------------------------
@@ -5184,8 +5116,6 @@ data_manager::fetch_ils_rw_from_sqlite(NavAidInfo* inFrom_navaid, std::string* i
   outStatusMessage->clear();
   std::lock_guard<std::mutex> lock(s_thread_sync_mutex);
 
-  // std::string query = (*inQuery);
-
   // v24.03.1 add support for custom "base query" for the ILS search screen
   std::string sFilterQuery = (*inFilterQuery);
   // v24.06.1 added xx_rank column as an additional sorting
@@ -5248,7 +5178,7 @@ where 1 = 1
       #endif
     }
 
-    query += " " + sFilterQuery;                                                     // Construct the full query
+    query += " " + sFilterQuery;  // Construct the full query
     if (!mxUtils::isElementExists(mapQueries, stmt_uq_name)) // add the query to mapQueries
       mapQueries[stmt_uq_name] = query;
 
@@ -5371,8 +5301,6 @@ and icao = '{}' order by distance
     std::map<int, std::string> mapArgs = { { 1, inPlanePos->getLat_s() }, { 2, inPlanePos->getLon_s() }, { 3, sICAO } };
     query                              = mxUtils::format(query, mapArgs);
 
-    // query = fmt::format(query.data(), inPlanePos->lat, inPlanePos->lon, sICAO);
-
     #ifndef RELEASE
     Log::logMsgThread(fmt::format("Nav Data Query 1:\n{}", query));
     #endif // !RELEASE
@@ -5443,8 +5371,6 @@ and icao_id = '{}'
           else
             mapQueries[stmt_uq_name] = query;
 
-
-          // query = fmt::format(query.data(), inPlanePos->lat, inPlanePos->lon, data.icao_id); // prepare the query text
           std::map<int, std::string> map_args = { { 1, inPlanePos->getLat_s() }, { 2, inPlanePos->getLon_s() }, { 3, mxUtils::formatNumber(data.icao_id) } };
           query                               = mxUtils::format(query, map_args);
 
@@ -5546,12 +5472,6 @@ ORDER BY distance
             else
               mapQueries[stmt_vor] = query;
 
-            // prepare the query text
-            // query = fmt::mx_format (query, data.ap_lat, data.ap_lon, data.ap_lat, data.ap_lon
-            //                                        , data.ap_lat, data.ap_lon, data.ap_lat, data.ap_lon
-            //                                        , data.ap_lat, data.ap_lon, data.ap_lat, data.ap_lon
-            //                                        , data.ap_lat, data.ap_lon, data.ap_lat, data.ap_lon); // 16 {}
-
             std::map<int, std::string> local_map_args = { { 1, mxUtils::formatNumber(data.ap_lat) },  { 2, mxUtils::formatNumber(data.ap_lon) },  { 3, mxUtils::formatNumber(data.ap_lat) },  { 4, mxUtils::formatNumber(data.ap_lon) }
                                                        ,  { 5, mxUtils::formatNumber(data.ap_lat) },  { 6, mxUtils::formatNumber(data.ap_lon) },  { 7, mxUtils::formatNumber(data.ap_lat) },  { 8, mxUtils::formatNumber(data.ap_lon) }
                                                        ,  { 9, mxUtils::formatNumber(data.ap_lat) },  { 10, mxUtils::formatNumber(data.ap_lon) }, { 11, mxUtils::formatNumber(data.ap_lat) }, { 12, mxUtils::formatNumber(data.ap_lon) }
@@ -5627,8 +5547,6 @@ order by loc_type_code, loc_rw
             else
               mapQueries[stmt_loc] = query;
 
-
-            // query = fmt::format(query.data(), inPlanePos->lat, inPlanePos->lon, sICAO); // prepare the query text
             std::map<int, std::string> map_args2 = { { 1, inPlanePos->getLat_s() }, { 2, inPlanePos->getLon_s() }, { 3, sICAO }
                                                    , { 4, inPlanePos->getLat_s() }, { 5, inPlanePos->getLon_s() }, { 6, sICAO } };
             query                                = mxUtils::format(query, map_args2);
@@ -5681,8 +5599,6 @@ where icao_id = {}
             else
               mapQueries[stmt_frq] = query;
 
-
-            // query = fmt::format(query.data(), data.icao_id); // prepare the query text
             std::map<int, std::string> map_args3 = { { 1, mxUtils::formatNumber(data.icao_id) } }; // v24.05.2
             query                              = mxUtils::format(query, map_args3);
 
@@ -5731,7 +5647,6 @@ where icao_id = {}
   }
 
 
-
   (*outState) = mxFetchState_enum::fetch_ended; // once we change the state, the UI can show/hide the relevant layers/widgets
 }
 
@@ -5756,7 +5671,6 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
       assert(data_manager::db_stats.mapStatements[stmt_uq_name] != nullptr);
 
       int seq = 0;
-      // int seq_activity = 0;
       mission_stats_from_query.reset();
 
       std::map<int, missionx::mx_row_stats_strct> map_stats_rows;
@@ -5814,27 +5728,6 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
         mission_stats_from_query.vecActivity_s.emplace_back(row.Activity_s);
         i++; // 9. column Activity: takeoff / landing
 
-        // // v25.09.2
-        // row.dist_diff = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name], i);
-        // mission_stats_from_query.vec_dist_diff.emplace_back(row.dist_diff); // diff distance
-        // i++; // 10 column dist_diff,  distance difference
-        // row.time_diff = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name], i);
-        // mission_stats_from_query.vec_time_diff.emplace_back(row.time_diff); // diff time
-        // i++; // 11 column time_diff
-        //
-        // // v25.09.2
-        // Utils::addElementToMap (map_stats_rows, seq, row);
-        // // add only valid activities for pacing analyze, for later usage
-        // if ( Utils::isStringExistsInVec (vec_activity_pacing, row.Activity_s) )
-        // {
-        //   if (mxUtils::isElementExists(map_activity_stats_rows, seq_activity - 1))
-        //   {
-        //     row.dist_diff = Poin
-        //   }
-        //   map_activity_stats_rows[seq_activity] = row;
-        //   seq_activity++;
-        // }
-
         seq++;
       }
 
@@ -5842,8 +5735,6 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
         (*outStatusMessage) = "!!! No Stats Rows Found !!!"; // success message
       else
         (*outStatusMessage) = "Fetched: " + mxUtils::formatNumber<int>(seq) + " of statistics rows."; // success message
-
-      // mission_stats_from_query.map_flight_pacing[index] = fmt::format("Flight started at: {}", Utils::translate_seconds_to_time_of_day ( row.DayInYear_d, row.LocalTime_sec_d ) );
 
     }
     else
@@ -6240,9 +6131,7 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
 
     if (data_manager::xplm_version >= 400)
     {
-
-      // test against the nearest navaid
-      
+      // test against the nearest navaid      
       data_manager::metar_thread_state.init ();
       data_manager::shared_navaid_between_threads.init ();
       data_manager::shared_navaid_between_threads.setID (nav.icao);
@@ -6406,85 +6295,46 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
   const std::string full_url_s = fmt::format ("https://www.simbrief.com/api/xml.fetcher.php?userid={}", in_pilot_id);
 
   //// Fetch information
-  // std::string result_s;
   std::string err;
   std::string cert_loc_s = data_manager::mx_folders_properties.getStringAttributeValue (mxconst::get_PROP_MISSIONX_PATH(), "");
   missionx::structs::strct_curl_result simbrief_st_curl_result;
 
   long httpStatus = 0;
-  // if (curl)
+  
+  // try up to three times
+  std::string          msg;
+  constexpr static int MAX_TRIES = 3;
+  for (int loop01 = 0; loop01 < MAX_TRIES && !flag_http_success; ++loop01)
   {
-    // result_s.clear();
+    msg.clear();
 
-    // try up to three times
-    std::string          msg;
-    constexpr static int MAX_TRIES = 3;
-    for (int loop01 = 0; loop01 < MAX_TRIES && !flag_http_success; ++loop01)
+    // execute the REQUEST
+    simbrief_st_curl_result = data_manager::get_curl_request_respond(full_url_s);
+    if (CURLE_OK != simbrief_st_curl_result.res_curl)
     {
-      msg.clear();
+      msg = fmt::format("[{}] cURL error code: {}\n", __func__, Utils::formatNumber<int>(simbrief_st_curl_result.res_curl));
+      Log::logMsgThread(msg);
+    }
 
-      // char errBuff[CURL_ERROR_SIZE]{ '\0' };
-      // curl_easy_setopt(curl, CURLOPT_URL, full_url_s.c_str());
+    if (!simbrief_st_curl_result.request_err.empty())
+    {
+      msg = fmt::format("cURL HTTP status: {}", simbrief_st_curl_result.request_err);
+    }
+    else // parse json
+    {
+      flag_http_success   = true;
+      (*outStatusMessage) = "cURL fetch success.";
+    }
 
-      // // setup agent
-      // //curl_easy_setopt(curl, CURLOPT_USERAGENT, APP_NAME);
-      // curl_easy_setopt (curl, CURLOPT_USERAGENT, "MissionX/1.0");
-      //
-      // curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 20L); // v24.06.1 /Timeout for server connection
-      // curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);        // v24.06.1 overall work timeout - 60 seconds
-      // curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);        // CURLOPT_NOSIGNAL - skip all signal handling (values 0 or 1)
-      //
-      // curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-      //
-      // // Conditional SSL integration
-      // curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, 0L); // v26.01.1 fallback if SSL fails
-      // curl_easy_setopt (curl, CURLOPT_SSL_VERIFYHOST, 0L); // v26.01.1 fallback if SSL fails
-      //
-      // // https://curl.haxx.se/docs/sslcerts.html
-      // if (loop01 == 0 && std ::filesystem::exists (data_manager::ca_path) && std::filesystem::is_regular_file (ca_path)) // v26.01.1
-      // {
-      //   curl_easy_setopt (curl, CURLOPT_CAINFO, data_manager::ca_path.string ().c_str ());
-      //   curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, 1L); // v26.01.4 force SSL
-      //   curl_easy_setopt (curl, CURLOPT_SSL_VERIFYHOST, 2L); // v26.01.4 force SSL
-      // }
-      // curl_easy_setopt   (curl, CURLOPT_NOPROGRESS, 0L);
-      //
-      // curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuff);
-      //
-      // curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_write);
-      // curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result_s);
-      // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    if (!msg.empty())
+      (*outStatusMessage) = fmt::format("Try {} of {}. {}", loop01 + 1, MAX_TRIES, msg);
 
-      // execute the REQUEST
-      simbrief_st_curl_result = data_manager::get_curl_request_respond(full_url_s);
-      if (CURLE_OK != simbrief_st_curl_result.res_curl)
-      {
-        msg = fmt::format("cURL error code: {}\n", Utils::formatNumber<int>(simbrief_st_curl_result.res_curl));
-        Log::logMsgThread(msg);
-      }
+    Log::logMsgThread((*outStatusMessage)); // debug
 
-      // std::string errBuff_s(simbrief_st_curl_result.request_err);
-      // curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpStatus);
-
-      if (!simbrief_st_curl_result.request_err.empty())
-      {
-        msg = fmt::format("cURL HTTP status: {}", simbrief_st_curl_result.request_err);
-      }
-      else // parse json
-      {
-        flag_http_success   = true;
-        (*outStatusMessage) = "cURL fetch success.";
-      }
-
-      if (!msg.empty())
-        (*outStatusMessage) = fmt::format("Try {}/{}. {}", loop01 + 1, MAX_TRIES, msg);
-
-      Log::logMsgThread((*outStatusMessage)); // debug
-
-      // Wait for 2 seconds
-      std::this_thread::sleep_for(std::chrono::seconds(2)); // v26.01.1 wait for 2 seconds
-    } // end internal fetch loop. Try few times before giving up.
-  } // end data_manager::curl - handling cURL
+    // Wait for 2 seconds
+    std::this_thread::sleep_for(std::chrono::seconds(2)); // v26.01.1 wait for 2 seconds
+  } // end internal fetch loop. Try few times before giving up.
+  // end data_manager::curl - handling cURL
 
   //// Parse result
   if (flag_http_success)
@@ -6788,8 +6638,6 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
       // Security setup
       // https://curl.haxx.se/docs/sslcerts.html
       // https://curl.se/ca/cacert.pem
-      // const auto path_s = fmt::format ("{}{}", Utils::getPluginDirectoryWithSep (), "cacert.pem");
-      // const auto path_s = fmt::format ("{}{}", Utils::getPluginDirectoryWithSep (), "flightplandatabase.pem");
       const auto path_s = fmt::format ("{}/{}", cert_loc_s, "cacert.pem");
       curl_easy_setopt (curl, CURLOPT_CAINFO, path_s.c_str ());
 
@@ -6965,9 +6813,37 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
 // -------------------------------------
 
 missionx::structs::strct_curl_result
-data_manager::get_curl_request_respond(const std::string& in_url_s, const std::string & in_separate_data_from_url, const int & in_loop_tries)
+data_manager::get_curl_request_respond(const std::string& in_url_s, const std::string & in_separate_data_from_url, const int & in_loop_tries, const int & in_call_id)
 {
-  std::lock_guard<std::mutex> lock (mt_request_get_curl_request_respond_mutex); // v26.04.3 Special lock to solve racing issue in "osm_get_navaid_from_overpass()"
+  //std::lock_guard<std::mutex> lock (mt_request_get_curl_request_respond_mutex); // v26.04.3 Special lock to solve racing issue in "osm_get_navaid_from_overpass()"
+
+  const auto lmbda_extract_host = [] (const std::string& url)->std::string
+  {
+    CURLU* url_handle = curl_url();
+    if (!url_handle)
+      return {};
+
+    if (curl_url_set(url_handle, CURLUPART_URL, url.c_str(), 0) != CURLUE_OK)
+    {
+      curl_url_cleanup(url_handle);
+      return {};
+    }
+
+    char* host = nullptr;
+    if (curl_url_get(url_handle, CURLUPART_HOST, &host, 0) != CURLUE_OK)
+    {
+      curl_url_cleanup(url_handle);
+      return {};
+    }
+
+    std::string result(host);
+
+    curl_free(host);
+    curl_url_cleanup(url_handle);
+
+    return result;
+  };
+
 
   missionx::structs::strct_curl_result st_result;
 
@@ -6980,19 +6856,16 @@ data_manager::get_curl_request_respond(const std::string& in_url_s, const std::s
     long httpStatus = 0;
 
     // v26.04.3
-    auto curl_func = curl_easy_init();
-    if (curl_func)
+    if (auto curl_func = curl_easy_init())
     {
       for (int v_loop01 = 0; v_loop01 < in_loop_tries && (CURLE_OK != st_result.res_curl); ++v_loop01)
       {
         st_result.reset();
-        //errBuff_s.clear();
         
         // sleep before calling overpass
         std::this_thread::sleep_for (std::chrono::seconds(2)); // v25.06.1 not overwhelm the overpass server
-
-        overpass_counter_i++; // counter
-        Log::logMsgThread(fmt::format("[{}] Overpass Calls: {}\t from: \"{}\"", __func__, overpass_counter_i, base_url) );
+        
+        Log::logMsgThread(fmt::format("[{}] Call ID: {}\t from: \"{}\"", __func__, data_manager::curl_call_counter_i, base_url));
 
         char errBuff[CURL_ERROR_SIZE] = "\0"; // v3.305.3
 
@@ -7027,7 +6900,7 @@ data_manager::get_curl_request_respond(const std::string& in_url_s, const std::s
 
         if (CURLE_OK != st_result.res_curl)
         {
-          Log::logMsgThread(fmt::format("CURL error code: {}\n", Utils::formatNumber<int>(st_result.res_curl) ) );
+          Log::logMsgThread(fmt::format("[{}] Call ID: {}, CURL error code: {} {}\n", __func__, in_call_id, Utils::formatNumber<int>(st_result.res_curl), (in_loop_tries > (v_loop01 + 1)) ? "Will retry..." : "No more retries.") );
         }
 
         st_result.request_err = std::string(errBuff); // v3.305.3
@@ -7037,7 +6910,7 @@ data_manager::get_curl_request_respond(const std::string& in_url_s, const std::s
         if (mxUtils::mx_between( st_result.res_curl, CURLE_OK, CURLE_COULDNT_CONNECT, enums::mx_between_types::gt_min_eqles_max) )
         {
           #ifndef RELEASE
-          Log::logMsgThread(fmt::format("[{}] Will force exit CURL loop, based on respond code: {}\n", __func__, Utils::formatNumber<int>(st_result.res_curl) ) );
+          Log::logMsgThread(fmt::format("[{}] Call ID: {}, Will force exit CURL loop, based on respond code: {}\n", __func__, in_call_id, static_cast<int>(st_result.res_curl) ) );
           #endif
           break;
         }
@@ -7047,15 +6920,16 @@ data_manager::get_curl_request_respond(const std::string& in_url_s, const std::s
 
       if (httpStatus != 200 || !st_result.request_err.empty())
       {
-        st_result.request_err.append(fmt::format("CURL HTTP status: {} {}", std::to_string(httpStatus), ((st_result.request_err.empty()) ? "" : fmt::format(". {}", st_result.request_err)))); // v3.0.255.4 added logic to display "Error Buff" only if there is a string value in it
+        const std::string host_only_s = lmbda_extract_host(base_url);
+        st_result.request_err         = fmt::format("Call ID: {}, CURL HTTP status: {} : {} : ({})", in_call_id, httpStatus, st_result.request_err, host_only_s);
 
         switch (httpStatus)
         {
           case 504: // "504 Gateway Time-out"
-            st_result.request_err.append(": Overpass Gateway Time-out.");
+            st_result.request_err.append( fmt::format(": Overpass Gateway Time-out.") );
             break;
           case 429: // "429 Too many requests"
-            st_result.request_err.append(": Too many requests.");
+            st_result.request_err.append( fmt::format(": Too many requests.") );
             break;
           default:
             break;
@@ -7064,8 +6938,8 @@ data_manager::get_curl_request_respond(const std::string& in_url_s, const std::s
         // v35.12.1 added warning to the missionx.log file
         if (mxUtils::find_text (st_result.response_text, "Error", false) != std::string::npos)
         {
-          Log::logMsgThread (fmt::format ("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", in_url_s, in_separate_data_from_url, st_result.response_text));
-          Log::logMsgThread(fmt::format("\tCurl error: \n\t{}\n", curl_easy_strerror(st_result.res_curl)));
+          Log::logMsgThread (fmt::format ("[{}]Call ID: {}, There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", __func__, in_call_id, in_url_s, in_separate_data_from_url, st_result.response_text));
+          Log::logMsgThread(fmt::format("[{}]Call ID: {}, \tCurl error: \n\t{}\n", __func__, in_call_id, curl_easy_strerror(st_result.res_curl)));
         }
 
         #ifndef RELEASE
@@ -7080,7 +6954,7 @@ data_manager::get_curl_request_respond(const std::string& in_url_s, const std::s
       curl_easy_cleanup (curl_func);
     } // end curl_func - handling cURL  // end CURL call
 
-  overpass_fetch_err = st_result.request_err; // v3.0.255.4 overpass_fetch_err will get the error. This will clear the last error message overpass_fetch_err had.
+  data_manager::strct_ui_share_data.error_message_line3 = st_result.request_err; // v3.0.255.4 error_message_line3 will get the error. This will clear the last error message error_message_line3 had.
 
   return st_result;
 }
@@ -7132,8 +7006,6 @@ where is_plane_in_boundary = 1
 
 //  NO Need to create fake boundaries, if an airport does not have a boundary, then it might be an inactive airport.
 //  We could try and use "distance" instead, but that is good, only in edge cases.
-
-
   std::map<int, std::string> mapArgs = { { 1, planePosition.getLat_s() }, { 2, planePosition.getLon_s() } }; // v24.05.2
   query                              = mxUtils::format(query, mapArgs);
 
@@ -7180,8 +7052,7 @@ where is_plane_in_boundary = 1
         ++iCol;                                                                                              // we do not read boundary field
 
         navAid.flag_fetched_from_db = true; // v24.03.1
-      }                                          // end if sql fetched at least one row (we will only pick the first row
-
+      } // end if sql fetched at least one row (we will only pick the first row
 
     } // end if the prepare statement succeeded.
 
@@ -7419,7 +7290,6 @@ data_manager::validate_display_object_file_existence(const std::string& inMissio
                 Log::logMsgThread(err);
               }
             }
-            // else // if (!is_virtual_file)
             else if ( fs::path file = objectFile3D; !exists(file) || !fs::directory_entry(file).is_regular_file())
             {
               ++err_counter_i;
@@ -7605,9 +7475,6 @@ data_manager::read_and_parse_littleNavMap_fpln(const std::string& inPathAndFile)
       }
     }
   }
-
-
-
   return fpln;
 }
 
@@ -7738,7 +7605,6 @@ data_manager::add_advanceSettingsDateTime_and_Weather_to_node(IXMLNode& xGlobalS
     }
   }
 
-
 }
 
 // -----------------------------------
@@ -7785,7 +7651,6 @@ data_manager::generate_missionx_mission_file_from_convert_screen(mx_base_node   
   Utils::add_xml_comment(root);
 
   // v3.305.1 add global_settings
-  // auto xGlobalSettings = Utils::xml_get_node_from_XSD_map_as_acopy(mxconst::get_GLOBAL_SETTINGS().c_str());
   auto xGlobalSettings = (!inout_xGlobalSettingsFromConversionFile.isEmpty() && !inGenerateNewGlobalSettingsNode_b) ? inout_xGlobalSettingsFromConversionFile.deepCopy() : Utils::xml_get_node_from_XSD_map_as_a_copy(mxconst::get_GLOBAL_SETTINGS());
   root.addChild(xGlobalSettings);
   Utils::add_xml_comment(root);
@@ -8276,7 +8141,6 @@ data_manager::getPlane_or_Camera_position_as_Point(char origin_c)
   }
 
   z *= meter2feet; // v24.03.2 fix elevation to be feet and not meter
-  // return Point(latVal, lonVal, z);
   return {latVal, lonVal, z}; // return Point
 }
 
@@ -8327,7 +8191,6 @@ data_manager::gather_custom_acf_datarefs_as_a_thread(const std::string& inAcfPat
     }
 
     fs::path acf_folder = acf_file.parent_path();
-    // std::string debugParentPath_s = acf_folder.string();
     if (is_directory(acf_folder))
     {
       std::unordered_set<std::string> objCustomDatarefs;
@@ -8666,7 +8529,6 @@ data_manager::addMessageToHistoryList(const std::string& inWho, const std::strin
   if (listOfMessageStoryMessages.size() > MAX_MX_PAD_MESSAGES)
     listOfMessageStoryMessages.pop_front();
 
-  // const ImVec4 color(inColor.x, inColor.y, inColor.z, inColor.w);
   listOfMessageStoryMessages.emplace_back(inWho, inText, inColor);
 }
 
@@ -8679,7 +8541,6 @@ data_manager::find_and_read_template_file (const std::string &inFileName)
 {
   std::string       err;
   const std::string inPath = mx_folders_properties.getAttribStringValue (mxconst::get_FLD_RANDOM_TEMPLATES_PATH(), "", err); // get path to template folder
-  // const std::string custom_mission_folder = data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONS_ROOT_PATH(), "", err);     // get path to custom missionx folder "/Custom Scenery/missionx"
 
   if (fs::directory_entry (inPath).is_directory ()) // if parentDir fail initialization
   {
@@ -8814,7 +8675,10 @@ data_manager::check_cache_folder (const std::string &in_cache_folder_name)
 
 
 void
-data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_thread_state *inoutThreadState, std::string *outStatusMessage, missionx::structs::strct_osm_query *q, const std::map<missionx::enums::mx_osm_region, missionx::structs::BBox> &in_map_bbox)
+data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_thread_state *inoutThreadState
+                                                , missionx::structs::strct_osm_query *q
+                                                , const std::set<enums::mx_osm_region_enum>& in_restricted_bbox_areas
+                                                , const std::map<missionx::enums::mx_osm_region_enum, missionx::structs::BBox> &in_map_bbox)
 {
   if (inoutThreadState == nullptr)
     return; // abort function execution
@@ -8822,12 +8686,6 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
   assert (inoutThreadState != nullptr && fmt::format ("[{}] Thread state is not initialized correctly.", __func__).c_str ());
 
   inoutThreadState->flagIsActive       = true;
-
-  // const auto lmbda_set_message =[&] (const std::string &inStatusMsg)
-  // {
-  //   if (outStatusMessage)
-  //     (*outStatusMessage) = inStatusMsg;
-  // };
 
   if (q == nullptr)
     return;
@@ -8844,6 +8702,14 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
 
   for (const auto &[loc, bbox] : in_map_bbox)
   {
+    // apply restriction. Skip areas not in the "set_areas_to_work_on"
+    if ( ! in_restricted_bbox_areas.contains (loc) )
+    {
+      Log::logMsgThread( fmt::format("[{}] Skipping area: \"{}\". Not in the restricted areas list.", __func__, Utils::get_mx_osm_region_trans(loc)));
+      continue;
+    }
+
+
     std::string filledQuery = q->q_text;
     q->q_bbox               = bbox.get_bbox ();
     q->q_short_bbox_fmt     = bbox.get_bbox_short ();
@@ -8853,7 +8719,6 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
     {
       bool found_valid_count_node = false;
       int  iTry                   = 0;
-      // filledQuery.replace (pos, q->BBOX_STR.length (), q->q_bbox);
 
       filledQuery = mxUtils::replaceAll (filledQuery, q->BBOX_STR, q->q_bbox);
       filledQuery = mxUtils::replaceAll (filledQuery, q->ALL_BBOX_STR, q->q_all_bbox);
@@ -8919,69 +8784,49 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
         return;
       }
 
-      // Call OVERPASS using cURL and make sure we do not have ABORT request
-      size_t   curl_call_counter_i       = 0;
       std::string overpass_url;
 
-      while (iTry++ < 5 && !found_valid_count_node && !useCache && !inoutThreadState->flagAbortThread && (curl_call_counter_i < data_manager::vecOverpassUrls.size ()))
+      if (!useCache)
       {
-        overpass_url = (curl_call_counter_i < data_manager::vecOverpassUrls.size ()) ? data_manager::vecOverpassUrls.at (curl_call_counter_i)
-                                                                                               : mxconst::get_DEFAULT_OVERPASS_URL ();
-        curl_call_counter_i++;
-
-        // We can't use "get_curl_request_respond()" because this function is called as a threaded request, so we must create a new handle every time.
-        // strct_result = data_manager::get_curl_request_respond(overpass_url, fullQuery, 1);
-
-        if (auto curl_analyze = curl_easy_init ())
+        // Call OVERPASS using cURL and make sure we do not have ABORT request.
+        // Randomize the URL calls so not all threads will use same overpass url.
+        const auto  vec_shuffled_index_of_overpass_urls = Utils::getShuffledIndexVector_byType<size_t>(data_manager::vecOverpassUrls.size());
+        for (const auto& index_shuffle : vec_shuffled_index_of_overpass_urls)
         {
-          char errBuff[CURL_ERROR_SIZE] = "\0";
 
-          // curl_easy_setopt (curl, CURLOPT_URL, "https://overpass-api.de/api/interpreter");
-          curl_easy_setopt (curl_analyze, CURLOPT_URL, overpass_url.c_str());
+          // check [abort]
+          if (inoutThreadState->flagAbortThread)
+          {
+            q->xml_target_nd_node     = IXMLNode::emptyIXMLNode;
+            q->xml_target_way_element = IXMLNode::emptyIXMLNode;
+            return;
+          }
 
-          curl_easy_setopt (curl_analyze, CURLOPT_USERAGENT, APP_NAME);
+          overpass_url = (index_shuffle < data_manager::vecOverpassUrls.size()) ? data_manager::vecOverpassUrls.at(index_shuffle) : mxconst::get_DEFAULT_OVERPASS_URL();
+          strct_result = get_curl_request_respond(overpass_url, fullQuery, 2);
 
-          // ignore SSL - important for Windows
-          curl_easy_setopt (curl_analyze, CURLOPT_FOLLOWLOCATION, 1L);
-          curl_easy_setopt (curl_analyze, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
-          curl_easy_setopt (curl_analyze, CURLOPT_NOPROGRESS, 0L);
+          Log::logMsgThread(fmt::format("[{}] URL: {}", __func__, overpass_url));
 
-          curl_easy_setopt (curl_analyze, CURLOPT_ERRORBUFFER, errBuff);
-
-          curl_easy_setopt (curl_analyze, CURLOPT_POSTFIELDS, fullQuery.c_str());
-          curl_easy_setopt (curl_analyze, CURLOPT_WRITEFUNCTION, my_write);
-          curl_easy_setopt (curl_analyze, CURLOPT_WRITEDATA, &strct_result.response_text);
-          strct_result.res_curl = curl_easy_perform (curl_analyze);
-
-          Log::logMsgThread (fmt::format ("URL: {}", overpass_url));
-
-          if (strct_result.res_curl == CURLE_OK)
+          if (CURLE_OK == strct_result.res_curl)
           {
             found_valid_count_node = true;
-            Log::logMsgThread (fmt::format ("Query ID: [{}] BBOX: {}\n", q->id, q->q_bbox));
-            std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for 2 seconds before sending a new request
+            Log::logMsgThread(fmt::format("[{}] Query ID: [{}] BBOX: {}\n", __func__, q->id, q->q_bbox));
+            std::this_thread::sleep_for(std::chrono::seconds(2)); // wait for 2 seconds before sending a new request
           }
           else
           {
-            // strct_result.res_curl != CURLE_OK
-            Log::logMsgThread (fmt::format ("\tCurl error: \n\t{}\n", curl_easy_strerror (strct_result.res_curl)));
-            std::this_thread::sleep_for (std::chrono::seconds (5)); // Sleep longer
-          }
+            // res != CURLE_OK
+            Log::logMsgThread(fmt::format("[{}]\tCurl error: \n\t{}\n", __func__, curl_easy_strerror(strct_result.res_curl)));
+            std::this_thread::sleep_for(std::chrono::seconds(5)); // Sleep longer
+          }          
+          
+        } // End CURL call loop, over shuffled overpass url vectors
 
-          curl_easy_cleanup (curl_analyze);
-        } // End CURL in memory creation
+      } // end if "not to use cache"
 
-        // check [abort]
-        if (inoutThreadState->flagAbortThread)
-        {
-          q->xml_target_nd_node     = IXMLNode::emptyIXMLNode;
-          q->xml_target_way_element = IXMLNode::emptyIXMLNode;
-          return;
-        }
-
-      } // end while iTry
-
+      // -------------
       // check [abort]
+      // -------------
       if (inoutThreadState->flagAbortThread)
       {
         q->xml_target_nd_node     = IXMLNode::emptyIXMLNode;
@@ -8989,6 +8834,10 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
         return;
       }
 
+
+      // -------------
+      // Handle response data
+      // -------------
       if ( found_valid_count_node + useCache )
       {
         IXMLDomParser xmlParser;
@@ -9032,6 +8881,202 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
   q->end_time = std::chrono::steady_clock::now ();
 }
 
+// void
+// data_manager::fetch_overpass_info_analyze_thread2 (missionx::base_thread::strct_thread_state *inoutThreadState, missionx::structs::strct_osm_query *q, const std::map<missionx::enums::mx_osm_region_enum, missionx::structs::BBox> &in_map_bbox)
+// {
+//   if (inoutThreadState == nullptr)
+//     return; // abort function execution
+//
+//   assert (inoutThreadState != nullptr && fmt::format ("[{}] Thread state is not initialized correctly.", __func__).c_str ());
+//
+//   inoutThreadState->flagIsActive       = true;
+//
+//   if (q == nullptr)
+//     return;
+//
+//   q->start_time = std::chrono::steady_clock::now ();
+//
+//   // check [abort]
+//   if (inoutThreadState->flagAbortThread)
+//   {
+//     q->xml_target_nd_node     = IXMLNode::emptyIXMLNode;
+//     q->xml_target_way_element = IXMLNode::emptyIXMLNode;
+//     return;
+//   }
+//
+//   for (const auto &[loc, bbox] : in_map_bbox)
+//   {
+//     std::string filledQuery = q->q_text;
+//     q->q_bbox               = bbox.get_bbox ();
+//     q->q_short_bbox_fmt     = bbox.get_bbox_short ();
+//
+//     if (const size_t pos = filledQuery.find (q->BBOX_STR);
+//       pos != std::string::npos)
+//     {
+//       bool found_valid_count_node = false;
+//       int  iTry                   = 0;
+//
+//       filledQuery = mxUtils::replaceAll (filledQuery, q->BBOX_STR, q->q_bbox);
+//       filledQuery = mxUtils::replaceAll (filledQuery, q->ALL_BBOX_STR, q->q_all_bbox);
+//
+//       q->osm_queries[mxUtils::get_mx_osm_region_trans (loc)] = filledQuery;
+//
+//       std::string fullQuery = fmt::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
+//
+//       q->sanitized_id   = mxUtils::sanitize_text (q->id, " ,'\"\t\n");
+//       q->sanitized_bbox = mxUtils::sanitize_text (q->q_short_bbox_fmt, " ,'\"\t\n");
+//       // Write to cached output folder
+//       const std::string filename = fmt::format ("{}/cached_{}_{}.xml", q->cache_folder, q->sanitized_id, q->sanitized_bbox);
+//       structs::strct_curl_result strct_result;
+//
+//       bool useCache = false;
+//
+//       try
+//       {
+//         if (std::filesystem::exists (filename))
+//         {
+//           if (std::ifstream inFile (filename);
+//             inFile.is_open ())
+//           {
+//             strct_result.response_text.assign ((std::istreambuf_iterator<char> (inFile)), std::istreambuf_iterator<char> ());
+//             inFile.close ();
+//             // Check cached result has valid "count" node data
+//             IXMLDomParser xmlParser;
+//             auto          root = xmlParser.parseString (strct_result.response_text.c_str ()).deepCopy ();
+//
+//             IXMLNode nodeCount = Utils::xml_get_node_from_node_tree_IXMLNode (root, "count", true);
+//             if (nodeCount.isEmpty ())
+//             {
+//               useCache = false;
+//               try
+//               {
+//                 std::filesystem::remove (filename);
+//               }
+//               catch (const std::exception &ex)
+//               {
+//                 Log::logMsgThread (fmt::format ("[Exception during cache file removal]\n\t{}\n", ex.what ()));
+//                 Log::logMsgThread (fmt::format ("[Cache filename]\n\t{}\n", filename));
+//               }
+//             }
+//             else
+//             {
+//               useCache = true;
+//               Log::logMsgThread (fmt::format ("Using cache {}\n", filename));
+//             }
+//
+//           }
+//         }
+//       }
+//       catch (const std::exception &ex)
+//       {
+//         Log::logMsgThread (fmt::format ("[Exception during cache creation]\n\t{}\n", ex.what ()));
+//       }
+//
+//       // check [abort]
+//       if (inoutThreadState->flagAbortThread)
+//       {
+//         q->xml_target_nd_node     = IXMLNode::emptyIXMLNode;
+//         q->xml_target_way_element = IXMLNode::emptyIXMLNode;
+//         return;
+//       }
+//
+//       std::string overpass_url;
+//
+//       if (!useCache)
+//       {
+//         // Call OVERPASS using cURL and make sure we do not have ABORT request.
+//         // Randomize the URL calls so not all threads will use same overpass url.
+//         const auto  vec_shuffled_index_of_overpass_urls = Utils::getShuffledIndexVector_byType<size_t>(data_manager::vecOverpassUrls.size());
+//         for (const auto& index_shuffle : vec_shuffled_index_of_overpass_urls)
+//         {
+//
+//           // check [abort]
+//           if (inoutThreadState->flagAbortThread)
+//           {
+//             q->xml_target_nd_node     = IXMLNode::emptyIXMLNode;
+//             q->xml_target_way_element = IXMLNode::emptyIXMLNode;
+//             return;
+//           }
+//
+//           overpass_url = (index_shuffle < data_manager::vecOverpassUrls.size()) ? data_manager::vecOverpassUrls.at(index_shuffle) : mxconst::get_DEFAULT_OVERPASS_URL();
+//           strct_result = get_curl_request_respond(overpass_url, fullQuery, 2);
+//
+//           Log::logMsgThread(fmt::format("[{}] URL: {}", __func__, overpass_url));
+//
+//           if (CURLE_OK == strct_result.res_curl)
+//           {
+//             found_valid_count_node = true;
+//             Log::logMsgThread(fmt::format("[{}] Query ID: [{}] BBOX: {}\n", __func__, q->id, q->q_bbox));
+//             std::this_thread::sleep_for(std::chrono::seconds(2)); // wait for 2 seconds before sending a new request
+//           }
+//           else
+//           {
+//             // res != CURLE_OK
+//             Log::logMsgThread(fmt::format("[{}]\tCurl error: \n\t{}\n", __func__, curl_easy_strerror(strct_result.res_curl)));
+//             std::this_thread::sleep_for(std::chrono::seconds(5)); // Sleep longer
+//           }
+//
+//         } // End CURL call loop, over shuffled overpass url vectors
+//
+//       } // end if "not to use cache"
+//
+//       // -------------
+//       // check [abort]
+//       // -------------
+//       if (inoutThreadState->flagAbortThread)
+//       {
+//         q->xml_target_nd_node     = IXMLNode::emptyIXMLNode;
+//         q->xml_target_way_element = IXMLNode::emptyIXMLNode;
+//         return;
+//       }
+//
+//
+//       // -------------
+//       // Handle response data
+//       // -------------
+//       if ( found_valid_count_node + useCache )
+//       {
+//         IXMLDomParser xmlParser;
+//         auto          xml_count_node      = xmlParser.parseString (strct_result.response_text.c_str ()).deepCopy ();
+//         IXMLNode      nodeCount = Utils::xml_get_node_from_node_tree_IXMLNode (xml_count_node, "count", true);
+//         if (!nodeCount.isEmpty ())
+//         {
+//           nodeCount.updateName ("tags");
+//           nodeCount.updateAttribute (q->sanitized_id.c_str (), "id", "id");
+//           nodeCount.updateAttribute (mxUtils::get_mx_osm_region_trans (loc).c_str (), "region", "region");
+//           nodeCount.updateAttribute (q->q_bbox.c_str (), "bbox", "bbox");
+//           nodeCount.updateAttribute (q->sanitized_bbox.c_str (), "cached_bbox", "cached_bbox");
+//
+//           q->total_way_count = 0;
+//           auto tag_node      = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (nodeCount, "tag", "k", "ways", false, false);
+//           q->total_way_count = mxUtils::stringToNumber<int> (Utils::xml_get_attribute_value (tag_node, "v", "0"));
+//
+//           if (!q->xml_q_tags_header_node.isEmpty () && (q->total_way_count > 0))
+//           {
+//             q->xml_q_tags_header_node.addChild (nodeCount);
+//
+//             // write to cache file
+//             if (std::ofstream outFile (filename);
+//               outFile.is_open ())
+//             {
+//               outFile << strct_result.response_text;
+//               outFile.close ();
+//             }
+//           }
+//         }
+//         else
+//         {
+//           Log::logMsgThread (fmt::format ("Overpass Url: {}", overpass_url));
+//           Log::logMsgThread (fmt::format ("\tRegion: {}, has no <count>.\n Query:\n{}\nNode Element:\n\t{}\n", mxUtils::get_mx_osm_region_trans (loc), filledQuery, Utils::xml_get_node_content_as_text (nodeCount, "> Empty Node")));
+//           Log::logMsgThread (fmt::format ("\tResponse: {}\n", strct_result.response_text.c_str ()));
+//         }
+//       }
+//     }
+//   }
+//
+//   q->end_time = std::chrono::steady_clock::now ();
+// }
+//
 
  // -------------------------------------
 
@@ -9047,7 +9092,6 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
   bool        useCache = false;
   std::string response_text;
   missionx::structs::strct_curl_result st_curl_result;
-
 
   q->start_time = std::chrono::steady_clock::now ();
   q->flag_data_respond_was_valid = false;
@@ -9091,7 +9135,6 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
         auto          xml_osm_node = xmlParser.parseString (response_text.c_str (), "osm", &parseResult).deepCopy ();
         // debug and validations
         Log::logMsgThread (fmt::format ("Parse result: {} {}, Lines: {}", static_cast<int> (parseResult.errorCode), (static_cast<int> (parseResult.errorCode) == 0) ? "(ok)" : "", parseResult.nLine));
-
 
         if (parseResult.errorCode != IXMLError_None)
         {
@@ -9148,8 +9191,6 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
     size_t   curl_call_counter_i       = 0;
     
     // Call Overpass up to "data_manager::vecOverpassUrls.size ()" times
-
-
     while (!flag_curl_results_are_ok && curl_call_counter_i < data_manager::vecOverpassUrls.size ())
     {
       std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for one second before sending a new request
@@ -9163,8 +9204,6 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
       #endif
 
       response_text.clear ();      
-
-      //char errBuff[CURL_ERROR_SIZE] = "\0";
 
       // ----------------------------------
       // -- CURL REQUEST - Gather <way> nodes
@@ -9181,7 +9220,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
       {
         if (mxUtils::find_text (response_text, "Error", false) != std::string::npos)
         {
-          Log::logMsgThread (fmt::format ("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
+          Log::logMsgThread (fmt::format ("[{}] There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", __func__, overpass_url, filledQuery, response_text));
           std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for 2 seconds before sending a new request
         }
         else
@@ -9205,7 +9244,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
     if (st_curl_result.res_curl == CURLE_OK)
     {
       q->flag_data_respond_was_valid = true;
-      Log::logMsgThread (fmt::format ("Query ID: {} BBOX: {}\n", q->id, q->q_bbox));
+      Log::logMsgThread (fmt::format ("[{}] Query ID: {} BBOX: {}\n", __func__, q->id, q->q_bbox));
 
       // write to cache file
       if (std::ofstream outFile (filename);
@@ -9220,7 +9259,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
       // res != CURLE_OK
       response_text.clear ();
       q->flag_data_respond_was_valid = false;
-      Log::logMsgThread(fmt::format("\tCurl error: \n\t{}", curl_easy_strerror(st_curl_result.res_curl)));
+      Log::logMsgThread(fmt::format("[{}]\tCurl error: \n\t{}", __func__, curl_easy_strerror(st_curl_result.res_curl)));
     }
 
     curl_easy_cleanup (local_curl);
@@ -9247,7 +9286,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
     if (q->total_way_count > 0)
     {
       // Get shuffled vector index
-      std::vector<int> vecShuffleWayNodes = Utils::getShuffledIndexVector (q->total_way_count);
+      std::vector<int> vecShuffleWayNodes = Utils::getShuffledIndexVector_byType<int> (q->total_way_count);
 
       for (const auto &w : vecShuffleWayNodes)
       {
@@ -9456,907 +9495,14 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
     } // end nodeCound > 0, meaning we have valid way nodes in the response
 
   } // end respond is not empty
-
-  // } // end if we found the BBOX string
+    // end if we found the BBOX string
 
   q->end_time = std::chrono::steady_clock::now ();
 
 }
 
 // -------------------------------------
-void
-data_manager::fetch_ways_and_target_node_from_overpass_thread3 (missionx::base_thread::strct_thread_state *inoutThreadState, std::string *outStatusMessage, missionx::structs::strct_osm_query *q)
-{
-  //// https://wiki.openstreetmap.org/wiki/Overpass_API
-
-  //if (q == nullptr)
-  //  return;
-
-  //bool        useCache = false;
-  //std::string response_text;
-
-  //q->start_time = std::chrono::steady_clock::now ();
-  //q->flag_data_respond_was_valid = false;
-
-  //// prepare request
-  //std::string filledQuery = q->q_text;
-  //const size_t pos_all_bbox = filledQuery.find(q->ALL_BBOX_STR);
-  //const size_t pos_bbox = filledQuery.find(q->BBOX_STR);
-
-  //if ((pos_bbox == std::string::npos) && (pos_all_bbox == std::string::npos) )
-  //{
-  //  Log::logMsgThread (fmt::format ("[{}] No Valid BBOX filter was found. Aborting target search.\n", __func__) );
-  //  q->end_time = std::chrono::steady_clock::now ();
-  //  return;
-  //}
-
-  //filledQuery = mxUtils::replaceAll (filledQuery, q->BBOX_STR, q->q_bbox); // replace all occurrences.
-  //filledQuery = mxUtils::replaceAll (filledQuery, q->ALL_BBOX_STR, q->q_all_bbox); // replace all occurrences.
-  //q->q_unescaped_request = fmt::format ("data={}", filledQuery.c_str ());
-  //q->q_escaped_request          = fmt::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
-
-  //#ifndef RELEASE
-  //Log::logMsgThread (fmt::format ("[{}] OSM Filter: {}\n", __func__, q->q_unescaped_request));
-  //#endif
-
-
-  //const std::string filename = fmt::format ("{}/cached_ways_{}_{}.xml", q->cache_folder, q->id, q->q_short_bbox_fmt);
-
-  //try
-  //{
-  //  if (std::filesystem::exists (filename))
-  //  {
-  //    if (std::ifstream inFile (filename);
-  //      inFile.is_open ())
-  //    {
-  //      response_text.assign ((std::istreambuf_iterator<char> (inFile)), std::istreambuf_iterator<char> ());
-  //      inFile.close ();
-  //      // Check cached result has ways node data
-  //      IXMLDomParser xmlParser;
-  //      IXMLResults   parseResult;
-  //      auto          xml_osm_node = xmlParser.parseString (response_text.c_str (), "osm", &parseResult).deepCopy ();
-  //      // debug and validations
-  //      Log::logMsgThread (fmt::format ("Parse result: {} {}, Lines: {}", static_cast<int> (parseResult.errorCode), (static_cast<int> (parseResult.errorCode) == 0) ? "(ok)" : "", parseResult.nLine));
-
-
-  //      if (parseResult.errorCode != IXMLError_None)
-  //      {
-  //        Log::logMsgThread (fmt::format ("Returned XML Error Code: {}\nRaw Result XML: {}\n", IXMLDomParser::getErrorMessage (parseResult.errorCode), Utils::xml_get_node_content_as_text (xml_osm_node)));
-  //        useCache = false;
-  //        std::filesystem::remove (filename);
-  //      }
-  //      else
-  //      {
-
-  //        int         nodeCount = xml_osm_node.nChildNode ("way"); // second validation
-  //        std::string root_name = xml_osm_node.getName (); // debug
-
-  //        if (nodeCount < 1)
-  //        {
-  //          useCache = false;
-  //          std::filesystem::remove (filename);
-  //          q->flag_data_respond_was_valid = false;
-  //        }
-  //        else
-  //        {
-  //          useCache                       = true;
-  //          q->flag_data_respond_was_valid = true;
-  //          Log::logMsgThread (fmt::format ("Using cache {}\n", filename));
-  //        }
-  //      }
-  //    }
-  //  }
-  //}
-  //catch (const std::exception &ex)
-  //{
-  //  useCache = false;
-  //  Log::logMsgThread (fmt::format ("[Exception during cache creation]\n\t{}\n", ex.what ()));
-  //  Log::logMsgThread (fmt::format ("[Expected filename]: {}\n", filename));
-  //}
-  //// end reading cache file
-
-  //// check [abort]
-  //if (inoutThreadState->flagAbortThread)
-  //{
-  //  q->flag_data_respond_was_valid = false;
-  //  q->total_way_count             = 0;
-  //  q->xml_target_nd_node          = IXMLNode::emptyIXMLNode;
-  //  q->xml_target_way_element      = IXMLNode::emptyIXMLNode;
-  //  return;
-  //}
-
-
-  //if (CURL *local_curl = curl_easy_init ();
-  //  local_curl && !useCache)
-  //{
-  //  CURLcode res                      = CURL_LAST;
-  //  bool     flag_curl_results_are_ok = false;
-  //  size_t   curl_call_counter_i       = 0;
-  //  // Call Overpass up to "data_manager::vecOverpassUrls.size ()" times
-
-
-  //  int loop_way_curl_counter = 0;
-  //  while (!flag_curl_results_are_ok && curl_call_counter_i < data_manager::vecOverpassUrls.size ())
-  //  {
-  //    std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for one second before sending a new request
-
-  //    if (curl_call_counter_i >= data_manager::vecOverpassUrls.size () && loop_way_curl_counter < 1)
-  //    {
-  //      curl_call_counter_i = 0;
-  //      loop_way_curl_counter++;
-  //    }
-  //    const auto &overpass_url = (curl_call_counter_i < data_manager::vecOverpassUrls.size ()) ? data_manager::vecOverpassUrls.at (curl_call_counter_i) : mxconst::get_DEFAULT_OVERPASS_URL ();
-
-  //    #ifndef RELEASE
-  //    Log::logMsgThread (fmt::format ("[{}] Fetching way data from overpass: {}.\nFilter:\n{}\n<---\n", __func__, overpass_url, q->q_unescaped_request));
-  //    #endif
-
-  //    response_text.clear ();
-  //    char errBuff[CURL_ERROR_SIZE] = "\0";
-
-  //    curl_easy_setopt (local_curl, CURLOPT_URL, overpass_url.c_str());
-
-  //    curl_easy_setopt (local_curl, CURLOPT_USERAGENT, APP_NAME);
-  //    curl_easy_setopt (local_curl, CURLOPT_CONNECTTIMEOUT, 20L); // v25.10.1 /Timeout for server connection
-  //    curl_easy_setopt (local_curl, CURLOPT_TIMEOUT, 10L); // v25.10.1 added timeout
-
-  //    // ignore SSL - important for Windows
-  //    curl_easy_setopt (local_curl, CURLOPT_FOLLOWLOCATION, 1L);
-  //    curl_easy_setopt (local_curl, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
-  //    curl_easy_setopt (local_curl, CURLOPT_NOPROGRESS, 0L);
-
-  //    curl_easy_setopt (local_curl, CURLOPT_ERRORBUFFER, errBuff);
-
-  //    curl_easy_setopt (local_curl, CURLOPT_POSTFIELDS, q->q_escaped_request.c_str());
-  //    curl_easy_setopt (local_curl, CURLOPT_WRITEFUNCTION, my_write);
-  //    curl_easy_setopt (local_curl, CURLOPT_WRITEDATA, &response_text);
-  //    // Execute REQUEST
-  //    res = curl_easy_perform (local_curl);
-
-  //    long httpStatus = 0;
-  //    std::string errBuff_s (errBuff);
-  //    curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &httpStatus);
-
-
-  //    curl_call_counter_i++;
-  //    if (res == CURLE_OK)
-  //    {
-  //      if (mxUtils::find_text (response_text, "Error", false) != std::string::npos)
-  //      {
-  //        Log::logMsgThread (fmt::format ("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
-  //        std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for 2 seconds before sending a new request
-  //      }
-  //      else
-  //        flag_curl_results_are_ok = true;
-  //    } // end internal test
-  //    else
-  //    {
-  //      // if (httpStatus != 200 || !errBuff_s.empty ())
-  //      // {
-  //      //   switch (httpStatus)
-  //      //   {
-  //      //   case 503:
-  //      //   case 522:
-  //      //     msg = fmt::format ("cURL HTTP status: {}. Error: {}", httpStatus, "Site might be unavailable.");
-  //      //     loop_counter = max_loop;
-  //      //     break;
-  //      //   case 500:
-  //      //     msg = fmt::format ("cURL HTTP status: {}. Error: {}", httpStatus, "Remote internal server error.");
-  //      //     loop_counter = max_loop;
-  //      //     break;
-  //      //   case 504:
-  //      //     msg = fmt::format ("Try {}/{}: cURL HTTP status: {}. Error: {}", (loop_counter + 1), max_loop, httpStatus, "Gateway Timeout.");
-  //      //     break;
-  //      //   default:
-  //      //     msg = fmt::format ("Try {}/{}: cURL HTTP status: {}. {}", (loop_counter + 1), max_loop, httpStatus, result_s);
-  //      //     break;
-  //      //   }
-  //      //   // (*outStatusMessage) = msg;
-  //      //   result_s.clear();
-  //      //
-  //      //   #ifndef RELEASE
-  //      //   Log::logMsgThread ((*outStatusMessage)); // debug
-  //      //   #endif
-  //      //
-  //      //   std::this_thread::sleep_for (std::chrono::seconds (5));
-  //      // }
-  //      // respond code was not CURLE_OK
-  //      Log::logMsgThread (fmt::format ("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
-  //      std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for 2 seconds before sending a new request
-  //    }
-
-  //    // check [abort]
-  //    if (inoutThreadState->flagAbortThread)
-  //    {
-  //      q->flag_data_respond_was_valid = false;
-  //      q->total_way_count             = 0;
-  //      q->xml_target_nd_node          = IXMLNode::emptyIXMLNode;
-  //      q->xml_target_way_element      = IXMLNode::emptyIXMLNode;
-  //      return;
-  //    }
-
-  //  } // end while loop
-
-
-  //  if (res == CURLE_OK)
-  //  {
-  //    q->flag_data_respond_was_valid = true;
-  //    Log::logMsgThread (fmt::format ("Query ID: {} BBOX: {}\n", q->id, q->q_bbox));
-
-  //    // write to cache file
-  //    if (std::ofstream outFile (filename);
-  //      outFile.is_open ())
-  //    {
-  //      outFile << response_text << "\n";
-  //      outFile.close ();
-  //    }
-  //  }
-  //  else
-  //  {
-  //    // res != CURLE_OK
-  //    response_text.clear ();
-  //    q->flag_data_respond_was_valid = false;
-  //    Log::logMsgThread (fmt::format ("\tCurl error: \n\t{}", curl_easy_strerror (res)));
-  //  }
-
-  //  curl_easy_cleanup (local_curl);
-  //}
-
-  //// sleep for 2 seconds
-  //std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for 2 seconds before sending a new request
-
-  //if (!response_text.empty ())
-  //{
-  //  IXMLDomParser xmlParser;
-  //  IXMLResults   parseResult;
-  //  auto          xml_osm_node = xmlParser.parseString (response_text.c_str (), "osm", &parseResult).deepCopy ();
-  //  //ss_msg.clear ();
-  //  //ss_msg << "Parse root2 result: " << parseResult.errorCode << ", Lines: " << parseResult.nLine << "\n";
-
-  //  #ifndef RELEASE
-  //  Log::logMsgThread (fmt::format ("[{}] (xml_osm_node) Parse result osm: {}, nLine: {}\n", __func__, static_cast<int> (parseResult.errorCode), parseResult.nLine));
-  //  #endif
-
-  //  q->total_way_count = xml_osm_node.nChildNode ("way");
-
-  //  if (q->total_way_count > 0)
-  //  {
-  //    // Get shuffled vector index
-  //    std::vector<int> vecShuffleWayNodes = Utils::getShuffledIndexVector (q->total_way_count);
-
-  //    for (const auto &w : vecShuffleWayNodes)
-  //    {
-  //      q->xml_target_way_element = xml_osm_node.getChildNode ("way", w).deepCopy ();
-  //      #ifndef RELEASE
-  //      Log::logMsgThread (fmt::format ("[{}] Picked <way>: {}\n", __func__, Utils::xml_get_node_content_as_text (q->xml_target_way_element)));
-  //      #endif
-
-  //      const int nd_count = q->xml_target_way_element.nChildNode ("nd");
-  //      if (nd_count < 1)
-  //        continue;
-
-  //      auto rand_node_num = Utils::getRandomIntNumber (0, nd_count - 1);
-  //      // fetch node
-  //      auto nd_node_id = q->xml_target_way_element.getChildNode ("nd", rand_node_num);
-  //      if (CURL *local_curl = curl_easy_init ();
-  //        local_curl)
-  //      {
-  //        CURLcode res                      = CURL_LAST;
-  //        bool     flag_curl_results_are_ok = false;
-  //        size_t   url_loop_counter_i       = 0;
-
-  //        std::this_thread::sleep_for (std::chrono::seconds (1)); // wait for one second before sending a new request
-
-  //        // Call Overpass to get the data for the picked <nd>.
-  //        // We will loop over the "data_manager::vecOverpassUrls.size ()" if there is any error.
-  //        while (!flag_curl_results_are_ok && url_loop_counter_i < data_manager::vecOverpassUrls.size ())
-  //        {
-
-  //          const auto &overpass_url = (url_loop_counter_i < data_manager::vecOverpassUrls.size ()) ? data_manager::vecOverpassUrls.at (url_loop_counter_i) : mxconst::get_DEFAULT_OVERPASS_URL ();
-
-  //          // ---------------------------
-  //          // Construct NODE search
-  //          // ---------------------------
-  //          response_text.clear ();
-  //          auto node_ref_id = Utils::readAttrib (nd_node_id, "ref", "", "-1", true);
-  //          // filledQuery      = fmt::format ("[out:xml][timeout:15];node({});out body;", node_ref_id);
-  //          filledQuery = fmt::format ("[out:xml][timeout:20][bbox:{}];node({});out body;", q->q_all_bbox, node_ref_id);
-  //          std::string s_curl_escape_query   = fmt::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
-
-  //          #ifndef RELEASE
-  //          auto nd_ref_start_time = std::chrono::steady_clock::now ();
-  //          Log::logMsgThread (fmt::format ("[{}] Fetch Node ref: {} for way id: {}\nFrom Overpass URL: {}\nFilter:\n{}\n<---\n", __func__, Utils::readAttrib (nd_node_id, mxconst::get_ATTRIB_REF_OSM (), "n/a ref"), Utils::readAttrib (q->xml_target_way_element, mxconst::get_ATTRIB_ID (), "n/a way"), overpass_url, filledQuery));
-  //          #endif
-
-  //          // ---------------------------
-  //          // Prepare CURL request
-  //          // ---------------------------
-
-  //          // curl_easy_setopt (curl, CURLOPT_URL, "https://overpass-api.de/api/interpreter");
-  //          curl_easy_setopt (local_curl, CURLOPT_URL, overpass_url.c_str ());
-
-  //          curl_easy_setopt (local_curl, CURLOPT_USERAGENT, APP_NAME);
-  //          curl_easy_setopt (local_curl, CURLOPT_CONNECTTIMEOUT, 15L); // v25.10.1 /Timeout for server connection
-  //          curl_easy_setopt (local_curl, CURLOPT_TIMEOUT, 25L); // v25.10.1 added timeout
-
-  //          // ignore SSL - important for Windows
-  //          curl_easy_setopt (local_curl, CURLOPT_FOLLOWLOCATION, 1L);
-  //          curl_easy_setopt (local_curl, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
-  //          curl_easy_setopt (local_curl, CURLOPT_NOPROGRESS, 0L);
-
-
-  //          curl_easy_setopt (local_curl, CURLOPT_POSTFIELDS, s_curl_escape_query.c_str());
-  //          curl_easy_setopt (local_curl, CURLOPT_WRITEFUNCTION, my_write);
-  //          curl_easy_setopt (local_curl, CURLOPT_WRITEDATA, &response_text);
-
-  //          // Execute REQUEST
-  //          res = curl_easy_perform (local_curl);
-
-  //          url_loop_counter_i++;
-  //          if (res == CURLE_OK)
-  //          {
-  //            if (mxUtils::find_text (response_text, "Error", false) != std::string::npos)
-  //            {
-  //              Log::logMsgThread (fmt::format ("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
-  //              Log::logMsgThread (fmt::format ("\tCurl error: \n\t{}\n", curl_easy_strerror (res)));
-  //              std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for one second before sending a new request
-  //            }
-  //            else
-  //              flag_curl_results_are_ok = true;
-  //          } // end internal test
-  //          else
-  //          {
-  //            // respond code was not CURLE_OK
-  //            Log::logMsgThread (fmt::format ("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
-  //            Log::logMsgThread (fmt::format ("\tCurl error: \n\t{}\n", curl_easy_strerror (res)));
-  //            std::this_thread::sleep_for (std::chrono::seconds (3)); // wait for one second before sending a new request
-  //          }
-
-  //          #ifndef RELEASE
-  //          auto nd_ref_end_time   = std::chrono::steady_clock::now ();
-  //          auto diff_nd_start_end = nd_ref_end_time - nd_ref_start_time;
-  //          auto nd_duration       = std::chrono::duration<double, std::milli> (diff_nd_start_end).count ();
-  //          Log::logMsgThread (fmt::format ("[{}]\t\t >> Duration: {:.3f}ms ({:.2f}sec) - ref: {} <<\n\n", __func__, nd_duration, (nd_duration / 1000), Utils::readAttrib (nd_node_id, mxconst::get_ATTRIB_REF_OSM (), "n/a ref")));
-  //          #endif
-
-  //          // check [abort]
-  //          if (inoutThreadState->flagAbortThread)
-  //          {
-  //            q->flag_data_respond_was_valid = false;
-  //            q->total_way_count             = 0;
-  //            q->xml_target_nd_node          = IXMLNode::emptyIXMLNode;
-  //            q->xml_target_way_element      = IXMLNode::emptyIXMLNode;
-  //            return;
-  //          }
-
-  //        } // end while loop
-
-
-  //        if (res == CURLE_OK)
-  //        {
-  //          IXMLDomParser local_xmlParser;
-  //          auto          xml_ref_nd_node = local_xmlParser.parseString (response_text.c_str ()).deepCopy ();
-  //          #ifndef RELEASE
-  //          Log::logMsgThread (fmt::format ("--> [{}] <nd>: Target Node:\n{}", __func__, Utils::xml_get_node_content_as_text (xml_ref_nd_node))); // debug
-  //          // Utils::xml_print_node (root3, true); // debug node
-  //          #endif
-  //          q->xml_target_nd_node = xml_ref_nd_node.getChildNode ("node").deepCopy ();
-
-  //          ///////////////////////////
-  //          // v25.12.1 find vector to next node in <way>. // call the next or previous node relative to the picked node
-  //          auto const lmbda_get_next_node =[&]()
-  //          {
-  //            // preferred result, next node
-  //            if ((rand_node_num + 1) <= (nd_count - 1) )
-  //              return rand_node_num + 1;
-
-  //            // Try previous node
-  //            if ((rand_node_num - 1) > -1 )
-  //              return rand_node_num - 1;
-
-  //            return -1;
-  //          };
-
-  //          // ---------------------------
-  //          // Pick <ref> node, Try up to three times
-  //          // ---------------------------
-  //          auto trial_counter = data_manager::vecOverpassUrls.size(); // We use auto to determine the type
-  //          trial_counter      = 0L; // reset trial counter
-  //          std::string curl_error_text;
-
-  //          do
-  //          {
-  //            const auto node_to_pick_n = lmbda_get_next_node();
-  //            if (node_to_pick_n > -1)
-  //            {
-  //              auto nd_node = q->xml_target_way_element.getChildNode("nd", node_to_pick_n);
-  //              if (!nd_node.isEmpty() && !data_manager::vecOverpassUrls.empty())
-  //              {
-  //                // prepare query
-  //                auto        node_ref_id = Utils::readAttrib(nd_node, "ref", "", "-1", true);
-
-  //                // prepare the osm filter
-  //                std::string next_filledQuery    = fmt::format("[out:xml][timeout:20][bbox:{}];node({});out body;", q->q_all_bbox, node_ref_id);
-  //                std::string s_curl_escape_query = fmt::format("data={}", curl_easy_escape(nullptr, next_filledQuery.c_str(), 0));
-
-  //                // call cURL
-  //                std::string result_text;
-  //                const auto& overpass_url_to_fetch_ref = (trial_counter < data_manager::vecOverpassUrls.size()) ? data_manager::vecOverpassUrls.at(trial_counter) : mxconst::get_DEFAULT_OVERPASS_URL();
-
-  //                std::this_thread::sleep_for(std::chrono::seconds(4)); // wait for a few seconds
-  //                result_text = data_manager::fetch_overpass_info(overpass_url_to_fetch_ref, curl_error_text, s_curl_escape_query);
-  //                trial_counter++;
-
-  //                #ifndef RELEASE
-  //                if (!curl_error_text.empty())
-  //                  Log::logMsgThread(fmt::format("[{}] Node fetch try no.:{}. Error:\n{}", __func__, trial_counter, curl_error_text)); // debug
-  //                #endif
-
-  //                if (curl_error_text.empty())
-  //                {
-  //                  auto xml_next_nd_node = local_xmlParser.parseString(result_text.c_str()).getChildNode("node");
-  //                  if (!xml_next_nd_node.isEmpty() && !q->xml_target_nd_node.isEmpty())
-  //                  {
-  //                    // extract lat/lon from q->xml_target_nd_node
-  //                    const auto target_lat = Utils::readNodeNumericAttrib<float>(q->xml_target_nd_node, mxconst::get_ATTRIB_LAT_OSM(), 0.0f);
-  //                    const auto target_lon = Utils::readNodeNumericAttrib<float>(q->xml_target_nd_node, mxconst::get_ATTRIB_LONG_OSM(), 0.0f);
-  //                    // extract lat/lon from next node
-  //                    const auto next_lat = Utils::readNodeNumericAttrib<float>(xml_next_nd_node, mxconst::get_ATTRIB_LAT_OSM(), 0.0f);
-  //                    const auto next_lon = Utils::readNodeNumericAttrib<float>(xml_next_nd_node, mxconst::get_ATTRIB_LONG_OSM(), 0.0f);
-  //                    if (next_lat * next_lon * target_lat * target_lon != 0.0)
-  //                    {
-  //                      q->xml_next_node_to_find_vector = xml_next_nd_node.deepCopy(); // store just in case we will need it
-  //                      q->target_node_estimate_vector  = mxUtils::mxCalcBearingBetween2Points(target_lat, target_lon, next_lat, next_lon);
-  //                    }
-  //                  }
-  //                }
-  //              }
-  //            } // can we pick a next node to calculate bearing ?
-  //          } while (!curl_error_text.empty() && trial_counter < 4);
-  //          // End calling cURL to find node info
-
-  //          break; // force loop exit
-  //        } // end if all is OK
-
-  //        Log::logMsgThread (fmt::format ("\tReading Node Curl error: \n\t{}\n", curl_easy_strerror (res)));
-  //      } // end fetch specific node from Overpass
-  //    } // end loop "shuffle way nodes"
-  //  } // end nodeCound > 0, meaning we have valid way nodes in the response
-
-  //} // end respond is not empty
-
-  //// } // end if we found the BBOX string
-
-  q->end_time = std::chrono::steady_clock::now ();
-
-}
-
 // -------------------------------------
-
-void
-data_manager::fetch_ways_and_target_node_from_overpass_thread2 (missionx::base_thread::strct_thread_state *inoutThreadState, std::string *outStatusMessage, missionx::structs::strct_osm_query *q)
-{
-  // if (q == nullptr)
-  //   return;
-  //
-  // bool        useCache = false;
-  // std::string response_text;
-  //
-  // q->start_time = std::chrono::steady_clock::now ();
-  // q->flag_data_respond_was_valid = false;
-  //
-  // // prepare request
-  // std::string filledQuery = q->q_text;
-  // const size_t pos_all_bbox = filledQuery.find(q->ALL_BBOX_STR);
-  // const size_t pos_bbox = filledQuery.find(q->BBOX_STR);
-  //
-  // if ((pos_bbox == std::string::npos) && (pos_all_bbox == std::string::npos) )
-  // {
-  //   Log::logMsgThread (fmt::format ("[{}] No Valid BBOX filter was found. Aborting target search.\n", __func__) );
-  //   q->end_time = std::chrono::steady_clock::now ();
-  //   return;
-  // }
-  //
-  // filledQuery = mxUtils::replaceAll (filledQuery, q->BBOX_STR, q->q_bbox); // replace all occurrences.
-  // filledQuery = mxUtils::replaceAll (filledQuery, q->ALL_BBOX_STR, q->q_all_bbox); // replace all occurrences.
-  // q->q_unescaped_request = fmt::format ("data={}", filledQuery.c_str ());
-  // q->q_escaped_request          = fmt::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
-  //
-  // #ifndef RELEASE
-  // Log::logMsgThread (fmt::format ("[{}] OSM Filter: {}\n", __func__, q->q_unescaped_request));
-  // #endif
-  //
-  //
-  // const std::string filename = fmt::format ("{}/cached_ways_{}_{}.xml", q->cache_folder, q->id, q->q_short_bbox_fmt);
-  //
-  // try
-  // {
-  //   if (std::filesystem::exists (filename))
-  //   {
-  //     if (std::ifstream inFile (filename);
-  //       inFile.is_open ())
-  //     {
-  //       response_text.assign ((std::istreambuf_iterator<char> (inFile)), std::istreambuf_iterator<char> ());
-  //       inFile.close ();
-  //       // Check cached result has ways node data
-  //       IXMLDomParser xmlParser;
-  //       IXMLResults   parseResult;
-  //       auto          xml_osm_node = xmlParser.parseString (response_text.c_str (), "osm", &parseResult).deepCopy ();
-  //       // debug and validations
-  //       Log::logMsgThread (fmt::format ("Parse result: {} {}, Lines: {}", static_cast<int> (parseResult.errorCode), (static_cast<int> (parseResult.errorCode) == 0) ? "(ok)" : "", parseResult.nLine));
-  //
-  //
-  //       if (parseResult.errorCode != IXMLError_None)
-  //       {
-  //         Log::logMsgThread (fmt::format ("Returned XML Error Code: {}\nRaw Result XML: {}\n", IXMLDomParser::getErrorMessage (parseResult.errorCode), Utils::xml_get_node_content_as_text (xml_osm_node)));
-  //         useCache = false;
-  //         std::filesystem::remove (filename);
-  //       }
-  //       else
-  //       {
-  //
-  //         int         nodeCount = xml_osm_node.nChildNode ("way"); // second validation
-  //         std::string root_name = xml_osm_node.getName (); // debug
-  //
-  //         if (nodeCount < 1)
-  //         {
-  //           useCache = false;
-  //           std::filesystem::remove (filename);
-  //           q->flag_data_respond_was_valid = false;
-  //         }
-  //         else
-  //         {
-  //           useCache                       = true;
-  //           q->flag_data_respond_was_valid = true;
-  //           Log::logMsgThread (fmt::format ("Using cache {}\n", filename));
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
-  // catch (const std::exception &ex)
-  // {
-  //   useCache = false;
-  //   Log::logMsgThread (fmt::format ("[Exception during cache creation]\n\t{}\n", ex.what ()));
-  //   Log::logMsgThread (fmt::format ("[Expected filename]: {}\n", filename));
-  // }
-  // // end reading cache file
-  //
-  // // check [abort]
-  // if (inoutThreadState->flagAbortThread)
-  // {
-  //   q->flag_data_respond_was_valid = false;
-  //   q->total_way_count             = 0;
-  //   q->xml_target_nd_node          = IXMLNode::emptyIXMLNode;
-  //   q->xml_target_way_element      = IXMLNode::emptyIXMLNode;
-  //   return;
-  // }
-  //
-  //
-  // if (CURL *local_curl = curl_easy_init ();
-  //   local_curl && !useCache)
-  // {
-  //   CURLcode res                      = CURL_LAST;
-  //   bool     flag_curl_results_are_ok = false;
-  //   size_t   curl_call_counter_i       = 0;
-  //   // Call Overpass up to "data_manager::vecOverpassUrls.size ()" times
-  //
-  //   std::this_thread::sleep_for (std::chrono::seconds (1)); // wait for one second before sending a new request
-  //
-  //   while (!flag_curl_results_are_ok && curl_call_counter_i < data_manager::vecOverpassUrls.size ())
-  //   {
-  //     const auto &overpass_url = (curl_call_counter_i < data_manager::vecOverpassUrls.size ()) ? data_manager::vecOverpassUrls.at (curl_call_counter_i) : mxconst::get_DEFAULT_OVERPASS_URL ();
-  //
-  //     #ifndef RELEASE
-  //     Log::logMsgThread (fmt::format ("[{}] Fetching way data from overpass: {}.\nFilter:\n{}\n<---\n", __func__, overpass_url, q->q_unescaped_request));
-  //     #endif
-  //
-  //     response_text.clear ();
-  //     char errBuff[CURL_ERROR_SIZE] = "\0";
-  //
-  //     curl_easy_setopt (local_curl, CURLOPT_URL, overpass_url.c_str());
-  //
-  //     curl_easy_setopt (local_curl, CURLOPT_USERAGENT, APP_NAME);
-  //     curl_easy_setopt (local_curl, CURLOPT_CONNECTTIMEOUT, 20L); // v25.10.1 /Timeout for server connection
-  //     curl_easy_setopt (local_curl, CURLOPT_TIMEOUT, 10L); // v25.10.1 added timeout
-  //
-  //     // ignore SSL - important for Windows
-  //     curl_easy_setopt (local_curl, CURLOPT_FOLLOWLOCATION, 1L);
-  //     curl_easy_setopt (local_curl, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
-  //     curl_easy_setopt (local_curl, CURLOPT_NOPROGRESS, 0L);
-  //
-  //     curl_easy_setopt (local_curl, CURLOPT_ERRORBUFFER, errBuff);
-  //
-  //     curl_easy_setopt (local_curl, CURLOPT_POSTFIELDS, q->q_escaped_request.c_str());
-  //     curl_easy_setopt (local_curl, CURLOPT_WRITEFUNCTION, my_write);
-  //     curl_easy_setopt (local_curl, CURLOPT_WRITEDATA, &response_text);
-  //     // Execute REQUEST
-  //     res = curl_easy_perform (local_curl);
-  //
-  //     curl_call_counter_i++;
-  //     if (res == CURLE_OK)
-  //     {
-  //       if (mxUtils::find_text (response_text, "Error", false) != std::string::npos)
-  //       {
-  //         Log::logMsgThread (fmt::format ("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
-  //         std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for 2 seconds before sending a new request
-  //       }
-  //       else
-  //         flag_curl_results_are_ok = true;
-  //     } // end internal test
-  //     else
-  //     {
-  //       // respond code was not CURLE_OK
-  //       Log::logMsgThread (fmt::format ("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
-  //       std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for 2 seconds before sending a new request
-  //     }
-  //
-  //     // check [abort]
-  //     if (inoutThreadState->flagAbortThread)
-  //     {
-  //       q->flag_data_respond_was_valid = false;
-  //       q->total_way_count             = 0;
-  //       q->xml_target_nd_node          = IXMLNode::emptyIXMLNode;
-  //       q->xml_target_way_element      = IXMLNode::emptyIXMLNode;
-  //       return;
-  //     }
-  //
-  //   } // end while loop
-  //
-  //
-  //   if (res == CURLE_OK)
-  //   {
-  //     q->flag_data_respond_was_valid = true;
-  //     Log::logMsgThread (fmt::format ("Query ID: {} BBOX: {}\n", q->id, q->q_bbox));
-  //
-  //     // write to cache file
-  //     if (std::ofstream outFile (filename);
-  //       outFile.is_open ())
-  //     {
-  //       outFile << response_text << "\n";
-  //       outFile.close ();
-  //     }
-  //   }
-  //   else
-  //   {
-  //     // res != CURLE_OK
-  //     response_text.clear ();
-  //     q->flag_data_respond_was_valid = false;
-  //     Log::logMsgThread (fmt::format ("\tCurl error: \n\t{}", curl_easy_strerror (res)));
-  //   }
-  //
-  //   curl_easy_cleanup (local_curl);
-  // }
-  //
-  // // sleep for 2 seconds
-  // std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for 2 seconds before sending a new request
-  //
-  // if (!response_text.empty ())
-  // {
-  //   IXMLDomParser xmlParser;
-  //   IXMLResults   parseResult;
-  //   auto          xml_osm_node = xmlParser.parseString (response_text.c_str (), "osm", &parseResult).deepCopy ();
-  //   //ss_msg.clear ();
-  //   //ss_msg << "Parse root2 result: " << parseResult.errorCode << ", Lines: " << parseResult.nLine << "\n";
-  //
-  //   #ifndef RELEASE
-  //   Log::logMsgThread (fmt::format ("[{}] (xml_osm_node) Parse result osm: {}, nLine: {}\n", __func__, static_cast<int> (parseResult.errorCode), parseResult.nLine));
-  //   #endif
-  //
-  //   q->total_way_count = xml_osm_node.nChildNode ("way");
-  //
-  //   if (q->total_way_count > 0)
-  //   {
-  //     // Get shuffled vector index
-  //     std::vector<int> vecShuffleWayNodes = Utils::getShuffledIndexVector (q->total_way_count);
-  //
-  //     for (const auto &w : vecShuffleWayNodes)
-  //     {
-  //       q->xml_target_way_element = xml_osm_node.getChildNode ("way", w).deepCopy ();
-  //       #ifndef RELEASE
-  //       Log::logMsgThread (fmt::format ("[{}] Picked <way>: {}\n", __func__, Utils::xml_get_node_content_as_text (q->xml_target_way_element)));
-  //       #endif
-  //
-  //       const int nd_count = q->xml_target_way_element.nChildNode ("nd");
-  //       if (nd_count < 1)
-  //         continue;
-  //
-  //       auto rand_node_num = Utils::getRandomIntNumber (0, nd_count - 1);
-  //       // fetch node
-  //       auto nd_node_id = q->xml_target_way_element.getChildNode ("nd", rand_node_num);
-  //       if (CURL *local_curl = curl_easy_init ();
-  //         local_curl)
-  //       {
-  //         CURLcode res                      = CURL_LAST;
-  //         bool     flag_curl_results_are_ok = false;
-  //         size_t   url_loop_counter_i       = 0;
-  //
-  //         std::this_thread::sleep_for (std::chrono::seconds (1)); // wait for one second before sending a new request
-  //
-  //         // Call Overpass to get the data for the picked <nd>.
-  //         // We will loop over the "data_manager::vecOverpassUrls.size ()" if there is any error.
-  //         while (!flag_curl_results_are_ok && url_loop_counter_i < data_manager::vecOverpassUrls.size ())
-  //         {
-  //
-  //           const auto &overpass_url = (url_loop_counter_i < data_manager::vecOverpassUrls.size ()) ? data_manager::vecOverpassUrls.at (url_loop_counter_i) : mxconst::get_DEFAULT_OVERPASS_URL ();
-  //
-  //           // ---------------------------
-  //           // Construct NODE search
-  //           // ---------------------------
-  //           response_text.clear ();
-  //           auto node_ref_id = Utils::readAttrib (nd_node_id, "ref", "", "-1", true);
-  //           // filledQuery      = fmt::format ("[out:xml][timeout:15];node({});out body;", node_ref_id);
-  //           filledQuery = fmt::format ("[out:xml][timeout:20][bbox:{}];node({});out body;", q->q_all_bbox, node_ref_id);
-  //           std::string s_curl_escape_query   = fmt::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
-  //
-  //           #ifndef RELEASE
-  //           auto nd_ref_start_time = std::chrono::steady_clock::now ();
-  //           Log::logMsgThread (fmt::format ("[{}] Fetch Node ref: {} for way id: {}\nFrom Overpass URL: {}\nFilter:\n{}\n<---\n", __func__, Utils::readAttrib (nd_node_id, mxconst::get_ATTRIB_REF_OSM (), "n/a ref"), Utils::readAttrib (q->xml_target_way_element, mxconst::get_ATTRIB_ID (), "n/a way"), overpass_url, filledQuery));
-  //           #endif
-  //
-  //           // ---------------------------
-  //           // Prepare CURL request
-  //           // ---------------------------
-  //
-  //           // curl_easy_setopt (curl, CURLOPT_URL, "https://overpass-api.de/api/interpreter");
-  //           curl_easy_setopt (local_curl, CURLOPT_URL, overpass_url.c_str ());
-  //
-  //           curl_easy_setopt (local_curl, CURLOPT_USERAGENT, APP_NAME);
-  //           curl_easy_setopt (local_curl, CURLOPT_CONNECTTIMEOUT, 15L); // v25.10.1 /Timeout for server connection
-  //           curl_easy_setopt (local_curl, CURLOPT_TIMEOUT, 25L); // v25.10.1 added timeout
-  //
-  //           // ignore SSL - important for Windows
-  //           curl_easy_setopt (local_curl, CURLOPT_FOLLOWLOCATION, 1L);
-  //           curl_easy_setopt (local_curl, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
-  //           curl_easy_setopt (local_curl, CURLOPT_NOPROGRESS, 0L);
-  //
-  //
-  //           curl_easy_setopt (local_curl, CURLOPT_POSTFIELDS, s_curl_escape_query.c_str());
-  //           curl_easy_setopt (local_curl, CURLOPT_WRITEFUNCTION, my_write);
-  //           curl_easy_setopt (local_curl, CURLOPT_WRITEDATA, &response_text);
-  //
-  //           // Execute REQUEST
-  //           res = curl_easy_perform (local_curl);
-  //
-  //           url_loop_counter_i++;
-  //           if (res == CURLE_OK)
-  //           {
-  //             if (mxUtils::find_text (response_text, "Error", false) != std::string::npos)
-  //             {
-  //               Log::logMsgThread (fmt::format ("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
-  //               Log::logMsgThread (fmt::format ("\tCurl error: \n\t{}\n", curl_easy_strerror (res)));
-  //               std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for one second before sending a new request
-  //             }
-  //             else
-  //               flag_curl_results_are_ok = true;
-  //           } // end internal test
-  //           else
-  //           {
-  //             // respond code was not CURLE_OK
-  //             Log::logMsgThread (fmt::format ("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
-  //             Log::logMsgThread (fmt::format ("\tCurl error: \n\t{}\n", curl_easy_strerror (res)));
-  //             std::this_thread::sleep_for (std::chrono::seconds (3)); // wait for one second before sending a new request
-  //           }
-  //
-  //           #ifndef RELEASE
-  //           auto nd_ref_end_time   = std::chrono::steady_clock::now ();
-  //           auto diff_nd_start_end = nd_ref_end_time - nd_ref_start_time;
-  //           auto nd_duration       = std::chrono::duration<double, std::milli> (diff_nd_start_end).count ();
-  //           Log::logMsgThread (fmt::format ("[{}]\t\t >> Duration: {:.3f}ms ({:.2f}sec) - ref: {} <<\n\n", __func__, nd_duration, (nd_duration / 1000), Utils::readAttrib (nd_node_id, mxconst::get_ATTRIB_REF_OSM (), "n/a ref")));
-  //           #endif
-  //
-  //           // check [abort]
-  //           if (inoutThreadState->flagAbortThread)
-  //           {
-  //             q->flag_data_respond_was_valid = false;
-  //             q->total_way_count             = 0;
-  //             q->xml_target_nd_node          = IXMLNode::emptyIXMLNode;
-  //             q->xml_target_way_element      = IXMLNode::emptyIXMLNode;
-  //             return;
-  //           }
-  //
-  //         } // end while loop
-  //
-  //
-  //         if (res == CURLE_OK)
-  //         {
-  //           IXMLDomParser local_xmlParser;
-  //           auto          xml_ref_nd_node = local_xmlParser.parseString (response_text.c_str ()).deepCopy ();
-  //           #ifndef RELEASE
-  //           Log::logMsgThread (fmt::format ("--> [{}] <nd>: Target Node:\n{}", __func__, Utils::xml_get_node_content_as_text (xml_ref_nd_node))); // debug
-  //           // Utils::xml_print_node (root3, true); // debug node
-  //           #endif
-  //           q->xml_target_nd_node = xml_ref_nd_node.getChildNode ("node").deepCopy ();
-  //
-  //           ///////////////////////////
-  //           // v25.12.1 find vector to next node in <way>. // call the next or previous node relative to the picked node
-  //           auto const lmbda_get_next_node =[&]()
-  //           {
-  //             // preferred result, next node
-  //             if ((rand_node_num + 1) <= (nd_count - 1) )
-  //               return rand_node_num + 1;
-  //
-  //             // Try previous node
-  //             if ((rand_node_num - 1) > -1 )
-  //               return rand_node_num - 1;
-  //
-  //             return -1;
-  //           };
-  //
-  //           // ---------------------------
-  //           // Pick other node, if we fail to retrieve the node data.
-  //           // ---------------------------
-  //
-  //           const auto node_to_pick_n = lmbda_get_next_node();
-  //           if (node_to_pick_n > -1)
-  //           {
-  //             auto nd_node = q->xml_target_way_element.getChildNode ("nd", node_to_pick_n);
-  //             if (!nd_node.isEmpty() && !data_manager::vecOverpassUrls.empty())
-  //             {
-  //               // prepare query
-  //               std::string curl_error_text;
-  //               auto node_ref_id = Utils::readAttrib (nd_node, "ref", "", "-1", true);
-  //
-  //               // prepare the osm filter
-  //               std::string next_filledQuery = fmt::format ("[out:xml][timeout:20][bbox:{}];node({});out body;", q->q_all_bbox, node_ref_id);
-  //               std::string s_curl_escape_query   = fmt::format ("data={}", curl_easy_escape (nullptr, next_filledQuery.c_str (), 0));
-  //
-  //               // call cURL
-  //               int trial_counter = 0;
-  //               std::string result_text;
-  //               do
-  //               {
-  //                 const auto &overpass_url_to_fetch_ref = (trial_counter < data_manager::vecOverpassUrls.size ()) ? data_manager::vecOverpassUrls.at (trial_counter) : mxconst::get_DEFAULT_OVERPASS_URL ();
-  //
-  //                 std::this_thread::sleep_for (std::chrono::seconds (4)); // wait for few seconds
-  //                 // result_text = data_manager::fetch_overpass_info(data_manager::vecOverpassUrls.front(), curl_error_text, s_curl_escape_query);
-  //                 result_text = data_manager::fetch_overpass_info(overpass_url_to_fetch_ref, curl_error_text, s_curl_escape_query);
-  //                 trial_counter++;
-  //
-  //                 #ifndef RELEASE
-  //                 if (!curl_error_text.empty())
-  //                   Log::logMsgThread (fmt::format ("[{}] Node fetch try no.:{}. Error:\n{}", __func__, trial_counter, curl_error_text ) ); // debug
-  //                 #endif
-  //               } while (!curl_error_text.empty() && trial_counter < 4);
-  //               // end call curl
-  //
-  //               if (curl_error_text.empty())
-  //               {
-  //                 auto xml_next_nd_node = local_xmlParser.parseString (result_text.c_str ()).getChildNode("node");
-  //                 if (!xml_next_nd_node.isEmpty() && !q->xml_target_nd_node.isEmpty())
-  //                 {
-  //                   // extract lat/lon from q->xml_target_nd_node
-  //                   const auto target_lat = Utils::readNodeNumericAttrib<float> (q->xml_target_nd_node, mxconst::get_ATTRIB_LAT_OSM (), 0.0f);
-  //                   const auto target_lon = Utils::readNodeNumericAttrib<float> (q->xml_target_nd_node, mxconst::get_ATTRIB_LONG_OSM (), 0.0f);
-  //                   // extract lat/lon from next node
-  //                   const auto next_lat = Utils::readNodeNumericAttrib<float> (xml_next_nd_node, mxconst::get_ATTRIB_LAT_OSM (), 0.0f);
-  //                   const auto next_lon = Utils::readNodeNumericAttrib<float> (xml_next_nd_node, mxconst::get_ATTRIB_LONG_OSM (), 0.0f);
-  //                   if (next_lat * next_lon * target_lat * target_lon != 0.0)
-  //                   {
-  //                     q->xml_next_node_to_find_vector = xml_next_nd_node.deepCopy(); // store just in case we will need it
-  //                     q->target_node_estimate_vector = mxUtils::mxCalcBearingBetween2Points(target_lat, target_lon, next_lat, next_lon);
-  //                   }
-  //                 }
-  //               }
-  //             }
-  //           } // can we pick a next node to calculate bearing ?
-  //
-  //           break; // force loop exit
-  //         } // end if all is OK
-  //
-  //         Log::logMsgThread (fmt::format ("\tReading Node Curl error: \n\t{}\n", curl_easy_strerror (res)));
-  //       } // end fetch specific node from Overpass
-  //     } // end loop "shuffle way nodes"
-  //   } // end nodeCound > 0, meaning we have valid way nodes in the response
-  //
-  // } // end respond is not empty
-  //
-  // // } // end if we found the BBOX string
-  //
-  // q->end_time = std::chrono::steady_clock::now ();
-
-}
-
 // -------------------------------------
 
 bool
@@ -10370,14 +9516,9 @@ data_manager::waitForPluginCallbackJob (missionx::base_thread::strct_thread_stat
     missionx::data_manager::queFlcActions.emplace (inQueuedCommand); // provide the queued command
 
     std::this_thread::sleep_for (std::chrono::milliseconds (inWaitTimeMilliseconds));
-    // wait for the queued command to finish
-    //#ifndef RELEASE
-    //while (out_state_ptr->thread_wait_state < missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job && !out_state_ptr->flagAbortThread && out_state_ptr->flagIsActive)
-    //  #else
-    //while (out_state_ptr->thread_wait_state < missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job && (waitCounter < inLimitWaitCounter) && !out_state_ptr->flagAbortThread && out_state_ptr->flagIsActive)
-    //  #endif
-   while (out_state_ptr->thread_wait_state < missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job && (waitCounter < inLimitWaitCounter) && !out_state_ptr->flagAbortThread && out_state_ptr->flagIsActive)
-   {
+  
+    while (out_state_ptr->thread_wait_state < missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job && (waitCounter < inLimitWaitCounter) && !out_state_ptr->flagAbortThread && out_state_ptr->flagIsActive)
+    {
       ++waitCounter;
       std::this_thread::sleep_for (std::chrono::milliseconds (inWaitTimeMilliseconds));
     }
@@ -10557,7 +9698,6 @@ data_manager::get_weather_state(const int& inCode)
       };
 
 
-
       const std::string newDrefLine_s = key_dref + "=" + lamda_pick_dref_value_base_on_choice(inCode, value_s, key_dref) + "|";
 
       if (std::string_view(last_line_before_break_s + newDrefLine_s).length() > MAX_LENGTH_BEFORE_BREAKING_LINE)
@@ -10646,14 +9786,6 @@ data_manager::write_plane_position_to_log_file()
   XPLMProbeResult outResult;
   const double    groundElev_ft = Point::getTerrainElevInMeter_FromPoint(p, outResult) * meter2feet;
 
-  // std::string formatedOutput = "PLANE: <point lat=" + mxconst::get_QM() + Utils::formatNumber<double>(p.getLat(), 8) + mxconst::get_QM() + " long=" + mxconst::get_QM() + Utils::formatNumber<double>(p.getLon(), 8)
-  //                              + mxconst::get_QM() + " elev_ft=" + mxconst::get_QM() + Utils::formatNumber<double>(p.getElevationInFeet(), 2) + mxconst::get_QM() +
-  //                              " \ttemplate=\"\"  loc_desc=\"\" type=\"\"   heading_psi="
-  //                              + mxconst::get_QM() + Utils::formatNumber<double>(p.getHeading(), 2) + mxconst::get_QM() + " groundElev=" + mxconst::get_QM() + Utils::formatNumber<double>(groundElev_ft)
-  //                              + mxconst::get_QM() + " ft replace_lat=\"" + Utils::formatNumber<double>(p.getLat(), 8) + "\"" + " replace_long=\""
-  //                              + Utils::formatNumber<double>(p.getLon(), 8) + "\" />";
-
-  // constexpr const static std::string sFormat = R"(PLANE: <point lat="{:.8f}" long="{:.8f}" elev_ft="{:.2f}" template=""  loc_desc="" type="" heading_psi="{:.2f}" groundElev="{:.2f}" ft replace_lat="{:.8f}" replace_long="{:.8f}" />)";
   constexpr const static char* sFormat = R"(PLANE: <point lat="{:.8f}" long="{:.8f}" elev_ft="{:.2f}" template=""  loc_desc="" type="" heading_psi="{:.2f}" groundElev="{:.2f}" ft replace_lat="{:.8f}" replace_long="{:.8f}" />)";
 
   const std::string formatedOutput = fmt::format(sFormat, p.getLat(), p.getLon(), p.getElevationInFeet(), p.getHeading(), groundElev_ft, p.getLat(), p.getLon());
@@ -10692,9 +9824,6 @@ data_manager::write_camera_position_to_log_file()
   p.setHeading(gHeading);
 
 
-  // const std::string formatedOutput = "CAMERA VIEW: <point lat=" + mxconst::get_QM() + Utils::formatNumber<double>(p.getLat(), 8) + mxconst::get_QM() + " long=" + mxconst::get_QM() + Utils::formatNumber<double>(p.getLon(), 8) + mxconst::get_QM() + " elev_ft=" + mxconst::get_QM() + Utils::formatNumber<double>(p.getElevationInFeet(), 2) + mxconst::get_QM() +
-  //                              " \ttemplate=\"\"  loc_desc=\"\" type=\"\"    heading_psi=" + mxconst::get_QM() + Utils::formatNumber<double>(p.getHeading(), 2) + mxconst::get_QM() + " groundElev=" + mxconst::get_QM() + Utils::formatNumber<double>(groundElev_ft) + mxconst::get_QM() + " ft  replace_lat=\"" + Utils::formatNumber<double>(p.getLat(), 8) + "\"" + " replace_long=\"" +
-  //                              Utils::formatNumber<double>(p.getLon(), 8) + "\" />";
   constexpr const static char* sFormat        = R"(CAMERA VIEW: <point lat="{:.8f}" long="{:.8f}" elev_ft="{:.2f}" template=""  loc_desc="" type="" heading_psi="{:.2f}" groundElev="{:.2f}" replace_lat="{:.8f}" replace_long="{:.8f}" />)";
   const std::string            formatedOutput = fmt::format(sFormat, p.getLat(), p.getLon(), p.getElevationInFeet(), p.getHeading(), groundElev_ft, p.getLat(), p.getLon());
   Log::logMsgNone(formatedOutput);
@@ -10762,34 +9891,7 @@ data_manager::apply_dataref_based_on_key_value_strings(const std::string& inKey,
 } // apply_datarefs_based_on_string
 
 // -------------------------------------
-
-// int
-// missionx::data_manager::get_inv_layout_based_on_mission_ver_and_compatibility_node ()
-// {
-//   // int layout_version = 0; // return value
-//   //
-//   // // Are we in X-Plane 11 ? if so, we have to force it and ignore other settings.
-//   // if ( missionx::data_manager::xplane_ver_i < missionx::XP12_VERSION_NO )
-//   //   layout_version = XP11_COMPATIBILITY;
-//   // else
-//   // {
-//   //   // Step 1: test Mission file version. If mission file version supports "301" we will set the compatibility to XP11.
-//   //   if ( std::ranges::any_of ( missionx::data_manager::vecCurrentMissionFileSupportedVersions, [&] ( auto &elem ) { return elem == missionx::PLUGIN_FILE_VER_XP11; } ) )
-//   //     layout_version = missionx::XP11_COMPATIBILITY;
-//   //
-//   //   // Step 2: Did designer allow the "newer" inventory, if simmer is using X-Plane 12 ?
-//   //   layout_version = Utils::readNodeNumericAttrib<int> ( missionx::data_manager::mx_global_settings.xCompatibility_ptr, mxconst::get_ATTRIB_INVENTORY_LAYOUT(), layout_version );
-//   //
-//   //   // Step 3: If inventory layout is free to choose, then pick the "setup" compatibility value.
-//   //   if ( layout_version != missionx::XP11_COMPATIBILITY )
-//   //     layout_version = ( missionx::data_manager::flag_setupUseXP11InventoryUI ) ? missionx::XP11_COMPATIBILITY : 0;
-//   // }
-//
-//   return get_inv_layout_based_on_mission_ver_and_compatibility_node(missionx::data_manager::mission_format_versions_s, missionx::data_manager::mx_global_settings.xCompatibility_ptr, missionx::data_manager::flag_setupUseXP11InventoryUI);
-// }
-
-  // -------------------------------------
-
+// -------------------------------------
 
 int
 data_manager::get_inv_layout_based_on_mission_ver_and_compatibility_node ( const std::string &in_mission_format_versions, const IXMLNode &in_compatibility_node, const bool &in_flag_setupUseXP11InventoryUI )
@@ -11042,9 +10144,6 @@ TimeLapse::timelapse_to_local_hour(int inFutureLocalHour, int inFutureMinutes, i
 void
 TimeLapse::flc_timelapse()
 {
-  // #ifdef TIMER_FUNC
-  //   missionx::TimerFunc timerFunc(std::string(__FILE__), std::string(__func__), false);
-  // #endif // TIMER_FUNC
 
   if (this->flag_isActive)
   {
@@ -11167,7 +10266,6 @@ data_manager::data_manager()
     mission_file_supported_versions = lmbda_prepare_version_as_string();
 
 }
-
 
 // -------------------------------------
 // -------------------------------------

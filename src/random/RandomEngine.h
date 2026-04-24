@@ -360,7 +360,7 @@ private:
 
   // v25.02.1
   static std::vector<IXMLNode>                                             gen_land_hover_display_objects (const double &inLat, const double &inLon, const int &inRadiusMT, const int &inHowManyObjects, int &inout_seq, const std::string &inFileName = "land_hover01.obj");
-  static std::map<missionx::enums::mx_osm_region, missionx::structs::BBox> gen_quadrant_bboxes (double centerLat, double centerLon);
+  static std::map<missionx::enums::mx_osm_region_enum, missionx::structs::BBox> gen_quadrant_bboxes (double centerLat, double centerLon);
 
   int seq_triggers   = 0;
   int seq_tasks      = 0;
@@ -388,8 +388,10 @@ private:
   std::unordered_map<int, RandomEngine::mx_inventory_track_strct> map_osm_inventory_track;
 
   mx_return gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IXMLNode& inoutMetaNode, const missionx::Point& in_plane_location); // v25.05.1
+  // mx_return gen_prepare_medevac_surprise_me2(IXMLNode& inRootTemplate, const IXMLNode& inoutMetaNode, const missionx::Point& in_plane_location); // v25.05.1
 
   static std::vector<missionx::structs::strct_osm_query> gen_osm_analyse (mx_return &out_mx_return, const std::string &xmlFilename, const std::string &in_cache_folder, double centre_lat, double centre_lon, IXMLNode &outRootNode = IXMLNode::emptyIXMLNode);
+  // static std::vector<missionx::structs::strct_osm_query> gen_osm_analyse2 (mx_return &out_mx_return, const std::string &xmlFilename, const std::string &in_cache_folder, double centre_lat, double centre_lon, IXMLNode &outRootNode = IXMLNode::emptyIXMLNode);
   // The function returns a "shuffled index vector" as a value, and initializes the "out_main_subject_node" and "analyzed_query" from inside the function to use later from the calling routine.
   static std::vector<int>                    gen_shuffled_q_from_osm_subject_node (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_root_node, const std::vector<missionx::structs::strct_osm_query> &vec_osm_queries, IXMLNode &out_main_subject_node, missionx::structs::strct_osm_query &analyzed_query);
   static std::map<int, missionx::NavAidInfo> gen_get_targets_using_osm_queries_from_a_thread (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_root_node, missionx::structs::strct_osm_query &inout_osm_query, strct_shared_random_airport_info &inout_shared_navaid);

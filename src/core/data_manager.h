@@ -1212,7 +1212,7 @@ public:
   static void fetch_fpln_from_simbrief_site(missionx::base_thread::strct_thread_state* inoutThreadState, const std::string &in_pilot_id, missionx::mxFetchState_enum* outState, std::string* outStatusMessage);
   static void fetch_fpln_from_flightplandatabase_site(missionx::base_thread::strct_thread_state* inoutThreadState, const IXMLNode& inUserPref, missionx::mxFetchState_enum* outState, std::string* outStatusMessage);
 
-  static int                      overpass_counter_i;            // v3.0.255.4.1
+  static int                      curl_call_counter_i;            // v3.0.255.4.1
   static std::vector<std::string> vecOverpassUrls;               // v3.0.255.4.1
   static int                      overpass_user_picked_combo_i;  // v3.0.255.4.1
   static int                      overpass_last_url_indx_used_i; // v3.0.255.4.1
@@ -1220,8 +1220,8 @@ public:
   // in_url_s: a string that can receive the full URL or only the base part.
   // in_separate_data_from_url: a string that construct the data part of the URL. From the "?" onward.
   // in_loop_tries: represent how many time to try and send the request in the case of failure. Default 3.
-  static missionx::structs::strct_curl_result     get_curl_request_respond(const std::string& in_url_s, const std::string& in_separate_data_from_url = "", const int & in_loop_tries = 3); // This function is part of the RandomEngine class call, which is threaded already.
-  // static std::string              fetch_overpass_info2(const std::string& in_url_s, std::string& outError); // This function is part of the RandomEngine class call, which is threaded already.
+  // in_call_id: unique thread number, so messages would be better distinguish when they are being called in parallel (more than one).
+  static missionx::structs::strct_curl_result     get_curl_request_respond(const std::string& in_url_s, const std::string& in_separate_data_from_url = "", const int & in_loop_tries = 2, const int & in_call_id = ++data_manager::curl_call_counter_i); // This function is part of the RandomEngine class call, which is threaded already.
 
   // v25.06.1 Use the sqlite db information to find the nearest navaid
   static void fetch_nearest_osm_navaid_from_sqlite (missionx::NavAidInfo *inFrom_navaid, missionx::NavAidInfo *out_navaid);
@@ -1270,8 +1270,6 @@ public:
 
   static std::unordered_map<int, std::map<std::string, std::string>> reasultTable;
 
-  // v3.0.255.4 add overpas error message variable to display to end user
-  static std::string overpass_fetch_err;
 
   // v3.0.301
   static std::map<int, missionx::mx_local_fpln_strct> read_and_parse_littleNavMap_fpln(const std::string &inPathAndFile);
@@ -1283,8 +1281,7 @@ public:
   ///// SHARED functions and data with the UI screens
   //////////////////////////////////////////////////////////////////
 
-  // v26.02.1 local time
-  
+  // v26.02.1 local time 
   static missionx::structs::mx_clock_time_strct shared_clock_time;
 
   // v26.01.1 failed 3D object to load. Will use after loading a mission file.
@@ -1296,13 +1293,35 @@ public:
   static missionx::uiLayer_enum getGeneratedFromLayer () { return data_manager::generate_from_layer; }
   static float                  Max_Slope_To_Land_On;
 
-  typedef struct _mx_strct_ui_share_data_def
+  struct ui_shared_data_def_struct
   {
-    std::vector<const char *> medevac_arr = { mxconst::CAT_ANY_LOCATION.data (), mxconst::CAT_ACCIDENT_OSM.data (), mxconst::CAT_SURPRISE_ME.data () };
-    std::vector<const char *> oilrig_arr  = { "Oil Rig Cargo", "Medevac" };
-    std::vector<const char *> cargo_arr   = { "GA Cargo", "Farming Cargo", "Isolated Areas" }; // These are only baseline values, it is affected by the "cargo_data.xml" file.
-  } strct_ui_share_data_def;
-  static strct_ui_share_data_def strct_ui_share_data;
+    // v26.04.4 consolidate all message parameters usage into one struct
+    // We have three ways to display messages to a user:
+    // 1. The "user_message_line1" is the first text a user sees.
+    // 2. The "ongoing_status_message_line2" is usefully to message from a running thread.
+    // 3. The "error_message_line3", is usefully to display errors.
+    std::string user_message_line1;
+    std::string ongoing_status_message_line2;
+    std::string error_message_line3;
+
+
+    // ui cargo subcategory options
+    std::vector<const char *> medevac_arr ; //= { mxconst::CAT_ANY_LOCATION.data (), mxconst::CAT_ACCIDENT_OSM.data (), mxconst::CAT_SURPRISE_ME.data () };
+    std::vector<const char *> oilrig_arr  ; //= { "Oil Rig Cargo", "Medevac" };
+    std::vector<const char *> cargo_arr   ; //= { "GA Cargo", "Farming Cargo", "Isolated Areas" }; // These are only baseline values, it is affected by the "cargo_data.xml" file.
+
+    ui_shared_data_def_struct()
+    {
+      medevac_arr = { mxconst::CAT_ANY_LOCATION.data (), mxconst::CAT_ACCIDENT_OSM.data (), mxconst::CAT_SURPRISE_ME.data () };
+      oilrig_arr  = { "Oil Rig Cargo", "Medevac" };
+      cargo_arr   = { "GA Cargo", "Farming Cargo", "Isolated Areas" }; // These are only baseline values, it is affected by the "cargo_data.xml" file.
+
+      user_message_line1.clear();
+      ongoing_status_message_line2.clear();
+      error_message_line3.clear();
+    }
+  };
+  inline static ui_shared_data_def_struct strct_ui_share_data;
 
 
   static void add_advanceSettingsDateTime_and_Weather_to_node(IXMLNode &xGlobalSettings, const IXMLNode & inPropNode, const std::string & inCurrentWeatherDatarefs_s);
@@ -1437,13 +1456,12 @@ public:
 
   // v25.06.1
   static void check_cache_folder (const std::string & in_cache_folder_name);
-  static void fetch_overpass_info_analyze_thread(missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q, const std::map<missionx::enums::mx_osm_region, missionx::structs::BBox>& in_map_bbox);
+  static void fetch_overpass_info_analyze_thread(missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::strct_osm_query *q, const std::set<enums::mx_osm_region_enum>& in_restricted_bbox_areas, const std::map<missionx::enums::mx_osm_region_enum, missionx::structs::BBox>& in_map_bbox);
+  // static void fetch_overpass_info_analyze_thread2(missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::strct_osm_query *q, const std::map<missionx::enums::mx_osm_region_enum, missionx::structs::BBox>& in_map_bbox);
 
   // 25.12.1 The function should be called from a thread. It should initialize the curl object and fetch OSM data
   // The function will fetch OSM information from local cache folder or the web. Make sure to initialize the "cache_folder" in the "*q" parameter before calling this function.
   static void fetch_ways_and_target_node_from_overpass_thread (missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
-  static void fetch_ways_and_target_node_from_overpass_thread3 (missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
-  static void fetch_ways_and_target_node_from_overpass_thread2 (missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
 
 
   // A simple function to manage thread wait for main thread actions that needs to take place before it can continue. Default wait time is 500 milliseconds for 10 iteration (5 seconds)
@@ -1458,9 +1476,6 @@ public:
  private:
   static bool flag_found_missing_3D_object_files;
   static bool flag_rebuild_apt_dat;
-  // v25.10.2
-  // static std::unordered_map<int, std::map<std::string, std::string>> resultTable_rw_metadata;
-  // int callback_gather_runway_metadata_db (void *data, const int argc, char **argv, char **azColName);
 
 }; // end class
 

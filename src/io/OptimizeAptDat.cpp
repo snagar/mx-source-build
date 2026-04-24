@@ -888,23 +888,79 @@ SELECT t1.icao_id,
 
 
 
-    inDB_ptr->execute_stmt(R"(create view ramps_vu as
-SELECT icao_id, icao, ramp_lat as lat, ramp_lon as lon, ramp_heading_true heading, ramp_uq_name as name, for_planes, icao_width_code, operation_type
-     -- All the last "OR" logic in each case statements is for compatibility with old scenery files codes and format. We try to guess the ramp type
-     , case when (instr( lower(IFNULL(for_planes,'')), 'helos') > 0) or (instr( lower(IFNULL(ramp_uq_name,'')), 'heli') > 0) then 1  else 0 END as helos
-     , case when instr( lower(IFNULL(for_planes,'')), '|props|') > 0 or  (instr( lower(IFNULL(ramp_uq_name,'')), 'general') > 0) then 1 else 0 END as props
-     , case when instr( lower(IFNULL(for_planes,'')), 'turboprops') > 0 then 1 else 0 END as turboprops
-     , case when instr( lower(IFNULL(for_planes,'')), 'jet') > 0 then 1 else 0 END as jet
-     , case when instr( lower(IFNULL(for_planes,'')), 'heavy') > 0  then 1 else 0 END as heavy
-     , case when instr( lower(IFNULL(for_planes,'')), 'fighter') > 0 then 1 else 0 END as fighters
-     , case when instr( lower(IFNULL(ramp_uq_name,'')), 'apron') > 0 then 1 else 0 END as apron
-     , case when instr( lower(IFNULL(ramp_uq_name,'')), 'term') > 0 then 1 else 0 END as terminal
-     , 1 as which_table
-FROM xp_ap_ramps t1
-union
-SELECT icao_id, icao, lat, lon, 0 as heading, name, "helos" as for_planes, 'B' as icao_width_code, 'general_aviation' as operation_type, 1 as helos, 0 as props, 0 as turboprops, 0 as jet, 0 as heavy, 0 as fighters, 0 as apron, 0 as terminal, 2 as which_table
-FROM xp_helipads t1
-ORDER BY icao_id
+    inDB_ptr->execute_stmt(R"(CREATE VIEW ramps_vu AS
+    SELECT icao_id,
+           icao,
+           ramp_lat AS lat,
+           ramp_lon AS lon,
+           ramp_heading_true heading,
+           ramp_uq_name AS name,
+           for_planes,
+           icao_width_code,
+           operation_type /* All the last "OR" logic in each case statements is for compatibility with old scenery files codes and format. We try to guess the ramp type */,
+           CASE
+               WHEN (instr(lower(IFNULL(for_planes, '') ), 'helos') > 0) OR
+                    (instr(lower(IFNULL(ramp_uq_name, '') ), 'heli') > 0) THEN 1
+               ELSE 0
+           END AS helos,
+           CASE
+               WHEN instr(lower(IFNULL(for_planes, '') ), '|props|') > 0 OR
+                    (instr(lower(IFNULL(ramp_uq_name, '') ), 'general') > 0) THEN 1
+               ELSE 0
+           END AS props,
+           CASE
+               WHEN instr(lower(IFNULL(for_planes, '') ), 'turboprops') > 0 THEN 1
+               ELSE 0
+           END AS turboprops,
+           CASE
+               WHEN instr(lower(IFNULL(for_planes, '') ), 'jet') > 0 THEN 1
+               ELSE 0
+           END AS jet,
+           CASE
+               WHEN instr(lower(IFNULL(for_planes, '') ), 'heavy') > 0 THEN 1
+               ELSE 0
+           END AS heavy,
+           CASE
+               WHEN instr(lower(IFNULL(for_planes, '') ), 'fighter') > 0 THEN 1
+               ELSE 0
+           END AS fighters,
+           CASE
+               WHEN instr(lower(IFNULL(ramp_uq_name, '') ), 'apron') > 0 THEN 1
+               ELSE 0
+           END AS apron,
+           CASE
+               WHEN instr(lower(IFNULL(ramp_uq_name, '') ), 'term') > 0 THEN 1
+               ELSE 0
+           END AS terminal,
+           CASE
+               WHEN (instr(lower(IFNULL(ramp_uq_name, '') ), 'dock') > 0
+                    or instr(lower(IFNULL(ramp_uq_name, '') ), 'float') > 0) THEN 1
+               ELSE 0
+           END AS dock,
+           1 AS which_table
+      FROM xp_ap_ramps t1
+    UNION
+    SELECT icao_id,
+           icao,
+           lat,
+           lon,
+           0 AS heading,
+           name,
+           "helos" AS for_planes,
+           'B' AS icao_width_code,
+           'general_aviation' AS operation_type,
+           1 AS helos,
+           0 AS props,
+           0 AS turboprops,
+           0 AS jet,
+           0 AS heavy,
+           0 AS fighters,
+           0 AS apron,
+           0 AS terminal,
+           0 AS dock,
+           2 AS which_table
+      FROM xp_helipads t1
+     ORDER BY icao_id;
 )");
 
 

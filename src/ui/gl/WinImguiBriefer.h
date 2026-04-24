@@ -70,7 +70,7 @@ public:
   void  add_ui_expose_all_gps_waypoints (missionx::mx_window_actions inActionToExecute = missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
   void  add_ui_suppress_distance_messages_checkbox_ui (missionx::mx_window_actions inActionToExecute = missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS); // v25.02.1
   void  add_ui_default_weights (); // v25.02.1
-  void  add_message_text (); // v3.305.1
+  void  add_ui_bottom_message_text (); // v3.305.1
   void  add_story_next_button (); // v3.305.1
   void  add_story_message_history_text (); // v3.305.2
   void  add_info_to_flight_leg (); // v3.305.2
@@ -118,124 +118,6 @@ public:
   int              win_pad{ 75 }; ///< distance from left and top border
   const int        win_coll_pad{ 30 }; ///< offset of collated windows
 
-  // // v26.04.1
-  // enum class mx_act_phase_enum : uint8_t
-  // {
-  //   phase_pick = 0,
-  //   phase_accept
-  // };
-
-  // struct activity_btn_info_strct
-  // {
-  //   // list parameters (needed for the semi-automation activity screen)
-  //   struct st_distance
-  //   {
-  //     float min {5.0f};
-  //     float lowest_max{20.0f};
-  //     float max {50.0f};
-  //   };
-  //   struct st_targets
-  //   {
-  //     int min {1};
-  //     int max {1};
-  //   };
-  //
-  //   int          id{ -1 };
-  //   int          final_legs_no_to_generate {1}; // Will hold the final number of legs to generate.
-  //
-  //   st_distance  distance_min_max {5.0f, 20.0f, 50.0f};
-  //   st_targets   legs_min_max {1, 4}; // store the number of targets per "action type picked". Example: Medevac will only have 2 legs.
-  //
-  //   missionx::enums::mx_semi_activities_enum activity{missionx::enums::mx_semi_activities_enum::act_none};
-  //   missionx::mx_plane_types_enum            plane_type{missionx::mx_plane_types_enum::plane_type_any};
-  //
-  //   std::string  imgName;
-  //   std::string  label;
-  //   std::string  tip;
-  //
-  //   // Non-List parameters
-  //   std::string desc {""}; // we need initializer
-  //   float max_distance_slider_f {0.0f};
-  //
-  //   void reset()
-  //   {
-  //     id                        = -1;
-  //     final_legs_no_to_generate = 1;
-  //     distance_min_max          = {5.0, 20.0f, 50.0};
-  //     legs_min_max              = {1, 4};
-  //     activity                  = missionx::enums::mx_semi_activities_enum::act_none;
-  //     plane_type                = missionx::mx_plane_types_enum::plane_type_any;
-  //     imgName.clear();
-  //     label.clear();
-  //     tip.clear();
-  //
-  //     // temporary data
-  //     desc.clear();
-  //     max_distance_slider_f = 0.0f;
-  //   }
-  //
-  //
-  //   [[nodiscard]] st_distance get_mission_area() const
-  //   {
-  //     st_distance mission_area;
-  //
-  //     if (this->activity < missionx::enums::mx_semi_activities_enum::act_turboprops && (this->max_distance_slider_f - this->distance_min_max.min < 10.0f))
-  //       mission_area.min = distance_min_max.min;
-  //     else
-  //       mission_area.min = max_distance_slider_f - ( 0.5f * (max_distance_slider_f - distance_min_max.min ) );
-  //
-  //     mission_area.max = max_distance_slider_f;
-  //     mission_area.lowest_max = distance_min_max.lowest_max;
-  //
-  //     return mission_area;
-  //   }
-  //
-  //   void randomize_max_distance()
-  //   {
-  //     max_distance_slider_f = std::roundf(  static_cast<float>( Utils::getRandomRealNumber(distance_min_max.lowest_max, distance_min_max.max) ) );
-  //   }
-  //
-  //   int randomize_no_of_legs()
-  //   {
-  //      final_legs_no_to_generate = legs_min_max.min;
-  //
-  //     if (legs_min_max.min < legs_min_max.max)
-  //     {
-  //       // randomize pick num of legs
-  //       final_legs_no_to_generate = Utils::getRandomIntNumber(legs_min_max.min, legs_min_max.max);
-  //     }
-  //
-  //     return final_legs_no_to_generate;
-  //
-  //   } // end randomize_no_of_legs
-  //
-  //   // prepare desc
-  //   void prepare_the_semi_activity_description()
-  //   {
-  //     // Type of plane
-  //     const std::string plane_type_desc = (id < 5)? "You will fly a helos mission" : "You will fly a plane mission";
-  //
-  //     // Flight area description
-  //      const auto  [min_area, low_max, max_area] = get_mission_area();
-  //     //const auto min_area = calc_min_area_distance();
-  //
-  //
-  //     std::string flight_area_desc = fmt::format("{:.0f} to {:.0f}", min_area, max_area);
-  //     if (activity == enums::mx_semi_activities_enum::act_helos_cargo_oilrig || activity == enums::mx_semi_activities_enum::act_helos_medevac_oilrig)
-  //       flight_area_desc            = fmt::format("determined based on the oil rig search area");
-  //     else if (activity == enums::mx_semi_activities_enum::act_helos_medevac_surprise_me)
-  //       flight_area_desc            = fmt::format("determined by the plugin");
-  //
-  //     const std::string area_desc  = fmt::format("Flight area: {}", flight_area_desc);
-  //
-  //
-  //     // no. of legs
-  //     const std::string no_of_legs_desc = fmt::format("You will have: {}", (final_legs_no_to_generate < 2)? " one landing location" : fmt::format(" up to {}, landing locations", final_legs_no_to_generate));
-  //
-  //     // construct description
-  //     desc = fmt::format("{}.\n\n{}.\n{}.", plane_type_desc, area_desc, no_of_legs_desc);
-  //   }
-  // };
 
   // ids: 1-4 will be kept for Helos accident, Hellos Surprise me, Hellos oilrig and any medevac activity
   const std::list<activity_btn_info_strct> list_semi_auto_activities = {
@@ -254,103 +136,18 @@ public:
   // // -------------------------------------------
   // // -- STRUCT user mission creation variables
   // // -------------------------------------------
-  // struct mx_user_create_mission_layer
-  // {
-  //   enum class mx_dynamic_fpln_screen
-  // : uint8_t
-  //   {
-  //     ext_home = 0,
-  //     ext_option_a,
-  //     ext_option_b
-  //   };
-  //
-  //   bool flag_first_time{ true };
-  //   mx_dynamic_fpln_screen child_screen{ mx_dynamic_fpln_screen::ext_home };
-  //
-  //   mx_layer_state_enum layer_state{ missionx::mx_layer_state_enum::not_initialized }; // v3.0.253.9
-  //
-  //   // v26.04.1 semi-automated mission creation
-  //   mx_act_phase_enum act_phase_enum{ mx_act_phase_enum::phase_pick }; // v26.04.1
-  //   activity_btn_info_strct user_semi_act_picked; // v26.04.1
-  //   int                                      headerIndex{ 0 }; // v25.03.3. Used only with mapSetupHeaders
-  //   std::unordered_map<int, mx_header_state> mapSemiOptionsHeaders = { { headerIndex, mx_header_state ("Custom Tweaks", true) } }; // header is open by default
-  //
-  //
-  //   int            iRadioMissionTypePicked{ static_cast<int> (missionx::mx_ui_mission_type::medevac) }; // which type of template user picked ?
-  //   int            iMissionSubCategoryPicked{ -1 }; // v3.303.14 // v25.06.1 init -1 which is not valid
-  //   mx_plane_types_enum iRadioPlaneType{ missionx::mx_plane_types_enum::plane_type_helos };
-  //   bool           flag_narrow_helos_filtering{ false };
-  //
-  //
-  //
-  //   // sliders
-  //   float dyn_sliderVal1 = (float)mxconst::SLIDER_MIN_RND_DIST; // min distance
-  //   float dyn_sliderVal2 = dyn_sliderVal1 * 1.2f; // max distance
-  //
-  //   std::string dyn_slider1_lbl = "Min distance [" + Utils::formatNumber<float> (mxconst::SLIDER_MIN_RND_DIST, 0) + "..." + Utils::formatNumber<float> (mxconst::SLIDER_MIN_RND_DIST * 1.2, 0) + "]";
-  //   std::string dyn_slider2_lbl = "Max distance [" + Utils::formatNumber<float> (mxconst::SLIDER_MIN_RND_DIST * 1.2, 0) + "..." + Utils::formatNumber<float> (mxconst::SLIDER_MIN_RND_DIST * 5.0, 0) + "]";
-  //
-  //   // OSM checkbox
-  //   bool flag_use_osm{ false };
-  //   bool flag_use_web_osm{ false };
-  //
-  //   // flight legs
-  //   int iNumberOfFlighLegs{ 2 };
-  //
-  //   // overpass filter // v3.0.253.4
-  //   const std::string overpass_original_filter{ mxconst::get_DEFAULT_OVERPASS_WAYS_FILTER () }; // { "[highway=primary][highway=secondary][highway=tertiary][highway=residential][highway=service][highway=living_street][highway=track]" };
-  //   std::string       overpass_main_filter{ overpass_original_filter };
-  //   std::string       overpass_pre_apply_filter_s{ overpass_main_filter };
-  //
-  //   // Oilrig
-  //   //std::string oilrig_part_of_globe_label; // v25.08.1
-  //   std::map <int, std::string> map_pick_oilrig_globe_part {
-  //      { missionx::PICKED_GLOBE, " Globe " }
-  //     ,{ missionx::PICKED_HALF_GLOBE, " Half Globe " }
-  //     ,{ missionx::PICKED_QUARTER_GLOBE, " Quarter Globe " }
-  //     ,{ missionx::PICKED_LOCAL_REGION_GLOBE, " Local Region " }
-  //     ,{ missionx::PICKED_IN_MY_AREA, " In My Area " }
-  //   };
-  //   // Filter runway by type
-  //   bool                                     flag_pick_any_rw{ true };
-  //   std::map<const std::string, bool>        map_filter_runways                      = { { "Grass##filterRunways", false }, { "Dirt/Gravel##filterRunways", false }, { "Concrete/Asphalt##filterRunways", false }, { "water##filterRunways", false } };
-  //   std::map<const std::string, std::string> map_filter_runways_translate_to_numbers = { { "Grass##filterRunways", "3" }, { "Dirt/Gravel##filterRunways", "4, 5" }, { "Concrete/Asphalt##filterRunways", "1, 2" }, { "water##filterRunways", "13" } };
-  //
-  //   void reset_filter_runways_flags ()
-  //   {
-  //     for (auto &rw_type : map_filter_runways)
-  //       rw_type.second = false;
-  //
-  //     flag_pick_any_rw = true;
-  //   }
-  //
-  //
-  //   mx_user_create_mission_layer() = default;
-  //
-  // };
-  // // define the instance
-  // mx_user_create_mission_layer strct_user_create_layer;
-
-
-  //// v3.0.253.11
-  //typedef struct _cross_layer_property
-  //{
-  //  bool flag_start_from_plane_position{ false };
-  //  bool flag_generate_gps_waypoints{ true };
-  //  bool flag_add_route_waypoints{ false }; // v25.04.2
-  //  bool flag_auto_load_route_to_gps_or_fms{ false }; // v25.04.2
-
-  //} mx_cross_layer_property;
-  //mx_cross_layer_property strct_cross_layer_properties;
-
+  // Moved to the shared_ui_types.hpp
 
   // Flight plan result string
-  std::string asyncSecondMessageLine;
+  std::string async_message_line2;
+  std::string error_message_line3;
   // bool        flag_generatedRandomFile_success{ false }; // v26.04.3 moved to shared header shared_ui_types
 
 
   // MEMBERS //
-  void setMessage (const std::string &inMsg, int secToDisplayMessage = 20);
+  void set_bottom_message_line1 (const std::string &inMsg, int secToDisplayMessage = 20);
+  void set_async_message_text_line2(const std::string& in_text, int secToDisplayMessage = 60); // v26.04.4
+  void set_error_message_text_line3(const std::string& in_text, int secToDisplayMessage = 60); // v26.04.4
 
   void clearMessage (); //
 
@@ -363,116 +160,7 @@ public:
 
 
   // // ----- ILS Layer -----
-  // //// user mission creation variables
-  // typedef struct _ils_layer
-  // {
-  //   bool flagNavigatedFromOtherLayer{ false }; // v24025
-  //   bool flagForceNavDataTab{ false }; // v24.03.1
-  //   bool flagIgnoreDistanceFilter{ false }; // v24.03.1
-  //
-  //   bool isIFR {true};
-  //   bool isVFR {false};
-  //
-  //
-  //   mx_layer_state_enum               layer_state{ missionx::mx_layer_state_enum::not_initialized };
-  //   missionx::enums::mx_treeNodeState enum_elevSliderOpenState{ missionx::enums::mx_treeNodeState::closed }; // v24.03.1 converted the flag to enum
-  //
-  //   int sort_indx{ 0 }; // starts in 0
-  //
-  //   // from ILS icao parameters
-  //   char                 buf1[10] = { "" };
-  //   char                 buf2[10] = { "" };
-  //   bool                 bFirstTime{ false };
-  //   std::string          from_icao{ "" }; // we will fetch the closest icao location to plane location
-  //   std::string          to_icao{ "" }; // v3.0.253.3 search specific destination
-  //   missionx::NavAidInfo navaid;
-  //
-  //   int            iRadioTemplate_Med_or_Cargo{ 1 }; // template type should only be cargo
-  //   mx_plane_types_enum iRadioPlaneType{ missionx::mx_plane_types_enum::plane_type_props };
-  //   // sliders
-  //   float       ils_sliderVal1  = (float)mxconst::SLIDER_SHORTEST_MIN_ILS_SEARCH_RADIUS; // min distance
-  //   float       ils_sliderVal2  = (float)mxconst::SLIDER_SHORTEST_MAX_ILS_SEARCH_RADIUS; // lowest ILS search radius. 250nm in v3.0.253.6
-  //   std::string ils_slider2_lbl = "[" + Utils::formatNumber<float> (ils_sliderVal1, 0) + ".." + Utils::formatNumber<float> (ils_sliderVal2, 0) + "]";
-  //
-  //   // ILS types
-  //   std::string                                ils_types_tree_label; // empty means "any"
-  //   std::map<missionx::mx_ils_type_enum, bool> mapCheck_ILS_types;
-  //
-  //   // RW Length Slider
-  //   int         slider_min_rw_length_i{ mxconst::SLIDER_ILS_STARTING_RW_LENGTH_VALUE };
-  //   std::string min_rw_length_label_s{ Utils::formatNumber<int> (slider_min_rw_length_i) };
-  //
-  //   // Minimal RW Width Slider
-  //   int slider_min_rw_width_i{ mxconst::SLIDER_ILS_STARTING_RW_WIDTH_VALUE };
-  //
-  //   // Minimal Airport elevation Slider
-  //   int slider_min_airport_elev_ft_i{ mxconst::SLIDER_ILS_STARTING_AIRPORT_ELEV_VALUE_FT };
-  //
-  //   int                          limit_indx{ 0 }; // v24.03.1 limit ILS rows fetched from DB
-  //   constexpr const static char *limit_items[] = { "250", "500", "750", "1000", "1250", "1500", "2000" };
-  //
-  //
-  //   // search ILS from database - progress
-  //   std::string filter_query_s; // v24.03.1
-  //   missionx::mxFetchState_enum fetch_ils_state{ missionx::mxFetchState_enum::fetch_not_started };
-  //   missionx::mxFetchState_enum fetch_nav_state{ missionx::mxFetchState_enum::fetch_not_started };
-  //   missionx::mxFetchState_enum fetch_metar_state{ missionx::mxFetchState_enum::fetch_not_started };
-  //
-  //   std::string asyncFetchMsg_s;
-  //   std::string asyncNavFetchMsg_s;
-  //   std::string asyncMetarFetchMsg_s;
-  //
-  //   // Plane location
-  //   missionx::Point planePos;
-  //
-  //   // Nav Data // v24025
-  //   std::string                                sNavICAO;
-  //   std::unordered_map<int, mx_nav_data_strct> mapNavaidData; // airport data
-  //
-  //   // ---------------- Members -----------------
-  //   _ils_layer () { init_mapChecks_ils_types (); }
-  //
-  //   void init_mapChecks_ils_types ()
-  //   {
-  //     mapCheck_ILS_types.clear ();
-  //     for (const auto &keyType : missionx::mapILS_types | std::views::keys)
-  //       mapCheck_ILS_types[keyType] = false; // reset to false
-  //   }
-  //
-  //   std::string get_ils_types_picked () // will help to construct the types tree title and the SQL statement
-  //   {
-  //     std::string result_s;
-  //     bool        foundAtLeastOne = false;
-  //     auto        counter         = 0; // (imapSize > 0) ? 1 : imapSize; // counter follows which iterator we test. If we reached last one, we won't add "," to result_s
-  //     auto        foundCounter_i  = 0;
-  //     for (auto &v : mapCheck_ILS_types)
-  //     {
-  //       counter++;
-  //       if (v.second)
-  //       {
-  //         foundCounter_i++;
-  //         if (foundAtLeastOne) // add "," only if we have at least 1 value
-  //           result_s += ",";
-  //         // add label
-  //         result_s += "'" + missionx::mapILS_types[v.first] + "'";
-  //
-  //         foundAtLeastOne = true;
-  //       }
-  //     }
-  //
-  //     if (foundCounter_i == counter)
-  //       result_s.clear ();
-  //
-  //     return mxUtils::stringToLower (result_s);
-  //   } // get_ils_types_picked
-  //
-  // } mx_ils_layer;
-  //
-  // // ILS screen layer struct
-  // mx_ils_layer strct_ils_layer;
-
-  // Setup Layer Struct
-  //mx_setup_layer strct_setup_layer;
+  // Moved to the shared_ui_types.hpp
 
   void set_vecOverpassUrls_char (const std::vector<std::string> &inVecData);
 
@@ -698,12 +386,6 @@ public:
       }
       for (auto enumI = missionx::enums::mx_note_longField_enum::begin; enumI < missionx::enums::mx_note_longField_enum::end; enumI = static_cast<missionx::enums::mx_note_longField_enum>(static_cast<size_t>(enumI) + 1))
       {
-        // #ifdef IBM
-        // memcpy_s(mapNoteFieldLong[enumI], sizeof (mapNoteFieldLong[enumI]), "\0", sizeof ("\0"));
-        // #else
-        // memcpy(mapNoteFieldLong[enumI], "\0", sizeof ("\0"));
-        // #endif
-
         // v26.04.3
         mxUtils::reset_buffer(mapNoteFieldLong[enumI][0], sizeof(mapNoteFieldLong[enumI]));
 
@@ -714,23 +396,9 @@ public:
     {
       for (auto enumI = missionx::enums::mx_note_shortField_enum::begin; enumI < missionx::enums::mx_note_shortField_enum::end; enumI = static_cast<missionx::enums::mx_note_shortField_enum>(static_cast<size_t>(enumI) + 1))
       {
-        // #ifdef IBM
-        // memcpy_s(mapNoteFieldShort[enumI], sizeof (mapNoteFieldShort[enumI]), "\0", sizeof ("\0"));
-        // #else
-        // memcpy(mapNoteFieldShort[enumI], "\0", sizeof ("\0"));
-        // #endif
-
         // v26.04.3
         mxUtils::reset_buffer(mapNoteFieldShort[enumI][0], sizeof(mapNoteFieldShort[enumI]));
       }
-
-      // #ifdef IBM
-      // memcpy_s(mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints], sizeof (mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints]), "\0", sizeof ("\0"));
-      // memcpy_s(mapNoteFieldLong[missionx::enums::mx_note_longField_enum::taxi], sizeof (mapNoteFieldLong[missionx::enums::mx_note_longField_enum::taxi]), "\0", sizeof ("\0"));
-      // #else
-      // memcpy(mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints], "\0", sizeof ("\0"));
-      // memcpy(mapNoteFieldLong[missionx::enums::mx_note_longField_enum::taxi], "\0", sizeof ("\0"));
-      // #endif
 
       // v26.04.3
       mxUtils::reset_buffer(mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints][0], sizeof(mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints]));
@@ -746,40 +414,19 @@ public:
         if ((enumI == missionx::enums::mx_note_longField_enum::waypoints) || (enumI == missionx::enums::mx_note_longField_enum::taxi))
           continue;
 
-        // #ifdef IBM
-        // memcpy_s(mapNoteFieldLong[enumI], sizeof (mapNoteFieldLong[enumI]), "\0", sizeof ("\0"));
-        // #else
-        // memcpy(mapNoteFieldLong[enumI], "\0", sizeof ("\0"));
-        // #endif
-
         // v26.04.3
         mxUtils::reset_buffer(mapNoteFieldLong[enumI][0], sizeof(mapNoteFieldLong[enumI]));
-
       }
     }
 
     void setNoteShortField(const missionx::enums::mx_note_shortField_enum inEnum, const std::string& inValue)
     {
-      // #ifdef IBM
-      // memcpy_s(mapNoteFieldShort[inEnum], SHORT_FIELD_SIZE - 1, inValue.c_str(), SHORT_FIELD_SIZE - 1);
-      // #else
-      // memcpy(mapNoteFieldShort[inEnum], inValue.c_str(), SHORT_FIELD_SIZE - 1);
-      // #endif
-
       // v26.04.3
       mxUtils::copy_string_to_buffer(inValue, mapNoteFieldShort[inEnum][0], sizeof(mapNoteFieldShort[inEnum]));
-
-
     }
 
     void setNoteLongField(const missionx::enums::mx_note_longField_enum inEnum, const std::string& inValue)
     {
-      // #ifdef IBM
-      // memcpy_s(mapNoteFieldLong[inEnum], LONG_FIELD_SIZE - 1, inValue.c_str(), LONG_FIELD_SIZE - 1);
-      // #else
-      // memcpy(mapNoteFieldLong[inEnum], inValue.c_str(), LONG_FIELD_SIZE - 1);
-      // #endif
-
       // v26.04.3
       mxUtils::copy_string_to_buffer(inValue, mapNoteFieldLong[inEnum][0], sizeof(mapNoteFieldLong[inEnum]));
 
@@ -834,26 +481,10 @@ public:
 
 
   //// ----- Custom Template Layer -----
-  //typedef struct _generate_template_layer
-  //{
-  //  bool bFinished_loading_templates{ false };
-
-  //  mx_layer_state_enum layer_state{ missionx::mx_layer_state_enum::not_initialized }; // v3.0.253.9
-
-  //  int    user_pick_from_replaceOptions_combo_i{ mxconst::INT_UNDEFINED };
-  //  ImVec2 vec2_replace_options_size{ 150.f, 20.0f }; // v3.0.255.4.1
-
-  //  std::vector<const char *> vecReplaceOptions_char{}; // v3.0.255.4 will store pointers to the <replace_options> element from the TemplateInfo
-
-  //  std::string last_picked_template_key;
-  //  std::string selectedTemplateKey; // v25.09.2
-  //} mx_generate_template_layer;
-  //mx_generate_template_layer strct_generate_template_layer;
+  // Moved to the shared_ui_types.hpp
 
 
   missionx::uiLayer_enum getCurrentLayer () const { return this->currentLayer; }
-
-
 
 protected:
   // tableDataListTy     tableList;
@@ -905,35 +536,6 @@ private:
     { 7, missionx::uiLayer_enum::option_conv_fpln_to_mission, mxconst::get_BITMAP_BTN_CONVERT_FPLN_TO_MISSION_24X18 (), "Conv. FPLN", "Convert LittleNavMap FPLN to mission file." }
 
   };
-
-
-
-
-
-  // typedef struct _radio_plane_type
-  // {
-  //   missionx::mx_plane_types_enum type {missionx::mx_plane_types_enum::plane_type_any};
-  //   std::string              label;
-  //
-  //   float from_slider_min{ (float)mxconst::SLIDER_MIN_RND_DIST };
-  //   float to_slider_min{ (float)mxconst::SLIDER_MAX_RND_DIST };
-  //   float from_slider_max{ (float)(mxconst::SLIDER_MIN_RND_DIST * 1.2) };
-  //   float to_slider_max{ (float)(mxconst::SLIDER_MAX_RND_DIST * 1.2) };
-  //
-  //   _radio_plane_type () = default;
-  //
-  //   _radio_plane_type (const missionx::mx_plane_types_enum inType, const std::string& inLabel, const float in_lower_slider_min, const float in_upper_slider_min, const float inMultiplyLowerMin = 1.2f, const float inMultiplyUpperMin = 1.2f)
-  //   {
-  //     type            = inType;
-  //     label           = inLabel;
-  //     from_slider_min = in_lower_slider_min;
-  //     to_slider_min   = in_upper_slider_min;
-  //     from_slider_max = static_cast<float>(static_cast<int>(from_slider_min * inMultiplyLowerMin));
-  //     to_slider_max   = static_cast<float>(static_cast<int>(to_slider_min * inMultiplyUpperMin));
-  //   }
-  //
-  // } radio_plane_type;
-
 
   void validate_sliders_values (missionx::mx_plane_types_enum inPlaneType);
 
@@ -1006,8 +608,10 @@ private:
   const float  FOOTER_REGION_CLEARENCE_PX{ 110.0f };
   const ImVec2 IMAGE_IN_FLIGHT_INFO = ImVec2{ 290.0f, 420.0f };
 
-  //std::string     sBottomMessage{ "> " };
-  missionx::Timer timerMessage;
+  //std::string     user_message_line1{ "> " };
+  missionx::Timer timer_message_line1;
+  missionx::Timer timer_message_line2;
+  missionx::Timer timer_message_line3;
 
   ///// DEBUG SLIDER HELPER ////
   float fDebugSlider{ 0.0f };
@@ -1066,14 +670,6 @@ private:
   void add_landing_rate_ui (const missionx::mx_enrout_stats_strct &inStats); // v3.303.14  landing rate performance row
   void add_ui_stats_child (bool isEmbedded = false); // v3.303.14  isEmbedded means that we don't want the BeginChild definition inside the function we will use and external BeginChild
 
-  // const std::string LBL_START_MISSION              = ">> Start Mission <<";
-  // const std::string LBL_LOAD_WARNINGS              = "!! Show Warnings !!"; // v26.1.1
-  // const std::string LBL_ABORT_THREAD_LABEL         = "!! Abort !!";
-  // const std::string FPLN_MORE_DETAILS              = "More Flight Plan Details";
-  // const std::string GENERATE_QUESTION              = "Generate Mission From Flight Plan";
-  // const std::string GENERATE_ILS_QUESTION          = "Generate Mission From ILS data"; // v3.0.253.6
-  // const std::string GENERATE_TEMPLATE_QUESTION     = "Generate Mission From Template data"; // v25.06.1
-
 
 #ifndef RELEASE
   bool add_ui_test_button (const missionx::mx_flc_pre_command inCommand, const std::string &label, const std::string &tip = "") const
@@ -1100,49 +696,17 @@ private:
 
   void add_missing_3d_files_message ();
 
-  //void subDraw_ui_xRadius (IXMLNode &node, int pad_x_i = 0); // display the radius widget. Used for triggers based rad
-  //void subDraw_ui_xPolyBox (IXMLNode &pNode, mx_trig_strct_ &inTrig_ptr); // display the poligonal box widget. Used for triggers based box/poly. We have 2 types, bottom left and center based
-  //void subDraw_ui_xTrigger_elev (mx_trig_strct_ &inTrig_ptr, IXMLNode &node, bool inResetPick = false); // display the elevation options
-  //void subDraw_ui_xScriptlet (IXMLNode &pNode, mxTrig_ui_mode_enm &inMode, mx_trig_strct_ *inTrig_ptr, const std::string inScriptInputLabel = "", missionx::mx_local_fpln_strct *inLegData = nullptr,
-                              //char *inOutBuff = nullptr); // display a multiline input text for <scriptlet> element. Add it to the pNode once clicking the [apply] button. Returns the name of the scriptlet.
-  // xLinkToNode can be an empty node. We will use it to link to a flight leg
-  // void subDraw_ui_xTrigger_main (missionx::mx_local_fpln_strct &inLegData, bool &inNeedRefresh_b, int inLegIndex, std::map<int, missionx::mx_trig_strct_> &inMapOfGlobalTriggers,
-  //                                std::vector<std::string> &inVecGlobalTriggers_names); // The function should receive the parent of all <trigger> elements. The ifnormation that will be displayed will be added to it.
-  //void subDraw_ui_xTrigger_detail (mx_trig_strct_ &inTrig_ptr, bool &in_out_needRefresh_b, std::string &suggested_name, missionx::mx_local_fpln_strct &inLegData);
-
-  // std::map<int, missionx::mx_local_fpln_strct> read_and_parse_saved_state (const std::string inPathAndFile); // v3.0.303.4 Read stored conversion state
-
-
-
-  // const char *clockHours_arr[24]   = { "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23" }; // v3.303.8
-  // const char *clockMinutes_arr[12] = { "00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55" }; // v3.303.8
-  // const char *clockDayOfYear_arr[365]{ "0 - Jan", "1",   "2",   "3",   "4",   "5",   "6",   "7",   "8",   "9",   "10",  "11",  "12",  "13",  "14",  "15",  "16",  "17",  "18",  "19",  "20",  "21",  "22",  "23",  "24",  "25",  "26",  "27",  "28",  "29",        "30",  "31 - Feb", "32",  "33",  "34",  "35",  "36",  "37",  "38",  "39",  "40",  "41",  "42",  "43",  "44",  "45",  "46",  "47",  "48",  "49",  "50",  "51",  "52",  "53",  "54",  "55",  "56",  "57",  "58",  "59 - Mar", "60",        "61",  "62",  "63",  "64",  "65",  "66",  "67",  "68",  "69",  "70",  "71",  "72",  "73",  "74",  "75",  "76",  "77",  "78",  "79",  "80",  "81",  "82",  "83",  "84",  "85",  "86",  "87",  "88",  "89",  "90 - Apr",  "91",  "92",  "93",  "94",  "95",  "96",  "97",  "98",  "99",  "100", "101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111", "112", "113", "114", "115", "116", "117", "118", "119", "120 - May", "121",       "122", "123", "124", "125", "126", "127", "128", "129", "130", "131", "132", "133", "134", "135", "136", "137", "138", "139", "140", "141", "142", "143", "144", "145", "146", "147", "148", "149", "150", "151 - Jun", "152", "153", "154", "155", "156", "157", "158", "159", "160", "161", "162", "163", "164", "165", "166", "167", "168", "169", "170", "171", "172", "173", "174", "175", "176", "177", "178", "179", "180", "181 - Jul", "182",
-  //                                      "183",     "184", "185", "186", "187", "188", "189", "190", "191", "192", "193", "194", "195", "196", "197", "198", "199", "200", "201", "202", "203", "204", "205", "206", "207", "208", "209", "210", "211", "212 - Aug", "213", "214",      "215", "216", "217", "218", "219", "220", "221", "222", "223", "224", "225", "226", "227", "228", "229", "230", "231", "232", "233", "234", "235", "236", "237", "238", "239", "240", "241", "242",      "243 - Sep", "244", "245", "246", "247", "248", "249", "250", "251", "252", "253", "254", "255", "256", "257", "258", "259", "260", "261", "262", "263", "264", "265", "266", "267", "268", "269", "270", "271", "272", "273 - Oct", "274", "275", "276", "277", "278", "279", "280", "281", "282", "283", "284", "285", "286", "287", "288", "289", "290", "291", "292", "293", "294", "295", "296", "297", "298", "299", "300", "301", "302", "303",       "304 - Nov", "305", "306", "30",  "308", "309", "310", "311", "312", "313", "314", "315", "316", "317", "318", "319", "320", "321", "322", "323", "324", "325", "326", "327", "328", "329", "330", "331", "332", "333", "334 - Dec", "335", "336", "337", "338", "339", "340", "341", "342", "343", "344", "345", "346", "347", "348", "349", "350", "351", "352", "353", "354", "355", "356", "357", "358", "359", "360", "361", "362", "363", "364" };
-
-
-  // v3.303.14 sub categories for missions
-  // std::vector <const char*> medevac_arr = { "Any Location - Rescue", "Accident (OSM)" };
-  // std::vector <const char*> oilrig_arr  = { "Oil Rig Cargo", "Medevac" };   //, "Personnel" };
-  // std::vector <const char*> cargo_arr   = { "GA Cargo", "Farming Cargo", "Isolated Areas" };// , "Heavy Cargo" };
   std::vector<const char *> cargo_arr_copy; // will hold the copy of the original cargo_arr
   std::vector<std::string>  vecExternalCategories; // v24.05.1
-
-  //std::unordered_map<int, std::vector<const char *>> mapMissionCategories = {
-  //  { static_cast<int> (missionx::mx_ui_mission_type::medevac), data_manager::strct_ui_share_data.medevac_arr },
-  //  { static_cast<int> (missionx::mx_ui_mission_type::oil_rig), data_manager::strct_ui_share_data.oilrig_arr },
-  //  { static_cast<int> (missionx::mx_ui_mission_type::cargo), data_manager::strct_ui_share_data.cargo_arr }
-  //};
 
 
 
   // ADVANCED SETTINGS Struct
-  //mx_popup_adv_settings_strct adv_settings_strct;
+  // Moved to the shared_ui_types.hpp
 
 
   // v3.303.10
   void generate_mission_date_based_on_user_preference (int &out_iClockDayOfYearPicked, int &out_iClockHourPicked, int &out_iClockMinutesPicked, const bool &inIncludeNightHours);
-  // v3.303.14
-  // void addAdvancedSettingsPropertiesBeforeGeneratingRandomMission ();
 
   void refresh_slider_data_based_on_plane_type (missionx::mx_plane_types_enum inPlaneType); // split the code so it will be simpler to call it from different logic locations.
 
@@ -1171,6 +735,7 @@ private:
   static bool         add_ui_pick_how_many_legs ( int & inout_radio_value_ref, const std::string & in_label, const int & in_minButtons, const int & in_maxButtons); // v26.04.1
   void                add_ui_oilrig_search_area_buttons ( ); // v26.04.1
   void                add_ui_medevac_surprise_me_warning ( ); // v26.04.1
+  static void         add_ui_is_amphibian ();
   const dataref_const dc;
 };
 

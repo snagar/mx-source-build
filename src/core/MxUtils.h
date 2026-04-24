@@ -537,6 +537,13 @@ public:
 
   }
   // -------------------------------------------
+  // This is the most "bulletproof" version for cross-platform (Win/Mac/Linux)
+  template <typename T, typename... Args>
+  static bool mx_in(const T& target, const Args&... args) {
+    return ((target == args) || ...);
+  }
+
+  // -------------------------------------------
 
   // Test if value is "equal or greater" than Min and "equal or lower" than max
   template<typename T>
@@ -611,7 +618,7 @@ public:
 
   static int coord_in_rect(float x, float y, const float bounds_ltrb[4]);
 
-  static std::string get_mx_osm_region_trans (const missionx::enums::mx_osm_region inRegion);
+  static std::string get_mx_osm_region_trans (missionx::enums::mx_osm_region_enum inRegion);
 
   // -------------------------------------------
   static bool check_file_exists (const std::string& in_path);

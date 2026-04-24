@@ -42,6 +42,12 @@ public:
 
     std::atomic<int>                   counter;    // will be used for counting long loop operations like apt.dat optimizations
     std::string                        dataString; // string data if needed for the thread, like path.
+
+    // We have three ways to store messages to display to the user. 
+    // One directly in the WinImguiBriefer::user_message_line1, 
+    // the "data_manager::strct_ui_share_data.ongoing_status_message_line2" 
+    // and a third one the: data_manager::strct_ui_share_data.error_message_line3.
+
     std::map<std::string, std::string> mapValues;
     
     missionx::mx_base_node pipeProperties; // v3.305.1

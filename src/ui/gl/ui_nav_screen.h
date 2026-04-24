@@ -52,7 +52,7 @@ public:
 
   // ----- Pointers to parent functions -----
 
-  std::function<void(std::string, int)> setMessage;
+  std::function<void(std::string, int)> set_bottom_message_line1;
   std::function<void()> add_designer_mode_checkbox;
   std::function<bool()> add_ui_checkbox_rerun_random_date_and_time;
   // void add_ui_advance_settings_random_date_time_weather_and_weight_button (int &out_iClockDayOfYearPicked, int &out_iClockHourPicked, int &out_iClockMinutesPicked, const std::string &inTEXT_TYPE = mxconst::get_TEXT_TYPE_TITLE_REG ());
@@ -69,14 +69,13 @@ public:
   std::function<void(missionx::mx_window_actions)> add_ui_auto_load_checkbox;
   // add ui autoload checkbox
   std::function<void(const std::vector<const char *>)> add_ui_pick_subcategories;
+  // add ui is amphibian checkbox
+  std::function<void()> add_ui_is_amphibian;
 
-  // void
-  // WinImguiBriefer::add_ui_auto_load_checkbox (const missionx::mx_window_actions &inActionToExecute)
 
-  // void
-  // WinImguiBriefer::add_ui_pick_subcategories (const std::vector<const char *> &vecToDisplay)
-
+  // -----------------------------------
   // Members
+  // -----------------------------------
   void draw_ils_screen (); // v3.0.253.6
   void child_draw_ils_search (); // v25.08.1
   void child_draw_nav_search (); // v24.02.5

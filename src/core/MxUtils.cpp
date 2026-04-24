@@ -1086,16 +1086,16 @@ missionx::mxUtils::coord_in_rect(float x, float y, const float bounds_ltrb[4])
 // ----------------------------------------------
 
 std::string
-missionx::mxUtils::get_mx_osm_region_trans (const missionx::enums::mx_osm_region inRegion)
+missionx::mxUtils::get_mx_osm_region_trans (const missionx::enums::mx_osm_region_enum inRegion)
 {
   switch (inRegion) {
-    case missionx::enums::mx_osm_region::nw:
+    case missionx::enums::mx_osm_region_enum::nw:
       return "nw";
-    case missionx::enums::mx_osm_region::ne:
+    case missionx::enums::mx_osm_region_enum::ne:
       return "ne";
-    case missionx::enums::mx_osm_region::se:
+    case missionx::enums::mx_osm_region_enum::se:
       return "se";
-    case missionx::enums::mx_osm_region::sw:
+    case missionx::enums::mx_osm_region_enum::sw:
       return "sw";
   }
 

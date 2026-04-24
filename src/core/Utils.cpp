@@ -739,9 +739,6 @@ missionx::Utils::splitStringAndGetShuffledIndexVector (const std::string &inStri
   std::random_device rd;
   std::mt19937       g (rd ()); // Mersenne Twister engine seeded by random_device
 
-  // for (int iRange = 0; iRange < out_split_vec.size (); ++iRange)
-  //   shuffled_indx_vec.push_back(iRange);
-
   int counter = 0;
   std::ranges::for_each (out_split_vec, [&] (const auto &str)
   {
@@ -756,27 +753,27 @@ missionx::Utils::splitStringAndGetShuffledIndexVector (const std::string &inStri
 
 // -------------------------------------------
 
-
-std::vector<int>
-missionx::Utils::getShuffledIndexVector (const int &inNumbersInVector)
-{
-  // init random seed
-  std::random_device rd;
-  std::mt19937       g (rd ()); // Mersenne Twister engine seeded by random_device
-
-  std::vector<int> shuffled_indx_vec (inNumbersInVector);
-  std::iota(shuffled_indx_vec.begin(), shuffled_indx_vec.end(), 0);
-
-  // Shuffle Vector
-  std::ranges::shuffle (shuffled_indx_vec, g);
-
-  return shuffled_indx_vec;
-}
+//
+//std::vector<int>
+//missionx::Utils::getShuffledIndexVector (const int &in_how_many_values_in_vector)
+//{
+//  // init random seed
+//  std::random_device rd;
+//  std::mt19937       g (rd ()); // Mersenne Twister engine seeded by random_device
+//
+//  std::vector<int> shuffled_indx_vec (in_how_many_values_in_vector);
+//  std::iota(shuffled_indx_vec.begin(), shuffled_indx_vec.end(), 0);
+//
+//  // Shuffle Vector
+//  std::ranges::shuffle (shuffled_indx_vec, g);
+//
+//  return shuffled_indx_vec;
+//}
 
 // -------------------------------------------
 
 
-std::string Utils::get_shuffled_value_from_string_value(const std::string& in_value_to_split)
+std::string Utils::get_one_shuffled_value_from_string_value(const std::string& in_value_to_split)
 {
   if (in_value_to_split.empty ())
     return "";
@@ -3886,7 +3883,33 @@ missionx::Utils::read_external_blueprint_items(const std::string& inRootNodeName
   return IXMLNode::emptyIXMLNode;
 }
 
+// -------------------------------------------
 
+uint64_t Utils::get_file_hash(const std::filesystem::path& file_path)
+{
+  // 64-bit FNV-1a constants
+  constexpr uint64_t FNV_OFFSET_BASIS = 0xcbf29ce484222325;
+  constexpr uint64_t FNV_PRIME        = 0x100000001b3;
+
+  std::ifstream file(file_path, std::ios::binary);
+  if (!file.is_open()) return 0;
+
+  uint64_t hash = FNV_OFFSET_BASIS;
+
+  // Use a buffer to read the file in chunks (avoids loading huge files into RAM)
+  std::vector<char> buffer(4096);
+  while (file.read(buffer.data(), buffer.size()) || file.gcount() > 0)
+  {
+    const std::streamsize bytes_read = file.gcount();
+    for (std::streamsize i = 0; i < bytes_read; ++i)
+    {
+      hash                         ^= static_cast<uint64_t>(static_cast<unsigned char>(buffer[i]));
+      hash                         *= FNV_PRIME;
+    }
+  }
+
+  return hash;
+}
 
 
 // -------------------------------------------

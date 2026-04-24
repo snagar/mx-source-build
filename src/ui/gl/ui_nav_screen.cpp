@@ -108,9 +108,12 @@ void ui_nav_screen::child_draw_ils_search()
   {
     const auto child_vec2 = ImVec2 (this->mxUiGetWindowContentWxH ().x * 0.49f, this->mxUiGetWindowContentWxH ().y * 0.44f);
 
+    // ------------------
+    // IFR / VFR Buttons
+    // ------------------
     ImGui::BeginGroup ();
     {
-      auto i_picked = this->add_ui_two_option_buttons (missionx::strct_ils_layer.isIFR, missionx::strct_ils_layer.isVFR, missionx::PICKED_IFR, missionx::PICKED_VFR);
+      const auto i_picked = this->add_ui_two_option_buttons (missionx::strct_ils_layer.isIFR, missionx::strct_ils_layer.isVFR, missionx::PICKED_IFR, missionx::PICKED_VFR);
       if (i_picked != data_manager::ui_ifr_or_vfr_i)
       {
         data_manager::ui_ifr_or_vfr_i = i_picked;
@@ -118,6 +121,10 @@ void ui_nav_screen::child_draw_ils_search()
         {
           case missionx::PICKED_VFR:
           {
+              // set sliders min/max
+            strct_ils_layer.ils_sliderVal1 = strct_ils_layer.ils_or_vfr_min_slider_value = mxconst::SLIDER_ILS_MIN_VFR_SEARCH_RADIUS;
+            strct_ils_layer.ils_or_vfr_max_slider_value = mxconst::SLIDER_ILS_MAX_VFR_SEARCH_RADIUS;
+
             if (strct_ils_layer.ils_sliderVal2 > 50.0f) // search radius
               strct_ils_layer.ils_sliderVal2 = 10.0f;
             if (strct_ils_layer.slider_min_rw_length_i > 300) // runway length
@@ -130,8 +137,13 @@ void ui_nav_screen::child_draw_ils_search()
             [[fallthrough]];
           default:
           {
-            if (strct_ils_layer.ils_sliderVal2 < 100.0f) // search radius
-              strct_ils_layer.ils_sliderVal2 = 100.0f;
+            // set sliders min/max
+            strct_ils_layer.ils_sliderVal1 = strct_ils_layer.ils_or_vfr_min_slider_value = mxconst::SLIDER_ILS_MIN_SEARCH_RADIUS;
+            strct_ils_layer.ils_or_vfr_max_slider_value = mxconst::SLIDER_ILS_MAX_SEARCH_RADIUS;
+
+            // validate max radius is longer thant min
+            if (strct_ils_layer.ils_sliderVal2 <= mxconst::SLIDER_ILS_MIN_SEARCH_RADIUS) // search radius
+              strct_ils_layer.ils_sliderVal2 = mxconst::SLIDER_ILS_MIN_SEARCH_RADIUS * 1.5f;
             if (strct_ils_layer.slider_min_rw_length_i < 800) // runway length
               strct_ils_layer.slider_min_rw_length_i = 800;
             if (strct_ils_layer.slider_min_rw_width_i < 45) // runway width
@@ -139,6 +151,8 @@ void ui_nav_screen::child_draw_ils_search()
           }
           break;
         }
+        // refresh label
+        strct_ils_layer.ils_slider2_lbl = "[" + Utils::formatNumber<float> (strct_ils_layer.ils_sliderVal1, 0) + ".." + Utils::formatNumber<float> (strct_ils_layer.ils_sliderVal2, 0) + "]";
       }
     }
 
@@ -199,14 +213,11 @@ void ui_nav_screen::child_draw_ils_search()
           #ifdef IBM
           missionx::strct_ils_layer.navaid = data_manager::get_plane_airport_or_nearest_icao ();
           #else
-          auto tempNav                 = data_manager::get_plane_airport_or_nearest_icao ();
+          const auto tempNav                 = data_manager::get_plane_airport_or_nearest_icao ();
           missionx::strct_ils_layer.navaid = tempNav;
           #endif
           if (!missionx::strct_ils_layer.navaid.getID().empty())
-          {
-            //std::memcpy(missionx::strct_ils_layer.buf1, missionx::strct_ils_layer.navaid.ID, 10);
             mxUtils::copy_string_to_buffer(missionx::strct_ils_layer.buf1, missionx::strct_ils_layer.navaid.ID[0], sizeof(missionx::strct_ils_layer.navaid.ID)); // v26.04.3
-          }
 
           missionx::strct_ils_layer.from_icao  = std::string (missionx::strct_ils_layer.buf1); // first initialization
           missionx::strct_ils_layer.sNavICAO   = missionx::strct_ils_layer.from_icao; // v24.03.2 NavData ICAO will also be initialized.
@@ -262,15 +273,47 @@ void ui_nav_screen::child_draw_ils_search()
         ImGui::TextColored (missionx::color::color_vec4_yellow, "Choose Route Range");
         ImGui::PushID ("##Slider_ILS_MaxDistance");
         {
-          if (ImGui::SliderFloat ("", &strct_ils_layer.ils_sliderVal2, mxconst::SLIDER_SHORTEST_MAX_ILS_SEARCH_RADIUS, mxconst::SLIDER_ILS_MAX_SEARCH_RADIUS, "%.0f nm"))
+          // if (ImGui::SliderFloat ("", &strct_ils_layer.ils_sliderVal2, mxconst::SLIDER_SHORTEST_MAX_ILS_SEARCH_RADIUS, mxconst::SLIDER_ILS_MAX_SEARCH_RADIUS, "%.0f nm"))
+          if (ImGui::SliderFloat ("", &strct_ils_layer.ils_sliderVal2, strct_ils_layer.ils_or_vfr_min_slider_value, strct_ils_layer.ils_or_vfr_max_slider_value, "%.0f nm"))
           {
-            // calc and construct low/high label for slider
-            if (strct_ils_layer.ils_sliderVal2 / 500.0f > 1.0f)
-              strct_ils_layer.ils_sliderVal1 = strct_ils_layer.ils_sliderVal2 * 0.75f;
-            else if (strct_ils_layer.ils_sliderVal2 / 250.0f > 1.0f)
-              strct_ils_layer.ils_sliderVal1 = strct_ils_layer.ils_sliderVal2 * 0.5f;
+            if (data_manager::ui_ifr_or_vfr_i == PICKED_IFR)
+            {
+              // calc and construct low/high label for slider
+              if (strct_ils_layer.ils_sliderVal2 / 500.0f > 1.0f)
+                strct_ils_layer.ils_sliderVal1 = strct_ils_layer.ils_sliderVal2 * 0.75f;
+              else if (strct_ils_layer.ils_sliderVal2 / 250.0f > 1.0f)
+                strct_ils_layer.ils_sliderVal1 = strct_ils_layer.ils_sliderVal2 * 0.5f;
+              else
+                strct_ils_layer.ils_sliderVal1 = mxconst::SLIDER_ILS_MIN_SEARCH_RADIUS;
+
+            }
             else
-              strct_ils_layer.ils_sliderVal1 = mxconst::SLIDER_SHORTEST_MIN_ILS_SEARCH_RADIUS;
+            {
+              // VFR will be limited to 500nm
+              if (strct_ils_layer.ils_sliderVal2 > 500.0f)
+                strct_ils_layer.ils_sliderVal2 = 500.0f;
+
+              // calc minimum
+              if (strct_ils_layer.ils_sliderVal2 / 250.0f > 1.0f)
+                strct_ils_layer.ils_sliderVal1 = strct_ils_layer.ils_sliderVal2 * 0.75f;
+              else if (strct_ils_layer.ils_sliderVal2 / 150.0f > 1.0f)
+                strct_ils_layer.ils_sliderVal1 = strct_ils_layer.ils_sliderVal2 * 0.65f;
+              else if (strct_ils_layer.ils_sliderVal2 / 50.0f > 1.0f)
+                strct_ils_layer.ils_sliderVal1 = strct_ils_layer.ils_sliderVal2 * 0.5f;
+              else
+                strct_ils_layer.ils_sliderVal1 = mxconst::SLIDER_ILS_MIN_SEARCH_RADIUS;
+
+            }
+
+            // Validate max slider is greater than shorter slider
+            if (strct_ils_layer.ils_sliderVal1 >= strct_ils_layer.ils_sliderVal2)
+            {
+              strct_ils_layer.ils_sliderVal1 = strct_ils_layer.ils_sliderVal2;
+              if (data_manager::ui_ifr_or_vfr_i == PICKED_IFR)
+                strct_ils_layer.ils_sliderVal2 = strct_ils_layer.ils_sliderVal1 * 1.2f;
+              else
+                strct_ils_layer.ils_sliderVal2 = strct_ils_layer.ils_sliderVal1 * 2.0f;
+            }
 
             strct_ils_layer.ils_slider2_lbl = "[" + Utils::formatNumber<float> (strct_ils_layer.ils_sliderVal1, 0) + ".." + Utils::formatNumber<float> (strct_ils_layer.ils_sliderVal2, 0) + "]";
           }
@@ -406,13 +449,13 @@ void ui_nav_screen::child_draw_ils_search()
   //------------------------------------------------
   //     Status Messages
   //------------------------------------------------
-  if (missionx::data_manager::flag_generate_engine_is_running && missionx::sBottomMessage.empty ())
+  if (missionx::data_manager::flag_generate_engine_is_running && data_manager::strct_ui_share_data.user_message_line1.empty())
   {
-    this->setMessage ("Random Engine is running, please wait...", DEFAULT_MESSAGE_TIME_I);
+    this->set_bottom_message_line1 ("Random Engine is running, please wait...", DEFAULT_MESSAGE_TIME_I);
   }
-  else if (missionx::data_manager::flag_apt_dat_optimization_is_running && sBottomMessage.empty ())
+  else if (missionx::data_manager::flag_apt_dat_optimization_is_running && data_manager::strct_ui_share_data.user_message_line1.empty())
   {
-    this->setMessage ("Can't Generate mission, apt data optimization is currently running. Please wait for it to finish first !!!", DEFAULT_MESSAGE_TIME_I);
+    this->set_bottom_message_line1 ("Can't Generate mission, apt data optimization is currently running. Please wait for it to finish first !!!", DEFAULT_MESSAGE_TIME_I);
   }
 
 
@@ -625,6 +668,13 @@ void ui_nav_screen::child_draw_ils_search()
 
                 ImGui::NewLine ();
                 ImGui::Checkbox ("Start from plane position", &missionx::strct_cross_layer_properties.flag_start_from_plane_position); // v3.0.253.11 // v3.0.253.12 reposition checkbox in the popup generate window
+
+                if (missionx::strct_ils_layer.iRadioPlaneType > mx_plane_types_enum::plane_type_helos &&  missionx::strct_ils_layer.iRadioPlaneType < mx_plane_types_enum::plane_type_jets)
+                {
+                  ImGui::SameLine(0.0f, 10.0f);
+                  add_ui_is_amphibian();
+                }
+
                 ImGui::Spacing ();
                 ImGui::Checkbox ("Generate GPS waypoints.", &missionx::strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12
                 this->add_ui_auto_load_checkbox (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS); // v25.04.2
@@ -671,6 +721,11 @@ void ui_nav_screen::child_draw_ils_search()
                   // Prepare and call ACTION_GENERATE_RANDOM_MISSION
                   data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_FPLN_ID_PICKED (), picked_fpln_id_i);
                   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_PLANE_TYPE_I (), static_cast<int> (strct_ils_layer.iRadioPlaneType)); // v25.04.1 moved into popup
+                  // v26.04.4 force amphibian flag base on plane type
+                  if (missionx::strct_ils_layer.iRadioPlaneType > mx_plane_types_enum::plane_type_turboprops || missionx::strct_ils_layer.iRadioPlaneType == mx_plane_types_enum::plane_type_helos)
+                    missionx::strct_user_create_layer.flag_plane_is_amphibian = false;
+                  missionx::data_manager::prop_userDefinedMission_ui.setBoolProperty(mxconst::get_PLANE_IS_AMPHIBIAN(), static_cast<int>(strct_user_create_layer.flag_plane_is_amphibian)); // v26.04.4
+
                   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_START_FROM_PLANE_POSITION (), missionx::strct_cross_layer_properties.flag_start_from_plane_position); // v3.0.253.11 start from plane position
                   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), missionx::strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12 generate GPS waypoints
 
@@ -682,7 +737,7 @@ void ui_nav_screen::child_draw_ils_search()
 
 
                   missionx::strct_generate_template_layer.selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI ();
-                  this->setMessage ("Generating mission is in progress, please wait...", 10);
+                  this->set_bottom_message_line1 ("Generating mission is in progress, please wait...", 10);
 
                   ImGui::CloseCurrentPopup ();
                   this->execAction (mx_window_actions::ACTION_GENERATE_RANDOM_MISSION);
@@ -750,7 +805,7 @@ void ui_nav_screen::child_draw_nav_search()
   {
     if (missionx::strct_ils_layer.fetch_metar_state == missionx::mxFetchState_enum::fetch_in_process)
     {
-      this->setMessage ("Active METAR fetch is in progress, please wait for it to finish or [Abort] the action.", DEFAULT_MESSAGE_TIME_I);
+      this->set_bottom_message_line1 ("Active METAR fetch is in progress, please wait for it to finish or [Abort] the action.", DEFAULT_MESSAGE_TIME_I);
     }
     else
     {
@@ -758,7 +813,7 @@ void ui_nav_screen::child_draw_nav_search()
 
       if (missionx::strct_ils_layer.sNavICAO.empty ())
       {
-        this->setMessage ("Please enter a valid ICAO.", 6);
+        this->set_bottom_message_line1 ("Please enter a valid ICAO.", 6);
       }
       else
       {
@@ -772,7 +827,7 @@ void ui_nav_screen::child_draw_nav_search()
         }
         else
         {
-          this->setMessage ("Navaid: " + missionx::strct_ils_layer.sNavICAO + " is invalid.", 6);
+          this->set_bottom_message_line1 ("Navaid: " + missionx::strct_ils_layer.sNavICAO + " is invalid.", 6);
         }
       }
     }
@@ -798,7 +853,7 @@ void ui_nav_screen::child_draw_nav_search()
     if (ImGui::Button (" Abort Metar Request "))
     {
       missionx::data_manager::threadStateMetar.flagAbortThread = true;
-      this->setMessage ("Trying to abort Metar fetch thread. Give it a few seconds to be released.", 8);
+      this->set_bottom_message_line1 ("Trying to abort Metar fetch thread. Give it a few seconds to be released.", 8);
     }
     ImGui::PopStyleColor (3);
   }
@@ -1139,7 +1194,7 @@ void ui_nav_screen::add_ui_ils_vfr_search_airports_button(missionx::mx_window_ac
     // last validation
     if (missionx::strct_ils_layer.navaid.getID ().empty ()) // if navaid ID is still empty then pick plane position
     {
-      this->setMessage ("Could not initialize starting ICAO. Please consider entering it manually.", missionx::DEFAULT_MESSAGE_TIME_I);
+      this->set_bottom_message_line1 ("Could not initialize starting ICAO. Please consider entering it manually.", missionx::DEFAULT_MESSAGE_TIME_I);
     }
     else
     {
@@ -1181,7 +1236,7 @@ void ui_nav_screen::callNavData(std::string_view inICAO, bool bNavigatingFromOth
       this->execAction (missionx::mx_window_actions::ACTION_OPEN_NAV_LAYER);
   }
   else
-    this->setMessage ("A previous request is running in the background.", DEFAULT_MESSAGE_TIME_I);
+    this->set_bottom_message_line1 ("A previous request is running in the background.", DEFAULT_MESSAGE_TIME_I);
 }
 
 // ----------------------------

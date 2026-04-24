@@ -76,7 +76,7 @@ Other option is to add this information after generating the mission file, if yo
         inXpData.addChild (xpdata_node.getChildNode (mxconst::get_ELEMENT_DATAREF ().c_str (), i1).deepCopy ()); // add all <dataref> childs to the global xpdata
 
 
-      this->setMessage ("<xpdata> information was stored", 8);
+      this->set_bottom_message_line1 ("<xpdata> information was stored", 8);
 
       #ifndef RELEASE
       Log::logMsg ("Valid <xpdata>:\n" + xpdata_s);
@@ -85,7 +85,7 @@ Other option is to add this information after generating the mission file, if yo
     else
     {
       std::string err_s = std::string (IXMLPullParser::getErrorMessage (parse_result_strct.errorCode)) + " [line/col:" + mxUtils::formatNumber<long long> (parse_result_strct.nLine) + "/" + mxUtils::formatNumber<int> (parse_result_strct.nColumn) + "]";
-      this->setMessage (err_s, 8);
+      this->set_bottom_message_line1 (err_s, 8);
       #ifndef RELEASE
       Log::logMsg (err_s);
       #endif // !RELEASE
@@ -176,7 +176,7 @@ Other option is to add this information after generating the mission file, if yo
         inOutGlobalSettingsNode.addChild (xResultNode.getChildNode (i1).deepCopy ()); // add all <sub elements> childs to the global_settings element
 
 
-      this->setMessage ("<global_settings> information was stored", missionx::DEFAULT_MESSAGE_TIME_I);
+      this->set_bottom_message_line1 ("<global_settings> information was stored", missionx::DEFAULT_MESSAGE_TIME_I);
 
 #ifndef RELEASE
       Log::logMsg ("Valid <global_settings>:\n" + xml_data_s);
@@ -185,7 +185,7 @@ Other option is to add this information after generating the mission file, if yo
     else
     {
       std::string err_s = std::string (IXMLPullParser::getErrorMessage (parse_result_strct.errorCode)) + " [line/col:" + mxUtils::formatNumber<long long> (parse_result_strct.nLine) + "/" + mxUtils::formatNumber<int> (parse_result_strct.nColumn) + "]";
-      this->setMessage (err_s, DEFAULT_MESSAGE_TIME_I);
+      this->set_bottom_message_line1 (err_s, DEFAULT_MESSAGE_TIME_I);
 #ifndef RELEASE
       Log::logMsg (err_s);
 #endif // !RELEASE
@@ -1081,7 +1081,7 @@ bool ui_conv_screen::validate_conversion_table(IXMLNode& inMainNode, std::map<in
   }
   if (flag_found_active_flight_leg == false)
   {
-    this->setMessage ("Could not find any active flight leg. Flag at least one waypoint as a \"Leg\"", 8);
+    this->set_bottom_message_line1 ("Could not find any active flight leg. Flag at least one waypoint as a \"Leg\"", 8);
     return false;
   }
 
@@ -1437,11 +1437,11 @@ ui_conv_screen::subDraw_ui_xTrigger_detail (mx_trig_strct_ &inTrig_ptr, bool &in
         auto        childNode  = Utils::xml_create_node_from_string (val_buff_s);
 
         if (childNode.isEmpty ())
-          this->setMessage ("Point is not valid: " + inTrig_ptr.getBuff (inTrig_ptr.iCurrentBuf), 10);
+          this->set_bottom_message_line1 ("Point is not valid: " + inTrig_ptr.getBuff (inTrig_ptr.iCurrentBuf), 10);
         else
         {
           loc_and_elev_ptr.addChild (childNode);
-          this->setMessage ("", 1);
+          this->set_bottom_message_line1 ("", 1);
         }
       }
       ImGui::PopStyleColor (4);
@@ -1576,7 +1576,7 @@ ui_conv_screen::subDraw_ui_xTrigger_detail (mx_trig_strct_ &inTrig_ptr, bool &in
       if (lat == 0.0 || lon == 0.0)
       {
         flag_trig_is_valid = false;
-        this->setMessage ("Trigger is not valid. Position data is not valid", missionx::DEFAULT_MESSAGE_TIME_I);
+        this->set_bottom_message_line1 ("Trigger is not valid. Position data is not valid", missionx::DEFAULT_MESSAGE_TIME_I);
       }
 
       // v3.0.304.4 validate radius value
@@ -1584,7 +1584,7 @@ ui_conv_screen::subDraw_ui_xTrigger_detail (mx_trig_strct_ &inTrig_ptr, bool &in
       if (Utils::xml_get_attribute_value_drill (xLocElevData, mxconst::get_ATTRIB_LENGTH_MT (), flag_found, mxconst::get_ELEMENT_RADIUS ()).empty ())
       {
         flag_trig_is_valid = false;
-        this->setMessage ("Trigger is not valid. Set Radius", missionx::DEFAULT_MESSAGE_TIME_I);
+        this->set_bottom_message_line1 ("Trigger is not valid. Set Radius", missionx::DEFAULT_MESSAGE_TIME_I);
       }
 
       // v3.0.303.7 if trig type = camera then reset on_ground attribute to empty (which means ignore elevation), we might consider ---10 instead
@@ -1602,7 +1602,7 @@ ui_conv_screen::subDraw_ui_xTrigger_detail (mx_trig_strct_ &inTrig_ptr, bool &in
       }
       else
       {
-        this->setMessage ("Trigger is not valid. Not enough <point> elements.", missionx::DEFAULT_MESSAGE_TIME_I);
+        this->set_bottom_message_line1 ("Trigger is not valid. Not enough <point> elements.", missionx::DEFAULT_MESSAGE_TIME_I);
         flag_trig_is_valid = false;
       }
     }
@@ -1627,15 +1627,15 @@ ui_conv_screen::subDraw_ui_xTrigger_detail (mx_trig_strct_ &inTrig_ptr, bool &in
           auto xLink = inLegData.xLeg.addChild (mxconst::get_ELEMENT_LINK_TO_TRIGGER ().c_str ());
           xLink.updateAttribute (suggested_name.c_str (), mxconst::get_ATTRIB_NAME ().c_str (), mxconst::get_ATTRIB_NAME ().c_str ());
 
-          this->setMessage ("Added Trigger: " + suggested_name, 5);
+          this->set_bottom_message_line1 ("Added Trigger: " + suggested_name, 5);
         }
       }
       else if (this->strct_conv_layer.trig_ui_mode == mxTrig_ui_mode_enm::editTrigger)
       {
-        this->setMessage ("Updated Trigger: " + suggested_name, 5);
+        this->set_bottom_message_line1 ("Updated Trigger: " + suggested_name, 5);
       }
       else
-        this->setMessage ("", 1);
+        this->set_bottom_message_line1 ("", 1);
 
 
       this->strct_conv_layer.trig_ui_mode = mxTrig_ui_mode_enm::naTrigger; // reset the trigger creation ui status
@@ -1800,7 +1800,7 @@ void ui_conv_screen::subDraw_ui_xPolyBox(IXMLNode& pNode, mx_trig_strct_& inTrig
   {
     if (inTrig_ptr.pos.getLat () == 0.0 || inTrig_ptr.pos.getLon () == 0.0)
     {
-      this->setMessage ("Your starting position is not valid.", 10);
+      this->set_bottom_message_line1 ("Your starting position is not valid.", 10);
     }
     else
     {
@@ -1825,7 +1825,7 @@ void ui_conv_screen::subDraw_ui_xPolyBox(IXMLNode& pNode, mx_trig_strct_& inTrig
   {
     if (inTrig_ptr.pos.getLat () == 0.0 || inTrig_ptr.pos.getLat () == 0.0)
     {
-      this->setMessage ("Your starting position is not valid.", 10);
+      this->set_bottom_message_line1 ("Your starting position is not valid.", 10);
     }
     else
     {
@@ -1892,12 +1892,12 @@ void ui_conv_screen::subDraw_ui_xPolyBox(IXMLNode& pNode, mx_trig_strct_& inTrig
         pNode.addChild (xDummy.getChildNode (mxconst::get_ELEMENT_POINT ().c_str (), 0).deepCopy ()); // this is the starting position of the rectangular shape
 
         if (inTrig_ptr.flag_first_point_is_center_cbox)
-          this->setMessage ("Calculated triggers boundaries for center rectangular point.", 10);
+          this->set_bottom_message_line1 ("Calculated triggers boundaries for center rectangular point.", 10);
         else
-          this->setMessage ("Calculated triggers boundaries for bottomLeft rectangular point.", 10);
+          this->set_bottom_message_line1 ("Calculated triggers boundaries for bottomLeft rectangular point.", 10);
       }
       else
-        this->setMessage ("Failed calculation, not enough points, try to rerun the trigger calculation button.", 10);
+        this->set_bottom_message_line1 ("Failed calculation, not enough points, try to rerun the trigger calculation button.", 10);
     }
   }
   ImGui::PopStyleColor (4);
@@ -2186,7 +2186,7 @@ There are other options that are best handle manually inside an editor and not i
 
             if (missionx::data_manager::map_tableOfParsedFpln.size () == static_cast<size_t> (0))
             {
-              this->setMessage ("No information was loaded.", 8);
+              this->set_bottom_message_line1 ("No information was loaded.", 8);
             }
             else // prepare a new in memory XML
             {
@@ -2347,7 +2347,7 @@ There are other options that are best handle manually inside an editor and not i
           if (this->strct_conv_layer.xSavedGlobalSettingsNode.isEmpty ())
           {
             this->strct_conv_layer.flag_use_loaded_globalSetting_from_conversion_file = false; // v3.305.1
-            this->setMessage ("Please wait while generating the mission from the Flight Plan.", 10);
+            this->set_bottom_message_line1 ("Please wait while generating the mission from the Flight Plan.", 10);
             this->execAction (missionx::mx_window_actions::ACTION_GENERATE_MISSION_FROM_LNM_FPLN);
           }
           else // open popup
@@ -2680,7 +2680,7 @@ void ui_conv_screen::draw_conv_popup_which_global_settings_to_save(std::string_v
       if (flagSave)
       {
         ImGui::CloseCurrentPopup ();
-        this->setMessage ("Please wait while generating the mission from the Flight Plan.", 10);
+        this->set_bottom_message_line1 ("Please wait while generating the mission from the Flight Plan.", 10);
         this->execAction (missionx::mx_window_actions::ACTION_GENERATE_MISSION_FROM_LNM_FPLN);
       }
 

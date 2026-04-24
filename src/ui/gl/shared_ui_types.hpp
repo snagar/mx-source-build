@@ -349,9 +349,11 @@ struct mx_setup_layer
     int            iRadioTemplate_Med_or_Cargo{ 1 }; // template type should only be cargo
     mx_plane_types_enum iRadioPlaneType{ missionx::mx_plane_types_enum::plane_type_props };
     // sliders
-    float       ils_sliderVal1  = (float)mxconst::SLIDER_SHORTEST_MIN_ILS_SEARCH_RADIUS; // min distance
-    float       ils_sliderVal2  = (float)mxconst::SLIDER_SHORTEST_MAX_ILS_SEARCH_RADIUS; // lowest ILS search radius. 250nm in v3.0.253.6
-    std::string ils_slider2_lbl = "[" + Utils::formatNumber<float> (ils_sliderVal1, 0) + ".." + Utils::formatNumber<float> (ils_sliderVal2, 0) + "]";
+    float       ils_or_vfr_min_slider_value = mxconst::SLIDER_ILS_MIN_SEARCH_RADIUS; // v26.04.4 dynamic min distance
+    float       ils_or_vfr_max_slider_value = mxconst::SLIDER_ILS_MAX_SEARCH_RADIUS; // v26.04.4 dynamic min distance
+    float       ils_sliderVal1              = mxconst::SLIDER_ILS_MIN_SEARCH_RADIUS; // min distance
+    float       ils_sliderVal2              = mxconst::SLIDER_ILS_MIN_SEARCH_RADIUS * 1.2f; // lowest ILS search radius. 250nm in v3.0.253.6
+    std::string ils_slider2_lbl             = "[" + Utils::formatNumber<float> (ils_sliderVal1, 0) + ".." + Utils::formatNumber<float> (ils_sliderVal2, 0) + "]";
 
     // ILS types
     std::string                                ils_types_tree_label; // empty means "any"
@@ -398,7 +400,8 @@ struct mx_setup_layer
         mapCheck_ILS_types[keyType] = false; // reset to false
     }
 
-    std::string get_ils_types_picked () // will help to construct the types tree title and the SQL statement
+    std::string get_ils_types_picked () const
+    // will help to construct the types tree title and the SQL statement
     {
       std::string result_s;
       bool        foundAtLeastOne = false;
@@ -623,6 +626,7 @@ struct mx_setup_layer
     };
     // Filter runway by type
     bool                                     flag_pick_any_rw{ true };
+    bool                                     flag_plane_is_amphibian{ false };
     std::map<const std::string, bool>        map_filter_runways                      = { { "Grass##filterRunways", false }, { "Dirt/Gravel##filterRunways", false }, { "Concrete/Asphalt##filterRunways", false }, { "water##filterRunways", false } };
     std::map<const std::string, std::string> map_filter_runways_translate_to_numbers = { { "Grass##filterRunways", "3" }, { "Dirt/Gravel##filterRunways", "4, 5" }, { "Concrete/Asphalt##filterRunways", "1, 2" }, { "water##filterRunways", "13" } };
 
@@ -691,8 +695,12 @@ struct mx_setup_layer
 // ----------------------------------------------
 
   inline bool flag_generatedRandomFile_success{false}; // we use this flag to distinguish when engine ran and finish generating a mission based on RandomEngin. We can then display the correct output in the UI
-  inline std::string     sBottomMessage{ "> " };
 
+ // We have three ways to store messages to display to the user.
+  // One directly in the missionx::user_message_line1,
+  // the "data_manager::strct_ui_share_data.ongoing_status_message_line2"
+  // and a third one the: data_manager::strct_ui_share_data.error_message_line3.
+  //inline std::string     user_message_line1{ "> " };
 
 
 // --------------------------------------------------------------------

@@ -538,17 +538,19 @@ missionx::Mission::init()
   std::string            errMsg;
   missionx::data_manager dm;
 
-  // v25.03.1 moved to the Mission class constructor
-  // missionx::data_manager::xMissionxPropertiesNode = missionx::system_actions::load_plugin_options(); // v3.309.1 switched to return the XML node
-  // system_actions::pluginSetupOptions.node         = missionx::data_manager::xMissionxPropertiesNode.getChildNode(mxconst::get_ELEMENT_SETUP().c_str()).deepCopy();
+  // v26.04.4
+  const std::string scenery_packs_ini_file_path = fmt::format("{}/scenery_packs.ini", Utils::getCustomSceneryRelativePath());
+  const std::string scenery_pack_hash_s = fmt::format("{}", Utils::get_file_hash(scenery_packs_ini_file_path));
 
   // read setup options
-  const auto propPluginVersion_s = Utils::readAttrib (missionx::data_manager::xMissionxProperties_node, mxconst::get_ATTRIB_PLUGIN_VERSION(), ""); // v24025
-  const int  mxVer_i             = Utils::readNodeNumericAttrib<int> (missionx::data_manager::xMissionxProperties_node, mxconst::get_ATTRIB_MXFEATURE(), 0);
+  const auto propPluginVersion_s      = Utils::readAttrib(missionx::data_manager::xMissionxProperties_node, mxconst::get_ATTRIB_PLUGIN_VERSION(), ""); // v24025
+  const int  mxVer_i                  = Utils::readNodeNumericAttrib<int>(missionx::data_manager::xMissionxProperties_node, mxconst::get_ATTRIB_MXFEATURE(), 0);
+  const auto prop_scenery_pack_hash_s = Utils::readAttrib(missionx::data_manager::xMissionxProperties_node, mxconst::get_ATTRIB_SCENERY_HASH(), "n/a");
 
-  if ( PLUGIN_VERSION_S != propPluginVersion_s) // v24025
+  if ( PLUGIN_VERSION_S != propPluginVersion_s || prop_scenery_pack_hash_s != scenery_pack_hash_s ) // v24025
   {
     missionx::data_manager::xMissionxProperties_node.updateAttribute(PLUGIN_VERSION_S.c_str (), mxconst::get_ATTRIB_PLUGIN_VERSION().c_str(), mxconst::get_ATTRIB_PLUGIN_VERSION().c_str());
+    missionx::data_manager::xMissionxProperties_node.updateAttribute(scenery_pack_hash_s.c_str (), mxconst::get_ATTRIB_SCENERY_HASH().c_str(), mxconst::get_ATTRIB_SCENERY_HASH().c_str());
     missionx::system_actions::store_plugin_options();
     missionx::data_manager::set_flag_rebuild_apt_dat(true);
     flag_called_rebuild_apt_dat = true;
@@ -1195,7 +1197,7 @@ missionx::Mission::START_MISSION()
   else
   {
     Log::logMsgErr(err);
-    Mission::uiImGuiBriefer->setMessage(err); // v3.0.251.1
+    Mission::uiImGuiBriefer->set_bottom_message_line1(err); // v3.0.251.1
     data_manager::missionState = missionx::mx_mission_state_enum::mission_undefined;
   }
 
@@ -1836,7 +1838,7 @@ missionx::Mission::flc_threads()
 
         // v3.0.253.6 add a progress message
         if (Mission::uiImGuiBriefer != nullptr)
-          Mission::uiImGuiBriefer->setMessage(msg);
+          Mission::uiImGuiBriefer->set_bottom_message_line1(msg);
       }
     }
   } // end AptDat thread handling
@@ -1850,10 +1852,12 @@ missionx::Mission::flc_threads()
     if (RandomEngine::thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
       RandomEngine::thread_ref.join();
 
-    missionx::data_manager::overpass_fetch_err.clear(); // v3.0.255.4 clear the cURL error
+    //missionx::data_manager::error_message_line3.clear(); // v3.0.255.4 clear the cURL error
+    missionx::data_manager::strct_ui_share_data.error_message_line3.clear(); // v3.0.255.4 clear the cURL error
     if (!missionx::RandomEngine::getErrorMsg().empty())
     {
-      Mission::uiImGuiBriefer->setMessage(missionx::RandomEngine::getErrorMsg(), 60);
+      Mission::uiImGuiBriefer->set_bottom_message_line1(missionx::RandomEngine::getErrorMsg(), 60);
+      Mission::uiImGuiBriefer->error_message_line3.clear(); // v26.04.4
     }
     RandomEngine::random_thread_state.init(); // init again to reset
 
@@ -1887,7 +1891,9 @@ missionx::Mission::flc_threads()
       if (RandomEngine::random_thread_state.flagThreadDoneWork)
       {
 
-        missionx::data_manager::overpass_fetch_err.clear();   // v3.0.255.4 clear the cURL error
+        missionx::data_manager::strct_ui_share_data.error_message_line3.clear();   // v3.0.255.4 clear the cURL error
+        Mission::uiImGuiBriefer->error_message_line3.clear(); // v26.04.4
+
         missionx::data_manager::reset_runway_search_filter(); // reset the property value so it won't conflict with other searches
 
         if (RandomEngine::thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
@@ -1896,14 +1902,14 @@ missionx::Mission::flc_threads()
         RandomEngine::random_thread_state.init();
         missionx::data_manager::flag_generate_engine_is_running = false;
 
-        Mission::uiImGuiBriefer->setMessage(fmt::format("Finished Generating mission file. [Destinations: {}] Based on \"{}\"", this->engine.get_num_of_flight_legs(), missionx::strct_generate_template_layer.selectedTemplateKey ),  8);
+        Mission::uiImGuiBriefer->set_bottom_message_line1(fmt::format("Finished Generating mission file. [Destinations: {}] Based on \"{}\"", this->engine.get_num_of_flight_legs(), missionx::strct_generate_template_layer.selectedTemplateKey ),  8);
 
         if (missionx::data_manager::getGeneratedFromLayer() == missionx::uiLayer_enum::option_external_fpln_layer )
-          Mission::uiImGuiBriefer->asyncSecondMessageLine.clear(); // Do not display Flight Plan in "option_external_fpln_layer" layer since we know the route.
+          Mission::uiImGuiBriefer->async_message_line2.clear(); // Do not display Flight Plan in "option_external_fpln_layer" layer since we know the route.
         else
-          Mission::uiImGuiBriefer->asyncSecondMessageLine = "Last F.Plan: " + this->engine.cumulative_location_desc_s; // display in generate mission user layer.
+          Mission::uiImGuiBriefer->async_message_line2 = "Last F.Plan: " + this->engine.cumulative_location_desc_s; // display in generate mission user layer.
 
-        Log::logMsg(Mission::uiImGuiBriefer->asyncSecondMessageLine); // v3.0.255.5 added flight plan to log
+        Log::logMsg(Mission::uiImGuiBriefer->async_message_line2); // v3.0.255.5 added flight plan to log
 
         // v3.0.223.1 add briefing information
         if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && !missionx::strct_generate_template_layer.selectedTemplateKey.empty()) //
@@ -4085,7 +4091,7 @@ missionx::Mission::saveCheckpoint()
       else
       {
         Log::logMsg(save_err);
-        Mission::uiImGuiBriefer->setMessage(save_err);
+        Mission::uiImGuiBriefer->set_bottom_message_line1(save_err);
       }
     }
 
@@ -4102,12 +4108,12 @@ missionx::Mission::saveCheckpoint()
     system_actions::save_acf_datarefs_with_savepoint_v2(target_acf_dataref);
 
 
-    Mission::uiImGuiBriefer->setMessage("Created savepoint: " + missionx::data_manager::missionSavepointFilePath, 20); // v3.0.159
+    Mission::uiImGuiBriefer->set_bottom_message_line1("Created savepoint: " + missionx::data_manager::missionSavepointFilePath, 20); // v3.0.159
   }
   else // // v3.0.223.6
   {
     Log::logMsg(std::string("Error while creating checkpoint: ") + errMsg);
-    Mission::uiImGuiBriefer->setMessage("Error while creating checkpoint: " + errMsg, 20); // v3.0.159
+    Mission::uiImGuiBriefer->set_bottom_message_line1("Error while creating checkpoint: " + errMsg, 20); // v3.0.159
   }
 
   return saveOk;
@@ -4166,11 +4172,11 @@ missionx::Mission::loadCheckpoint()
     system_actions::read_saved_mission_dataref_file(data_manager::missionSavepointDrefFilePath, err);
     if (!err.empty())
     {
-      Mission::uiImGuiBriefer->setMessage("Failed to load dataref file, but savepoint was loaded. Continue at your own risk...", 20);
+      Mission::uiImGuiBriefer->set_bottom_message_line1("Failed to load dataref file, but savepoint was loaded. Continue at your own risk...", 20);
       Log::logMsgErr(err);
     }
     else 
-      Mission::uiImGuiBriefer->setMessage("Savepoint was Loaded. You can press start...", 20);
+      Mission::uiImGuiBriefer->set_bottom_message_line1("Savepoint was Loaded. You can press start...", 20);
 
     // v3.303.9.1 read custom datarefs - based on aircraft custom datarefs
     char outFileName[512]{ 0 };
@@ -4181,11 +4187,11 @@ missionx::Mission::loadCheckpoint()
     system_actions::read_saved_mission_dataref_file(target_acf_dataref_s, err, true);
     if (!err.empty())
     {
-      Mission::uiImGuiBriefer->setMessage("Failed to load aircraft dataref file, but savepoint was loaded. Continue at your own risk...", 20);
+      Mission::uiImGuiBriefer->set_bottom_message_line1("Failed to load aircraft dataref file, but savepoint was loaded. Continue at your own risk...", 20);
       Log::logMsgErr(err);
     }
     else 
-      Mission::uiImGuiBriefer->setMessage("Savepoint and aircraft datarefs were Loaded. You can press start...", 20);
+      Mission::uiImGuiBriefer->set_bottom_message_line1("Savepoint and aircraft datarefs were Loaded. You can press start...", 20);
 
 
 
@@ -4205,7 +4211,7 @@ missionx::Mission::loadCheckpoint()
     else
     {
       Log::logMsg(err);
-      Mission::uiImGuiBriefer->setMessage(err);
+      Mission::uiImGuiBriefer->set_bottom_message_line1(err);
     }
     // end v3.303.8.3 finish adding load stats db from checkpoint backup
 
@@ -4224,7 +4230,7 @@ missionx::Mission::loadCheckpoint()
   }
   else
   {
-    Mission::uiImGuiBriefer->setMessage(missionx::read_mission_file::getErrMsg(), 20);
+    Mission::uiImGuiBriefer->set_bottom_message_line1(missionx::read_mission_file::getErrMsg(), 20);
     return false;
   }
 
@@ -4346,14 +4352,14 @@ missionx::Mission::flcPRE()
         // 3. display random templates layer ?
         if (missionx::data_manager::mapGenerateMissionTemplateFiles.empty())
         {
-          Mission::uiImGuiBriefer->setMessage("No Mission Template File Found.");
+          Mission::uiImGuiBriefer->set_bottom_message_line1("No Mission Template File Found.");
 
           Log::logDebugBO("No mission template file found");
         }
         else
         {
 
-          Mission::uiImGuiBriefer->setMessage("Templates were loaded....");
+          Mission::uiImGuiBriefer->set_bottom_message_line1("Templates were loaded....");
           Mission::uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_POST_TEMPLATE_LOAD_DISPLAY_IMGUI_GENERATE_TEMPLATES_IMAGES); // v3.0.255.4 missing action, was in "reload_templates_data_and_images". After some tests all seem to
                                                                                                                                         // function as expected so we deprecated: "reload_templates_data_and_images" case.
         }
@@ -4447,13 +4453,13 @@ missionx::Mission::flcPRE()
 
           if (engine.exec_generate_mission_thread(missionx::strct_generate_template_layer.selectedTemplateKey))
           {
-            Mission::uiImGuiBriefer->setMessage("The mission is created in the background. Please wait until it finishes. file:'" + missionx::strct_generate_template_layer.selectedTemplateKey + "'", 20);
+            Mission::uiImGuiBriefer->set_bottom_message_line1("The mission is created in the background. Please wait until it finishes. file:'" + missionx::strct_generate_template_layer.selectedTemplateKey + "'", 20);
             missionx::data_manager::flag_generate_engine_is_running = true;
           }
           else
           {
             missionx::flag_generatedRandomFile_success = false; // it might be still running
-            Mission::uiImGuiBriefer->setMessage(missionx::RandomEngine::getErrorMsg(), 6);
+            Mission::uiImGuiBriefer->set_bottom_message_line1(missionx::RandomEngine::getErrorMsg(), 6);
           }
         }
       }
@@ -4527,7 +4533,7 @@ missionx::Mission::flcPRE()
             if (Mission::uiImGuiBriefer->getCurrentLayer() == missionx::uiLayer_enum::option_generate_mission_from_a_template_layer)
             {
               missionx::strct_generate_template_layer.bFinished_loading_templates = false;
-              Mission::uiImGuiBriefer->setMessage("Please wait while loading mission templates...", 8);
+              Mission::uiImGuiBriefer->set_bottom_message_line1("Please wait while loading mission templates...", 8);
               missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::imgui_reload_templates_data_and_images);
             }
           }
@@ -4535,7 +4541,7 @@ missionx::Mission::flcPRE()
           {
             missionx::strct_user_create_layer.layer_state       = missionx::mx_layer_state_enum::failed_data_is_not_present;
             missionx::strct_generate_template_layer.layer_state = missionx::mx_layer_state_enum::failed_data_is_not_present;
-            Mission::uiImGuiBriefer->setMessage("Failed to validate the presence of OPTIMIZED Database. Suggestion: Re-Run apt data optimization.");
+            Mission::uiImGuiBriefer->set_bottom_message_line1("Failed to validate the presence of OPTIMIZED Database. Suggestion: Re-Run apt data optimization.");
           }
         }
         else
@@ -4543,7 +4549,7 @@ missionx::Mission::flcPRE()
           // Failure to initiate the database
           missionx::strct_user_create_layer.layer_state       = missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly;
           missionx::strct_generate_template_layer.layer_state = missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly;
-          Mission::uiImGuiBriefer->setMessage("ERROR!!! Mission-X plugin failed to load/open the local database in {missionx/db} folder. Try to delete it and rerun apt data optimization.");
+          Mission::uiImGuiBriefer->set_bottom_message_line1("ERROR!!! Mission-X plugin failed to load/open the local database in {missionx/db} folder. Try to delete it and rerun apt data optimization.");
         }
       }
       break;
@@ -4608,7 +4614,7 @@ missionx::Mission::flcPRE()
           if (counter <= 0)
           {
             missionx::strct_ils_layer.layer_state = missionx::mx_layer_state_enum::failed_data_is_not_present;
-            Mission::uiImGuiBriefer->setMessage("Failed to validate the presence of valid ILS data information. Suggestion: Re-Run apt data optimization.");
+            Mission::uiImGuiBriefer->set_bottom_message_line1("Failed to validate the presence of valid ILS data information. Suggestion: Re-Run apt data optimization.");
           }
           else
           {
@@ -4620,7 +4626,7 @@ missionx::Mission::flcPRE()
         {
           // Failure to initiate the database
           missionx::strct_ils_layer.layer_state = missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly;
-          Mission::uiImGuiBriefer->setMessage("ERROR!!! Mission-X plugin failed to load/open the local database in {missionx/db} folder. Try to delete it and rerun apt data optimization.");
+          Mission::uiImGuiBriefer->set_bottom_message_line1("ERROR!!! Mission-X plugin failed to load/open the local database in {missionx/db} folder. Try to delete it and rerun apt data optimization.");
         }
       }
       break;
@@ -4873,7 +4879,7 @@ missionx::Mission::flcPRE()
         // v3.0.253.6 add progress message
         if ((missionx::data_manager::flag_apt_dat_optimization_is_running || OptimizeAptDat::aptState.flagIsActive) && Mission::uiImGuiBriefer != nullptr)
         {
-          Mission::uiImGuiBriefer->setMessage(msg, 1);
+          Mission::uiImGuiBriefer->set_bottom_message_line1(msg, 1);
         }
       }
       break;
@@ -5325,7 +5331,7 @@ missionx::Mission::flcPRE()
         else
         {
           if (missionx::Mission::uiImGuiBriefer)
-            missionx::Mission::uiImGuiBriefer->setMessage("Can't open choice window, configuration is invalid. Check name of 'choice' or if you set the name before opening it.");
+            missionx::Mission::uiImGuiBriefer->set_bottom_message_line1("Can't open choice window, configuration is invalid. Check name of 'choice' or if you set the name before opening it.");
 
           Log::logMsgWarn("[display_choice_window] Choice window options are not set correctly. Check your implementation.");
         }
@@ -5476,7 +5482,7 @@ missionx::Mission::flcPRE()
         
 
         if (errView.empty())
-          Mission::uiImGuiBriefer->setMessage("Wrote to External FMS.", 5); // v3.305.3          
+          Mission::uiImGuiBriefer->set_bottom_message_line1("Wrote to External FMS.", 5); // v3.305.3          
         else
           Log::logMsgErr(errView);
       }
@@ -5523,7 +5529,7 @@ missionx::Mission::flcPRE()
                                                                                       , !Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.flag_use_loaded_globalSetting_from_conversion_file ) // v3.305.1 send the oposite value of flag_use_loaded_globalSetting_from_conversion_file 
            )
         {
-          Mission::uiImGuiBriefer->setMessage(R"(Mission file was generated as a "random" mission. You can run it from the "Load Mission" screen.)");
+          Mission::uiImGuiBriefer->set_bottom_message_line1(R"(Mission file was generated as a "random" mission. You can run it from the "Load Mission" screen.)");
 
           // v3.305.1 refresh global_settings buffer if needed
           if (!Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.flag_use_loaded_globalSetting_from_conversion_file) // if we created new global_Settings file then refresh the buffer
@@ -5734,7 +5740,7 @@ missionx::Mission::flcPRE()
           }
 
          missionx::system_actions::store_plugin_options();
-         missionx::Mission::uiImGuiBriefer->setMessage("Saved Notes Data to Properties File.", 5);
+         missionx::Mission::uiImGuiBriefer->set_bottom_message_line1("Saved Notes Data to Properties File.", 5);
         }
       }
       break;
@@ -5765,7 +5771,7 @@ missionx::Mission::flcPRE()
               }
             }
 
-            missionx::Mission::uiImGuiBriefer->setMessage("Loaded Notes Data from Properties File.", 5);
+            missionx::Mission::uiImGuiBriefer->set_bottom_message_line1("Loaded Notes Data from Properties File.", 5);
           }
         }
       }
@@ -5777,14 +5783,14 @@ missionx::Mission::flcPRE()
         {
           if (missionx::data_manager::threadStateMetar.flagIsActive)
           {
-            missionx::Mission::uiImGuiBriefer->setMessage("METAR thread is active, will skip metar information call.", 6);
+            missionx::Mission::uiImGuiBriefer->set_bottom_message_line1("METAR thread is active, will skip metar information call.", 6);
           }
           else
           {
             bool bLock = true;
             data_manager::threadStateMetar.init();
             missionx::data_manager::mFetchFutures.push_back(
-              std::async(std::launch::async, missionx::data_manager::fetch_METAR, &missionx::strct_ils_layer.mapNavaidData, &missionx::strct_ils_layer.fetch_metar_state, &missionx::strct_ils_layer.asyncMetarFetchMsg_s, &Mission::uiImGuiBriefer->asyncSecondMessageLine, &bLock));
+              std::async(std::launch::async, missionx::data_manager::fetch_METAR, &missionx::strct_ils_layer.mapNavaidData, &missionx::strct_ils_layer.fetch_metar_state, &missionx::strct_ils_layer.asyncMetarFetchMsg_s, &Mission::uiImGuiBriefer->async_message_line2, &bLock));
           }
         }
       }
@@ -6189,12 +6195,12 @@ missionx::Mission::loadMission()
 
     if (data_manager::missionState == missionx::mx_mission_state_enum::mission_loaded_from_the_original_file)
     {
-      Mission::uiImGuiBriefer->setMessage("Mission Loaded. You can press start...", 8);
+      Mission::uiImGuiBriefer->set_bottom_message_line1("Mission Loaded. You can press start...", 8);
     }
 
     else
     {
-      Mission::uiImGuiBriefer->setMessage("FAILED to load Mission. Check Log file !!!\n" + data_manager::load_error_message, 60);
+      Mission::uiImGuiBriefer->set_bottom_message_line1("FAILED to load Mission. Check Log file !!!\n" + data_manager::load_error_message, 60);
     }
 
   } // end if Mission information is available
@@ -6203,7 +6209,7 @@ missionx::Mission::loadMission()
     const std::string msg = "[load mission] selectedMissionKey is empty. Can't load a mission. Notify programmer. ";
     Log::logMsgErr(msg);
 
-    Mission::uiImGuiBriefer->setMessage(msg);
+    Mission::uiImGuiBriefer->set_bottom_message_line1(msg);
   }
 }
 
