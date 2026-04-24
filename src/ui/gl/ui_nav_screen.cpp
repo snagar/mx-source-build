@@ -724,7 +724,7 @@ void ui_nav_screen::child_draw_ils_search()
                   // v26.04.4 force amphibian flag base on plane type
                   if (missionx::strct_ils_layer.iRadioPlaneType > mx_plane_types_enum::plane_type_turboprops || missionx::strct_ils_layer.iRadioPlaneType == mx_plane_types_enum::plane_type_helos)
                     missionx::strct_user_create_layer.flag_plane_is_amphibian = false;
-                  missionx::data_manager::prop_userDefinedMission_ui.setBoolProperty(mxconst::get_PLANE_IS_AMPHIBIAN(), static_cast<int>(strct_user_create_layer.flag_plane_is_amphibian)); // v26.04.4
+                  missionx::data_manager::prop_userDefinedMission_ui.setBoolProperty(mxconst::get_PLANE_IS_AMPHIBIAN(), strct_user_create_layer.flag_plane_is_amphibian); // v26.04.4
 
                   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_START_FROM_PLANE_POSITION (), missionx::strct_cross_layer_properties.flag_start_from_plane_position); // v3.0.253.11 start from plane position
                   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), missionx::strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12 generate GPS waypoints

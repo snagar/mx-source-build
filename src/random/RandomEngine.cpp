@@ -2672,7 +2672,7 @@ RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_targe
       const std::string sql_ramp     = select_s + filter_ramps + " ORDER BY RANDOM() limit 1";
 
       #ifndef RELEASE
-      Log::logMsgThread(fmt::format("[{}] Ramp Filter for type: {}\n{}\n", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search), sql_ramp));
+      Log::logMsgThread(fmt::format("[{}] Ramp Filter for type: {} => {}\n", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search), sql_ramp));
       #endif // !RELEASE
 
       RandomEngine::resultTable_gather_ramp_data.clear();

@@ -164,7 +164,7 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
 
   m_ui_nav_screen->add_ui_is_amphibian = [this]()->void
   {
-    this->add_ui_is_amphibian();
+    missionx::WinImguiBriefer::add_ui_is_amphibian();
   };
 
 
@@ -1504,7 +1504,7 @@ void WinImguiBriefer::action_prepare_dynamic_mission_properties_and_call_generat
   // v26.04.4 force amphibian flag base on plane type
   if (strct_user_create_layer.iRadioPlaneType > mx_plane_types_enum::plane_type_turboprops || strct_user_create_layer.iRadioPlaneType == mx_plane_types_enum::plane_type_helos)
     missionx::strct_user_create_layer.flag_plane_is_amphibian = false;
-  missionx::data_manager::prop_userDefinedMission_ui.setBoolProperty(mxconst::get_PLANE_IS_AMPHIBIAN(), static_cast<int>(strct_user_create_layer.flag_plane_is_amphibian)); // v26.04.4
+  missionx::data_manager::prop_userDefinedMission_ui.setBoolProperty(mxconst::get_PLANE_IS_AMPHIBIAN(), strct_user_create_layer.flag_plane_is_amphibian); // v26.04.4
   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int>(mxconst::get_PROP_NO_OF_LEGS(), strct_user_create_layer.iNumberOfFlighLegs);
   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double>(mxconst::get_PROP_MIN_DISTANCE_SLIDER(), in_distance_min);
   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double>(mxconst::get_PROP_MAX_DISTANCE_SLIDER(), in_distance_max);
@@ -3250,6 +3250,14 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
       else if (!bPickedOilRigMission && !bPickedMedevacSurpriseMeMission)
       {
         ImGui::Checkbox ("Start from plane position", &missionx::strct_cross_layer_properties.flag_start_from_plane_position);
+
+        if ( strct_user_create_layer.user_semi_act_picked.activity >= enums::mx_semi_activities_enum::act_props
+             && strct_user_create_layer.user_semi_act_picked.activity <= enums::mx_semi_activities_enum::act_turboprops )
+        {
+          ImGui::SameLine(0.0f, 10.0f);
+          WinImguiBriefer::add_ui_is_amphibian();
+        }
+
         ImGui::Spacing ();
       }
 
@@ -4111,6 +4119,9 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
 
           missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_FPLN_ID_PICKED (), picked_fpln_id_i);
           missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_PLANE_TYPE_I (), static_cast<int>( plane_type_i) );
+          // v26.06.4
+          missionx::data_manager::prop_userDefinedMission_ui.setBoolProperty(mxconst::get_PLANE_IS_AMPHIBIAN(), false); // v26.04.4
+
           missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_START_FROM_PLANE_POSITION (), missionx::strct_cross_layer_properties.flag_start_from_plane_position); // v3.0.253.11 start from plane position
           missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), missionx::strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12 generate GPS waypoints
           missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), missionx::strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms); // v25.04.2
@@ -5826,7 +5837,8 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
           // v26.04.4
           if (missionx::strct_user_create_layer.iRadioPlaneType <= missionx::mx_plane_types_enum::plane_type_turboprops )
           {
-            ImGui::Checkbox ("Is Amphibian##filterRamps", &missionx::strct_user_create_layer.flag_plane_is_amphibian);
+            // ImGui::Checkbox ("Is Amphibian##filterRamps", &missionx::strct_user_create_layer.flag_plane_is_amphibian);
+            WinImguiBriefer::add_ui_is_amphibian();
           }
 
           ImGui::NewLine ();

@@ -855,7 +855,8 @@ WITH helipads_view as (select icao_id, count(1) as helipad_counter from xp_helip
      country_vu as (select icao_id, val_col as country from xp_ap_metadata t1 where key_col = 'country'),
      rw_length_vu as (select icao_id, min(rw_length_mt) as min_rw_length_mt, max(rw_length_mt) as max_rw_length_mt from xp_rw group by icao_id),
      terminal_ramps_vu as (select icao_id, count(icao_id) as ramp_terminal from xp_ap_ramps where (lower(ramp_uq_name) like '%term%' or operation_type like '%airl%' ) group by icao_id),
-     cargo_ramps_vu as (select icao_id, count(icao_id) as ramp_cargo from xp_ap_ramps where (lower(ramp_uq_name) like '%carg%' or operation_type like '%carg%') group by icao_id)
+     cargo_ramps_vu as (select icao_id, count(icao_id) as ramp_cargo from xp_ap_ramps where (lower(ramp_uq_name) like '%carg%' or operation_type like '%carg%') group by icao_id),
+     military_vu as (select icao_id, count(icao_id) as ramp_military from xp_ap_ramps where (lower(ramp_uq_name) like '%fighter%' or operation_type like '%military%') group by icao_id)
 SELECT t1.icao_id,
        t1.icao,
        t1.ap_elev as ap_elev_ft,
@@ -876,6 +877,7 @@ SELECT t1.icao_id,
        ,IFNULL((select ramp_planes from turboprop_ramps_view v1 where t1.icao_id = v1.icao_id ), 0) as ramp_turboprops
        ,IFNULL((select ramp_planes from jets_heavy_ramps_view v1 where t1.icao_id = v1.icao_id ), 0) as ramp_jet_heavy
        ,IFNULL((select ramp_planes from fighter_ramps_view v1 where t1.icao_id = v1.icao_id ), 0) as ramp_fighters
+       ,IFNULL((select ramp_military from military_vu v1 where t1.icao_id = v1.icao_id ), 0) as military_ramps
        ,IFNULL((select rw_hard from rw_hard_vu v1 where t1.icao_id = v1.icao_id ), 0) as rw_hard
        ,IFNULL((select rw_dirt_n_gravel from rw_dirt_gravel_vu v1 where t1.icao_id = v1.icao_id ), 0) as rw_dirt_gravel
        ,IFNULL((select rw_grass from rw_grass_vu v1 where t1.icao_id = v1.icao_id ), 0) as rw_grass
@@ -937,6 +939,11 @@ SELECT t1.icao_id,
                     or instr(lower(IFNULL(ramp_uq_name, '') ), 'float') > 0) THEN 1
                ELSE 0
            END AS dock,
+           CASE
+               WHEN (instr(lower(IFNULL(ramp_uq_name, '') ), 'fighter') > 0
+                    or instr(lower(IFNULL(operation_type, '') ), 'military') > 0) THEN 1
+               ELSE 0
+           END AS military,
            1 AS which_table
       FROM xp_ap_ramps t1
     UNION
@@ -958,9 +965,10 @@ SELECT t1.icao_id,
            0 AS apron,
            0 AS terminal,
            0 AS dock,
+           0 AS military,
            2 AS which_table
       FROM xp_helipads t1
-     ORDER BY icao_id;
+     ORDER BY icao_id
 )");
 
 
