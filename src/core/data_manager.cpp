@@ -101,8 +101,8 @@ std::string data_manager::missionSavepointDrefFilePath;
 mxProperties data_manager::smPropSeedValues;
 
 std::queue<std::string>                  data_manager::queThreadMessage;
-std::queue<mx_flc_pre_command> data_manager::queFlcActions;
-std::queue<mx_flc_pre_command> data_manager::postFlcActions; // v3.0.146
+std::deque<mx_flc_pre_command> data_manager::queFlcActions;
+std::deque<mx_flc_pre_command> data_manager::postFlcActions; // v3.0.146
 
 std::map<std::string, mxTextureFile>    data_manager::mapCachedPluginTextures;                // v3.0.118 // plugin specific vecTextures
 std::map<std::string, TemplateFileInfo> data_manager::mapGenerateMissionTemplateFiles;        // Generate mission vecTextures // v3.0.217.2
@@ -229,7 +229,7 @@ std::string data_manager::curl_result_s;
 float data_manager::Max_Slope_To_Land_On{ mxconst::DEFAULT_MAX_SLOPE_TO_LAND_ON };
 
 bool data_manager::flag_found_missing_3D_object_files{ false }; // v3.0.255.3 used in UI
-bool data_manager::flag_rebuild_apt_dat{ false };               // v3.0.255.3 help decide if to rebuild the apt.dat. Basically calling: missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::exec_apt_dat_optimization)
+bool data_manager::flag_rebuild_apt_dat{ false };               // v3.0.255.3 help decide if to rebuild the apt.dat. Basically calling: missionx::data_manager::queFlcActions.push_back(missionx::mx_flc_pre_command::exec_apt_dat_optimization)
 
 std::map<std::string, std::string>                          data_manager::row_gather_db_data; // v3.0.255.3
 std::unordered_map<int, std::map<std::string, std::string>> data_manager::reasultTable;       // v3.0.255.3
@@ -910,6 +910,8 @@ missionx::NavAidInfo                missionx::data_manager::shared_navaid_betwee
 std::string                         missionx::data_manager::post_optimization_outcome;
 missionx::base_thread::strct_thread_state missionx::data_manager::metar_thread_state;
 
+// -------------------------------------
+
 // v26.01.1
   std::list<std::string> missionx::data_manager::lst_of_failed_3d_obj_to_load;
   std::list<std::string> missionx::data_manager::lst_of_errors_and_warnings_during_mission_validation;
@@ -1490,7 +1492,7 @@ data_manager::loadInventoryImages()
   }
 
   if (!xp_mapInvImages.empty())
-    queFlcActions.push(mx_flc_pre_command::post_async_inv_image_binding);
+    queFlcActions.push_back(mx_flc_pre_command::post_async_inv_image_binding);
 }
 
 
@@ -1632,7 +1634,7 @@ data_manager::loadStoryImage(Message* msg, const std::string& inImageName_vu)
       } // end if Texture loaded
     }   // end if Texture file name is not in the message cache
 
-    queFlcActions.push(mx_flc_pre_command::post_async_story_image_binding); // Always call this action so it will mark the [i] action as "action_ended". It also binding unbound textures.
+    queFlcActions.push_back(mx_flc_pre_command::post_async_story_image_binding); // Always call this action so it will mark the [i] action as "action_ended". It also binding unbound textures.
 
     // Always try to bind or reset the vector cell to nullptr so it won't show in the Briefer screen
     // store vecTextures as generic texture button
@@ -3085,7 +3087,7 @@ void
 data_manager::setAbortMission(const std::string& inReason)
 {
   mx_global_settings.setNodeStringProperty(mxconst::get_PROP_MISSION_ABORT_REASON(), inReason); // v3.303.11
-  queFlcActions.push(mx_flc_pre_command::abort_mission);
+  queFlcActions.push_back(mx_flc_pre_command::abort_mission);
 }
 
 // -------------------------------------
@@ -3151,7 +3153,7 @@ data_manager::prepareInventoryCopies(const std::string& inInventoryName)
     lmbda_read_image_file_names(planeInventoryCopy.node);
 
   if (xp_mapInvImages.size() > static_cast<size_t>(0)) // call execute read async images only if there are any
-    queFlcActions.push(mx_flc_pre_command::read_async_inv_image_files);
+    queFlcActions.push_back(mx_flc_pre_command::read_async_inv_image_files);
 }
 
 
@@ -3520,7 +3522,7 @@ data_manager::clearAllQueues()
 {
   // clear pre flc action queue
   while (!queFlcActions.empty())
-    queFlcActions.pop();
+    queFlcActions.pop_front();
 
   while (!queThreadMessage.empty()) // v3.0.219.12+
     queThreadMessage.pop();
@@ -4499,7 +4501,7 @@ data_manager::execute_commands(const std::string& inCommands)
   } // end for loop
 
   if (counter > 0)
-    queFlcActions.push(mx_flc_pre_command::execute_xp_command);
+    queFlcActions.push_back(mx_flc_pre_command::execute_xp_command);
 
   return err;
 }
@@ -4512,7 +4514,7 @@ data_manager::inject_metar_file(const std::string& inFileName)
   if (!inFileName.empty())
   {
     metar_file_to_inject_s = inFileName;
-    queFlcActions.push(mx_flc_pre_command::inject_metar_file); // v3.0.223.1
+    queFlcActions.push_back(mx_flc_pre_command::inject_metar_file); // v3.0.223.1
   }
 }
 
@@ -5633,7 +5635,7 @@ where icao_id = {}
       else
       {
         (*outStatusMessage) = fmt::format("Fetched: {} nav data rows for ICAO: \"{}\". Trying to fetch METAR from flightplandatabase.com site.", ap_rows, sICAO); // success message
-        postFlcActions.push(mx_flc_pre_command::fetch_metar_data_after_nav_info);
+        postFlcActions.push_back(mx_flc_pre_command::fetch_metar_data_after_nav_info);
       }
     }
     else
@@ -7371,7 +7373,7 @@ data_manager::sqlite_test_db_validity(const dbase& inDB, const bool isThreaded)
 
   if (get_flag_rebuild_apt_dat())
   {
-    queFlcActions.push(mx_flc_pre_command::exec_apt_dat_optimization); // v3.0.255.3
+    queFlcActions.push_back(mx_flc_pre_command::exec_apt_dat_optimization); // v3.0.255.3
     set_flag_rebuild_apt_dat(false); // reset
   }
 
@@ -8599,7 +8601,7 @@ data_manager::set_active_acf_and_gather_info (const std::string &inFileName)
   data_manager::dref_acf_station_max_kgs_f_arr.setAndInitializeKey ("sim/aircraft/weight/acf_m_station_max");
   missionx::dataref_param::set_dataref_values_into_xplane (data_manager::dref_m_stations_kgs_f_arr); // force original weight on the new plane
 
-  missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::gather_acf_custom_datarefs); // v3.303.13 make sure we will have the plane dataref information
+  missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::gather_acf_custom_datarefs); // v3.303.13 make sure we will have the plane dataref information
 }
 
 // -------------------------------------
@@ -9513,7 +9515,7 @@ data_manager::waitForPluginCallbackJob (missionx::base_thread::strct_thread_stat
     int waitCounter = 0;
 
     out_state_ptr->thread_wait_state = missionx::mx_random_thread_wait_state_enum::waiting_for_plugin_callback_job; // set busy state
-    missionx::data_manager::queFlcActions.emplace (inQueuedCommand); // provide the queued command
+    missionx::data_manager::queFlcActions.emplace_back (inQueuedCommand); // provide the queued command
 
     std::this_thread::sleep_for (std::chrono::milliseconds (inWaitTimeMilliseconds));
   
@@ -9934,7 +9936,7 @@ data_manager::position_camera(const XPLMCameraPosition_t& inCameraPos, const flo
 
     mxCameraPosition  = inCameraPos;
     isLosingControl_i = 1;                                             // plugin control
-    queFlcActions.push(mx_flc_pre_command::position_camera); // Position camera
+    queFlcActions.push_back(mx_flc_pre_command::position_camera); // Position camera
   }
 } // position_camera
 
@@ -9948,6 +9950,27 @@ data_manager::set_camera_poistion_loc_rule(int inIsLosingControl_i)
 
   isLosingControl_i = inIsLosingControl_i;
 } // position_camera
+
+
+// -------------------------------------
+
+mx_return data_manager::get_is_wet_at_point_thread_unsafe(const missionx::NavAidInfo& inNavAid, missionx::base_thread::strct_thread_state& inout_thread_state, structs::strct_shared_random_airport_info& inout_shared_navaid_info)
+{
+  mx_return result (false); // we initialize as "no wet"
+  inout_shared_navaid_info.p = inNavAid.p;
+  if (!missionx::data_manager::waitForPluginCallbackJob(&inout_thread_state, missionx::mx_flc_pre_command::get_is_point_wet))
+  {
+    inout_shared_navaid_info.isWet = false;
+    result.addErrMsg(fmt::format("[{}] Failed to probe for wet. Will treat target coordinates as \"land\". ", __func__) );
+  }
+
+  return inout_shared_navaid_info.isWet;
+}
+
+
+
+
+
 
 
 

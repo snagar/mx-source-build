@@ -186,7 +186,7 @@ WinImguiOptions::buildInterface()
           if (missionx::data_manager::mxChoice.optionPicked_key_i != missionx::data_manager::mxChoice.mapOptions[i1].key_i) // we test this so we won't have repeating same action calls
           {
             missionx::data_manager::mxChoice.optionPicked_key_i = missionx::data_manager::mxChoice.mapOptions[i1].key_i;
-            missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::handle_option_picked_from_choice);
+            missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::handle_option_picked_from_choice);
 #ifndef RELEASE
             Log::logDebugBO("[draw choice options] Picked: " + Utils::formatNumber<int>(missionx::data_manager::mxChoice.mapOptions[i1].key_i) + ", " + missionx::data_manager::mxChoice.mapOptions[i1].text); // debug
 #endif

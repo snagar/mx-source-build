@@ -2542,7 +2542,7 @@ missionx::ext_script::ext_abort_all_channels(mb_interpreter_t* s, void** l)
 
   mb_check(mb_attempt_close_bracket(s, l));
 
-  missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::sound_abort_all_channels);
+  missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::sound_abort_all_channels);
 
   data_manager::sm.seedError(errMsg);
   mb_push_int(s, l, true);
@@ -3739,7 +3739,7 @@ missionx::ext_script::ext_abort_mission(mb_interpreter_t* s, void** l)
   if (checkString(outReason, abortReason))
   {
     missionx::data_manager::mx_global_settings.setNodeStringProperty(mxconst::get_PROP_MISSION_ABORT_REASON(), abortReason); // v3.303.11
-    missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::abort_mission);
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::abort_mission);
 
     missionx::data_manager::sm.seedError(errMsg);
     mb_push_int(s, l, true);
@@ -4888,7 +4888,7 @@ missionx::ext_script::ext_display_choice_window(mb_interpreter_t* s, void** l)
   mb_check(mb_attempt_open_bracket(s, l));
   mb_check(mb_attempt_close_bracket(s, l));
 
-  missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::display_choice_window);
+  missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::display_choice_window);
 
   data_manager::sm.seedError(errMsg);
   mb_push_int(s, l, 1);
@@ -4912,7 +4912,7 @@ missionx::ext_script::ext_hide_choice_window(mb_interpreter_t* s, void** l)
   mb_check(mb_attempt_open_bracket(s, l));
   mb_check(mb_attempt_close_bracket(s, l));
 
-  missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::hide_choice_window);
+  missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::hide_choice_window);
 
   data_manager::sm.seedError(errMsg);
   mb_push_int(s, l, 1);
@@ -5285,7 +5285,7 @@ missionx::ext_script::ext_open_inventory_screen(mb_interpreter_t* s, void** l)
 
   mb_check(mb_attempt_close_bracket(s, l));
 
-  missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::open_inventory_layout);
+  missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::open_inventory_layout);
 
   // always success
   missionx::data_manager::sm.seedError(errMsg);
@@ -5307,7 +5307,7 @@ missionx::ext_script::ext_open_image_screen(mb_interpreter_t* s, void** l)
 
   mb_check(mb_attempt_close_bracket(s, l));
 
-  missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::open_map_layout);
+  missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::open_map_layout);
 
   // always success
   missionx::data_manager::sm.seedError(errMsg);
@@ -5397,7 +5397,7 @@ missionx::ext_script::ext_hide_3D_markers(mb_interpreter_t* s, void** l)
 
   mb_check(mb_attempt_close_bracket(s, l));
 
-  missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::hide_target_marker_option);
+  missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::hide_target_marker_option);
 
   // always success
   missionx::data_manager::sm.seedError(errMsg);
@@ -5419,7 +5419,7 @@ missionx::ext_script::ext_show_3D_markers(mb_interpreter_t* s, void** l)
 
   mb_check(mb_attempt_close_bracket(s, l));
 
-  missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::show_target_marker_option);
+  missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::show_target_marker_option);
 
   // always success
   missionx::data_manager::sm.seedError(errMsg);

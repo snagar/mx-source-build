@@ -649,7 +649,7 @@ missionx::QueueMessageManager::prepareMessageStory(Message* msg)
 
     if ( (!msg->dqMsgLines.empty()) + (!line.empty()) )
     {
-      missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::open_story_layout); // open the Briefer screen and in the flight leg so simmer immediately will see the Story message
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::open_story_layout); // open the Briefer screen and in the flight leg so simmer immediately will see the Story message
     }
     else
     {
@@ -785,10 +785,10 @@ missionx::QueueMessageManager::prepareMessageStory(Message* msg)
 
 
     stLineCounter = 0;
-    missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::post_story_message_cache_cleanup); // call only for loaded image
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::post_story_message_cache_cleanup); // call only for loaded image
 
     if (Message::lineAction4ui.actionCode == mxconst::STORY_ACTION_HIDE)
-      missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::hide_briefer_window_in_2D); // call only for loaded image
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::hide_briefer_window_in_2D); // call only for loaded image
 
     Message::lineAction4ui.init(); // initialize the state of the static story message line so ui can return to its default screen    
     msg->msgState = missionx::mx_message_state_enum::msg_is_ready_for_post_message_actions; // this should progress the message to the post message actions
@@ -1120,7 +1120,7 @@ missionx::QueueMessageManager::postMessage(const Message* msg)
   if (!choice_s.empty())
   {
     missionx::data_manager::prepare_choice_options(choice_s);
-    missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::display_choice_window);
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::display_choice_window);
   }
 
   // v3.305.3 auto bg fade ATTRIB_FADE_BG_CHANNEL

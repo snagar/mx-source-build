@@ -54,14 +54,17 @@ public:
   bool        flag_force_picked_same_point_template_as_flight_leg_template_type; // v3.0.221.15rc4
   bool flag_is_custom_scenery{ false }; // v3.0.253.6 used with apt.dat information when we want to pick airports around the plane, we can use the cached data to flag navaid as custom scenery based and therefore maybe to prefer it over generic one
 
-  typedef struct _ramp_data // v3.0.253.1 added ramp specific info. lat.lon/heading will be kept in the main NavAid class.
+  struct navAidRamp // v3.0.253.1 added ramp specific info. lat.lon/heading will be kept in the main NavAid class.
   {
+    float lat {0.0f};
+    float lon {0.0f};
+    float heading {0.0f};
     std::string gate;
     std::string ramp_for_planes;    // who can park here
     std::string uq_name; // unique name for this ramp
     std::string operation_type; // type of operation
     std::string ramp_width_code; // icao_width_code
-  } navAidRamp;
+  };
   navAidRamp ramp_info;
 
   // Random Engine Generator Helper. Not really part of the NavAidInfo class that needs to be stored in the Point or XML node.

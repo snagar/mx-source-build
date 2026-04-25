@@ -52,7 +52,7 @@ bool                                           RandomEngine::flag_force_template
 missionx::Point                                RandomEngine::planeLocation; // v25.09.2
 IXMLNode                                       RandomEngine::xRootTemplate; // v25.09.2
 missionx::TemplateFileInfo*                    RandomEngine::working_tempFile_ptr; // v25.09.2
-RandomEngine::strct_shared_random_airport_info RandomEngine::shared_navaid_info; // v25.09.2
+structs::strct_shared_random_airport_info      RandomEngine::shared_navaid_info; // v25.09.2
 std::string                                    RandomEngine::errMsg; // v25.09.2
 std::vector<std::string>                       RandomEngine::vecMissionInfoOverpassUrls; // v25.09.2
 int                                            RandomEngine::current_url_indx_used_i = mxconst::INT_UNDEFINED; // v25.09.2
@@ -1058,7 +1058,7 @@ RandomEngine::get_content_story(const IXMLNode& xTemplateNode)
 
 missionx::NavAidInfo
 RandomEngine::gen_parse_template_leg(missionx::base_thread::strct_thread_state* inoutThreadState, const IXMLNode&                             xTemplateNode
-                                   , const IXMLNode&                            xml_leg_node_from_template, strct_shared_random_airport_info& inout_shared_navaid
+                                   , const IXMLNode&                            xml_leg_node_from_template, structs::strct_shared_random_airport_info& inout_shared_navaid
                                    , std::map<int, missionx::NavAidInfo>&       in_mission_targets, const int&                                in_leg_counter, const bool is_last_flight_leg
                                    , std::string&                               outErr)
 {
@@ -1231,7 +1231,7 @@ RandomEngine::gen_parse_template_leg(missionx::base_thread::strct_thread_state* 
 // -----------------------------------
 
 std::map<int, missionx::NavAidInfo>
-RandomEngine::gen_get_content_targets(missionx::base_thread::strct_thread_state* inoutThreadState, const IXMLNode& xTemplateNode, const IXMLNode& xContent, strct_shared_random_airport_info& inout_shared_navaid, std::string& outErr)
+RandomEngine::gen_get_content_targets(missionx::base_thread::strct_thread_state* inoutThreadState, const IXMLNode& xTemplateNode, const IXMLNode& xContent, structs::strct_shared_random_airport_info& inout_shared_navaid, std::string& outErr)
 {
   std::map<int, missionx::NavAidInfo> local_target_navaids;
 
@@ -1863,7 +1863,7 @@ RandomEngine::gen_content_option_02_copy_as_is(IXMLNode& xTemplateNode, IXMLNode
 
 
 std::map<int, missionx::NavAidInfo>
-RandomEngine::gen_get_generic_template_targets(missionx::base_thread::strct_thread_state* inoutThreadState, const IXMLNode& in_template_node, strct_shared_random_airport_info& inout_shared_navaid, std::string& outErr)
+RandomEngine::gen_get_generic_template_targets(missionx::base_thread::strct_thread_state* inoutThreadState, const IXMLNode& in_template_node, structs::strct_shared_random_airport_info& inout_shared_navaid, std::string& outErr)
 {
   std::map<int, missionx::NavAidInfo> target_navaids;
   outErr.clear();
@@ -2538,7 +2538,7 @@ RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_targe
                             , mx_calc_distance ( ap_lat, ap_lon, {}, {}, 3440) as dist_nm, 0 as bearing
                             , helipads, ramp_helos, ramp_planes, ramp_props, ramp_turboprops, ramp_jet_heavy, rw_hard, rw_dirt_gravel, rw_grass
                             , rw_water, is_custom from airports_vu where 1 = 1 {}  limit 5)", // v26.03.1 dynamic icao = '{}' order by ...
-                                             mxUtils::formatNumber<double>(inout_target_navaid.lat, 8), mxUtils::formatNumber<double>(inout_target_navaid.lon, 8), (inout_target_navaid.getID().empty()) ? " order by dist_nm " : fmt::format(" and icao = '{}' order by icao, dist_nm ", inout_target_navaid.getID()));
+                              mxUtils::formatNumber<double>(inout_target_navaid.lat, 8), mxUtils::formatNumber<double>(inout_target_navaid.lon, 8), (inout_target_navaid.getID().empty()) ? " order by dist_nm " : fmt::format(" and icao = '{}' order by icao, dist_nm ", inout_target_navaid.getID()));
 
       #ifndef RELEASE
       Log::logMsgThread(fmt::format("[{}] Search Airport Query for ramps. Plane type: [{}]\n{}\n", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search), sql_ap));
@@ -2657,8 +2657,11 @@ RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_targe
       //   ramp_filter_stmt_s += " and for_planes <> '|fighters|'";
 
       // v26.04.4 filter out non-floating planes
-      const bool is_amphibian = missionx::data_manager::prop_userDefinedMission_ui.getBoolValue(mxconst::get_PLANE_IS_AMPHIBIAN(), false);
-      if (is_amphibian || mxUtils::mx_in( local_plane_type_enum_to_search, missionx::mx_plane_types_enum::plane_type_prop_floats, missionx::mx_plane_types_enum::plane_type_prop_floats) )
+      const bool is_amphibian_prop = missionx::data_manager::prop_userDefinedMission_ui.getBoolValue(mxconst::get_PLANE_IS_AMPHIBIAN(), false);
+      const bool is_amphibian_plane = (is_amphibian_prop || mxUtils::mx_in( local_plane_type_enum_to_search, missionx::mx_plane_types_enum::plane_type_ga_floats, missionx::mx_plane_types_enum::plane_type_prop_floats) );
+
+      // if (is_amphibian_prop || mxUtils::mx_in( local_plane_type_enum_to_search, missionx::mx_plane_types_enum::plane_type_prop_floats, missionx::mx_plane_types_enum::plane_type_prop_floats) )
+      if (is_amphibian_plane)
       {
         // ramp_filter_stmt_s = fmt::format( " and ( dock > 0 {} or 1 = 1 {} ) ", ramp_filter_stmt_s, ramp_filter_stmt_s);
         ramp_filter_stmt_s = fmt::format( " and ( ( dock > 0 {} ) or ( 1 = 1 {} ) ) ", ramp_filter_stmt_s, ramp_filter_stmt_s);
@@ -2669,7 +2672,7 @@ RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_targe
       // v26.04.3 filter out "ramp holding" as a starting position or end position.
       const std::string select_s     = fmt::format("select * from ramps_vu where 1 = 1 and lower(name) not like '%hold%' and icao_id = {} ", inout_target_navaid.icao_id);
       const std::string filter_ramps = ramp_filter_stmt_s;
-      const std::string sql_ramp     = select_s + filter_ramps + " ORDER BY RANDOM() limit 1";
+      const std::string sql_ramp     = select_s + filter_ramps + " ORDER BY RANDOM() limit 10"; // v26.06.4 changed the limit to 10
 
       #ifndef RELEASE
       Log::logMsgThread(fmt::format("[{}] Ramp Filter for type: {} => {}\n", __func__, translatePlaneTypeToString(in_plane_type_enum_to_search), sql_ramp));
@@ -2716,23 +2719,44 @@ RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_targe
       {
         // found ramp
         // Store ramp location in navaid
-        auto ramp                                     = resultTable_gather_ramp_data.cbegin()->second;
-        inout_target_navaid.lat                       = mxUtils::stringToNumber<float>(ramp["lat"], ramp["lat"].length());
-        inout_target_navaid.lon                       = mxUtils::stringToNumber<float>(ramp["lon"], ramp["lon"].length());
-        inout_target_navaid.heading                   = mxUtils::stringToNumber<float>(ramp["heading"], ramp["heading"].length());
-        inout_target_navaid.ramp_info.uq_name         = ramp["name"];
-        inout_target_navaid.ramp_info.ramp_for_planes = ramp["for_planes"];
-        inout_target_navaid.ramp_info.ramp_width_code = ramp["icao_width_code"];
-        inout_target_navaid.ramp_info.operation_type  = ramp["operation_type"];
+        // auto ramp                                     = resultTable_gather_ramp_data.cbegin()->second;
+        for (auto& ramp : resultTable_gather_ramp_data | std::views::values)
+        {
+          inout_target_navaid.ramp_info.lat             = mxUtils::stringToNumber<float>(ramp["lat"], ramp["lat"].length());
+          inout_target_navaid.ramp_info.lon             = mxUtils::stringToNumber<float>(ramp["lon"], ramp["lon"].length());
+          inout_target_navaid.ramp_info.heading         = mxUtils::stringToNumber<float>(ramp["heading"], ramp["heading"].length());
+          inout_target_navaid.ramp_info.uq_name         = ramp["name"];
+          inout_target_navaid.ramp_info.ramp_for_planes = ramp["for_planes"];
+          inout_target_navaid.ramp_info.ramp_width_code = ramp["icao_width_code"];
+          inout_target_navaid.ramp_info.operation_type  = ramp["operation_type"];
 
-        Log::logMsgThread(fmt::format("[{}] Ramp info gathered in icao_id: {}, Ramp name: {}.", __func__, inout_target_navaid.icao_id, inout_target_navaid.ramp_info.operation_type ) );
+          if (!is_amphibian_plane)
+          {
+            NavAidInfo wet_nav_check;
+            wet_nav_check.lat = inout_target_navaid.ramp_info.lat;
+            wet_nav_check.lon = inout_target_navaid.ramp_info.lon;
+            const auto is_wet_result = missionx::data_manager::get_is_wet_at_point_thread_unsafe(wet_nav_check, RandomEngine::random_thread_state, RandomEngine::shared_navaid_info);
+            if (is_wet_result.result) // if it is wet
+              continue; // pick next ramp
+          }
+
+          break; // ramp is valid, we can exit the loop
+        } // end loop over ramps and test if they are water based.
+
+        inout_target_navaid.lat     = inout_target_navaid.ramp_info.lat;
+        inout_target_navaid.lon     = inout_target_navaid.ramp_info.lon;
+        inout_target_navaid.heading = inout_target_navaid.ramp_info.heading;
+
+
+        Log::logMsgThread(fmt::format("[{}] Ramp info gathered in icao_id: {}, Ramp name: {}.", __func__, inout_target_navaid.icao_id, inout_target_navaid.ramp_info.uq_name ) );
 
         #ifndef RELEASE
+        // print ramp debug information
         for (auto& row_val : resultTable_gather_ramp_data | std::views::values)
         {
-          // Log::logMsgThread (fmt::format("\rRamp: " + row_val["name"] + ", icao_id: " + row_val["icao_id"] + ", icao: " + row_val["icao"]) );
           Log::logMsgThread(fmt::format("[{}] Ramp: {}, icao_id: {}, icao: {}", __func__, row_val["name"], row_val["icao_id"], row_val["icao"]));
         }
+        Log::logMsgThread(fmt::format("[{}] >> Picked Ramp: \"{}\" <<", __func__, inout_target_navaid.ramp_info.uq_name));
         #endif // !RELEASE
 
         inout_target_navaid.synchToPoint();
@@ -2741,7 +2765,7 @@ RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_targe
         if (result.getInfoIndex() > 0)
           Log::logMsgThread(fmt::format("[{}] {}", __func__, result.getInfoAsText()));
 
-        return result; // exit the loop
+        return result; // exit the loop and the function
       }
 
     } // end loop
@@ -3599,12 +3623,14 @@ RandomEngine::get_slope_at_point(const missionx::NavAidInfo& outNavAid)
 bool
 RandomEngine::get_is_wet_at_point(const missionx::NavAidInfo& inNavAid)
 {
-  RandomEngine::shared_navaid_info.p = inNavAid.p;
-  if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_is_point_wet))
-  {
-    RandomEngine::setError("[random isWet] Failed to probe for wet. Will treat target coordinates as \"land\". ");
-  }
+  // RandomEngine::shared_navaid_info.p = inNavAid.p;
+  // if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_is_point_wet))
+  // {
+  //   RandomEngine::setError("[random isWet] Failed to probe for wet. Will treat target coordinates as \"land\". ");
+  // }
 
+  // Call data manager thread unsafe function to test if a point is above water
+  auto result = missionx::data_manager::get_is_wet_at_point_thread_unsafe(inNavAid, RandomEngine::random_thread_state, RandomEngine::shared_navaid_info);
   return RandomEngine::shared_navaid_info.isWet;
 }
 
@@ -3745,7 +3771,7 @@ RandomEngine::prepare_blank_template_with_flight_legs_based_on_ui(IXMLNode& pNod
 // -----------------------------------
 
 std::map<int, NavAidInfo>
-RandomEngine::gen_get_databaseflightplan_site_targets(missionx::base_thread::strct_thread_state* inoutThreadState, const IXMLNode& in_template_node, strct_shared_random_airport_info& inout_shared_navaid, std::string& outErr)
+RandomEngine::gen_get_databaseflightplan_site_targets(missionx::base_thread::strct_thread_state* inoutThreadState, const IXMLNode& in_template_node, structs::strct_shared_random_airport_info& inout_shared_navaid, std::string& outErr)
 {
   std::map<int, NavAidInfo> navaid_targets;
   const auto                fpln_id_picked_i = Utils::readNodeNumericAttrib<int>(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_FPLN_ID_PICKED(), -1); // max slider
@@ -4084,7 +4110,7 @@ RandomEngine::gen_prepare_mission_based_on_databaseflightplan_site(IXMLNode& in_
 // -----------------------------------
 
 std::map<int, NavAidInfo>
-RandomEngine::gen_get_ils_targets(missionx::base_thread::strct_thread_state* inoutThreadState, const IXMLNode& in_template_node, strct_shared_random_airport_info& inout_shared_navaid, std::string& outErr)
+RandomEngine::gen_get_ils_targets(missionx::base_thread::strct_thread_state* inoutThreadState, const IXMLNode& in_template_node, structs::strct_shared_random_airport_info& inout_shared_navaid, std::string& outErr)
 {
   std::map<int, NavAidInfo> navaid_targets;
 
@@ -4424,7 +4450,7 @@ RandomEngine::add_waypoints_for_fpln_or_simbrief(IXMLNode& pNode)
 std::map<int, NavAidInfo>
 RandomEngine::gen_get_user_fpln_or_simbrief_targets(missionx::base_thread::strct_thread_state* inoutThreadState
                                                   , const IXMLNode&                            in_template_node
-                                                  , strct_shared_random_airport_info&          inout_shared_navaid
+                                                  , structs::strct_shared_random_airport_info&          inout_shared_navaid
                                                   , std::string&                               outErr)
 {
   missionx::mx_ext_internet_fpln_strct fpln;
@@ -5590,7 +5616,7 @@ RandomEngine::gen_briefer_phase_01_parse_briefer_and_start_location(const IXMLNo
 
 
 missionx::NavAidInfo
-RandomEngine::gen_briefer_phase_02_base_node_from_navaid(missionx::NavAidInfo& inout_start_navaid, RandomEngine::strct_shared_random_airport_info& inout_strct_shared_navaid_info, const bool in_flag_we_have_target_above_water)
+RandomEngine::gen_briefer_phase_02_base_node_from_navaid(missionx::NavAidInfo& inout_start_navaid, structs::strct_shared_random_airport_info& inout_strct_shared_navaid_info, const bool in_flag_we_have_target_above_water)
 {
   // We will use this function to construct the "<briefer>" element.
   // The description of the mission in the briefer we will fetch from: "<mission_info>" CDATA property.
@@ -6904,7 +6930,7 @@ RandomEngine::gen_3d_parse_instances_in_leg(IXMLNode& legNode_ptr, missionx::Nav
 
 
 std::map<int, missionx::NavAidInfo>
-RandomEngine::gen_oilrig_targets(missionx::base_thread::strct_thread_state* inoutThreadState, const IXMLNode& in_mapping_root_node, IXMLNode& inout_metadata_node, strct_shared_random_airport_info& inout_shared_navaid, std::string& outErr)
+RandomEngine::gen_oilrig_targets(missionx::base_thread::strct_thread_state* inoutThreadState, const IXMLNode& in_mapping_root_node, IXMLNode& inout_metadata_node, structs::strct_shared_random_airport_info& inout_shared_navaid, std::string& outErr)
 {
   std::map<int, missionx::NavAidInfo> target_navaids;
 
@@ -7372,7 +7398,7 @@ RandomEngine::gen_shuffled_q_from_osm_subject_node(missionx::base_thread::strct_
 // -----------------------------------
 
 std::map<int, missionx::NavAidInfo>
-RandomEngine::gen_get_targets_using_osm_queries_from_a_thread(missionx::base_thread::strct_thread_state* inoutThreadState, const IXMLNode& in_root_node, missionx::structs::strct_osm_query& inout_osm_query, strct_shared_random_airport_info& inout_shared_navaid)
+RandomEngine::gen_get_targets_using_osm_queries_from_a_thread(missionx::base_thread::strct_thread_state* inoutThreadState, const IXMLNode& in_root_node, missionx::structs::strct_osm_query& inout_osm_query, structs::strct_shared_random_airport_info& inout_shared_navaid)
 {
   constexpr int max_loops_i                   = 3;
   bool          flag_all_osm_queries_are_done = false;
@@ -10314,7 +10340,7 @@ RandomEngine::gen_target_or_last_flight_leg_base_on_xy_or_osm(NavAidInfo&       
         outNewNavInfo.copy_target_nav_data_only(local_navAid); // will call synchToPoint() too
 
         // store shared info we prepared in a previous step before calling the OSM function. We will use it after calling the main thread for fallback
-        const strct_shared_random_airport_info tmp_info = RandomEngine::shared_navaid_info;
+        const structs::strct_shared_random_airport_info tmp_info = RandomEngine::shared_navaid_info;
 
         RandomEngine::shared_navaid_info.navAid.init();
         RandomEngine::shared_navaid_info.navAid.lat = outNewNavInfo.lat;

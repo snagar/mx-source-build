@@ -47,38 +47,38 @@ namespace missionx
 class RandomEngine final : public base_thread
 {
 public:
-  typedef struct _random_airport_info_struct
-  {
-    // convert icao to xml point
-    IXMLNode parentNode_ptr; // pointer to XML element that might hold icao elements that needs to be converted to points
-
-    Point p;
-    bool  isWet{false}; // will hold wet status
-
-    float       inMinDistance_nm{}; // v3.0.221.15
-    float       inMaxDistance_nm{};
-    int         inExcludeAngle{};
-    float       inStartFromDistance_nm{};
-    std::string inRestrictRampType;
-
-    NavAidInfo navAid;
-
-    _random_airport_info_struct() { init(); }
-
-    void init()
-    {
-      p.init();
-      isWet          = false;
-      inExcludeAngle = -1;
-      inRestrictRampType.clear();
-      inMinDistance_nm       = 0.0f;
-      inMaxDistance_nm       = static_cast<float>(mxconst::MAX_DISTANCE_TO_SEARCH_AIRPORT);
-      inStartFromDistance_nm = mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT;
-      navAid.init();
-      parentNode_ptr = IXMLNode::emptyIXMLNode;
-    }
-  } strct_shared_random_airport_info;
-  static strct_shared_random_airport_info shared_navaid_info;
+  // typedef struct _random_airport_info_struct
+  // {
+  //   // convert icao to xml point
+  //   IXMLNode parentNode_ptr; // pointer to XML element that might hold icao elements that needs to be converted to points
+  //
+  //   Point p;
+  //   bool  isWet{false}; // will hold wet status
+  //
+  //   float       inMinDistance_nm{}; // v3.0.221.15
+  //   float       inMaxDistance_nm{};
+  //   int         inExcludeAngle{};
+  //   float       inStartFromDistance_nm{};
+  //   std::string inRestrictRampType;
+  //
+  //   NavAidInfo navAid;
+  //
+  //   _random_airport_info_struct() { init(); }
+  //
+  //   void init()
+  //   {
+  //     p.init();
+  //     isWet          = false;
+  //     inExcludeAngle = -1;
+  //     inRestrictRampType.clear();
+  //     inMinDistance_nm       = 0.0f;
+  //     inMaxDistance_nm       = static_cast<float>(mxconst::MAX_DISTANCE_TO_SEARCH_AIRPORT);
+  //     inStartFromDistance_nm = mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT;
+  //     navAid.init();
+  //     parentNode_ptr = IXMLNode::emptyIXMLNode;
+  //   }
+  // } structs::strct_shared_random_airport_info;
+  static structs::strct_shared_random_airport_info shared_navaid_info;
 
 private:
   bool                       flag_found;
@@ -181,14 +181,14 @@ private:
   std::string briefer_skeleton_message_to_use_in_injectTypeMissionFeature; // v3.0.241.9
   std::string briefer_starting_location_desc; // v25.05.1
 
-  static std::map<int, NavAidInfo> gen_get_databaseflightplan_site_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr); // v25.10.1
+  static std::map<int, NavAidInfo> gen_get_databaseflightplan_site_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, structs::strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr); // v25.10.1
   missionx::mx_return gen_prepare_mission_based_on_databaseflightplan_site(IXMLNode& in_xTemplateNode, IXMLNode & inout_meta_node); // v25.10.1
 
-  static std::map<int, NavAidInfo> gen_get_ils_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr); // v25.10.1
+  static std::map<int, NavAidInfo> gen_get_ils_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, structs::strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr); // v25.10.1
   missionx::mx_return gen_prepare_mission_based_on_ils_search (IXMLNode &pNode, IXMLNode & inout_meta_node); // v25.10.1
 
   void add_waypoints_for_fpln_or_simbrief(IXMLNode& pNode); // v25.04.2 // NEED TO CONVERT
-  static std::map<int, NavAidInfo> gen_get_user_fpln_or_simbrief_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr); // v25.10.1
+  static std::map<int, NavAidInfo> gen_get_user_fpln_or_simbrief_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, structs::strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr); // v25.10.1
   missionx::mx_return gen_prepare_mission_based_on_user_fpln_or_simbrief (IXMLNode &in_xTemplateNode, IXMLNode & inout_meta_node); // v25.10.1
   // end v25.06.1
   mx_return gen_prepare_mission_based_on_oilrig (IXMLNode &inRootTemplate, IXMLNode & inout_meta_node); // v25.09.2
@@ -394,7 +394,7 @@ private:
   // static std::vector<missionx::structs::strct_osm_query> gen_osm_analyse2 (mx_return &out_mx_return, const std::string &xmlFilename, const std::string &in_cache_folder, double centre_lat, double centre_lon, IXMLNode &outRootNode = IXMLNode::emptyIXMLNode);
   // The function returns a "shuffled index vector" as a value, and initializes the "out_main_subject_node" and "analyzed_query" from inside the function to use later from the calling routine.
   static std::vector<int>                    gen_shuffled_q_from_osm_subject_node (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_root_node, const std::vector<missionx::structs::strct_osm_query> &vec_osm_queries, IXMLNode &out_main_subject_node, missionx::structs::strct_osm_query &analyzed_query);
-  static std::map<int, missionx::NavAidInfo> gen_get_targets_using_osm_queries_from_a_thread (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_root_node, missionx::structs::strct_osm_query &inout_osm_query, strct_shared_random_airport_info &inout_shared_navaid);
+  static std::map<int, missionx::NavAidInfo> gen_get_targets_using_osm_queries_from_a_thread (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_root_node, missionx::structs::strct_osm_query &inout_osm_query, structs::strct_shared_random_airport_info &inout_shared_navaid);
   // find metadata of current target NavAid relative to previous and next NavAids
   static std::string          gen_leg_name (int *seq, const std::string &prefix_name, const std::string &postfix_name, missionx::NavAidInfo &inTargetNavAid);
   static void                 gen_gather_navaid_metadata_relative_to_target (const IXMLNode &inoutMetaNode, missionx::NavAidInfo &inout_target_navaid, missionx::NavAidInfo &inout_from_navaid, missionx::NavAidInfo *inout_next_navaid_ptr);
@@ -403,7 +403,7 @@ private:
   static IXMLNode             gen_objective_node (int &seq, const std::string &prefix_name, const std::string &postfix_name, IXMLNode *parentNode = nullptr);
   static IXMLNode             gen_leg_node (const std::string &prefix_name, const std::string &postfix_name, missionx::NavAidInfo *inTargetNavAid, const std::list<missionx::structs::strct_node_attribute_key_value> *in_attrib_list, IXMLNode *parentNode = nullptr);
   static missionx::NavAidInfo gen_briefer_phase_01_parse_briefer_and_start_location (const IXMLNode &in_xTemplate, IXMLNode &x_briefer_and_start_location); // parse <briefer_and_start_location>
-  static NavAidInfo           gen_briefer_phase_02_base_node_from_navaid (missionx::NavAidInfo &inout_start_navaid, strct_shared_random_airport_info &inout_strct_shared_navaid_info, bool in_flag_we_have_target_above_water);
+  static NavAidInfo           gen_briefer_phase_02_base_node_from_navaid (missionx::NavAidInfo &inout_start_navaid, structs::strct_shared_random_airport_info &inout_strct_shared_navaid_info, bool in_flag_we_have_target_above_water);
   static void                 gen_briefer_phase_03_add_desc (std::map<int, NavAidInfo> &inout_targets, bool flag_has_wet_target);
   IXMLNode                    gen_mission_info_node (const IXMLNode &xRootTemplate, const std::string &in_template_name, const std::string &in_template_image_file_name, const std::string &in_mission_folder_name);
   static IXMLNode             gen_add_inventory_phase01_node (const int &in_seq, missionx::NavAidInfo &inout_navaid, std::unordered_map<int, mx_inventory_track_strct> &inout_map_osm_inventory_track, const float &in_radius = 0.0, const std::list<missionx::structs::strct_node_attribute_key_value> *in_override_attrib_list = nullptr);
@@ -427,7 +427,7 @@ private:
   // end v25.06.1
 
   // v25.09.1
-  static std::map<int, missionx::NavAidInfo> gen_oilrig_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_mapping_root_node, IXMLNode &inout_meta_data_node, strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr);
+  static std::map<int, missionx::NavAidInfo> gen_oilrig_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_mapping_root_node, IXMLNode &inout_meta_data_node, structs::strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr);
 
   // returns error message. Empty message means code is good.
   static missionx::structs::strct_expected_location_data parse_expected_location (const IXMLNode &in_xml_leg_from_template, const std::string &custom_error_message, bool is_last_leg = false);
@@ -435,9 +435,9 @@ private:
   // v25.09.2
   // Will only parse the template "leg" from a template file.
   // Internally will also parse the <expected_location>.
-  static missionx::NavAidInfo                gen_parse_template_leg (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &xTemplateNode, const IXMLNode &xml_leg_node_from_template, strct_shared_random_airport_info &inout_shared_navaid, std::map<int, missionx::NavAidInfo> &in_mission_targets, const int &in_leg_counter, bool is_last_flight_leg, std::string &outErr);
-  static std::map<int, missionx::NavAidInfo> gen_get_content_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, const IXMLNode &in_content_node, strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr);
-  static std::map<int, missionx::NavAidInfo> gen_get_generic_template_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr);
+  static missionx::NavAidInfo                gen_parse_template_leg (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &xTemplateNode, const IXMLNode &xml_leg_node_from_template, structs::strct_shared_random_airport_info &inout_shared_navaid, std::map<int, missionx::NavAidInfo> &in_mission_targets, const int &in_leg_counter, bool is_last_flight_leg, std::string &outErr);
+  static std::map<int, missionx::NavAidInfo> gen_get_content_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, const IXMLNode &in_content_node, structs::strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr);
+  static std::map<int, missionx::NavAidInfo> gen_get_generic_template_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_template_node, structs::strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr);
   missionx::mx_return                        gen_prepare_random_mission_based_on_content (IXMLNode &xTemplateNode); // v25.09.2
   missionx::mx_return                        gen_content_option_01_random_mission_from_content (IXMLNode &xTemplateNode, IXMLNode & xContent); // v25.09.2
   missionx::mx_return                        gen_content_option_02_copy_as_is (IXMLNode &xTemplateNode, IXMLNode & xContent); // v25.09.2

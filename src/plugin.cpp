@@ -578,10 +578,31 @@ XPluginReceiveMessage (XPLMPluginID inFrom, const intptr_t inMsg, void *inParam)
     case XPLM_MSG_AIRPORT_LOADED:
     case XPLM_MSG_SCENERY_LOADED:
     {
+      static bool first_load = true; // v26.04.4
       missionx::data_manager::strct_mx_xplane_metadata.set_flagSceneryOrAirportLoaded (true); // v3.305.1c
       missionx::data_manager::refresh_3d_objects_and_cues_after_location_transition ();
       missionx::Mission::uiImGuiBriefer->strct_ext_layer.from_icao.clear ();
 
+      if (first_load && data_manager::missionState == mx_mission_state_enum::mission_undefined)
+      {
+        // v26.04.4
+        const std::string scenery_packs_ini_file_path = fmt::format("{}/scenery_packs.ini", Utils::getCustomSceneryRelativePath());
+        const std::string scenery_pack_hash_s         = fmt::format("{}", Utils::get_file_hash(scenery_packs_ini_file_path));
+        const auto        prop_scenery_pack_hash_s    = Utils::readAttrib(missionx::data_manager::xMissionxProperties_node, mxconst::get_ATTRIB_SCENERY_HASH(), "n/a");
+
+        if (prop_scenery_pack_hash_s != scenery_pack_hash_s)
+        {                    
+          if (!mxUtils::is_element_in_container (missionx::data_manager::queFlcActions, mx_flc_pre_command::exec_apt_dat_optimization)
+              && !mxUtils::is_element_in_container(missionx::data_manager::postFlcActions, mx_flc_pre_command::exec_apt_dat_optimization)
+             )
+          {
+            missionx::data_manager::queFlcActions.push_back(mx_flc_pre_command::exec_apt_dat_optimization);
+            missionx::data_manager::set_flag_rebuild_apt_dat(false); // reset
+          }          
+        }
+      } // end scenery pack ini hash test.
+
+      first_load = false;
     }
     break;
     case XPLM_MSG_PLANE_CRASHED: // abort only is mission is active and if auto abort on crash flag is true
@@ -671,7 +692,7 @@ MissionMenuHandler (void *inMenuRef, void *inItemRef)
       #ifndef RELEASE
       missionx::Log::logMsg (fmt::format("[{}] Menu Optimize 'apt.dat' files (should take 1-2min, depends on machine, runs in the background).", __func__ ));
       #endif
-      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::exec_apt_dat_optimization); // v3.0.253.6
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::exec_apt_dat_optimization); // v3.0.253.6
     }
     break;
     case Mission::mx_menuIdRefs::MENU_TOGGLE_CHOICE_WINDOW:
@@ -742,12 +763,12 @@ toolsMenuHandler (void *inMenuRef, void *inItemRef)
   {
     case Mission::mx_menuIdRefs::MENU_TOOLS_CREATE_EXTERNAL_FPLN_BASED_ON_GPS:
     {
-      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::write_fpln_to_external_folder); // v3.0.255.4.4
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::write_fpln_to_external_folder); // v3.0.255.4.4
     }
     break;
     case Mission::mx_menuIdRefs::MENU_TOOLS_UPDATE_POINT_IN_FILE_WITH_TEMPLATE_BASED_ON_PROBE:
     {
-      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::update_point_in_file_with_template_based_on_probe); // v3.0.255.4.4
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::update_point_in_file_with_template_based_on_probe); // v3.0.255.4.4
     }
     break;
     case Mission::mx_menuIdRefs::MENU_TOOLS_WRITE_PLANE_POSITION_TO_LOG: // v3.303.14
@@ -940,7 +961,7 @@ toggleCueCommandHandler (XPLMCommandRef inCommand, XPLMCommandPhase inPhase, voi
   if (inPhase == xplm_CommandBegin)
   {
 
-    missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::toggle_cue_info_mode);
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::toggle_cue_info_mode);
 
   }
 
@@ -955,7 +976,7 @@ toggleDesignerModeCommandHandler (XPLMCommandRef inCommand, XPLMCommandPhase inP
   if (inPhase == xplm_CommandBegin)
   {
 
-    missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::toggle_designer_mode);
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::toggle_designer_mode);
 
   }
 
@@ -969,7 +990,7 @@ autoHideMxpadCommandHandler (XPLMCommandRef inCommand, XPLMCommandPhase inPhase,
   if (inPhase == xplm_CommandBegin)
   {
 
-    missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::toggle_auto_hide_show_mxpad_option);
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::toggle_auto_hide_show_mxpad_option);
 
   }
 
@@ -1010,7 +1031,7 @@ toggleTargetMarkerSetting_CommandHandler (XPLMCommandRef inCommand, XPLMCommandP
   if (inPhase == xplm_CommandEnd)
   {
     // we do not save the changes to the option file when toggling using the command
-    missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::toggle_target_marker_option);
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::toggle_target_marker_option);
   }
   return 0;
 }
@@ -1023,7 +1044,7 @@ hideTargetMarkerSetting_CommandHandler (XPLMCommandRef inCommand, XPLMCommandPha
   if (inPhase == xplm_CommandBegin)
   {
     // we do not save the changes to the option file when toggling using the command
-    missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::hide_target_marker_option);
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::hide_target_marker_option);
   }
   return 0;
 }
@@ -1036,7 +1057,7 @@ showTargetMarkerSetting_CommandHandler (XPLMCommandRef inCommand, XPLMCommandPha
   if (inPhase == xplm_CommandBegin)
   {
     // we do not save the changes to the option file when toggling using the command
-    missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::show_target_marker_option);
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::show_target_marker_option);
   }
   return 0;
 }

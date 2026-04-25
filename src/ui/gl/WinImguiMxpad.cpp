@@ -125,7 +125,7 @@ WinImguiMxpad::buildInterface()
       {
         if (ImGui::ImageButton("InvMxPadButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_INVENTORY_MXPAD()].gTexture, size, uv0, uv1)) // padding 2
         {
-          missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::open_inventory_layout);
+          missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::open_inventory_layout);
         }
       }
 
@@ -135,7 +135,7 @@ WinImguiMxpad::buildInterface()
       {
         if (ImGui::ImageButton("MapMxPadButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_MAP_MXPAD()].gTexture, size, uv0, uv1)) // padding 2
         {
-          missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::open_map_layout);
+          missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::open_map_layout);
         }
       }
 
@@ -143,7 +143,7 @@ WinImguiMxpad::buildInterface()
       ImGui::SameLine(0.0f, 10.0f);
       if (ImGui::ImageButton("AutoHideMxPadButtonImage", data_manager::mapCachedPluginTextures[autoHideTextureState_name].gTexture, size, uv0, uv1)) // padding 2
       {
-        missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::toggle_auto_hide_show_mxpad_option);
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::toggle_auto_hide_show_mxpad_option);
       }
 
       // Target Marker status icon
@@ -155,7 +155,7 @@ WinImguiMxpad::buildInterface()
 
       if (ImGui::ImageButton("ToggleTargetMarkerMxPadButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_TARGET_MARKER_ICON()].gTexture, size, uv0, uv1)) // padding 2
       {
-        missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::toggle_target_marker_option);
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::toggle_target_marker_option);
       }
 
       if (!bDisplayMarkers)

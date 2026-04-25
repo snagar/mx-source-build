@@ -436,6 +436,21 @@ where  xp_ap_metadata.icao not in (select t1.icao
 
       missionx::data_manager::sqlite_test_db_validity (missionx::data_manager::db_xp_airports, true); // v25.09.1
       Log::logAttention("*** Finish Parsing and Loading APT.DAT + ILS data into the database. Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec)  ****", true);
+
+
+      // v26.04.4 Add scenery_pack.ini hash to the preference file
+      //const std::string customIniFile = inThreadState->mapValues[mxconst::get_FLD_CUSTOM_SCENERY_FOLDER_PATH()] + missionx::XPLANE_SCENERY_INI_FILENAME;
+      //const std::string scenery_packs_ini_file_path = customIniFile;
+      const std::string scenery_pack_hash_s         = fmt::format("{}", Utils::get_file_hash(customIniFile));
+      const auto        prop_scenery_pack_hash_s    = Utils::readAttrib(missionx::data_manager::xMissionxProperties_node, mxconst::get_ATTRIB_SCENERY_HASH(), "n/a");
+
+      if (prop_scenery_pack_hash_s != scenery_pack_hash_s)
+      {
+        missionx::data_manager::xMissionxProperties_node.updateAttribute(scenery_pack_hash_s.c_str(), mxconst::get_ATTRIB_SCENERY_HASH().c_str(), mxconst::get_ATTRIB_SCENERY_HASH().c_str());
+        missionx::system_actions::store_plugin_options();
+      }
+
+
     }
 
     inThreadState->flagIsActive        = false;

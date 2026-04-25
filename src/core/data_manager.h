@@ -66,6 +66,39 @@ namespace missionx
 namespace structs
 {
 
+struct strct_shared_random_airport_info
+{
+  // convert icao to xml point
+  IXMLNode parentNode_ptr; // pointer to XML element that might hold icao elements that needs to be converted to points
+
+  Point p;
+  bool  isWet{false}; // will hold wet status
+
+  float       inMinDistance_nm{}; // v3.0.221.15
+  float       inMaxDistance_nm{};
+  int         inExcludeAngle{};
+  float       inStartFromDistance_nm{};
+  std::string inRestrictRampType;
+
+  NavAidInfo navAid;
+
+  strct_shared_random_airport_info() { init(); }
+
+  void init()
+  {
+    p.init();
+    isWet          = false;
+    inExcludeAngle = -1;
+    inRestrictRampType.clear();
+    inMinDistance_nm       = 0.0f;
+    inMaxDistance_nm       = static_cast<float>(mxconst::MAX_DISTANCE_TO_SEARCH_AIRPORT);
+    inStartFromDistance_nm = mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT;
+    navAid.init();
+    parentNode_ptr = IXMLNode::emptyIXMLNode;
+  }
+} ;
+
+
   struct strct_curl_result
   {
     ::CURLcode  res_curl = CURLE_FAILED_INIT;
@@ -233,7 +266,7 @@ It sored the information in static maps, and has key functions to add tasks/obje
 */
 
 // set of commands that need to be execute from "plugin" or "flc" phase since we don't want to interrupt flow of code
-typedef enum class _flc_commands
+enum class mx_flc_pre_command
   : uint8_t
 {
   abort_mission,  // 0
@@ -317,7 +350,7 @@ typedef enum class _flc_commands
   unpause_xplane,  // 70
   update_point_in_file_with_template_based_on_probe, // v3.0.255.4.4 used in setup and tools
   write_fpln_to_external_folder,                     // v3.0.255.4.4 used in setup and tools screen so we won't call it from draw callback
-} mx_flc_pre_command;
+};
 
 typedef enum class _mission_state
   : uint8_t
@@ -1067,8 +1100,9 @@ public:
 
   // Queue actions in Flight Loop Callback
   static std::queue<std::string> queThreadMessage; // holds messages from threads to display in briefer. use: "missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::set_briefer_text_message);" but set the que before hand
-  static std::queue<missionx::mx_flc_pre_command> queFlcActions;
-  static std::queue<missionx::mx_flc_pre_command> postFlcActions; // v3.0.146 // we will place actions in this Queue if we want them to happen after flc() so xplane updates its state. Example pause after position plane
+  //static std::queue<missionx::mx_flc_pre_command> queFlcActions;
+  static std::deque<missionx::mx_flc_pre_command> queFlcActions;
+  static std::deque<missionx::mx_flc_pre_command> postFlcActions; // v3.0.146 // we will place actions in this Queue if we want them to happen after flc() so xplane updates its state. Example pause after position plane
   static void                                     clearAllQueues();
 
   ////// messages - Moved to QueMessageManager //////
@@ -1463,12 +1497,14 @@ public:
   // The function will fetch OSM information from local cache folder or the web. Make sure to initialize the "cache_folder" in the "*q" parameter before calling this function.
   static void fetch_ways_and_target_node_from_overpass_thread (missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
 
-
   // A simple function to manage thread wait for main thread actions that needs to take place before it can continue. Default wait time is 500 milliseconds for 10 iteration (5 seconds)
   // For every function call we need to handle failure cases (false returned).
   // For every function call we need to use threadState.pipeProperties to set the attributes we want the main thread to handle.
   static bool waitForPluginCallbackJob(missionx::base_thread::strct_thread_state *out_state_ptr, missionx::mx_flc_pre_command inQueuedCommand, std::chrono::milliseconds inWaitTimeMilliseconds = std::chrono::milliseconds(500), int inLimitWaitCounter = 10);
   static missionx::base_thread::strct_thread_state metar_thread_state;
+
+
+  static mx_return get_is_wet_at_point_thread_unsafe (const missionx::NavAidInfo &inNavAid, missionx::base_thread::strct_thread_state &inout_thread_state, structs::strct_shared_random_airport_info & inout_shared_navaid_info);
 
 
   static int callback_sqlite_data (void *data, int argc, char **argv, char **azColName);

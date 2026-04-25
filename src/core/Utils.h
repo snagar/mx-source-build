@@ -944,6 +944,7 @@ static T get_random_number_by_type (const T inMin, const T inMax)
   } // end deque_erase_item_at_index
 
 
+
   // -------------------------------------------
   static std::string format_number_as_hours(const double& inSeconds);
 

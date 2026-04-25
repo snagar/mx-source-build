@@ -337,7 +337,7 @@ WinImguiBriefer::add_abort_all_channels_debug ()
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_orange);
   if (ImGui::Button ("Stop All Channels"))
   {
-    missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::sound_abort_all_channels);
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::sound_abort_all_channels);
   }
   ImGui::PopStyleColor ();
 }
@@ -1124,13 +1124,13 @@ WinImguiBriefer::add_flight_planning ()
       // if (ImGui::Button("Save", ImVec2(80.0f, multiLineSize_vec2_wp.y)) )
       if (ImGui::Button ("Save", mid_btn_size_vec2_vc))
       {
-        missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::save_notes_info);
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::save_notes_info);
       }
       // LOAD BUTTON
       ImGui::SameLine (0.0f, 10.0f);
       if (ImGui::Button ("Load", mid_btn_size_vec2_vc))
       {
-        missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::load_notes_info);
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::load_notes_info);
       }
       ImGui::PopStyleColor ();
 
@@ -1674,7 +1674,7 @@ WinImguiBriefer::flc ()
           this->strct_flight_leg_info.setNoteLongField(missionx::enums::mx_note_longField_enum::descent_notes, fpln.destination_info);
         }
 
-        missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::save_notes_info);
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::save_notes_info);
       }
     }
     // reset state
@@ -1831,12 +1831,12 @@ WinImguiBriefer::flc ()
   // Check if to pause xplane if briefer window is open
   if ((missionx::strct_setup_layer.bPauseIn2D && this->GetVisible () && !missionx::dataref_manager::isSimPause () && !this->IsPoppedOut () && !missionx::mxvr::flag_in_vr) || this->forcePauseSim) // If forcePauseSim or if Briefer UI is open and not popped-out and sim is not in PAUSE mode then pause sim
   {
-    missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::pause_xplane);
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::pause_xplane);
   }
   // release pause state if it was paused by plugin and was not released after window closed or if we are in VR state
   else if ((this->GetVisible () == false && this->missionClassPausedSim && missionx::dataref_manager::isSimPause () && !this->forcePauseSim) || (this->GetVisible () && this->missionClassPausedSim && missionx::dataref_manager::isSimPause () && (this->IsPoppedOut () || missionx::mxvr::flag_in_vr) && !this->forcePauseSim))
   {
-    missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::unpause_xplane);
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::unpause_xplane);
   }
 
   // CURL thread status - reset the external layer state so [fetch] button will be available
@@ -4441,14 +4441,14 @@ WinImguiBriefer::draw_setup_layer ()
     bool bDesignerMode = Utils::readNodeNumericAttrib<int> (missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_ENABLE_DESIGNER_MODE (), false); // 0 = false
     if (ImGui::Checkbox ("Toggle Designer Mode", &bDesignerMode))
     {
-      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::toggle_designer_mode);
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::toggle_designer_mode);
     }
 
     ImGui::SameLine (0.0f, 15.0f);
     bool bCueInfo = Utils::readNodeNumericAttrib<int> (missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISPLAY_VISUAL_CUES (), false); // 0 = false
     if (ImGui::Checkbox ("Toggle Cue Info", &bCueInfo))
     {
-      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::toggle_cue_info_mode);
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::toggle_cue_info_mode);
     }
 
     // v26.02.1
@@ -4456,14 +4456,14 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::SameLine (0.0f, 15.0f);
     if (ImGui::Checkbox ("Toggle Clocks", &bDisplayClock))
     {
-      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::toggle_ui_clocks);
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::toggle_ui_clocks);
     }
 
     bool bDisplayFPS = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_DISPLAY_UI_FPS(), true);
       ImGui::SameLine (0.0f, 15.0f);
     if (ImGui::Checkbox ("Toggle FPS", &bDisplayFPS))
     {
-      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::toggle_ui_fps);
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::toggle_ui_fps);
     }
 
 
@@ -4643,7 +4643,7 @@ WinImguiBriefer::draw_setup_layer ()
           if (missionx::data_manager::flag_apt_dat_optimization_is_running || OptimizeAptDat::aptState.flagIsActive)
             this->set_bottom_message_line1 ("Apt DATA is running.... please wait.");
           else
-            missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::exec_apt_dat_optimization); // v3.0.253.6
+            missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::exec_apt_dat_optimization); // v3.0.253.6
         }
         if (data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running)
         {
@@ -4688,7 +4688,7 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_azure);
       if (ImGui::Button ("Write GPS to External FPLN", ImVec2 (BTN_WIDTH_F, 25.0f)))
       {
-        missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::write_fpln_to_external_folder); //
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::write_fpln_to_external_folder); //
       }
       ImGui::PopStyleColor (3); // back to white
 
@@ -4770,7 +4770,7 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_azure);
       if (ImGui::Button ("Update <point> elements in points.xml file", ImVec2 (BTN_WIDTH_F, 25.0f)))
       {
-        missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::update_point_in_file_with_template_based_on_probe); //
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::update_point_in_file_with_template_based_on_probe); //
       }
       ImGui::PopStyleColor (3); // back to white
 
@@ -5451,21 +5451,21 @@ WinImguiBriefer::draw_home_layer ()
             missionx::strct_user_create_layer.iMissionSubCategoryPicked = 0; // v25.04.1
             missionx::strct_user_create_layer.layer_state               = missionx::mx_layer_state_enum::not_initialized;
             this->set_bottom_message_line1 ("Please wait while validating presence of the data...", 3);
-            missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::imgui_check_validity_of_db_file);
+            missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::imgui_check_validity_of_db_file);
           }
           else if (btn.layer == missionx::uiLayer_enum::option_generate_mission_from_a_template_layer)
           {
             missionx::strct_generate_template_layer.last_picked_template_key.clear (); // v24.12.2 Fix cases were re-entering template will not clean the right region and will show a phantom options from last pick.
             missionx::strct_generate_template_layer.layer_state = missionx::mx_layer_state_enum::not_initialized;
             this->set_bottom_message_line1 ("Please wait while validating presence of the data...", 3);
-            missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::imgui_check_validity_of_db_file);
+            missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::imgui_check_validity_of_db_file);
           }
           else if (btn.layer == missionx::uiLayer_enum::option_mission_list)
           {
             this->strct_pick_layer.last_picked_key.clear ();
             this->strct_pick_layer.bFinished_loading_mission_images = false;
             this->set_bottom_message_line1 ("Please wait while loading mission files...", 8);
-            missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::imgui_prepare_mission_files_briefer_info);
+            missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::imgui_prepare_mission_files_briefer_info);
           }
           else if (btn.layer == missionx::uiLayer_enum::option_external_fpln_layer)
           {
@@ -5483,7 +5483,7 @@ WinImguiBriefer::draw_home_layer ()
               missionx::strct_user_create_layer.iMissionSubCategoryPicked = 0; // v25.04.1
               missionx::strct_ils_layer.layer_state                       = missionx::mx_layer_state_enum::not_initialized;
               this->set_bottom_message_line1 ("Please wait while validating presence of the data...", 3);
-              missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::imgui_check_presence_of_db_ils_data);
+              missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::imgui_check_presence_of_db_ils_data);
             }
           }
         } // end handle special layer
@@ -6743,7 +6743,7 @@ WinImguiBriefer::draw_flight_leg_info ()
 
       if (ImGui::ImageButton ("TargetMarkerButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_TARGET_MARKER_ICON ()].gTexture, this->vec2_sizeTopBtn))
       {
-        missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::toggle_target_marker_option);
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::toggle_target_marker_option);
       }
       this->mx_add_tooltip (missionx::color::color_vec4_white, "Toggle 3D target hint object"); // v24.06.1
 
@@ -7025,7 +7025,7 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
                       if (missionx::data_manager::mxChoice.optionPicked_key_i != missionx::data_manager::mxChoice.mapOptions[i1].key_i) // does the last action equals current action? we test this so we won't have repeating same action calls
                       {
                         missionx::data_manager::mxChoice.optionPicked_key_i = missionx::data_manager::mxChoice.mapOptions[i1].key_i;
-                        missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::handle_option_picked_from_choice);
+                        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::handle_option_picked_from_choice);
 
                         Log::logDebugBO ("[imguiBrifer flight leg info] Picked: " + Utils::formatNumber<int> (missionx::data_manager::mxChoice.mapOptions[i1].key_i) + ", " + missionx::data_manager::mxChoice.mapOptions[i1].text); // debug
                       }
@@ -7352,7 +7352,7 @@ WinImguiBriefer::child_draw_STORY_mode_leg_info ()
         {
           if (Message::lineAction4ui.state == missionx::enum_mx_line_state::ready)
           {
-            missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::set_story_auto_pause_timer); // we moved the logic to the mission::flcPre()
+            missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::set_story_auto_pause_timer); // we moved the logic to the mission::flcPre()
             Message::lineAction4ui.state = missionx::enum_mx_line_state::broadcasting_paused;
           }
         }
@@ -8614,7 +8614,7 @@ WinImguiBriefer::draw_external_fpln_screen ()
     case mx_ext_fpln_screen::ext_simbrief:
     {
       setLayer (missionx::uiLayer_enum::flight_leg_info);
-      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::fetch_simbrief_fpln);
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::fetch_simbrief_fpln);
     }
     break;
     default: // mx_ext_fpln_screen::ext_home
@@ -8811,7 +8811,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
         if (ImGui::Button ("!!! Reload All Plugins !!!"))
         {
           this->strct_ext_layer.bDisplayPluginsRestart = false;
-          missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::restart_all_plugins);
+          missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::restart_all_plugins);
         }
         this->mx_add_tooltip (missionx::color::color_vec4_yellow, msg);
         ImGui::PopStyleColor (iStyles);
@@ -9657,7 +9657,7 @@ WinImguiBriefer::display_shared_message_when_optimized_data_is_not_present (miss
           }
           else
           {
-            missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::exec_apt_dat_optimization); // v3.0.253.6
+            missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::exec_apt_dat_optimization); // v3.0.253.6
           }
         } // end run Auto Optimization
 
@@ -9742,7 +9742,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
         missionx::adv_settings_strct.flag_firstTimeOpenBriefer ^= 1;
 
         // v24.03.1
-        missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::load_notes_info);
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::load_notes_info);
       }
 
       if (this->GetVisible () && data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
@@ -9810,9 +9810,9 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
         // v25.02.1 Deprecated call to "mx_flc_pre_command::imgui_reload_templates_data_and_images", instead we will check and read template from "mx_flc_pre_command::imgui_generate_random_mission_file"
         // v25.01.2 - hotfix - When calling "[generate]" and not from the "template" screen, then we must initialize the templates, so we will have the "TemplateInfo" information for the "template_blank_4_ui.xml" file.
         if (this->currentLayer != missionx::uiLayer_enum::option_generate_mission_from_a_template_layer)
-          missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::imgui_reload_templates_data_and_images); // since we have changed the flow in IMGUI, we have to initialize the templates list to make sure we have all templates available for the Random engine
+          missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::imgui_reload_templates_data_and_images); // since we have changed the flow in IMGUI, we have to initialize the templates list to make sure we have all templates available for the Random engine
 
-        missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::imgui_generate_random_mission_file); // Special imgui flcPRE() directive
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::imgui_generate_random_mission_file); // Special imgui flcPRE() directive
       }
     }
     break;
@@ -9927,7 +9927,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
       else
         missionx::data_manager::selectedMissionKey = missionx::strct_generate_template_layer.last_picked_template_key + mxconst::get_XML_EXTENSION (); // lastSelectedTemplateKey holds the folder keyName so we ned to add the extension
 
-      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::start_random_mission); // place action in Queue. Mission class will pick it and handle it.
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::start_random_mission); // place action in Queue. Mission class will pick it and handle it.
 
       // v3.0.253.3 reset current airport location
       if (this->getCurrentLayer () == missionx::uiLayer_enum::option_external_fpln_layer)
@@ -9939,7 +9939,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
       missionx::data_manager::selectedMissionKey = this->strct_pick_layer.last_picked_key; // v3.0.251.1 b2 fix bug where load savepoint did not initialize missionx::data_manager::selectedMissionKey and the other classes were not aware of the picked mission keyName
       this->set_bottom_message_line1 ("Loading Savepoint, Please wait...", 5); //
       missionx::Log::logDebugBO ("[WinImguiBriefer] Pressed Load Savepoint."); // debug
-      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::load_savepoint); // place action in Queue. Mission class will pick it and handle it.
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::load_savepoint); // place action in Queue. Mission class will pick it and handle it.
     }
     break;
     case missionx::mx_window_actions::ACTION_LOAD_MISSION:
@@ -9948,7 +9948,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
       missionx::data_manager::selectedMissionKey = this->strct_pick_layer.last_picked_key;
       this->set_bottom_message_line1 ("Loading Mission, Please wait...", 10); //
       missionx::Log::logMsg ("[WinImguiBriefer] Pressed Load Mission."); // debug
-      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::load_mission); // place action in Queue. Mission class will pick it and handle it.
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::load_mission); // place action in Queue. Mission class will pick it and handle it.
     }
     break;
     case missionx::mx_window_actions::ACTION_START_MISSION:
@@ -9966,7 +9966,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
 
         // We need to make sure that the mission information needed by the load function is ready and accessible
         missionx::Log::logDebugBO ("[WinImguiBriefer] Pressed Start Mission."); // debug
-        missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::start_mission); //
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::start_mission); //
         this->set_bottom_message_line1 ("Starting mission... Please wait...", 10); //
       }
     }
@@ -9977,7 +9977,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
       this->strct_flight_leg_info.resetChildLayer (); // reset to default child layer
 
       missionx::Log::logDebugBO ("[WinImguiBriefer] Pressed Quit Mission."); // debug
-      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::stop_mission); // TODO: We should consider an intermediate state
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::stop_mission); // TODO: We should consider an intermediate state
     }
     break;
     case missionx::mx_window_actions::ACTION_QUIT_MISSION_AND_SAVE: // v3.0.251.1 b2
@@ -9985,7 +9985,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
       this->set_bottom_message_line1 ("Creating Savepoint and quitting mission, Please wait...", 5);
       this->strct_flight_leg_info.resetChildLayer (); // reset to default child layer
 
-      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::create_savepoint_and_quit); //
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::create_savepoint_and_quit); //
     }
     break;
     case missionx::mx_window_actions::ACTION_GUESS_WAYPOINTS:
@@ -9994,7 +9994,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
         this->set_bottom_message_line1 ("Analyzing Fetched Data... Please Wait.", 5); // v24.06.1
 
       this->strct_ext_layer.fetch_state = missionx::mxFetchState_enum::fetch_guess_wp;
-      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::guess_waypoints_from_external_fpln_site); //
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::guess_waypoints_from_external_fpln_site); //
 
     }
     break;
@@ -10157,7 +10157,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
       // Call savepoint action
       this->set_bottom_message_line1 ("Creating Savepoint, Please wait...", 5); // v3.0.160
       missionx::Log::logMsg ("[WinImgBrieferGL] Pressed Create Savepoint."); // debug
-      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::create_savepoint); //
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::create_savepoint); //
     }
     break;
     case missionx::mx_window_actions::ACTION_ABORT_RANDOM_ENGINE_RUN:
@@ -10167,13 +10167,13 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
         // Call savepoint action
         this->set_bottom_message_line1 ("Aborting, Please wait...", 5); // v3.0.160
         missionx::Log::logMsg ("[WinImgBrieferGL] Aborting RandomEngine."); // debug
-        missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::abort_random_engine); //
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::abort_random_engine); //
       }
     }
     break;
     case missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS: // v3.0.255.4.2
     {
-      missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::save_user_setup_options); //
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::save_user_setup_options); //
     }
     break;
     case missionx::mx_window_actions::ACTION_GENERATE_MISSION_FROM_LNM_FPLN: // v3.0.301
@@ -10183,7 +10183,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
         // v3.303.14 added advance weather/time settings
         missionx::addAdvancedSettingsPropertiesBeforeGeneratingRandomMission ();
 
-        missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::generate_mission_from_littlenavmap_fpln);
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::generate_mission_from_littlenavmap_fpln);
         this->async_message_line2.clear (); // v3.303.8 erase last flight plan string. This is important since once we generate a mission file it is also the random mission in the "load mission" screen.
       }
     }
@@ -10204,7 +10204,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
       if (missionx::strct_ils_layer.layer_state != missionx::mx_layer_state_enum::success_can_draw)
       {
         missionx::strct_ils_layer.layer_state = missionx::mx_layer_state_enum::not_initialized;
-        missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::imgui_check_presence_of_db_ils_data);
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::imgui_check_presence_of_db_ils_data);
       }
 
       missionx::strct_ils_layer.flagNavigatedFromOtherLayer = true;

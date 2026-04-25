@@ -676,7 +676,7 @@ private:
   {
     if (ImGui::SmallButton (label.c_str ()))
     {
-      missionx::data_manager::queFlcActions.push (inCommand);
+      missionx::data_manager::queFlcActions.push_back (inCommand);
       return true;
     }
     if (!tip.empty ())

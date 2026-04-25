@@ -538,19 +538,14 @@ missionx::Mission::init()
   std::string            errMsg;
   missionx::data_manager dm;
 
-  // v26.04.4
-  const std::string scenery_packs_ini_file_path = fmt::format("{}/scenery_packs.ini", Utils::getCustomSceneryRelativePath());
-  const std::string scenery_pack_hash_s = fmt::format("{}", Utils::get_file_hash(scenery_packs_ini_file_path));
-
   // read setup options
   const auto propPluginVersion_s      = Utils::readAttrib(missionx::data_manager::xMissionxProperties_node, mxconst::get_ATTRIB_PLUGIN_VERSION(), ""); // v24025
   const int  mxVer_i                  = Utils::readNodeNumericAttrib<int>(missionx::data_manager::xMissionxProperties_node, mxconst::get_ATTRIB_MXFEATURE(), 0);
   const auto prop_scenery_pack_hash_s = Utils::readAttrib(missionx::data_manager::xMissionxProperties_node, mxconst::get_ATTRIB_SCENERY_HASH(), "n/a");
 
-  if ( PLUGIN_VERSION_S != propPluginVersion_s || prop_scenery_pack_hash_s != scenery_pack_hash_s ) // v24025
+  if ( PLUGIN_VERSION_S != propPluginVersion_s ) // v24025
   {
     missionx::data_manager::xMissionxProperties_node.updateAttribute(PLUGIN_VERSION_S.c_str (), mxconst::get_ATTRIB_PLUGIN_VERSION().c_str(), mxconst::get_ATTRIB_PLUGIN_VERSION().c_str());
-    missionx::data_manager::xMissionxProperties_node.updateAttribute(scenery_pack_hash_s.c_str (), mxconst::get_ATTRIB_SCENERY_HASH().c_str(), mxconst::get_ATTRIB_SCENERY_HASH().c_str());
     missionx::system_actions::store_plugin_options();
     missionx::data_manager::set_flag_rebuild_apt_dat(true);
     flag_called_rebuild_apt_dat = true;
@@ -965,21 +960,21 @@ missionx::Mission::MissionMenuHandler(void* inMenuRef, void* inItemRef)
       // stop mission
       {
         missionx::Log::logMsg("[Missionx] Pressed Stop Mission.");
-        missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::stop_mission);
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::stop_mission);
       }
       break;
     case Mission::mx_menuIdRefs::MENU_CREATE_SAVEPOINT:
       // Create Savepoint
       {
         missionx::Log::logMsg("[Missionx] Creating Checkpoint.");
-        missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::create_savepoint); // v3.0.231.1 consolidate actions and code in flcPRE() for both save checkpoint button and menu
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::create_savepoint); // v3.0.231.1 consolidate actions and code in flcPRE() for both save checkpoint button and menu
       }
       break;
     case Mission::mx_menuIdRefs::MENU_LOAD_SAVEPOINT:
       // load savepoint
       {
 
-        missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::load_savepoint); // v3.0.231.1 consolidate actions and code in flcPRE() for both load checkpoint button and menu
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::load_savepoint); // v3.0.231.1 consolidate actions and code in flcPRE() for both load checkpoint button and menu
       }
       break;
     default:
@@ -1105,7 +1100,7 @@ missionx::Mission::START_MISSION()
     Mission::uiImGuiBriefer->setLayer(missionx::uiLayer_enum::flight_leg_info); // set flightLeg layer to be display
 
 
-    missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::position_plane); // Position plane. Use action in Queue. Should position plane
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::position_plane); // Position plane. Use action in Queue. Should position plane
 
 
     // display mxpad
@@ -1241,7 +1236,7 @@ missionx::Mission::START_MISSION()
       XPLMSetDataf(drefConst.dref_local_time_sec_f, current_time_sec);
 
     if (!active_choice_name.empty()) // v3.305.3 force display choice window if is active
-      missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::display_choice_window);
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::display_choice_window);
 
 
     // v3.305.3 re-init interpolation datarefs
@@ -1300,7 +1295,7 @@ missionx::Mission::START_MISSION()
   }
   else
   {
-    missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::set_time); // v3.0219.7 Set Mission Time
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::set_time); // v3.0219.7 Set Mission Time
     missionx::data_manager::timelapse.flag_isActive = true;                             // v3.303.8
   }
 
@@ -1308,7 +1303,7 @@ missionx::Mission::START_MISSION()
   // v3.0.241.3 try to handle pause cases after starting a mission (not after loading a mission)
   if (Utils::readBoolAttrib(data_manager::briefer.xLocationAdjust, mxconst::get_ATTRIB_PAUSE_AFTER_LOCATION_ADJUST(), false))
   {
-    missionx::data_manager::postFlcActions.push(missionx::mx_flc_pre_command::pause_xplane); // place action in Queue.
+    missionx::data_manager::postFlcActions.push_back(missionx::mx_flc_pre_command::pause_xplane); // place action in Queue.
 
     Mission::uiImGuiBriefer->setPluginPausedSim(false); // this is done so uiImGuiBriefer::flc() won't un-pause the sim if we asked to pause it in the briefer, after start new mission or load mission.
   }
@@ -1331,7 +1326,7 @@ missionx::Mission::START_MISSION()
   Mission::uiImGuiBriefer->strct_flight_leg_info.bStatsPressed = false; // force showing image at the end of mission
 
   // v3.303.9.1
-  missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::gather_acf_custom_datarefs); // v3.303.9.1
+  missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::gather_acf_custom_datarefs); // v3.303.9.1
 
   // v3.305.2
   this->timerOptLegTriggersTimer.reset();
@@ -1612,7 +1607,7 @@ missionx::Mission::flc()
 
   if (!missionx::data_manager::queCommandsWithTimer.empty()) // call flcPRE() again if we still have commands to execute
   {
-    missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::execute_xp_command); // this to make the commands fire immediately and not wait for next FlightCallBack iteration. That way simmer should see all commands running at once.
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::execute_xp_command); // this to make the commands fire immediately and not wait for next FlightCallBack iteration. That way simmer should see all commands running at once.
   }
 
   flcPRE(); // call actions that need to be done or evaluated before the main flight call back.
@@ -1714,8 +1709,8 @@ missionx::Mission::flc()
   while (!data_manager::postFlcActions.empty())
   {
     missionx::mx_flc_pre_command c = data_manager::postFlcActions.front();
-    data_manager::postFlcActions.pop();
-    missionx::data_manager::queFlcActions.push(c); // place action in Queue. Should position plane
+    data_manager::postFlcActions.pop_front();
+    missionx::data_manager::queFlcActions.push_back (c); // place action in Queue. Should position plane
   }
 
   missionx::data_manager::prev_vr_is_enabled_state = missionx::mxvr::vr_display_missionx_in_vr_mode; // v3.0.221.6 store VR state each flight call back
@@ -1767,7 +1762,7 @@ missionx::Mission::exec_apt_dat_optimization()
     // this->engine.resetCache(); // v24.12.2 deprecated, it does nothing.
   }
 
-  missionx::data_manager::queFlcActions.push (missionx::mx_flc_pre_command::disable_aptdat_optimize_menu);
+  missionx::data_manager::queFlcActions.push_back  (missionx::mx_flc_pre_command::disable_aptdat_optimize_menu);
 }
 
 // -------------------------------------
@@ -1811,14 +1806,14 @@ missionx::Mission::flc_threads()
     missionx::OptimizeAptDat::aptState.init();
 
     missionx::data_manager::flag_apt_dat_optimization_is_running = false;
-    missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::enable_aptdat_optimize_menu);
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::enable_aptdat_optimize_menu);
   }
   else
   {
     if (missionx::OptimizeAptDat::aptState.flagIsActive && !missionx::OptimizeAptDat::aptState.flagThreadDoneWork)
     {
       missionx::data_manager::flag_apt_dat_optimization_is_running = true;
-      missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::disable_aptdat_optimize_menu);
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::disable_aptdat_optimize_menu);
     }
     else
     {
@@ -1834,7 +1829,7 @@ missionx::Mission::flc_threads()
         missionx::OptimizeAptDat::aptState.init();
 
         missionx::data_manager::flag_apt_dat_optimization_is_running = false;
-        missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::enable_aptdat_optimize_menu);
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::enable_aptdat_optimize_menu);
 
         // v3.0.253.6 add a progress message
         if (Mission::uiImGuiBriefer != nullptr)
@@ -1870,7 +1865,7 @@ missionx::Mission::flc_threads()
     //Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey.clear();              // reset and hide generate file button
     //Mission::uiImGuiBriefer->strct_generate_template_layer.last_picked_template_key.clear();          // reset and hide generate file button
 
-    missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::enable_generator_menu);
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::enable_generator_menu);
 
     missionx::data_manager::reset_runway_search_filter(); // reset the property value so it won't conflict with other searches
   }
@@ -1882,7 +1877,7 @@ missionx::Mission::flc_threads()
       //Mission::uiImGuiBriefer->flag_generatedRandomFile_success = false; // we should remove this flag, and only use "missionx::data_manager::flag_generate_engine_is_running"
       missionx::flag_generatedRandomFile_success = false; // we should remove this flag, and only use "missionx::data_manager::flag_generate_engine_is_running"
 
-      missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::disable_generator_menu);
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::disable_generator_menu);
     }
     else
     {
@@ -1960,7 +1955,7 @@ missionx::Mission::flc_threads()
         missionx::strct_generate_template_layer.last_picked_template_key          = missionx::strct_generate_template_layer.selectedTemplateKey; // reset and hide generate file button
         missionx::strct_generate_template_layer.selectedTemplateKey.clear();                                                     // reset and hide generate file button after successful creation
 
-        missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::enable_generator_menu);
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::enable_generator_menu);
 
         // add briefing information
       }
@@ -1981,7 +1976,7 @@ missionx::Mission::flc_threads()
   
       data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state.init();
   
-      // missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::enable_aptdat_optimize_menu);
+      // missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::enable_aptdat_optimize_menu);
     }
     else
     {
@@ -2149,7 +2144,7 @@ missionx::Mission::flc_legs()
         missionx::data_manager::queCommands.push_back(data_manager::mapFlightLegs[data_manager::currentLegName].listCommandsAtTheStartOfFlightLeg.front());
         data_manager::mapFlightLegs[data_manager::currentLegName].listCommandsAtTheStartOfFlightLeg.pop_front();
       }
-      missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::execute_xp_command);
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::execute_xp_command);
     }
 
     // v3.303.12 apply weather
@@ -2388,7 +2383,7 @@ missionx::Mission::flc_fail_timers()
             if (!customFailMessageText.empty())
               data_manager::mx_global_settings.setNodeStringProperty(mxconst::get_PROP_MISSION_ABORT_REASON(), customFailMessageText); // v3.303.11
 
-            missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::abort_mission);
+            missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::abort_mission);
           }
           else // v3.305.3 do not abort/fail the mission
           {
@@ -4257,7 +4252,7 @@ missionx::Mission::flcPRE()
   while (!data_manager::queFlcActions.empty())
   {
     missionx::mx_flc_pre_command c = data_manager::queFlcActions.front();
-    data_manager::queFlcActions.pop();
+    data_manager::queFlcActions.pop_front();
 
 #ifdef TIMER_FUNC
     Log::logMsg("flcPRE action: " + mxUtils::formatNumber<int>((int)c));
@@ -4275,7 +4270,7 @@ missionx::Mission::flcPRE()
         }
 
         if (!data_manager::queThreadMessage.empty()) // if there are more messages, push them to next flight callback
-          missionx::data_manager::postFlcActions.push(missionx::mx_flc_pre_command::set_briefer_text_message);
+          missionx::data_manager::postFlcActions.push_back(missionx::mx_flc_pre_command::set_briefer_text_message);
       }
       break;
       case missionx::mx_flc_pre_command::set_time:
@@ -4387,7 +4382,7 @@ missionx::Mission::flcPRE()
           if (missionx::data_manager::iGatherAcfTryCounter < 30)
           {
             Log::logMsg("[gather_acf_custom_datarefs] Will try next Flight Call Back, try no.: " + mxUtils::formatNumber<int>(missionx::data_manager::iGatherAcfTryCounter));
-            missionx::data_manager::postFlcActions.push(missionx::mx_flc_pre_command::gather_acf_custom_datarefs); // v3.303.13 try again next iteration
+            missionx::data_manager::postFlcActions.push_back(missionx::mx_flc_pre_command::gather_acf_custom_datarefs); // v3.303.13 try again next iteration
           }
         }
       }
@@ -4414,7 +4409,7 @@ missionx::Mission::flcPRE()
           if (missionx::data_manager::iGatherAcfTryCounter < 30)
           {
             Log::logMsg("[gather_acf_cargo_data] Will try next Flight Call Back, try no.: " + mxUtils::formatNumber<int>(missionx::data_manager::iGatherAcfTryCounter));
-            missionx::data_manager::postFlcActions.push(missionx::mx_flc_pre_command::gather_acf_cargo_data); // 
+            missionx::data_manager::postFlcActions.push_back(missionx::mx_flc_pre_command::gather_acf_cargo_data); //
           }
         }
       }
@@ -4481,7 +4476,7 @@ missionx::Mission::flcPRE()
             // check faxil
             const float faxil = XPLMGetDataf(missionx::drefConst.dref_faxil_gear_f); // 0 = in air. Anything else = on ground. // "sim/flightmodel/forces/faxil_gear"
             if (faxil == 0.0f)                                                       // is in air
-              missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::force_pause_xplane);
+              missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::force_pause_xplane);
           }
         }
       }
@@ -4534,7 +4529,7 @@ missionx::Mission::flcPRE()
             {
               missionx::strct_generate_template_layer.bFinished_loading_templates = false;
               Mission::uiImGuiBriefer->set_bottom_message_line1("Please wait while loading mission templates...", 8);
-              missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::imgui_reload_templates_data_and_images);
+              missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::imgui_reload_templates_data_and_images);
             }
           }
           else
@@ -4656,7 +4651,7 @@ missionx::Mission::flcPRE()
         XPLMControlCamera(xplm_ControlCameraUntilViewChanges, missionx::setCameraPosition, nullptr);
 
         this->delay_camera_position_change = 0;
-        missionx::data_manager::postFlcActions.push(missionx::mx_flc_pre_command::stop_position_camera); // Position plane. Use action in Queue. Should position plane
+        missionx::data_manager::postFlcActions.push_back(missionx::mx_flc_pre_command::stop_position_camera); // Position plane. Use action in Queue. Should position plane
       }
       break;
       case missionx::mx_flc_pre_command::stop_position_camera:
@@ -4672,7 +4667,7 @@ missionx::Mission::flcPRE()
           else
           {
             ++this->delay_camera_position_change;
-            missionx::data_manager::postFlcActions.push(missionx::mx_flc_pre_command::stop_position_camera); // Position plane. Use action in Queue. Should position plane
+            missionx::data_manager::postFlcActions.push_back(missionx::mx_flc_pre_command::stop_position_camera); // Position plane. Use action in Queue. Should position plane
           }
 
         }
@@ -4709,7 +4704,7 @@ missionx::Mission::flcPRE()
           }
 
           data_manager::missionState = missionx::mx_mission_state_enum::pre_mission_running;                              // we will change to running after another flight callback
-          missionx::data_manager::postFlcActions.push(missionx::mx_flc_pre_command::post_mission_load_change_to_running); // buying another flight callback
+          missionx::data_manager::postFlcActions.push_back(missionx::mx_flc_pre_command::post_mission_load_change_to_running); // buying another flight callback
         }
         else if (data_manager::missionState == mx_mission_state_enum::mission_loaded_from_savepoint)
         {
@@ -4727,8 +4722,8 @@ missionx::Mission::flcPRE()
 
           data_manager::missionState = missionx::mx_mission_state_enum::pre_mission_running; // we will change to running after another flight callback
 
-          missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::post_position_plane);
-          missionx::data_manager::postFlcActions.push(missionx::mx_flc_pre_command::post_mission_load_change_to_running); // buying another flight callback
+          missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::post_position_plane);
+          missionx::data_manager::postFlcActions.push_back(missionx::mx_flc_pre_command::post_mission_load_change_to_running); // buying another flight callback
         }
 
         // v3.0.221.10 start cold and dark ?
@@ -4752,13 +4747,13 @@ missionx::Mission::flcPRE()
         data_manager::briefer.postPositionPlane(); // currently function doesn't do anything
         const std::string mission_state_s = Utils::readAttrib(data_manager::mx_global_settings.node, mxconst::get_PROP_MISSION_STATE(), ""); // empty value means new mission and not loaded checkpoint
         if (mission_state_s.empty())
-          missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::set_time);
+          missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::set_time);
 
 
         if ((!data_manager::briefer.xLocationAdjust.isEmpty() && Utils::readBoolAttrib(data_manager::briefer.xLocationAdjust, mxconst::get_ATTRIB_PAUSE_AFTER_LOCATION_ADJUST(), false)) || Briefer::need_to_pause_xplane)
-          missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::pause_xplane); // place action in Queue.
+          missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::pause_xplane); // place action in Queue.
         else
-          missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::unpause_xplane); // place action in Queue
+          missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::unpause_xplane); // place action in Queue
 
         // re-calculate 3D objects local + re-position + Cue Points
         missionx::data_manager::refresh3DInstancesAndPointLocation();
@@ -4806,7 +4801,7 @@ missionx::Mission::flcPRE()
       case missionx::mx_flc_pre_command::create_savepoint_and_quit:
       {
         Mission::saveCheckpoint();
-        missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::stop_mission); // TODO: We should consider an intermediate state
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::stop_mission); // TODO: We should consider an intermediate state
       }
       break;
       case missionx::mx_flc_pre_command::stop_mission:
@@ -5163,7 +5158,7 @@ missionx::Mission::flcPRE()
 
 
           if (!missionx::data_manager::queCommands.empty()) // call flcPRE() again if we still have commands to execute
-            missionx::data_manager::queFlcActions.push(
+            missionx::data_manager::queFlcActions.push_back (
               missionx::mx_flc_pre_command::execute_xp_command); // v3.0.221.10 this to make the commands fire immediately and not wait for next FlightCallBack iteration. That way simmer should see all commands running at once.
         }
 
@@ -5405,7 +5400,7 @@ missionx::Mission::flcPRE()
         {
           Log::logDebugBO("Still waiting for mxconst::QMM to clear its Queue");
 
-          missionx::data_manager::postFlcActions.push(missionx::mx_flc_pre_command::end_mission_after_all_qmm_broadcasted);
+          missionx::data_manager::postFlcActions.push_back(missionx::mx_flc_pre_command::end_mission_after_all_qmm_broadcasted);
         }
       }
       break;
@@ -5973,7 +5968,7 @@ missionx::Mission::flc_check_success()
           missionx::data_manager::queCommands.push_back(data_manager::mapFlightLegs[data_manager::currentLegName].listCommandsAtTheEndOfTheFlightLeg.front());
           data_manager::mapFlightLegs[data_manager::currentLegName].listCommandsAtTheEndOfTheFlightLeg.pop_front();
         }
-        missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::execute_xp_command);
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::execute_xp_command);
       }
 
 
@@ -6037,7 +6032,7 @@ missionx::Mission::flc_check_success()
           // debug
           Log::logDebugBO("Need to call End Mission.");
 
-          missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::end_mission_after_all_qmm_broadcasted); // v3.0.241.7.1
+          missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::end_mission_after_all_qmm_broadcasted); // v3.0.241.7.1
           return;
         }
         else
@@ -6100,7 +6095,7 @@ missionx::Mission::flc_check_success()
       case missionx::enums::mx_flightLeg_state::leg_success_do_post:
       {
         // v3.305.1
-        missionx::data_manager::queFlcActions.push(missionx::mx_flc_pre_command::eval_end_flight_leg_after_all_qmm_broadcasted);
+        missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::eval_end_flight_leg_after_all_qmm_broadcasted);
       }
       break;
       default: // fail the mission
