@@ -216,7 +216,8 @@ public:
         val_s         = mxUtils::formatNumber<T>(attribValue);
       }
     }
-    else if (std::is_floating_point<decltype(attribValue)>::value)
+    // else if (std::is_floating_point<decltype(attribValue)>::value)
+    else if (std::is_floating_point_v<decltype(attribValue)>)
     {
       val_type_enum = missionx::mx_property_type::MX_DOUBLE;
       val_s = mxUtils::formatNumber<T>(attribValue);
@@ -225,7 +226,8 @@ public:
     if (!this->node.isEmpty())
     {
       // search for a sub node with the element name {inTagName}
-      const std::string val_type_s = mxUtils::formatNumber<int>(static_cast<int>(val_type_enum));
+      // const std::string val_type_s = mxUtils::formatNumber<int>(static_cast<int>(val_type_enum));
+      const std::string val_type_s = fmt::format("{}", static_cast<int>( val_type_enum ) );
       Utils::xml_search_and_set_node_text(this->node, inTagName, val_s, val_type_s, true);
     }
   }
@@ -234,14 +236,6 @@ public:
   [[nodiscard]] std::string get_node_as_text() const
   {
     return Utils::xml_get_node_content_as_text (this->node);
-    // if (this->node.isEmpty())
-    //   return "";
-    //
-    // IXMLRenderer      xmlWriter;
-    // const std::string text = xmlWriter.getString(this->node);
-    // xmlWriter.clear();
-    // return text;
-    
   }
   // -------------------------------------------
 

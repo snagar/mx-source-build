@@ -1482,7 +1482,9 @@ data_manager::loadInventoryImages()
     {
       // store vecTextures as generic texture button
       texture = btnImage;
-      Log::logMsgThread("Loaded Inventory Texture: " + texture.fileName); // debug
+      texture.store_hash();
+
+      Log::logMsgThread(fmt::format("Loaded Inventory Texture: {}\n", texture.fileName)); // debug
 
     } // end if loaded texture
     else
@@ -1492,7 +1494,7 @@ data_manager::loadInventoryImages()
   }
 
   if (!xp_mapInvImages.empty())
-    queFlcActions.push_back(mx_flc_pre_command::post_async_inv_image_binding);
+    postFlcActions.push_back(mx_flc_pre_command::post_async_inv_image_binding);
 }
 
 
@@ -1690,7 +1692,8 @@ data_manager::loadAllMissionsImages() // used in list mission screen (for exampl
         mxTextureFile texture = mInfo.mapImages[file_s];
         Utils::addElementToMap(xp_mapMissionIconImages, file_s, texture); // store the mxTextureFile in our generic image map for later use
 
-        Log::logMsg(fmt::format("Loaded Mission Image: {} [{}/{}]", mInfo.mapImages[file_s].fileName, mInfo.mapImages[file_s].texture_hash_simple, mInfo.mapImages[file_s].texture_hash_sha256) ); // debug
+        //Log::logMsg(fmt::format("Loaded Mission Image: {} [{}/{}]", mInfo.mapImages[file_s].fileName, mInfo.mapImages[file_s].texture_hash_simple, mInfo.mapImages[file_s].texture_hash_sha256) ); // debug
+        Log::logMsg(fmt::format("Loaded Mission Image: {} [{}]", mInfo.mapImages[file_s].fileName, mInfo.mapImages[file_s].texture_hash_simple) ); // debug
 
         ++iMissionImageCounter;
       }

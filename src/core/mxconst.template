@@ -615,6 +615,7 @@ const static ^std::string^                OPT_OVERPASS_FILTER                   
 const static ^std::string^                OPT_OVERPASS_URL                                       ^ "overpass_url"; ^// v3.0.253.6 store overpass url
 const static ^std::string^                OPT_GPS_IMMEDIATE_EXPOSURE                             ^ "gps_immediate_exposure"; ^// v3.0.253.7 Display all points of global GPS in FMS or one by one
 const static ^std::string^                OPT_FLIGHT_LEG_PROGRESS_COUNTER                        ^ "flight_leg_progress_counter"; ^// v3.0.253.7 flight_leg_progress_counter_i
+const static ^std::string^                OPT_DISABLE_INVENTORY_IMAGE_LOAD                       ^ "disable_inventory_image_load"; ^// v26.04.4
 
 
 static constexpr ^float   ^               MINIMUM_EXPECTED_PILOT_WEIGHT_IN_STATION               ^ 40.0f; ^// v24.12.2 used when evaluating if to add pilot weight to the plane.

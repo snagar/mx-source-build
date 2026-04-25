@@ -245,15 +245,16 @@ struct mx_popup_adv_settings_strct
 struct mx_setup_layer
   {
     static constexpr int OSM_BUFF_SIZE_I = 499;
-    bool             bDisplayTargetMarkers{ true };
-    bool             bOverrideExpectedTargetDistance{ false };
-    bool             bPauseIn2D{ false };
-    bool             bPauseInVR{ false }; // v25.06.1 should always be false
-    bool             bCycleLogFiles{ false };
-    bool             bAddCountdown{ false };
-    bool             bGPSImmediateExposure{ false };
-    bool             bForceNormalizedVolume{ false }; // v3.0.303.6
-    bool             bSuppressDistanceMessages{ false }; // v25.02.1
+    bool                 bDisplayTargetMarkers{ true };
+    bool                 bOverrideExpectedTargetDistance{ false };
+    bool                 bPauseIn2D{ false };
+    bool                 bPauseInVR{ false }; // v25.06.1 should always be false
+    bool                 bCycleLogFiles{ false };
+    bool                 bAddCountdown{ false };
+    bool                 bGPSImmediateExposure{ false };
+    bool                 bForceNormalizedVolume{ false }; // v3.0.303.6
+    bool                 bSuppressDistanceMessages{false}; // v25.02.1
+    bool                 bDisableInventoryImageLoad{false}; // v26.04.4
 
     int iNormalizedVolume_val{ mxconst::DEFAULT_SETUP_MISSION_VOLUME_I }; // v3.0.303.6
     int iMinDistanceSlider{ static_cast<int> (mxconst::SLIDER_MIN_RND_DIST) }; // init with 5
@@ -261,8 +262,6 @@ struct mx_setup_layer
     int                            iLinuxFlavor_val{0}; // v3.303.8.1 - will hold the linux flavor to deal with
     const std::vector<const char*> vecLinuxComboCodes_s{"Debian / Ubuntu based distros like Mint, Pop!OS and the likes", "Arch based distros like Manjaro, Garuda, Endeavour and the likes", "other - not in the list"};
     #endif
-
-    // int   iPreferredFontSize{ 0 }; // v3.303.14
 
     float fPreferredFontPixelSize{ mxconst::FONT_PIXEL_13 };
     float fFontMaxPixelSize{ mxconst::DEFAULT_MAX_FONT_PIXEL_SIZE };
@@ -314,11 +313,11 @@ struct mx_setup_layer
                         , { ++headerIndex, mx_header_state ("Medevac Setup", false) }
                         , { ++headerIndex, mx_header_state ("External Flight Plan Setup", false) }
                         , { ++headerIndex, mx_header_state ("Default Scoring", false) }
-                        , { ++headerIndex, mx_header_state ("Linux: Troubleshoot", false) }
+                        , { ++headerIndex, mx_header_state ("Troubleshoot", false) }
                         , { ++headerIndex, mx_header_state ("Designer: Unsaved Options", false) }
     };
 
-  } ;
+  }; // end setup struct
 
 
   // ----- ILS Layer -----
@@ -450,7 +449,7 @@ struct mx_setup_layer
   } ;
 
 
-  // Activity button struct, for the "semi automation" creation mission
+  // Activity button struct, for the "semi-automation" creation mission
   struct activity_btn_info_strct
   {
     // list parameters (needed for the semi-automation activity screen)

@@ -261,6 +261,8 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
   missionx::strct_setup_layer.setSimbriefPilotID (Utils::getNodeText_type_6 (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SIMBRIEF_PILOT_ID (), "")); // initialize Simbrief pilot ID from preference file
   // v26.04.1
   missionx::strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes =  Utils::getNodeText_type_1_5 <bool>(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SIMBRIEF_AUTO_LOAD_INTO_NOTES (), false); // initialize the flag if Simbrief extra data will be autoloaded to the notes fields
+  // v26.04.4
+  missionx::strct_setup_layer.bDisableInventoryImageLoad =   system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_DISABLE_INVENTORY_IMAGE_LOAD(), false); // troubleshoot: inventory image load.
 
   // Initialize local day - always initialize to 90days and 23 o'clock. Will be re-initialized on first briefer open which provide better result.
   adv_settings_strct.iClockDayOfYearPicked = dataref_manager::getLocalDateDays ();
@@ -4473,7 +4475,7 @@ WinImguiBriefer::draw_setup_layer ()
 
 
 
-    int indx = 0;
+    int index = 0;
     //------------------------------------------------
     //                  General Settings Group
     //------------------------------------------------
@@ -4482,8 +4484,8 @@ WinImguiBriefer::draw_setup_layer ()
 
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
 
-    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
       ImGui::TextColored (missionx::color::color_vec4_yellow, "GPS Waypoints & Markers:");
@@ -4589,10 +4591,10 @@ WinImguiBriefer::draw_setup_layer ()
     //------------------------------------------------
     //      Simbrief + flightplandatabase.com
     //------------------------------------------------
-    ++indx; // 1
+    ++index; // 1
 
-    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
       {
@@ -4612,15 +4614,13 @@ WinImguiBriefer::draw_setup_layer ()
     //------------------------------------------------
     //                  APT Dat optimizations
     //------------------------------------------------
-    ++indx; // 2
+    ++index; // 2
 
     ImGui::PushStyleColor (ImGuiCol_Header, missionx::color::color_vec4_grey);
 
-    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
-      std::string err;
-
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
@@ -4666,11 +4666,11 @@ WinImguiBriefer::draw_setup_layer ()
     //                  Tools Group
     //------------------------------------------------
 
-    ++indx; // 3
+    ++index; // 3
     ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
     // if (ImGui::CollapsingHeader("TOOLS"))
-    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
       constexpr const static float BTN_WIDTH_F = 300.0f; // v3.305.1
 
@@ -4787,12 +4787,12 @@ WinImguiBriefer::draw_setup_layer ()
     //------------------------------------------------
     //                  Normalized Volume Group
     //------------------------------------------------
-    ++indx; // 4
+    ++index; // 4
 
     // v3.0.303.6
     // if (ImGui::CollapsingHeader("Normalize Mission Sound Volume"))
-    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
@@ -4840,10 +4840,10 @@ WinImguiBriefer::draw_setup_layer ()
     //------------------------------------------------
     //                  OVERPASS
     //------------------------------------------------
-    indx++; // 5 Overpass
+    index++; // 5 Overpass
     // if (ImGui::CollapsingHeader("OVERPASS Setup"))
-    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
       ImGui::PushItemWidth (450.0f);
@@ -4854,9 +4854,9 @@ WinImguiBriefer::draw_setup_layer ()
         ImGui::PushID ("##overpassCustomUrl");
         if (ImGui::Combo ("##OverPassURLs", &missionx::data_manager::overpass_user_picked_combo_i, missionx::strct_setup_layer.vecOverpassUrls_char.data (), static_cast<int> (missionx::strct_setup_layer.vecOverpassUrls_char.size ())))
         {
-#ifndef RELEASE
-          const std::string stored_overpass_url = missionx::strct_setup_layer.vecOverpassUrls_char.at (missionx::data_manager::overpass_user_picked_combo_i); // for debug purposes only
-#endif // !RELEASE
+          #ifndef RELEASE
+          const std::string stored_overpass_url = missionx::strct_setup_layer.vecOverpassUrls_char.at(missionx::data_manager::overpass_user_picked_combo_i); // for debug purposes only
+          #endif // !RELEASE
           missionx::data_manager::overpass_last_url_indx_used_i = missionx::data_manager::overpass_user_picked_combo_i; // v3.0.255.4.1 store user picked in last run so we will start from it during next run
 
           Utils::xml_search_and_set_node_text (system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_URL (), std::string (missionx::strct_setup_layer.vecOverpassUrls_char.at (missionx::data_manager::overpass_user_picked_combo_i)), this->mxcode.STRING, true);
@@ -4882,10 +4882,10 @@ WinImguiBriefer::draw_setup_layer ()
     //------------------------------------------------
     //                  Medevac Group
     //------------------------------------------------
-    indx++; // 6 Medevac
+    index++; // 6 Medevac
     // if (ImGui::CollapsingHeader("Medevac Setup"))
-    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
+    missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
@@ -4909,9 +4909,9 @@ WinImguiBriefer::draw_setup_layer ()
     //                  External Flight Plan
     //------------------------------------------------
     // if (ImGui::CollapsingHeader("External Flight Plan Setup"))
-    indx++; // 7 External Flight Plan
-    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
+    index++; // 7 External Flight Plan
+    missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
@@ -4936,9 +4936,9 @@ WinImguiBriefer::draw_setup_layer ()
     //                  Default Scoring
     //------------------------------------------------
     // if (ImGui::CollapsingHeader("Default Scoring"))
-    indx++; // 8 Default Scoring
-    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
+    index++; // 8 Default Scoring
+    missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
@@ -4975,17 +4975,17 @@ WinImguiBriefer::draw_setup_layer ()
               this->set_bottom_message_line1 ("Default <scoring> information was stored into preference file.");
             }
 
-#ifndef RELEASE
-            Log::logMsg ("Valid <scoring>:\n" + scoringNode_s);
-#endif // !RELEASE
+            #ifndef RELEASE
+            Log::logMsg("Valid <scoring>:\n" + scoringNode_s);
+            #endif // !RELEASE
           }
           else
           {
-            std::string err_s = std::string (IXMLPullParser::getErrorMessage (parse_result_strct.errorCode)) + " [line/col:" + mxUtils::formatNumber<long long> (parse_result_strct.nLine) + "/" + mxUtils::formatNumber<int> (parse_result_strct.nColumn) + "]";
-            this->set_bottom_message_line1 (err_s);
-#ifndef RELEASE
-            Log::logMsg (err_s);
-#endif // !RELEASE
+            std::string err_s = std::string(IXMLPullParser::getErrorMessage(parse_result_strct.errorCode)) + " [line/col:" + mxUtils::formatNumber<long long>(parse_result_strct.nLine) + "/" + mxUtils::formatNumber<int>(parse_result_strct.nColumn) + "]";
+            this->set_bottom_message_line1(err_s);
+            #ifndef RELEASE
+            Log::logMsg(err_s);
+            #endif // !RELEASE
 
             Log::logMsg ("Not valid <scoring>:\n" + scoringNode_s);
           }
@@ -5025,32 +5025,44 @@ WinImguiBriefer::draw_setup_layer ()
 
 
     //------------------------------------------------
-    //                  Linux Troubleshoot
+    //                  Troubleshoot
     //------------------------------------------------
-    indx++; // 9 Linux troubleshoot // v24.03.2 moved outside #if directive
-#ifdef LIN
-    // To change visual labeling you have to change the order in the mapSetupHeaders first.
-
-    // if (ImGui::CollapsingHeader("Linux: Troubleshoot - only if X-Plane 12 crashes during exit or mission quit."))
-    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
+    index++; // 9 troubleshoot // v24.03.2 moved outside #if directive
+    missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
-
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
-      ImGui::TextColored (missionx::color::color_vec4_aqua, "only if X-Plane 12 crashes during exit or mission quit.");
-
-      ImGui::TextColored (missionx::color::color_vec4_yellow, "During X-Plane 12 tests, I found out that the FMOD library has issues in specific function cases.\nThe symptom was: X-Plane became unresponsive. ");
-      ImGui::TextColored (missionx::color::color_vec4_yellow, "If that happens, please pick the Linux Distro version you are using and\nthe plugin will try to use a workaround for it.");
-      if (ImGui::Combo ("Linux Flavor##LinuxFlavorCombo", &missionx::strct_setup_layer.iLinuxFlavor_val, missionx::strct_setup_layer.vecLinuxComboCodes_s.data (), static_cast<int> (missionx::strct_setup_layer.vecLinuxComboCodes_s.size ())))
+      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v26.04.4
       {
-        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<int> (mxconst::get_SETUP_LINUX_FLAVOR_CODE_I (), missionx::strct_setup_layer.iLinuxFlavor_val);
-        this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
+        ImGui::TextColored (missionx::color::color_vec4_aqua, "Disable Inventory image load, if Inventory screen CTD X-Plane.");
+        if (ImGui::Checkbox ("Disable Inventory Image Load ?", &missionx::strct_setup_layer.bDisableInventoryImageLoad))
+        {
+          // ADD set option value
+          missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_DISABLE_INVENTORY_IMAGE_LOAD (), missionx::strct_setup_layer.bDisableInventoryImageLoad);
+          this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
+        }
+
+        #ifdef LIN
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::TextColored(missionx::color::color_vec4_orange, "%s", "--- Linux Only ---");
+        ImGui::TextColored (missionx::color::color_vec4_aqua, "only if X-Plane 12 crashes during exit or mission quit.");
+
+        ImGui::TextColored (missionx::color::color_vec4_yellow, "During X-Plane 12 tests, I found out that the FMOD library has issues in specific function cases.\nThe symptom was: X-Plane became unresponsive. ");
+        ImGui::TextColored (missionx::color::color_vec4_yellow, "If that happens, please pick the Linux Distro version you are using and\nthe plugin will try to use a workaround for it.");
+        if (ImGui::Combo ("Linux Flavor##LinuxFlavorCombo", &missionx::strct_setup_layer.iLinuxFlavor_val, missionx::strct_setup_layer.vecLinuxComboCodes_s.data (), static_cast<int> (missionx::strct_setup_layer.vecLinuxComboCodes_s.size ())))
+        {
+          missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<int> (mxconst::get_SETUP_LINUX_FLAVOR_CODE_I (), missionx::strct_setup_layer.iLinuxFlavor_val);
+          this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
+        }
+        #endif
+
+        ImGui::Separator ();
+        ImGui::NewLine ();
+
       }
-
-      this->mxUiReleaseLastFont (); // v3.305.1
-    } // end Linux troubleshoot
-
-#endif
+      this->mxUiReleaseLastFont ();
+    }
 
 
 
@@ -5060,9 +5072,9 @@ WinImguiBriefer::draw_setup_layer ()
 
 
     // if (ImGui::CollapsingHeader("Designer: Unsaved Options"))
-    indx++; // 10 Unsaved Options
-    missionx::strct_setup_layer.mapSetupHeaders[indx].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[indx].title.c_str ())));
-    if (missionx::strct_setup_layer.mapSetupHeaders[indx].bState)
+    index++; // 10 Unsaved Options
+    missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
+    if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
@@ -5703,14 +5715,6 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
       if (bPickedMedevacSurpriseMeMission)
       {
         add_ui_medevac_surprise_me_warning();
-        // this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
-        // ImGui::TextColored (missionx::color::color_vec4_aqua, "You can test this category, it is still a Work.In.Progress.");
-        // // v25.12.1
-        // ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_yellow);
-        // ImGui::TextWrapped("%s", "All locations in the mission are based on OpenStreetMap data, including extraction and drop-off locations, which may not be positioned exactly at the helipad. This is the current limitation until a better solution is implemented. Enjoy.");
-        // ImGui::PopStyleColor(1);
-        //
-        // this->mxUiReleaseLastFont ();
       }
 
 
@@ -5858,20 +5862,6 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
         if (bPickedOilRigMission)
         {
           add_ui_oilrig_search_area_buttons(); // v26.04.1
-//           ImgWindow::HelpMarker (R"(Best used with the "OSM Offshore Oil-Rigs" custom scenery for full world coverage.
-//
-// Filter options:
-// ---------------
-// * "In My Area": Searches for oil rigs within a radius of approximately 200 NM from your current location.
-//
-// * "Local Region": Searches for an oil rig within a larger area relative to the aircraft. The aircraft will be repositioned at mission start.
-//
-// * "Quarter/Half/Full Globe: Broadens the search to a much larger geographic area. The aircraft will be repositioned at mission start.
-// )", missionx::color::color_vec4_aqua);
-//           ImGui::SameLine ();
-//           ImGui::TextColored (missionx::color::color_vec4_yellow, "Choose a region to search for oil rigs.:");
-//           missionx::data_manager::ui_oilrig_globe_part_i = add_ui_dynamic_options_buttons (missionx::data_manager::ui_oilrig_globe_part_i, missionx::strct_user_create_layer.map_pick_oilrig_globe_part);
-//           ImGui::NewLine ();
         }
 
         if (!bPickedOilRigMission && !bPickedMedevacSurpriseMeMission ) // Display for missions that are NOT Oil Rig nor "Surprise Me type".
@@ -5970,7 +5960,6 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
                     this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
                   }
 
-                  //std::memcpy (buf1, stored_filter.c_str (), OSM_BUFF_SIZE_I);
                   mxUtils::copy_string_to_buffer(stored_filter, buf1[0], sizeof(buf1));
 
 
@@ -6009,7 +5998,6 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
                   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
                   if (ImGui::Button ("reset##resetButton1"))
                   {
-                    //std::memcpy (buf1, missionx::strct_user_create_layer.overpass_original_filter.c_str (), OSM_BUFF_SIZE_I);
                     mxUtils::copy_string_to_buffer(missionx::strct_user_create_layer.overpass_original_filter, buf1[0], sizeof(buf1)); // v26.04.3
                     missionx::strct_user_create_layer.overpass_pre_apply_filter_s = missionx::strct_user_create_layer.overpass_original_filter;
                   }
@@ -6049,7 +6037,6 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
                   ImGui::SetItemDefaultFocus ();
                   if (ImGui::Button ("Cancel", ImVec2 (90, 0)))
                   {
-                    //std::memcpy (buf1, missionx::strct_user_create_layer.overpass_main_filter.c_str (), OSM_BUFF_SIZE_I);
                     mxUtils::copy_string_to_buffer(missionx::strct_user_create_layer.overpass_main_filter, buf1[0], sizeof(buf1)); // v26.04.3
 
                     missionx::strct_user_create_layer.overpass_pre_apply_filter_s = missionx::strct_user_create_layer.overpass_main_filter;
@@ -6087,7 +6074,6 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
         int iMinLegsVal = 1;
         int iMaxLegsVal = 4;
         // calculate default number of flight legs per mission and plane type
-        //if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types::plane_type_helos && strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::_mission_type::medevac)) || (missionx::strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_mission_type::oil_rig)))
         if ((strct_user_create_layer.iRadioPlaneType == missionx::mx_plane_types_enum::plane_type_helos && bPickedMedevacMission) || (bPickedOilRigMission))
         {
           iMinLegsVal                                = 2;
@@ -6139,7 +6125,6 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
     // ------------------------
 
 
-    // ImGui::NewLine(); // v3.305.1 removed
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
     ImGui::BeginGroup ();
     {
@@ -6161,7 +6146,6 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
         ImGui::SameLine ();
 
         missionx::flag_generatedRandomFile_success = false;
-        //constexpr auto lbl                     = "Generate a Mission Based on User Preferences";
 
         // -----------------------
         // DISPLAY GENERATE BUTTON
@@ -6272,12 +6256,11 @@ void WinImguiBriefer::draw_dynamic_mission_creation_screen_child_2()
 void
 WinImguiBriefer::draw_template_mission_generator_screen ()
 {
-  // auto win_size_vec2 = ImGui::GetContentRegionAvail();
-  auto win_size_vec2 = this->mxUiGetWindowContentWxH ();
+  const auto win_size_vec2 = this->mxUiGetWindowContentWxH ();
 
   if (missionx::strct_generate_template_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw)
   {
-    float pos_x = 0.0f;
+    constexpr float pos_x = 0.0f;
 
     ///////// Header ////////
     ImGui::BeginGroup ();
@@ -6370,7 +6353,6 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                   constexpr auto combo_label_s = "Select an Option";
 
                   // prepare template briefer text so we will display it in the detailed region
-                  // missionx::strct_generate_template_layer.selectedTemplateKey                                    = key;
                   missionx::strct_generate_template_layer.selectedTemplateKey      = key;
                   missionx::strct_generate_template_layer.last_picked_template_key = key;
                   this->set_bottom_message_line1 ("Picked Template: " + missionx::strct_generate_template_layer.last_picked_template_key);
@@ -6427,7 +6409,6 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                     if (strctOptInfo.user_pick_from_replaceOptions_combo_i > mxconst::INT_UNDEFINED)
                     {
                       const auto combo_spacer_f = 35.0f * missionx::strct_setup_layer.fPreferredFontScale; // space that we want to add to string pixel length to have a better visually combo size
-                      // const auto combo_label_s_pixel_length_f = ImGui::CalcTextSize(combo_label_s).x * missionx::strct_setup_layer.fPreferredFontScale;
                       const auto combo_label_s_pixel_length_f     = ImGui::CalcTextSize (strctOptInfo.combo_label_s.c_str ()).x * missionx::strct_setup_layer.fPreferredFontScale;
                       const auto help_marker_width_pixel_length_f = ImGui::CalcTextSize (" (?) ").x * missionx::strct_setup_layer.fPreferredFontScale;
                       const auto max_option_pixel_length_f        = ImGui::CalcTextSize (strctOptInfo.longestTextInVector_s.c_str ()).x * missionx::strct_setup_layer.fPreferredFontScale; // calculate combo length based on text size.
@@ -6582,10 +6563,8 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
             static bool bRerunRandomDateTime{ false };
 
             // display the option only if we are not in the middle of a running mission
-
             if (missionx::data_manager::missionState != missionx::mx_mission_state_enum::mission_is_running)
             {
-
               bRerunRandomDateTime = add_ui_checkbox_rerun_random_date_and_time ();
               ImGui::SameLine (0.0f, 5.0f);
 

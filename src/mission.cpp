@@ -643,7 +643,6 @@ missionx::Mission::init()
   }
 
 
-
   // v3.0.215.1
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_HIDE_SHOW_MXPAD()).isEmpty())
   {
@@ -821,6 +820,13 @@ missionx::Mission::init()
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SIMBRIEF_AUTO_LOAD_INTO_NOTES()).isEmpty())
   {
     missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_SETUP_SIMBRIEF_AUTO_LOAD_INTO_NOTES(), false);
+    missionx::system_actions::store_plugin_options();
+  }
+
+  // v26.04.4 Disable Inventory Image Load
+  if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISABLE_INVENTORY_IMAGE_LOAD()).isEmpty())
+  {
+    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_DISABLE_INVENTORY_IMAGE_LOAD(), false);
     missionx::system_actions::store_plugin_options();
   }
 
@@ -5543,32 +5549,56 @@ missionx::Mission::flcPRE()
           glDeleteTextures(1, reinterpret_cast<const GLuint *> (&btnTexture.gTexture)); //
         }
 
-        auto future = std::async(std::launch::async, &missionx::data_manager::loadInventoryImages);
+        // v26.04.4
+        const auto b_disable_inventory_images = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool> (mxconst::get_OPT_DISABLE_INVENTORY_IMAGE_LOAD (), false);
+        if (!b_disable_inventory_images)
+          auto future = std::async(std::launch::async, &missionx::data_manager::loadInventoryImages);
       }
       break;
       case missionx::mx_flc_pre_command::post_async_inv_image_binding:
       {
         for (auto& [file, textureFile] : missionx::data_manager::xp_mapInvImages)
         {
-          if (file.empty() || textureFile.getWidth() == 0 || textureFile.getHeight() == 0) // v3.0.303.7 hopefully will solve a bug if image file was not found 
+          if (file.empty() || textureFile.getWidth() == 0 || textureFile.getHeight() == 0 || textureFile.sImageData.pData == nullptr || textureFile.texture_hash_simple == 0) // v3.0.303.7 hopefully will solve a bug if image file was not found 
             continue;
 
           XPLMGenerateTextureNumbers(&textureFile.gTexture, 1);
           XPLMBindTexture2d(textureFile.gTexture, 0);
           glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); // added from imgui // v24.06.1 disabled
 
-          const std::string err = this->checkGLError("After XPLMBindTexture2d");
-          if (err.empty()){
-              #ifdef FLIP_IMAGE
-              glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLint)inTextureFile.sImageData.Width, (GLint)inTextureFile.sImageData.Height, 0, ((inTextureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, img);
-              #else
-              glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLint)textureFile.sImageData.Width, (GLint)textureFile.sImageData.Height, 0, ((textureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, textureFile.sImageData.pData);
-              #endif
+          if (textureFile.gTexture == 0)
+            continue;
 
-              glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-              glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-              // glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // removed v3.0.251.1
-              // glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // removed v3.0.251.1
+
+          const std::string err = this->checkGLError("After XPLMBindTexture2d");
+
+          XPLMDebugString( fmt::format("[{}] Image hash: {}, for file: {}, GL Check Error: {}\n", __func__, textureFile.texture_hash_simple, file, err).c_str() );
+
+
+          if (err.empty())
+          {
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+            // Upload image data using a sized internal format
+            const GLenum format         = (textureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA;
+            const GLenum internalFormat = (textureFile.sImageData.Channels < 4) ? GL_RGB8 : GL_RGBA8;
+            glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(internalFormat), textureFile.sImageData.Width, textureFile.sImageData.Height, 0, format, GL_UNSIGNED_BYTE, textureFile.sImageData.pData);
+
+
+            //#ifdef FLIP_IMAGE
+            //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLint)inTextureFile.sImageData.Width, (GLint)inTextureFile.sImageData.Height, 0, ((inTextureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, img);
+            //#else
+            //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLint)textureFile.sImageData.Width, (GLint)textureFile.sImageData.Height, 0, ((textureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, textureFile.sImageData.pData);
+            //#endif
+
+            //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            ////glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // removed v3.0.251.1
+            ////glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // removed v3.0.251.1
+
           }
           else
           {

@@ -168,7 +168,7 @@ private:
 public:
   typedef struct _mxIMAGEDATA
   {
-    unsigned char* pData;
+    unsigned char* pData{nullptr};
     int            Width;
     int            Height;
     int            Padding;
@@ -181,6 +181,7 @@ public:
 
     void init()
     {
+      pData    = nullptr;
       Width    = 0;
       Height   = 0;
       Padding  = 0;
@@ -199,7 +200,7 @@ public:
 
   // v25.08.1
   size_t      texture_hash_simple;
-  std::string texture_hash_sha256;
+  //std::string texture_hash_sha256;
 
   std::string fileName;
   std::string filePath;
@@ -212,7 +213,7 @@ public:
     TextureId = 0;
     gTexture  = 0;
     texture_hash_simple = 0;
-    texture_hash_sha256.clear();
+    //texture_hash_sha256.clear();
     fileName.clear();
     filePath.clear();
 
