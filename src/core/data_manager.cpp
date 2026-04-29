@@ -6906,6 +6906,9 @@ data_manager::get_curl_request_respond(const std::string& in_url_s, const std::s
         if (CURLE_OK != st_result.res_curl)
         {
           Log::logMsgThread(fmt::format("[{}] Call ID: {}, CURL error code: {} {}\n", __func__, in_call_id, Utils::formatNumber<int>(st_result.res_curl), (in_loop_tries > (v_loop01 + 1)) ? "Will retry..." : "No more retries.") );
+          // user progress message in the error line
+          if (in_loop_tries > (v_loop01 + 1))
+            data_manager::strct_ui_share_data.error_message_line3 = fmt::format("Failed to fetch data from {}. Will try again.", base_url);
         }
 
         st_result.request_err = std::string(errBuff); // v3.305.3
@@ -6922,7 +6925,7 @@ data_manager::get_curl_request_respond(const std::string& in_url_s, const std::s
 
       } // end loop over curl calls
 
-
+      // add error insight based on error code.
       if (httpStatus != 200 || !st_result.request_err.empty())
       {
         const std::string host_only_s = lmbda_extract_host(base_url);
@@ -8651,13 +8654,34 @@ data_manager::get_default_overpass_urls_as_vector (const IXMLNode &inNode)
 std::string missionx::data_manager::gen_get_next_overpass_url(const bool in_ignore_user_preference) 
 { 
   static size_t last_index = 0;
-  std::string   url        = gen_get_user_prefered_overpass_url();
-  
-  if (in_ignore_user_preference)
+  const bool    b_lock_to_preferred_url = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_SETUP_LOCK_OVERPASS_URL_TO_USER_PICK(), false);
+  std::string   url        = gen_get_user_preferred_overpass_url();
+
+  if ( !b_lock_to_preferred_url || in_ignore_user_preference )
   {
-    url = (data_manager::vecOverpassUrls.size() > last_index) ? data_manager::vecOverpassUrls.at(last_index) : "";
+    const auto lmbda_get_next_url = [&]()-> std::string
+    {
+      for (unsigned int trials = 0; trials < data_manager::vecOverpassUrls.size(); ++trials)
+      {
+        if (data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls.contains(static_cast<int>(last_index))
+          && data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls[static_cast<int>(last_index)])
+        {
+          return (data_manager::vecOverpassUrls.size() > last_index) ? data_manager::vecOverpassUrls.at(last_index) : "";
+        }
+
+        if ((++last_index) >= data_manager::vecOverpassUrls.size())
+          last_index = 0;
+      }
+
+      return "";
+    }; // end lambda
+
+    //url = (data_manager::vecOverpassUrls.size() > last_index) ? data_manager::vecOverpassUrls.at(last_index) : "";
+    url = lmbda_get_next_url();
+
     ++last_index;
-    if (data_manager::vecOverpassUrls.size() <= last_index)
+    // check if we need to reset
+    if (last_index >= data_manager::vecOverpassUrls.size() )
       last_index = 0;
   }
 
@@ -8670,7 +8694,7 @@ std::string missionx::data_manager::gen_get_next_overpass_url(const bool in_igno
 
 // -------------------------------------
 
-std::string missionx::data_manager::gen_get_user_prefered_overpass_url() 
+std::string missionx::data_manager::gen_get_user_preferred_overpass_url()
 { 
   return missionx::system_actions::pluginSetupOptions.getNodeText_type_6(mxconst::get_OPT_OVERPASS_URL(), mxconst::get_DEFAULT_OVERPASS_URL()); 
 }
@@ -8825,8 +8849,14 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
       {
         // Call OVERPASS using cURL and make sure we do not have ABORT request.
         // Randomize the URL calls so not all threads will use same overpass url.
-        const auto  vec_shuffled_index_of_overpass_urls = Utils::getShuffledIndexVector_byType<size_t>(data_manager::vecOverpassUrls.size());
-        for (const auto& index_shuffle : vec_shuffled_index_of_overpass_urls)
+        std::vector<std::string> vec_active_urls;
+        for ( const auto &[key, v_bool] : data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls)
+        {
+          if (v_bool)
+            vec_active_urls.emplace_back( ((static_cast<size_t>(key) < data_manager::vecOverpassUrls.size())? data_manager::vecOverpassUrls[key] : mxconst::get_DEFAULT_OVERPASS_URL() ) );
+        }
+        const auto  vec_shuffled_index_of_selected_urls = Utils::getShuffledIndexVector_byType<size_t>(vec_active_urls.size());
+        for (const auto& index_shuffle : vec_shuffled_index_of_selected_urls)
         {
 
           // check [abort]
@@ -8837,7 +8867,7 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
             return;
           }
 
-          overpass_url = (index_shuffle < data_manager::vecOverpassUrls.size()) ? data_manager::vecOverpassUrls.at(index_shuffle) : mxconst::get_DEFAULT_OVERPASS_URL();
+          overpass_url = (index_shuffle < vec_active_urls.size()) ? vec_active_urls.at(index_shuffle) : mxconst::get_DEFAULT_OVERPASS_URL();
           strct_result = get_curl_request_respond(overpass_url, fullQuery, 2);
 
           Log::logMsgThread(fmt::format("[{}] URL: {}", __func__, overpass_url));

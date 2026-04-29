@@ -1274,6 +1274,7 @@ public:
 
   static int                      curl_call_counter_i;            // v3.0.255.4.1
   static std::vector<std::string> vecOverpassUrls;               // v3.0.255.4.1
+
   static int                      overpass_user_picked_combo_i;  // v3.0.255.4.1
   static int                      overpass_last_url_indx_used_i; // v3.0.255.4.1
   // Call CURL to send http/s request and receive a respond.
@@ -1370,6 +1371,8 @@ public:
     std::vector<const char *> oilrig_arr  ; //= { "Oil Rig Cargo", "Medevac" };
     std::vector<const char *> cargo_arr   ; //= { "GA Cargo", "Farming Cargo", "Isolated Areas" }; // These are only baseline values, it is affected by the "cargo_data.xml" file.
 
+    std::map<int, bool> map_ui_user_pickes_overpass_urls; // v26.04.4. Will hold what user prefer to use.
+
     ui_shared_data_def_struct()
     {
       medevac_arr = { mxconst::CAT_ANY_LOCATION.data (), mxconst::CAT_ACCIDENT_OSM.data (), mxconst::CAT_SURPRISE_ME.data () };
@@ -1379,6 +1382,7 @@ public:
       user_message_line1.clear();
       ongoing_status_message_line2.clear();
       error_message_line3.clear();
+      map_ui_user_pickes_overpass_urls.clear();
     }
   };
   inline static ui_shared_data_def_struct strct_ui_share_data;
@@ -1514,7 +1518,7 @@ public:
   static IXMLNode get_default_overpass_urls_node ();
   static std::vector<std::string> get_default_overpass_urls_as_vector (const IXMLNode& inNode);
   static std::string              gen_get_next_overpass_url(const bool in_ignore_user_preference = false);
-  static std::string              gen_get_user_prefered_overpass_url();
+  static std::string              gen_get_user_preferred_overpass_url();
 
   // v25.06.1
   static void check_cache_folder (const std::string & in_cache_folder_name);

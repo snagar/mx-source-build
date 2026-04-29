@@ -247,13 +247,17 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
   missionx::strct_setup_layer.bPlaceMarkersAwayFromTarget = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET (), false); // display target away from target
 
   // v25.05.1 init overpass before reading from property file so we have default values.
-  set_vecOverpassUrls_char (data_manager::get_default_overpass_urls_as_vector (data_manager::get_default_overpass_urls_node ()));
+  this->set_vecOverpassUrls_char (data_manager::get_default_overpass_urls_as_vector (data_manager::get_default_overpass_urls_node ()));
   // init overpass from property file.
   this->set_vecOverpassUrls_char (missionx::data_manager::vecOverpassUrls); // v3.0.255.4.1 initialize overpass url from conf file
 
+  // init overpass user preference
+  data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls.clear();
+  for (int url_index=0;const auto& v: data_manager::vecOverpassUrls)
+    data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls[url_index++] = true;
+
   // v3.303.8.3 add authorization key to the Briefer screen
   const std::string authKey_s = Utils::getNodeText_type_6 (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY (), "");
-  //std::memcpy (this->strct_ext_layer.buf_authorization, authKey_s.substr (0, 255).c_str (), 255); // copy no more than 255 characters because our buffer is 256 in size
   mxUtils::copy_string_to_buffer(authKey_s.substr(0, 255), this->strct_ext_layer.buf_authorization[0], 255); // copy no more than 255 characters because our buffer is 256 in size
 
 
@@ -4871,6 +4875,31 @@ WinImguiBriefer::draw_setup_layer ()
         {
           missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_SETUP_LOCK_OVERPASS_URL_TO_USER_PICK (), ((missionx::strct_setup_layer.flag_lock_overpass_url) ? true : false));
           this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
+        }
+
+        
+        // --- Overpass list to choose from. Not stored in preferences file.
+        ImGui::NewLine();
+        ImgWindow::HelpMarker("At least one URL must be selected from the list.\nYou can modify your preferences during mission creation.\nCheck the error message line during generation (scroll down if needed).");
+        ImGui::SameLine();
+        ImGui::TextColored(missionx::color::color_vec4_yellow, "%s", "Limit available Overpass URLs (this setting is not saved in preferences):");
+        for (int url_index = 0; const auto& url: missionx::data_manager::vecOverpassUrls)
+        {
+          ImGui::PushID(url_index);
+          if (ImGui::Checkbox("##urlCheckboxes", &data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls[url_index]))
+          {
+            // validate at least one of the items in the container is "true"
+            const bool at_least_one_is_picked = std::ranges::any_of(data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls, [](const auto v_pair) { return v_pair.second; });
+            if (!at_least_one_is_picked)            
+            {
+              data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls[url_index] = true; // force at least one item to be true
+            }
+          }
+          ImGui::PopID();
+          ImGui::SameLine();
+          const auto ui_text_color = (data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls[url_index]) ? missionx::color::color_vec4_beige : missionx::color::color_vec4_darkgray;
+          ImGui::TextColored(ui_text_color, "%s", url.c_str());
+          ++url_index;
         }
 
         ImGui::Separator (); // v3.305.1

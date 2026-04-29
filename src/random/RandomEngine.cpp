@@ -9073,7 +9073,7 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
       outNavAid.lat = Utils::readNodeNumericAttrib<float>(target_node, mxconst::get_ATTRIB_LAT_OSM(), 0.0f);
       outNavAid.lon = Utils::readNodeNumericAttrib<float>(target_node, mxconst::get_ATTRIB_LONG_OSM(), 0.0f);
 
-      missionx::data_manager::strct_ui_share_data.ongoing_status_message_line2 = "Found a target node.";
+      missionx::data_manager::strct_ui_share_data.ongoing_status_message_line2 = "Found a target.";
 
       #ifndef RELEASE
       Log::logMsgThread(fmt::format("[{}] Target Navaid: {}", __func__, outNavAid.get_latLon()));

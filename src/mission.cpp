@@ -629,10 +629,13 @@ missionx::Mission::init()
     for (int i1 = 0; i1 < missionx::data_manager::xMissionxProperties_node.getChildNode(mxconst::get_ELEMENT_OVERPASS().c_str()).nChildNode(mxconst::get_ELEMENT_URL().c_str()); ++i1)
     {
       IXMLNode xUrl = missionx::data_manager::xMissionxProperties_node.getChildNode (mxconst::get_ELEMENT_OVERPASS ().c_str ()).getChildNode (mxconst::get_ELEMENT_URL ().c_str (), i1);
-      if (const std::string text = xUrl.getText (); !text.empty ())
-        data_manager::vecOverpassUrls.emplace_back (text);
+      if (const std::string text = xUrl.getText(); !text.empty())
+      {
+        data_manager::vecOverpassUrls.emplace_back(text);        
+      }
     }
   }
+  // initialize with default overpass url if no URL is provided.
   if (data_manager::vecOverpassUrls.empty())
   {
     // v25.05.1
@@ -641,7 +644,11 @@ missionx::Mission::init()
     //   "https://overpass.kumi.systems/api/interpreter,https://overpass-api.de/api/interpreter,https://lz4.overpass-api.de/api/interpreter,https://overpass.osm.jp/api/interpreter,https://maps.mail.ru/osm/tools/overpass/api/interpreter,https://z.overpass-api.de/api/interpreter,https://overpass.osm.ch/api/interpreter,https://overpass.private.coffee/api/interpreter",
     //   ",");
   }
-
+  //// fill mapOverpassUrls
+  //for (int i = 0; i < data_manager::vecOverpassUrls.size(); ++i)
+  //{
+  //  data_manager::mapOverpassUrls[i] = data_manager::vecOverpassUrls[i];
+  //}
 
   // v3.0.215.1
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_HIDE_SHOW_MXPAD()).isEmpty())
