@@ -1088,13 +1088,13 @@ RandomEngine::gen_parse_template_leg(missionx::base_thread::strct_thread_state* 
 
   na.fpln_wp_template_type = (na.fpln_expected_location_data.flight_leg_type_hover_land_or_start.empty()) ? mxconst::get_FL_TEMPLATE_VAL_LAND() : na.fpln_expected_location_data.flight_leg_type_hover_land_or_start;
 
-  // handle "start" template
-  if (mxconst::get_FL_TEMPLATE_VAL_START() == na.fpln_wp_template_type && mxUtils::isElementExists(in_mission_targets, 0) && in_mission_targets[0].is_lat_lon_valid())
+  // handle "start" location [0]
+  if (mxconst::get_FL_TEMPLATE_VAL_START() == na.fpln_wp_template_type && in_mission_targets.contains(missionx::BRIEFER_INDEX) && in_mission_targets[missionx::BRIEFER_INDEX].is_lat_lon_valid())
   {
-    na.lat = in_mission_targets[0].lat;
-    na.lon = in_mission_targets[0].lon;
-    na.setID(in_mission_targets[0].getID());
-    na.setName(in_mission_targets[0].getName());
+    na.lat = in_mission_targets[missionx::BRIEFER_INDEX].lat;
+    na.lon = in_mission_targets[missionx::BRIEFER_INDEX].lon;
+    na.setID(in_mission_targets[missionx::BRIEFER_INDEX].getID());
+    na.setName(in_mission_targets[missionx::BRIEFER_INDEX].getName());
 
     if (na.getID().empty())
     {
@@ -1240,8 +1240,8 @@ RandomEngine::gen_get_content_targets(missionx::base_thread::strct_thread_state*
   ///////////////////////////////////////////
   // Prepare base briefer data base on: parse <briefer_and_start_location> node
   IXMLNode x_briefer_and_start_location_node = xTemplateNode.getChildNode(mxconst::get_ELEMENT_BRIEFER_AND_START_LOCATION().c_str()).deepCopy();
-  local_target_navaids[0]                    = gen_briefer_phase_01_parse_briefer_and_start_location(xTemplateNode, x_briefer_and_start_location_node);
-  if (!local_target_navaids[0].is_lat_lon_valid() || !local_target_navaids[0].err.empty())
+  local_target_navaids[missionx::BRIEFER_INDEX]                    = gen_briefer_phase_01_parse_briefer_and_start_location(xTemplateNode, x_briefer_and_start_location_node);
+  if (!local_target_navaids[missionx::BRIEFER_INDEX].is_lat_lon_valid() || !local_target_navaids[missionx::BRIEFER_INDEX].err.empty())
   {
     outErr = fmt::format("[{}] <{}> was not found in the template. Fix the template.", __func__, mxconst::get_ELEMENT_BRIEFER_AND_START_LOCATION());
     local_target_navaids.clear();
@@ -1877,8 +1877,8 @@ RandomEngine::gen_get_generic_template_targets(missionx::base_thread::strct_thre
   // ----------------------
   // // Prepare base briefer data, based on: parse <briefer_and_start_location> node
   IXMLNode x_briefer_and_start_location_node = in_template_node.getChildNode(mxconst::get_ELEMENT_BRIEFER_AND_START_LOCATION().c_str()).deepCopy();
-  target_navaids[0]                          = gen_briefer_phase_01_parse_briefer_and_start_location(in_template_node, x_briefer_and_start_location_node);
-  if (!target_navaids[0].is_lat_lon_valid() || !target_navaids[0].err.empty())
+  target_navaids[missionx::BRIEFER_INDEX]                          = gen_briefer_phase_01_parse_briefer_and_start_location(in_template_node, x_briefer_and_start_location_node);
+  if (!target_navaids[missionx::BRIEFER_INDEX].is_lat_lon_valid() || !target_navaids[missionx::BRIEFER_INDEX].err.empty())
   {
     outErr = fmt::format("[{}] <{}> was not found in the template. Fix the template.", __func__, mxconst::get_ELEMENT_BRIEFER_AND_START_LOCATION());
     target_navaids.clear();
@@ -4729,7 +4729,7 @@ RandomEngine::gen_prepare_mission_based_on_user_fpln_or_simbrief(IXMLNode& in_xT
 // -----------------------------------
 
 
-std::map<missionx::enums::mx_osm_region_enum, missionx::structs::BBox>
+std::map<missionx::enums::mx_osm_region_enum, missionx::structs::strct_bbox>
 RandomEngine::gen_quadrant_bboxes(const double centerLat, const double centerLon)
 {
   #ifdef RELEASE
@@ -4747,19 +4747,19 @@ RandomEngine::gen_quadrant_bboxes(const double centerLat, const double centerLon
   const double deltaLon     = mxUtils::nmToDegLon(rangeNm, centerLat);
   const double exclusionLon = mxUtils::nmToDegLon(exclusionNm, centerLat);
 
-  std::map<enums::mx_osm_region_enum, structs::BBox> bboxes;
+  std::map<enums::mx_osm_region_enum, structs::strct_bbox> bboxes;
 
   // Top Left (NW)
-  bboxes[enums::mx_osm_region_enum::nw] = structs::BBox({centerLat + exclusionLat, centerLon - deltaLon, centerLat + deltaLat, centerLon - exclusionLon});
+  bboxes[enums::mx_osm_region_enum::nw] = structs::strct_bbox({centerLat + exclusionLat, centerLon - deltaLon, centerLat + deltaLat, centerLon - exclusionLon});
 
   // Top Right (NE)
-  bboxes[enums::mx_osm_region_enum::ne] = structs::BBox({centerLat + exclusionLat, centerLon + exclusionLon, centerLat + deltaLat, centerLon + deltaLon});
+  bboxes[enums::mx_osm_region_enum::ne] = structs::strct_bbox({centerLat + exclusionLat, centerLon + exclusionLon, centerLat + deltaLat, centerLon + deltaLon});
 
   // Bottom Left (SW)
-  bboxes[enums::mx_osm_region_enum::sw] = structs::BBox({centerLat - deltaLat, centerLon - deltaLon, centerLat - exclusionLat, centerLon - exclusionLon});
+  bboxes[enums::mx_osm_region_enum::sw] = structs::strct_bbox({centerLat - deltaLat, centerLon - deltaLon, centerLat - exclusionLat, centerLon - exclusionLon});
 
   // Bottom Right (SE)
-  bboxes[enums::mx_osm_region_enum::se] = structs::BBox({centerLat - deltaLat, centerLon + exclusionLon, centerLat - exclusionLat, centerLon + deltaLon});
+  bboxes[enums::mx_osm_region_enum::se] = structs::strct_bbox({centerLat - deltaLat, centerLon + exclusionLon, centerLat - exclusionLat, centerLon + deltaLon});
 
   return bboxes;
 }
@@ -4794,8 +4794,8 @@ RandomEngine::gen_osm_analyse(mx_return& out_mx_return, const std::string& xmlFi
   std::vector<missionx::structs::strct_osm_query> vec_osm_query_analyze_results;
   try
   {
-    const std::map<missionx::enums::mx_osm_region_enum, missionx::structs::BBox> map_bbox = gen_quadrant_bboxes(centre_lat, centre_lon);
-    missionx::structs::BBox                                                 all_bbox;
+    const std::map<missionx::enums::mx_osm_region_enum, missionx::structs::strct_bbox> map_bbox = gen_quadrant_bboxes(centre_lat, centre_lon);
+    missionx::structs::strct_bbox                                                 all_bbox;
     if (Utils::isElementExists(map_bbox, enums::mx_osm_region_enum::sw) && Utils::isElementExists(map_bbox, enums::mx_osm_region_enum::ne))
     {
       all_bbox.minLat = map_bbox.at(enums::mx_osm_region_enum::sw).minLat;
@@ -8567,11 +8567,27 @@ RandomEngine::gen_parse_plane_type(missionx::mx_base_node& in_user_property_ui_n
 
 void
 RandomEngine::calculate_bbox_coordinates(missionx::Point& outN0, missionx::Point& outS180, missionx::Point& outE90, missionx::Point& outW270, const float inRefLat, const float inRefLon, const double inMaxRadius_d)
-{
+{  
   Utils::calcPointBasedOnDistanceAndBearing_2DPlane(outN0.lat, outN0.lon, inRefLat, inRefLon, 0, inMaxRadius_d);
   Utils::calcPointBasedOnDistanceAndBearing_2DPlane(outS180.lat, outS180.lon, inRefLat, inRefLon, 180, inMaxRadius_d);
   Utils::calcPointBasedOnDistanceAndBearing_2DPlane(outE90.lat, outE90.lon, inRefLat, inRefLon, 90, inMaxRadius_d);
   Utils::calcPointBasedOnDistanceAndBearing_2DPlane(outW270.lat, outW270.lon, inRefLat, inRefLon, 270, inMaxRadius_d);
+}
+// -----------------------------------
+
+missionx::structs::strct_bbox 
+RandomEngine::calculate_bbox_coordinates(float inRefLat, float inRefLon, double inMaxRadius_d)
+{ 
+  missionx::structs::strct_bbox bbox;
+
+  // calculate overpass Bottom Left
+  mxUtils::mxCalcPointBasedOnDistanceInMetersAndBearing_2DPlane(bbox.minLat, bbox.minLon, inRefLat, inRefLon, (180 + 45), inMaxRadius_d * nm2meter);
+
+  // calculate overpass Top Right
+  mxUtils::mxCalcPointBasedOnDistanceInMetersAndBearing_2DPlane(bbox.maxLat, bbox.maxLon, inRefLat, inRefLon, (45), inMaxRadius_d * nm2meter);
+
+
+  return bbox; 
 }
 
 // -----------------------------------
@@ -8593,6 +8609,46 @@ RandomEngine::gather_all_osm_db_files_names_and_path(std::list<std::string>& out
 
 bool
 RandomEngine::osm_get_navaid_from_osm(NavAidInfo&                         outNavAid,
+                                      std::map<std::string, std::string>& inMapLocationSplitValues,
+                                      missionx::mx_base_node&             inProperties, // v3.305.1
+                                      NavAidInfo*                         prev_navaid_ptr,
+                                      const structs::strct_bbox           bbox,
+                                      const double                        maxDistance_d,
+                                      const double                        minDistance_d)
+{
+  assert(prev_navaid_ptr != nullptr && fmt::format ("Invalid previous navaid pointer. Notify developer.", __func__).c_str ()); // v25.10.1
+
+  bool bResult = false;
+
+  if (prev_navaid_ptr == nullptr)
+    return false;
+
+  const std::string expectedLocationType = Utils::readAttrib(inProperties.node, mxconst::get_ATTRIB_LOCATION_TYPE(), ""); // v3.0.241.10 b2
+
+  // Priority 1: We start with DB search only if it was asked. // v24.12.2 Although searching the DB is a redundant step, it might be useful in edge cases.
+  if (Utils::readBoolAttrib(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_USE_OSM_CHECKBOX(), false) || (expectedLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_OSM()) || (expectedLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_WEBOSM()))
+  {
+    bResult                        = osm_get_navaid_from_osm_database(outNavAid, inMapLocationSplitValues, inProperties, prev_navaid_ptr->lat, prev_navaid_ptr->lon, bbox.minLat, bbox.maxLat, bbox.minLon, bbox.maxLon, maxDistance_d, minDistance_d);
+    outNavAid.flag_fetched_from_db = true;
+    if (bResult)
+      return bResult;
+  }
+
+  // Priority 2 is for overpass data (web information)
+  if (!bResult && (Utils::readBoolAttrib(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_USE_WEB_OSM_CHECKBOX(), false) || (expectedLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_WEBOSM())))
+  {
+    outNavAid.flag_fetched_from_db = false; // v25.09.2
+    return osm_get_navaid_from_overpass(outNavAid, inMapLocationSplitValues, inProperties, prev_navaid_ptr->lat, prev_navaid_ptr->lon, bbox, maxDistance_d, minDistance_d);
+  }
+
+
+  return bResult;
+}
+
+
+// ------------------------------------------
+bool
+RandomEngine::osm_get_navaid_from_osm2(NavAidInfo&                         outNavAid,
                                       std::map<std::string, std::string>& inMapLocationSplitValues,
                                       missionx::mx_base_node&             inProperties, // v3.305.1
                                       NavAidInfo*                         prev_navaid_ptr,
@@ -8645,7 +8701,7 @@ RandomEngine::osm_get_navaid_from_osm(NavAidInfo&                         outNav
   if (!bResult && (Utils::readBoolAttrib(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_USE_WEB_OSM_CHECKBOX(), false) || (expectedLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_WEBOSM())))
   {
     outNavAid.flag_fetched_from_db = false; // v25.09.2
-    return osm_get_navaid_from_overpass(outNavAid, inMapLocationSplitValues, inProperties, prev_navaid_ptr->lat, prev_navaid_ptr->lon, min_lat, max_lat, min_lon, max_lon, maxDistance_d, minDistance_d);
+    return osm_get_navaid_from_overpass2(outNavAid, inMapLocationSplitValues, inProperties, prev_navaid_ptr->lat, prev_navaid_ptr->lon, min_lat, max_lat, min_lon, max_lon, maxDistance_d, minDistance_d);
   }
 
 
@@ -8657,6 +8713,517 @@ RandomEngine::osm_get_navaid_from_osm(NavAidInfo&                         outNav
 
 bool
 RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         outNavAid,
+                                           std::map<std::string, std::string>& inMapLocationSplitValues,
+                                           missionx::mx_base_node&             inProperties, // v3.305.1
+                                           double                              sourceLat_d,
+                                           double                              sourceLon_d, 
+                                           const structs::strct_bbox           bbox,
+                                           double                              maxDistance_d,
+                                           double                              minDistance_d)
+{
+  // Note: This function is old, and will be replaced by the "Surprise Me" flow, but it does what it has to do so far.
+
+  // calculate bounding box
+  // create a 1nm mesh of points on that box (each box has its own: "topLeft,topRight,bottomLeft,bottomRight" coordinates.
+  // Remove the boxes that are too close to the center (less than min distance)
+  // random pick one of the rest of the boxes.
+  // fetch overpass data
+  // check if there is valid info in it, if not then remove the box from the valid list and pick again.
+  // ** We should allow no more than 5 failures until we will bail out and continue with the older code that would pick information randomly from x-plane area
+
+  outNavAid.flag_fetched_from_webosm = true;
+
+  bool              flag_found_navaid_from_osm = false;
+  const std::string inLocationType             = Utils::readAttrib(inProperties.node, mxconst::get_ATTRIB_LOCATION_TYPE(), ""); // v3.0.241.10 b2
+
+  const std::string nm_s                 = (Utils::isElementExists(inMapLocationSplitValues, "nm")) ? inMapLocationSplitValues["nm"] : ""; // represent airport to find in between distances
+  const std::string keyID_s              = (Utils::isElementExists(inMapLocationSplitValues, "keyid")) ? inMapLocationSplitValues["keyid"] : "icao"; // represent ID of the port, like ICAO or FAA
+  const std::string keyname_s            = (Utils::isElementExists(inMapLocationSplitValues, "keyname")) ? inMapLocationSplitValues["keyname"] : "name"; // the key value that represents the name
+  const std::string keydesc_s            = (Utils::isElementExists(inMapLocationSplitValues, "keydesc")) ? inMapLocationSplitValues["keydesc"] : "amenity"; // the key value that represent description, like amanity
+  const std::string designer_desc_s      = (Utils::isElementExists(inMapLocationSplitValues, "desc")) ? inMapLocationSplitValues["desc"] : ""; // Free string define designer description. Should be short.
+  const std::string designer_descforce_s = (Utils::isElementExists(inMapLocationSplitValues, "descforce")) ? inMapLocationSplitValues["descforce"] : ""; // Free string define designer description. Should be short.
+  const std::string designer_bounds      = (Utils::isElementExists(inMapLocationSplitValues, "bounds")) ? inMapLocationSplitValues["bounds"] : ""; // v3.0.253.4 coordinates represents bottomLeft and topRight area to fetch from OVERPASS
+  const std::string webosm_optimize      = (Utils::isElementExists(inMapLocationSplitValues, mxconst::get_ATTRIB_WEBOSM_OPTIMIZE())) ? Utils::stringToLower(inMapLocationSplitValues[mxconst::get_ATTRIB_WEBOSM_OPTIMIZE()]) : "y"; // v3.0.253.4 "y/n". Default yes. Should we do optimization on overpass area ? divide area to 1x1nm ?
+  // v3.0.253.9.1 replaces force_slope with mx_which_type_to_force
+  auto designer_force_type_attrib                         = static_cast<mx_which_type_to_force>(Utils::readNodeNumericAttrib<int>(inProperties.node, mxconst::get_ATTRIB_FORCE_TYPE_OF_TEMPLATE(), 0));
+  int  number_of_times_to_loop_over_force_template_type_i = Utils::readNodeNumericAttrib<int>(inProperties.node, mxconst::get_PROP_NUMBER_OF_LOOPS_TO_FORCE_TYPE_TEMPLATE(), 0); // dependent on flag_force_slope
+
+  // calculate inner bounds = represents minimum distance
+  Point E90inner, W270inner, S180inner, N0inner;
+  Utils::calcPointBasedOnDistanceAndBearing_2DPlane(N0inner.lat, N0inner.lon, sourceLat_d, sourceLon_d, 0, minDistance_d);
+  Utils::calcPointBasedOnDistanceAndBearing_2DPlane(S180inner.lat, S180inner.lon, sourceLat_d, sourceLon_d, 180, minDistance_d);
+  Utils::calcPointBasedOnDistanceAndBearing_2DPlane(E90inner.lat, E90inner.lon, sourceLat_d, sourceLon_d, 90, minDistance_d);
+  Utils::calcPointBasedOnDistanceAndBearing_2DPlane(W270inner.lat, W270inner.lon, sourceLat_d, sourceLon_d, 270, minDistance_d);
+
+  // define the 4 bounding points
+  Point topLeft(bbox.maxLat, bbox.minLon);
+  Point topRight(bbox.maxLat, bbox.maxLon);
+  Point bottomLeft(bbox.minLat, bbox.minLon);
+  Point bottomRight(bbox.minLat, bbox.maxLon);
+
+  Point plane_center(sourceLat_d, sourceLon_d);
+
+  // calculate how many boxed are we should create
+  double box_length            = 2.0; // One nautical miles (5nm)
+  double bounding_distance     = topLeft - topRight;
+
+  int    number_of_inner_boxes = static_cast<int>((box_length >= 1.0) ? (bounding_distance / box_length) : (bounding_distance * box_length)); // calculate the number of inner boxes
+
+  std::vector<missionx::strct_box> meshList; // will hold all mesh boxes that are inside the expected zone (min/max distance from center.
+
+  // store all mesh boxes in 2D array
+  // Example how we divide the area, each box has topLeft,topRight,bottomLeft and bottomRight.
+  // each new line need to pick the topLeft of previous line.
+  // each new box on the horizontal axes, needs to pick the previous topRight box.
+  //                   topRight
+  //+---++---++---++---+
+  //|   ||   ||   ||   |
+  //+===++===++===++===+
+  //+---++---++---++---+
+  //|   ||   ||   ||   |
+  //+===++===++===++===+
+  //+---++---++---++---+
+  //|   ||   ||   ||   |
+  //+===++===++===++===+
+  // bottomLeft
+
+
+  if (const bool b_osm_optimize = (webosm_optimize == "y") ? true : false)
+  {
+    Point col0_prev_line_bottomLeft_point;
+    Point prev_topRight_point;
+    for (int i1 = 0; i1 < number_of_inner_boxes; ++i1)
+    {
+      for (int i2 = 0; i2 < number_of_inner_boxes; ++i2)
+      {
+        missionx::strct_box box;
+
+        if (i1 == 0 && i2 == 0) // first time initialization for first box in line 0 (we start to count from line 0)
+        {
+          // first time
+          box.topLeft = topLeft;
+        }
+        else if (i1 > 0 && i2 == 0)
+        {
+          box.topLeft = col0_prev_line_bottomLeft_point;
+        }
+        else
+        {
+          box.topLeft = prev_topRight_point;
+        }
+
+        box.calcBoxBasedOn_topLeft(box_length); // calculate all 4 points in the box relative to box.topLeft
+        prev_topRight_point = box.topRight; // store first area box "topRight" point for next line calculation
+        if (i2 == 0)
+          col0_prev_line_bottomLeft_point = box.bottomLeft;
+
+        // calculate if box is inside the search zone
+        const double dist_d = box.center - plane_center;
+        if (dist_d >= minDistance_d && dist_d <= maxDistance_d)
+          meshList.emplace_back(box);
+      } // end loop over inner row mesh - X axes (0,0)(0,1)(0,2)...(0,n-1)
+    } // end outer loop over row mesh - Y axes (0,0)(1,0)(2,0)...(n-1,0)
+  }
+  else
+  {
+    // we will use the full area for the full search - risky but fine for some cases like specific search for hospitals or helipads that are rear even in big areas, they are not like roads or rivers or coast lines
+    // We have to take into consideration min/max values since the box area include all distances include those that are excluded (no pun intended).
+    missionx::strct_box area_box;
+    area_box.topLeft     = topLeft;
+    area_box.topRight    = topRight;
+    area_box.bottomLeft  = bottomLeft;
+    area_box.bottomRight = bottomRight;
+    area_box.center      = plane_center;
+
+    meshList.emplace_back(area_box);
+  }
+
+
+  // v25.06.1 Populate the vector with sequential indices (0, 1, 2, ...)
+  std::vector<size_t> vec_shuffled_mesh_list = Utils::getShuffledIndexVector_byType<size_t>(meshList.size());
+  const std::string   plugin_user_filter     = Utils::getNodeText_type_6(system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_FILTER(), mxconst::get_DEFAULT_OVERPASS_WAYS_FILTER()); // missionx::system_actions::pluginSetupOptions.getPropertyValue(mxconst::get_OPT_OVERPASS_FILTER(), err);
+
+  for (int trials = 0
+      ; const auto& random_box_index : vec_shuffled_mesh_list)
+  {
+    const auto&       box         = meshList.at(random_box_index);
+    //const std::string bounds_s_01 = mxUtils::formatNumber<double>(box.bottomLeft.lat, 8) + "," + mxUtils::formatNumber<double>(box.bottomLeft.lon, 8) + "," + mxUtils::formatNumber<double>(box.topRight.lat, 8) + "," + mxUtils::formatNumber<double>(box.topRight.lon, 8);
+    const std::string bounds_s_01 = fmt::format("{:.8f},{:.8f},{:.8f},{:.8f}", box.bottomLeft.lat, box.bottomLeft.lon, box.topRight.lat, box.topRight.lon );
+    outNavAid.init();
+
+    // -------------------------------------------
+    // -- Check if we need to stop searching
+    // -------------------------------------------
+    if (trials > ( static_cast<double>(vec_shuffled_mesh_list.size()) * 0.2))
+    {
+      const auto msg                                                  = "Failed to find and area with valid way/node.";
+      missionx::data_manager::strct_ui_share_data.error_message_line3 = msg;
+      Log::logMsgThread(fmt::format("[{}] {}", __func__, msg));
+      return false;
+    }
+    trials++;
+
+    // Check if to abort
+    if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+      return false;
+
+
+    //// READ FROM OVERPASS
+    const auto lmbda_get_designer_overpass_filter = [&](const std::string& inLocType)
+    {
+      std::list<std::string> list_designer_filter;
+      std::string            query_filter;
+
+      // this is the second version of this implementation, it will use a free text (not CDATA) to get designer filter
+      if (inMapLocationSplitValues.contains("tag") )
+      {
+        const std::string root_filter_tag = inMapLocationSplitValues["tag"];
+        if (!xRootTemplate.getChildNode(root_filter_tag.c_str()).isEmpty()) // if the "tag" string exists in template pick a random sub element from it
+        {
+          IXMLNode parent = xRootTemplate.getChildNode(root_filter_tag.c_str());
+          if (const IXMLNode filter_node = Utils::xml_get_node_randomly_by_name_IXMLNode(parent, ""); !filter_node.isEmpty())
+            query_filter = filter_node.getText();
+          else
+            query_filter = "";
+        }
+      }
+
+      return query_filter;
+    };
+    const std::string designer_filter_s = lmbda_get_designer_overpass_filter(inLocationType);
+    const std::string bounds_final      = (designer_bounds.empty()) ? bounds_s_01 : designer_bounds;
+
+
+    const auto overpass_url_s = data_manager::gen_get_next_overpass_url();
+
+    const auto  overpass_query      = ((designer_filter_s.empty()) ? plugin_user_filter : designer_filter_s);
+    const std::string overpass_filter_s = mxUtils::replaceAll(overpass_query, "({{bbox}})", "(" + bounds_final + ")"); // replace all {{bbox}}
+
+    // https://overpass-api.de/api/interpreter?data=( + overpass_filter_s +");out;; // EXAMPLE
+    const std::string url_filter_s = fmt::format("data={}", overpass_filter_s); // v26.04.3
+
+    Log::logMsgThread(fmt::format("[{}] WAYS URL: {}?{}\n", __func__, overpass_url_s, url_filter_s));
+
+    // -- Fetch data from cURL
+    const structs::strct_curl_result st_curl_result = missionx::data_manager::get_curl_request_respond (overpass_url_s, url_filter_s, 2);
+    
+
+    // check abort
+    if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+      return false;
+
+    // check errors and result. skip if one of them is not valid.
+    if (!st_curl_result.request_err.empty() || st_curl_result.response_text.empty())
+      continue;
+
+    //#ifndef RELEASE
+    //Log::logMsgThread(fmt::format("[{}] response_text: {}\n", __func__, st_curl_result.response_text));
+    //#endif // !RELEASE
+
+    // --------------------
+    // Parse OSM result
+    // --------------------
+    IXMLDomParser iDom;
+    auto          xmlOSM             = iDom.parseString(st_curl_result.response_text.c_str()).deepCopy();
+    int           count_nodes_pick_i = 0;
+
+    //#ifndef RELEASE
+    //Log::logMsgThread("\n ===osm node ==>\n" + Utils::xml_get_node_content_as_text(xmlOSM) + "\n<=== end osm node ===\n");
+    //#endif // !RELEASE
+
+    // validate <osm> node has at least "three" nodes. IT always have <note> + <meta>
+    const int nWayNodes = xmlOSM.nChildNode(mxconst::get_ELEMENT_WAY_OSM().c_str());
+    if (nWayNodes < 1) 
+    {
+      Log::logMsgThread(fmt::format("[{}] Found no valid <osm> sub node elements, will try different <way> box.", __func__)); // debug
+      continue;      
+    }
+
+
+    // Shuffle way nodes and pick one
+    const auto vec_shuffled_way_index = Utils::getShuffledIndexVector_byType<int>(nWayNodes);
+
+    IXMLNode target_node = IXMLNode::emptyIXMLNode;
+
+    // --------------------
+    // Loop over shuffled <way> indexed vector 
+    // --------------------    
+    for (int internal_way_restrictor = 0; const auto& random_way_index : vec_shuffled_way_index)
+    {
+      outNavAid.init();
+      target_node = IXMLNode::emptyIXMLNode;
+      std::string ref_attribute_value; // holds the "node id"
+
+      if (internal_way_restrictor > 3)
+        break;
+
+      internal_way_restrictor++;
+
+      IXMLNode osm_way_node = xmlOSM.getChildNode(mxconst::get_ELEMENT_WAY_OSM().c_str(), random_way_index);
+      if (osm_way_node.isEmpty())
+        continue;
+
+      #ifndef RELEASE
+      Log::logMsgThread("\n ===way node ==>\n" + Utils::xml_get_node_content_as_text(osm_way_node) + "\n<=== end way node ===\n");
+      #endif // !RELEASE
+
+
+      std::string tagName = osm_way_node.getName();
+      std::string way_id_s = Utils::readAttrib(osm_way_node, mxconst::get_ATTRIB_ID(), "");
+      #ifndef RELEASE
+      Log::logMsgThread(fmt::format("[{}] Picked Way id: [{}]", __func__, way_id_s));
+      #endif
+
+      // --------------------
+      // Pick <nd> subnode
+      // --------------------
+      int i_osm_nodes = (osm_way_node.isEmpty()) ? 0 : osm_way_node.nChildNode(mxconst::get_ELEMENT_ND_OSM().c_str());
+      auto vec_shuffled_nd_nodes_index = Utils::getShuffledIndexVector_byType<int>(i_osm_nodes);
+
+      for (int internal_nd_restrictor = 0; const auto& random_nd_node_index : vec_shuffled_nd_nodes_index)
+      {
+        // -- check if to exit loop
+        if (internal_nd_restrictor > 3)
+          break;
+
+        ++internal_nd_restrictor;
+
+        // get <nd> node
+        IXMLNode nd_node = osm_way_node.getChildNode(mxconst::get_ELEMENT_ND_OSM().c_str(), random_nd_node_index);
+        if (nd_node.isEmpty())
+          continue;
+
+        #ifndef RELEASE
+        Log::logMsgThread("\n ===nd node ==>\n" + Utils::xml_get_node_content_as_text(nd_node) + "\n<=== end nd node ===\n");
+        #endif // !RELEASE
+
+
+        // -------------------------------------------
+        // if <nd> has "lat"/"lon" use it and exit
+        // -------------------------------------------
+
+        outNavAid.lat = Utils::readNodeNumericAttrib<float>(nd_node, mxconst::get_ATTRIB_LAT_OSM(), 0.0f);
+        outNavAid.lon = Utils::readNodeNumericAttrib<float>(nd_node, mxconst::get_ATTRIB_LONG_OSM(), 0.0f);
+
+        // If the data is valid, we can stop searching for the <node id> using the "ref" attribute.
+        if (outNavAid.is_lat_lon_valid())
+        {
+          ref_attribute_value = Utils::readAttrib(nd_node, mxconst::get_ATTRIB_REF_OSM(), "");
+          Log::logMsgThread(fmt::format("[{}] Picked Way: {} and node ref: {}\n", __func__, way_id_s, ref_attribute_value));
+
+          target_node = nd_node.deepCopy();
+          break;
+        }
+        
+        // --------------------
+        // Pick "ref=" attribute as a fallback and search for the <node id>
+        // --------------------
+        ref_attribute_value = Utils::readAttrib(nd_node, mxconst::get_ATTRIB_REF_OSM(), "");
+        if (ref_attribute_value.empty())
+        {
+          Log::logMsgThread(fmt::format("[{}] No 'ref' attribute was found in <nd>, element maybe malformed. Will try other <nd>.\n", __func__)); // debug
+          continue; // fetch other <nd>
+        }
+
+
+        // -- Fetch data from cURL
+        const std::string node_url_s         = fmt::format("{}?data=node(id:{});out;", overpass_url_s, ref_attribute_value);
+        const auto        st_ref_node_result = missionx::data_manager::get_curl_request_respond(node_url_s);
+
+        if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+          return false;
+
+        if (!st_ref_node_result.request_err.empty() || st_ref_node_result.response_text.empty())
+        {
+          missionx::data_manager::strct_ui_share_data.error_message_line3 = fmt::format("Failed to fetch the node: {} for way: {}. Will search for other node.", ref_attribute_value, way_id_s);
+          Log::logMsgThread(fmt::format("[{}] {}.\n{}\n", __func__, missionx::data_manager::strct_ui_share_data.error_message_line3, st_ref_node_result.request_err)); // debug
+          continue; // fetch other <nd>
+        }
+
+        // Parse the "response text"
+        IXMLResults st_parse_nd_ref_result;
+        IXMLNode    final_osm_xml_respond_that_holds_the_node = iDom.parseString(st_ref_node_result.response_text.c_str(), 0, &st_parse_nd_ref_result).deepCopy();
+        if (final_osm_xml_respond_that_holds_the_node.isEmpty() || st_parse_nd_ref_result.errorCode != IXMLError_None)
+        {
+          const std::string translateError                                = Utils::xml_get_ixml_error(st_parse_nd_ref_result);
+          missionx::data_manager::strct_ui_share_data.error_message_line3 = fmt::format("Fetched node: {} for way: {}, might be malformed. Will search for other node.", ref_attribute_value, way_id_s);
+          Log::logMsgThread(fmt::format("[{}] {}.\nErrorCode: {}, Line: {}, Column: {}.  {}", __func__, missionx::data_manager::strct_ui_share_data.error_message_line3, static_cast<int>(st_parse_nd_ref_result.errorCode), st_parse_nd_ref_result.nLine, st_parse_nd_ref_result.nColumn, translateError)); // debug
+
+          continue; // fetch other <nd>
+        }
+
+        
+        target_node = final_osm_xml_respond_that_holds_the_node.getChildNode(mxconst::get_ELEMENT_NODE_OSM().c_str()).deepCopy();
+        if (target_node.isEmpty())
+          continue;
+        else
+        {
+          #ifndef RELEASE
+          Log::logMsgThread(fmt::format("[{}] Picked Way: {} and node: {}\n", __func__, way_id_s, ref_attribute_value));
+          #endif // !RELEASE
+          break;
+        }
+        
+      } // end loop over ref and <node>
+
+      // if we reach this point, a "target_node" should be available.
+      if (target_node.isEmpty())
+        continue;
+
+      outNavAid.lat = Utils::readNodeNumericAttrib<float>(target_node, mxconst::get_ATTRIB_LAT_OSM(), 0.0f);
+      outNavAid.lon = Utils::readNodeNumericAttrib<float>(target_node, mxconst::get_ATTRIB_LONG_OSM(), 0.0f);
+
+      missionx::data_manager::strct_ui_share_data.ongoing_status_message_line2 = "Found a target node.";
+
+      #ifndef RELEASE
+      Log::logMsgThread(fmt::format("[{}] Target Navaid: {}", __func__, outNavAid.get_latLon()));
+      #endif 
+
+      // validate distance from previous target
+      if (sourceLat_d * sourceLon_d != 0.0)
+      {
+        const double distance_to_target = Utils::calcDistanceBetween2Points_nm(sourceLat_d, sourceLon_d, outNavAid.lat, outNavAid.lon);
+        double       nm_d               = (nm_s.empty()) ? static_cast<double>(mxconst::INT_UNDEFINED) : mxUtils::stringToNumber<double>(nm_s, 2);
+
+        #ifndef RELEASE
+        Log::logMsgThread(fmt::format("[{}] Test Distance. Target distance: {}, Allowed distances[nm/between] [nm: {}/ between: {} and {}]", __func__, distance_to_target, (nm_d > 0.0) ? mxUtils::formatNumber<double>(nm_d, 2) : "Not Defined", minDistance_d, maxDistance_d)); // debug
+        #endif
+
+        if (!missionx::RandomEngine::gen_get_is_navaid_in_a_valid_distance(distance_to_target, nm_d, minDistance_d, maxDistance_d))
+        {
+          #ifndef RELEASE
+          Log::logMsgThread(fmt::format("[{}] target picked is not at the correct distance. Picked target in: {}, nm: {}, or between: {} and {}", __func__, distance_to_target, nm_d, minDistance_d, maxDistance_d)); // debug
+          #endif
+          continue;
+        }
+      }
+
+      // -----------
+      // -- Skipping Slope Test
+      // -----------
+
+      // Fetch WAY tag information
+      const int tags_i = osm_way_node.nChildNode("tag"); // check
+      for (int i1 = 0; i1 < tags_i; ++i1)
+      {
+        auto tagNode = osm_way_node.getChildNode("tag", i1);
+        // bool              bFound  = false;
+        const std::string key   = Utils::readAttrib(tagNode, "k", "");
+        const std::string value = Utils::readAttrib(tagNode, "v", "");
+
+        if (key == keyname_s || key == "name" || (key == "name_desc" && outNavAid.getName().empty())) // There is duplications but it provides a safety net
+        {
+          if (!value.empty())
+            outNavAid.setName(value);
+        }
+        else if (key == keyID_s || (key == "faa") || (key == "icao")) // default: "icao", in US I found faa instead of icao. There is duplications but it provides safety net
+        {
+          outNavAid.setID(value);
+        }
+        else if (key == "loc_name")
+        {
+          if (outNavAid.getName().empty() && !value.empty())
+            outNavAid.setName(value);
+
+          if (outNavAid.loc_desc.empty())
+            outNavAid.loc_desc = value;
+        }
+        else if ((key == "description"))
+        {
+          if (outNavAid.getName().empty())
+            outNavAid.setName(value);
+
+          if (!value.empty())
+            outNavAid.loc_desc = value;
+        }
+        else if (key == keydesc_s || key == "amenity") // There is duplications but it provides safety net
+        {
+          if (outNavAid.loc_desc.empty())
+            outNavAid.loc_desc = value;
+        }
+      } // end loop over all "<tag k="" v="" />" sub elements
+
+      // add the designer description to the specific picked location only if segment statement is valid.
+      if (!designer_descforce_s.empty())
+        outNavAid.loc_desc = designer_desc_s;
+      else if (!designer_desc_s.empty() && outNavAid.loc_desc.empty())
+        outNavAid.loc_desc = designer_desc_s;
+
+      // debug: show if a <way> has no name and id
+      #ifndef RELEASE 
+      if (outNavAid.getName().empty())
+        Log::logMsgThread( fmt::format("[{}] FYI: Found <way> without a name key/value.", __func__) ); // outNavAid.setName("overpass");
+      else
+        Log::logMsgThread( fmt::format("[{}] FYI: Found <way> with name: {}", __func__, outNavAid.getName() ) ); // outNavAid.setName("overpass");
+      #endif
+
+
+      // Check abort
+      if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+        return false;
+
+
+      // ------------------
+      // -- Search Intersections
+      // ------------------
+      if (mxUtils::is_number(ref_attribute_value) || (outNavAid.is_lat_lon_valid() ))
+      {
+        // lambda to build the osm filter
+        auto const lmbda_get_intersect_filter = [&]()
+        {
+          std::string filter_s;
+          if (!ref_attribute_value.empty())
+          {
+            filter_s += fmt::format("node(id:{});<;", ref_attribute_value);
+          }
+
+          if (outNavAid.is_lat_lon_valid())
+          {
+            filter_s += fmt::format("way(around:20,{},{});", outNavAid.getLat(), outNavAid.getLon() );
+          }
+
+          return filter_s; // missionx::EMPTY_STRING;
+        };
+
+        // search ways around node
+        //const std::string around_url_s = overpass_url_s + "?data=(" + lmbda_get_intersect_filter() + ")->.a;way.a['name']['highway'][!'building'];out;";
+        const std::string around_url_s = fmt::format("{}?data=({})->.a;way.a['name']['highway'][!'building'];out;", overpass_url_s, lmbda_get_intersect_filter());
+
+        #ifndef RELEASE
+        Log::logMsgThread( fmt::format("[{}] Fetch ways near target navaid. Search url: {}\n", __func__, around_url_s ));
+        #endif // !RELEASE
+
+        // const std::string around_result_s = missionx::data_manager::fetch_overpass_info(around_url_s, err);
+        const auto around_st_curl_result = missionx::data_manager::get_curl_request_respond(around_url_s);        
+
+
+        if (around_st_curl_result.request_err.empty() && !around_st_curl_result.response_text.empty())
+          outNavAid.xml_osm_around = iDom.parseString(around_st_curl_result.response_text.c_str()).deepCopy();
+
+        #ifndef RELEASE
+        if (!outNavAid.xml_osm_around.isEmpty())
+          Log::logMsgThread( fmt::format( "[{}] Ways around navaid: {}", __func__, Utils::xml_get_node_content_as_text (outNavAid.xml_osm_around) ) );
+        #endif // !RELEASE
+
+      } // end search intersection
+
+      if (outNavAid.is_lat_lon_valid())
+      {
+        flag_found_navaid_from_osm         = true;
+        outNavAid.flag_fetched_from_webosm = true;
+        return true; // exit function and from all the loops.
+      }
+    } // end loop over <way> shuffled indexes
+
+  } // end box search
+
+
+  return false; // flag_found_navaid_from_osm;
+}
+
+// ------------------------------------------
+bool
+RandomEngine::osm_get_navaid_from_overpass2(NavAidInfo&                         outNavAid,
                                            std::map<std::string, std::string>& inMapLocationSplitValues,
                                            missionx::mx_base_node&             inProperties, // v3.305.1
                                            double                              sourceLat_d,
@@ -9268,7 +9835,7 @@ PICK_OSM_CHILD_NODE:
             outNavAid.loc_desc = designer_desc_s;
 
 
-          // handle cases ware there is no name and id
+          // debug: show if a <way> has no name and id
           if (outNavAid.getName().empty()) // v3.0.253.6
             Log::logMsgThread("[osm_get_navaid_overpass] FYI: Found <way> without a name key/value."); // outNavAid.setName("overpass");
           else
@@ -9830,7 +10397,7 @@ RandomEngine::gen_land_hover_display_objects(const double& inLat, const double& 
 
     // calculate and set the <display_object>
     double target_lat, target_lon;
-    Point::mxCalcPointBasedOnDistanceAndBearing_2DPlane(target_lat, target_lon, inLat, inLon, bearing, inRadiusMT);
+    Point::mxCalcPointBasedOnDistanceInMetersAndBearing_2DPlane(target_lat, target_lon, inLat, inLon, bearing, inRadiusMT);
 
     // set up the <display_object>
     Utils::xml_set_attribute_in_node_asString(xDisplayObj, mxconst::get_ATTRIB_NAME(), obj_template_name_s, mxconst::get_ELEMENT_DISPLAY_OBJECT());
@@ -10167,6 +10734,133 @@ RandomEngine::gen_target_base_on_xy_osm_or_osmweb_types(NavAidInfo&             
   auto location_min_distance_d = inProperties.getAttribNumericValue<double>("location_min_distance_d", location_value_d);
   auto location_max_distance_d = inProperties.getAttribNumericValue<double>("location_max_distance_d", location_value_d);
 
+  // this->flag_force_template_distances_b to let designer force their "narative" when it comes to distances.
+  const bool        flag_override_random_target_min_dist = (missionx::RandomEngine::flag_force_template_distances_b) ? false : missionx::system_actions::pluginSetupOptions.getBoolValue(mxconst::get_OPT_OVERRIDE_RANDOM_TARGET_MIN_DISTANCE()); 
+  const std::string inLocationType                       = Utils::readAttrib(inProperties.node, mxconst::get_ATTRIB_LOCATION_TYPE(), "");
+
+  // Prepare distance to target
+  // location_value_d has precedence over nm_between, (v3.0.241.8) unless we defined it in the setup flag_override_random_target_min_dist. we will use nm_between if location_value_d is smaller than 1.0nm
+  double nm_random_distance_d         = 1.5;
+  double nm_max_distance_osm_radius_d = 0.0; // v3.0.241.10 will hold the expected max radius nm value for OSM-based legs
+
+  // validate distances are valid, and they respect "location_value_d" value, that represents the designer distance pick.
+  if (location_value_d > location_max_distance_d && location_value_d >= 0.0)
+    location_max_distance_d = location_value_d;
+
+  if (location_min_distance_d >= location_max_distance_d)
+    location_min_distance_d = location_max_distance_d / 2.0;
+
+  if (location_min_distance_d > location_value_d && location_value_d >= 0.0)
+    location_min_distance_d = location_value_d;
+
+  if ((location_min_distance_d > 0.0 && location_max_distance_d > 0.0) || (flag_override_random_target_min_dist && location_min_distance_d > 0.0 && location_max_distance_d > 0.0)) // v3.0.241.8 added setup flag hint
+  {
+    nm_max_distance_osm_radius_d = location_max_distance_d;
+    nm_random_distance_d         = Utils::getRandomRealNumber(location_min_distance_d, location_max_distance_d);
+
+    #ifndef RELEASE
+    Log::logDebugBO(fmt::format("[{}] location: {}, location_min_distance_d: {}, location_max_distance_d: {}", __func__, inLocationType, location_min_distance_d, location_max_distance_d), true);
+    #endif
+  }
+  else
+  {
+    location_value_d             = (location_value_d <= 1.0) ? 10.0 : location_value_d; // we do not need to handle flag_override_random_target_min_dist since it should have been dealt in the above "if" statement
+    nm_max_distance_osm_radius_d = location_value_d;
+    nm_random_distance_d         = Utils::getRandomRealNumber(1, location_value_d);
+
+    #ifndef RELEASE
+    Log::logDebugBO(fmt::format("[{}] location: {}, location_value_nm_s: {}", __func__, inLocationType, location_value_d), true);
+    #endif
+  }
+
+
+  if (inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_OSM() || inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_WEBOSM())
+  {
+    // get max radius and find the 4 points that creates the rectangle area
+    // nm_max_distance_osm_radius_d = max Radius
+    // location_minDistance_d = min radius distance
+    #ifndef Release
+    const double maxRadius_d = nm_max_distance_osm_radius_d;
+    #endif
+
+    Point E90, W270, S180, N0;
+    RandomEngine::calculate_bbox_coordinates(N0, S180, E90, W270, prev_na_ptr->lat, prev_na_ptr->lon, maxRadius_d);
+    // v26.04.4
+    const auto bbox = RandomEngine::calculate_bbox_coordinates(prev_na_ptr->lat, prev_na_ptr->lon, maxRadius_d);
+
+    if (NavAidInfo navAid
+      ; RandomEngine::osm_get_navaid_from_osm(navAid, inMapLocationSplitValues, inProperties, prev_na_ptr, bbox, nm_max_distance_osm_radius_d, location_min_distance_d))
+    {
+      if (navAid.is_lat_lon_valid())
+      {
+        outNewNavInfo.copy_target_nav_data_only(navAid); // will do synch to point
+        return true;
+      }
+    }
+  }
+  ////////// END OSM / WEB OSM target ////////////////
+
+
+  // if OSM data was not found then plugin will try to use the default target search
+  // v25.09.2
+  outNewNavInfo.flag_fetched_from_db     = false;
+  outNewNavInfo.flag_fetched_from_webosm = false;
+
+  // if we wanted an XY location, or we failed to pick a location based on OSM data, then we will fall back to XY coordinate
+  const auto heading_deg = static_cast<float>(Utils::getRandomIntNumber(0, 355));
+
+  double lon;
+  double lat = lon = 0.0;
+
+  Utils::calcPointBasedOnDistanceAndBearing_2DPlane(lat, lon, prev_na_ptr->lat, prev_na_ptr->lon, heading_deg, nm_random_distance_d);
+  outNewNavInfo.lat     = static_cast<float>(lat);
+  outNewNavInfo.lon     = static_cast<float>(lon);
+  outNewNavInfo.heading = heading_deg;
+  outNewNavInfo.gen_locDesc_short(); // v25.09.2
+  // outNewNavInfo.loc_desc = "Coordinates lat: " + outNewNavInfo.getLat () + ", lon: " + outNewNavInfo.getLon (); // DEPRECATED
+
+  #ifndef RELEASE
+  Log::logDebugBO(fmt::format("[{}] location: {}, NavAid.name: {}", __func__, inLocationType, outNewNavInfo.getNavAidName()), true);
+  #endif
+
+  // v25.09.2 deprecated, lets see what plugin will use as default
+  outNewNavInfo.flag_picked_random_lat_long = true;
+  outNewNavInfo.synchToPoint(true);
+
+  #ifndef RELEASE
+  Log::logDebugBO(fmt::format("[{}] location: {}", __func__, inLocationType), true);
+  #endif
+
+  return true;
+}
+
+// --------------------------------
+
+bool
+RandomEngine::gen_target_base_on_xy_osm_or_osmweb_types2(NavAidInfo&                         outNewNavInfo
+                                                      , mx_plane_types_enum                 in_plane_type_enum
+                                                      , std::map<std::string, std::string>& inMapLocationSplitValues
+                                                      , missionx::mx_base_node&             inProperties
+                                                      , NavAidInfo*                         prev_na_ptr)
+{
+  // pick random location. Use the location_value_nm_s as our radius length in nautical miles.
+  // Pick random number between 1 and location_value_nm_s (if location value is less than 1 then we will override it with 10nm).
+  // Pick random number between 0 and 355
+  // Using Utils:: we will get the new location
+
+  assert(prev_na_ptr != nullptr && fmt::format("[{}] Previous Navigation Aid is mandatory for this function.", __func__).c_str ()); // debug
+
+  if (prev_na_ptr == nullptr)
+  {
+    outNewNavInfo.init();
+    outNewNavInfo.err = fmt::format("[{}] Previous navigation data is not accessible.", __func__);
+    return false;
+  }
+
+  auto location_value_d        = inProperties.getAttribNumericValue<double>("location_value_d", -1.0);
+  auto location_min_distance_d = inProperties.getAttribNumericValue<double>("location_min_distance_d", location_value_d);
+  auto location_max_distance_d = inProperties.getAttribNumericValue<double>("location_max_distance_d", location_value_d);
+
 
   const bool        flag_override_random_target_min_dist = (missionx::RandomEngine::flag_force_template_distances_b) ? false : missionx::system_actions::pluginSetupOptions.getBoolValue(mxconst::get_OPT_OVERRIDE_RANDOM_TARGET_MIN_DISTANCE()); // this->flag_force_template_distances_b to let designer force their "narative" when it comes to distances.
   const std::string inLocationType                       = Utils::readAttrib(inProperties.node, mxconst::get_ATTRIB_LOCATION_TYPE(), "");
@@ -10226,7 +10920,7 @@ RandomEngine::gen_target_base_on_xy_osm_or_osmweb_types(NavAidInfo&             
 
     if (NavAidInfo navAid
       // ; RandomEngine::osm_get_navaid_from_osm (navAid, inMapLocationSplitValues, inProperties, prev_na_ptr->lat, prev_na_ptr->lon, S180.lat, N0.lat, W270.lon, E90.lon, nm_max_distance_osm_radius_d, location_min_distance_d))
-      ; RandomEngine::osm_get_navaid_from_osm(navAid, inMapLocationSplitValues, inProperties, prev_na_ptr, S180.lat, N0.lat, W270.lon, E90.lon, nm_max_distance_osm_radius_d, location_min_distance_d))
+      ; RandomEngine::osm_get_navaid_from_osm2(navAid, inMapLocationSplitValues, inProperties, prev_na_ptr, S180.lat, N0.lat, W270.lon, E90.lon, nm_max_distance_osm_radius_d, location_min_distance_d))
     {
       if (navAid.is_lat_lon_valid())
       {
@@ -10271,7 +10965,7 @@ RandomEngine::gen_target_base_on_xy_osm_or_osmweb_types(NavAidInfo&             
   return true;
 }
 
-// -----------------------------------
+// --------------------------------
 
 
 bool
@@ -10327,12 +11021,15 @@ RandomEngine::gen_target_or_last_flight_leg_base_on_xy_or_osm(NavAidInfo&       
     && in_plane_type_enum == missionx::mx_plane_types_enum::plane_type_helos)
   {
     Point E90, W270, S180, N0;
-
     // get max radius and find the 4 points that create the rectangle area
     RandomEngine::calculate_bbox_coordinates(N0, S180, E90, W270, prev_na_ptr->lat, prev_na_ptr->lon, RandomEngine::shared_navaid_info.inMaxDistance_nm);
+
+    // v26.04.4
+    const auto bbox = RandomEngine::calculate_bbox_coordinates(prev_na_ptr->lat, prev_na_ptr->lon, RandomEngine::shared_navaid_info.inMaxDistance_nm);
+
     if (NavAidInfo local_navAid;
-      // RandomEngine::osm_get_navaid_from_osm (local_navAid, inMapLocationSplitValues, inProperties, prev_na_ptr->lat, prev_na_ptr->lon, S180.lat, N0.lat, W270.lon, E90.lon, RandomEngine::shared_navaid_info.inMaxDistance_nm, location_min_distance_d))
-      RandomEngine::osm_get_navaid_from_osm(local_navAid, inMapLocationSplitValues, inProperties, prev_na_ptr, S180.lat, N0.lat, W270.lon, E90.lon, RandomEngine::shared_navaid_info.inMaxDistance_nm, location_min_distance_d))
+      //RandomEngine::osm_get_navaid_from_osm(local_navAid, inMapLocationSplitValues, inProperties, prev_na_ptr, S180.lat, N0.lat, W270.lon, E90.lon, RandomEngine::shared_navaid_info.inMaxDistance_nm, location_min_distance_d))
+      RandomEngine::osm_get_navaid_from_osm(local_navAid, inMapLocationSplitValues, inProperties, prev_na_ptr, bbox, RandomEngine::shared_navaid_info.inMaxDistance_nm, location_min_distance_d))
     {
       if (local_navAid.is_lat_lon_valid()) // none of the coordinates = 0.0
       {

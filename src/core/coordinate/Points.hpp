@@ -17,7 +17,7 @@ using namespace missionx;
 namespace missionx
 {
 // v3.0.253.5 added strct_box
-typedef struct _strct_box
+struct strct_box
 {
   Point topLeft;
   Point topRight;
@@ -63,7 +63,7 @@ typedef struct _strct_box
     return "bL:" + mxUtils::formatNumber<double>(bottomLeft.lat, 6) + "," + mxUtils::formatNumber<double>(bottomLeft.lon, 6) + ".tR:" + mxUtils::formatNumber<double>(topRight.lat, 6) + "," + mxUtils::formatNumber<double>(topRight.lon, 6);
   }
 
-} strct_box;
+};
 
 // ---------------------------------------
 

@@ -135,6 +135,8 @@ inline constexpr intptr_t HOURS_IN_A_DAY_24     = 24;
 
 inline constexpr double NEARLY_ZERO = 0.0000000001; // dataref_manager
 
+inline constexpr int BRIEFER_INDEX = 0; // v26.04.4
+
 
 #ifdef DEBUG_WRONG_TERRAIN_ELEV
 inline const static unsigned int NUM_CIRCLE_POINTS = 25; // v3.0.253.1
@@ -153,6 +155,7 @@ inline constexpr int PICKED_HALF_GLOBE = 2;
 inline constexpr int PICKED_QUARTER_GLOBE = 3;
 inline constexpr int PICKED_LOCAL_REGION_GLOBE = 4;
 inline constexpr int PICKED_IN_MY_AREA = 5; // v25.09.2 dsf +/- 1 relative to plane
+
 
 
 #endif
@@ -1407,7 +1410,7 @@ namespace conv
     } strct_node_attribute_key_value;
 
     // Structure for a bounding box
-    typedef struct BBox_struct {
+    struct strct_bbox {
       double minLat {0.0}, minLon {0.0};
       double maxLat {0.0}, maxLon {0.0};
 
@@ -1418,7 +1421,7 @@ namespace conv
         return  fmt::format("{:.5},{:.6},{:.5},{:.6}", minLat, minLon, maxLat, maxLon);
       }
 
-    } BBox;
+    };
 
     // v25.09.1
     typedef struct def_expected_location_data

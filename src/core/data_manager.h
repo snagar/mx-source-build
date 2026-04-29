@@ -182,19 +182,45 @@ struct strct_shared_random_airport_info
       this->xml_next_node_to_find_vector = inStrct.xml_next_node_to_find_vector.deepCopy();
 
       this->osm_queries.clear();
-      std::for_each(inStrct.osm_queries.begin(), inStrct.osm_queries.end(), [&](const auto& pair)
-                    {
-                      this->osm_queries.insert(pair);
-                    }
-      );
+      // std::for_each(inStrct.osm_queries.begin(), inStrct.osm_queries.end(), [&](const auto& pair)
+      //               {
+      //                 this->osm_queries.insert(pair);
+      //               }
+      std::ranges::for_each(inStrct.osm_queries, [&](const auto& pair)
+                            {
+                              this->osm_queries.insert(pair);
+                            }
+                           );
 
       this->duration = inStrct.duration;
     }
+
 
     strct_osm_query& operator=(const strct_osm_query& inStruct)
     {
       clone(inStruct);
       return *this;
+    }
+
+
+    bool is_osm_target_valid()
+    {
+      if (total_way_count < 1)
+        return false;
+
+      if (xml_target_nd_node.isEmpty())
+        return false;
+
+      if (xml_target_way_element.isEmpty())
+        return false;
+
+      return true;
+    }
+
+    void reset_osm_target_data_only()
+    {
+      xml_target_nd_node = IXMLNode::emptyIXMLNode;
+      xml_target_way_element = IXMLNode::emptyIXMLNode;
     }
 
 
@@ -1487,15 +1513,20 @@ public:
   // v25.05.1
   static IXMLNode get_default_overpass_urls_node ();
   static std::vector<std::string> get_default_overpass_urls_as_vector (const IXMLNode& inNode);
+  static std::string              gen_get_next_overpass_url(const bool in_ignore_user_preference = false);
+  static std::string              gen_get_user_prefered_overpass_url();
 
   // v25.06.1
   static void check_cache_folder (const std::string & in_cache_folder_name);
-  static void fetch_overpass_info_analyze_thread(missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::strct_osm_query *q, const std::set<enums::mx_osm_region_enum>& in_restricted_bbox_areas, const std::map<missionx::enums::mx_osm_region_enum, missionx::structs::BBox>& in_map_bbox);
+  static void fetch_overpass_info_analyze_thread(missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::strct_osm_query *q, const std::set<enums::mx_osm_region_enum>& in_search_bbox_area_list, const std::map<missionx::enums::mx_osm_region_enum, missionx::structs::strct_bbox>& in_map_bbox);
   // static void fetch_overpass_info_analyze_thread2(missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::strct_osm_query *q, const std::map<missionx::enums::mx_osm_region_enum, missionx::structs::BBox>& in_map_bbox);
 
   // 25.12.1 The function should be called from a thread. It should initialize the curl object and fetch OSM data
   // The function will fetch OSM information from local cache folder or the web. Make sure to initialize the "cache_folder" in the "*q" parameter before calling this function.
   static void fetch_ways_and_target_node_from_overpass_thread (missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
+  static mx_return find_vector_between_two_osm_nodes(missionx::structs::strct_osm_query* q, int& in_nd_node_ref_index);
+
+  static void fetch_ways_and_target_node_from_overpass_thread2 (missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
 
   // A simple function to manage thread wait for main thread actions that needs to take place before it can continue. Default wait time is 500 milliseconds for 10 iteration (5 seconds)
   // For every function call we need to handle failure cases (false returned).

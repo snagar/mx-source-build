@@ -583,7 +583,7 @@ public:
   }
   // -------------------------------------------
 
-  static void mxCalcPointBasedOnDistanceAndBearing_2DPlane(double& outLat, double& outLon, const double inLat, const double inLon, const float inHdg_deg, const double inDistance_meters, const double planet_great_circle_in_meters = (double)missionx::EARTH_RADIUS_M);
+  static void mxCalcPointBasedOnDistanceInMetersAndBearing_2DPlane(double& outLat, double& outLon, const double inLat, const double inLon, const float inHdg_deg, const double inDistance_meters, const double planet_great_circle_in_meters = (double)missionx::EARTH_RADIUS_M);
 
   // -------------------------------------------
 

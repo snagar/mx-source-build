@@ -502,7 +502,7 @@ missionx::Utils::calcElevBetween2Points_withGivenAngle_InFeet(const float distan
 void
 missionx::Utils::calcPointBasedOnDistanceAndBearing_2DPlane(double& outLat, double& outLon, const double inLat, const double inLon, const float inHdg_deg, const double inDistance_nm)
 {
-  mxUtils::mxCalcPointBasedOnDistanceAndBearing_2DPlane(outLat, outLon, inLat, inLon, inHdg_deg, inDistance_nm * missionx::nm2meter);
+  mxUtils::mxCalcPointBasedOnDistanceInMetersAndBearing_2DPlane(outLat, outLon, inLat, inLon, inHdg_deg, inDistance_nm * missionx::nm2meter);
 }
 
 // -------------------------------------------
@@ -511,7 +511,7 @@ const missionx::mxVec2d
 Utils::getPointBasedOnDistanceAndBearing_2DPlane(const double inLat, const double inLon, const float inHdg, const double inDistance)
 {
   double rlat, rlon;
-  mxUtils::mxCalcPointBasedOnDistanceAndBearing_2DPlane(rlat, rlon, inLat, inLon, inHdg, inDistance * missionx::nm2meter);
+  mxUtils::mxCalcPointBasedOnDistanceInMetersAndBearing_2DPlane(rlat, rlon, inLat, inLon, inHdg, inDistance * missionx::nm2meter);
   return missionx::mxVec2d(rlat, rlon);
 }
 
@@ -1336,11 +1336,18 @@ missionx::Utils::readAttrib(const IXMLNode& node, const std::string& attribOptio
 std::string
 missionx::Utils::readAttrib(const IXMLNode& node, const std::string &attribOptionName1, const std::string &defaultValue, const bool needStringTrim)
 {
-  return Utils::readAttrib(node, attribOptionName1, "", defaultValue, needStringTrim);
+  return Utils::readAttrib(node, attribOptionName1, "", defaultValue, needStringTrim); 
 }
 
 
 // -------------------------------------------
+
+std::string missionx::Utils::xml_get_ixml_error(const IXMLResults& in_result) 
+{ 
+  return IXMLRenderer::getErrorMessage(in_result.errorCode);
+}
+
+
 // -------------------------------------------
 
 

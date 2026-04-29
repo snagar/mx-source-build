@@ -937,7 +937,7 @@ const static ^std::string^               DB_FILE_EXTENSION                      
 const static ^std::string^               STATS_LANDING                                  ^ "landing"; ^// "L"; ^// "Landing" // v3.0.255.1
 const static ^std::string^               STATS_TAKEOFF                                  ^ "takeoff"; ^//"T"; ^// "takeoff"  // v3.0.255.1
 const static ^std::string^               STATS_TRANSITION                               ^ "transition"; ^//"T"; ^// "takeoff"  // v3.0.255.1
-const static ^std::string^               DEFAULT_OVERPASS_URL                           ^ "https://lz4.overpass-api.de/api/interpreter"; ^// v3.0.253.6 overpass default overpass URL
+const static ^std::string^               DEFAULT_OVERPASS_URL                           ^ "https://overpass-api.de/api/interpreter"; ^ // "https://lz4.overpass-api.de/api/interpreter"; ^// v3.0.253.6 overpass default overpass URL
 const static ^std::string^               ATTRIB_OSM_KEY                                 ^ "k"; ^// v3.0.253.4 <way k^"" v^"">
 const static ^std::string^               ATTRIB_OSM_VALUE                               ^ "v"; ^// v3.0.253.4 <way k^"" v^"">
 const static ^std::string^               ELEMENT_NODE_OSM                               ^ "node"; ^// v3.0.253.4 <node id^"" lat^""...">

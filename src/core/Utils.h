@@ -701,6 +701,10 @@ static T get_random_number_by_type (const T inMin, const T inMax)
   }
 
   // -------------------------------------------
+  
+  static std::string xml_get_ixml_error(const IXMLResults& in_result);
+
+  // -------------------------------------------
 
   // This function set the string based attribute values.
   static bool xml_set_attribute_in_node_asString(IXMLNode& inNode, const std::string& attribName, const std::string& attribValue, const std::string &inElementName = "")

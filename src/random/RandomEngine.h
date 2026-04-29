@@ -47,37 +47,7 @@ namespace missionx
 class RandomEngine final : public base_thread
 {
 public:
-  // typedef struct _random_airport_info_struct
-  // {
-  //   // convert icao to xml point
-  //   IXMLNode parentNode_ptr; // pointer to XML element that might hold icao elements that needs to be converted to points
-  //
-  //   Point p;
-  //   bool  isWet{false}; // will hold wet status
-  //
-  //   float       inMinDistance_nm{}; // v3.0.221.15
-  //   float       inMaxDistance_nm{};
-  //   int         inExcludeAngle{};
-  //   float       inStartFromDistance_nm{};
-  //   std::string inRestrictRampType;
-  //
-  //   NavAidInfo navAid;
-  //
-  //   _random_airport_info_struct() { init(); }
-  //
-  //   void init()
-  //   {
-  //     p.init();
-  //     isWet          = false;
-  //     inExcludeAngle = -1;
-  //     inRestrictRampType.clear();
-  //     inMinDistance_nm       = 0.0f;
-  //     inMaxDistance_nm       = static_cast<float>(mxconst::MAX_DISTANCE_TO_SEARCH_AIRPORT);
-  //     inStartFromDistance_nm = mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT;
-  //     navAid.init();
-  //     parentNode_ptr = IXMLNode::emptyIXMLNode;
-  //   }
-  // } structs::strct_shared_random_airport_info;
+
   static structs::strct_shared_random_airport_info shared_navaid_info;
 
 private:
@@ -247,7 +217,7 @@ public:
 
   static NavAidInfo get_random_airport_from_db(missionx::Point& inPoint, float inMinDistance_nm, float inMaxDistance_nm, int inExcludeAngle, missionx::mx_base_node &inProperties, const uint8_t & in_plane_type);
 
-  //// v25.10.2 Find Filter
+  //// v25.10.2 Find ramp Filter
   static missionx::mx_return gen_get_ramp_based_on_plane_type (missionx::NavAidInfo &     inout_target_navaid
                                                                , const mx_plane_types_enum &in_plane_type_enum_to_search
                                                                , const missionx::mxFilterRampType &inRampFilterType
@@ -261,13 +231,13 @@ public:
 
 private:
 
-  typedef enum class _which_type_to_force
+  enum class mx_which_type_to_force
     : uint8_t
   {
     no_force_is_needed,
     force_hover,
     force_flat_terrain_to_land
-  } mx_which_type_to_force;
+  };
 
 
   // main function
@@ -290,6 +260,11 @@ private:
                                               missionx::mx_base_node&             inProperties,
                                               NavAidInfo *prev_na_ptr); // v25.09.2
 
+static bool gen_target_base_on_xy_osm_or_osmweb_types2(NavAidInfo&                         outNewNavInfo,
+                                              mx_plane_types_enum                      in_plane_type_enum,
+                                              std::map<std::string, std::string>& inMapLocationSplitValues,
+                                              missionx::mx_base_node&             inProperties,
+                                              NavAidInfo *prev_na_ptr); // v25.09.2
 
   // v25.09.2 re-implement: "get_target_or_lastFlightLeg_base_on_XY_or_OSM()", search for airports based on XY information for all planes and for helos it can also be based on OSM data (depends on the location_type value - inLocationType)
   static bool gen_target_or_last_flight_leg_base_on_xy_or_osm(NavAidInfo&       outNewNavInfo,
@@ -312,9 +287,19 @@ private:
 
 
   static void calculate_bbox_coordinates(missionx::Point& outN0, missionx::Point& outS180, missionx::Point& outE90, missionx::Point& outW270, float inRefLat, float inRefLon, double inMaxRadius_d); // v3.0.255.3
+  // Only returns the bottomLeft and topRight of the overpass BBOX
+  static missionx::structs::strct_bbox calculate_bbox_coordinates(float inRefLat, float inRefLon, double inMaxRadius_d); // v26.04.4
   static void gather_all_osm_db_files_names_and_path(std::list<std::string>& outListOfFiles);
 
   static bool osm_get_navaid_from_osm(NavAidInfo&                         outNavAid,
+                               std::map<std::string, std::string>& inMapLocationSplitValues,
+                               missionx::mx_base_node&             inProperties, // v3.305.1
+                               NavAidInfo*                         prev_navaid_ptr, // v25.10.1
+                               structs::strct_bbox                 bbox,
+                               double                              maxDistance_d = mxconst::SLIDER_MAX_RND_DIST,
+                               double minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT );
+
+  static bool osm_get_navaid_from_osm2(NavAidInfo&                         outNavAid,
                                std::map<std::string, std::string>& inMapLocationSplitValues,
                                missionx::mx_base_node&             inProperties, // v3.305.1
                                NavAidInfo*                         prev_navaid_ptr, // v25.10.1
@@ -326,6 +311,15 @@ private:
                                double minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT );
 
   static bool osm_get_navaid_from_overpass(NavAidInfo&                         outNavAid,
+                                    std::map<std::string, std::string>& inMapLocationSplitValues,
+                                    missionx::mx_base_node&             inProperties, // v3.305.1
+                                    double                              sourceLat_d,
+                                    double                              sourceLon_d,
+                                    missionx::structs::strct_bbox       bbox,
+                                    double                              maxDistance_d = mxconst::SLIDER_MAX_RND_DIST,
+                                    double                              minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT);
+
+  static bool osm_get_navaid_from_overpass2(NavAidInfo&                         outNavAid,
                                     std::map<std::string, std::string>& inMapLocationSplitValues,
                                     missionx::mx_base_node&             inProperties, // v3.305.1
                                     double                              sourceLat_d,
@@ -349,6 +343,18 @@ private:
                                         double                              maxDistance_d = mxconst::SLIDER_MAX_RND_DIST,
                                         double                              minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT);
   
+  static bool osm_get_navaid_from_osm_database2(NavAidInfo&                         outNavAid,
+                                        std::map<std::string, std::string>& inMapLocationSplitValues,
+                                        missionx::mx_base_node&             inProperties, // v3.305.1
+                                        double                              sourceLat_d,
+                                        double                              sourceLon_d,
+                                        double                              min_lat,
+                                        double                              max_lat,
+                                        double                              min_lon,
+                                        double                              max_lon,
+                                        double                              maxDistance_d = mxconst::SLIDER_MAX_RND_DIST,
+                                        double                              minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT);
+
   // initialize the sqlite queries we would use.
   static void initQueries();
 
@@ -360,7 +366,7 @@ private:
 
   // v25.02.1
   static std::vector<IXMLNode>                                             gen_land_hover_display_objects (const double &inLat, const double &inLon, const int &inRadiusMT, const int &inHowManyObjects, int &inout_seq, const std::string &inFileName = "land_hover01.obj");
-  static std::map<missionx::enums::mx_osm_region_enum, missionx::structs::BBox> gen_quadrant_bboxes (double centerLat, double centerLon);
+  static std::map<missionx::enums::mx_osm_region_enum, missionx::structs::strct_bbox> gen_quadrant_bboxes (double centerLat, double centerLon);
 
   int seq_triggers   = 0;
   int seq_tasks      = 0;

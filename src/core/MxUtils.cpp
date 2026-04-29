@@ -699,7 +699,7 @@ missionx::mxUtils::nmToDegLon (const double nm, const double latDegrees)
 // ----------------------------------------------
 
 void
-missionx::mxUtils::mxCalcPointBasedOnDistanceAndBearing_2DPlane(double& outLat, double& outLon, const double inLat, const double inLon, const float inHdg_deg, const double inDistance_meters, const double planet_great_circle_in_meters)
+missionx::mxUtils::mxCalcPointBasedOnDistanceInMetersAndBearing_2DPlane(double& outLat, double& outLon, const double inLat, const double inLon, const float inHdg_deg, const double inDistance_meters, const double planet_great_circle_in_meters)
 {
   double epsilon = 0.000001; // # threshold for floating-point equality
 
