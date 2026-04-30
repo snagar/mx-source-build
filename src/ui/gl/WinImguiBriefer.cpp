@@ -3744,8 +3744,12 @@ WinImguiBriefer::draw_top_toolbar ()
     {
       missionx::strct_generate_template_layer.user_pick_from_replaceOptions_combo_i = mxconst::INT_UNDEFINED; // v3.0.255.4 reset user pick
       missionx::strct_ils_layer.flagNavigatedFromOtherLayer                         = false; // v24025
-      this->strct_ext_layer.ext_screen                                          = mx_ext_fpln_screen::ext_home; // v25.03.3 reset external fpln to main screen
-      missionx::strct_user_create_layer.child_screen = mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_home; // v26.04.1
+      this->strct_ext_layer.ext_screen                                              = mx_ext_fpln_screen::ext_home; // v25.03.3 reset external fpln to main screen
+      missionx::strct_user_create_layer.child_screen                                = mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_user_creation_home; // v26.04.1
+
+      // v26.04.4 reset dynamic mission creation layout
+      missionx::strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_pick;
+      missionx::strct_user_create_layer.user_semi_act_picked.reset();      
 
       switch (this->currentLayer)
       {

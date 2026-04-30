@@ -572,13 +572,13 @@ struct mx_setup_layer
     enum class mx_dynamic_fpln_screen
   : uint8_t
     {
-      ext_home = 0,
+      ext_user_creation_home = 0,
       ext_option_a,
       ext_option_b
     };
 
     bool flag_first_time{ true };
-    mx_dynamic_fpln_screen child_screen{ mx_dynamic_fpln_screen::ext_home };
+    mx_dynamic_fpln_screen child_screen{ mx_dynamic_fpln_screen::ext_user_creation_home };
 
     mx_layer_state_enum layer_state{ missionx::mx_layer_state_enum::not_initialized }; // v3.0.253.9
 

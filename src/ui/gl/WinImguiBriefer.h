@@ -635,7 +635,7 @@ private:
   ImVec2      imvec2_main_area_size              = ImVec2 (0.0f, 320.0f);
   ImVec2      imvec2_main_pick_mission_area_size = ImVec2 (0.0f, 350.0f);
 
-  void draw_top_toolbar (); // were we place the HOME button and layer name
+  void draw_top_toolbar (); // where we place the HOME button and layer name
   void popup_draw_load_warnings (std::string_view inPopupWindowName); // v26.1.1
   void popup_draw_quit_mission (std::string_view inPopupWindowName); // v3.303.8.3
   void draw_popup_extra_data_ext_fpln (std::string_view inPopupWindowName ); // v25.06.1
