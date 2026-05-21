@@ -28,6 +28,8 @@ public:
 
 static const^std::vector<const char*>^vecMarkerTypeOptions^{ "Default (point down)", "Point up 15m", "Point down 15m", "Tall point down 15x60", "Point down 60m", "Point up 60m", "Static Mission-X Text (40m)", "Rotate Mission-X Text (40m)", "Smooth Rotate Mission-X Text (40m)", "Smooth Rotate Mission-X Text (250m)", "Smooth Rotate X (40m)", "Smooth Rotate X (128m)" }
 static const^std::vector<std::string>^vecMarkerTypeOptions_markers^{ "marker01", "marker02", "marker03", "marker04", "marker05", "marker06", "marker07", "marker08", "marker09", "marker10", "marker11", "marker12" }
+// inline static^std::map<mx_ils_type_enum, std::string>^mapILS_types^{ { mx_ils_type_enum::LOC, "LOC" },{ mx_ils_type_enum::ILS_cat_I, "ILS-cat-I" }, { mx_ils_type_enum::ILS_cat_II, "ILS-cat-II" },{ mx_ils_type_enum::ILS_cat_III, "ILS-cat-III" }, { mx_ils_type_enum::IGS, "IGS" }, { mx_ils_type_enum::LDA, "LDA" }, { mx_ils_type_enum::SDF, "SDF" }, { mx_ils_type_enum::GLS, "GLS" }, { mx_ils_type_enum::LP, "LP" }, { mx_ils_type_enum::LPV, "LPV" } };   ^ // v26.04.5
+
 
 const static^std::string ^DEFAULT_CYCLE           ^ "1802";
 const static^std::string ^DEFAULT_FONT_LOCATION_0 ^ "./Resources/plugins/missionx/libs/fonts/DejaVuSansMono.ttf";

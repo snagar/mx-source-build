@@ -268,6 +268,7 @@ public:
 
   static std::string getXPlaneInstallFolder()
   {
+    XPLMEnableFeature ("XPLM_USE_NATIVE_PATHS", 1);
     char sys_path[2048]; // v3.303.8 resize to 2048
 
     XPLMGetSystemPath(sys_path);
@@ -279,18 +280,21 @@ public:
   // -------------------------------------------
   static std::string getRelativePluginsPath()
   {
-    return std::string("Resources") + XPLMGetDirectorySeparator() + "plugins";
+    // return std::string("Resources") + XPLMGetDirectorySeparator() + "plugins";
+    return std::string("Resources/plugins");
   }
 
   // -------------------------------------------
   static std::string getXplaneFullPluginsPath()
   {
+    XPLMEnableFeature ("XPLM_USE_NATIVE_PATHS", 1);
     std::string result;
     result.clear();
     char path[2048];
     XPLMGetSystemPath(path);
     result = std::string(path);
-    result += std::string("Resources") + XPLMGetDirectorySeparator() + "plugins";
+    // result += std::string("Resources") + XPLMGetDirectorySeparator() + "plugins";
+    result += "Resources/plugins"; // v26.04.5
     return result;
   }
 
@@ -298,11 +302,13 @@ public:
 
   static std::string getPluginDirectoryWithSep(const std::string& pluginDirName = missionx::PLUGIN_DIR_NAME)
   {
+    XPLMEnableFeature ("XPLM_USE_NATIVE_PATHS", 1);
     std::string result;
     result.clear();
 
     result = getXplaneFullPluginsPath();
-    result += XPLMGetDirectorySeparator() + pluginDirName + XPLMGetDirectorySeparator();
+    // result += XPLMGetDirectorySeparator() + pluginDirName + XPLMGetDirectorySeparator();
+    result += fmt::format("/{}/", pluginDirName );
 
     return result;
   }
@@ -318,10 +324,16 @@ public:
 
     XPLMGetSystemPath (sysPath);
 
+    // if (isRelative)
+    //   customMissionxPath.append("Custom Scenery").append(XPLMGetDirectorySeparator()).append("missionx").append(XPLMGetDirectorySeparator());
+    // else
+    //   customMissionxPath.append(sysPath).append("Custom Scenery").append(XPLMGetDirectorySeparator()).append("missionx").append(XPLMGetDirectorySeparator());
+
+    // v26.04.5
     if (isRelative)
-      customMissionxPath.append("Custom Scenery").append(XPLMGetDirectorySeparator()).append("missionx").append(XPLMGetDirectorySeparator());
+      customMissionxPath.append("Custom Scenery").append("/").append("missionx").append("/");
     else
-      customMissionxPath.append(sysPath).append("Custom Scenery").append(XPLMGetDirectorySeparator()).append("missionx").append(XPLMGetDirectorySeparator());
+      customMissionxPath.append(sysPath).append("Custom Scenery").append("/").append("missionx").append("/");
 
     return customMissionxPath;
   }
@@ -332,8 +344,9 @@ public:
   static std::string getCustomSceneryRelativePath()
   {
     static std::string str;
-    str = "Custom Scenery";
-    str.append(XPLMGetDirectorySeparator());
+    str = "Custom Scenery/";
+    // str.append(XPLMGetDirectorySeparator());
+    // str.append("/");
 
     return str;
   }

@@ -294,12 +294,14 @@ jobs:
 
   build-win:
     #if: ( 1 == 2 )
-    runs-on: windows-latest
+    #runs-on: windows-latest
+    runs-on: windows-2022
     needs: [pre-build]
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest]
+        #os: [windows-latest]
+        os: [windows-2022]
         build_type: [ Debug, Release ]
         # build_type: [Debug]
         c_compiler: [cl]

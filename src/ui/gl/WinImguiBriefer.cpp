@@ -210,6 +210,8 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
 
   this->mWindow = this->GetWindowId ();
 
+  strct_ils_layer.init_mapChecks_ils_types (); // v26.04.5
+
   // missionx::strct_user_create_layer.validate_sliders_values();
   this->validate_sliders_values (missionx::mx_plane_types_enum::plane_type_helos); // v24.12.1 validate based on helos distances constraints
 

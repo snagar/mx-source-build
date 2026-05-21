@@ -36,7 +36,7 @@ inline constexpr const int MX_FEATURES_VERSION = 20260403; // Added min/max rw l
 
 inline constexpr auto PLUGIN_VER_MAJOR                  = "26"; // year
 inline constexpr auto PLUGIN_VER_MINOR                  = "04"; // month
-inline constexpr auto PLUGIN_VER_SUB                    = "4"; // sub-version
+inline constexpr auto PLUGIN_VER_SUB                    = "5"; // sub-version
 inline constexpr auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 
@@ -638,17 +638,17 @@ typedef enum class _enum_trig_type
 
 
 // v3.0.253.6
-static std::map<mx_ils_type_enum, std::string> mapILS_types = { { mx_ils_type_enum::LOC, "LOC" },
-                                                                { mx_ils_type_enum::ILS_cat_I, "ILS-cat-I" },
-                                                                { mx_ils_type_enum::ILS_cat_II, "ILS-cat-II" },
-                                                                { mx_ils_type_enum::ILS_cat_III, "ILS-cat-III" },
-                                                                { mx_ils_type_enum::IGS, "IGS" },
-                                                                { mx_ils_type_enum::LDA, "LDA" },
-                                                                { mx_ils_type_enum::SDF, "SDF" },
-                                                                { mx_ils_type_enum::GLS, "GLS" }, // v3.305.4
-                                                                { mx_ils_type_enum::LP, "LP" }, // v3.305.4
-                                                                { mx_ils_type_enum::LPV, "LPV" } // v3.305.4
-                                                              };
+// inline static std::map<mx_ils_type_enum, std::string> mapILS_types = { { mx_ils_type_enum::LOC, "LOC" },
+//                                                                 { mx_ils_type_enum::ILS_cat_I, "ILS-cat-I" },
+//                                                                 { mx_ils_type_enum::ILS_cat_II, "ILS-cat-II" },
+//                                                                 { mx_ils_type_enum::ILS_cat_III, "ILS-cat-III" },
+//                                                                 { mx_ils_type_enum::IGS, "IGS" },
+//                                                                 { mx_ils_type_enum::LDA, "LDA" },
+//                                                                 { mx_ils_type_enum::SDF, "SDF" },
+//                                                                 { mx_ils_type_enum::GLS, "GLS" }, // v3.305.4
+//                                                                 { mx_ils_type_enum::LP, "LP" }, // v3.305.4
+//                                                                 { mx_ils_type_enum::LPV, "LPV" } // v3.305.4
+//                                                               };
 
 
 typedef struct _messageLine_struct
