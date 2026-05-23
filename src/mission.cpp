@@ -483,8 +483,8 @@ missionx::Mission::Mission()
   Log::set_logFile( Utils::getPluginDirectoryWithSep(missionx::PLUGIN_DIR_NAME) + "missionx.log", bCycleLogFiles ); // v24.12.2
 
   // v3.0.0
-  Log::logXPLMDebugString(header_s);  // v3.305.2 will write to both Log and missionx log files.
-  Log::logXPLMDebugString(version_s); // v3.305.2 will write to both Log and missionx log files.
+  Log::log_xplm_debug_string(header_s);  // v3.305.2 will write to both Log and missionx log files.
+  Log::log_xplm_debug_string(version_s); // v3.305.2 will write to both Log and missionx log files.
 
   // initialize external script manager
   if (missionx::data_manager::sm.init())

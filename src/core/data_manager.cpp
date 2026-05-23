@@ -1008,7 +1008,7 @@ data_manager::get_fail_timer_title_formated_for_imgui(const std::string& in_defa
 // -------------------------------------
 
 std::string
-data_manager::get_fail_timer_in_formated_text(const std::string& prefix_to_foramted_string)
+data_manager::get_fail_timer_in_formated_text(const std::string& prefix_to_formated_string)
 {
   if (lowestFailTimerName_s.empty())
     return "";
@@ -1020,9 +1020,9 @@ data_manager::get_fail_timer_in_formated_text(const std::string& prefix_to_foram
   auto seconds        = static_cast<int> ( remaining_time - ( hours * SECONDS_IN_1HOUR_3600 + minutes * SECONDS_IN_1MINUTE ) );
 
   if (days > 0)
-    return prefix_to_foramted_string + mxUtils::formatNumber<int>(days) + ":" + mxUtils::formatNumber<int>(hours) + ":" + mxUtils::formatNumber<int>(minutes) + ":" + mxUtils::formatNumber<int>(seconds) + "(d:h:m:s)";
+    return prefix_to_formated_string + mxUtils::formatNumber<int>(days) + ":" + mxUtils::formatNumber<int>(hours) + ":" + mxUtils::formatNumber<int>(minutes) + ":" + mxUtils::formatNumber<int>(seconds) + "(d:h:m:s)";
 
-  return prefix_to_foramted_string + mxUtils::formatNumber<int>(hours) + ":" + mxUtils::formatNumber<int>(minutes) + ":" + mxUtils::formatNumber<int>(seconds) + "(h:m:s)";
+  return prefix_to_formated_string + mxUtils::formatNumber<int>(hours) + ":" + mxUtils::formatNumber<int>(minutes) + ":" + mxUtils::formatNumber<int>(seconds) + "(h:m:s)";
 }
 
 // -------------------------------------
@@ -1090,12 +1090,12 @@ data_manager::readPluginTextures()
                                                   mxconst::get_BITMAP_MAP_MXPAD(),
                                                   mxconst::get_BITMAP_AUTO_HIDE_EYE_FOCUS(),
                                                   mxconst::get_BITMAP_AUTO_HIDE_EYE_FOCUS_DISABLED(),
-                                                  
+
                                                   mxconst::get_BITMAP_HOME(),
                                                   mxconst::get_BITMAP_TARGET_MARKER_ICON(),
                                                   mxconst::get_BITMAP_BTN_LAB_24X18(),
                                                   mxconst::get_BITMAP_BTN_WORLD_PATH_24X18(),
-                                                  
+
                                                   mxconst::get_BITMAP_BTN_PREPARE_MISSION_24X18(),
                                                   mxconst::get_BITMAP_BTN_FLY_MISSION_24X18(),
                                                   mxconst::get_BITMAP_BTN_SETUP_24X18(),
@@ -1107,7 +1107,7 @@ data_manager::readPluginTextures()
                                                   mxconst::get_BITMAP_FMOD_LOGO(),
                                                   mxconst::get_BITMAP_BTN_WARN_SMALL_32x28(),
                                                   mxconst::get_BITMAP_BTN_CONVERT_FPLN_TO_MISSION_24X18(),
-                                                  
+
                                                   mxconst::get_BITMAP_BTN_NAVINFO(),
                                                   mxconst::get_BITMAP_BTN_SIMBRIEF_BIG(),
                                                   mxconst::get_BITMAP_BTN_SIMBRIEF_ICO(),
@@ -1144,7 +1144,7 @@ data_manager::readPluginTextures()
 
       // v25.08.1
       const std::string feedback = fmt::format("Loaded bitmap: {} [{}]\n", tFile.getAbsoluteFileLocation (), tFile.texture_hash_simple); // debug
-      Log::logXPLMDebugString(feedback, false); // debug
+      Log::log_xplm_debug_string(feedback, false); // debug
     }
   }
 }
@@ -2036,6 +2036,7 @@ data_manager::prepare_flight_plan_for_XPLN11(std::deque<NavAidInfo>& inNavList)
   const std::string WP_S                  = "WP";
 
   size_t counter = 0;
+  float elev_f = 0.0f;
   for (auto& navInfo : inNavList)
   {
     std::string icao = mxUtils::remove_char_from_string(Utils::stringToUpper(navInfo.getID()), ' '); // remove any space from the name of the icao
@@ -2092,32 +2093,41 @@ data_manager::prepare_flight_plan_for_XPLN11(std::deque<NavAidInfo>& inNavList)
         header += fmt::format ("{} {}\n", NON_AIRPORT_DEST, icao); //header.append(NON_AIRPORT_DEST + " " + icao + "\n"); // // Not an airport should be DES
     }
 
+    // fictive elevation
+    if (counter == 1 || counter == NUMENR )
+      elev_f = (navInfo.height_mt * missionx::meter2feet > 0.0f)? navInfo.height_mt * missionx::meter2feet : 10.0f;
+    else
+      elev_f = 2000.0f;
+
     // Handle waypoints
     switch (navInfo.navType)
     {
       case xplm_Nav_Airport:
       {
-        waypoints_s += fmt::format("{} {} {} {} {} {} \n", 1, icao, ((counter == 1) ? AIRPORT_DEPARTURE : (counter == NUMENR) ? AIRPORT_DEST : DIRECT), 0, navInfo.getLat(), navInfo.getLon());
+        if (counter >= NUMENR - 1)
+            elev_f = 0.0f; // on ground
+
+        waypoints_s += fmt::format("{} {} {} {} {} {} \n", 1, icao, ((counter == 1) ? AIRPORT_DEPARTURE : (counter == NUMENR) ? AIRPORT_DEST : DIRECT), elev_f, navInfo.getLat(), navInfo.getLon());
       }
       break;
       case xplm_Nav_NDB:
       {
-        waypoints_s += fmt::format("{} {} {} {} {} {} \n", 2, icao, ((counter == 1) ? NON_AIRPORT_DEPARTURE : (counter == NUMENR) ? NON_AIRPORT_DEST : DIRECT), 0, navInfo.getLat(), navInfo.getLon()); // Not an airport should be DES code, I also changed first enroute to DEP from ADEP
+        waypoints_s += fmt::format("{} {} {} {} {} {} \n", 2, icao, ((counter == 1) ? NON_AIRPORT_DEPARTURE : (counter == NUMENR) ? NON_AIRPORT_DEST : DIRECT), elev_f, navInfo.getLat(), navInfo.getLon()); // Not an airport should be DES code, I also changed first enroute to DEP from ADEP
       }
       break;
       case xplm_Nav_VOR:
       {
-        waypoints_s += fmt::format("{} {} {} {} {} {} \n", 3, icao, ((counter == 1) ? NON_AIRPORT_DEPARTURE : (counter == NUMENR) ? NON_AIRPORT_DEST : DIRECT), 0, navInfo.getLat(), navInfo.getLon()); // Not an airport should be DES code, I also changed first enroute to DEP from ADEP
+        waypoints_s += fmt::format("{} {} {} {} {} {} \n", 3, icao, ((counter == 1) ? NON_AIRPORT_DEPARTURE : (counter == NUMENR) ? NON_AIRPORT_DEST : DIRECT), elev_f, navInfo.getLat(), navInfo.getLon()); // Not an airport should be DES code, I also changed first enroute to DEP from ADEP
       }
       break;
       case xplm_Nav_Fix:
       {
-        waypoints_s += fmt::format("{} {} {} {} {} {} \n", 11, icao, ((counter == 1) ? NON_AIRPORT_DEPARTURE : (counter == NUMENR) ? NON_AIRPORT_DEST : DIRECT), 0, navInfo.getLat(), navInfo.getLon()); // Not an airport should be DES code, I also changed first enroute to DEP from ADEP
+        waypoints_s += fmt::format("{} {} {} {} {} {} \n", 11, icao, ((counter == 1) ? NON_AIRPORT_DEPARTURE : (counter == NUMENR) ? NON_AIRPORT_DEST : DIRECT), elev_f, navInfo.getLat(), navInfo.getLon()); // Not an airport should be DES code, I also changed first enroute to DEP from ADEP
       }
       break;
       default: // unnamed lat/lon and other types
       {
-        waypoints_s += fmt::format("{} {} {} {} {} {} \n", 28, icao, ((counter == 1) ? NON_AIRPORT_DEPARTURE : (counter == NUMENR) ? NON_AIRPORT_DEST : DIRECT), 0, navInfo.getLat(), navInfo.getLon()); // Not an airport should be DES code, I also changed first enroute to DEP from ADEP
+        waypoints_s += fmt::format("{} {} {} {} {} {} \n", 28, icao, ((counter == 1) ? NON_AIRPORT_DEPARTURE : (counter == NUMENR) ? NON_AIRPORT_DEST : DIRECT), elev_f, navInfo.getLat(), navInfo.getLon()); // Not an airport should be DES code, I also changed first enroute to DEP from ADEP
       }
       break;
     } // end switch
@@ -6136,7 +6146,7 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
 
     if (data_manager::xplm_version >= 400)
     {
-      // test against the nearest navaid      
+      // test against the nearest navaid
       data_manager::metar_thread_state.init ();
       data_manager::shared_navaid_between_threads.init ();
       data_manager::shared_navaid_between_threads.setID (nav.icao);
@@ -6305,7 +6315,7 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
   missionx::structs::strct_curl_result simbrief_st_curl_result;
 
   long httpStatus = 0;
-  
+
   // try up to three times
   std::string          msg;
   constexpr static int MAX_TRIES = 3;
@@ -6866,10 +6876,10 @@ data_manager::get_curl_request_respond(const std::string& in_url_s, const std::s
       for (int v_loop01 = 0; v_loop01 < in_loop_tries && (CURLE_OK != st_result.res_curl); ++v_loop01)
       {
         st_result.reset();
-        
+
         // sleep before calling overpass
         std::this_thread::sleep_for (std::chrono::seconds(2)); // v25.06.1 not overwhelm the overpass server
-        
+
         Log::logMsgThread(fmt::format("[{}] Call ID: {}\t from: \"{}\"", __func__, data_manager::curl_call_counter_i, base_url));
 
         char errBuff[CURL_ERROR_SIZE] = "\0"; // v3.305.3
@@ -8651,8 +8661,8 @@ data_manager::get_default_overpass_urls_as_vector (const IXMLNode &inNode)
 // -------------------------------------
 
 
-std::string missionx::data_manager::gen_get_next_overpass_url(const bool in_ignore_user_preference) 
-{ 
+std::string missionx::data_manager::gen_get_next_overpass_url(const bool in_ignore_user_preference)
+{
   static size_t last_index = 0;
   const bool    b_lock_to_preferred_url = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_SETUP_LOCK_OVERPASS_URL_TO_USER_PICK(), false);
   std::string   url        = gen_get_user_preferred_overpass_url();
@@ -8695,8 +8705,8 @@ std::string missionx::data_manager::gen_get_next_overpass_url(const bool in_igno
 // -------------------------------------
 
 std::string missionx::data_manager::gen_get_user_preferred_overpass_url()
-{ 
-  return missionx::system_actions::pluginSetupOptions.getNodeText_type_6(mxconst::get_OPT_OVERPASS_URL(), mxconst::get_DEFAULT_OVERPASS_URL()); 
+{
+  return missionx::system_actions::pluginSetupOptions.getNodeText_type_6(mxconst::get_OPT_OVERPASS_URL(), mxconst::get_DEFAULT_OVERPASS_URL());
 }
 
 
@@ -8883,8 +8893,8 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
             // res != CURLE_OK
             Log::logMsgThread(fmt::format("[{}]\tCurl error: \n\t{}\n", __func__, curl_easy_strerror(strct_result.res_curl)));
             std::this_thread::sleep_for(std::chrono::seconds(5)); // Sleep longer
-          }          
-          
+          }
+
         } // End CURL call loop, over shuffled overpass url vectors
 
       } // end if "not to use cache"
@@ -9254,7 +9264,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
     //CURLcode res                      = CURL_LAST;
     bool     flag_curl_results_are_ok = false;
     size_t   curl_call_counter_i_2       = 0;
-    
+
     // Call Overpass up to "data_manager::vecOverpassUrls.size ()" times
     while (!flag_curl_results_are_ok && curl_call_counter_i_2 < data_manager::vecOverpassUrls.size ())
     {
@@ -9270,7 +9280,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
       Log::logMsgThread (fmt::format ("[{}] Fetching way data from overpass: {}.\nFilter:\n{}\n<---\n", __func__, overpass_url, q->q_unescaped_request));
       #endif
 
-      response_text.clear ();      
+      response_text.clear ();
 
       // ----------------------------------
       // -- CURL REQUEST - Gather the <way> sub-nodes information
@@ -9500,7 +9510,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
 // -------------------------------------
 
 mx_return missionx::data_manager::find_vector_between_two_osm_nodes(missionx::structs::strct_osm_query* q, int& in_nd_node_ref_index)
-{ 
+{
   missionx::mx_return result = false;
   if (q && q->xml_target_way_element.isEmpty())
   {
@@ -9527,7 +9537,7 @@ mx_return missionx::data_manager::find_vector_between_two_osm_nodes(missionx::st
     if ((in_nd_node_ref_index + 1) <= (nd_count - 1))
       return in_nd_node_ref_index + 1;
 
-   
+
     // Try previous node
     if ((in_nd_node_ref_index - 1) > -1)
       return in_nd_node_ref_index - 1;
@@ -9566,7 +9576,7 @@ mx_return missionx::data_manager::find_vector_between_two_osm_nodes(missionx::st
         // Check if we have a valid "lat/lon" attributes in <nd> node, instead of quering the "ref" value for <node>.
         missionx::NavAidInfo na;
         na.lat = Utils::readNodeNumericAttrib<float>(nd_node_on_vector, mxconst::get_ATTRIB_LAT_OSM(), 0.0f);
-        na.lon = Utils::readNodeNumericAttrib<float>(nd_node_on_vector, mxconst::get_ATTRIB_LONG_OSM(), 0.0f); 
+        na.lon = Utils::readNodeNumericAttrib<float>(nd_node_on_vector, mxconst::get_ATTRIB_LONG_OSM(), 0.0f);
         if (na.is_lat_lon_valid())
         {
           q->xml_next_node_to_find_vector = nd_node_on_vector.deepCopy();
@@ -9577,7 +9587,7 @@ mx_return missionx::data_manager::find_vector_between_two_osm_nodes(missionx::st
         }
 
         // Fallback if <nd> does not have valid "lat/lon"
-        // 
+        //
         // prepare query
         auto node_ref_id = Utils::readAttrib(nd_node_on_vector, mxconst::get_ATTRIB_REF_OSM(), "", "-1", true);
 
@@ -9593,8 +9603,8 @@ mx_return missionx::data_manager::find_vector_between_two_osm_nodes(missionx::st
 
         std::this_thread::sleep_for(std::chrono::seconds(2)); // wait for a few seconds
         st_curl_result_for_step3 = data_manager::get_curl_request_respond(overpass_url_to_fetch_ref, s_curl_vector_node_query, 2);
-        
-        const std::string result_text = st_curl_result_for_step3.response_text;        
+
+        const std::string result_text = st_curl_result_for_step3.response_text;
 
         #ifndef RELEASE
         if (!st_curl_result_for_step3.request_err.empty())
@@ -9622,7 +9632,7 @@ mx_return missionx::data_manager::find_vector_between_two_osm_nodes(missionx::st
   // End calling cURL to find node info
 
 
-  return result; 
+  return result;
 }
 
 // -------------------------------------
@@ -9736,21 +9746,21 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread2 (missionx::base_t
   //  //CURLcode res                      = CURL_LAST;
   //  bool     flag_curl_results_are_ok = false;
   //  size_t   curl_call_counter_i       = 0;
-  //  
+  //
   //  // Call Overpass up to "data_manager::vecOverpassUrls.size ()" times
   //  while (!flag_curl_results_are_ok && curl_call_counter_i < data_manager::vecOverpassUrls.size ())
   //  {
   //    std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for one second before sending a new request
 
   //    // Get overpass url
-  //    const auto &overpass_url = (curl_call_counter_i < data_manager::vecOverpassUrls.size ()) ? data_manager::vecOverpassUrls.at (curl_call_counter_i) 
+  //    const auto &overpass_url = (curl_call_counter_i < data_manager::vecOverpassUrls.size ()) ? data_manager::vecOverpassUrls.at (curl_call_counter_i)
   //                                                                                             : mxconst::get_DEFAULT_OVERPASS_URL ();
 
   //    #ifndef RELEASE
   //    Log::logMsgThread (fmt::format ("[{}] Fetching way data from overpass: {}.\nFilter:\n{}\n<---\n", __func__, overpass_url, q->q_unescaped_request));
   //    #endif
 
-  //    response_text.clear ();      
+  //    response_text.clear ();
 
   //    // ----------------------------------
   //    // -- CURL REQUEST - Gather <way> nodes
@@ -10065,7 +10075,7 @@ data_manager::waitForPluginCallbackJob (missionx::base_thread::strct_thread_stat
     missionx::data_manager::queFlcActions.emplace_back (inQueuedCommand); // provide the queued command
 
     std::this_thread::sleep_for (std::chrono::milliseconds (inWaitTimeMilliseconds));
-  
+
     while (out_state_ptr->thread_wait_state < missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job && (waitCounter < inLimitWaitCounter) && !out_state_ptr->flagAbortThread && out_state_ptr->flagIsActive)
     {
       ++waitCounter;

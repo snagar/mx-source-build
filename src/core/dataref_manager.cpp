@@ -332,13 +332,8 @@ missionx::dataref_manager::getLocalMinutes ()
 int
 missionx::dataref_manager::getLocalHour()
 {
-
   return XPLMGetDatai(missionx::drefConst.dref_local_time_hours_i);
 }
-
-
-
-
 
 // ---------------------------------------
 

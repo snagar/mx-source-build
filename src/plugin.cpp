@@ -96,9 +96,7 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
   data_manager::readPluginTextures (); // v3.0.118
 
   std::memset (missionx::LOG_BUFF, '\0', missionx::LOG_BUFF_SIZE); // First time initialization of LOG_BUFF so it will have a concrete set of memory to work on.
-  missionx::Timer t1;
-  Timer::start (t1, 0, "XPluginStart Timer");
-
+  auto start_timer = std::chrono::steady_clock::now();
 
   // folder data
   Log::logMsgNone (Utils::xml_get_node_content_as_text (data_manager::mx_folders_properties.node));
@@ -361,23 +359,16 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
     missionx::data_manager::sqlite_test_db_validity (missionx::data_manager::db_xp_airports); // v3.0.255.3
   }
 
-  // 24.12.2 Seed the std::rnd with current time
-  // auto now = std::chrono::system_clock::now();
-  // std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
-  // std::srand(static_cast<unsigned>(std::time(&currentTime)));
-  // auto rng = mxUtils::create_random_engine();
-
-
   // v25.06.1 purge cache files
   const std::string cache_folder = fmt::format ("{}/{}", Utils::getRelativePluginsPath (), "missionx/db/cache");
   missionx::system_actions::purge_cache_files (cache_folder);
 
 
-  Timer::wasEnded (t1);
-  //  Log::logMsgNone("\n");
-  Log::logMsgNone (Timer::to_string (t1));
+  const auto now = std::chrono::steady_clock::now();
+  const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now-start_timer).count();
 
-  Log::logXPLMDebugString (">>>>>>>>>>>> END Loading Mission-X <<<<<<<<<<<<\n");
+  Log::log_xplm_debug_string (fmt::format("plugin init in: {}sec\n", (static_cast<double>(duration) / 1000.0) ));
+  Log::log_xplm_debug_string (">>>>>>>>>>>> END Loading Mission-X <<<<<<<<<<<<\n");
 
   return 1;
 }
@@ -600,6 +591,13 @@ XPluginReceiveMessage (XPLMPluginID inFrom, const intptr_t inMsg, void *inParam)
             missionx::data_manager::set_flag_rebuild_apt_dat(false); // reset
           }          
         }
+
+        // Initialize local day - always initialize to 90days and 23 o'clock. Will be re-initialized on first briefer open which provide better result.
+        adv_settings_strct.iClockDayOfYearPicked = dataref_manager::getLocalDateDays ();
+        adv_settings_strct.iClockHourPicked      = dataref_manager::getLocalHour ();
+        adv_settings_strct.iClockMinutesPicked   = dataref_manager::getLocalMinutes ();
+
+        missionx::flag_xplane_world_initialized = true;
       } // end scenery pack ini hash test.
 
       first_load = false;

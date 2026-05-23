@@ -270,10 +270,11 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
   // v26.04.4
   missionx::strct_setup_layer.bDisableInventoryImageLoad =   system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_DISABLE_INVENTORY_IMAGE_LOAD(), false); // troubleshoot: inventory image load.
 
-  // Initialize local day - always initialize to 90days and 23 o'clock. Will be re-initialized on first briefer open which provide better result.
-  adv_settings_strct.iClockDayOfYearPicked = dataref_manager::getLocalDateDays ();
-  adv_settings_strct.iClockHourPicked      = dataref_manager::getLocalHour ();
-  adv_settings_strct.iClockMinutesPicked   = dataref_manager::getLocalMinutes (); // v25.04.2
+  // v26.04.5 disable and move to scenery load
+  // // Initialize local day - always initialize to 90days and 23 o'clock. Will be re-initialized on first briefer open which provide better result.
+  // adv_settings_strct.iClockDayOfYearPicked = dataref_manager::getLocalDateDays ();
+  // adv_settings_strct.iClockHourPicked      = dataref_manager::getLocalHour ();
+  // adv_settings_strct.iClockMinutesPicked   = dataref_manager::getLocalMinutes (); // v25.04.2
 
 
   // v25.04.1 reserve the original "cargo_arr" before reading from the external cargo.xml file
@@ -3301,7 +3302,11 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
       // ------------------------------
       // Add other settings: header
       // ------------------------------
+      ImGui::PushStyleColor (ImGuiCol_HeaderHovered, missionx::color::color_vec4_azure);
+      ImGui::PushStyleColor (ImGuiCol_Header, missionx::color::color_vec4_coral);
+      ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_navy); // Text
       add_other_settings_header(b_plane_is_helos, bPickedMedevacMission, bPickedOilRigMission);
+      ImGui::PopStyleColor(3);
 
     }
     ImGui::EndChild();

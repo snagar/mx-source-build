@@ -66,7 +66,7 @@ public:
   //static bool save_acf_datarefs_with_savepoint(std::string inFileAndPath, std::string inTargetFileAndPath, std::string& outError); // v3.303.9.1
 
   // read missions checkpoint dataref file and apply in x-plane
-  static bool read_saved_mission_dataref_file(std::string inFileAndPath, std::string& outError, const bool bIsCustomDataref=false);
+  static bool read_saved_mission_dataref_file(const std::string& inFileAndPath, std::string& outError, const bool bIsCustomDataref=false);
 
   // get full path and options file
   static std::string getOptionFileAndPath();
@@ -76,11 +76,11 @@ public:
 
   static IXMLNode add_overpass_urls();
   static void     store_plugin_options();                                                         // returns the ROOT node
-  static IXMLNode create_new_plugin_preference_file(IXMLNode inOldOptionsNode = IXMLNode::emptyNode()); // returns the ROOT node
+  static IXMLNode create_new_plugin_preference_file(); // returns the ROOT node
 
   //static std::set<std::string> gather_custom_acf_datarefs(fs::path inFile);
   static std::set<std::string> search_datarefs_in_acf_file(const std::string& inSourceFile);
-  static std::set<std::string> search_datarefs_in_obj_file(fs::path inFile);
+  static std::set<std::string> search_datarefs_in_obj_file(const fs::path& inFile);
   // purge cached files on plugin load.
   static void purge_cache_files (const fs::path& directory_path, bool is_thread = false); // v25.06.1
 

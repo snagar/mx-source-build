@@ -438,9 +438,9 @@ missionx::system_actions::save_acf_datarefs_with_savepoint_v2(const std::string&
 
 
 std::set<std::string>
-missionx::system_actions::search_datarefs_in_obj_file (fs::path inFile)
+missionx::system_actions::search_datarefs_in_obj_file (const fs::path& inFile)
 {
-  const size_t          min_line_chars = 25;
+  constexpr size_t      min_line_chars = 25;
   std::ifstream         file_toRead;
   std::set<std::string> setDatarefs;
 
@@ -482,17 +482,20 @@ missionx::system_actions::search_datarefs_in_obj_file (fs::path inFile)
         setDatarefs.insert (lastVal_s);
       }
 
-
     } // end loop over file lines
 
 
     if (file_toRead.bad ())
-      perror ("error while reading file");
+    {
+      // perror ("error while reading file");
+      Log::logMsgErr(fmt::format("[{}]error while reading file: '{}'", __func__, inFile.string() ), true);
+    }
   }
   else // fail to open file
   {
-    Log::logAttention ((std::string ("[Fail parse aptdat] Fail to open file: ") + inFile.string ()).c_str (), true);
+    Log::logAttention (fmt::format ("[{}] Fail to open file: {}", __func__, inFile.string ()), true);
   }
+
   return setDatarefs;
 }
 
@@ -547,13 +550,12 @@ system_actions::purge_cache_files (const fs::path &directory_path, const bool is
 // -----------------------------------
 
 bool
-missionx::system_actions::read_saved_mission_dataref_file(std::string inFileAndPath, std::string& outError, const bool bIsCustomDataref)
+missionx::system_actions::read_saved_mission_dataref_file(const std::string& inFileAndPath, std::string& outError, const bool bIsCustomDataref)
 {
   // 1. open saved file
   // 2. read each line
   // 2.1 check if valid dataref (use Dataref class)
   outError.clear();
-//  unsigned int             drefLineCounter = 0;
   std::vector<std::string> vecDrefLineSplit;
   std::vector<std::string> vecValues;
   std::string              line;
@@ -562,21 +564,23 @@ missionx::system_actions::read_saved_mission_dataref_file(std::string inFileAndP
   key.clear();
   std::string drefValue; // holds only the value of the key stored in file
 
-#ifndef RELEASE
+  #ifndef RELEASE
   if (bIsCustomDataref) // v3.303.9.1
     Log::logMsg(">>>> Opening Saved Custom Datarefs.");
   else 
     Log::logMsg(">>>> Opening Saved Datarefs.");
-#endif
+  #endif
+
   std::ifstream fin;
   fin.open(inFileAndPath.c_str());
 
-
   // v3.0.152
-  int fileNameLength = (int)inFileAndPath.size();
+  auto fileNameLength = inFileAndPath.size();
+  const auto file_name_to_display = (fileNameLength < 110) ? inFileAndPath : fmt::format("{} ... {}", inFileAndPath.substr(0, 30), inFileAndPath.substr(inFileAndPath.size() - 60));
 
   // v3.0.215.6 fixed a loading bug when folder string length exceed 110 characters. The last character split code did not use: "inFileAndPath.size()" and that caused a crash
-  const std::string displayFileNameInMessage = mxconst::get_QM() + ((fileNameLength < 110) ? inFileAndPath : std::string(inFileAndPath.substr(0, 30)).append(" ... ").append(inFileAndPath.substr(inFileAndPath.size() - 60))) + mxconst::get_QM();
+  // const std::string displayFileNameInMessage = mxconst::get_QM() + ((fileNameLength < 110) ? inFileAndPath : std::string(inFileAndPath.substr(0, 30)).append(" ... ").append(inFileAndPath.substr(inFileAndPath.size() - 60))) + mxconst::get_QM();
+  const std::string displayFileNameInMessage = fmt::format("\"{}\"", file_name_to_display);
 
   if (fin.fail() || fin.bad())
   {
@@ -599,14 +603,13 @@ missionx::system_actions::read_saved_mission_dataref_file(std::string inFileAndP
     }
 
     line = Utils::trim(line);
-//    drefLineCounter++;
 
     // skip if empty
     if (line.empty())
       continue;
 
     // check if line starts with "s" "sim/xxx"
-    char firstChar = line.front();
+    const char firstChar = line.front();
     if ( false == bIsCustomDataref && firstChar != 's') // v3.303.9.1 skip only if this is x-plane dataref and not custom dataref
       continue; // skip line
 
@@ -619,13 +622,8 @@ missionx::system_actions::read_saved_mission_dataref_file(std::string inFileAndP
     if (vecDrefLineSplit.empty() || vecDrefLineSplit.size() < 4)
       continue;
 
-    // store localy the split values
+    // store locally the split values
     key = vecDrefLineSplit.at(system_actions::MX_LOAD_KEY_POS_IN_VEC);
-
-    //#ifndef RELEASE // debug purpose 
-    //if (key.compare("sim/weather/region/cloud_base_msl_m") == 0)
-    //  int i = 0;
-    //#endif
 
     drefValue = vecDrefLineSplit.at(system_actions::MX_LOAD_VALUE_POS_IN_VEC); // holds value
 
@@ -640,65 +638,26 @@ missionx::system_actions::read_saved_mission_dataref_file(std::string inFileAndP
     // create dataref_param
     // initialize key
     // if not array, then set value
-    // if array then prepare array and call setarray function
-    dataref_param dref(key);
-    if (dref.dataRefType == xplmType_IntArray)
+    // if array then prepare array and call set array function
+    if (dataref_param dref(key)
+        ; dref.dataRefType == xplmType_IntArray || dref.dataRefType == xplmType_FloatArray)
     {
       // Option A: cons: magnetos switch reset to 0
       missionx::data_manager::apply_dataref_based_on_key_value_strings(key, drefValue);
-
-      //// Options B:
-      //dref.out_vecArrayIntValues.clear();
-      //for (auto s : vecValues)
-      //  dref.out_vecArrayIntValues.push_back(Utils::stringToNumber<int>(s));
-      // dref.flag_individual_value_copy_inTheArray = true; // v3.305.3
-      // dataref_param::set_dataref_value_into_xplane(dref, true); // v3.305.3 added custom value flag
-
-//#ifndef RELEASE
-//      std::string format = "[" + dref.key + "] [";
-//      for (auto s : vecValues)
-//        format += s + " ";
-//
-//      format += "]";
-//
-//#endif
-
     }
-    else if (dref.dataRefType == xplmType_FloatArray)
+    else if (dref.dataRefType == xplmType_Int || dref.dataRefType == xplmType_Float || dref.dataRefType == xplmType_Double || (dref.dataRefType == (xplmType_Float | xplmType_Double) ))
     {
-      //// Option A: cons: magnetos switch reset to 0
-      missionx::data_manager::apply_dataref_based_on_key_value_strings(key, drefValue);
-
-      //// Option B:
-      //dref.out_vecArrayFloatValues.clear();
-      //for (auto s : vecValues)
-      //  dref.out_vecArrayFloatValues.push_back(Utils::stringToNumber<float>(s));
-      // dref.flag_individual_value_copy_inTheArray = true; // v3.305.3
-      // dataref_param::set_dataref_value_into_xplane(dref, true); // v3.305.3 added custom value flag
-
-//#ifndef RELEASE
-//      std::string format = "[" + dref.key + "] [";
-//      for (auto s : vecValues)
-//        format += s + " ";
-//
-//      format += "]";
-//#endif
-    }
-    else if (dref.dataRefType == xplmType_Int || dref.dataRefType == xplmType_Float || dref.dataRefType == xplmType_Double)
-    {
-      const double d = Utils::stringToNumber<double>(drefValue);
+      const auto d = Utils::stringToNumber<double>(drefValue);
       dref.setValue(d);
 
       dataref_param::set_dataref_values_into_xplane(dref);
-
     }
     else
     {
-      Log::logMsgErr("Dataref might not be supported: " + mxconst::get_QM() + key + mxconst::get_QM());
+      Log::logMsgErr( fmt::format("Dataref might not be supported: \"{}\" ", key) );
     }
 
   } // loop until eof
-
 
   return true;
 } // read_saved_mission_dataref_file
@@ -709,19 +668,14 @@ missionx::system_actions::read_saved_mission_dataref_file(std::string inFileAndP
 std::string
 missionx::system_actions::getOptionFileAndPath()
 {
-  char              path[1024]   = { '\0' };
-  const std::string fileName     = "missionx_pref_v3.xml";
-  std::string       fullPathName = "";
+  char path[2048] = {'\0'};
+  auto fileName   = mxconst::get_MISSIONX_PROPERTIES_FILE_NAME();
 
   XPLMGetPrefsPath(path);
   XPLMExtractFileAndPath(path);
 
-  fullPathName = std::string(path) + XPLMGetDirectorySeparator() + fileName;
-
-
-  return fullPathName;
+  return fmt::format("{}/{}", path, fileName);
 }
-
 
 // -----------------------------------
 
@@ -732,22 +686,17 @@ missionx::system_actions::load_plugin_options()
   std::string       errMsg;
   errMsg.clear();
 
-
   IXMLDomParser iDom;
-  ITCXMLNode    xMissionxNode = iDom.openFileHelper(fullPathName.c_str(), mxconst::get_MISSIONX_ROOT_DOC().c_str(), &errMsg);
+  const ITCXMLNode    xMissionxNode = iDom.openFileHelper(fullPathName.c_str(), mxconst::get_MISSIONX_ROOT_DOC().c_str(), &errMsg);
 
   if (errMsg.empty())
   {
     return xMissionxNode.deepCopy();
   }
 
-  Log::logXPLMDebugString(errMsg + "\n");
-  IXMLNode xOldOptions                      = iDom.openFileHelper(fullPathName.c_str(), mxconst::get_ELEMENT_OPTIONS_CAPITAL_LETTERS().c_str(), &errMsg).deepCopy();
-  return system_actions::create_new_plugin_preference_file(xOldOptions); // save the options, but it also creates if there are none
+  Log::log_xplm_debug_string(errMsg + "\n");
+  return system_actions::create_new_plugin_preference_file(); // save the options, but it also creates if there are none
 }
-
-
-
 
 // -----------------------------------
 
@@ -771,7 +720,7 @@ missionx::system_actions::add_overpass_urls()
     return missionx::data_manager::xMissionxProperties_node.deepCopy();
   }
 
-  return IXMLNode();
+  return {};
 }
 
 // -----------------------------------
@@ -779,15 +728,12 @@ missionx::system_actions::add_overpass_urls()
 void
 missionx::system_actions::store_plugin_options()
 {
-
-
   if (missionx::data_manager::xMissionxProperties_node.isEmpty())
     missionx::data_manager::xMissionxProperties_node = create_new_plugin_preference_file();
   else
   {
     const auto        fileVer_s          = Utils::readAttrib(missionx::data_manager::xMissionxProperties_node, mxconst::get_ATTRIB_MXFEATURE(), mxUtils::formatNumber<int>(missionx::MX_FEATURES_VERSION));
     const std::string fullPathToPrefFile = system_actions::getOptionFileAndPath();
-
 
     /* Build XML in Memory */
     IXMLNode     xMainNode;
@@ -849,16 +795,15 @@ missionx::system_actions::store_plugin_options()
 // -----------------------------------
 
 IXMLNode
-missionx::system_actions::create_new_plugin_preference_file(IXMLNode inOldOptionsNode)
+missionx::system_actions::create_new_plugin_preference_file()
 {
   const std::string fullPathToPrefFile = system_actions::getOptionFileAndPath();
   const auto        fileVer_s          = Utils::readAttrib(system_actions::pluginSetupOptions.node, mxconst::get_ATTRIB_MXFEATURE(), "0");
 
   /* Build XML in Memory */
-  IXMLNode     xMainNode;
   IXMLRenderer xmlWriter;
 
-  xMainNode = IXMLNode::createXMLTopNode("xml", TRUE);
+  IXMLNode xMainNode = IXMLNode::createXMLTopNode("xml", TRUE);
   xMainNode.addAttribute("version", "1.0");
   xMainNode.addAttribute("encoding", "iso-8859-1");
   auto xMissionxNode = xMainNode.addChild(mxconst::get_MISSIONX_ROOT_DOC().c_str());
@@ -866,9 +811,8 @@ missionx::system_actions::create_new_plugin_preference_file(IXMLNode inOldOption
   [[maybe_unused]] const bool b1 = Utils::xml_set_attribute_in_node_asString(xMissionxNode, mxconst::get_ATTRIB_MXFEATURE(), fileVer_s, mxconst::get_MISSIONX_ROOT_DOC()); // pick the version from last option load
 
   // Construct the Overpass URLs
-  auto xURLs = add_overpass_urls();
 
-  if (!xURLs.isEmpty())
+  if (const auto xURLs = add_overpass_urls(); !xURLs.isEmpty())
     xMissionxNode.addChild(xURLs);
 
   system_actions::pluginSetupOptions.node = xMissionxNode.addChild(mxconst::get_ELEMENT_SETUP().c_str());
@@ -928,8 +872,8 @@ missionx::system_actions::search_datarefs_in_acf_file(const std::string& inSourc
       if (min_cahrs < strLength)
       {
         auto datarefPos_i    = line_s.find("dataref");
-        auto pos_first_space = line_s.find(" ", datarefPos_i);
-        if (datarefPos_i != line_s.npos && datarefPos_i < (strLength - 1) && pos_first_space != std::string::npos)
+        auto pos_first_space = line_s.find(' ', datarefPos_i);
+        if (datarefPos_i != std::string::npos && datarefPos_i < (strLength - 1) && pos_first_space != std::string::npos)
         {
           const std::string dataref_s = mxUtils::trim(line.substr(pos_first_space, 256)); // only copy the last 256 chars
           if (dataref_s.find("sim/") == 0) // skip default dataref names
@@ -941,7 +885,7 @@ missionx::system_actions::search_datarefs_in_acf_file(const std::string& inSourc
         
     } // end while getLine
     if (file_aptDat.bad())
-     Log::logXPLMDebugString (">>> Error while reading file: " + inSourceFile);
+     Log::log_xplm_debug_string (">>> Error while reading file: " + inSourceFile);
   }
   else // fail to open file
   {

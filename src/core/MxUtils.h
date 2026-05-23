@@ -37,6 +37,9 @@
 namespace missionx
 {
 
+// v26.04.5 set to true on first scenery load
+inline static bool flag_xplane_world_initialized {false};
+
 // 1. Declare the function pointer at the global or class scope
 //    The X-Plane SDK provides the necessary function pointer type
 //    in its headers, but you can define it yourself if needed.

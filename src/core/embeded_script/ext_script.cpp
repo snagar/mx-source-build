@@ -21,11 +21,11 @@ missionx::ext_script::register_my_functions(struct mb_interpreter_t* inBas)
   std::string name;
   name.clear();
 
-  Log::logXPLMDebugString(" ----- Gloabl Variables related functions -----\n"); // v3.0.205.3
+  Log::log_xplm_debug_string(" ----- Gloabl Variables related functions -----\n"); // v3.0.205.3
 
   name = mxUtils::stringToUpper("FN_SET_GLOBAL_BOOL");
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_global_bool);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   //  name = mxUtils::stringToUpper("FN_GET_OR_CREATE_GLOBAL_BOOL"); // v3.303.14
   //  mb_register_func(inBas, name.c_str(), ext_script::ext_get_or_create_global_bool);
@@ -33,19 +33,19 @@ missionx::ext_script::register_my_functions(struct mb_interpreter_t* inBas)
 
   name = mxUtils::stringToUpper("FN_GET_GLOBAL_BOOL");
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_or_create_global_bool); // was ext_get_global_bool
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_IS_GLOBAL_BOOL_EXISTS");
   mb_register_func(inBas, name.c_str(), ext_script::ext_is_global_bool_exists);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
 
   name = mxUtils::stringToUpper("FN_SET_GLOBAL_INT");
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_global_int);
-  Log::logXPLMDebugString("Registered Function " + name + " - Replaces FN_STORE_GLOBAL_INT() \n");
+  Log::log_xplm_debug_string("Registered Function " + name + " - Replaces FN_STORE_GLOBAL_INT() \n");
   name = mxUtils::stringToUpper("FN_STORE_GLOBAL_INT");
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_global_int);
-  Log::logXPLMDebugString("Registered Function " + name + " - Will be DEPRECATED and renamed to fn_set_global_int \n");
+  Log::log_xplm_debug_string("Registered Function " + name + " - Will be DEPRECATED and renamed to fn_set_global_int \n");
 
   //  name = mxUtils::stringToUpper("FN_GET_OR_CREATE_GLOBAL_INT"); // v3.303.14
   //  mb_register_func(inBas, name.c_str(), ext_script::ext_get_or_create_global_int);
@@ -53,15 +53,15 @@ missionx::ext_script::register_my_functions(struct mb_interpreter_t* inBas)
 
   name = mxUtils::stringToUpper("FN_GET_GLOBAL_INT");
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_or_create_global_int); // was ext_get_global_int
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
 
   name = mxUtils::stringToUpper("FN_SET_GLOBAL_DECIMAL"); // alias to FN_STORE_GLOBAL_DECIMAL
   mb_register_func(inBas, name.c_str(), ext_script::ext_store_global_decimal);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
   name = mxUtils::stringToUpper("FN_STORE_GLOBAL_DECIMAL");
   mb_register_func(inBas, name.c_str(), ext_script::ext_store_global_decimal);
-  Log::logXPLMDebugString("Registered Function " + name + " - Will be DEPRECATED and renamed to FN_SET_GLOBAL_DECIMAL \n");
+  Log::log_xplm_debug_string("Registered Function " + name + " - Will be DEPRECATED and renamed to FN_SET_GLOBAL_DECIMAL \n");
 
   //  name = mxUtils::stringToUpper("FN_GET_OR_CREATE_GLOBAL_DECIMAL"); // v3.303.14
   //  mb_register_func(inBas, name.c_str(), ext_script::ext_get_or_create_global_decimal);
@@ -69,19 +69,19 @@ missionx::ext_script::register_my_functions(struct mb_interpreter_t* inBas)
 
   name = mxUtils::stringToUpper("FN_GET_GLOBAL_DECIMAL");
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_or_create_global_decimal); // was ext_get_global_decimal
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_IS_GLOBAL_NUMBER_EXISTS");
   mb_register_func(inBas, name.c_str(), ext_script::ext_is_global_number_exists);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
 
   name = mxUtils::stringToUpper("FN_SET_GLOBAL_STRING");
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_global_string);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
   name = mxUtils::stringToUpper("FN_STORE_GLOBAL_STRING");
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_global_string);
-  Log::logXPLMDebugString("Registered Function " + name + " - Will be DEPRECATED and renamed to FN_SET_GLOBAL_STRING \n");
+  Log::log_xplm_debug_string("Registered Function " + name + " - Will be DEPRECATED and renamed to FN_SET_GLOBAL_STRING \n");
 
   //  name = mxUtils::stringToUpper("FN_GET_OR_CREATE_GLOBAL_STRING"); // v3.303.14
   //  mb_register_func(inBas, name.c_str(), ext_script::ext_get_or_create_global_string);
@@ -89,146 +89,146 @@ missionx::ext_script::register_my_functions(struct mb_interpreter_t* inBas)
 
   name = mxUtils::stringToUpper("FN_GET_GLOBAL_STRING");
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_or_create_global_string); // was ext_get_global_string
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_IS_GLOBAL_STRING_EXISTS");
   mb_register_func(inBas, name.c_str(), ext_script::ext_is_global_string_exists);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   // v3.0.112
   name = mxUtils::stringToUpper("FN_REMOVE_GLOBAL_BOOL");
   mb_register_func(inBas, name.c_str(), ext_script::ext_remove_global_bool);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_REMOVE_GLOBAL_NUMBER");
   mb_register_func(inBas, name.c_str(), ext_script::ext_remove_global_number);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_REMOVE_GLOBAL_STRING");
   mb_register_func(inBas, name.c_str(), ext_script::ext_remove_global_string);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
 
 
-  Log::logXPLMDebugString(" ----- Dataref / Commands related functions -----\n"); // v3.0.205.3
+  Log::log_xplm_debug_string(" ----- Dataref / Commands related functions -----\n"); // v3.0.205.3
 
   name = mxUtils::stringToUpper("FN_GET_DREF_VALUE");
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_dref_as_number);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_GET_DREF_VAL_AS_STR");
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_dref_as_string);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_SET_DREF_VALUE");
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_dref_value);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_SET_DATAREFS");
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_datarefs);
-  Log::logXPLMDebugString("Registered Function " + name + " - v3.304.13\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " - v3.304.13\n");
 
   name = mxUtils::stringToUpper("FN_SET_DATAREFS_INTERPOLATION"); // v3.303.13
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_datarefs_interpolation);
-  Log::logXPLMDebugString("Registered Function " + name + " (int sec, int cycles, str ) - v3.304.13  The string should be in the format: [key=value|key2=value1,value2|...]  \n");
+  Log::log_xplm_debug_string("Registered Function " + name + " (int sec, int cycles, str ) - v3.304.13  The string should be in the format: [key=value|key2=value1,value2|...]  \n");
 
   name = mxUtils::stringToUpper("FN_RESET_INTERPOLATION_LIST"); // v3.305.3
   mb_register_func(inBas, name.c_str(), ext_script::ext_reset_interpolation_list);
-  Log::logXPLMDebugString("Registered Function " + name + " ( ) - v3.306.3  Clear all datarefs in interpolation list.\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " ( ) - v3.306.3  Clear all datarefs in interpolation list.\n");
 
   name = mxUtils::stringToUpper("FN_REMOVE_DREF_FROM_INTERPOLATION_LIST"); // v3.305.3
   mb_register_func(inBas, name.c_str(), ext_script::ext_remove_dref_from_interpolation_list);
-  Log::logXPLMDebugString("Registered Function " + name + " ( str ) - v3.306.3 A string of datarefs divided by comma in the format: [key,key2,key3,...].\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " ( str ) - v3.306.3 A string of datarefs divided by comma in the format: [key,key2,key3,...].\n");
 
   name = mxUtils::stringToUpper("FN_EXECUTE_COMMANDS"); // v3.0.221.11+ send commands using comma delimeted
   mb_register_func(inBas, name.c_str(), ext_script::ext_execute_commands);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
 
 
-  Log::logXPLMDebugString(" ----- Objective/Task/Triggers related functions -----\n"); // v3.0.205.3
+  Log::log_xplm_debug_string(" ----- Objective/Task/Triggers related functions -----\n"); // v3.0.205.3
 
   name = mxUtils::stringToUpper("FN_SET_TASK_PROPERTY_IN_OBJECTIVE");                                                                        // v3.0.205.2
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_task_property_in_objective);                                                     // v3.0.205.2
-  Log::logXPLMDebugString("Registered Function " + name + " (can be use in any stage of code, like linked trigger in Flight Leg level.)\n"); // v3.0.205.2
+  Log::log_xplm_debug_string("Registered Function " + name + " (can be use in any stage of code, like linked trigger in Flight Leg level.)\n"); // v3.0.205.2
 
   name = mxUtils::stringToUpper("FN_GET_TASK_INFO_IN_OBJECTIVE");                                                                            // v3.0.221.15rc4
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_task_info_in_objective);                                                         // v3.0.221.15rc4
-  Log::logXPLMDebugString("Registered Function " + name + " (can be use in any stage of code, like linked trigger in Flight Leg level.)\n"); // v3.0.205.2
+  Log::log_xplm_debug_string("Registered Function " + name + " (can be use in any stage of code, like linked trigger in Flight Leg level.)\n"); // v3.0.205.2
 
   name = mxUtils::stringToUpper("FN_GET_TASK_INFO");
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_task_info);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_RESET_TASK_TIMER");
   mb_register_func(inBas, name.c_str(), ext_script::ext_reset_task_timer);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_SET_TASK_PROPERTY");
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_task_property);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_SET_CARGO_END_POSITION"); // v3.0.303
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_cargo_end_position);
-  Log::logXPLMDebugString("Registered Function " + name + ". Used with init_script attribute to init cargo position using a script and not attributes. Start position can be set directly to its dataref.\n");
+  Log::log_xplm_debug_string("Registered Function " + name + ". Used with init_script attribute to init cargo position using a script and not attributes. Start position can be set directly to its dataref.\n");
 
   name = mxUtils::stringToUpper("FN_GET_TRIGGER_INFO");
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_trigger_info);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_SET_TRIGGER_PROPERTY");
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_trigger_property);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_RESET_TRIGGER_TIMER");
   mb_register_func(inBas, name.c_str(), ext_script::ext_reset_trigger_timer);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
 
 
   // messages
-  Log::logXPLMDebugString(" ----- Message related functions -----\n"); // v3.0.205.3
+  Log::log_xplm_debug_string(" ----- Message related functions -----\n"); // v3.0.205.3
 
   name = mxUtils::stringToUpper("FN_GET_MESSAGE_INFO");
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_message_info);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_SET_MESSAGE_PROPERTY");
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_message_property);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_SET_MESSAGE_LABEL_PROPERTIES"); // v3.0.223.7 since all messges can be mxpad
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_message_label_properties);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_CREATE_NEW_COMM_MESSAGE");
   mb_register_func(inBas, name.c_str(), ext_script::ext_create_new_comm_message);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_SEND_COMM_MESSAGE");
   mb_register_func(inBas, name.c_str(), ext_script::ext_send_comm_message);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_SEND_TEXT_MESSAGE");
   mb_register_func(inBas, name.c_str(), ext_script::ext_send_text_message);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_SET_COMM_CHANNEL");
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_comm_channel);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_SET_BACKGROUND_CHANNEL");
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_background_channel);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
   // end messages
 
 
   // mxconst::QMM related functions
-  Log::logXPLMDebugString(" ----- Queue Message related functions -----\n"); // v3.0.223.7
+  Log::log_xplm_debug_string(" ----- Queue Message related functions -----\n"); // v3.0.223.7
 
   name = mxUtils::stringToUpper("FN_END_CURRENT_MESSAGE");
   mb_register_func(inBas, name.c_str(), ext_script::ext_end_current_message);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   // name = mxUtils::stringToUpper("FN_END_CURRENT_MESSAGE_AND_BACKGROUND");
   // mb_register_func(inBas, name.c_str(), ext_script::ext_end_current_message_and_background);
@@ -236,241 +236,241 @@ missionx::ext_script::register_my_functions(struct mb_interpreter_t* inBas)
 
   name = mxUtils::stringToUpper("FN_ABORT_CURRENT_MESSAGE");
   mb_register_func(inBas, name.c_str(), ext_script::ext_abort_current_message);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_ABORT_BG_CHANNEL"); // v3.306.1b
   mb_register_func(inBas, name.c_str(), ext_script::ext_abort_bg_channel);
-  Log::logXPLMDebugString("Registered Function " + name + " - new in v3.306.1b. Stop specific Background Channel, Use the name of the message you defined for the background sound.\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " - new in v3.306.1b. Stop specific Background Channel, Use the name of the message you defined for the background sound.\n");
 
   name = mxUtils::stringToUpper("FN_ABORT_ALL_CHANNELS"); // v3.306.1b
   mb_register_func(inBas, name.c_str(), ext_script::ext_abort_all_channels);
-  Log::logXPLMDebugString("Registered Function " + name + " - new in v3.306.1c. Stop all channels in the sound pool, background and communication.\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " - new in v3.306.1c. Stop all channels in the sound pool, background and communication.\n");
 
   name = mxUtils::stringToUpper("FN_FADE_OUT_BG_CHANNEL"); // v3.306.1b
   mb_register_func(inBas, name.c_str(), ext_script::ext_fade_out_bg_channel);
-  Log::logXPLMDebugString("Registered Function " + name + " - new in v3.306.1b. Send the name of the message to fade its bg channel.\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " - new in v3.306.1b. Send the name of the message to fade its bg channel.\n");
 
 
   // name = mxUtils::stringToUpper("FN_IS_MXPAD_QUEUE_EMPTY");
   name = mxUtils::stringToUpper("FN_IS_MSG_QUEUE_EMPTY");
   mb_register_func(inBas, name.c_str(), ext_script::ext_is_msg_queue_empty);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   // end mxPad related functions
 
 
   ///// Flight Leg functions
 
-  Log::logXPLMDebugString(" ----- Flight Leg related functions -----\n"); // v3.0.205.3
+  Log::log_xplm_debug_string(" ----- Flight Leg related functions -----\n"); // v3.0.205.3
 
   name = mxUtils::stringToUpper("FN_SET_NEXT_LEG"); // v3.0.221.15rc5 add LEG support
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_next_leg);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_STOP_DRAW_SCRIPT"); // V3.0.223.1 beta2
   mb_register_func(inBas, name.c_str(), ext_script::ext_stop_draw_script);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_SET_DRAW_SCRIPT_NAME"); // V3.0.223.1 beta2
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_draw_script_name);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_GET_CURRENT_LEG_DESC"); // V3.305.3
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_current_leg_desc);
-  Log::logXPLMDebugString("Registered Function " + name + " (new v3.306.3)\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " (new v3.306.3)\n");
 
   name = mxUtils::stringToUpper("FN_SET_LEG_DESC"); // V3.305.3
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_leg_desc);
-  Log::logXPLMDebugString("Registered Function " + name + " (new v3.306.3) You can send only (text) or (legName,text) \n");
+  Log::log_xplm_debug_string("Registered Function " + name + " (new v3.306.3) You can send only (text) or (legName,text) \n");
 
 
 
   ///// INVENTORY functions
 
-  Log::logXPLMDebugString(" ----- Inventory related functions -----\n"); // v3.0.213.3
+  Log::log_xplm_debug_string(" ----- Inventory related functions -----\n"); // v3.0.213.3
   name = mxUtils::stringToUpper("FN_GET_INV_LAYOUT_TYPE"); // v24.12.2
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_inv_layout_type);
-  Log::logXPLMDebugString("Registered Function " + name + " - new v24.12.2, Returns the Inventory compatibility layout. 11=Compatible with XP11.\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " - new v24.12.2, Returns the Inventory compatibility layout. 11=Compatible with XP11.\n");
 
   name = mxUtils::stringToUpper("FN_MOVE_ITEM_TO_PLANE"); // v24.12.2
   mb_register_func(inBas, name.c_str(), ext_script::ext_move_item_to_plane);
-  Log::logXPLMDebugString("Registered Function " + name + " - new v24.12.2, compatible with inventory <station> layout.\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " - new v24.12.2, compatible with inventory <station> layout.\n");
 
   name = mxUtils::stringToUpper("FN_IS_ITEM_EXISTS_IN_PLANE");
   mb_register_func(inBas, name.c_str(), ext_script::ext_is_item_exists_in_plane); // v3.0.213.3
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_IS_ITEM_EXISTS_IN_EXT_INVENTORY");
   mb_register_func(inBas, name.c_str(), ext_script::ext_is_item_exists_in_ext_inventory); // v3.0.213.3
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_MOVE_ITEM_FROM_INV"); // v3.0.221.15.rc4
   mb_register_func(inBas, name.c_str(), ext_script::ext_move_item_from_inv);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
 
 
 
   ///// TIMELAPSE related functions
 
-  Log::logXPLMDebugString(" ----- Timelapse related functions -----\n"); // v3.0.221.15rc5
+  Log::log_xplm_debug_string(" ----- Timelapse related functions -----\n"); // v3.0.221.15rc5
   name = mxUtils::stringToUpper("FN_TIMELAPSE_ADD_MINUTES");
   mb_register_func(inBas, name.c_str(), ext_script::ext_timelapse_add_minutes); // v3.0.221.15rc5
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_TIMELAPSE_TO_LOCAL_HOUR");
   mb_register_func(inBas, name.c_str(), ext_script::ext_timelapse_to_local_hour); // v3.0.221.15rc5
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_IS_TIMELAPSE_ACTIVE");
   mb_register_func(inBas, name.c_str(), ext_script::ext_is_timelapse_active); // v3.0.221.15rc5
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   //// Time functions
   name = mxUtils::stringToUpper("FN_SET_LOCAL_TIME");
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_local_time); // v3.0.221.15rc5
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
 
 
   ///// Other functions
 
-  Log::logXPLMDebugString(" ----- Other functions -----\n");
+  Log::log_xplm_debug_string(" ----- Other functions -----\n");
   name = mxUtils::stringToUpper("FN_GET_XP_VERSION"); // v3.305.1b ext_get_xp_version
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_xp_version);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_GET_DISTANCE_TO_REFERENCE_POINT");
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_distance_to_reference_point);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_GET_DISTANCE_TO_COORDINATE");
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_distance_to_coordinate);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_GET_DISTANCE_BETWEEN_TWO_POINTS_MT"); // v3.0.303
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_distance_between_two_points_mt);
-  Log::logXPLMDebugString("Registered Function " + name + " - return the distance between two points in meters.\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " - return the distance between two points in meters.\n");
 
   name = mxUtils::stringToUpper("FN_GET_DISTANCE_TO_INSTANCE_IN_METERS"); // v3.0.241.10 b3
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_distance_to_instance_in_meters);
-  Log::logXPLMDebugString("Registered Function " + name + " \n");
+  Log::log_xplm_debug_string("Registered Function " + name + " \n");
 
   name = mxUtils::stringToUpper("FN_GET_ELEV_TO_INSTANCE_IN_FEET"); // v3.0.241.10 b3
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_elev_to_instance_in_feet);
-  Log::logXPLMDebugString("Registered Function " + name + " \n");
+  Log::log_xplm_debug_string("Registered Function " + name + " \n");
 
   name = mxUtils::stringToUpper("FN_GET_BEARING_TO_INSTANCE"); // v3.0.241.10 b3
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_bearing_to_instance);
-  Log::logXPLMDebugString("Registered Function " + name + " \n");
+  Log::log_xplm_debug_string("Registered Function " + name + " \n");
 
   name = mxUtils::stringToUpper("FN_ADD_GPS_XY_ENTRY"); // v3.0.241.10 b3
   mb_register_func(inBas, name.c_str(), ext_script::ext_add_gps_xy_entry);
-  Log::logXPLMDebugString("Registered Function " + name + " \n");
+  Log::log_xplm_debug_string("Registered Function " + name + " \n");
 
   name = mxUtils::stringToUpper("FN_GET_NAV_INFO");
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_nav_info);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_ABORT_MISSION");
   mb_register_func(inBas, name.c_str(), ext_script::ext_abort_mission);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   name = mxUtils::stringToUpper("FN_UPDATE_END"); // v24.02.5  fn_update_end
   mb_register_func(inBas, name.c_str(), ext_script::ext_update_end);
-  Log::logXPLMDebugString("Registered Function " + name + " (v24.02.5) Update the <end_mission> sub elements.\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " (v24.02.5) Update the <end_mission> sub elements.\n");
 
   name = mxUtils::stringToUpper("FN_INJECT_METAR_FILE"); // V3.0.223.1
   mb_register_func(inBas, name.c_str(), ext_script::ext_inject_metar_file);
-  Log::logXPLMDebugString("Registered Function " + name + "\n");
+  Log::log_xplm_debug_string("Registered Function " + name + "\n");
 
   ///// Position plane
-  Log::logXPLMDebugString(" ----- Position Functions -----\n"); // v3.0.231.1
+  Log::log_xplm_debug_string(" ----- Position Functions -----\n"); // v3.0.231.1
 
   name = mxUtils::stringToUpper("FN_POSITION_PLANE"); // V3.0.225.5
   mb_register_func(inBas, name.c_str(), ext_script::ext_position_plane);
-  Log::logXPLMDebugString("Registered Function " + name + " (lat,long,elev_mt,heading,speed_in_meter_per_seconds) all values are numbers without double quotes \n");
+  Log::log_xplm_debug_string("Registered Function " + name + " (lat,long,elev_mt,heading,speed_in_meter_per_seconds) all values are numbers without double quotes \n");
 
   name = mxUtils::stringToUpper("FN_POSITION_CAMERA"); // V3.0.303.7
   mb_register_func(inBas, name.c_str(), ext_script::ext_position_camera);
-  Log::logXPLMDebugString("Registered Function " + name + " (x,y,z,heading,pitch,roll) all values are numbers without double quotes \n");
+  Log::log_xplm_debug_string("Registered Function " + name + " (x,y,z,heading,pitch,roll) all values are numbers without double quotes \n");
 
   ///// Choice Window functions
-  Log::logXPLMDebugString(" ----- Choice Window functions -----\n"); // v3.0.231.1
+  Log::log_xplm_debug_string(" ----- Choice Window functions -----\n"); // v3.0.231.1
 
   name = mxUtils::stringToUpper("FN_SET_CHOICE_NAME"); // V3.0.231.1
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_choice_name);
-  Log::logXPLMDebugString("Registered Function " + name + " (\"choice name\") \n");
+  Log::log_xplm_debug_string("Registered Function " + name + " (\"choice name\") \n");
 
   name = mxUtils::stringToUpper("FN_GET_ACTIVE_CHOICE_NAME"); // V3.305.3
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_active_choice_name);
-  Log::logXPLMDebugString("Registered Function " + name + " () v3.306.3\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " () v3.306.3\n");
 
   name = mxUtils::stringToUpper("FN_DISPLAY_CHOICE_WINDOW"); // V3.0.231.1
   mb_register_func(inBas, name.c_str(), ext_script::ext_display_choice_window);
-  Log::logXPLMDebugString("Registered Function " + name + " () \n");
+  Log::log_xplm_debug_string("Registered Function " + name + " () \n");
 
   name = mxUtils::stringToUpper("FN_HIDE_CHOICE_WINDOW"); // V3.0.231.1
   mb_register_func(inBas, name.c_str(), ext_script::ext_hide_choice_window);
-  Log::logXPLMDebugString("Registered Function " + name + " () \n");
+  Log::log_xplm_debug_string("Registered Function " + name + " () \n");
 
 
 
-  Log::logXPLMDebugString(" ----- Plane Related functions -----\n"); // v3.0.301 B3
+  Log::log_xplm_debug_string(" ----- Plane Related functions -----\n"); // v3.0.301 B3
 
   name = mxUtils::stringToUpper("FN_GET_AIRCRAFT_MODEL"); // V3.0.301 B3
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_aircraft_model);
-  Log::logXPLMDebugString("Registered Function " + name + " (), returns string\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " (), returns string\n");
 
 
 
-  Log::logXPLMDebugString(" ----- UI Related functions -----\n"); // v3.0.303.7
+  Log::log_xplm_debug_string(" ----- UI Related functions -----\n"); // v3.0.303.7
 
   name = mxUtils::stringToUpper("FN_OPEN_INVENTORY_SCREEN"); // V3.0.303.7
   mb_register_func(inBas, name.c_str(), ext_script::ext_open_inventory_screen);
-  Log::logXPLMDebugString("Registered Function " + name + " ()\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " ()\n");
 
   name = mxUtils::stringToUpper("FN_OPEN_IMAGE_SCREEN"); // V3.0.303.7
   mb_register_func(inBas, name.c_str(), ext_script::ext_open_image_screen);
-  Log::logXPLMDebugString("Registered Function " + name + " ()\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " ()\n");
 
   name = mxUtils::stringToUpper("FN_LOAD_IMAGE_TO_LEG"); // V3.303.13
   mb_register_func(inBas, name.c_str(), ext_script::ext_load_image_to_leg);
-  Log::logXPLMDebugString("Registered Function " + name + " ({image file name}, {leg name}). Will be displayed in the map screen\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " ({image file name}, {leg name}). Will be displayed in the map screen\n");
 
   name = mxUtils::stringToUpper("FN_HIDE_3D_MARKERS"); // V3.0.303.7
   mb_register_func(inBas, name.c_str(), ext_script::ext_hide_3D_markers);
-  Log::logXPLMDebugString("Registered Function " + name + " ()\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " ()\n");
 
   name = mxUtils::stringToUpper("FN_SHOW_3D_MARKERS"); // V3.0.303.7
   mb_register_func(inBas, name.c_str(), ext_script::ext_show_3D_markers);
-  Log::logXPLMDebugString("Registered Function " + name + " ()\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " ()\n");
 
 
 
-  Log::logXPLMDebugString(" ----- Weather Related functions -----\n"); // v3.303.13
+  Log::log_xplm_debug_string(" ----- Weather Related functions -----\n"); // v3.303.13
 
   name = mxUtils::stringToUpper("FN_SET_PREDEFINE_WEATHER_CODE"); // V3.303.13
   mb_register_func(inBas, name.c_str(), ext_script::ext_set_predefine_weather_code);
-  Log::logXPLMDebugString("Registered Function " + name + " (integer number) XP12(0..8) XP11(0..7)\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " (integer number) XP12(0..8) XP11(0..7)\n");
 
 
-  Log::logXPLMDebugString(" ----- Three Stopper Related functions -----\n"); // v3.303.13
+  Log::log_xplm_debug_string(" ----- Three Stopper Related functions -----\n"); // v3.303.13
 
   name = mxUtils::stringToUpper("FN_START_TIMER"); // V3.303.13
   mb_register_func(inBas, name.c_str(), ext_script::ext_start_timer);
-  Log::logXPLMDebugString("Registered Function " + name + " (integer - number between 1 and 3,  float - seconds to run) returns success or fail\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " (integer - number between 1 and 3,  float - seconds to run) returns success or fail\n");
   name = mxUtils::stringToUpper("FN_STOP_TIMER"); // V3.303.13
   mb_register_func(inBas, name.c_str(), ext_script::ext_stop_timer);
-  Log::logXPLMDebugString("Registered Function " + name + " (integer code between 1 and 3)  returns the time passed in seconds and reset the timer\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " (integer code between 1 and 3)  returns the time passed in seconds and reset the timer\n");
   name = mxUtils::stringToUpper("FN_GET_TIMER_TIME_PASSED"); // V3.303.13
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_timer_time_passed);
-  Log::logXPLMDebugString("Registered Function " + name + " (integer - number between 1 and 3) returns the time it runs in seconds\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " (integer - number between 1 and 3) returns the time it runs in seconds\n");
   name = mxUtils::stringToUpper("FN_GET_TIMER_ENDED"); // V3.303.13
   mb_register_func(inBas, name.c_str(), ext_script::ext_get_timer_ended);
-  Log::logXPLMDebugString("Registered Function " + name + " (integer - number between 1 and 3) returns 1 if ended and 0 if not\n");
+  Log::log_xplm_debug_string("Registered Function " + name + " (integer - number between 1 and 3) returns 1 if ended and 0 if not\n");
 
-  Log::logXPLMDebugString(" ----- END Embedded functions -----\n");
+  Log::log_xplm_debug_string(" ----- END Embedded functions -----\n");
 }
 
 

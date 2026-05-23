@@ -90,7 +90,7 @@ missionx::script_manager::init()
   bool result = false;
 
 #ifndef RELEASE
-  Log::logXPLMDebugString("[script_manager] init() \n"); // debug
+  Log::log_xplm_debug_string("[script_manager] init() \n"); // debug
 #endif
   if (init_ext_script())
     if (init_bas())
@@ -163,10 +163,10 @@ missionx::script_manager::init_ext_script()
   if (mb_init() == MB_FUNC_OK)
   {
     this->ext_sm_init_success = true;
-    Log::logXPLMDebugString("[External Script Initialized]\n");
+    Log::log_xplm_debug_string("[External Script Initialized]\n");
   }
   else
-    Log::logXPLMDebugString("ERROR !!! [External Script Fail Initialization]!!!\n");
+    Log::log_xplm_debug_string("ERROR !!! [External Script Fail Initialization]!!!\n");
 
   return this->ext_sm_init_success;
 }

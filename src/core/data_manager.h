@@ -950,7 +950,7 @@ public:
   static std::string                            lowestFailTimerName_s;
   static std::string                            formated_fail_timer_as_text;
   static std::string                            get_fail_timer_title_formated_for_imgui(const std::string& in_default_title, const std::string& prefix_to_formated_string = "");
-  static std::string                            get_fail_timer_in_formated_text(const std::string& prefix_to_foramted_string = "");
+  static std::string                            get_fail_timer_in_formated_text(const std::string& prefix_to_formated_string = "");
 
   static missionx::mx_success_timer_info strct_success_timer_info; // v25.02.1
 
@@ -962,7 +962,6 @@ public:
   // TimeLapse
   static missionx::TimeLapse timelapse;
   static std::string        set_local_time(int inHours, int inMinutes, int inDayOfYear_0_364, bool gForceTimeSet = false);
-  //static bool               flag_mission_time_was_set; // v3.303.8.2 we will ignore timelapse until this flag will be true
 
   static void readPluginTextures();
 

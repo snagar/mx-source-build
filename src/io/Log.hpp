@@ -81,8 +81,7 @@ public:
 
   static void logDebugBO(const std::string& message, bool isThread = false); // v3.0.221.15 rc4 rares - Log in debug build only
 
-  static void logXPLMDebugString(const std::string& message, bool bDecoration = true); // v3.0.221.9 // v3.0.301 B3 added  "bool bDecoration"
-  static void logTXT(const std::string& message, bool bDecoration = true); // v3.305.3 write directly to Log.txt and not to missionx.log. Helps when Que is not ready yet.
+  static void log_xplm_debug_string(const std::string& message, const bool &b_add_plugin_name_as_prefix = true, const bool &b_force_write_to_xplane_log_file = true); // v3.0.221.9 // v3.0.301 B3 added  "bool bDecoration"
 
   static void set_logFile(const std::string& inLogFilePath, const bool inCycleLogFiles) // v3.0.217.8 // v25.03.1 added inCycleLogFiles
   {

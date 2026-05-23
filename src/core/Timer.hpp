@@ -39,14 +39,14 @@ private:
 
   mx_timer_state timer_state;
 
-  bool flag_runContinuously;  // if we send "secondsToRun=0" then continuasly run
-  bool flag_isCumulative;    // v3.0.221.11 stop won't reset the elapsed time and we need to test against the cumulativeXXX variables instead on the seconds
+  bool flag_runContinuously;  // if we send "secondsToRun=0" then continuously run
+  bool flag_isCumulative;    // v3.0.221.11 stop won't reset the elapsed time, and we need to test against the cumulativeXXX variables instead on the seconds
   bool flag_isBasedSysClock; // v3.0.223.1
 
   std::string name; // for debug purposes
 
 public:
-  IXMLNode node{ IXMLNode().emptyIXMLNode };
+  IXMLNode node{ IXMLNode::emptyIXMLNode };
   bool     flag_loadedFromSavePoint{ false };
 
   Timer() { reset(); }
@@ -64,58 +64,55 @@ public:
   {
     if (this->node.isEmpty())
       return false;
-    else
+
+    this->reset();
+
+    this->name                     = Utils::readAttrib(this->node, mxconst::get_ATTRIB_NAME(), "");
+    this->secondsToRun             = Utils::readNodeNumericAttrib<float>(this->node, mxconst::get_ATTRIB_TIME_MIN(), 0.0f) * missionx::SECONDS_IN_1MINUTE; // convert to minutes
+    this->flag_isCumulative        = true;
+    this->flag_runContinuously     = false;
+    this->flag_isBasedSysClock     = false;
+    this->flag_loadedFromSavePoint = false;
+
+    if (this->name.empty())
     {
-      this->reset();
-
-      this->name                     = Utils::readAttrib(this->node, mxconst::get_ATTRIB_NAME(), "");
-      this->secondsToRun             = Utils::readNodeNumericAttrib<float>(this->node, mxconst::get_ATTRIB_TIME_MIN(), 0.0f) * missionx::SECONDS_IN_1MINUTE; // convert to minutes
-      this->flag_isCumulative        = true;
-      this->flag_runContinuously      = false;
-      this->flag_isBasedSysClock     = false;
-      this->flag_loadedFromSavePoint = false;
-
-      if (this->name.empty())
-      {
-        Log::logMsg("One of the timers has no [name] attribute was defined for timer. will ignore it");
-        return false;
-      }
-      else if (this->secondsToRun <= 0.0f)
-      {
-        Log::logMsg("Timer: " + this->name + ", has wrong minutes [min] attribute defined. It is set to 0 or less. Please fix it. Will ignore.");
-        return false;
-      }
-
-      // check if we have begin fragment information
-      float zuluTime_sec                           = Utils::readNodeNumericAttrib<float>(this->node, mxconst::get_ATTRIB_ZULU_TIME_SEC(), -1.0f);                          // begin fragment info
-      float total_running_time_sec_since_sim_start = Utils::readNodeNumericAttrib<float>(this->node, mxconst::get_ATTRIB_TOTAL_RUNNING_TIME_SEC_SINCE_SIM_START(), -1.0f); // begin fragment info
-      int   dayInYear                              = Utils::readNodeNumericAttrib<int>(this->node, mxconst::get_ATTRIB_DAY_IN_YEAR(), -1);                                 // begin fragment info
-      float secondsPassed                          = Utils::readNodeNumericAttrib<float>(this->node, mxconst::get_ATTRIB_SECONDS_PASSED(), -1.0f);                         // timer info
-      if (zuluTime_sec >= 0.0f && total_running_time_sec_since_sim_start > 0.0f && dayInYear >= 0 && secondsPassed >= 0.0f)
-      {
-        this->secondsPassed = secondsPassed;
-
-        this->tf_begin.zuluTime_sec                           = zuluTime_sec;
-        this->tf_begin.total_running_time_sec_since_sim_start = total_running_time_sec_since_sim_start;
-        this->tf_begin.dayInYear                              = dayInYear;
-
-        const std::chrono::seconds sec{ (int)secondsPassed };
-        this->tf_begin.os_clock = std::chrono::steady_clock::now() - sec; // set the begin OS clock relative to the seconds already passed
-
-        flag_loadedFromSavePoint = true;
-      }
-
-      if (flag_loadedFromSavePoint)
-        this->timer_state = (mx_timer_state)Utils::readNodeNumericAttrib<int>(this->node, mxconst::get_ATTRIB_TIMER_STATE(), (int)mx_timer_state::timer_is_set);
-      else 
-        this->timer_state = mx_timer_state::timer_is_set; // (missionx::mx_timer_state) Utils::readNodeNumericAttrib<int>(this->node, mxconst::get_ATTRIB_TIMER_STATE(), (int)mx_timer_state::timer_is_set);
-
-      this->tf_last     = this->tf_begin;               // v3.0.303.7 make sure that begin and start timers are the same when parsing
-
-      return true;
+      Log::logMsg("One of the timers has no [name] attribute was defined for timer. will ignore it");
+      return false;
+    }
+    else if (this->secondsToRun <= 0.0f)
+    {
+      Log::logMsg("Timer: " + this->name + ", has wrong minutes [min] attribute defined. It is set to 0 or less. Please fix it. Will ignore.");
+      return false;
     }
 
-    return false;
+    // check if we have begun fragment information
+    const auto zuluTime_sec                           = Utils::readNodeNumericAttrib<float>(this->node, mxconst::get_ATTRIB_ZULU_TIME_SEC(), -1.0f); // begin fragment info
+    const auto total_running_time_sec_since_sim_start = Utils::readNodeNumericAttrib<float>(this->node, mxconst::get_ATTRIB_TOTAL_RUNNING_TIME_SEC_SINCE_SIM_START(), -1.0f); // begin fragment info
+    const int  dayInYear                              = Utils::readNodeNumericAttrib<int>(this->node, mxconst::get_ATTRIB_DAY_IN_YEAR(), -1); // begin fragment info
+    const auto seconds_passed                         = Utils::readNodeNumericAttrib<float>(this->node, mxconst::get_ATTRIB_SECONDS_PASSED(), -1.0f); // timer info
+    if (zuluTime_sec >= 0.0f && total_running_time_sec_since_sim_start > 0.0f && dayInYear >= 0 && seconds_passed >= 0.0f)
+    {
+      this->secondsPassed = seconds_passed;
+
+      this->tf_begin.zuluTime_sec                           = zuluTime_sec;
+      this->tf_begin.total_running_time_sec_since_sim_start = total_running_time_sec_since_sim_start;
+      this->tf_begin.dayInYear                              = dayInYear;
+
+      const std::chrono::seconds sec{static_cast<int>(seconds_passed)};
+      this->tf_begin.os_clock = std::chrono::steady_clock::now() - sec; // set the beginning OS clock relative to the seconds already passed
+
+      flag_loadedFromSavePoint = true;
+    }
+
+    if (flag_loadedFromSavePoint)
+      this->timer_state = static_cast<mx_timer_state>(Utils::readNodeNumericAttrib<int>(this->node, mxconst::get_ATTRIB_TIMER_STATE(), static_cast<int>(mx_timer_state::timer_is_set)));
+    else
+      this->timer_state = mx_timer_state::timer_is_set;
+
+    this->tf_last = this->tf_begin; // v3.0.303.7 make sure that begin and start timers are the same when parsing
+
+    return true;
+
   }
 
   // ----------------------------------------------------

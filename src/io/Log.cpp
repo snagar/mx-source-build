@@ -138,21 +138,14 @@ missionx::Log::logDebugBO(const std::string& message, bool isThread) // log debu
 
 
 void
-missionx::Log::logXPLMDebugString(const std::string& message, bool bDecoration)
+missionx::Log::log_xplm_debug_string(const std::string& message, const bool &b_add_plugin_name_as_prefix, const bool &b_force_write_to_xplane_log_file)
 {
   missionx::writeLogThread::add_message(message); // v3.305.2
 
-  const std::string out = (bDecoration)? "missionx: " + message : message;
-  XPLMDebugString(out.c_str()); // not thread safe
+  const std::string out = (b_add_plugin_name_as_prefix)? "missionx: " + message : message;
+  if (b_force_write_to_xplane_log_file)
+    XPLMDebugString(out.c_str()); // not thread safe
 }
-
-void
-missionx::Log::logTXT(const std::string& message, bool bDecoration)
-{
-  const std::string out = (bDecoration)? "missionx: " + message : message;
-  XPLMDebugString(out.c_str()); // not thread safe
-}
-
 
 
 // Simple formatting of headers in Log
