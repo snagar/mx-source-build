@@ -125,7 +125,7 @@ public:
     {.id=2, .final_legs_no_to_generate=2, .distance_min_max{5.0f, 35.0f, 75.0f}, .legs_min_max{2, 2}, .activity=missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me, .plane_type=missionx::mx_plane_types_enum::plane_type_helos, .imgName=mxconst::get_BITMAP_BTN_ACT_HELOS_SRP(), .label="Rescue", .tip="Medevac rescue mission based on OSM location"},
     {.id=3, .final_legs_no_to_generate=2, .distance_min_max{5.0f, 30.0f, 70.0f}, .legs_min_max{2, 2}, .activity=missionx::enums::mx_semi_activities_enum::act_helos_cargo_oilrig, .plane_type=missionx::mx_plane_types_enum::plane_type_helos, .imgName=mxconst::get_BITMAP_BTN_ACT_HELOS_OIL(), .label="Oilrig", .tip="Take a flight to an offshore oil rig"},
     {.id=5, .final_legs_no_to_generate=2, .distance_min_max{20.0f, 30.0f, 80.0f}, .legs_min_max{1, 4}, .activity=missionx::enums::mx_semi_activities_enum::act_props, .plane_type=missionx::mx_plane_types_enum::plane_type_props, .imgName=mxconst::get_BITMAP_BTN_ACT_GA(), .label="GA", .tip="Explore nearby airports and airfields."},
-    {.id=6, .final_legs_no_to_generate=1, .distance_min_max{50.0f, 150.0f, 800.0f}, .legs_min_max{1, 2}, .activity=missionx::enums::mx_semi_activities_enum::act_turboprops, .plane_type=missionx::mx_plane_types_enum::plane_type_turboprops, .imgName=mxconst::get_BITMAP_BTN_ACT_TURBOPROP(), .label="Turboprop", .tip="Like Jet, but more versatile"},
+    {.id=6, .final_legs_no_to_generate=1, .distance_min_max{50.0f, 60.0f, 800.0f}, .legs_min_max{1, 2}, .activity=missionx::enums::mx_semi_activities_enum::act_turboprops, .plane_type=missionx::mx_plane_types_enum::plane_type_turboprops, .imgName=mxconst::get_BITMAP_BTN_ACT_TURBOPROP(), .label="Turboprop", .tip="Like Jet, but more versatile"},
     {.id=7, .final_legs_no_to_generate=1, .distance_min_max{120.0f, 200.0f, 1500.0f}, .legs_min_max{1, 1}, .activity=missionx::enums::mx_semi_activities_enum::act_jets, .plane_type=missionx::mx_plane_types_enum::plane_type_jets, .imgName=mxconst::get_BITMAP_BTN_ACT_JET(), .label="Jet", .tip="Soar through the skies in style"},
     {.id = 8, .final_legs_no_to_generate = 1, .distance_min_max{200.0f, 300.0f, 1500.0f}, .legs_min_max{1, 1}, .activity = missionx::enums::mx_semi_activities_enum::act_airline_medium, .plane_type = missionx::mx_plane_types_enum::plane_type_airline, .imgName = mxconst::get_BITMAP_BTN_ACT_AIRLINE(), .label = "Airline", .tip = "Fly medium-haul routes"},
     {.id = 9, .final_legs_no_to_generate = 1, .distance_min_max{500.0f, 600.0f, 6000.0f}, .legs_min_max{1, 1}, .activity = missionx::enums::mx_semi_activities_enum::act_heavy_airline_long, .plane_type = missionx::mx_plane_types_enum::plane_type_heavy_airline, .imgName = mxconst::get_BITMAP_BTN_ACT_AIRLINE_H(), .label = "Airline Heavy", .tip = "Fly long-haul routes"},
@@ -133,6 +133,64 @@ public:
     {.id = 11, .final_legs_no_to_generate = 1, .distance_min_max{500.0f, 600.0f, 6000.0f}, .legs_min_max{1, 1}, .activity = missionx::enums::mx_semi_activities_enum::act_cargo_heavy_long, .plane_type = missionx::mx_plane_types_enum::plane_type_heavy_cargo, .imgName = mxconst::get_BITMAP_BTN_ACT_CARGO_H (), .label = "Cargo Heavy", .tip = "Fly long-haul cargo routes"},
   };
 
+  const std::map<missionx::enums::mx_semi_activities_enum, std::vector<std::string>> map_activity_funny_descriptions = {
+    {missionx::enums::mx_semi_activities_enum::act_helos_medevac_accident, {"Fly your helicopter to a random locations, based on OSM data, where an accident happened. You will have to find the exact location of the accident, and then rescue the victim."}},
+    {missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me, {"All locations in the mission are based on OpenStreetMap data, including extraction and drop-off locations, which may not be positioned exactly at the helipad. This is the current limitation until a better solution is implemented. Enjoy."}},
+    {missionx::enums::mx_semi_activities_enum::act_helos_cargo_oilrig, {"Best used with the \"OSM Offshore Oil - Rigs\" custom scenery for full world coverage.\nThe plugin will place you randomly in a location near an Oil Rig. The Oil Rig data is highly dependent on the Oil Rig information found in the apt.dat files, and not on what you see in your maps."}},
+    {missionx::enums::mx_semi_activities_enum::act_props, {"Discover the airfields around you!\nThere are many hidden gems waiting to be found when flying a GA aircraft."}},
+{missionx::enums::mx_semi_activities_enum::act_turboprops, {"Faster than a piston prop, cheaper than a jet, louder than both - somehow still the perfect compromise.",
+"You couldn't afford a jet, but you still wanted passengers to think you did.",
+"All the sophistication of a jet, with the comforting sound of angry kitchen appliances strapped to the wings.",
+"Fast enough to feel professional, slow enough to still enjoy the scenery.",
+"Half regional airliner, half farm equipment - all personality.",
+"It vibrates, it whistles, it rattles... and somehow pilots absolutely love it."}},
+{missionx::enums::mx_semi_activities_enum::act_jets, {"Feeling guilty about your virtual CO2 footprint from flying airliners?\nHop into a small aircraft instead - save fuel, save emissions, save your simulator conscience ;-)"
+,"Why share the sky with 300 passengers when you can burn almost the same fuel privately in a business jet? Luxury has priorities."
+,"Skip the airline experience: no boarding groups, no crying babies, and no one stealing your armrest at FL390."
+,"Airliners move humanity. Business jets move executives and their very important golf schedules."
+,"Business jets: because arriving 12 minutes faster somehow justifies the leather seats."
+,"Business jets are proof that humanity looked at airliners and said: \"Yes... but make it exclusive.\""
+,"Airline pilots ask for gate assignments. Business jet pilots ask where the champagne is loaded."
+,"Save time, avoid crowds, and dramatically increase the odds of being mistaken for a billionaire in screenshots."
+}},
+{missionx::enums::mx_semi_activities_enum::act_airline_medium, {"because not every route deserves a widebody and a life-changing jet lag experience."
+, "The Dreamliner may still be a dream, but at least this one passed certification."
+, "Fly the dependable middle child of commercial aviation - not too glamorous, not too suspiciously experimental."
+, "Big enough to feel important, small enough to still fight for gate space."
+, "Every airline owns at least twenty of these. Nobody remembers why anymore."
+, "Where the coffee is weak, the seats are thinner, and the turnaround time is somehow 14 minutes."
+, "Reliable, efficient, and completely incapable of inspiring poetry."
+, "The safest place to hear a baby cry at FL370."
+}},
+    {missionx::enums::mx_semi_activities_enum::act_heavy_airline_long,
+{"Fly a heavy airliner across continents while pretending the autopilot is \"helping\" and not doing 97% of the work.", "Experience the glamour of long-haul airline operations: coffee, cruise altitude, and wondering why the descent started 12 minutes late.", "Take command of a flying apartment complex and transport hundreds of passengers who will still complain about the landing."
+,"Haul several hundred passengers across the globe while managing fuel, weather, and your rapidly declining attention span.", "Fly a massive airliner through complex airspace while passengers judge your landing in complete silence."
+,"Experience the glamour of long-haul airline operations: coffee, cruise altitude, and wondering why the descent started 12 minutes late."
+,"Operate a heavy jet where every button matters and every mistake becomes someone else's incident report."
+,"Experience authentic airline operations: 20 minutes of excitement followed by 10 hours of systems management."
+,"Become an airline captain: part pilot, part weather analyst, part fuel accountant."
+,"Fly a heavy jet and discover that the real challenge is finding a gate after landing."
+}},
+{missionx::enums::mx_semi_activities_enum::act_cargo_medium, {"Fly a medium cargo aircraft - because somebody has to deliver replacement phone chargers overnight.",
+"Carry thousands of packages across the continent while everyone involved insists it will \"definitely arrive tomorrow.\"",
+"Transporting online shopping regrets at 35,000 feet.",
+"The unsung heroes of aviation: flying boxes around while passenger pilots get all the attention.",
+"No passengers, no complaints, no crying babies - just pallets and peace.",
+"Transport several tons of freight while surviving on vending-machine nutrition.",
+"The only aviation job where arriving with the cargo intact counts as customer service.",
+"Experience the glamour of cargo operations: darkness, coffee, and loading paperwork."
+}},
+{missionx::enums::mx_semi_activities_enum::act_cargo_heavy_long, {"Chug along on a long-haul cargo flight, delivering goods across the globe - because apparently you have way too much free time."
+,"Enjoy hours of peaceful cargo hauling across the globe, because spending 12 hours watching autopilot sounded like a great idea."
+,"Fly a long-haul cargo mission across the world - for those who believe sleep is optional and fuel calculations are entertainment."
+,"Spend 12 virtual hours hauling rubber dog toys across the Atlantic like a true aviation professional."
+,"Experience the glamorous life of cargo aviation: coffee, autopilot, and questioning your life choices over the Pacific."
+,"Deliver extremely important cargo to remote destinations. Probably someone's online shopping addiction."
+,"Transport mysterious crates worldwide. Don't ask what's inside. Even the paperwork looks suspicious."
+,"Take on a long-haul freight route and discover exciting new ways to stare at cruise altitude for 9 hours."
+,"Enjoy the authentic cargo pilot experience: no passengers, no applause, just deadlines."
+}}
+  };
   // // -------------------------------------------
   // // -- STRUCT user mission creation variables
   // // -------------------------------------------
@@ -734,6 +792,10 @@ private:
   void                add_ui_semi_act_phase_2_detail (); // v26.04.1
   static bool         add_ui_pick_how_many_legs ( int & inout_radio_value_ref, const std::string & in_label, const int & in_minButtons, const int & in_maxButtons); // v26.04.1
   void                add_ui_oilrig_search_area_buttons ( ); // v26.04.1
+  void                add_ui_mission_description ( const std::string & in_descriptions); // v26.04.5
+  // void                add_ui_mission_description2 ( const std::vector<std::string> & in_descriptions); // v26.04.5
+  // void                add_ui_prop_mission_warning ( ); // v26.04.5
+  // void                add_ui_oilrig_warning ( ); // v26.04.5
   void                add_ui_medevac_surprise_me_warning ( ); // v26.04.1
   static void         add_ui_is_amphibian ();
   const dataref_const dc;

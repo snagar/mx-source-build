@@ -495,6 +495,7 @@ struct mx_setup_layer
 
     // Non-List parameters
     std::string desc {""}; // we need initializer, so ignore the CLion suggestion
+    std::string random_description{""}; // will hold a short description based on plane type. Might hold a funny description to make it more enjoyable for the user.
     float max_distance_slider_f {0.0f};
 
     void reset()
@@ -511,6 +512,7 @@ struct mx_setup_layer
 
       // temporary data
       desc.clear();
+      random_description.clear();
       max_distance_slider_f = 0.0f;
     }
 
@@ -599,6 +601,7 @@ struct mx_setup_layer
     // v26.04.1 semi-automated mission creation
     mx_act_phase_enum act_phase_enum{ mx_act_phase_enum::phase_pick }; // v26.04.1
     activity_btn_info_strct user_semi_act_picked; // v26.04.1
+
     int                                      headerIndex{ 0 }; // v25.03.3. Used only with mapSetupHeaders
     std::unordered_map<int, mx_header_state> mapSemiOptionsHeaders = { { headerIndex, mx_header_state ("Custom Tweaks", true) } }; // header is open by default
 

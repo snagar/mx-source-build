@@ -11,7 +11,8 @@
 #include <string>
 #include <optional>
 #include <random>
-// #include <concepts>
+#include "mxconst.h" // v26.04.5 moved from xx_mission_constraints.hpp
+
 
 #ifdef APL
 #include <cstdlib>

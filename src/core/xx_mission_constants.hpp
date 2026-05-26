@@ -17,7 +17,6 @@
 #include <limits>
 #endif
 
-#include "mxconst.h" // v25.04.2
 
 #include <fmt/format.h>
 #include "sha.hpp" // v25.04.2 created by cmake, stores the git commit sha string

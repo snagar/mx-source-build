@@ -39,6 +39,7 @@
 
 // mission-X, saar
 #include "../../../src/core/xx_mission_constants.hpp"
+#include "../../../src/core/mxconst.h"
 
 // size of "frame" around a resizable window, by which its size can be changed
 constexpr int WND_RESIZE_LEFT_WIDTH   = 15;
