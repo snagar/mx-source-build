@@ -146,7 +146,7 @@ missionx::CueInfo::calculateCircleFromPoint(Point& inPoint, const bool doCloseSh
       vecPoints.push_back(p1);
 
       #ifdef DEBUG_WRONG_TERRAIN_ELEV
-      Log::logMsgNone(Utils::formatNumber<int>(i) + "\t:" + p1.to_string_with_locals());
+      // Log::logMsgNone(Utils::formatNumber<int>(i) + "\t:" + p1.to_string_with_locals());
       #endif
 
 
@@ -164,16 +164,14 @@ missionx::CueInfo::calculateCircleFromPoint(Point& inPoint, const bool doCloseSh
     {
       vecPoints.push_back(pFirst);
 
-      // Utils::logMsg(pFirst.to_string() ); // debug
-      Log::logDebugBO(pFirst.to_string()); // debug
+      // Log::logDebugBO(pFirst.to_string()); // debug
     }
 
 
     if (bCalcEachPointElev)
     {
       this->didProbeTerrain = true;
-      // Utils::logMsg("Calc terrain point using probe...");
-      Log::logDebugBO("Calc terrain point using probe...");
+      // Log::logDebugBO("Calc terrain point using probe...");
     }
 
     angle               = 0.0f;
@@ -184,7 +182,7 @@ missionx::CueInfo::calculateCircleFromPoint(Point& inPoint, const bool doCloseSh
 }
 
 void
-missionx::CueInfo::refreshCirclePointsRelativeToSource(missionx::Point& pSource)
+missionx::CueInfo::refreshCirclePointsRelativeToSource(missionx::Point& in_pSource)
 {
 
   if (this->wasCalculated /*&& this->pSource*/)
@@ -197,10 +195,10 @@ missionx::CueInfo::refreshCirclePointsRelativeToSource(missionx::Point& pSource)
 
       double outLat, outLon;
       outLat = outLon = 0.0;
-      Utils::calcPointBasedOnDistanceAndBearing_2DPlane(outLat, outLon, pSource.getLat(), pSource.getLon(), (float)p1->getHeading(), (double)getRadiusAsNm() /*v3.0.203 fix radius calculation*/);
+      Utils::calcPointBasedOnDistanceAndBearing_2DPlane(outLat, outLon, in_pSource.getLat(), in_pSource.getLon(), (float)p1->getHeading(), (double)getRadiusAsNm() /*v3.0.203 fix radius calculation*/);
       p1->setLat(outLat);
       p1->setLon(outLon);
-      p1->setElevationMt(pSource.getElevationInMeters());
+      p1->setElevationMt(in_pSource.getElevationInMeters());
       p1->calcSimLocalData(); // calculate local info
     }                         // end loop iterator
     wasCalculated = true;
@@ -213,7 +211,7 @@ missionx::CueInfo::refreshCirclePointsRelativeToSource(missionx::Point& pSource)
 void
 missionx::CueInfo::refreshPointsAndElevBasedTerrain()
 {
-  Log::logDebugBO("IN refreshPointsAndElevBasedTerrain. " + this->originName + mxconst::get_UNIX_EOL()); // debug
+  Log::logDebugBO(fmt::format("IN refreshPointsAndElevBasedTerrain. {}\n", this->originName) ); // debug
 
   missionx::CueInfo::prepareProbe();
   for (auto p : vecPoints)

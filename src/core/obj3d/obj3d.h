@@ -29,8 +29,9 @@ private:
   static XPLMDataRef fps_dref; //fps_dref = XPLMFindDataRef("sim/time/framerate_period");
 
   missionx::mxProperties instProperties; // maybe this should be part of the struct instead of here
-  
+
   CueInfo cue;
+  // missionx::mx_location_3d_objects strct_initial_location_info; // v26.06.1 stores the "location info" during "obj3D parse_node"
 
 protected:
   mx_cue_types cueType;
@@ -87,7 +88,7 @@ public:
     bool hasReachedPointTo                  = false;
     bool time_was_advanced_by_draw_function = false;
     bool isInRecursiveState                 = false; // when nextPoint() function calls init, it also calls nextPoint() recursively. We need to know that.
-    bool hasReachedPointTo_need_to_stop  = false; // v26.03.1 If true, then we won't calculate 3D object movement.
+    // bool hasReachedPointTo_need_to_continue_or_cycle  = false; // v26.03.1 If true, then we won't calculate 3D object movement.
     // bool was_eval_this_cb = false; // v26.03.1 will be used in the "pluginCallback_draw()" function to make sure we won't be called twice.
     // bool done_init_start_position = false; // v26.03.1 when calling the function: "init_start_position". We use that during "cb" iterations, distinguish the first one.
 
@@ -173,8 +174,7 @@ public:
   // void calcPosOfMovingObject();   // v3.0.207.1 // calculate the position of a moving 3D Object
   void calcPosOfMovingObject(const float & inElapsedSinceLastCall);   // v3.0.207.1 // calculate the position of a moving 3D Object
   void cb_calc_pos_of_the_moving_object(const float &inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter);   // v26.03.1 // New calculation of the position of a moving 3D Object
-  // void cb_calc_pos_of_the_moving_object_good(const float &inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter);   // v26.03.1 // New calculation of the position of a moving 3D Object
-  // void cb_calc_pos_of_the_moving_object2_bad(const float &inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter);   // v26.03.1 // New calculation of the position of a moving 3D Object
+  // void cb_calc_pos_of_the_moving_object2(const float &inElapsedSinceLastCall, const float &inElapsedTimeSinceLastFlightLoop, const int &inCounter);   // v26.03.1 // New calculation of the position of a moving 3D Object
 
   void positionInstancedObject(); // for moving object we need to calculate position every iteration
 

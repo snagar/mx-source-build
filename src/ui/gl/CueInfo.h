@@ -191,7 +191,7 @@ public:
 
   // Members
   void calculateCircleFromPoint(missionx::Point& p1, bool doCloseShape, bool bCalcEachPointElev, int inPointsToCalc = 120);
-  void refreshCirclePointsRelativeToSource(missionx::Point& pSource); // relevant for moving Cue
+  void refreshCirclePointsRelativeToSource(missionx::Point& in_pSource); // relevant for moving Cue
   void refreshPointsAndElevBasedTerrain();
 
   void calculatePolygonalPointsElevation();

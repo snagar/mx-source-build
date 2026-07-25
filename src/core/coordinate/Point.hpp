@@ -24,7 +24,7 @@ typedef enum class _object_state
   defined         = 1
 } mx_point_state;
 
-class Point : public missionx::mx_base_node 
+class Point : public missionx::mx_base_node
 {
 private:
   double elevation_mt;
@@ -52,7 +52,7 @@ private:
 
   mutable  missionx::mutex mt_CalcDistBetweenPointsMutex; // v3.305.2 https://stackoverflow.com/questions/28311049/attempting-to-reference-a-deleted-function-when-using-a-mutex && https://stackoverflow.com/questions/30340029/copy-class-with-stdmutex
 public:
-  
+
 
   XPLMProbeInfo_t probe_info;
   bool            flag_wasProbed{ false };
@@ -75,11 +75,10 @@ public:
 
   float timeToWaitOnPoint_sec; // for moving object. wait on next point.
 
-
   Point()
   {
     init();
-    storeData();    
+    storeData();
   }
 
   //Point(const Point&) = default;
@@ -124,8 +123,8 @@ public:
   //Point(Point&&) = default;
 
   Point(const IXMLNode& inNode)
-  { 
-    this->node = inNode.deepCopy(); 
+  {
+    this->node = inNode.deepCopy();
     this->storeDataFromNodeToPoint(); // v3.0.301 B3
     pointState = missionx::mx_point_state::defined;
 
@@ -157,7 +156,7 @@ public:
 
   void clone(Point& inPoint)
   {
-    
+
     std::lock_guard<missionx::mutex> guard(mt_CalcDistBetweenPointsMutex);
 
     // (missionx::mx_base_node)(*this) = (missionx::mx_base_node)inPoint; // v3.0.241.1
@@ -273,7 +272,7 @@ public:
   std::string getLon_s() { return Utils::readAttrib(this->node, mxconst::get_ATTRIB_LONG(), ""); } // v3.0.301
   // -----------------------------------
   std::string getElevFt_s() { return Utils::readAttrib(this->node, mxconst::get_ATTRIB_ELEV_FT(), ""); } // v3.0.301
-   
+
 
   // -----------------------------------
   void setLon(double inValue)
@@ -355,16 +354,16 @@ public:
   void storeDataToPointNode() // v3.0.213.7
   {
     assert(!this->node.isEmpty() && "[storeDataToPointNode] Node is not available");
-    this->setNodeProperty<double>(mxconst::get_ATTRIB_LAT(), lat                  ); 
-    this->setNodeProperty<double>(mxconst::get_ATTRIB_LONG(), lon                 ); 
-    this->setNodeProperty<double>(mxconst::get_ATTRIB_ELEV_FT(), elevation_ft     ); 
-    this->setNodeProperty<double>(mxconst::get_ATTRIB_HEADING_PSI(), heading      ); 
-    this->setNodeProperty<double>(mxconst::get_ATTRIB_ADJUST_HEADING(), adjust_heading); 
-    this->setNodeProperty<double>(mxconst::get_ATTRIB_PITCH(), pitch              ); 
-    this->setNodeProperty<double>(mxconst::get_ATTRIB_ROLL(), roll                ); 
-    this->setNodeProperty<double>(mxconst::get_ATTRIB_ELEV_ABOVE_GROUND_FT(), elev_above_ground_ft ); 
-    this->setNodeProperty<double>(mxconst::get_ATTRIB_SPEED_KMH(), speed_kmh                       ); 
-    this->setNodeProperty<double>(mxconst::get_ATTRIB_WAIT_SEC(), timeToWaitOnPoint_sec            ); 
+    this->setNodeProperty<double>(mxconst::get_ATTRIB_LAT(), lat                  );
+    this->setNodeProperty<double>(mxconst::get_ATTRIB_LONG(), lon                 );
+    this->setNodeProperty<double>(mxconst::get_ATTRIB_ELEV_FT(), elevation_ft     );
+    this->setNodeProperty<double>(mxconst::get_ATTRIB_HEADING_PSI(), heading      );
+    this->setNodeProperty<double>(mxconst::get_ATTRIB_ADJUST_HEADING(), adjust_heading);
+    this->setNodeProperty<double>(mxconst::get_ATTRIB_PITCH(), pitch              );
+    this->setNodeProperty<double>(mxconst::get_ATTRIB_ROLL(), roll                );
+    this->setNodeProperty<double>(mxconst::get_ATTRIB_ELEV_ABOVE_GROUND_FT(), elev_above_ground_ft );
+    this->setNodeProperty<double>(mxconst::get_ATTRIB_SPEED_KMH(), speed_kmh                       );
+    this->setNodeProperty<double>(mxconst::get_ATTRIB_WAIT_SEC(), timeToWaitOnPoint_sec            );
   }
 
   // -----------------------------------
@@ -527,7 +526,7 @@ public:
   }
 
   // -----------------------------------
- 
+
   std::string get_point_lat_lon_as_string() // v3.0.301
   {
     return "<point " + mxconst::get_ATTRIB_LAT() + "=\"" + getLat_s() + "\" " + mxconst::get_ATTRIB_LONG() + "=\"" + getLon_s() + "\" " + mxconst::get_ATTRIB_ELEV_FT() + "=\"" + getElevFt_s() + "\" />";
@@ -535,7 +534,7 @@ public:
 
 
   // -----------------------------------
-  
+
   std::string to_string()
   {
     return Utils::xml_get_node_content_as_text(this->node, ""); // v26.02.1
@@ -661,7 +660,7 @@ public:
   }
 
   // v3.0.301 B3
-  missionx::Point 
+  missionx::Point
   static calcPointBasedOnDistanceAndBearing_2DPlane(Point& pOrigin, float inHdg, double inDistance, missionx::mx_units_of_measure inUnits = missionx::mx_units_of_measure::nm)
   {
     Point pTarget(0.0, 0.0);
@@ -684,7 +683,7 @@ public:
 
 
   // -----------------------------------
-  
+
   //static missionx::mx_location_3d_objects readPointElement(ITCXMLNode& xNode)
   //{
   //  missionx::mx_location_3d_objects info;
@@ -866,7 +865,7 @@ public:
 // ---------------------------------------
   void set_isWet(bool inVal)
   {
-    this->setNodeProperty<bool>(mxconst::get_PROP_IS_WET(), inVal); 
+    this->setNodeProperty<bool>(mxconst::get_PROP_IS_WET(), inVal);
   }
 
 // ---------------------------------------
@@ -944,7 +943,7 @@ public:
   }
   // -----------------------------------
   // this function takes into account that the get_elevation_xx() function returns the real elevation after calculating the above ground.
-  void calc_elevation_include_above_ground_info_and_sync_to_WorldToLocalData() 
+  void calc_elevation_include_above_ground_info_and_sync_to_WorldToLocalData()
   {
     constexpr auto added_elev_mt = 1000.0 * 0.3048; // missionx::feet2meter
 

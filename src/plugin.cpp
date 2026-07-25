@@ -838,12 +838,12 @@ float pluginCallback_draw(const float inElapsedSinceLastCall, const float inElap
   // v26.03.1 Draw Moving 3D Objects
   if (data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
   {
-    if (!data_manager::listDisplayMoving3dInstances.empty() && !missionx::dataref_manager::isSimPause() )
+    if (/*!data_manager::listDisplayMoving3dInstances.empty() && */ !missionx::dataref_manager::isSimPause() )
     {
       // bool b_3d_moving_object_exists = false;
       for (const auto &instName : data_manager::listDisplayMoving3dInstances) // loop over each instance
       {
-        if (missionx::data_manager::map3dInstances[instName].mvStat.isMoving) // v3.0.207.4 - check moving flag. If we control movment also from script we will need to calculate elapsed time when stopping movement and then resuming it.
+        if (missionx::data_manager::map3dInstances[instName].mvStat.isMoving) // v3.0.207.4 - check moving flag. If we control movement also from script we will need to calculate elapsed time when stopping movement and then resuming it.
         {
           // b_3d_moving_object_exists = true;
           missionx::data_manager::map3dInstances[instName].cb_calc_pos_of_the_moving_object(inElapsedSinceLastCall, inElapsedTimeSinceLastFlightLoop, inCounter );
