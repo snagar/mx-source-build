@@ -131,7 +131,7 @@ public:
   std::deque<missionx::Point>::iterator itPath;
   std::deque<missionx::Point>::iterator itPathEnd;
 
-  void init_path_cycle(); // v3.0.253.7
+  void init_moving_3d_object(); // v3.0.253.7
   void init_start_position();
   // void calculate_position_on_path();
   void set_next_point(); // get next point in path, for moving objects
@@ -159,7 +159,7 @@ public:
   std::string get_instance_created_in_leg() const;
   std::string getPropLinkTask();
   std::string getPropLinkToObjectiveName();
-  bool        getIsPathNeedToCycle();
+  bool        getIsPathNeedToCycle() const;
   bool        getHideObject();
 
   // terrain

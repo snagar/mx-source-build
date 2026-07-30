@@ -124,7 +124,7 @@ text_med=Inconsolata.ttf,26
 
 msg_bottom=Roboto-Bold.ttf,13
 msg_popup=Roboto-Bold.ttf,15
-)"; 
+)";
 
   const std::string cn_default_font_name = "DejaVuSans.ttf";
   const std::string cn_default_font_expr = "DejaVuSans.ttf,13";
@@ -135,7 +135,7 @@ msg_popup=Roboto-Bold.ttf,15
   // Lambda functions
   const auto lmbda_eval_font_data = [func = __func__](const std::vector<std::string>& inVec, std::string& outFontName_s, float& outSizePx_f, std::string inDefaultFontName, float inDefaultSize)
   {
-    
+
     assert( (inVec.empty() == false) && fmt::format ("[{}], Metadata Font must not be empty", func).c_str());
 
     const std::string&              value_s  = inVec.at(0);
@@ -208,7 +208,7 @@ msg_popup=Roboto-Bold.ttf,15
     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_REG() + "=", 1, cn_default_font_expr, defaultMetaData);
     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_15);
     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-    MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_REG());  
+    MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_REG());
     sTitleRegFontName = fontName; // v3.305.3
 
     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_MED() + "=", 1, cn_default_font_expr, defaultMetaData);
@@ -380,7 +380,7 @@ setCameraPosition(XPLMCameraPosition_t* outCameraPosition, int inIsLosingControl
   }
   if (missionx::data_manager::isLosingControl_i == 0)  // return the opposite state of losControl value
     return 1;
-  
+
   return 0;
 } // setCameraPosition
 
@@ -496,7 +496,7 @@ missionx::Mission::Mission()
     #endif
     missionx::ext_script::register_my_functions(missionx::data_manager::sm.bas); // register external functions
   }
-  
+
   missionMenuEntry = nullptr;
 }
 
@@ -631,7 +631,7 @@ missionx::Mission::init()
       IXMLNode xUrl = missionx::data_manager::xMissionxProperties_node.getChildNode (mxconst::get_ELEMENT_OVERPASS ().c_str ()).getChildNode (mxconst::get_ELEMENT_URL ().c_str (), i1);
       if (const std::string text = xUrl.getText(); !text.empty())
       {
-        data_manager::vecOverpassUrls.emplace_back(text);        
+        data_manager::vecOverpassUrls.emplace_back(text);
       }
     }
   }
@@ -765,7 +765,7 @@ missionx::Mission::init()
     Utils::xml_search_and_set_node_text(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY(), "", mxUtils::formatNumber<int>(static_cast<int> (missionx::mx_property_type::MX_STRING)), true);
     missionx::system_actions::store_plugin_options();
   }
-  
+
 
   // v3.303.9.1 make sure <scoring> is part of properties
   if (missionx::data_manager::xMissionxProperties_node.getChildNode(mxconst::get_ELEMENT_SCORING().c_str()).isEmpty()) // rebuild scoring too
@@ -934,9 +934,9 @@ missionx::Mission::prepareMissionBrieferInfo()
 
           if (seq > 1 && (mxconst::get_RANDOM_MISSION_DATA_FILE_NAME() == storedFileName))
             break;
-          else 
+          else
             prevFileName = storedFileName;
-         
+
         }
 
       }
@@ -1070,7 +1070,7 @@ missionx::Mission::START_MISSION()
   const std::string mission_state_s = Utils::readAttrib(data_manager::mx_global_settings.node, mxconst::get_PROP_MISSION_STATE(), ""); // empty value means new mission and not loaded checkpoint
 
   uiImGuiBriefer->clearMessage(); // clear any message when starting a mission
-  
+
   auto n = missionx::data_manager::mapFlightLegs.size(); // DEBUG
 
   //  Consider adding call external script - mission.postStartMission() function
@@ -1172,12 +1172,12 @@ missionx::Mission::START_MISSION()
         mission_state_s.empty()) // if to reveal 1 by one then first check if there is GPS element in LEG if not then check global GPS
     {
       // data_manager::clearFMSEntries(); // v3.0.253.7
-      if ( 
-          (!data_manager::xmlGPS.isEmpty () && data_manager::xmlGPS.nChildNode (mxconst::get_ELEMENT_POINT ().c_str ()) > 1 
+      if (
+          (!data_manager::xmlGPS.isEmpty () && data_manager::xmlGPS.nChildNode (mxconst::get_ELEMENT_POINT ().c_str ()) > 1
             && data_manager::mapFlightLegs[data_manager::currentLegName].xGPS.isEmpty ()
-          ) 
-          || 
-          (!data_manager::mapFlightLegs[data_manager::currentLegName].xGPS.isEmpty () 
+          )
+          ||
+          (!data_manager::mapFlightLegs[data_manager::currentLegName].xGPS.isEmpty ()
             && data_manager::mapFlightLegs[data_manager::currentLegName].xGPS.nChildNode (mxconst::get_ELEMENT_POINT ().c_str ()) == 0
           )
         )
@@ -1221,7 +1221,7 @@ missionx::Mission::START_MISSION()
   // v3.0.221.7 set the shared datarefs
   missionx::data_manager::setSharedDatarefData();
 
-  if (this->flight_leg_progress_counter_i == 0 && !data_manager::mx_global_settings.node.isEmpty()) // new mission ? or use missionx::data_manager::mx_global_settings.flag_loadedFromSavepoint 
+  if (this->flight_leg_progress_counter_i == 0 && !data_manager::mx_global_settings.node.isEmpty()) // new mission ? or use missionx::data_manager::mx_global_settings.flag_loadedFromSavepoint
   {
     // v3.0.253.7 Fail Timer from global settings
     if (!data_manager::mx_global_settings.xTimer_ptr.isEmpty())
@@ -1321,15 +1321,15 @@ missionx::Mission::START_MISSION()
     Mission::uiImGuiBriefer->setPluginPausedSim(false); // this is done so uiImGuiBriefer::flc() won't un-pause the sim if we asked to pause it in the briefer, after start new mission or load mission.
   }
 
-  // initialize stats DB // v3.303.8.3 fixed stats db won't be initialized if 
+  // initialize stats DB // v3.303.8.3 fixed stats db won't be initialized if
   if (data_manager::init_stats_db())
   {
-    
+
     data_manager::gather_stats.setDb(&data_manager::db_stats, mission_state_s);
-    this->plane_stats.reset();    
+    this->plane_stats.reset();
     if ( ! mission_state_s.empty() ) // if loaded from checkpoint
       data_manager::gather_stats.init_seq_from_checkpoint_stats();
-    
+
   }
   else
   {
@@ -1392,7 +1392,7 @@ missionx::Mission::readCurrentMissionTextures()
         if (!xChild.isEmpty())
         {
           const std::string file_name = Utils::readAttrib(xChild, mxconst::get_ATTRIB_MAP_FILE_NAME(), "");
-          
+
           if (!file_name.empty() && !Utils::isElementExists(data_manager::mapCurrentMissionTextures, file_name)) // check if file name NOT in texture container
           {
             std::string local_errorMsg;
@@ -1471,7 +1471,7 @@ missionx::Mission::initFlightLegDisplayObjects()
   // v3.0.241.1 rewrite init all 3d objects from "display_objects" element in flight leg
   for (const auto& [instName, templateName] : data_manager::mapFlightLegs[data_manager::currentLegName].list_displayInstances) // v3.305.1 convert list_displayInstances to a <map> container.   list_.mapProperties) // all properties are ["instance name" : "3d object template name"] values
   {
-    const std::string obj_template_name = templateName;    //templateName.getValue(); 
+    const std::string obj_template_name = templateName;    //templateName.getValue();
 
     // ==== New Code Logic ===
     // If instance is not being displayed and the obj3D has an instanced element <display_object> with attribute "instance_name=ins_name"
@@ -1480,11 +1480,11 @@ missionx::Mission::initFlightLegDisplayObjects()
       missionx::obj3d instanced_obj3d;
       instanced_obj3d.node = data_manager::st_map3d_obj[obj_template_name].node.deepCopy(); // copy the node
 
-      // parse_node will read all relevant information // 
-      instanced_obj3d.setNodeStringProperty_drillDown(mxconst::get_ATTRIB_INSTANCE_NAME(), instName, instanced_obj3d.node, mxconst::get_ELEMENT_OBJ3D()); // v3.0.241.1 add the instance name to the new node so parse_node will read all relevant information 
+      // parse_node will read all relevant information //
+      instanced_obj3d.setNodeStringProperty_drillDown(mxconst::get_ATTRIB_INSTANCE_NAME(), instName, instanced_obj3d.node, mxconst::get_ELEMENT_OBJ3D()); // v3.0.241.1 add the instance name to the new node so parse_node will read all relevant information
 
 
-      // add logic that reads from the sub element of <obj3d> with and element that has instance_name=inst_name 
+      // add logic that reads from the sub element of <obj3d> with and element that has instance_name=inst_name
 
       // #ifndef RELEASE
       // // filter out land_hover makers
@@ -1538,8 +1538,8 @@ missionx::Mission::initFlightLegDisplayObjects()
               {
                 foundObjectiveAndTask = true;
 
-                data_manager::map3dInstances[instName].setNodeStringProperty(mxconst::get_PROP_LINK_OBJECTIVE_NAME(), link_objective_name); 
-                data_manager::map3dInstances[instName].setNodeStringProperty(mxconst::get_ATTRIB_LINK_TASK(), link_task); 
+                data_manager::map3dInstances[instName].setNodeStringProperty(mxconst::get_PROP_LINK_OBJECTIVE_NAME(), link_objective_name);
+                data_manager::map3dInstances[instName].setNodeStringProperty(mxconst::get_ATTRIB_LINK_TASK(), link_task);
               }
             }
           }
@@ -1634,15 +1634,15 @@ missionx::Mission::flc()
     if (data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running && data_manager::missionState < missionx::mx_mission_state_enum::stop_all_async_processes) // v3.0.154 fix messages end before broadcast to user
     {
 
-      // v3.0.303.7 Added 
+      // v3.0.303.7 Added
       data_manager::smPropSeedValues.setStringProperty(mxconst::get_EXT_MX_CURRENT_LEG(), data_manager::currentLegName);
 
       missionx::QueueMessageManager::flc();         // Call mxconst::QMM even if mission ended
       flc_check_plane_in_external_inventory_area(); // v3.0.213.2
 
-      if (!data_manager::mapFlightLegs[data_manager::currentLegName].flag_cue_was_calculated 
-         && Utils::readNodeNumericAttrib<int>( missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_ENABLE_DESIGNER_MODE(), false) == 1 
-         && Utils::readNodeNumericAttrib<int>( missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISPLAY_VISUAL_CUES() , false) == 1 
+      if (!data_manager::mapFlightLegs[data_manager::currentLegName].flag_cue_was_calculated
+         && Utils::readNodeNumericAttrib<int>( missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_ENABLE_DESIGNER_MODE(), false) == 1
+         && Utils::readNodeNumericAttrib<int>( missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISPLAY_VISUAL_CUES() , false) == 1
          )
       {
         missionx::data_manager::resetCueSettings();
@@ -1665,7 +1665,7 @@ missionx::Mission::flc()
       if (missionx::data_manager::timelapse.flag_ignorePauseMode && missionx::data_manager::timelapse.flag_isActive)
       {
         missionx::data_manager::timelapse.flc_timelapse();
-      }    
+      }
 
       return;
     }
@@ -1738,7 +1738,7 @@ missionx::Mission::exec_apt_dat_optimization()
   {
     Log::logAttention("apt dat optimization is currently running. Please wait for it to finish first.");
     XPLMSpeakString("apt dat optimization is currently running. Please wait for it to finish first.");
-  
+
   }
   else
   {
@@ -1770,7 +1770,7 @@ missionx::Mission::exec_apt_dat_optimization()
     }
 
     this->optAptDat.exec_optimize_aptdat_thread();
-    
+
     // clear cached nav data
     // this->engine.resetCache(); // v24.12.2 deprecated, it does nothing.
   }
@@ -1978,7 +1978,7 @@ missionx::Mission::flc_threads()
 
   //////////////////////////////
   // Optimization Threads  // v3.305.2
-  
+
   #ifdef USE_TRIGGER_OPTIMIZATION
   if (missionx::data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running)
   {
@@ -1986,39 +1986,39 @@ missionx::Mission::flc_threads()
     {
       if (data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
         data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_ref.join();
-  
+
       data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state.init();
-  
+
       // missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::enable_aptdat_optimize_menu);
     }
     else
     {
-  
+
       if (!data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state.flagIsActive)
       {
         if (data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state.thread_done_work)
         {
           if (data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
             data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_ref.join();
-  
+
           data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state.init();
-  
-          // copy triggers from 
+
+          // copy triggers from
           data_manager::mapFlightLegs[data_manager::currentLegName].listTriggersByDistance.clear();
           data_manager::mapFlightLegs[data_manager::currentLegName].listTriggersByDistance = data_manager::mapFlightLegs[data_manager::currentLegName].listTriggersByDisatnce_thread;
-  
+
           this->timerOptLegTriggersTimer.reset();
           missionx::Timer::start(this->timerOptLegTriggersTimer, 10.0f);
         }
         else if (missionx::data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
-        {      
-  
+        {
+
           if (Timer::evalTime(this->timerOptLegTriggersTimer))
           {
             this->timerOptLegTriggersTimer.reset();
-  
+
             missionx::data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_planePos = missionx::dataref_manager::getCurrentPlanePointLocation();
-  
+
             missionx::data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_ref = std::thread(&missionx::data_manager::optimizeLegTriggers_thread,
                                                                             &missionx::data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state,
                                                                             &missionx::data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_planePos,
@@ -2031,7 +2031,7 @@ missionx::Mission::flc_threads()
             this->timerOptLegTriggersTimer.reset();
             missionx::Timer::start(this->timerOptLegTriggersTimer, 1.0f); // as soon as possible
           }
-          
+
         }  // is mission running ?
       } // end else data_manager::optLegTriggers_thread_state.flagIsActive && !data_manager::optLegTriggers_thread_state.thread_done_work
     }
@@ -2053,13 +2053,13 @@ missionx::Mission::setMissionTime()
   std::string current_local_date_days_s = mxUtils::formatNumber<int>(XPLMGetDatai(dc.dref_local_date_days_i));
   auto        current_local_time_sec_f        = XPLMGetDataf(dc.dref_local_time_sec_f);
   const auto  current_localHour_s             = mxUtils::formatNumber<float>(current_local_time_sec_f / 3600.0f, 0); // convert to local hour in a day
-  
+
 
   missionx::data_manager::set_local_time(mxUtils::stringToNumber<int>(Utils::readAttrib(data_manager::mx_global_settings.xStartTime_ptr, mxconst::get_ATTRIB_TIME_HOURS(), current_localHour_s))
                                        , mxUtils::stringToNumber<int> (Utils::readAttrib(data_manager::mx_global_settings.xStartTime_ptr, mxconst::get_ATTRIB_TIME_MIN(), "0") )
                                        , mxUtils::stringToNumber<int>( Utils::readAttrib(data_manager::mx_global_settings.xStartTime_ptr, mxconst::get_ATTRIB_TIME_DAY_IN_YEAR(), current_local_date_days_s) )
                                        , true // force set time. Ignore timelapse is active
-                                       ); 
+                                       );
 }
 
 // -------------------------------------
@@ -2119,7 +2119,7 @@ missionx::Mission::flc_legs()
     data_manager::draw_script = Utils::xml_get_attribute_value_drill(data_manager::mapFlightLegs[data_manager::currentLegName].node,
                                                                      mxconst::get_ATTRIB_NAME(),
                                                                      local_flag_found,
-                                                                     mxconst::get_ELEMENT_DRAW_SCRIPT()); 
+                                                                     mxconst::get_ELEMENT_DRAW_SCRIPT());
 
     // pre script
     const bool        wasPreScriptFired = Utils::readBoolAttrib(data_manager::mapFlightLegs[data_manager::currentLegName].node, mxconst::get_PROP_PRE_LEG_SCRIPT_FIRED(), false);
@@ -2226,7 +2226,7 @@ missionx::Mission::flc_legs()
 
     } // End loop over Objectives and check if all mandatory are complete
   }
-  
+
   // loop over triggers if mission is active
   if (data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
   {
@@ -2253,7 +2253,7 @@ missionx::Mission::flc_legs()
         }
 
       }
-      
+
     }
 
     for (auto& trigName : data_manager::mapFlightLegs[data_manager::currentLegName].listTriggersOthers)
@@ -2270,8 +2270,8 @@ missionx::Mission::flc_legs()
       missionx::data_manager::execScript(scriptName, data_manager::smPropSeedValues, "[flc_legs] Post Trigger script: " + scriptName + " is invalid. Aborting Mission"); // can alter success flag
     }
 
-  
-    #else 
+
+    #else
 
     for (auto& trigName : data_manager::mapFlightLegs[data_manager::currentLegName].listTriggers)
     {
@@ -2279,7 +2279,7 @@ missionx::Mission::flc_legs()
         continue;
 
       if ((Utils::readBoolAttrib(missionx::data_manager::mapTriggers[trigName].node, mxconst::get_ATTRIB_ENABLED(), true)) && (missionx::data_manager::mapTriggers[trigName].trigState != missionx::mx_trigger_state_enum::never_trigger_again )) // v25.02.1 added never_trigger_again // v3.0.221.15rc4 added check if trigger is enabled
-      {       
+      {
         this->flc_trigger(data_manager::mapTriggers[trigName], data_manager::smPropSeedValues);
       }
       // execute POST trigger script
@@ -2304,11 +2304,11 @@ missionx::Mission::flc_legs()
 
   //----------------------------------------------
   // calculate and decide end of Flight Leg
-  //----------------------------------------------  
+  //----------------------------------------------
   // v3.305.1 this logic should eliminate cases where the flight leg is done -
   // but we continue evaluating and reseting the flight leg to success instead of waiting for the flight leg to finish the post actions.
   // So once we reached the state: mx_flightLeg_state::leg_success_do_post or higher we do not recalculate flight leg state anymore.
-  if (data_manager::mapFlightLegs[data_manager::currentLegName].getFlightLegState() < missionx::enums::mx_flightLeg_state::leg_success_do_post) 
+  if (data_manager::mapFlightLegs[data_manager::currentLegName].getFlightLegState() < missionx::enums::mx_flightLeg_state::leg_success_do_post)
   {
     // v3.303.12 Handle special case where <leg> is flagged as "dummy"
     if (data_manager::mapFlightLegs[data_manager::currentLegName].getIsDummyLeg())
@@ -2491,10 +2491,10 @@ missionx::Mission::handle_choice_option()
     missionx::data_manager::execScript(scriptName, data_manager::smPropSeedValues, "[choice] Choice script: " + scriptName + " is invalid. Aborting Mission");
 
     // datarefs
-    const std::string datarefs = Utils::readAttrib(xOption_ptr, mxconst::get_ATTRIB_DATAREF_TO_EXEC_WHEN_FIRED(), ""); 
+    const std::string datarefs = Utils::readAttrib(xOption_ptr, mxconst::get_ATTRIB_DATAREF_TO_EXEC_WHEN_FIRED(), "");
 
     // commands
-    const std::string commands = Utils::readAttrib(xOption_ptr, mxconst::get_ATTRIB_COMMANDS_TO_EXEC_WHEN_FIRED(), ""); 
+    const std::string commands = Utils::readAttrib(xOption_ptr, mxconst::get_ATTRIB_COMMANDS_TO_EXEC_WHEN_FIRED(), "");
     data_manager::execute_commands(commands);                                                                     // will run next flight loop call
 
 
@@ -2883,7 +2883,7 @@ missionx::Mission::flc_task(const std::string& inTaskName, Objective& obj, mxPro
         missionx::dataref_param sling_cargo_pos_lon(mxconst::get_DREF_TARGET_POS_LON_D());
         missionx::dataref_param sling_cargo_connected(mxconst::get_DREF_EXTERNAL_HSL_CARGO_CONNECTED());
 
-        if (sling_cargo_start_lat.flag_paramReadyToBeUsed && sling_cargo_start_lon.flag_paramReadyToBeUsed && sling_cargo_mass.flag_paramReadyToBeUsed 
+        if (sling_cargo_start_lat.flag_paramReadyToBeUsed && sling_cargo_start_lon.flag_paramReadyToBeUsed && sling_cargo_mass.flag_paramReadyToBeUsed
             && sling_cargo_pos_lat.flag_paramReadyToBeUsed && sling_cargo_pos_lon.flag_paramReadyToBeUsed && sling_cargo_connected.flag_paramReadyToBeUsed
            )
         {
@@ -3137,7 +3137,7 @@ missionx::Mission::flc_trigger(Trigger& trig, mxProperties& inSmPropSeedValues, 
 
   // v25.02.1 used for data_manager::set_success_or_reset_tasks_state() function.
   const std::string currentObj  = (mxUtils::isElementExists(inSmPropSeedValues.mapProperties, mxconst::get_EXT_MX_CURRENT_OBJ())) ? inSmPropSeedValues.getPropertyValue(mxconst::get_EXT_MX_CURRENT_OBJ(), err) : "";
-  const std::string currentTask = (mxUtils::isElementExists(inSmPropSeedValues.mapProperties, mxconst::get_EXT_MX_CURRENT_TASK())) ? inSmPropSeedValues.getPropertyValue(mxconst::get_EXT_MX_CURRENT_TASK(), err) : ""; 
+  const std::string currentTask = (mxUtils::isElementExists(inSmPropSeedValues.mapProperties, mxconst::get_EXT_MX_CURRENT_TASK())) ? inSmPropSeedValues.getPropertyValue(mxconst::get_EXT_MX_CURRENT_TASK(), err) : "";
 
   //// TRIGGER ////
   #ifndef RELEASE
@@ -3196,7 +3196,7 @@ missionx::Mission::flc_trigger(Trigger& trig, mxProperties& inSmPropSeedValues, 
 
   }
 
-  
+
   //////////////////////////////////////////////////////////
   // Check physical/elevation/ground and script conditions
   /////////////////////////////////////////////////////////
@@ -3267,7 +3267,7 @@ missionx::Mission::flc_trigger(Trigger& trig, mxProperties& inSmPropSeedValues, 
   // -------------Events-----------
   // ------------------------------
   // ------------------------------
-  if (trig.bAllConditionsAreMet) 
+  if (trig.bAllConditionsAreMet)
   {
     // For DEBUG tab
     trig.strct_debug.setWasEvaluatedSuccessfully(true);
@@ -3343,7 +3343,7 @@ missionx::Mission::flc_trigger(Trigger& trig, mxProperties& inSmPropSeedValues, 
         #ifndef RELEASE
         Log::logMsg("[" + std::string(__func__) + "] Firing Leaving trigger: " + trig.getName());
         #endif // !RELEASE
-          
+
         if (trig.bPlaneIsInTriggerArea + trig.strct_debug.bForceDebug) // v3.305.3 added bForceDebug logic to force outcome triggering// in order to leave, we need to at least be in the trigger envelop area (volume)
         {
           trig.strct_debug.sStartExecutionTime = Timer::get_debugTimestamp();
@@ -3390,14 +3390,14 @@ missionx::Mission::flc_trigger(Trigger& trig, mxProperties& inSmPropSeedValues, 
         break; // do nothing
     }
   } // end NOT all conditions are met
-   
+
 
 
   if (trig.strct_debug.bForceDebug)
   {
     Log::logMsg("After executing forced Trigger Event. " + trig.strct_debug.get_string_of_debug_info() + ", for trigger: " + trig.name); // debug
 
-    trig.strct_debug.restore_real_trig_state(trig.trigState);  
+    trig.strct_debug.restore_real_trig_state(trig.trigState);
   }
 
   // v3.0.219.1 RE-ARM trigger if is in "left" state
@@ -3466,7 +3466,7 @@ missionx::Mission::flc_3d_objects(mxProperties& inSmPropSeedValues)
     ////////////////////////////////////////////////////////
     // v3.303.11 add support for relative 3D Object location
     std::string relative_pos_bearing_deg_distance_mt_s = Utils::readAttrib(instObj.node, mxconst::get_ATTRIB_RELATIVE_POS_BEARING_DEG_DISTANCE_MT(), "");
-    // We need to calculate instance location if "relative_pos_bearing_deg_distance_mt_s" has value and (we started fresh mission OR we loaded from savepoint but there is no instance data yet) 
+    // We need to calculate instance location if "relative_pos_bearing_deg_distance_mt_s" has value and (we started fresh mission OR we loaded from savepoint but there is no instance data yet)
     if ((!missionx::data_manager::mx_global_settings.flag_loadedFromSavepoint || ( missionx::data_manager::mx_global_settings.flag_loadedFromSavepoint && xInstanceDataNode.isEmpty() ) ) && !relative_pos_bearing_deg_distance_mt_s.empty())
     {
       IXMLNode node_ptr = instObj.node;
@@ -3591,7 +3591,7 @@ missionx::Mission::flc_3d_objects(mxProperties& inSmPropSeedValues)
       {
         // v3.0.207.2 // for moving objects get_next_point() which represent the destination
         if (instObj.obj3dType == obj3d::obj3d_type::moving_obj)
-          instObj.init_path_cycle();
+          instObj.init_moving_3d_object();
 
         // check if we need to probe terrain
         if (instObj.displayCoordinate.getElevationInFeet() == 0.0) // do we need Terrain Probing?
@@ -3611,7 +3611,7 @@ missionx::Mission::flc_3d_objects(mxProperties& inSmPropSeedValues)
     else // Destroy instance of 3D Object and remove from display list since it is not in range or condition failed
     {
 
-      instObj.isInDisplayList = false; // v3.0.207.1 
+      instObj.isInDisplayList = false; // v3.0.207.1
       XPLMDestroyInstance(instObj.g_instance_ref);
 
       missionx::data_manager::delInstanceNameFromDisplayList(instName); // v3.0.207.1
@@ -3820,7 +3820,7 @@ missionx::Mission::drawCallback(const XPLMDrawingPhase& inPhase, const int inIsB
       this->gatherStats_identify_takeoff_and_landings(); // v3.0.255.1
     }
 
-  
+
   } // end xplm_Phase_Objects
 
 
@@ -3925,7 +3925,7 @@ missionx::Mission::gatherStats_identify_takeoff_and_landings()
 
         data_manager::gather_stats.gather_and_store_stats(planePhase);
       }
-      else 
+      else
         data_manager::gather_stats.gather_and_store_stats(planePhase);
 
 
@@ -4020,8 +4020,8 @@ missionx::Mission::applyPropertiesToLocal()
 {
   if (data_manager::mx_global_settings.node.isAttributeSet(mxconst::get_PROP_MISSION_STATE().c_str())) // v3.0.241.1 //if (data_manager::mx_mission_properties_old.hasProperty(mxconst::get_PROP_MISSION_STATE()))
     data_manager::missionState = data_manager::translate_mission_state_to_enum(Utils::readAttrib(data_manager::mx_global_settings.node, mxconst::get_PROP_MISSION_STATE(), ""));
-  if (data_manager::mx_global_settings.node.isAttributeSet(mxconst::get_PROP_MISSION_CURRENT_LEG().c_str()))                              
-    data_manager::currentLegName = Utils::readAttrib(data_manager::mx_global_settings.node, mxconst::get_PROP_MISSION_CURRENT_LEG(), ""); 
+  if (data_manager::mx_global_settings.node.isAttributeSet(mxconst::get_PROP_MISSION_CURRENT_LEG().c_str()))
+    data_manager::currentLegName = Utils::readAttrib(data_manager::mx_global_settings.node, mxconst::get_PROP_MISSION_CURRENT_LEG(), "");
 
   if (data_manager::mx_global_settings.node.isAttributeSet(mxconst::get_OPT_FLIGHT_LEG_PROGRESS_COUNTER().c_str()))
     this->flight_leg_progress_counter_i = Utils::readNodeNumericAttrib<int>(data_manager::mx_global_settings.node, mxconst::get_OPT_FLIGHT_LEG_PROGRESS_COUNTER(), 0);
@@ -4058,7 +4058,7 @@ missionx::Mission::saveCheckpoint()
   // v3.0.226.1 rc1 Fix bug where missionSavepointFilePath was not initialized after mission load
   missionx::data_manager::missionSavepointFilePath     = missionx::data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONX_SAVE_PATH(), "", err) + std::string(XPLMGetDirectorySeparator()) + Utils::readAttrib(data_manager::xMainNode, mxconst::get_ATTRIB_NAME(), "") + mxconst::get_MX_FILE_SAVE_EXTENSION ();
   missionx::data_manager::missionSavepointDrefFilePath = missionx::data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONX_SAVE_PATH(), "", err) + std::string(XPLMGetDirectorySeparator()) + Utils::readAttrib(data_manager::xMainNode, mxconst::get_ATTRIB_NAME(), "") + mxconst::get_MX_FILE_SAVE_DREF_EXTENSION();
-                                                                                      
+
 
   // Prepare path and file names
   const std::string savePath     = missionx::data_manager::missionSavepointFilePath;
@@ -4183,7 +4183,7 @@ missionx::Mission::loadCheckpoint()
       Mission::uiImGuiBriefer->set_bottom_message_line1("Failed to load dataref file, but savepoint was loaded. Continue at your own risk...", 20);
       Log::logMsgErr(err);
     }
-    else 
+    else
       Mission::uiImGuiBriefer->set_bottom_message_line1("Savepoint was Loaded. You can press start...", 20);
 
     // v3.303.9.1 read custom datarefs - based on aircraft custom datarefs
@@ -4198,7 +4198,7 @@ missionx::Mission::loadCheckpoint()
       Mission::uiImGuiBriefer->set_bottom_message_line1("Failed to load aircraft dataref file, but savepoint was loaded. Continue at your own risk...", 20);
       Log::logMsgErr(err);
     }
-    else 
+    else
       Mission::uiImGuiBriefer->set_bottom_message_line1("Savepoint and aircraft datarefs were Loaded. You can press start...", 20);
 
 
@@ -4291,7 +4291,7 @@ missionx::Mission::flcPRE()
         if (missionx::data_manager::missionState != missionx::mx_mission_state_enum::mission_loaded_from_savepoint)
           setMissionTime();
 
-        missionx::data_manager::timelapse.flag_isActive = false; // v3.303.8        
+        missionx::data_manager::timelapse.flag_isActive = false; // v3.303.8
 
       }
       break;
@@ -4670,7 +4670,7 @@ missionx::Mission::flcPRE()
       case missionx::mx_flc_pre_command::stop_position_camera:
       {
         XPLMCameraControlDuration outCameraControlDuration;
-        if (XPLMIsCameraBeingControlled(&outCameraControlDuration))        
+        if (XPLMIsCameraBeingControlled(&outCameraControlDuration))
         {
           if (this->delay_camera_position_change >= 1)
           {
@@ -4689,7 +4689,7 @@ missionx::Mission::flcPRE()
       case missionx::mx_flc_pre_command::dont_control_camera:
       {
         XPLMCameraControlDuration outCameraControlDuration;
-        if (XPLMIsCameraBeingControlled(&outCameraControlDuration))        
+        if (XPLMIsCameraBeingControlled(&outCameraControlDuration))
         {
           XPLMDontControlCamera();
         }
@@ -4702,7 +4702,7 @@ missionx::Mission::flcPRE()
           // v3.0.221.15rc4 disable position plane is override flightLeg name was issued
           std::string       err;
           const std::string overrideLegName          = Utils::readAttrib(data_manager::mx_global_settings.xDesigner_ptr, mxconst::get_ATTRIB_FORCE_LEG_NAME(), "");
-          const bool        flag_auto_position_plane = Utils::readBoolAttrib(data_manager::mx_global_settings.xPosition_ptr, mxconst::get_ATTRIB_AUTO_POSITION_PLANE(), true); // v3.0.241.1  
+          const bool        flag_auto_position_plane = Utils::readBoolAttrib(data_manager::mx_global_settings.xPosition_ptr, mxconst::get_ATTRIB_AUTO_POSITION_PLANE(), true); // v3.0.241.1
 
 
           if (overrideLegName.empty() && flag_auto_position_plane)
@@ -4741,7 +4741,7 @@ missionx::Mission::flcPRE()
 
         // v3.0.221.10 start cold and dark ?
         const bool flag_startColdAndDark =
-          Utils::readBoolAttrib(data_manager::briefer.xLocationAdjust, mxconst::get_ATTRIB_START_COLD_AND_DARK(), false); //  
+          Utils::readBoolAttrib(data_manager::briefer.xLocationAdjust, mxconst::get_ATTRIB_START_COLD_AND_DARK(), false); //
         if (flag_startColdAndDark)
         {
           this->start_cold_and_dark();
@@ -4862,7 +4862,7 @@ missionx::Mission::flcPRE()
         const bool val = Utils::getNodeText_type_1_5<bool>(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_HIDE_SHOW_MXPAD(), true); // toggle MXPAD if options is set
 
         missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(
-          mxconst::get_OPT_AUTO_HIDE_SHOW_MXPAD(), !val); 
+          mxconst::get_OPT_AUTO_HIDE_SHOW_MXPAD(), !val);
         missionx::system_actions::store_plugin_options();
 
         if (Mission::uiImGuiMxpad)
@@ -5487,10 +5487,10 @@ missionx::Mission::flcPRE()
       {
         std::map<int, missionx::NavAidInfo> map_fms_entries; // v25.05.1 for now a placeholder. TODO: implement the container
         std::string errView = missionx::data_manager::write_fpln_to_external_folder(map_fms_entries);
-        
+
 
         if (errView.empty())
-          Mission::uiImGuiBriefer->set_bottom_message_line1("Wrote to External FMS.", 5); // v3.305.3          
+          Mission::uiImGuiBriefer->set_bottom_message_line1("Wrote to External FMS.", 5); // v3.305.3
         else
           Log::logMsgErr(errView);
       }
@@ -5527,14 +5527,14 @@ missionx::Mission::flcPRE()
         assert(Mission::uiImGuiBriefer != nullptr);
 
         const std::string filename = (Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.file_picked_i > -1) ? Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.vecFileList_char.at(Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.file_picked_i) : mxconst::get_CONVERTER_FILE();
-        
+
         if (missionx::data_manager::generate_missionx_mission_file_from_convert_screen( missionx::data_manager::prop_userDefinedMission_ui
                                                                                       // , filename
                                                                                       , Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.xConvMainNode
                                                                                       , Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.xSavedGlobalSettingsNode // v3.305.1
                                                                                       , missionx::data_manager::map_tableOfParsedFpln
                                                                                       , Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.flag_store_state
-                                                                                      , !Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.flag_use_loaded_globalSetting_from_conversion_file ) // v3.305.1 send the oposite value of flag_use_loaded_globalSetting_from_conversion_file 
+                                                                                      , !Mission::uiImGuiBriefer->m_ui_conv_screen->strct_conv_layer.flag_use_loaded_globalSetting_from_conversion_file ) // v3.305.1 send the oposite value of flag_use_loaded_globalSetting_from_conversion_file
            )
         {
           Mission::uiImGuiBriefer->set_bottom_message_line1(R"(Mission file was generated as a "random" mission. You can run it from the "Load Mission" screen.)");
@@ -5566,7 +5566,7 @@ missionx::Mission::flcPRE()
       {
         for (auto& [file, textureFile] : missionx::data_manager::xp_mapInvImages)
         {
-          if (file.empty() || textureFile.getWidth() == 0 || textureFile.getHeight() == 0 || textureFile.sImageData.pData == nullptr || textureFile.texture_hash_simple == 0) // v3.0.303.7 hopefully will solve a bug if image file was not found 
+          if (file.empty() || textureFile.getWidth() == 0 || textureFile.getHeight() == 0 || textureFile.sImageData.pData == nullptr || textureFile.texture_hash_simple == 0) // v3.0.303.7 hopefully will solve a bug if image file was not found
             continue;
 
           XPLMGenerateTextureNumbers(&textureFile.gTexture, 1);
@@ -5617,7 +5617,7 @@ missionx::Mission::flcPRE()
           stbi_image_free(img);
           #endif
 
-          textureFile.sImageData.pData = nullptr;  
+          textureFile.sImageData.pData = nullptr;
         }
       }
       break;
@@ -5625,7 +5625,7 @@ missionx::Mission::flcPRE()
       {
         if ( ! Message::lineAction4ui.vals[mxconst::get_STORY_PAUSE_TIME()].empty() && mxUtils::is_digits(Message::lineAction4ui.vals[mxconst::get_STORY_PAUSE_TIME()]) )
           missionx::Mission::uiImGuiBriefer->strct_flight_leg_info.strct_story_mode.setAutoSkipTimer(mxUtils::stringToNumber<float>(Message::lineAction4ui.vals[mxconst::get_STORY_PAUSE_TIME()])); // v3.305.1
-        else 
+        else
           missionx::Mission::uiImGuiBriefer->strct_flight_leg_info.strct_story_mode.setAutoSkipTimer(mxconst::DEFAULT_SKIP_MESSAGE_TIMER_IN_SEC_F); // v3.305.1
       }
       break;
@@ -5674,7 +5674,7 @@ missionx::Mission::flcPRE()
           stbi_image_free(img);
           #endif
 
-          textureFile.sImageData.pData = nullptr;  
+          textureFile.sImageData.pData = nullptr;
         }
 
         Message::lineAction4ui.state = missionx::enum_mx_line_state::action_ended;
@@ -5935,7 +5935,7 @@ missionx::Mission::start_cold_and_dark()
   const bool val =
     Utils::getNodeText_type_1_5<bool>(missionx::system_actions::pluginSetupOptions.node,
                                       mxconst::get_OPT_DISABLE_PLUGIN_COLD_AND_DARK_WORKAROUND(),
-                                      mxconst::DEFAULT_DISABLE_PLUGIN_COLD_AND_DARK); 
+                                      mxconst::DEFAULT_DISABLE_PLUGIN_COLD_AND_DARK);
   if (val)
     return; // skip
 
@@ -5943,7 +5943,7 @@ missionx::Mission::start_cold_and_dark()
 
 
   IXMLNode          xColdDark                     = data_manager::briefer.node.getChildNode(mxconst::get_ELEMENT_DATAREFS_START_COLD_AND_DARK().c_str());
-  const std::string customMissionStartColdAndDark = Utils::xml_get_text(xColdDark); 
+  const std::string customMissionStartColdAndDark = Utils::xml_get_text(xColdDark);
   if (!customMissionStartColdAndDark.empty())
   {
     missionx::data_manager::start_cold_and_dark_drefs = customMissionStartColdAndDark; // +"," + missionx::data_manager::start_cold_and_dark_drefs;
@@ -5964,7 +5964,7 @@ missionx::Mission::flc_check_success()
   // decide if to transition to the next Flight Leg or call end
   if (data_manager::mapFlightLegs[data_manager::currentLegName].getIsComplete())
   {
-    
+
 
     if (data_manager::mapFlightLegs[data_manager::currentLegName].getFlightLegState() == missionx::enums::mx_flightLeg_state::leg_success)
     {
@@ -6253,7 +6253,7 @@ missionx::Mission::setUiEndMissionTexture()
   std::string end_desc;
   end_desc.clear();
 
-  
+
   if (data_manager::missionState == mx_mission_state_enum::mission_completed_success)
   {
 
@@ -6263,7 +6263,7 @@ missionx::Mission::setUiEndMissionTexture()
       const std::string file = Utils::readAttrib(data_manager::endMissionElement.node.getChildNode(mxconst::get_ELEMENT_END_SUCCESS_IMAGE().c_str()), mxconst::get_ATTRIB_FILE_NAME(), "");
 #else
       IXMLNode          xNode = data_manager::endMissionElement.node.getChildNode(mxconst::get_ELEMENT_END_SUCCESS_IMAGE().c_str());
-      const std::string file  = Utils::readAttrib(xNode, mxconst::get_ATTRIB_FILE_NAME(), ""); 
+      const std::string file  = Utils::readAttrib(xNode, mxconst::get_ATTRIB_FILE_NAME(), "");
 #endif
       if (mxUtils::isElementExists(data_manager::mapCurrentMissionTextures, file))
       {
@@ -6285,10 +6285,10 @@ missionx::Mission::setUiEndMissionTexture()
     {
 #ifdef IBM
       const std::string file = Utils::readAttrib(
-        data_manager::endMissionElement.node.getChildNode(mxconst::get_ELEMENT_END_FAIL_IMAGE().c_str()), mxconst::get_ATTRIB_FILE_NAME(), ""); 
+        data_manager::endMissionElement.node.getChildNode(mxconst::get_ELEMENT_END_FAIL_IMAGE().c_str()), mxconst::get_ATTRIB_FILE_NAME(), "");
 #else
       IXMLNode          xNode = data_manager::endMissionElement.node.getChildNode(mxconst::get_ELEMENT_END_FAIL_IMAGE().c_str());
-      const std::string file  = Utils::readAttrib(xNode, mxconst::get_ATTRIB_FILE_NAME(), ""); 
+      const std::string file  = Utils::readAttrib(xNode, mxconst::get_ATTRIB_FILE_NAME(), "");
 #endif
 
       if (mxUtils::isElementExists(data_manager::mapCurrentMissionTextures, file))

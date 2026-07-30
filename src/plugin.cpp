@@ -838,7 +838,7 @@ float pluginCallback_draw(const float inElapsedSinceLastCall, const float inElap
   // v26.03.1 Draw Moving 3D Objects
   if (data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
   {
-    if (/*!data_manager::listDisplayMoving3dInstances.empty() && */ !missionx::dataref_manager::isSimPause() )
+    if ( !missionx::dataref_manager::isSimPause() )
     {
       // bool b_3d_moving_object_exists = false;
       for (const auto &instName : data_manager::listDisplayMoving3dInstances) // loop over each instance
@@ -847,9 +847,6 @@ float pluginCallback_draw(const float inElapsedSinceLastCall, const float inElap
         {
           // b_3d_moving_object_exists = true;
           missionx::data_manager::map3dInstances[instName].cb_calc_pos_of_the_moving_object(inElapsedSinceLastCall, inElapsedTimeSinceLastFlightLoop, inCounter );
-
-          // if (!missionx::data_manager::map3dInstances[instName].mvStat.flag_wait_for_next_flc)
-          //   missionx::data_manager::map3dInstances[instName].check_are_we_there_yet(); // v3.0.253.6 are we there yet ?
 
         }
       }
@@ -1083,9 +1080,7 @@ writePlaneCoordinationToLogCommandHandler (XPLMCommandRef inCommand, XPLMCommand
 
   if (inPhase == xplm_CommandBegin)
   {
-
     missionx::data_manager::write_plane_position_to_log_file ();
-
     return 1;
   }
 
