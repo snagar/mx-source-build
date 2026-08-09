@@ -31,10 +31,10 @@ namespace missionx
 
 inline constexpr const int MX_FEATURES_VERSION = 20260403; // Added min/max rw length to airports_vu // 20250501; //20241212; //20230917; // 330491; //302564;  // added SETUP_LOCK_OVERPASS_URL_TO_USER_PICK
 
-#define SPECIAL_BUILD ""
+#define SPECIAL_BUILD "img v1.92"
 
 inline constexpr auto PLUGIN_VER_MAJOR                  = "26"; // year
-inline constexpr auto PLUGIN_VER_MINOR                  = "06"; // month
+inline constexpr auto PLUGIN_VER_MINOR                  = "08"; // month
 inline constexpr auto PLUGIN_VER_SUB                    = "1"; // sub-version
 inline constexpr auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;

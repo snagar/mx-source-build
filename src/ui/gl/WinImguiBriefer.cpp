@@ -356,7 +356,7 @@ WinImguiBriefer::add_pause_in_2d_mode ()
 void
 WinImguiBriefer::add_font_size_scale_buttons ()
 {
-  ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE); // v3.305.1
+  // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE); // v3.305.1
 
   //// +/- font size
   if (ImGui::SmallButton (" + "))
@@ -374,7 +374,7 @@ WinImguiBriefer::add_font_size_scale_buttons ()
   }
   this->mx_add_tooltip (missionx::color::color_vec4_white, "Decrease font scale");
 
-  ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale); // v3.305.1
+  // // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale); // v3.305.1
 }
 
 // -------------------------------------
@@ -382,7 +382,7 @@ WinImguiBriefer::add_font_size_scale_buttons ()
 void
 WinImguiBriefer::add_skewed_marker_checkbox ()
 {
-  ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+  // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
   if (ImGui::Checkbox (std::string ("Place markers near targets and not above them (in +/-" + mxUtils::formatNumber<double> (mxconst::MAX_AWAY_SKEWED_DISTANCE_NM, 1) + "nm radius).").c_str (), &missionx::strct_setup_layer.bPlaceMarkersAwayFromTarget))
   {
     // ADD set option value
@@ -752,7 +752,7 @@ WinImguiBriefer::add_debug_info ()
   constexpr const float        fTitleHeight = 30.0f;
   constexpr const static float fPADDING     = 10.0f;
 
-  ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
+  // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
 
   if (missionx::data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running && ImGui::BeginTabBar ("FlightLegInfo", ImGuiTabBarFlags_None))
   {
@@ -3257,7 +3257,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
         this->add_ui_warning_messages_button(); // v26.1.1. Also change the "start" button position to clear space for the warning button.
       }
 
-      ImGui::SetWindowFontScale(mxconst::DEFAULT_BASE_FONT_SCALE);
+      // ImGui::SetWindowFontScale(mxconst::DEFAULT_BASE_FONT_SCALE);
     }
     this->mxUiReleaseLastFont();
 
@@ -3614,7 +3614,7 @@ WinImguiBriefer::draw_top_toolbar ()
         break;
     }
     ImGui::PopStyleColor (1);
-    ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+    // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
 
     this->mxUiReleaseLastFont ();
 
@@ -4379,7 +4379,7 @@ WinImguiBriefer::draw_setup_layer ()
     //------------------------------------------------
     //                  General Settings Group
     //------------------------------------------------
-    ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+    // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
 
 
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
@@ -4434,9 +4434,9 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::PopItemWidth ();
 
       ImGui::SameLine ();
-      ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
+      // // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
       ImGui::TextColored (missionx::color::color_vec4_aqua, "Mission-X v3.x");
-      ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+      // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
 
       // Inventory X11 compatibility mode // 24.12.2
       if (missionx::data_manager::xplane_ver_i > missionx::XP12_VERSION_NO)
@@ -4447,7 +4447,7 @@ WinImguiBriefer::draw_setup_layer ()
         const bool bDisable = this->mxStartUiDisableState (missionx::data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running);
         {
           ImGui::TextColored (missionx::color::color_vec4_yellow, "Inventory Layout:");
-          ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+          // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
           this->add_ui_xp11_comp_checkbox (true); // v24.12.2
         }
         this->mxEndUiDisableState (bDisable);
@@ -4458,7 +4458,7 @@ WinImguiBriefer::draw_setup_layer ()
       // v25.06.1 deprecate the option
       const bool bDisable = this->mxStartUiDisableState(true);
       ImGui::TextColored (missionx::color::color_vec4_yellow, "Pause X-Plane when Mission-X is open in VR Mode:");
-      ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+      // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
       if (ImGui::Checkbox ("(Deprecated, always on) Pause in VR mode", &missionx::strct_setup_layer.bPauseInVR))
       {
         missionx::strct_setup_layer.bPauseInVR = false;
@@ -4527,7 +4527,7 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::Text ("Execute the apt data optimization scripts:");
       ImGui::PopStyleColor (1); // back to white
 
-      ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+      // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
 
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
       ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
@@ -4567,7 +4567,7 @@ WinImguiBriefer::draw_setup_layer ()
     //------------------------------------------------
 
     ++index; // 3
-    ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+    // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
     // if (ImGui::CollapsingHeader("TOOLS"))
     missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
     if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
@@ -4696,7 +4696,7 @@ WinImguiBriefer::draw_setup_layer ()
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
-      ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+      // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
       {
         ImGui::Text ("Force Normalized Mission Volume: ");
@@ -4749,7 +4749,7 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::PushItemWidth (450.0f);
       {
 
-        ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+        // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
         ImGui::TextColored (missionx::color::color_vec4_yellow, "Preferred Overpass URL:");
         ImGui::PushID ("##overpassCustomUrl");
         if (ImGui::Combo ("##OverPassURLs", &missionx::data_manager::overpass_user_picked_combo_i, missionx::strct_setup_layer.vecOverpassUrls_char.data (), static_cast<int> (missionx::strct_setup_layer.vecOverpassUrls_char.size ())))
@@ -5435,7 +5435,6 @@ WinImguiBriefer::draw_home_layer ()
       else
         missionx::strct_user_create_layer.iMissionSubCategoryPicked = 0; // v25.04.1
 
-
       // Tooltip
       if (!btn.tip.empty ())
         this->mx_add_tooltip (missionx::color::color_vec4_yellow, btn.tip);
@@ -6109,7 +6108,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
         this->add_ui_warning_messages_button (); // v26.1.1. Also change the "start" button position to clear space for the warning button.
       }
 
-      ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+      // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
     }
     ImGui::EndGroup ();
     this->mxUiReleaseLastFont ();
@@ -6367,7 +6366,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
               {
                 const std::string fileName = (missionx::strct_generate_template_layer.last_picked_template_key.find (mxconst::get_XML_EXTENSION ()) == std::string::npos) ? missionx::strct_generate_template_layer.last_picked_template_key + mxconst::get_XML_EXTENSION () : missionx::strct_generate_template_layer.last_picked_template_key;
 
-                ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
+                // // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
                 if (Utils::isElementExists (data_manager::mapGenerateMissionTemplateFiles, missionx::strct_generate_template_layer.last_picked_template_key))
                 {
 
@@ -6376,12 +6375,12 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                   ImGui::TextWrapped ("%s", missionx::data_manager::mapGenerateMissionTemplateFiles[missionx::strct_generate_template_layer.last_picked_template_key].description.c_str ());
                   this->mxUiResetAllFontsToDefault ();
                 }
-                ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+                // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
               }
               else
               { // Display the "template" options, and basic description.
 
-                ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
+                // // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
                 // show options combo box
                 // v24.12.2 multi options
                 if (mxUtils::isElementExists (data_manager::mapGenerateMissionTemplateFiles, missionx::strct_generate_template_layer.last_picked_template_key))
@@ -6422,7 +6421,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                 this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
                 ImGui::TextWrapped ("%s", missionx::data_manager::mapGenerateMissionTemplateFiles[missionx::strct_generate_template_layer.last_picked_template_key].template_description.c_str ());
                 this->mxUiResetAllFontsToDefault ();
-                ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+                // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
               }
             }
           }
@@ -6710,7 +6709,7 @@ WinImguiBriefer::draw_flight_leg_info ()
   if ((Message::lineAction4ui.state == missionx::enum_mx_line_state::undefined) && (missionx::data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running))
   {
 
-    ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale); // v3.305.1
+    // // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale); // v3.305.1
 
 
     // Left image
@@ -6759,7 +6758,7 @@ WinImguiBriefer::draw_flight_leg_info ()
     ImGui::EndChild ();
     ImGui::EndGroup ();
 
-    ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE); // v3.305.1
+    // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE); // v3.305.1
   }
 
 
@@ -6833,7 +6832,7 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
     child_w[1] = 0.0f; // full window width
   }
 
-  ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
+  // // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
 
   ImGuiTabBarFlags mainTab_bar_flags = ImGuiTabBarFlags_Reorderable; // ImGuiTabBarFlags_None;
   if (ImGui::BeginTabBar ("FlightLegInfo", mainTab_bar_flags))
@@ -7020,7 +7019,7 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
     ImGui::EndTabBar ();
   }
 
-  ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+  // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
 }
 
 
@@ -8014,9 +8013,9 @@ WinImguiBriefer::child_flight_leg_info_draw_map ()
     if (this->strct_flight_leg_info.iMapNumberToDisplay < 1)
     {
       ImGui::NewLine ();
-      ImGui::SetWindowFontScale (2.0f);
+      // // ImGui::SetWindowFontScale (2.0f);
       ImGui::TextColored (missionx::color::color_vec4_magenta, "There are no maps or informational images... move along... ");
-      ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+      // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
     }
     else
     {
@@ -8339,7 +8338,7 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
         {
           if (!this->strct_pick_layer.last_picked_key.empty ())
           {
-            ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
+            // // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
             this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
 
             ImGui::Text ("Title: ");
@@ -8380,7 +8379,7 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
             this->mxUiResetAllFontsToDefault ();
             ImGui::PopStyleColor (1);
 
-            ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+            // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
           }
         }
       }
@@ -8493,12 +8492,12 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
   {
     ImGui::NewLine ();
 
-    // ImGui::SetWindowFontScale(2.0f);
+    // // // ImGui::SetWindowFontScale(2.0f);
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
     ImGui::TextColored (missionx::color::color_vec4_magenta, "Please wait while loading mission files.... ");
     this->mxUiReleaseLastFont ();
 
-    ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+    // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
   }
 }
 
@@ -8619,7 +8618,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
       this->strct_ext_layer.flag_flightplandatabase_auth_exists = true;
   }
 
-  ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
+  // // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
 
   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.305.1
 
@@ -8961,7 +8960,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
     this->mxUiReleaseLastFont ();
   }
 
-  ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+  // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
 }
 
 // -----------------------------------------------
@@ -9093,12 +9092,13 @@ WinImguiBriefer::draw_about_layer ()
     ImGui::Separator ();
 
     ImGui::TextColored (missionx::color::color_vec4_aqua, "%s", "Used Fonts:");
-    for (const auto &[fontType, fontId] : MxUICore::mapFontTypeToFontID)
+
+    for (const auto &[fontType, font_meta] : MxUICore::mapFontTypeMeta)
     {
       if (mxUtils::isElementExists (MxUICore::mapFontTypesBeingUsedInProgram, fontType))
       {
-        std::string sText = "Testing 1 2 3 (" + std::string (ImgWindow::sFont1->getAtlas ()->Fonts[fontId]->Sources->Name) + ")";
-        ImGui::PushFont (ImgWindow::sFont1->getAtlas ()->Fonts[fontId]);
+        std::string sText = fmt::format("Testing 1 2 3 ({}:{})", std::string (ImgWindow::sFontAtlas->Fonts[font_meta.id]->Sources[0]->Name ), font_meta.fSizePx ); // v26.08.1
+        ImGui::PushFont (ImgWindow::sFontAtlas->Fonts[font_meta.id], font_meta.fSizePx); // v26.08.1
         ImGui::TextWrapped ("[%s] %s", fontType.c_str (), sText.c_str ());
         ImGui::PopFont ();
       }
@@ -9108,13 +9108,16 @@ WinImguiBriefer::draw_about_layer ()
     ImGui::Separator ();
     ImGui::NewLine ();
     ImGui::TextColored (missionx::color::color_vec4_aqua, "%s", "All Fonts in Memory:");
-    for (int i = 0; i < ImgWindow::sFont1->getAtlas ()->Fonts.size (); ++i)
+    // for (int i = 0; i < ImgWindow::sFontAtlas->getAtlas ()->Fonts.size (); ++i)
+    for (const auto &[fontType, font_meta] : MxUICore::mapFontTypeMeta)
     {
-      std::string sText = "Testing 1 2 3 (" + std::string (ImgWindow::sFont1->getAtlas ()->Fonts[i]->Sources->Name) + ")";
-      ImGui::PushFont (ImgWindow::sFont1->getAtlas ()->Fonts[i]);
+      // std::string sText = "Testing 1 2 3 (" + std::string (ImgWindow::sFontAtlas->getAtlas ()->Fonts[i]->Sources[0]->Name) + ")"; // v26.08.1
+      const std::string sText = fmt::format("Testing 1 2 3 ({}:{})", std::string (ImgWindow::sFontAtlas->Fonts[font_meta.id]->Sources[0]->Name ), font_meta.fSizePx ); // v26.08.1
+      ImGui::PushFont (ImgWindow::sFontAtlas->Fonts[font_meta.id], font_meta.fSizePx); // v26.08.1
       ImGui::TextWrapped ("%s", sText.c_str ());
       ImGui::PopFont ();
     }
+
   }
   ImGui::EndChild ();
 }

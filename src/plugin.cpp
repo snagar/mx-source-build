@@ -403,7 +403,7 @@ XPluginStop (void)
     // Cleanup the general stuff
     if (missionx::Mission::uiImGuiMxpad)
     {
-      missionx::WinImguiMxpad::sFont1.reset ();
+      // missionx::WinImguiMxpad::sFontAtlas.reset ();
       missionx::Mission::uiImGuiMxpad = nullptr;
     }
 

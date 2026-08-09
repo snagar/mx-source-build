@@ -5,9 +5,11 @@ namespace missionx
 int MxUICore::global_desktop_bounds[4]; // holds global desktop bounds
 
 
-std::string                                 MxUICore::mxDefaultFontName{ "" };
-std::map<std::string, MxUICore::mxFontData> MxUICore::mapFontsMeta;
-std::unordered_map<std::string, int>        MxUICore::mapFontTypeToFontID;
+std::string                                 MxUICore::mxDefaultFontName;
+// std::map<std::string, MxUICore::mxFontData> MxUICore::mapFontsMeta;
+std::map<std::string, MxUICore::mxFontMeta> MxUICore::mapFontTypeMeta; // holds the font type, and basic info
+// std::unordered_map<std::string, int>        MxUICore::mapFontTypeToFontID;
+// std::unordered_map<std::string, MxUICore::mxFontMeta>        MxUICore::mapFontTypeToFontID;
 std::map<std::string, int>                  MxUICore::mapFontTypesBeingUsedInProgram;
 
 

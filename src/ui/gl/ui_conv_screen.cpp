@@ -2039,7 +2039,7 @@ void ui_conv_screen::draw_conv_main_fpln_to_mission_window()
 {
     auto win_size_vec2 = ImGui::GetContentRegionAvail ();
 
-  ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
+  // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
 
   // First Time code
   if (this->strct_conv_layer.flag_first_time)
@@ -2446,7 +2446,7 @@ There are other options that are best handle manually inside an editor and not i
     break;
   } // end switch between layers
 
-  ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
+  // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
 }
 
 // ----------------------------

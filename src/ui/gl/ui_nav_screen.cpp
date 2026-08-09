@@ -17,7 +17,7 @@ void ui_nav_screen::draw_ils_screen()
   auto    win_size_vec2          = this->mxUiGetWindowContentWxH ();
   ImGuiID elevVerticalSlider_gid = 0;
 
-  ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
+  // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
 
   if (missionx::strct_ils_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw) // display the success screen - main search screen
   {
@@ -77,11 +77,11 @@ void ui_nav_screen::draw_ils_screen()
   {
     ImGui::NewLine ();
 
-    // ImGui::SetWindowFontScale(2.0f);
+    // // ImGui::SetWindowFontScale(2.0f);
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
     ImGui::TextColored (missionx::color::color_vec4_magenta, "Please wait while plugin tests the validity of the data.... ");
     this->mxUiReleaseLastFont ();
-    ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+    // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
 
     if (missionx::strct_ils_layer.layer_state < missionx::mx_layer_state_enum::validating_data)
     {
@@ -89,7 +89,7 @@ void ui_nav_screen::draw_ils_screen()
     }
   }
 
-  ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
+  // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
 }
 
 // ----------------------------

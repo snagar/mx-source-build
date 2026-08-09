@@ -34,7 +34,7 @@ bool Mission::usingCustomMetarFile; // v3.0.201
 int missionx::Mission::displayCueInfo; // v3.0.203.5
 
 void
-add_icons_to_fonts(const std::shared_ptr<ImgFontAtlas>& inOutFontAtlas, const float inFontSize)
+add_icons_to_fonts(ImFontAtlas* inOutFontAtlas, const float inFontSize)
 {
   // Now we merge some icons from the OpenFontsIcons font into the above font
   // (see `imgui/docs/FONTS.txt`)
@@ -56,40 +56,354 @@ add_icons_to_fonts(const std::shared_ptr<ImgFontAtlas>& inOutFontAtlas, const fl
   inOutFontAtlas->AddFontFromMemoryCompressedTTF(fa_solid_900_compressed_data, fa_solid_900_compressed_size, inFontSize, &config, icon_ranges.Data);
 }
 
-void
+
+// void
+// add_icons_to_fonts(const std::shared_ptr<ImgFontAtlas>& inOutFontAtlas, const float inFontSize)
+// {
+//   // Now we merge some icons from the OpenFontsIcons font into the above font
+//   // (see `imgui/docs/FONTS.txt`)
+//   ImFontConfig config;
+//   config.MergeMode = true;
+//
+//   // We only read very selectively the individual glyphs we are actually using
+//   // to save on texture space
+//   static ImVector<ImWchar> icon_ranges;
+//
+//   ImFontGlyphRangesBuilder builder;
+//   // Add all icons that are actually used (they concatenate into one string)
+//   builder.AddText(ICON_FA_ARROW_DOWN ICON_FA_ARROW_UP ICON_FA_PLAY ICON_FA_REPLY ICON_FA_SAVE ICON_FA_SIGN_OUT_ALT ICON_FA_FAST_FORWARD ICON_FA_STEP_FORWARD ICON_FA_PAUSE ICON_FA_TRASH ICON_FA_TRASH_ALT ICON_FA_SEARCH ICON_FA_EXTERNAL_LINK_SQUARE_ALT ICON_FA_WINDOW_MAXIMIZE ICON_FA_WINDOW_MINIMIZE ICON_FA_WINDOW_RESTORE ICON_FA_WINDOW_CLOSE
+//                     ICON_FA_SYNC
+//                     ICON_FA_REPLY ICON_FA_USER_LOCK);
+//   builder.BuildRanges(&icon_ranges);
+//
+//   // Merge the icon font with the text font
+//   inOutFontAtlas->AddFontFromMemoryCompressedTTF(fa_solid_900_compressed_data, fa_solid_900_compressed_size, inFontSize, &config, icon_ranges.Data);
+// }
+
+// void
+// configureImgWindow()
+// {
+//   //ImgWindow::sFont1 = std::make_shared<ImgFontAtlas>();
+//
+//   ImgWindow::sFontAtlas = std::make_shared<ImgFontAtlas>();
+//   // Create default Font + icons
+//   // When calling: "ImFileOpen" we must have a context ready. This was not needed prior to ImGui v1.90
+//   ImGui::CreateContext();  // v3.305.3
+//
+//
+//   // use actual parameters to configure the font, or use one of the other methods.
+//
+//   // this is a post from kuroneko on x-plane.org explaining this use.
+//
+//   // Basic setup looks something like:
+//   // To avoid bleeding VRAM like it's going out of fashion, there is only one font atlas shared over all ImgWindows
+//   // and we keep the managed pointer to it in the ImgWindow class statics.
+//
+//   // I use the C++11 managed/smart pointers to enforce RAII behaviors rather than encouraging use of new/delete.
+//   //  This means the font atlas will only get destroyed when you break all references to it.
+//   // (ie: via ImgWindow::sFontAtlas.reset())  You should never really need to do that though,
+//   // unless you're being disabled (because you'll lose your texture handles anyway and it's probably a good idea
+//   // to forcibly tear down the font atlas then).
+//
+//   // It's probably a bug that the instance of ImgWindow doesn't actually take a copy of the shared_ptr to ensure
+//   // the font atlas remains valid until it's destroyed.  I was working on a lot of things when I threw that update
+//   // together and I was heading down that path, but I think I forgot to finish it.
+//
+//   // you can use any of these fonts that are provided with X-Plane or find you own.
+//   // Currently you can only load one font and not sure if this might change in the future.
+//   // ImgWindow::sFontAtlas->AddFontFromFileTTF("./Resources/fonts/DejaVuSans.ttf", FONT_SIZE);
+//
+//   std::string defaultMetaData = R"(## Created by Mission-X Plugin
+// ##
+// ## Mission-X font ini file.
+// ##
+// ## Please do not modify it unless you know what you are doing.
+// ## Remember: always make a copy before you alter anything
+// ##############################################################
+//
+// ## Font File
+// font=./Resources/fonts/DejaVuSans.ttf
+// font=./Resources/fonts/Inconsolata.ttf
+// font=./Resources/fonts/tahomabd.ttf
+// font=./Resources/fonts/Roboto-Bold.ttf
+// #font=./Resources/plugins/missionx/libs/fonts/EBGaramond-Bold.ttf
+//
+// default_font=DejaVuSans.ttf,13
+//
+// ## Font Type and Size
+// title_reg=tahomabd.ttf,15
+// title_small=tahomabd.ttf,14
+// title_smallest=tahomabd.ttf,13
+// title_med=tahomabd.ttf,18
+// title_big=tahomabd.ttf,24
+//
+// title_toolbar=DejaVuSans.ttf,24
+//
+// # text_reg=EBGaramond-Bold.ttf,18
+// # text_small=EBGaramond-Bold.ttf,16
+//
+// text_reg=Inconsolata.ttf,14
+// text_small=Inconsolata.ttf,13
+// text_med=Inconsolata.ttf,26
+//
+// msg_bottom=Roboto-Bold.ttf,13
+// msg_popup=Roboto-Bold.ttf,15
+// )";
+//
+//   const std::string cn_default_font_name = "DejaVuSans.ttf";
+//   const std::string cn_default_font_expr = "DejaVuSans.ttf,13";
+//
+//   int         seq {0}; // seq 0 is stored with the first default font
+//   float       fontSizePx{ 13.0f };
+//   std::string fontName;
+//   // Lambda functions
+//   const auto lmbda_eval_font_data = [func = __func__](const std::vector<std::string>& inVec
+//                                                     , std::string& outFontName_s
+//                                                     , float& outSizePx_f
+//                                                     , std::string inDefaultFontName
+//                                                     , const float inDefaultSize)
+//   {
+//
+//     assert( (inVec.empty() == false) && fmt::format ("[{}], Metadata Font must not be empty", func).c_str());
+//
+//     const std::string&              value_s  = inVec.at(0);
+//     if (const std::vector<std::string> vecSplit = mxUtils::split_v2(value_s, ",");
+//         vecSplit.size() < static_cast<size_t>(2))
+//     {
+//       outFontName_s = std::move(inDefaultFontName);
+//       outSizePx_f   = inDefaultSize;
+//     }
+//     else
+//     {
+//       outFontName_s = vecSplit.at(0);
+//       outSizePx_f   = mxUtils::stringToNumber<float>(vecSplit.at(1), 2);
+//     }
+//   };
+//
+//   const auto lmbda_eval_font_name_and_return_existing_one = [](std::string inFontName, std::string inDefaultName)
+//   {
+//     // if (mxUtils::isElementExists(MxUICore::mapFontsMeta, inFontName))
+//     //   return inFontName;
+//     // v26.08.1
+//     if (MxUICore::mapFontsMeta.contains(inFontName))
+//       return inFontName;
+//
+//     return inDefaultName;
+//   };
+//
+//   ////// End Lambda functions //////
+//
+//
+//   // Read fonts from fonts.ini file
+//   auto vecFonts = missionx::ListDir::readFontMetadata("font=", 0, cn_default_font_expr, defaultMetaData);
+//
+//   std::string sTitleRegFontName;
+//
+//   if (!vecFonts.empty())
+//   {
+//     // initialize the font file meta data
+//     std::vector<std::string> vecFontName;
+//     vecFontName.clear();
+//     std::ranges::for_each(std::as_const(vecFonts),
+//                   [&](const fs::path& p)
+//                   {
+//                     vecFontName.emplace_back(p.filename().string());
+//                     Utils::addElementToMap(MxUICore::mapFontsMeta, p.filename().string(), MxUICore::mxFontData(p.filename().string(), p.string())); // store font name and font location
+//                   });
+//
+//
+//     // read default font and force defaults for this specific font case
+//     std::vector<std::string> vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_DEFAULT() + "=", 1, cn_default_font_expr, defaultMetaData);
+//
+//     assert(vecTemp.empty() == false && std::string(__func__).append(", vecTemp Font must not be empty").c_str());
+//
+//
+//     if (vecTemp.empty())
+//       MxUICore::mxDefaultFontName = cn_default_font_name;
+//     else
+//     {
+//       auto vecDefaultFont = mxUtils::split_v2(vecTemp.at(0), ",");
+//       assert(vecDefaultFont.empty() == false && std::string(__func__).append(", vecDefaultFont must not be empty").c_str());
+//       MxUICore::mxDefaultFontName = vecDefaultFont.at(0);
+//     }
+//
+//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, cn_default_font_name, mxconst::FONT_PIXEL_13);
+//     fontName   = MxUICore::mxDefaultFontName;                                                         // force default font name
+//     fontSizePx = mxconst::FONT_PIXEL_13;                                                              // force size 13px as default size - special case
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_DEFAULT());            // init DEFAULT FONT
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx + 1, mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1()); // init DEFAULT FONT + 1
+//
+//
+//
+//     // read title font
+//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_REG() + "=", 1, cn_default_font_expr, defaultMetaData);
+//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_15);
+//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_REG());
+//     sTitleRegFontName = fontName; // v3.305.3
+//
+//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_MED() + "=", 1, cn_default_font_expr, defaultMetaData);
+//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_18);
+//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_MED());
+//
+//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_BIG() + "=", 1, cn_default_font_expr, defaultMetaData);
+//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_24);
+//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_BIG());
+//
+//     // Read text fonts
+//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TEXT_REG() + "=", 1, cn_default_font_expr, defaultMetaData);
+//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_14);
+//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TEXT_REG());
+//
+//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TEXT_MED() + "=", 1, cn_default_font_expr, defaultMetaData);
+//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_18);
+//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TEXT_MED());
+//
+//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TEXT_SMALL() + "=", 1, cn_default_font_expr, defaultMetaData);
+//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_14);
+//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TEXT_SMALL());
+//
+//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_MSG_BOTTOM() + "=", 1, cn_default_font_expr, defaultMetaData);
+//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_13);
+//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_MSG_BOTTOM());
+//
+//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_MSG_POPUP() + "=", 1, cn_default_font_expr, defaultMetaData);
+//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_13);
+//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_MSG_POPUP());
+//
+//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_TOOLBAR() + "=", 1, cn_default_font_expr, defaultMetaData);
+//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_18);
+//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_TOOLBAR());
+//
+//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_SMALL() + "=", 1, cn_default_font_expr, defaultMetaData);
+//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_14);
+//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_SMALL());
+//
+//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_SMALLEST() + "=", 1, cn_default_font_expr, defaultMetaData);
+//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_13);
+//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_SMALLEST());
+//
+//
+//     if (auto fnt_default = ImgWindow::sFontAtlas->AddFontFromFileTTF(MxUICore::mapFontsMeta[MxUICore::mxDefaultFontName].fontLocation_s.c_str(), mxconst::FONT_PIXEL_13))
+//     {
+//       MxUICore::mapFontsMeta[MxUICore::mxDefaultFontName].setFontID(seq, mxconst::get_TEXT_TYPE_DEFAULT());
+//       seq++;
+//
+//       ImgWindow::sFontAtlas->AddFontFromFileTTF(MxUICore::mapFontsMeta[MxUICore::mxDefaultFontName].fontLocation_s.c_str(), mxconst::FONT_PIXEL_13 + 1);
+//       MxUICore::mapFontsMeta[MxUICore::mxDefaultFontName].setFontID(seq, mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1());
+//       seq++;
+//     }
+//
+//     // create the Atlas from all the fonts and their sizes
+//     for (auto& meta : MxUICore::mapFontsMeta | std::views::values)
+//     {
+//       // v3.305.3 loop over map_metaData
+//       for (auto& [fontType, fontMeta] : meta.mapMetaData)
+//       {
+//         if ((fontType == mxconst::get_TEXT_TYPE_DEFAULT()) || (fontType == mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1()))
+//           continue;
+//
+//         if (auto fnt = ImgWindow::sFontAtlas->AddFontFromFileTTF(meta.fontLocation_s.c_str(), fontMeta.fSizePx))
+//         {
+//           if (fontType == mxconst::get_TEXT_TYPE_TITLE_REG())
+//             add_icons_to_fonts(ImgWindow::sFontAtlas, fontMeta.fSizePx);
+//
+//           meta.setFontID(seq, fontType);
+//           //fontMeta.id = seq;
+//           seq++;
+//         }
+//       }
+//
+//     } // end loop over all font settings and creating the Atlas
+//   }
+//   else
+//   { // initialize internal font
+//
+//     constexpr auto imgui_internal_font        = "ProggyClean.ttf";
+//     MxUICore::mxDefaultFontName               = imgui_internal_font;
+//     sTitleRegFontName                         = MxUICore::mxDefaultFontName;
+//
+//     seq = 0;
+//
+//     // Prepare Meta Font data with all supported Text Types and sizes
+//     fontName   = MxUICore::mxDefaultFontName;                                                         // force default font name
+//     fontSizePx = mxconst::FONT_PIXEL_13;
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_13, mxconst::get_TEXT_TYPE_DEFAULT());            // init DEFAULT FONT
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1());
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_15, mxconst::get_TEXT_TYPE_TITLE_REG());
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_18, mxconst::get_TEXT_TYPE_TEXT_MED());
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_TEXT_REG());
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_TITLE_SMALL());
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_TITLE_SMALLEST());
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_18, mxconst::get_TEXT_TYPE_TITLE_MED());
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_24, mxconst::get_TEXT_TYPE_TITLE_BIG());
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_24, mxconst::get_TEXT_TYPE_TITLE_TOOLBAR());
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_MSG_BOTTOM());
+//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_MSG_POPUP());
+//
+//
+//
+//     ImFontConfig font_cfg = ImFontConfig();
+//     font_cfg.SizePixels   = mxconst::FONT_PIXEL_13;
+//
+//     // Explicitly create the default font
+//     ImgWindow::sFontAtlas->AddFontDefault(&font_cfg);
+//     MxUICore::mapFontsMeta[fontName].setFontID(seq, mxconst::get_TEXT_TYPE_DEFAULT());
+//     //add_icons_to_fonts(ImgWindow::sFontAtlas, font_cfg.SizePixels); // v3.305.3 deprecated we add this to mxconst::get_TEXT_TYPE_TITLE_REG() and pixel 13
+//     seq++;
+//
+//
+//     // create the rest of the Atlas from all the fonts and their sizes
+//     for (auto& meta : MxUICore::mapFontsMeta | std::views::values)
+//     {
+//       // v3.305.3 loop over map_metaData
+//       for (auto& [fontType, fontMeta] : meta.mapMetaData)
+//       {
+//         if ((fontType == mxconst::get_TEXT_TYPE_DEFAULT()) || (fontType == mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1()))
+//           continue;
+//
+//         if (auto fnt = ImgWindow::sFontAtlas->AddFontFromFileTTF(meta.fontLocation_s.c_str(), fontMeta.fSizePx))
+//         {
+//           if (fontType == mxconst::get_TEXT_TYPE_TITLE_REG())
+//             add_icons_to_fonts(ImgWindow::sFontAtlas, fontMeta.fSizePx);
+//
+//           meta.setFontID(seq, fontType);
+//           //fontMeta.id = seq;
+//           seq++;
+//         }
+//       }
+//
+//     } // end loop over all font settings and creating the Atlas
+//
+//   } // end initializing internal font
+//
+//
+//
+// } // configureImgWindow
+
+// -------------------------------------
+static void
 configureImgWindow()
 {
-  //ImgWindow::sFont1 = std::make_shared<ImgFontAtlas>();
+  constexpr auto imgui_internal_font        = "ProggyClean.ttf";
+  // ImgWindow::sFontAtlas = std::make_shared<ImgFontAtlas>();
+  ImgWindow::sFontAtlas = new ImFontAtlas();
 
-  ImgWindow::sFont1 = std::make_shared<ImgFontAtlas>();
-  // Create default Font + icons
   // When calling: "ImFileOpen" we must have a context ready. This was not needed prior to ImGui v1.90
   ImGui::CreateContext();  // v3.305.3
 
 
-  // use actual parameters to configure the font, or use one of the other methods.
-
-  // this is a post from kuroneko on x-plane.org explaining this use.
-
-  // Basic setup looks something like:
-  // To avoid bleeding VRAM like it's going out of fashion, there is only one font atlas shared over all ImgWindows
-  // and we keep the managed pointer to it in the ImgWindow class statics.
-
-  // I use the C++11 managed/smart pointers to enforce RAII behaviors rather than encouraging use of new/delete.
-  //  This means the font atlas will only get destroyed when you break all references to it.
-  // (ie: via ImgWindow::sFont1.reset())  You should never really need to do that though,
-  // unless you're being disabled (because you'll lose your texture handles anyway and it's probably a good idea
-  // to forcibly tear down the font atlas then).
-
-  // It's probably a bug that the instance of ImgWindow doesn't actually take a copy of the shared_ptr to ensure
-  // the font atlas remains valid until it's destroyed.  I was working on a lot of things when I threw that update
-  // together and I was heading down that path, but I think I forgot to finish it.
-
-  // you can use any of these fonts that are provided with X-Plane or find you own.
-  // Currently you can only load one font and not sure if this might change in the future.
-  // ImgWindow::sFont1->AddFontFromFileTTF("./Resources/fonts/DejaVuSans.ttf", FONT_SIZE);
-
-  std::string defaultMetaData = R"(## Created by Mission-X Plugin
+  std::string IN_MEMORY_FONT_INI = R"(## Created by Mission-X Plugin
 ##
 ## Mission-X font ini file.
 ##
@@ -129,17 +443,45 @@ msg_popup=Roboto-Bold.ttf,15
   const std::string cn_default_font_name = "DejaVuSans.ttf";
   const std::string cn_default_font_expr = "DejaVuSans.ttf,13";
 
-  int         seq {0}; // seq 0 is stored with the first default font
   float       fontSizePx{ 13.0f };
   std::string fontName;
-  // Lambda functions
-  const auto lmbda_eval_font_data = [func = __func__](const std::vector<std::string>& inVec, std::string& outFontName_s, float& outSizePx_f, std::string inDefaultFontName, float inDefaultSize)
+
+  // -------------------------------------------
+  // -- Initialize all types of font usage
+  // -------------------------------------------
+  MxUICore::mapFontTypeMeta.clear();
+  MxUICore::mapFontTypeMeta[mxconst::get_TEXT_TYPE_DEFAULT()]       = {.id = 0, .fSizePx = mxconst::FONT_PIXEL_13, .fontName = imgui_internal_font, .fontLocation = ""}; // init DEFAULT FONT
+  MxUICore::mapFontTypeMeta[mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1()]= {.id = 0, .fSizePx = mxconst::FONT_PIXEL_14, .fontName = imgui_internal_font, .fontLocation = ""};
+  MxUICore::mapFontTypeMeta[mxconst::get_TEXT_TYPE_TITLE_REG()]     = {.id = 0, .fSizePx = mxconst::FONT_PIXEL_15, .fontName = imgui_internal_font, .fontLocation = ""};
+  MxUICore::mapFontTypeMeta[mxconst::get_TEXT_TYPE_TEXT_MED()]      = {.id = 0, .fSizePx = mxconst::FONT_PIXEL_18, .fontName = imgui_internal_font, .fontLocation = ""};
+  MxUICore::mapFontTypeMeta[mxconst::get_TEXT_TYPE_TEXT_REG()]      = {.id = 0, .fSizePx = mxconst::FONT_PIXEL_14, .fontName = imgui_internal_font, .fontLocation = ""};
+  MxUICore::mapFontTypeMeta[mxconst::get_TEXT_TYPE_TITLE_SMALL()]   = {.id = 0, .fSizePx = mxconst::FONT_PIXEL_14, .fontName = imgui_internal_font, .fontLocation = ""};
+  MxUICore::mapFontTypeMeta[mxconst::get_TEXT_TYPE_TITLE_SMALLEST()]= {.id = 0, .fSizePx = mxconst::FONT_PIXEL_14, .fontName = imgui_internal_font, .fontLocation = ""};
+  MxUICore::mapFontTypeMeta[mxconst::get_TEXT_TYPE_TITLE_MED()]     = {.id = 0, .fSizePx = mxconst::FONT_PIXEL_18, .fontName = imgui_internal_font, .fontLocation = ""};
+  MxUICore::mapFontTypeMeta[mxconst::get_TEXT_TYPE_TITLE_BIG()]     = {.id = 0, .fSizePx = mxconst::FONT_PIXEL_24, .fontName = imgui_internal_font, .fontLocation = ""};
+  MxUICore::mapFontTypeMeta[mxconst::get_TEXT_TYPE_TITLE_TOOLBAR()] = {.id = 0, .fSizePx = mxconst::FONT_PIXEL_24, .fontName = imgui_internal_font, .fontLocation = ""};
+  MxUICore::mapFontTypeMeta[mxconst::get_TEXT_TYPE_MSG_BOTTOM()]    = {.id = 0, .fSizePx = mxconst::FONT_PIXEL_14, .fontName = imgui_internal_font, .fontLocation = ""};
+  MxUICore::mapFontTypeMeta[mxconst::get_TEXT_TYPE_MSG_POPUP()]     = {.id = 0, .fSizePx = mxconst::FONT_PIXEL_14, .fontName = imgui_internal_font, .fontLocation = ""};
+
+
+  // -------------------------------------------
+  // ------ Lambda functions to parse the fonts.ini file
+  // -------------------------------------------
+
+  // Evaluate if the "font type", read from fonts.ini is valid.
+  // Example: default_font=DejaVuSans.ttf,13
+  // We check if the font exists and if it has size.
+  const auto lmbda_eval_font_type_info = [func = __func__](const std::vector<std::string>& inVec
+                                                    , std::string& outFontName_s
+                                                    , float& outSizePx_f
+                                                    , std::string inDefaultFontName
+                                                    , const float inDefaultSize)
   {
 
     assert( (inVec.empty() == false) && fmt::format ("[{}], Metadata Font must not be empty", func).c_str());
 
     const std::string&              value_s  = inVec.at(0);
-    if (std::vector<std::string> vecSplit = mxUtils::split_v2(value_s, ",");
+    if (const std::vector<std::string> vecSplit = mxUtils::split_v2(value_s, ",");
         vecSplit.size() < static_cast<size_t>(2))
     {
       outFontName_s = std::move(inDefaultFontName);
@@ -152,40 +494,36 @@ msg_popup=Roboto-Bold.ttf,15
     }
   };
 
-  const auto lmbda_eval_font_name_and_return_existing_one = [](std::string inFontName, std::string inDefaultName)
-  {
-    if (mxUtils::isElementExists(MxUICore::mapFontsMeta, inFontName))
-      return inFontName;
-
-    return inDefaultName;
-  };
-
   ////// End Lambda functions //////
 
 
-  // Read fonts from fonts.ini file
-  auto vecFonts = missionx::ListDir::readFontMetadata("font=", 0, cn_default_font_expr, defaultMetaData);
-
-  std::string sTitleRegFontName;
+  // -------------------------------------------
+  // Read the "font=" data from the fonts.ini file or memory
+  // and store it in "map_font_name_and_location"
+  // -------------------------------------------
+  auto vecFonts = missionx::ListDir::readFontMetadata("font=", 0, cn_default_font_expr, IN_MEMORY_FONT_INI);
 
   if (!vecFonts.empty())
   {
+    // stores the font name and location to correctly init "font type" meta data when initializing them.
+    std::unordered_map<std::string, std::string > map_font_name_and_location;
+
     // initialize the font file meta data
     std::vector<std::string> vecFontName;
     vecFontName.clear();
-    std::ranges::for_each(std::as_const(vecFonts),
-                  [&](const fs::path& p)
+    std::ranges::for_each(std::as_const(vecFonts), [&](const fs::path& p)
                   {
                     vecFontName.emplace_back(p.filename().string());
-                    Utils::addElementToMap(MxUICore::mapFontsMeta, p.filename().string(), MxUICore::mxFontData(p.filename().string(), p.string())); // store font name and font location
+                    const auto key = p.filename().string();
+                    Utils::addElementToMap(map_font_name_and_location, key, p.string()); // store font name and font location
                   });
 
-
-    // read default font and force defaults for this specific font case
-    std::vector<std::string> vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_DEFAULT() + "=", 1, cn_default_font_expr, defaultMetaData);
-
+    // -------------------------------------------
+    // Validate default font exists,
+    // and force defaults for this specific font case if it doesn't
+    // -------------------------------------------
+    std::vector<std::string> vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_DEFAULT() + "=", 1, cn_default_font_expr, IN_MEMORY_FONT_INI);
     assert(vecTemp.empty() == false && std::string(__func__).append(", vecTemp Font must not be empty").c_str());
-
 
     if (vecTemp.empty())
       MxUICore::mxDefaultFontName = cn_default_font_name;
@@ -196,168 +534,103 @@ msg_popup=Roboto-Bold.ttf,15
       MxUICore::mxDefaultFontName = vecDefaultFont.at(0);
     }
 
-    lmbda_eval_font_data(vecTemp, fontName, fontSizePx, cn_default_font_name, mxconst::FONT_PIXEL_13);
-    fontName   = MxUICore::mxDefaultFontName;                                                         // force default font name
-    fontSizePx = mxconst::FONT_PIXEL_13;                                                              // force size 13px as default size - special case
-    MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_DEFAULT());            // init DEFAULT FONT
-    MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx + 1, mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1()); // init DEFAULT FONT + 1
 
-
-
-    // read title font
-    vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_REG() + "=", 1, cn_default_font_expr, defaultMetaData);
-    lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_15);
-    fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-    MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_REG());
-    sTitleRegFontName = fontName; // v3.305.3
-
-    vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_MED() + "=", 1, cn_default_font_expr, defaultMetaData);
-    lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_18);
-    fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-    MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_MED());
-
-    vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_BIG() + "=", 1, cn_default_font_expr, defaultMetaData);
-    lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_24);
-    fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-    MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_BIG());
-
-    // Read text fonts
-    vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TEXT_REG() + "=", 1, cn_default_font_expr, defaultMetaData);
-    lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_14);
-    fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-    MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TEXT_REG());
-
-    vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TEXT_MED() + "=", 1, cn_default_font_expr, defaultMetaData);
-    lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_18);
-    fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-    MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TEXT_MED());
-
-    vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TEXT_SMALL() + "=", 1, cn_default_font_expr, defaultMetaData);
-    lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_14);
-    fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-    MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TEXT_SMALL());
-
-    vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_MSG_BOTTOM() + "=", 1, cn_default_font_expr, defaultMetaData);
-    lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_13);
-    fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-    MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_MSG_BOTTOM());
-
-    vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_MSG_POPUP() + "=", 1, cn_default_font_expr, defaultMetaData);
-    lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_13);
-    fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-    MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_MSG_POPUP());
-
-    vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_TOOLBAR() + "=", 1, cn_default_font_expr, defaultMetaData);
-    lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_18);
-    fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-    MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_TOOLBAR());
-
-    vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_SMALL() + "=", 1, cn_default_font_expr, defaultMetaData);
-    lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_14);
-    fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-    MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_SMALL());
-
-    vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_SMALLEST() + "=", 1, cn_default_font_expr, defaultMetaData);
-    lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_13);
-    fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-    MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_SMALLEST());
-
-
-    if (auto fnt_default = ImgWindow::sFont1->AddFontFromFileTTF(MxUICore::mapFontsMeta[MxUICore::mxDefaultFontName].fontLocation_s.c_str(), mxconst::FONT_PIXEL_13))
+    // -------------------------------------------
+    // Loop over all types of font types (messages,titles...)
+    // and store it in MxUICore::mapFontTypeMeta
+    // -------------------------------------------
+    for (const auto& font_type: MxUICore::mapFontTypeMeta | std::views::keys)
     {
-      MxUICore::mapFontsMeta[MxUICore::mxDefaultFontName].setFontID(seq, mxconst::get_TEXT_TYPE_DEFAULT());
-      seq++;
+      fontName.clear();
+      fontSizePx = mxconst::FONT_PIXEL_13;
 
-      ImgWindow::sFont1->AddFontFromFileTTF(MxUICore::mapFontsMeta[MxUICore::mxDefaultFontName].fontLocation_s.c_str(), mxconst::FONT_PIXEL_13 + 1);
-      MxUICore::mapFontsMeta[MxUICore::mxDefaultFontName].setFontID(seq, mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1());
-      seq++;
+      vecTemp = missionx::ListDir::readFontMetadata(font_type + "=", 1, cn_default_font_expr, IN_MEMORY_FONT_INI);
+      lmbda_eval_font_type_info(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_15);
+      std::string final_font_name = (map_font_name_and_location.contains(fontName))? fontName : MxUICore::mxDefaultFontName;
+      MxUICore::mapFontTypeMeta[font_type] = {.id=0, .fSizePx=fontSizePx, .fontName=final_font_name, .fontLocation=map_font_name_and_location[final_font_name]};
     }
 
-    // create the Atlas from all the fonts and their sizes
-    for (auto& meta : MxUICore::mapFontsMeta | std::views::values)
+    // -------------------------------------------
+    // Register the fonts in IMGUI
+    // Force registering the "default_font" and "default_font+1" first, and only then the rest
+    // -------------------------------------------
+    if (auto fnt_default = ImgWindow::sFontAtlas->AddFontFromFileTTF(map_font_name_and_location[MxUICore::mxDefaultFontName].c_str(), mxconst::FONT_PIXEL_13))
     {
+      assert(static_cast<int>( fnt_default->FontId - 1) >= 0 && fmt::format("[{}] FontID can't be smaller than 'zero'", __func__).c_str());
+
+      std::string font_type = mxconst::get_TEXT_TYPE_DEFAULT();
+      MxUICore::mxFontMeta font_meta = {.id = 0, .fSizePx = fontSizePx, .fontName = fontName, .fontLocation = map_font_name_and_location[fontName] };
+
+      // init default font
+      int fnt_index = static_cast<int>( fnt_default->FontId - 1);
+      font_meta = {.id = fnt_index, .fSizePx = mxconst::FONT_PIXEL_13, .fontName = MxUICore::mxDefaultFontName, .fontLocation = map_font_name_and_location[MxUICore::mxDefaultFontName]};
+      MxUICore::mapFontTypeMeta[font_type] = font_meta;
+
+      // init same default font but with pixel size + 1
+      fnt_default = ImgWindow::sFontAtlas->AddFontFromFileTTF(map_font_name_and_location[MxUICore::mxDefaultFontName].c_str(), mxconst::FONT_PIXEL_13 + 1);
+      fnt_index = static_cast<int>( fnt_default->FontId - 1);
+      font_type = mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1();
+      font_meta = {.id = fnt_index, .fSizePx = mxconst::FONT_PIXEL_13+1.0, .fontName = MxUICore::mxDefaultFontName, .fontLocation = map_font_name_and_location[MxUICore::mxDefaultFontName]};
+      MxUICore::mapFontTypeMeta[font_type] = font_meta;
+
+    }
+
+    // -------------------------------------------
+    // Register the rest of the "font types" after the default font
+    // -------------------------------------------
+    std::unordered_map<std::string, MxUICore::mxFontMeta> map_already_loaded_fonts;
+
       // v3.305.3 loop over map_metaData
-      for (auto& [fontType, fontMeta] : meta.mapMetaData)
+      for (auto& [fontType, fontMeta] : MxUICore::mapFontTypeMeta)
       {
         if ((fontType == mxconst::get_TEXT_TYPE_DEFAULT()) || (fontType == mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1()))
           continue;
 
-        if (auto fnt = ImgWindow::sFont1->AddFontFromFileTTF(meta.fontLocation_s.c_str(), fontMeta.fSizePx))
+        // check if font was already loaded, store only the font it
+        if (map_already_loaded_fonts.contains(fontMeta.fontName))
+          fontMeta.id = map_already_loaded_fonts[fontMeta.fontName].id;
+        else if (auto fnt = ImgWindow::sFontAtlas->AddFontFromFileTTF(fontMeta.fontLocation.c_str(), fontMeta.fSizePx))
         {
-          if (fontType == mxconst::get_TEXT_TYPE_TITLE_REG())
-            add_icons_to_fonts(ImgWindow::sFont1, fontMeta.fSizePx);
+          assert(static_cast<int>( fnt->FontId - 1)  >= 0 && fmt::format("[{}] FontID can't be smaller than 'zero'", __func__).c_str());
+          // store the loaded font to our container // array starts from "0" (zero), index starts from "1" (one).
+          fontMeta.id = static_cast<int>( fnt->FontId - 1);;
+          map_already_loaded_fonts[fontMeta.fontName] = fontMeta; // v26.08.1 store the font_id
+          MxUICore::mapFontTypeMeta[fontType].id = fontMeta.id;
 
-          meta.setFontID(seq, fontType);
-          //fontMeta.id = seq;
-          seq++;
+          // add special icons to the font buffer
+          add_icons_to_fonts(ImgWindow::sFontAtlas, fontMeta.fSizePx);
         }
-      }
-
-    } // end loop over all font settings and creating the Atlas
+      } // end loop over all font types and create their Atlas to their font
   }
   else
-  { // initialize internal font
+  {
 
-    constexpr auto imgui_internal_font        = "ProggyClean.ttf";
+    // -------------------------------------------
+    // initialize internal font, we already initialize MxUICore::mapFontTypeMeta
+    // -------------------------------------------
     MxUICore::mxDefaultFontName               = imgui_internal_font;
-    sTitleRegFontName                         = MxUICore::mxDefaultFontName;
-
-    seq = 0;
 
     // Prepare Meta Font data with all supported Text Types and sizes
-    fontName   = MxUICore::mxDefaultFontName;                                                         // force default font name
-    fontSizePx = mxconst::FONT_PIXEL_13;
-    MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_13, mxconst::get_TEXT_TYPE_DEFAULT());            // init DEFAULT FONT
-    MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1());
-    MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_15, mxconst::get_TEXT_TYPE_TITLE_REG());
-    MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_18, mxconst::get_TEXT_TYPE_TEXT_MED());
-    MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_TEXT_REG());
-    MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_TITLE_SMALL());
-    MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_TITLE_SMALLEST());
-    MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_18, mxconst::get_TEXT_TYPE_TITLE_MED());
-    MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_24, mxconst::get_TEXT_TYPE_TITLE_BIG());
-    MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_24, mxconst::get_TEXT_TYPE_TITLE_TOOLBAR());
-    MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_MSG_BOTTOM());
-    MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_MSG_POPUP());
+    fontName   = imgui_internal_font;                                                         // force default font name
+    fontSizePx = mxconst::FONT_PIXEL_14;
 
-
-
-    ImFontConfig font_cfg = ImFontConfig();
-    font_cfg.SizePixels   = mxconst::FONT_PIXEL_13;
+    auto  font_cfg = ImFontConfig();
+    font_cfg.SizePixels   = mxconst::FONT_PIXEL_14;
 
     // Explicitly create the default font
-    ImgWindow::sFont1->AddFontDefault(&font_cfg);
-    MxUICore::mapFontsMeta[fontName].setFontID(seq, mxconst::get_TEXT_TYPE_DEFAULT());
-    //add_icons_to_fonts(ImgWindow::sFont1, font_cfg.SizePixels); // v3.305.3 deprecated we add this to mxconst::get_TEXT_TYPE_TITLE_REG() and pixel 13
-    seq++;
+    auto fnt_default = ImgWindow::sFontAtlas->AddFontDefault(&font_cfg);
+    assert(static_cast<int>( fnt_default->FontId - 1)  >= 0 && fmt::format("[{}] Fallback FontID can't be smaller than 'zero'", __func__).c_str());
+    // add awsome icons
+    add_icons_to_fonts(ImgWindow::sFontAtlas, font_cfg.SizePixels);
 
-
-    // create the rest of the Atlas from all the fonts and their sizes
-    for (auto& meta : MxUICore::mapFontsMeta | std::views::values)
-    {
-      // v3.305.3 loop over map_metaData
-      for (auto& [fontType, fontMeta] : meta.mapMetaData)
-      {
-        if ((fontType == mxconst::get_TEXT_TYPE_DEFAULT()) || (fontType == mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1()))
-          continue;
-
-        if (auto fnt = ImgWindow::sFont1->AddFontFromFileTTF(meta.fontLocation_s.c_str(), fontMeta.fSizePx))
-        {
-          if (fontType == mxconst::get_TEXT_TYPE_TITLE_REG())
-            add_icons_to_fonts(ImgWindow::sFont1, fontMeta.fSizePx);
-
-          meta.setFontID(seq, fontType);
-          //fontMeta.id = seq;
-          seq++;
-        }
-      }
-
-    } // end loop over all font settings and creating the Atlas
+    for ( auto& font_meta: MxUICore::mapFontTypeMeta | std::views::values)
+      font_meta.id = static_cast<int>(fnt_default->FontId-1);
 
   } // end initializing internal font
 
-
-
+  #ifndef RELEASE
+  // IM_DEBUG_BREAK();
+  #endif
 } // configureImgWindow
 
 // -------------------------------------

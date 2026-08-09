@@ -12,6 +12,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "../core/mxconst.h"
+
 namespace missionx
 {
 typedef enum class _mx_ui_state : std::uint8_t
@@ -71,35 +73,31 @@ public:
   static void assignCenterDesktopGlobalBounds(int& outCenterX, int& outCenterY);                                                                       // v3.0.155
   static void calculateWindowCenterRelativeToDesktopGlobalBounds(int inWindowsWidth, int inWindowsHeight, int& outL, int& outB, int& outR, int& outT); // v3.0.155
 
-  typedef struct _mxFontMeta
+  struct mxFontMeta
   {
     int   id{ 0 };
-    float fSizePx{ 13.0 };
+    float fSizePx = missionx::mxconst::FONT_PIXEL_13;
+    std::string fontName;
+    std::string fontLocation;
 
-    _mxFontMeta() {}
-    _mxFontMeta(int inId, float inSize)
-    { 
-      id = inId;
-      fSizePx = inSize;
-    }
-  } mxFontMeta;
+  };
 
-  typedef struct _mxFontData
+  struct mxFontData
   {
     
     std::string                       fontName_s;
     std::string                       fontLocation_s;
     std::map<std::string, mxFontMeta> mapMetaData; // v3.305.3 map of unique type and meta data
 
-    _mxFontData() { reset(); }
+    mxFontData() { reset(); }
 
-    _mxFontData(std::string inName)
+    mxFontData(std::string inName)
     {
       reset();
       fontName_s = inName;
     }
 
-    _mxFontData(std::string inName, std::string inLocation)
+    mxFontData(std::string inName, std::string inLocation)
     {
       reset();
       fontName_s = inName;
@@ -113,44 +111,15 @@ public:
       mapMetaData.clear(); // v3.305.3
     }
 
-    void initFontMeta(float inSizeVal, std::string inFontType) // we do not define the font ID yet, so it will auto initialize to Zero
-    { 
-      if (!inFontType.empty())
-      {
-        this->mapMetaData[inFontType] = mxFontMeta(0, inSizeVal); // we always start with pos 0, it will be determine later when we call sync
-      }
-      else
-      {
-        const std::string msg = "missionx:\tFont " + this->fontName_s + ": did not defined font type name. Skipping.";
-        XPLMDebugString(msg.c_str());
-      }
-
-    }
-
-    void setFontID(const int inIndexInImgui, std::string inFontType)
-    {
-
-      // v3.305.3 use map_metaData
-      if (mapMetaData.find(inFontType) != mapMetaData.end())
-      {
-        this->mapMetaData[inFontType].id = inIndexInImgui;
-        mapFontTypeToFontID[inFontType]  = inIndexInImgui;
-      }
-      else
-      {
-        const std::string msg = "missionx:\tFont " + fontName_s + ": Did not find Font Type: " + inFontType + " in map_metaData. Skipping...";
-        XPLMDebugString(msg.c_str());
-      }
-      
-
-    }
-
-  } mxFontData;
+  };
 
   static std::string                          mxDefaultFontName;
-  static std::map<std::string, mxFontData>    mapFontsMeta;
-  static std::unordered_map<std::string, int> mapFontTypeToFontID; // map the font type: title, text..., to the real ImGui FontAtlas ID.
+  static std::map<std::string, mxFontMeta>    mapFontTypeMeta; // v26.08.1
   static std::map<std::string, int>           mapFontTypesBeingUsedInProgram;
+  // Deprecated v26.08.1
+  // static std::map<std::string, mxFontData>    mapFontsMeta;
+  // static std::unordered_map<std::string, int> mapFontTypeToFontID; // map the font type: title, text..., to the real ImGui FontAtlas ID.
+  // static std::unordered_map<std::string, mxFontMeta> mapFontTypeToFontID; // map the font type: title, text..., to the real ImGui FontAtlas ID.
 
 
 };

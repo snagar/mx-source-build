@@ -47,8 +47,8 @@ ImgFreeTypeFontAtlas::bindTexture()
 
     unsigned char *pixData = nullptr;
     int width, height;
-    //ImGuiFreeType::BuildFontAtlas(mOurAtlas, mGlobalFlags);
-    mOurAtlas->GetTexDataAsRGBA32(&pixData, &width, &height);
+    // //ImGuiFreeType::BuildFontAtlas(mOurAtlas, mGlobalFlags);
+    // mOurAtlas->GetTexDataAsRGBA32(&pixData, &width, &height); // v26.08.1
 
     XPLMBindTexture2d(mGLTextureNum, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -56,7 +56,8 @@ ImgFreeTypeFontAtlas::bindTexture()
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixData);
 
-    mOurAtlas->SetTexID(mGLTextureNum);
+    // mOurAtlas->SetTexID(mGLTextureNum);
+    mOurAtlas->TexData->SetTexID(mGLTextureNum);
     mTextureBound = true;
 }
 

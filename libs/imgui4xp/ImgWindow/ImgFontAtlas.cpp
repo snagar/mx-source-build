@@ -110,6 +110,31 @@ ImgFontAtlas::getAtlas()
     return mOurAtlas;
 }
 
+bool
+ImgFontAtlas::GetCustomAtlasTextureData(ImFontAtlas* atlas, strct_texture_info& outInfo)
+{
+  // Ensure the atlas has populated the new TexList vector
+  if (atlas->TexList.empty())
+  {
+    return false;
+  }
+
+  // Access the latest texture data using back()
+  // (Using auto handles whether TexList stores objects or pointers)
+  auto& texData = atlas->TexList.back();
+  // auto& texData = ImGui::GetDrawData()->Textures->back();
+
+  // Extract dimensions directly from the modern ImTextureData structure
+  outInfo.width = texData->Width;
+  outInfo.height = texData->Height;
+  outInfo.bytesPerPixel = 4; // ImGui RGBA32
+
+  // Extract the raw CPU-side pixel buffer
+  outInfo.pixels = (unsigned char*)texData->Pixels;
+
+  return (outInfo.pixels != nullptr && outInfo.width > 0 && outInfo.height > 0);
+}
+
 void
 ImgFontAtlas::bindTexture()
 {
@@ -118,9 +143,33 @@ ImgFontAtlas::bindTexture()
 
     XPLMGenerateTextureNumbers(&mGLTextureNum, 1);
 
-    unsigned char *pixData = nullptr;
-    int width, height;
-    mOurAtlas->GetTexDataAsRGBA32(&pixData, &width, &height);
+    // unsigned char *pixData = nullptr;
+    // int width, height;
+
+    // Bake font textures
+    auto ctx = ImGui::CreateContext(mOurAtlas);
+    ImGui::SetCurrentContext(ctx);
+    auto& io = ImGui::GetIO();
+    // io.Fonts->Build();
+
+  strct_texture_info outInfo;
+  GetCustomAtlasTextureData(mOurAtlas, outInfo);
+
+    // // Ensure the atlas is built / initialized
+    // if (!mOurAtlas->IsBuilt()) {
+    //   mOurAtlas->Build();
+    // }
+
+    // int width = mOurAtlas->TexData->Width;
+    // int height = mOurAtlas->TexData->Height;
+    // unsigned char *pixData = mOurAtlas->TexData->Pixels;
+
+    int width = outInfo.width;
+    int height = outInfo.height;
+    unsigned char *pixData = outInfo.pixels;
+
+    // mOurAtlas->GetTexDataAsRGBA32(&pixData, &width, &height); // v26.08.1 deprecated
+
 
     XPLMBindTexture2d(mGLTextureNum, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -129,6 +178,7 @@ ImgFontAtlas::bindTexture()
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixData);
 
     // mOurAtlas->SetTexID((void *)((intptr_t)mGLTextureNum));
-    mOurAtlas->SetTexID(mGLTextureNum);
+    // mOurAtlas->SetTexID(mGLTextureNum);
+    mOurAtlas->TexData->SetTexID(mGLTextureNum); // v26.08.1
     mTextureBound = true;
 }

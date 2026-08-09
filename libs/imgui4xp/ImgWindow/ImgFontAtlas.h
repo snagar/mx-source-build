@@ -82,6 +82,17 @@ public:
     virtual void bindTexture();
 
     ImFontAtlas *getAtlas();
+
+  struct strct_texture_info {
+    unsigned char* pixels = nullptr;
+    int width = 0;
+    int height = 0;
+    int bytesPerPixel = 4; // RGBA32
+  };
+
+  // Custom replacement function for extracting the font atlas pixel data in v1.92+
+  static bool GetCustomAtlasTextureData(ImFontAtlas* atlas, strct_texture_info& outInfo);
+
 protected:
     ImFontAtlas *mOurAtlas;
     bool        mTextureBound;

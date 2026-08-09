@@ -33,13 +33,20 @@
  */
 
 #include "ImgWindow.h"
+
 #include <XPLMDataAccess.h>
 #include <XPLMDisplay.h>
 #include <XPLMGraphics.h>
 
 // mission-X, saar
+#include <ranges>
 #include "../../../src/core/xx_mission_constants.hpp"
-#include "../../../src/core/mxconst.h"
+#include "../../../src/core/mxconst.h" // v26.04.5
+
+#if defined(IMGUI_VERSION_NUM) && (IMGUI_VERSION_NUM >= 19200)
+#define IMGUI_V190_REFACTOR
+//// #include "imgui_internal.h" // Already included at the header level
+#endif /* IMGUI_V190_REFACTOR */
 
 // size of "frame" around a resizable window, by which its size can be changed
 constexpr int WND_RESIZE_LEFT_WIDTH   = 15;
@@ -53,30 +60,125 @@ static XPLMDataRef gViewportRef         = nullptr;
 static XPLMDataRef gProjectionMatrixRef = nullptr;
 static XPLMDataRef gFrameRatePeriodRef  = nullptr;
 
-std::shared_ptr<ImgFontAtlas> ImgWindow::sFont1;
+// std::shared_ptr<ImgFontAtlas> ImgWindow::sFontAtlas;
+ImFontAtlas*                  ImgWindow::sFontAtlas;
 int                           ImgWindow::defaultFontPos{ 0 }; // v3.303.14
 std::map<int, ImGuiKey>       ImgWindow::mapXPtoImgui_key;    // v3.303.14
 
-
-
-ImgWindow::ImgWindow(int left, int top, int right, int bottom, XPLMWindowDecoration decoration, XPLMWindowLayer layer)
-  : mFirstRender(true)
-  , mFontAtlas(sFont1)
-  , mPreferredLayer(layer)
-  , bHandleWndResize(xplm_WindowDecorationSelfDecoratedResizable == decoration)
+#ifdef IMGUI_V190_REFACTOR
+// Helper to safely rebuild the atlas if it gets dirty at runtime
+void CheckAndRebuildAtlas(ImFontAtlas* atlas, GLuint& textureID)
 {
+  // Check 1: Is the atlas dirty? (e.g. User added a dynamic font)
+  // Check 2: Is the texture missing? (e.g. X-Plane reloaded)
+  // Check 3: Is the last font unbaked? (e.g. Partial build)
+  bool need_rebuild = !atlas->TexIsBuilt;
+
+  if (!need_rebuild && atlas->TexData->GetTexRef().GetTexID()) {
+    // if (!glIsTexture((GLuint)(uintptr_t)atlas->TexData->GetTexID())) need_rebuild = true;
+    if (!glIsTexture((GLuint)(uintptr_t)atlas->TexData->GetTexRef().GetTexID())) need_rebuild = true;
+  }
+  if (!need_rebuild && atlas->Fonts.Size > 0) {
+    if (atlas->Fonts.back()->LastBaked == 0) need_rebuild = true;
+  }
+
+  if (need_rebuild)
+  {
+    // 1. Force full rebuild
+    atlas->TexIsBuilt = false;
+
+    // 2. CPU Rasterize (RGBA32 for stability)
+    ImgWindow::strct_texture_info outInfo;
+    ImgWindow::GetCustomAtlasTextureData(atlas, outInfo);
+
+    const int width = outInfo.width;
+    const int height = outInfo.height;
+    const unsigned char *pixData = outInfo.pixels;
+
+    // 3. GPU Upload
+    // If texture ID is 0 or invalid, generate a new one.
+    if (textureID == 0 || !glIsTexture(textureID)) {
+      int texNum = 0;
+      XPLMGenerateTextureNumbers(&texNum, 1);
+      textureID = (GLuint)texNum;
+    }
+
+    XPLMBindTexture2d((int)textureID, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixData);
+
+    // 4. Link
+    // atlas->SetTexID((ImTextureID)(uintptr_t)textureID);
+    atlas->TexData->SetTexID ((ImTextureID)(uintptr_t)textureID);
+  }
+}
+#endif /* IMGUI_V190_REFACTOR */
+
+
+ImgWindow::ImgWindow(
+  int                  left,
+  int                  top,
+  int                  right,
+  int                  bottom,
+  XPLMWindowDecoration decoration,
+  XPLMWindowLayer      layer,
+  bool                 cursors):
+  bUseImgCursors(cursors),
+  mFirstRender(true),
+  mFontAtlas(sFontAtlas),
+  mPreferredLayer(layer),
+  bHandleWndResize(xplm_WindowDecorationSelfDecoratedResizable == decoration)
+
+{
+#ifndef RELEASE
+	// Recommended by ImGui in imconfig.h:
+	// Check to make sure the current data structures this file is using are matching the ones imgui.cpp is using.
+	IMGUI_CHECKVERSION();
+#endif
+
   ImFontAtlas* iFontAtlas = nullptr;
   if (mFontAtlas)
   {
-    mFontAtlas->bindTexture();
-    iFontAtlas = mFontAtlas->getAtlas();
+    // mFontAtlas->bindTexture();
+    // iFontAtlas = mFontAtlas->getAtlas();
+    ImgWindow::bindTexture(); // v26.08.1
+    iFontAtlas = mFontAtlas; //ImgWindow::getAtlas();
   }
   mImGuiContext  = ImGui::CreateContext(iFontAtlas);
   mImPlotContext = ImPlot::CreateContext(); // v3.0.255.1
   ImGui::SetCurrentContext(mImGuiContext);
   auto& io = ImGui::GetIO();
 
-  this->initRemapKeys2(); // saar missionx
+  #ifdef IMGUI_V190_REFACTOR
+  // use "modern" self-managed font atlas.
+  io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+
+  // Just-in-time atlas build & verification:
+  // we check this immediately to handle initial builds, high-DPI switches, or fallback default fonts.
+  // (This replaces the legacy binding logic #ifdef'ed out below for ImGui v1.90 and above.)
+
+  // if (io.Fonts->Build()) {
+  //   CheckAndRebuildAtlas(io.Fonts, mFontTexture);
+  // }
+  CheckAndRebuildAtlas(io.Fonts, mFontTexture);
+
+  // "Stealth Mode":
+  // Remove this atlas from the context's update list to prevent ImGui v1.92+
+  // from trying to manage the texture lifecycle (which can cause crashes
+  // since we want to manage this stuff, not let ImGui modify at will).
+  if (iFontAtlas) {
+    for (int i = 0; i < mImGuiContext->FontAtlases.Size; i++) {
+      if (mImGuiContext->FontAtlases[i] == iFontAtlas) {
+        mImGuiContext->FontAtlases.erase(mImGuiContext->FontAtlases.Data + i);
+        break;
+      }
+    }
+  }
+  #endif /* IMGUI_V190_REFACTOR */
+
+  ImgWindow::initRemapKeys(); // saar missionx
 
   //io.SetKeyEventNativeData(); // should we implement this ?
 
@@ -91,44 +193,41 @@ ImgWindow::ImgWindow(int left, int top, int right, int bottom, XPLMWindowDecorat
     first_init           = true;
   }
 
-#ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
-  // we render ourselves, we don't use the DrawListsFunc
-  io.RenderDrawListsFn = nullptr;
-#endif
+  // #ifndef IMGUI_V190_REFACTOR
+  // #ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
+  // // we render ourselves, we don't use the DrawListsFunc
+  // io.RenderDrawListsFn = nullptr;
+  // #endif
+  // // set up the Keymap
+  // io.KeyMap[ImGuiKey_Tab] = XPLM_VK_TAB;
+  // io.KeyMap[ImGuiKey_LeftArrow] = XPLM_VK_LEFT;
+  // io.KeyMap[ImGuiKey_RightArrow] = XPLM_VK_RIGHT;
+  // io.KeyMap[ImGuiKey_UpArrow] = XPLM_VK_UP;
+  // io.KeyMap[ImGuiKey_DownArrow] = XPLM_VK_DOWN;
+  // io.KeyMap[ImGuiKey_PageUp] = XPLM_VK_PRIOR;
+  // io.KeyMap[ImGuiKey_PageDown] = XPLM_VK_NEXT;
+  // io.KeyMap[ImGuiKey_Home] = XPLM_VK_HOME;
+  // io.KeyMap[ImGuiKey_End] = XPLM_VK_END;
+  // io.KeyMap[ImGuiKey_Insert] = XPLM_VK_INSERT;
+  // io.KeyMap[ImGuiKey_Delete] = XPLM_VK_DELETE;
+  // io.KeyMap[ImGuiKey_Backspace] = XPLM_VK_BACK;
+  // io.KeyMap[ImGuiKey_Space] = XPLM_VK_SPACE;
+  // io.KeyMap[ImGuiKey_Enter] = XPLM_VK_RETURN;
+  // io.KeyMap[ImGuiKey_Escape] = XPLM_VK_ESCAPE;
+  // io.KeyMap[ImGuiKey_KeyPadEnter] = XPLM_VK_ENTER;
+  // io.KeyMap[ImGuiKey_A] = XPLM_VK_A;
+  // io.KeyMap[ImGuiKey_C] = XPLM_VK_C;
+  // io.KeyMap[ImGuiKey_V] = XPLM_VK_V;
+  // io.KeyMap[ImGuiKey_X] = XPLM_VK_X;
+  // io.KeyMap[ImGuiKey_Y] = XPLM_VK_Y;
+  // io.KeyMap[ImGuiKey_Z] = XPLM_VK_Z;
+  // #endif /* IMGUI_V190_REFACTOR */
 
-#ifndef IMGUI_DISABLE_OBSOLETE_KEYIO
-
-  // set up the Keymap
-  initOldKeymap(io);
-
-  //io.KeyMap[ImGuiKey_Tab]         = XPLM_VK_TAB;
-  //io.KeyMap[ImGuiKey_LeftArrow]   = XPLM_VK_LEFT;
-  //io.KeyMap[ImGuiKey_RightArrow]  = XPLM_VK_RIGHT;
-  //io.KeyMap[ImGuiKey_UpArrow]     = XPLM_VK_UP;
-  //io.KeyMap[ImGuiKey_DownArrow]   = XPLM_VK_DOWN;
-  //io.KeyMap[ImGuiKey_PageUp]      = XPLM_VK_PRIOR;
-  //io.KeyMap[ImGuiKey_PageDown]    = XPLM_VK_NEXT;
-  //io.KeyMap[ImGuiKey_Home]        = XPLM_VK_HOME;
-  //io.KeyMap[ImGuiKey_End]         = XPLM_VK_END;
-  //io.KeyMap[ImGuiKey_Insert]      = XPLM_VK_INSERT;
-  //io.KeyMap[ImGuiKey_Delete]      = XPLM_VK_DELETE;
-  //io.KeyMap[ImGuiKey_Backspace]   = XPLM_VK_BACK;
-  //io.KeyMap[ImGuiKey_Space]       = XPLM_VK_SPACE;
-  //io.KeyMap[ImGuiKey_Enter]       = XPLM_VK_RETURN;
-  //io.KeyMap[ImGuiKey_Escape]      = XPLM_VK_ESCAPE;
-  //io.KeyMap[ImGuiKey_KeypadEnter] = XPLM_VK_ENTER; // was: ImGuiKey_KeyPadEnter  in imgui v1.86  // v1.87 and up: ImGuiKey_KeypadEnter
-  //io.KeyMap[ImGuiKey_A]           = XPLM_VK_A;
-  //io.KeyMap[ImGuiKey_C]           = XPLM_VK_C;
-  //io.KeyMap[ImGuiKey_V]           = XPLM_VK_V;
-  //io.KeyMap[ImGuiKey_X]           = XPLM_VK_X;
-  //io.KeyMap[ImGuiKey_Y]           = XPLM_VK_Y;
-  //io.KeyMap[ImGuiKey_Z]           = XPLM_VK_Z;
-
-#endif
   // disable window rounding since we're not rendering the frame anyway.
   auto& style          = ImGui::GetStyle();
   style.WindowRounding = 0;
 
+  #ifndef IMGUI_V190_REFACTOR
   // bind the font
   if (mFontAtlas)
   {
@@ -159,23 +258,62 @@ ImgWindow::ImgWindow(int left, int top, int right, int bottom, XPLMWindowDecorat
       io.Fonts->SetTexID(mFontTexture);
     }
   }
+  #else
+  // Sync texture ID:
+  // if CheckAndRebuildAtlas() above did its job, mFontTexture is set; if the shared atlas was already built, grab the ID here.
+  // if (io.Fonts->TexID.GetTexID() != 0) {
+  if (io.Fonts->TexData->GetTexID() != 0) {
+    // mFontTexture = static_cast<GLuint>((intptr_t)io.Fonts->TexID.GetTexID());
+    mFontTexture = static_cast<GLuint>((intptr_t)io.Fonts->TexData->GetTexID());
+  }
+  #endif
 
   // disable OSX-like keyboard behaviors always - we don't have the keymapping for it.
   io.ConfigMacOSXBehaviors = false;
+
+  #ifdef IMGUI_V190_REFACTOR
+  // override to enable the required OSX behaviors specifically for macOS only.
+  #if defined(__APPLE__) || defined(__MACH__)
+  io.ConfigMacOSXBehaviors = true;
+  #endif
+  #endif
+
 
   // try to inhibit a few resize/move behaviors that won't play nice with our window control.
   io.ConfigWindowsResizeFromEdges      = false;
   io.ConfigWindowsMoveFromTitleBarOnly = true;
 
-  XPLMCreateWindow_t windowParams = {
-    sizeof(windowParams), left, top, right, bottom, 0, DrawWindowCB, HandleMouseClickCB, HandleKeyFuncCB, HandleCursorFuncCB, HandleMouseWheelFuncCB, reinterpret_cast<void*>(this), decoration, layer, HandleRightClickFuncCB,
-  };
+XPLMCreateWindow_t windowParams = {
+  sizeof(windowParams), left, top, right, bottom, 0, DrawWindowCB, HandleMouseClickCB, HandleKeyFuncCB, HandleCursorFuncCB, HandleMouseWheelFuncCB, reinterpret_cast<void*>(this), decoration, layer, HandleRightClickFuncCB,
+};
   mWindowID = XPLMCreateWindowEx(&windowParams);
 }
 
 ImgWindow::~ImgWindow()
 {
   ImGui::SetCurrentContext(mImGuiContext);
+
+  #ifdef IMGUI_V190_REFACTOR
+  ImGuiIO& io = ImGui::GetIO();
+  if (io.Fonts)
+  {
+    // 1. Get the shared data pointer for THIS context:
+    ImDrawListSharedData* data = ImGui::GetDrawListSharedData();
+
+    // 2. Manually find and remove it from the Atlas's list:
+    for (int i = 0; i < io.Fonts->DrawListSharedDatas.Size; i++)
+    {
+      if (io.Fonts->DrawListSharedDatas[i] == data) {
+        io.Fonts->DrawListSharedDatas.erase(io.Fonts->DrawListSharedDatas.Data + i);
+        break; // Found and removed.
+      }
+    }
+
+    // 3. NOW it is safe to sever the link (prevent double free):
+    io.Fonts = NULL;
+  }
+  #endif /* IMGUI_V190_REFACTOR */
+
   if (!mFontAtlas)
   {
     // if we didn't have an explicit font atlas, destroy the texture.
@@ -255,6 +393,18 @@ ImgWindow::boxelsToNative(int x, int y, int& outX, int& outY)
 void
 ImgWindow::RenderImGui(ImDrawData* draw_data)
 {
+  #ifdef IMGUI_V190_REFACTOR
+  // if (mFontAtlas && mFontAtlas->getAtlas()) {
+  // if (mFontAtlas && ImgWindow::getAtlas()) {
+  if (mFontAtlas) {
+    // rebuild and upload *only* if the atlas is actually out of date (e.g., dynamic font size or style changes, etc.)
+    // (Note: very inexpensive with early-out returns in common case.)
+    // CheckAndRebuildAtlas(mFontAtlas->getAtlas(), mFontTexture);
+    // CheckAndRebuildAtlas(ImgWindow::getAtlas(), mFontTexture);
+    CheckAndRebuildAtlas(mFontAtlas, mFontTexture);
+  }
+  #endif
+
   // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
   ImGuiIO& io = ImGui::GetIO();
   if ((io.DisplayFramebufferScale.x != 1.0) || (io.DisplayFramebufferScale.y != 1.0))
@@ -293,6 +443,15 @@ ImgWindow::RenderImGui(ImDrawData* draw_data)
     glVertexPointer(2, GL_FLOAT, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + offsetof(ImDrawVert, pos)));
     glTexCoordPointer(2, GL_FLOAT, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + offsetof(ImDrawVert, uv)));
     glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + offsetof(ImDrawVert, col)));
+    // #ifndef IMGUI_V190_REFACTOR
+    // glVertexPointer(2, GL_FLOAT, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, pos)));
+    // glTexCoordPointer(2, GL_FLOAT, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, uv)));
+    // glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, col)));
+    // #else /* IMGUI_V190_REFACTOR: */
+    // glVertexPointer(2, GL_FLOAT, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + offsetof(ImDrawVert, pos)));
+    // glTexCoordPointer(2, GL_FLOAT, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + offsetof(ImDrawVert, uv)));
+    // glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + offsetof(ImDrawVert, col)));
+    // #endif /* IMGUI_V190_REFACTOR */
 
     for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
     {
@@ -303,7 +462,11 @@ ImgWindow::RenderImGui(ImDrawData* draw_data)
       }
       else
       {
+        #ifndef IMGUI_V190_REFACTOR
         XPLMBindTexture2d((int)(intptr_t)pcmd->TextureId, 0);
+        #else
+        XPLMBindTexture2d((int)(intptr_t)pcmd->GetTexID(), 0);
+        #endif /* IMGUI_V190_REFACTOR */
 
         // Scissors work in viewport space - must translate the coordinates from ImGui -> Boxels, then Boxels -> Native.
         // FIXME: it must be possible to apply the scale+transform manually to the projection matrix so we don't need to doublestep.
@@ -379,40 +542,50 @@ ImgWindow::updateImgui()
   io.DisplaySize = ImVec2(win_width, win_height);
   // in boxels, we're always scale 1, 1.
   io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+
+  #ifdef IMGUI_V190_REFACTOR
+  // Just-in-time rebuild:
+  // If the ImGui client code added a font or scaled text since the last frame, the atlas will be "dirty".
+  // (So we catch such things here and rebuild what's needed instantly before ImGui tries to draw.)
+  // if (mFontAtlas && mFontAtlas->getAtlas()) {
+  // CheckAndRebuildAtlas(mFontAtlas->getAtlas(), mFontTexture);
+  // if (mFontAtlas && ImgWindow::getAtlas()) {
+  if (mFontAtlas) {
+    CheckAndRebuildAtlas(mFontAtlas, mFontTexture);
+  }
+  #endif /* IMGUI_V190_REFACTOR */
+
   ImGui::NewFrame();
+  {
+    ImGui::SetNextWindowPos (ImVec2 ((float)0.0, (float)0.0), ImGuiCond_Always);
+    ImGui::SetNextWindowSize (ImVec2 (win_width, win_height), ImGuiCond_Always);
 
-  ImGui::SetNextWindowPos(ImVec2((float)0.0, (float)0.0), ImGuiCond_Always);
-  ImGui::SetNextWindowSize(ImVec2(win_width, win_height), ImGuiCond_Always);
-
-  // and construct the window
-  ImGui::Begin(mWindowTitle.c_str(), nullptr, beforeBegin() | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-  buildInterface();
-  ImGui::End();
-
-
+    // and construct the window
+    ImGui::Begin (mWindowTitle.c_str (), nullptr, beforeBegin () | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+    buildInterface ();
+    ImGui::End ();
+  }
   ImGui::EndFrame(); // missionx saar based on:  IM_ASSERT(g.IO.KeyMods == expected_key_mod_flags && "Mismatching io.KeyCtrl/io.KeyShift/io.KeyAlt/io.KeySuper vs io.KeyMods"); imgui.cpp
 
   // finally, handle window focus.
   int hasKeyboardFocus = XPLMHasKeyboardFocus(mWindowID);
-  if (io.WantTextInput && !hasKeyboardFocus)
-  {
+  if (io.WantTextInput && !hasKeyboardFocus) {
     XPLMTakeKeyboardFocus(mWindowID);
   }
   else if (!io.WantTextInput && hasKeyboardFocus)
   {
     XPLMTakeKeyboardFocus(nullptr);
     // reset keysdown otherwise we'll think any keys used to defocus the keyboard are still down!
-#ifndef IMGUI_DISABLE_OBSOLETE_KEYIO
-    // reset keysdown otherwise we'll think any keys used to defocus the keyboard are still down!
-    for (auto& key : io.KeysDown)
-    {
-      key = false;
-    }
-#else
-    // for (auto& [xpKey, imgKey] : ImgWindow::mapXPtoImgui_key)
-    for (auto& [xpKey, imgKey] : ImgWindow::mapXPtoImgui_key)
+    #ifndef IMGUI_V190_REFACTOR
+    // Original code
+    // for (auto &key : io.KeysDown) {
+    //   key = false;
+    // }
+    for (auto& imgKey : ImgWindow::mapXPtoImgui_key | std::views::values)
       io.AddKeyEvent(imgKey, false);
-#endif
+    #else
+    io.AddFocusEvent(false);
+    #endif /* IMGUI_V190_REFACTOR */
   }
   mFirstRender = false;
 }
@@ -436,25 +609,32 @@ ImgWindow::DrawWindowCB(XPLMWindowID /* inWindowID */, void* inRefcon)
 
   // Hack: Reset the Backspace key if in VR (see HandleKeyFuncCB for details)  
   if (thisWindow->bResetBackspace)
-  {    
-    #ifndef IMGUI_DISABLE_OBSOLETE_KEYIO
-      io.KeysDown[XPLM_VK_BACK] = false;
-    #else
-      io.AddKeyEvent(ImGuiKey_Backspace, false);
-    #endif
+  {
+    // #ifndef IMGUI_V190_REFACTOR
+    // // io.KeysDown[XPLM_VK_BACK] = false;
+    // io.AddKeyEvent(ImGuiKey_Backspace, false);
+    // #else
+    // io.AddKeyEvent(ImGuiKey_Backspace, false);
+    // #endif /* IMGUI_V190_REFACTOR */
+    // keep my code
+    io.AddKeyEvent(ImGuiKey_Backspace, false);
     thisWindow->bResetBackspace = false;
   }
-
-  #ifdef IMGUI_DISABLE_OBSOLETE_KEYIO
-    io.KeyMods = 0; // reset keyMods state, part of workaround to enable copy+paste using the latest ImGui library build // https://github.com/ocornut/imgui/issues/4921
-  #endif // IMGUI_DISABLE_OBSOLETE_KEYIO
+  io.KeyMods = 0; // reset keyMods state, part of workaround to enable copy+paste using the latest ImGui library build // https://github.com/ocornut/imgui/issues/4921
 
 }
+
 
 int
 ImgWindow::HandleMouseClickCB(XPLMWindowID /* inWindowID */, int x, int y, XPLMMouseStatus inMouse, void* inRefcon)
 {
-  auto* thisWindow = reinterpret_cast<ImgWindow*>(inRefcon);
+  auto *thisWindow = reinterpret_cast<ImgWindow *>(inRefcon);
+  // If this is an overlay window that cannot be moved, ignore mouse clicks.
+  if (thisWindow->mPreferredLayer == xplm_WindowLayerFlightOverlay
+      &&
+      !thisWindow->bCanMove)
+    return 0;	// (ignore mouse clicks in this case)
+
   return thisWindow->HandleMouseClickGeneric(x, y, inMouse, 0);
 }
 
@@ -605,11 +785,9 @@ ImgWindow::HandleKeyFuncCB(XPLMWindowID /*inWindowID*/, char inKey, XPLMKeyFlags
     // we try convincing ImGui to let it go by sending an [Esc] key
     if (blosingFocus)
     {
-#ifndef IMGUI_DISABLE_OBSOLETE_KEYIO
-      io.KeysDown[int(XPLM_VK_ESCAPE)] = true;
-#else
-      io.AddKeyEvent(ImGuiKey_Escape, true);
-#endif
+      io.AddFocusEvent(false);	// tell ImGui it lost focus
+      io.AddKeyEvent(ImGuiKey_Escape, true); // v26.06.1 original code
+      io.AddKeyEvent(ImGuiKey_Escape, false);
     }
     else
     {
@@ -626,8 +804,6 @@ ImgWindow::HandleKeyFuncCB(XPLMWindowID /*inWindowID*/, char inKey, XPLMKeyFlags
       // If Backspace is _released_ ...
       ImGuiKey translatedKey; // new saar missionx
 
-
-
       const auto lmbda_debug_print = [&]() {
         #ifdef DEBUG_KEYBOARD
           char buff[255] = { '\0' };
@@ -639,10 +815,7 @@ ImgWindow::HandleKeyFuncCB(XPLMWindowID /*inWindowID*/, char inKey, XPLMKeyFlags
 
       if (inVirtualKey == XPLM_VK_BACK && !(inFlags & xplm_DownFlag))
       {
-        #ifndef IMGUI_DISABLE_OBSOLETE_KEYIO
-          thisWindow->bResetBackspace = true; // have it reset only later in DrawWindowCB
-        #else
-          translatedKey = getKey((int)inVirtualKey);
+          translatedKey = getKey(inVirtualKey);
 
           #ifndef RELEASE
             lmbda_debug_print(); // debug
@@ -651,29 +824,15 @@ ImgWindow::HandleKeyFuncCB(XPLMWindowID /*inWindowID*/, char inKey, XPLMKeyFlags
           io.AddKeyEvent(translatedKey, true);
           io.AddKeyEvent(translatedKey, false); // release immediately
           inKey = '\0';
-        #endif // IMGUI_DISABLE_OBSOLETE_KEYIO
       }
       else
       {
         // in all normal cases: save the up/down flag as it comes from XP
-       #ifndef IMGUI_DISABLE_OBSOLETE_KEYIO
-        translatedKey                  = getKey((int)inVirtualKey);
-
-        #ifndef RELEASE
-          lmbda_debug_print(); // debug
-        #endif
-
-        if(inVirtualKey > 0)
-          io.KeysDown[int(inVirtualKey)] = (inFlags & xplm_DownFlag) == xplm_DownFlag;
-
-
-       #else  
         translatedKey = getKey((int)inVirtualKey);
 
         #ifndef RELEASE
           lmbda_debug_print(); // debug
         #endif
-
 
          #ifndef IBM
           // ASCII Non printable characters are lower than 32. https://www.ascii-code.com/
@@ -687,10 +846,7 @@ ImgWindow::HandleKeyFuncCB(XPLMWindowID /*inWindowID*/, char inKey, XPLMKeyFlags
           #endif
 
          #endif
-
-          io.AddKeyEvent(translatedKey, ((inFlags & xplm_DownFlag) == xplm_DownFlag));
-       #endif
-
+         io.AddKeyEvent(translatedKey, ((inFlags & xplm_DownFlag) == xplm_DownFlag));
       }
 
       io.KeyShift = (inFlags & xplm_ShiftFlag) == xplm_ShiftFlag;
@@ -703,7 +859,7 @@ ImgWindow::HandleKeyFuncCB(XPLMWindowID /*inWindowID*/, char inKey, XPLMKeyFlags
 
       if ((inFlags & xplm_DownFlag) == xplm_DownFlag && inKey > '\0')
       {
-        char smallStr[2] = { inKey, 0 };
+        const char smallStr[2] = { inKey, 0 };
         io.AddInputCharactersUTF8(smallStr);
         
         #ifdef IMGUI_DISABLE_OBSOLETE_KEYIO
@@ -718,23 +874,6 @@ ImgWindow::HandleKeyFuncCB(XPLMWindowID /*inWindowID*/, char inKey, XPLMKeyFlags
 
         #endif
 
-        ////////////////////// DEBUG //////////////////////
-#ifndef RELEASE
-        if (io.KeyCtrl || io.KeyShift || io.KeyAlt)
-        {
-          // GetClipboardText  / if (io.SetClipboardTextFn)
-          const std::string mod_s     = (io.KeyCtrl) ? "CONTROL" : (io.KeyShift) ? "SHIFT" : "ALT";
-          const std::string upDown_s  = ((inFlags & xplm_DownFlag) == xplm_DownFlag) ? "Down" : "Release";
-          char              buff[255] = { '\0' };
-          
-#ifdef IBM
-          sprintf(buff, "Added %s %s key modifier with key: %c, translated value: %i\n", mod_s.c_str(), upDown_s.c_str(), inKey, (int)translatedKey);
-#else
-          snprintf(buff, sizeof(buff)-1, "Added %s %s key modifier with key: %c, translated value: %i\n", mod_s.c_str(), upDown_s.c_str(), inKey, (int)translatedKey);
-#endif
-          XPLMDebugString(buff);
-        }
-#endif // !RELEASE
       }
     }
   }
@@ -745,13 +884,35 @@ XPLMCursorStatus
 ImgWindow::HandleCursorFuncCB(XPLMWindowID /*inWindowID*/, int x, int y, void* inRefcon)
 {
   auto* thisWindow = reinterpret_cast<ImgWindow*>(inRefcon);
+  // If this is an overlay window that cannot be moved, ignore mouse cursor changes.
+  if (thisWindow->mPreferredLayer == xplm_WindowLayerFlightOverlay &&
+      !thisWindow->bCanMove)
+    return xplm_CursorDefault;  // (ignore for immovable overlays)
+
+
   ImGui::SetCurrentContext(thisWindow->mImGuiContext);
   ImGuiIO& io = ImGui::GetIO();
   float    outX, outY;
   thisWindow->translateToImguiSpace(x, y, outX, outY);
   io.MousePos = ImVec2(outX, outY);
-  // FIXME: Maybe we can support imgui's cursors a bit better?
-  return xplm_CursorDefault;
+
+  // Don't use ImGui mouse cursor handling if disabled, or if cursor is
+  // within special XPLM self-styled resize handling regions.
+  if (!thisWindow->bUseImgCursors ||
+    (thisWindow->IsInsideSim() && thisWindow->bHandleWndResize &&
+     (x < (thisWindow->mLeft + WND_RESIZE_LEFT_WIDTH) ||
+      x > (thisWindow->mRight - WND_RESIZE_RIGHT_WIDTH) ||
+      y > (thisWindow->mTop - WND_RESIZE_TOP_WIDTH) ||
+      y < (thisWindow->mBottom + WND_RESIZE_BOTTOM_WIDTH))))
+  {
+    // Defer to XPLM's hand cursor if disabled, or when inside the XPLM-managed resize grab regions:
+    io.MouseDrawCursor = false;
+    return xplm_CursorDefault;
+  }
+
+  // Have ImGui take over the mouse cursor for the rest:
+  io.MouseDrawCursor = true;
+  return xplm_CursorHidden;
 }
 
 
@@ -759,6 +920,12 @@ int
 ImgWindow::HandleMouseWheelFuncCB(XPLMWindowID /*inWindowID*/, int x, int y, int wheel, int clicks, void* inRefcon)
 {
   auto* thisWindow = reinterpret_cast<ImgWindow*>(inRefcon);
+
+  // If this is an overlay window that cannot be moved, ignore mouse wheel events.
+  if (thisWindow->mPreferredLayer == xplm_WindowLayerFlightOverlay &&
+    !thisWindow->bCanMove)
+    return 0;  // (ignore mouse-wheel for immovable overlays)
+
   ImGui::SetCurrentContext(thisWindow->mImGuiContext);
   ImGuiIO& io = ImGui::GetIO();
 
@@ -784,6 +951,13 @@ int
 ImgWindow::HandleRightClickFuncCB(XPLMWindowID /* inWindowID */, int x, int y, XPLMMouseStatus inMouse, void* inRefcon)
 {
   auto* thisWindow = reinterpret_cast<ImgWindow*>(inRefcon);
+
+  // If this is an overlay window that cannot be moved, ignore right-clicks altogether.
+  //FIXME: is this the right thing to do?  We could allow right-clicks for context menus, but not allow dragging...
+  if (thisWindow->mPreferredLayer == xplm_WindowLayerFlightOverlay &&
+    !thisWindow->bCanMove)
+    return 0;   // (always ignore right-clicks for overlay layers)
+
   return thisWindow->HandleMouseClickGeneric(x, y, inMouse, 1);
 }
 
@@ -796,7 +970,7 @@ ImgWindow::SetWindowTitle(const std::string& title)
 }
 
 void
-ImgWindow::SetVisible(bool inIsVisible)
+ImgWindow::SetVisible(const bool inIsVisible)
 {
   if (inIsVisible)
     moveForVR();
@@ -817,7 +991,7 @@ ImgWindow::SetVisible(bool inIsVisible)
 }
 
 void
-ImgWindow::moveForVR()
+ImgWindow::moveForVR() const
 {
   // if we're trying to display the window, check the state of the VR flag
   // - if we're VR enabled, explicitly move the window to the VR world.
@@ -832,6 +1006,65 @@ ImgWindow::moveForVR()
       XPLMSetWindowPositioningMode(mWindowID, mPreferredLayer, -1);
     }
   }
+}
+
+void ImgWindow::bindTexture()
+{
+  if (mFontAtlas)
+    return;
+
+  XPLMGenerateTextureNumbers(&mGLTextureNum, 1);
+
+  // Bake font textures
+  auto ctx = ImGui::CreateContext(mFontAtlas);
+  ImGui::SetCurrentContext(ctx);
+  auto& io = ImGui::GetIO();
+  // io.Fonts->Build(); // v26.08.1 deprecated in ImGui v1.92.x
+
+  strct_texture_info outInfo;
+  GetCustomAtlasTextureData(mFontAtlas, outInfo);
+
+  // // Ensure the atlas is built / initialized
+  int width = outInfo.width;
+  int height = outInfo.height;
+  unsigned char *pixData = outInfo.pixels;
+  // mOurAtlas->GetTexDataAsRGBA32(&pixData, &width, &height); // v26.08.1 deprecated in ImGui v1.92.x
+
+  XPLMBindTexture2d(mGLTextureNum, 0);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixData);
+
+  // v26.08.1 deprecated in ImGui v1.92.x
+  // mOurAtlas->SetTexID((void *)((intptr_t)mGLTextureNum));
+  mFontAtlas->TexData->SetTexID(mGLTextureNum); // v26.08.1
+  mTextureBound = true;
+}
+
+
+bool ImgWindow::GetCustomAtlasTextureData(ImFontAtlas* atlas, strct_texture_info& outInfo)
+{
+  // Ensure the atlas has populated the new TexList vector
+  if (atlas->TexList.empty())
+  {
+    return false;
+  }
+
+  // Access the latest texture data using back()
+  // (Using auto handles whether TexList stores objects or pointers)
+  auto& texData = atlas->TexList.back();
+  // auto& texData = ImGui::GetDrawData()->Textures->back(); // crashes plugin
+
+  // Extract dimensions directly from the modern ImTextureData structure
+  outInfo.width = texData->Width;
+  outInfo.height = texData->Height;
+  outInfo.bytesPerPixel = 4; // ImGui RGBA32
+
+  // Extract the raw CPU-side pixel buffer
+  outInfo.pixels = (unsigned char*)texData->Pixels;
+
+  return (outInfo.pixels != nullptr && outInfo.width > 0 && outInfo.height > 0);
 }
 
 bool
@@ -1081,7 +1314,7 @@ ImgWindow::mxUiResetAllFontsToDefault()
 
   this->iFontQueue = 0;  
 
-  ImGui::SetWindowFontScale (missionx::mxconst::DEFAULT_BASE_FONT_SCALE);
+  // ImGui::SetWindowFontScale (missionx::mxconst::DEFAULT_BASE_FONT_SCALE);
 }
 
 
@@ -1089,24 +1322,23 @@ ImgWindow::mxUiResetAllFontsToDefault()
 void
 ImgWindow::mxUiSetFont(const std::string& inTextType)
 {
-  assert(!missionx::MxUICore::mapFontsMeta.empty() && "No fonts were loaded.");
+  // assert(!missionx::MxUICore::mapFontsMeta.empty() && "No fonts were loaded.");
+  assert(!missionx::MxUICore::mapFontTypeMeta.empty() && "No fonts were loaded.");
 
-  int fontID = 0;
 
-  // Eval if font type exists or fallback to default_font
-  // if (missionx::MxUICore::mapFontTypeToFontID.find(inTextType) != missionx::MxUICore::mapFontTypeToFontID.end())
-  if (missionx::MxUICore::mapFontTypeToFontID.contains(inTextType) )
+  // read font meta data for inTextType. Holds Font size.
+  if (missionx::MxUICore::mapFontTypeMeta.contains(inTextType))
   {
-    fontID = missionx::MxUICore::mapFontTypeToFontID[inTextType];
+    const auto ftm = missionx::MxUICore::mapFontTypeMeta[inTextType];
+    missionx::MxUICore::mapFontTypesBeingUsedInProgram[inTextType] = ftm.id;
 
-    missionx::MxUICore::mapFontTypesBeingUsedInProgram[inTextType] = fontID;
-
+    // ImGui::PushFont(ImgWindow::sFontAtlas->getAtlas()->Fonts[ftm.id], ftm.fSizePx);
+    // ImGui::PushFont(ImgWindow::getAtlas()->Fonts[ftm.id], ftm.fSizePx);
+    ImGui::PushFont(mFontAtlas->Fonts[ftm.id], ftm.fSizePx);
+    ++this->iFontQueue;
   }
-  ImGui::PushFont(ImgWindow::sFont1->getAtlas()->Fonts[fontID]);
 
-  ++this->iFontQueue;
 }
-
 
 
 void
@@ -1145,25 +1377,6 @@ ImgWindow::mxEndUiDisableState(const bool in_true_exp_to_disable)
   ImGui::PopStyleVar();
 }
 
-// void
-// ImgWindow::mxUiStartEvalDisableItems(const bool inFlag)
-// {
-//   if (inFlag) // disable line
-//   {
-//     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-//     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-//   }
-// }
-//
-// void
-// ImgWindow::mxUiEndEvalDisableItems(const bool inFlag)
-// {
-//   if (inFlag) // disable line
-//   {
-//     ImGui::PopItemFlag();
-//     ImGui::PopStyleVar();
-//   }
-// }
 
 bool
 ImgWindow::mxUiButtonTooltip(const char* label, const char* tip, ImVec4 colFg, ImVec4 colBg, const ImVec2& size)
@@ -1205,123 +1418,8 @@ ImgWindow::getKey(int inVirtualKey)
 }
 
 
- #ifndef IMGUI_DISABLE_OBSOLETE_KEYIO
 void
-ImgWindow::initOldKeymap(ImGuiIO& io)
-{
-  // set up the Keymap
-  io.KeyMap[ImGuiKey_Tab]            = XPLM_KEY_TAB;
-  io.KeyMap[ImGuiKey_LeftArrow]      = XPLM_KEY_LEFT;
-  io.KeyMap[ImGuiKey_RightArrow]     = XPLM_KEY_RIGHT;
-  io.KeyMap[ImGuiKey_UpArrow]        = XPLM_KEY_UP;
-  io.KeyMap[ImGuiKey_DownArrow]      = XPLM_KEY_DOWN;
-  io.KeyMap[ImGuiKey_PageUp]         = XPLM_VK_PRIOR;
-  io.KeyMap[ImGuiKey_PageDown]       = XPLM_VK_NEXT;
-  io.KeyMap[ImGuiKey_Home]           = XPLM_VK_HOME;
-  io.KeyMap[ImGuiKey_End]            = XPLM_VK_END;
-  //io.KeyMap[ImGuiKey_Insert]         = XPLM_VK_;
-  io.KeyMap[ImGuiKey_Delete]         = XPLM_KEY_DELETE;
-  io.KeyMap[ImGuiKey_Backspace]      = XPLM_VK_BACK;
-  io.KeyMap[ImGuiKey_Space]          = XPLM_VK_SPACE;
-  io.KeyMap[ImGuiKey_Enter]          = XPLM_VK_RETURN;
-  io.KeyMap[ImGuiKey_Escape]         = XPLM_KEY_ESCAPE;
-  //io.KeyMap[ImGuiKey_LeftCtrl]       = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_LeftShift]      = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_LeftAlt]        = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_LeftSuper]      = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_RightCtrl]      = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_RightShift]     = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_RightAlt]       = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_RightSuper]     = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_Menu]           = XPLM_VK_;
-  io.KeyMap[ImGuiKey_0]              = XPLM_KEY_0;
-  io.KeyMap[ImGuiKey_1]              = XPLM_KEY_1;
-  io.KeyMap[ImGuiKey_2]              = XPLM_KEY_2;
-  io.KeyMap[ImGuiKey_3]              = XPLM_KEY_3;
-  io.KeyMap[ImGuiKey_4]              = XPLM_KEY_4;
-  io.KeyMap[ImGuiKey_5]              = XPLM_KEY_5;
-  io.KeyMap[ImGuiKey_6]              = XPLM_KEY_6;
-  io.KeyMap[ImGuiKey_7]              = XPLM_KEY_7;
-  io.KeyMap[ImGuiKey_8]              = XPLM_KEY_8;
-  io.KeyMap[ImGuiKey_9]              = XPLM_KEY_9;
-  io.KeyMap[ImGuiKey_A]              = XPLM_VK_A;
-  io.KeyMap[ImGuiKey_B]              = XPLM_VK_B;
-  io.KeyMap[ImGuiKey_C]              = XPLM_VK_C;
-  io.KeyMap[ImGuiKey_D]              = XPLM_VK_D;
-  io.KeyMap[ImGuiKey_E]              = XPLM_VK_E;
-  io.KeyMap[ImGuiKey_F]              = XPLM_VK_F;
-  io.KeyMap[ImGuiKey_G]              = XPLM_VK_G;
-  io.KeyMap[ImGuiKey_H]              = XPLM_VK_H;
-  io.KeyMap[ImGuiKey_I]              = XPLM_VK_I;
-  io.KeyMap[ImGuiKey_J]              = XPLM_VK_J;
-  io.KeyMap[ImGuiKey_K]              = XPLM_VK_K;
-  io.KeyMap[ImGuiKey_L]              = XPLM_VK_L;
-  io.KeyMap[ImGuiKey_M]              = XPLM_VK_M;
-  io.KeyMap[ImGuiKey_N]              = XPLM_VK_N;
-  io.KeyMap[ImGuiKey_O]              = XPLM_VK_O;
-  io.KeyMap[ImGuiKey_P]              = XPLM_VK_P;
-  io.KeyMap[ImGuiKey_Q]              = XPLM_VK_Q;
-  io.KeyMap[ImGuiKey_R]              = XPLM_VK_R;
-  io.KeyMap[ImGuiKey_S]              = XPLM_VK_S;
-  io.KeyMap[ImGuiKey_T]              = XPLM_VK_T;
-  io.KeyMap[ImGuiKey_U]              = XPLM_VK_U;
-  io.KeyMap[ImGuiKey_V]              = XPLM_VK_V;
-  io.KeyMap[ImGuiKey_W]              = XPLM_VK_W;
-  io.KeyMap[ImGuiKey_X]              = XPLM_VK_X;
-  io.KeyMap[ImGuiKey_Y]              = XPLM_VK_Y;
-  io.KeyMap[ImGuiKey_Z]              = XPLM_VK_Z;
-  //io.KeyMap[ImGuiKey_F1]             = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_F2]             = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_F3]             = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_F4]             = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_F5]             = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_F6]             = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_F7]             = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_F8]             = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_F9]             = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_F10]            = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_F11]            = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_F12]            = XPLM_VK_;
-  io.KeyMap[ImGuiKey_Apostrophe]     = XPLM_VK_QUOTE;
-  io.KeyMap[ImGuiKey_Comma]          = XPLM_VK_COMMA;
-  io.KeyMap[ImGuiKey_Minus]          = XPLM_VK_MINUS;
-  io.KeyMap[ImGuiKey_Period]         = XPLM_VK_PERIOD;
-  io.KeyMap[ImGuiKey_Slash]          = XPLM_VK_SLASH;
-  io.KeyMap[ImGuiKey_Semicolon]      = XPLM_VK_SEMICOLON;
-  io.KeyMap[ImGuiKey_Equal]          = XPLM_VK_EQUAL;
-  io.KeyMap[ImGuiKey_LeftBracket]    = XPLM_VK_LBRACE;
-  io.KeyMap[ImGuiKey_Backslash]      = XPLM_VK_BACKSLASH;
-  io.KeyMap[ImGuiKey_RightBracket]   = XPLM_VK_RBRACE;
-  //io.KeyMap[ImGuiKey_GraveAccent]    = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_CapsLock]       = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_ScrollLock]     = XPLM_VK_;
-  //io.KeyMap[ImGuiKey_NumLock]        = XPLM_VK_;
-  io.KeyMap[ImGuiKey_PrintScreen]    = XPLM_VK_PRINT;
-  //io.KeyMap[ImGuiKey_Pause]          = XPLM_VK_;
-  io.KeyMap[ImGuiKey_Keypad0]        = XPLM_VK_NUMPAD0;
-  io.KeyMap[ImGuiKey_Keypad1]        = XPLM_VK_NUMPAD1;
-  io.KeyMap[ImGuiKey_Keypad2]        = XPLM_VK_NUMPAD2;
-  io.KeyMap[ImGuiKey_Keypad3]        = XPLM_VK_NUMPAD3;
-  io.KeyMap[ImGuiKey_Keypad4]        = XPLM_VK_NUMPAD4;
-  io.KeyMap[ImGuiKey_Keypad5]        = XPLM_VK_NUMPAD5;
-  io.KeyMap[ImGuiKey_Keypad6]        = XPLM_VK_NUMPAD6;
-  io.KeyMap[ImGuiKey_Keypad7]        = XPLM_VK_NUMPAD7;
-  io.KeyMap[ImGuiKey_Keypad8]        = XPLM_VK_NUMPAD8;
-  io.KeyMap[ImGuiKey_Keypad9]        = XPLM_VK_NUMPAD9;
-  io.KeyMap[ImGuiKey_KeypadDecimal]  = XPLM_VK_DECIMAL;
-  io.KeyMap[ImGuiKey_KeypadDivide]   = XPLM_VK_DIVIDE;
-  io.KeyMap[ImGuiKey_KeypadMultiply] = XPLM_VK_MULTIPLY;
-  io.KeyMap[ImGuiKey_KeypadSubtract] = XPLM_VK_SUBTRACT;
-  io.KeyMap[ImGuiKey_KeypadAdd]      = XPLM_VK_ADD;
-  io.KeyMap[ImGuiKey_KeypadEnter]    = XPLM_KEY_RETURN;
-  io.KeyMap[ImGuiKey_KeypadEqual]    = XPLM_VK_EQUAL;
-}
-#endif
-
-
-
-void
-ImgWindow::initRemapKeys2()
+ImgWindow::initRemapKeys()
 {
   mapXPtoImgui_key[(int)XPLM_KEY_RETURN]  = ImGuiKey_Enter;
   mapXPtoImgui_key[(int)XPLM_KEY_ESCAPE]  = ImGuiKey_Escape;
