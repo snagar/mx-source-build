@@ -185,8 +185,6 @@ set(IMGUI_SQLITE_STB_POLY_LIB_SRC
         libs/imgui4xp/imgui/imstb_truetype.h
         libs/imgui4xp/ImgWindow/ImgFontAtlas.cpp
         libs/imgui4xp/ImgWindow/ImgFontAtlas.h
-        #    libs/imgui4xp/ImgWindow/ImgFreeTypeFontAtlas.cpp
-        #    libs/imgui4xp/ImgWindow/ImgFreeTypeFontAtlas.h
         libs/imgui4xp/ImgWindow/ImgWindow.cpp
         libs/imgui4xp/ImgWindow/ImgWindow.h
         libs/imgui4xp/KHR/khrplatform.h
