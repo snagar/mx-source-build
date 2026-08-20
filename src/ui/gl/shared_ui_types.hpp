@@ -11,8 +11,9 @@
 #include "../../core/xx_mission_constants.hpp"
 #include "../../core/data_manager.h"
 #include "../../core/dataref_manager.h"
+#include "../../../libs/imgui4xp/imgui/imgui_internal.h"
 //#include "../../../libs/imgui4xp/fa-solid-900.inc" // FontAwesome5
-#include "../../../libs/imgui4xp/IconsFontAwesome5.h"
+// #include "../../../libs/imgui4xp/IconsFontAwesome5.h"
 
 namespace missionx
 {
@@ -316,7 +317,7 @@ struct mx_setup_layer
     int                                      headerIndex{ 0 }; // v25.03.3. Used only with mapSetupHeaders
     std::unordered_map<int, mx_header_state> mapSetupHeaders = {
                           { headerIndex, mx_header_state ("General Settings", false) }
-                        , { ++headerIndex, mx_header_state ("Simbrief & flightplandatabase.com setup", false) }
+                        , { ++headerIndex, mx_header_state ("Simbrief & flightplandatabase.com & LLM setup", false) }
                         , { ++headerIndex, mx_header_state ("APT data optimization", false) }
                         , { ++headerIndex, mx_header_state ("TOOLS", false) }
                         , { ++headerIndex, mx_header_state ("Normalize Mission Sound Volume", false) }
@@ -328,6 +329,17 @@ struct mx_setup_layer
                         , { ++headerIndex, mx_header_state ("Designer: Unsaved Options", false) }
     };
 
+  bool         b_use_ai{false}; // v26.08.1
+  std::string  ai_url; // v26.08.1
+  std::string  ai_auth_key; // v26.08.1
+  char         buf_ai_url[512]{ "" }; // v26.08.1
+  char         buf_ai_auth_key[512]{ "" }; // v26.08.1
+  // Array of string options to display in the dropdown
+  constexpr static std::array<const char*, 2> llm_server_timeout_items = { "60", "120" };
+  int llm_timeout_selected_index {0};
+
+  int set_ai_url_buf (const std::string &in_value) { return snprintf (buf_ai_url, sizeof (buf_ai_url) - 1, "%s", in_value.c_str ()); }
+  int set_ai_auth_key_buf (const std::string &in_value) { return snprintf (buf_ai_auth_key, sizeof (buf_ai_auth_key) - 1, "%s", in_value.c_str ()); }
 
   }; // end setup struct
 
@@ -483,8 +495,8 @@ struct mx_setup_layer
     int          id{ -1 };
     int          final_legs_no_to_generate {1}; // Will hold the final number of legs to generate.
 
-    st_distance  distance_min_max {5.0f, 20.0f, 50.0f};
-    st_targets   legs_min_max {1, 4}; // store the number of targets per "action type picked". Example: Medevac will only have 2 legs.
+    st_distance  distance_min_max {.min = 5.0f, .lowest_max = 20.0f, .max = 50.0f};
+    st_targets   legs_min_max {.min = 1, .max = 4}; // store the number of targets per "action type picked". Example: Medevac will only have 2 legs.
 
     missionx::enums::mx_semi_activities_enum activity{missionx::enums::mx_semi_activities_enum::act_none};
     missionx::mx_plane_types_enum            plane_type{missionx::mx_plane_types_enum::plane_type_any};
@@ -532,9 +544,13 @@ struct mx_setup_layer
       return mission_area;
     }
 
-    void randomize_max_distance()
+    // void randomize_max_distance()
+    // {
+    //   max_distance_slider_f = std::roundf(  static_cast<float>( Utils::getRandomRealNumber(distance_min_max.lowest_max, distance_min_max.max) ) );
+    // }
+    void randomize_max_distance(const float &in_min, const float &in_max)
     {
-      max_distance_slider_f = std::roundf(  static_cast<float>( Utils::getRandomRealNumber(distance_min_max.lowest_max, distance_min_max.max) ) );
+      max_distance_slider_f = std::roundf(  static_cast<float>( Utils::getRandomRealNumber(in_min, in_max) ) );
     }
 
     int randomize_no_of_legs()
@@ -552,7 +568,7 @@ struct mx_setup_layer
     } // end randomize_no_of_legs
 
     // prepare desc
-    void prepare_the_semi_activity_description()
+    void prepare_the_semi_activity_description(const int& in_number_of_legs)
     {
       // Type of plane
       const std::string plane_type_desc = (id < 5)? "You will fly a helos mission" : "You will fly a plane mission";
@@ -572,7 +588,8 @@ struct mx_setup_layer
 
 
       // no. of legs
-      const std::string no_of_legs_desc = fmt::format("You will have: {}", (final_legs_no_to_generate < 2)? " one landing location" : fmt::format(" up to {}, landing locations", final_legs_no_to_generate));
+      // const std::string no_of_legs_desc = fmt::format("You will have: {}", (final_legs_no_to_generate < 2)? " one landing location" : fmt::format(" up to {}, landing locations", final_legs_no_to_generate));
+      const std::string no_of_legs_desc = fmt::format("You will have: {}", (in_number_of_legs < 2)? " one landing location" : fmt::format(" up to {}, landing locations", final_legs_no_to_generate));
 
       // construct description
       desc = fmt::format("{}.\n\n{}.\n{}.", plane_type_desc, area_desc, no_of_legs_desc);
@@ -623,6 +640,7 @@ struct mx_setup_layer
     // OSM checkbox
     bool flag_use_osm{ false };
     bool flag_use_web_osm{ false };
+    bool flag_cross_country = { false };
 
     // flight legs
     int iNumberOfFlighLegs{ 2 };

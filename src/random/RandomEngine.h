@@ -411,6 +411,7 @@ static bool gen_target_base_on_xy_osm_or_osmweb_types2(NavAidInfo&              
   static missionx::NavAidInfo gen_briefer_phase_01_parse_briefer_and_start_location (const IXMLNode &in_xTemplate, IXMLNode &x_briefer_and_start_location); // parse <briefer_and_start_location>
   static NavAidInfo           gen_briefer_phase_02_base_node_from_navaid (missionx::NavAidInfo &inout_start_navaid, structs::strct_shared_random_airport_info &inout_strct_shared_navaid_info, bool in_flag_we_have_target_above_water);
   static void                 gen_briefer_phase_03_add_desc (std::map<int, NavAidInfo> &inout_targets, bool flag_has_wet_target);
+  static void                 gen_briefer_phase_03_add_desc_ai (std::map<int, NavAidInfo> &inout_targets, bool flag_has_wet_target);
   IXMLNode                    gen_mission_info_node (const IXMLNode &xRootTemplate, const std::string &in_template_name, const std::string &in_template_image_file_name, const std::string &in_mission_folder_name);
   static IXMLNode             gen_add_inventory_phase01_node (const int &in_seq, missionx::NavAidInfo &inout_navaid, std::unordered_map<int, mx_inventory_track_strct> &inout_map_osm_inventory_track, const float &in_radius = 0.0, const std::list<missionx::structs::strct_node_attribute_key_value> *in_override_attrib_list = nullptr);
   static void                 gen_add_inventory_phase02_add_items (missionx::NavAidInfo &inOutNavAidInfo);
@@ -458,6 +459,7 @@ static bool gen_target_base_on_xy_osm_or_osmweb_types2(NavAidInfo&              
   // v25.10.2
   // Will return true if the function finds an airport data. out_rw_count and out_longest_rw should return a value greater than zero (0).
   static bool gen_get_rw_metadata (const std::string &in_icao, int &out_rw_count, float &out_longest_rw);
+  
 
   #ifndef RELEASE_DEBUG
   static void write_targets_to_file (const std::map<int, NavAidInfo>& navaid_targets);

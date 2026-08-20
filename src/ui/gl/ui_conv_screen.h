@@ -6,7 +6,8 @@
 #define MISSIONX_UI_CONV_SCREEN_H
 
 #include "shared_ui_types.hpp"
-#include <ImgWindow/ImgWindow.h> // inside libs/imgui4xp
+// #include <ImgWindow/ImgWindow.h> // inside libs/imgui4xp
+#include "../core/mx_img_window.h" // v26.08.1 replaces ImgWindow
 
 namespace missionx {
 
@@ -113,7 +114,8 @@ enum class mxTrig_ui_mode_enm : uint8_t // v3.0.301
 // -------- CLASS ------------
 // -------- CLASS ------------
 // -------- CLASS ------------
-class ui_conv_screen : public ImgWindow {
+// class ui_conv_screen : public ImgWindow {
+class ui_conv_screen : public mx_img_window {
 protected:
   void buildInterface() override {};
 
@@ -127,13 +129,13 @@ public:
   ui_conv_screen(const int left, const int top, const int right, const int bot, const XPLMWindowDecoration decoration, const XPLMWindowLayer layer
                 , const int &in_win_num
                 )
-                : ImgWindow (left, top, right, bot, decoration, layer)
+                : mx_img_window (left, top, right, bot, decoration, layer)
                   , myWinNum(in_win_num)
                  {};
 
 
 // ----- virtual functions ----------------
-  void flc() override {};
+  // void flc() override {};
 
 // ----- Pointers to parent functions -----
 
@@ -142,7 +144,8 @@ public:
   std::function<void()> add_designer_mode_checkbox;
   std::function<bool()> add_ui_checkbox_rerun_random_date_and_time;
   // void add_ui_advance_settings_random_date_time_weather_and_weight_button (int &out_iClockDayOfYearPicked, int &out_iClockHourPicked, int &out_iClockMinutesPicked, const std::string &inTEXT_TYPE = mxconst::get_TEXT_TYPE_TITLE_REG ());
-  std::function<void(int&, int&, int&, const std::string&)> add_ui_advance_settings_random_date_time_weather_and_weight_button;
+  // std::function<void(int&, int&, int&, const std::string&)> add_ui_advance_settings_random_date_time_weather_and_weight_button;
+  std::function<void(const std::string&)> add_ui_advance_settings_random_date_time_weather_and_weight_button; // v26.08.1
   // execAction (mx_window_actions actionCommand)
   std::function<void(missionx::mx_window_actions)> execAction;
   // void  add_message_text ();

@@ -58,6 +58,7 @@ Other option is to add this information after generating the mission file, if yo
   ImGui::TextColored (missionx::color::color_vec4_beige, "%zu of %zu", std::string (this->strct_conv_layer.buff_dataref).length (), sizeof (this->strct_conv_layer.buff_dataref));
 
   // Parse and store button
+  ImGui::SameLine(0.0f, 50.0f); // v26.08.1
   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
@@ -158,6 +159,7 @@ Other option is to add this information after generating the mission file, if yo
   ImGui::TextColored (missionx::color::color_vec4_beige, "%zu of %zu", std::string (this->strct_conv_layer.buff_globalSettings).length (), sizeof (this->strct_conv_layer.buff_globalSettings));
 
   // Parse and store button
+  ImGui::SameLine(0.0f, 50.0f); // v26.08.1
   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
@@ -235,7 +237,8 @@ void ui_conv_screen::draw_conv_popup_flight_leg_detail(missionx::mx_local_fpln_s
 
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_purple);
-    ImGui::PushStyleColor (ImGuiCol_FrameBg, missionx::color::color_vec4_beige);
+    // ImGui::PushStyleColor (ImGuiCol_FrameBg, missionx::color::color_vec4_beige);
+    ImGui::PushStyleColor (ImGuiCol_FrameBg, missionx::color::color_vec4_grey);
     if (ImGui::InputTextMultiline ("###flightLegDesciption", inLegData.buff_arr[ii], sizeof (inLegData.buff_arr[ii]), vec2_multiLine_dim, ImGuiInputTextFlags_None))
     {
       Utils::xml_add_cdata (inLegData.xLeg, inLegData.buff_arr[ii]);
@@ -544,48 +547,51 @@ void ui_conv_screen::draw_conv_popup_briefer(missionx::mx_local_fpln_strct& inLe
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
       if (ImGui::CollapsingHeader ("< Mission Info >"))
       {
-        ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_purple);
-        ImGui::PushStyleColor (ImGuiCol_FrameBg, missionx::color::color_vec4_beige);
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
-        ImGui::TextColored (missionx::color::color_vec4_yellow, "Written By: ");
-        ImGui::SameLine ();
-        if (ImGui::InputTextWithHint ("###WrittenBy", "== your name ==", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), ImGuiInputTextFlags_None))
+        int style_counter_02 = 0;
+        ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black); ++style_counter_02;
+        ImGui::PushStyleColor(ImGuiCol_TextDisabled, missionx::color::color_vec4_mx_dimblack); ++style_counter_02;
+        ImGui::PushStyleColor (ImGuiCol_FrameBg, missionx::color::color_vec4_teal); ++style_counter_02;
         {
-          this->strct_conv_layer.xConvInfo.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_WRITTEN_BY ().c_str (), mxconst::get_ATTRIB_WRITTEN_BY ().c_str ()); // 0
+          this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
+          ImGui::TextColored (missionx::color::color_vec4_yellow, "Written By: ");
+          ImGui::SameLine ();
+          if (ImGui::InputTextWithHint ("###WrittenBy", "== your name ==", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), ImGuiInputTextFlags_None))
+          {
+            this->strct_conv_layer.xConvInfo.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_WRITTEN_BY ().c_str (), mxconst::get_ATTRIB_WRITTEN_BY ().c_str ()); // 0
+          }
+          ++inLegData.iCurrentBuf;
+
+          ImGui::SameLine (0.0f, 20.0f);
+          ImGui::TextColored (missionx::color::color_vec4_yellow, "Estimate Time: ");
+          ImGui::SameLine ();
+          if (ImGui::InputTextWithHint ("###EstimateTime", "~45min, ~60min, ~90min etc..", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), ImGuiInputTextFlags_None))
+          {
+            this->strct_conv_layer.xConvInfo.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_ESTIMATE_TIME ().c_str (), mxconst::get_ATTRIB_ESTIMATE_TIME ().c_str ()); // 1
+          }
+          ++inLegData.iCurrentBuf;
+
+          ImGui::NewLine ();
+
+          ImGui::TextColored (missionx::color::color_vec4_yellow, "Weather Settings: ");
+          ImGui::SameLine ();
+          ImGui::SetNextItemWidth (350.0f);
+          if (ImGui::InputTextWithHint ("###WeatherSettings", "User Preferred Settings / Set to Overcast", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), ImGuiInputTextFlags_None))
+          {
+            this->strct_conv_layer.xConvInfo.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_WEATHER_SETTINGS ().c_str (), mxconst::get_ATTRIB_WEATHER_SETTINGS ().c_str ()); // 3
+          }
+          ++inLegData.iCurrentBuf;
+
+          ImGui::NewLine ();
+          ImGui::TextColored (missionx::color::color_vec4_yellow, "Other settings: ");
+          ImVec2 vec2_dimentions = ImVec2 (win_size_vec2.x - 50.0f, 60.0f);
+
+          if (ImGui::InputTextMultiline ("###OtherSettings", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), vec2_dimentions))
+          {
+            this->strct_conv_layer.xConvInfo.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_OTHER_SETTINGS ().c_str (), mxconst::get_ATTRIB_OTHER_SETTINGS ().c_str ()); // 4
+          }
+          ++inLegData.iCurrentBuf;
         }
-        ++inLegData.iCurrentBuf;
-
-        ImGui::SameLine (0.0f, 20.0f);
-        ImGui::TextColored (missionx::color::color_vec4_yellow, "Estimate Time: ");
-        ImGui::SameLine ();
-        if (ImGui::InputTextWithHint ("###EstimateTime", "~45min, ~60min, ~90min etc..", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), ImGuiInputTextFlags_None))
-        {
-          this->strct_conv_layer.xConvInfo.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_ESTIMATE_TIME ().c_str (), mxconst::get_ATTRIB_ESTIMATE_TIME ().c_str ()); // 1
-        }
-        ++inLegData.iCurrentBuf;
-
-        ImGui::NewLine ();
-
-        ImGui::TextColored (missionx::color::color_vec4_yellow, "Weather Settings: ");
-        ImGui::SameLine ();
-        ImGui::SetNextItemWidth (250.0f);
-        if (ImGui::InputTextWithHint ("###WeatherSettings", "User Preferred Settings / Set to Overcast", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), ImGuiInputTextFlags_None))
-        {
-          this->strct_conv_layer.xConvInfo.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_WEATHER_SETTINGS ().c_str (), mxconst::get_ATTRIB_WEATHER_SETTINGS ().c_str ()); // 3
-        }
-        ++inLegData.iCurrentBuf;
-
-        ImGui::NewLine ();
-        ImGui::TextColored (missionx::color::color_vec4_yellow, "Other settings: ");
-        ImVec2 vec2_dimentions = ImVec2 (win_size_vec2.x - 50.0f, 60.0f);
-
-        if (ImGui::InputTextMultiline ("###OtherSettings", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), vec2_dimentions))
-        {
-          this->strct_conv_layer.xConvInfo.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_OTHER_SETTINGS ().c_str (), mxconst::get_ATTRIB_OTHER_SETTINGS ().c_str ()); // 4
-        }
-        ++inLegData.iCurrentBuf;
-
-        ImGui::PopStyleColor (2);
+        ImGui::PopStyleColor (style_counter_02);
 
         ImGui::NewLine ();
       } // < Mission Info >
@@ -596,56 +602,58 @@ void ui_conv_screen::draw_conv_popup_briefer(missionx::mx_local_fpln_strct& inLe
       {
         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
         // inLegData.iCurrentBuf is used through the next few widgets
-        ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_purple);
-        ImGui::PushStyleColor (ImGuiCol_FrameBg, missionx::color::color_vec4_beige);
-
-        ImGui::TextColored (missionx::color::color_vec4_yellow, "Start Heading: ");
-        ImGui::SameLine ();
-        if (ImGui::InputTextWithHint ("###BrieferStartHeading", "0..359", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), ImGuiInputTextFlags_CharsDecimal))
+        // ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_purple);
+        // ImGui::PushStyleColor (ImGuiCol_FrameBg, missionx::color::color_vec4_beige);
+        int style_counter_01 = 0;
+        ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black); ++style_counter_01;
+        ImGui::PushStyleColor(ImGuiCol_TextDisabled, missionx::color::color_vec4_mx_dimblack); ++style_counter_01;
+        ImGui::PushStyleColor (ImGuiCol_FrameBg, missionx::color::color_vec4_teal); ++style_counter_01;
         {
-          inLegData.xLeg.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_HEADING_PSI ().c_str (), mxconst::get_ATTRIB_HEADING_PSI ().c_str ()); // 3
+          ImGui::TextColored (missionx::color::color_vec4_yellow, "Start Heading: ");
+          ImGui::SameLine ();
+          if (ImGui::InputTextWithHint ("###BrieferStartHeading", "0..359", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), ImGuiInputTextFlags_CharsDecimal))
+          {
+            inLegData.xLeg.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_HEADING_PSI ().c_str (), mxconst::get_ATTRIB_HEADING_PSI ().c_str ()); // 3
+          }
+          ImGui::SameLine (0.0f, 5.0f);
+
+          const auto lmbda_getAndSetHeading = [&inLegData] (XPLMDataRef inRef)
+          {
+            auto        heading_f = XPLMGetDataf (inRef);
+            std::string heading_s = mxUtils::formatNumber<int> (static_cast<int> (heading_f), 0);
+            inLegData.setBuff (inLegData.iCurrentBuf, heading_s);
+
+            inLegData.xLeg.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_HEADING_PSI ().c_str (), mxconst::get_ATTRIB_HEADING_PSI ().c_str ());
+          };
+
+          ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow);
+          if (ImGui::Button ("P"))
+          {
+            lmbda_getAndSetHeading (missionx::drefConst.dref_heading_true_psi_f);
+          }
+          this->mx_add_tooltip (missionx::color::color_vec4_white, "Get Plane Heading.");
+          ImGui::SameLine (0.0f, 5.0f);
+          if (ImGui::Button ("C"))
+          {
+            const XPLMDataRef dref = XPLMFindDataRef ("sim/graphics/view/view_heading"); // camera heading
+
+            lmbda_getAndSetHeading (dref);
+          }
+          this->mx_add_tooltip (missionx::color::color_vec4_white, "Get Camera Heading.");
+          ImGui::PopStyleColor ();
+          // end of same inLegData.iCurrentBuf
+
+          ++inLegData.iCurrentBuf;
+
+          ImGui::NewLine ();
+
+          ImGui::TextColored (missionx::color::color_vec4_yellow, "Mission Description (%i chars): ", missionx::LOG_BUFF_SIZE);
+          ImGui::TextColored (missionx::color::color_vec4_beige, "%zu", std::string (inLegData.buff_arr[inLegData.iCurrentBuf]).length ());
+          const auto vec2_dimentions = ImVec2 (win_size_vec2.x - 50.0f, 60.0f);
+          if (ImGui::InputTextMultiline ("###BrieferMissionDesc", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), vec2_dimentions)) // 5
+            Utils::xml_add_cdata (inLegData.xLeg, inLegData.buff_arr[inLegData.iCurrentBuf]);
         }
-        ImGui::SameLine (0.0f, 5.0f);
-
-        const auto lmbda_getAndSetHeading = [&inLegData] (XPLMDataRef inRef)
-        {
-          auto        heading_f = XPLMGetDataf (inRef);
-          std::string heading_s = mxUtils::formatNumber<int> (static_cast<int> (heading_f), 0);
-          inLegData.setBuff (inLegData.iCurrentBuf, heading_s);
-
-          inLegData.xLeg.updateAttribute (inLegData.buff_arr[inLegData.iCurrentBuf], mxconst::get_ATTRIB_HEADING_PSI ().c_str (), mxconst::get_ATTRIB_HEADING_PSI ().c_str ());
-        };
-
-        ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow);
-        if (ImGui::Button ("P"))
-        {
-          lmbda_getAndSetHeading (missionx::drefConst.dref_heading_true_psi_f);
-        }
-        this->mx_add_tooltip (missionx::color::color_vec4_white, "Get Plane Heading.");
-        ImGui::SameLine (0.0f, 5.0f);
-        if (ImGui::Button ("C"))
-        {
-          const XPLMDataRef dref = XPLMFindDataRef ("sim/graphics/view/view_heading"); // camera heading
-
-          lmbda_getAndSetHeading (dref);
-        }
-        this->mx_add_tooltip (missionx::color::color_vec4_white, "Get Camera Heading.");
-        ImGui::PopStyleColor ();
-        // end of same inLegData.iCurrentBuf
-
-        ++inLegData.iCurrentBuf;
-
-        ImGui::NewLine ();
-
-        ImGui::TextColored (missionx::color::color_vec4_yellow, "Mission Description (%i chars): ", missionx::LOG_BUFF_SIZE);
-        ImGui::TextColored (missionx::color::color_vec4_beige, "%zu", std::string (inLegData.buff_arr[inLegData.iCurrentBuf]).length ());
-        const ImVec2 vec2_dimentions = ImVec2 (win_size_vec2.x - 50.0f, 60.0f);
-        if (ImGui::InputTextMultiline ("###BrieferMissionDesc", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), vec2_dimentions)) // 5
-        {
-          Utils::xml_add_cdata (inLegData.xLeg, inLegData.buff_arr[inLegData.iCurrentBuf]);
-        }
-
-        ImGui::PopStyleColor (2);
+        ImGui::PopStyleColor (style_counter_01);
 
         ImGui::NewLine ();
       } // < Mission Info >
@@ -833,7 +841,7 @@ void ui_conv_screen::subDraw_fpln_table(IXMLNode& inMainNode, std::map<int, miss
   constexpr int col_i      = 10;
   int           COLUMN_NUM = (this->strct_conv_layer.flag_foundBriefer_index0) ? col_i : col_i + 1;
   {
-    ImgWindow::HelpMarker("The table holds the list of waypoints from the imported flight plan.\n\"Leg\": Mark as a waypoints you must reach.\n\t\tIndex 0 is your 'start' location.\n\"GD\": Flag flight leg to be on ground.\n\"BR\": Convert Index 1 waypoint to briefer, only if index 0 is unavailable.\n\"Details\": Opens a popup.\n\"IG\": Ignore this "
+    mx_img_window::HelpMarker("The table holds the list of waypoints from the imported flight plan.\n\"Leg\": Mark as a waypoints you must reach.\n\t\tIndex 0 is your 'start' location.\n\"GD\": Flag flight leg to be on ground.\n\"BR\": Convert Index 1 waypoint to briefer, only if index 0 is unavailable.\n\"Details\": Opens a popup.\n\"IG\": Ignore this "
                                           "waypoint. Won't be part of the GPS.");
     if (ImGui::BeginTable("Table_fpln_lnm", COLUMN_NUM, ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingFixedFit))
     {
@@ -2102,7 +2110,7 @@ There are other options that are best handle manually inside an editor and not i
     {
       ImGui::BeginGroup ();
       {
-        ImgWindow::HelpMarker (features_not_implemented_str_vu.data ()); // v3.0.301 B4 added unsupported features example
+        mx_img_window::HelpMarker (features_not_implemented_str_vu.data ()); // v3.0.301 B4 added unsupported features example
 
         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
 
@@ -2408,7 +2416,9 @@ There are other options that are best handle manually inside an editor and not i
       ImGui::SameLine (0.0f, 50.0f);
       bRerunRandomDateTime = this->add_ui_checkbox_rerun_random_date_and_time ();
       ImGui::SameLine ();
-      this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked, mxconst::get_TEXT_TYPE_TITLE_REG ());
+      // this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked, mxconst::get_TEXT_TYPE_TITLE_REG ());
+      // v26.08.1
+      this->add_ui_advance_settings_random_date_time_weather_and_weight_button (mxconst::get_TEXT_TYPE_TITLE_REG ());
 
       ImGui::SameLine (0.0f, 25.0f);
       this->add_designer_mode_checkbox ();

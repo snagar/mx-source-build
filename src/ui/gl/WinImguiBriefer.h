@@ -7,8 +7,8 @@
 
 // Definitions for OpenFontIcons
 #include <IconsFontAwesome5.h> // inside libs/imgui4xp
-#include <ImgWindow/ImgWindow.h> // inside libs/imgui4xp
-
+// #include <ImgWindow/ImgWindow.h> // inside libs/imgui4xp
+#include "../core/mx_img_window.h" // v26.08.1 replaces ImgWindow
 #include "ui_conv_screen.h"
 #include "ui_nav_screen.h"
 
@@ -32,7 +32,7 @@ enum class mx_ui_text_type // v3.0.301
   coloredText
 };
 
-class WinImguiBriefer : public ImgWindow
+class WinImguiBriefer : public mx_img_window
 {
 private:
   bool flag_displayedOnce{ false };
@@ -76,11 +76,13 @@ public:
   void  add_info_to_flight_leg (); // v3.305.2
   void  add_debug_info (); // v3.305.2
   void  add_flight_planning (); // v24.03.1
+  bool  add_briefer_description_post_mission_creation( const bool & in_display_last_generated_briefer ); // v26.08.1
   void  add_other_settings_header( bool in_plane_is_helo, bool bPickedMedevacMission, bool bPickedOilRigMission ); // v26.04.1
   void  action_prepare_dynamic_mission_properties_and_call_generate_action(const float &in_distance_min, const float & in_distance_max, const bool & in_add_start_from_plane_position = true); // v26.04.1
   bool  add_ui_generate_button(); // v26.04.2
+void flc();
 
-  void flc () override;
+  // void flc () override;
   void execAction (mx_window_actions actionCommand); // special function to handle specific requests from outside the window
 
 
@@ -729,6 +731,8 @@ private:
   void add_ui_stats_child (bool isEmbedded = false); // v3.303.14  isEmbedded means that we don't want the BeginChild definition inside the function we will use and external BeginChild
 
 
+  void gather_semi_act_phase1_data_based_on_picked_activity (mx_user_create_mission_layer &in_usr_layer_strct, const bool in_is_first_time);
+
 #ifndef RELEASE
   bool add_ui_test_button (const missionx::mx_flc_pre_command inCommand, const std::string &label, const std::string &tip = "") const
   {
@@ -746,7 +750,8 @@ private:
 
 #endif // RELEASE
 
-  void add_ui_advance_settings_random_date_time_weather_and_weight_button (int &out_iClockDayOfYearPicked, int &out_iClockHourPicked, int &out_iClockMinutesPicked, const std::string &inTEXT_TYPE = mxconst::get_TEXT_TYPE_TITLE_REG ());
+  // void add_ui_advance_settings_random_date_time_weather_and_weight_button (int &out_iClockDayOfYearPicked, int &out_iClockHourPicked, int &out_iClockMinutesPicked, const std::string &inTEXT_TYPE = mxconst::get_TEXT_TYPE_TITLE_REG ());
+  void add_ui_advance_settings_random_date_time_weather_and_weight_button (const std::string &inTEXT_TYPE = mxconst::get_TEXT_TYPE_TITLE_REG ());
   bool add_ui_checkbox_rerun_random_date_and_time ();
 
 
@@ -792,13 +797,16 @@ private:
   void                add_ui_semi_act_phase_2_detail (); // v26.04.1
   static bool         add_ui_pick_how_many_legs ( int & inout_radio_value_ref, const std::string & in_label, const int & in_minButtons, const int & in_maxButtons); // v26.04.1
   void                add_ui_oilrig_search_area_buttons ( ); // v26.04.1
+  void                add_ui_is_ga_cross_country_checkbox ( ); // v26.08.1
   void                add_ui_mission_description ( const std::string & in_descriptions); // v26.04.5
-  // void                add_ui_mission_description2 ( const std::vector<std::string> & in_descriptions); // v26.04.5
-  // void                add_ui_prop_mission_warning ( ); // v26.04.5
-  // void                add_ui_oilrig_warning ( ); // v26.04.5
+
   void                add_ui_medevac_surprise_me_warning ( ); // v26.04.1
   static void         add_ui_is_amphibian ();
   const dataref_const dc;
+
+  // v26.08.1
+  void add_ui_ai_use_ai_checkbox ();
+  void add_ui_ai_server_url();
 };
 
 

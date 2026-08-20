@@ -1104,6 +1104,8 @@ static T get_random_number_by_type (const T inMin, const T inMax)
   // -------------------------------------------
   static uint64_t get_file_hash(const std::filesystem::path& file_path);
 
+  static missionx::mx_return json_extract_by_path(const std::string& json_str, const std::string& path_str);
+
 
   ////////////////////////////////////////
   //////////////// JSON Related functions

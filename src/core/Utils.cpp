@@ -3918,6 +3918,31 @@ uint64_t Utils::get_file_hash(const std::filesystem::path& file_path)
   return hash;
 }
 
+missionx::mx_return
+Utils::json_extract_by_path(const std::string& json_str, const std::string& path_str)
+{
+  missionx::mx_return result (false);
+  try {
+    nlohmann::json j = nlohmann::json::parse(json_str);
+
+    // Convert the path string into a JSON Pointer
+    nlohmann::json::json_pointer ptr(path_str);
+
+    // Access using .at() for safe bounds checking
+    result.string_value = j.at(ptr).get<std::string>();
+    result = true;
+
+  } catch (const nlohmann::json::parse_error& e) {
+    result.addErrMsg(fmt::format("Invalid JSON string: {}\n", e.what()), true);
+  } catch (const nlohmann::json::out_of_range& e) {
+    result.addErrMsg(fmt::format("Path not found in JSON: {}\n", e.what()), true);
+  } catch (const nlohmann::json::exception& e) {
+    result.addErrMsg(fmt::format("JSON Exception: {}\n", e.what()), true);
+  }
+
+  return result;
+}
+
 
 // -------------------------------------------
 

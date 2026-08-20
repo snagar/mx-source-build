@@ -46,7 +46,7 @@ ImgFontAtlas::ImgFontAtlas():
 ImgFontAtlas::~ImgFontAtlas()
 {
     if (mTextureBound) {
-        GLuint glTexNum = mGLTextureNum;
+        GLuint glTexNum = (GLuint)mGLTextureNum;
         glDeleteTextures(1, &glTexNum);
         mTextureBound = false;
     }
@@ -110,31 +110,6 @@ ImgFontAtlas::getAtlas()
     return mOurAtlas;
 }
 
-bool
-ImgFontAtlas::GetCustomAtlasTextureData(ImFontAtlas* atlas, strct_texture_info& outInfo)
-{
-  // Ensure the atlas has populated the new TexList vector
-  if (atlas->TexList.empty())
-  {
-    return false;
-  }
-
-  // Access the latest texture data using back()
-  // (Using auto handles whether TexList stores objects or pointers)
-  auto& texData = atlas->TexList.back();
-  // auto& texData = ImGui::GetDrawData()->Textures->back();
-
-  // Extract dimensions directly from the modern ImTextureData structure
-  outInfo.width = texData->Width;
-  outInfo.height = texData->Height;
-  outInfo.bytesPerPixel = 4; // ImGui RGBA32
-
-  // Extract the raw CPU-side pixel buffer
-  outInfo.pixels = (unsigned char*)texData->Pixels;
-
-  return (outInfo.pixels != nullptr && outInfo.width > 0 && outInfo.height > 0);
-}
-
 void
 ImgFontAtlas::bindTexture()
 {
@@ -143,42 +118,54 @@ ImgFontAtlas::bindTexture()
 
     XPLMGenerateTextureNumbers(&mGLTextureNum, 1);
 
-    // unsigned char *pixData = nullptr;
-    // int width, height;
-
-    // Bake font textures
-    auto ctx = ImGui::CreateContext(mOurAtlas);
-    ImGui::SetCurrentContext(ctx);
-    auto& io = ImGui::GetIO();
-    // io.Fonts->Build();
-
-  strct_texture_info outInfo;
-  GetCustomAtlasTextureData(mOurAtlas, outInfo);
-
-    // // Ensure the atlas is built / initialized
-    // if (!mOurAtlas->IsBuilt()) {
-    //   mOurAtlas->Build();
-    // }
-
-    // int width = mOurAtlas->TexData->Width;
-    // int height = mOurAtlas->TexData->Height;
-    // unsigned char *pixData = mOurAtlas->TexData->Pixels;
-
-    int width = outInfo.width;
-    int height = outInfo.height;
-    unsigned char *pixData = outInfo.pixels;
-
-    // mOurAtlas->GetTexDataAsRGBA32(&pixData, &width, &height); // v26.08.1 deprecated
-
+#ifndef IMGUI_V190_REFACTOR
+    unsigned char *pixData = nullptr;
+    int width, height;
+    mOurAtlas->GetTexDataAsRGBA32(&pixData, &width, &height);
+#else
+    strct_texture_info outInfo;
+    GetCustomAtlasTextureData(mOurAtlas, outInfo);
+#endif
 
     XPLMBindTexture2d(mGLTextureNum, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixData);
 
-    // mOurAtlas->SetTexID((void *)((intptr_t)mGLTextureNum));
-    // mOurAtlas->SetTexID(mGLTextureNum);
-    mOurAtlas->TexData->SetTexID(mGLTextureNum); // v26.08.1
+#ifndef IMGUI_V190_REFACTOR
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixData);
+    mOurAtlas->SetTexID((void *)((intptr_t)mGLTextureNum));
+#else
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, outInfo.width, outInfo.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, outInfo.pixels);
+    mOurAtlas->TexData->SetTexID(mGLTextureNum);
+#endif
+
     mTextureBound = true;
 }
+
+#ifdef IMGUI_V190_REFACTOR
+bool
+ImgFontAtlas::GetCustomAtlasTextureData(ImFontAtlas* atlas, strct_texture_info& outInfo)
+{
+    // Ensure the atlas has populated the new TexList vector
+    if (atlas->TexList.empty())
+    {
+        return false;
+    }
+
+    // Access the latest texture data using back()
+    // (Using auto handles whether TexList stores objects or pointers)
+    auto& texData = atlas->TexList.back();
+
+    // Extract dimensions directly from the modern ImTextureData structure
+    outInfo.width = texData->Width;
+    outInfo.height = texData->Height;
+    outInfo.bytesPerPixel = 4; // ImGui RGBA32
+
+    // Extract the raw CPU-side pixel buffer
+    outInfo.pixels = (unsigned char*)texData->Pixels;
+
+    return (outInfo.pixels != nullptr && outInfo.width > 0 && outInfo.height > 0);
+}
+#endif
+

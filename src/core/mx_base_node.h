@@ -197,7 +197,7 @@ public:
   // setNodeStringProperty sets the XML node with a numeric/bool value and also uses xml_search_and_set_attribute_in_IXMLNode() to set the value at the Node level.
   // It differs from Utils::xml_set_attribute_in_node() since it also created the sub-node if it does not exists.
   template<class T>
-  void setSetupNodeProperty(const std::string& inTagName, T attribValue) //, IXMLNode& inParentNode_ptr = IXMLNode::emptyIXMLNode)
+  void set_node_text_type_1_5(const std::string& inTagName, T attribValue) //, IXMLNode& inParentNode_ptr = IXMLNode::emptyIXMLNode)
   {
     std::string                val_s;
     missionx::mx_property_type val_type_enum = missionx::mx_property_type::MX_UNKNOWN;
@@ -230,6 +230,14 @@ public:
       const std::string val_type_s = fmt::format("{}", static_cast<int>( val_type_enum ) );
       Utils::xml_search_and_set_node_text(this->node, inTagName, val_s, val_type_s, true);
     }
+  }
+
+  // -------------------------------------------
+  // v26.08.1 set a "value" as a node "text": <node>value</node>
+  void set_node_text_type_6(const std::string& inTagName, const std::string &in_value)
+  {
+    const std::string val_type_s = fmt::format("{}", static_cast<int> (missionx::mx_property_type::MX_STRING));
+    Utils::xml_search_and_set_node_text(this->node, inTagName, in_value, val_type_s, true);
   }
 
   // -------------------------------------------

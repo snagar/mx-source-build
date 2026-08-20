@@ -3,6 +3,7 @@
 //
 
 #include "ui_nav_screen.h"
+#include "../../../libs/imgui4xp/IconsFontAwesome5.h"
 
 namespace missionx
 {
@@ -23,7 +24,7 @@ void ui_nav_screen::draw_ils_screen()
   {
     // auto win_size_vec2 = ImGui::GetWindowSize(); // v3.305.1 removed
 
-    ImgWindow::HelpMarker ("The NAV information screen, allows you to search for airports with ILS/VFR approaches.\nYou can filter which types of airports you are looking for or\nLet the plugin randomize the filtering for you.\n\nIt will not "
+    mx_img_window::HelpMarker ("The NAV information screen, allows you to search for airports with ILS/VFR approaches.\nYou can filter which types of airports you are looking for or\nLet the plugin randomize the filtering for you.\n\nIt will not "
                                            "generate your FMS nor fetch the ILS Plates for you, this will be up to you.\n");
     ImGui::SameLine ();
     ImGui::TextUnformatted ("NAV information depends on the data collected from X-Plane and Custom Sceneries.");
@@ -187,7 +188,7 @@ void ui_nav_screen::child_draw_ils_search()
       // From/To ICAO tree
       if (ImGui::TreeNode (reinterpret_cast<void *>(static_cast<intptr_t> (1)), "%s", fmt::format ("From/To: {}/{}", missionx::strct_ils_layer.from_icao, missionx::strct_ils_layer.to_icao).c_str ()))
       {
-        ImgWindow::HelpMarker ("Enter optional starting ICAO airport.");
+        mx_img_window::HelpMarker ("Enter optional starting ICAO airport.");
         ImGui::SameLine ();
         ImGui::PushItemWidth (100.0f);
         if (ImGui::InputText ("##From_ILS_Icao_text", missionx::strct_ils_layer.buf1, 8, ImGuiInputTextFlags_CharsUppercase)) // , ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal);
@@ -199,7 +200,7 @@ void ui_nav_screen::child_draw_ils_search()
         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
         {
           ImGui::SameLine ();
-          if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).c_str (), "Clear From ICAO")) // should have been ImGui::ButtonTooltip
+          if (mx_img_window::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).c_str (), "Clear From ICAO")) // should have been ImGui::ButtonTooltip
           {
             missionx::strct_ils_layer.from_icao.clear ();
             memset (missionx::strct_ils_layer.buf1, 0, sizeof missionx::strct_ils_layer.buf1);
@@ -228,7 +229,7 @@ void ui_nav_screen::child_draw_ils_search()
         // New Line
         // TO input item
         /////////////////
-        ImgWindow::HelpMarker ("Enter optional destination ICAO airport.\nThe plugin will search for all ICAOs containing the string you entered.");
+        mx_img_window::HelpMarker ("Enter optional destination ICAO airport.\nThe plugin will search for all ICAOs containing the string you entered.");
         ImGui::SameLine ();
         ImGui::PushItemWidth (100.0f);
         if (ImGui::InputText ("##To_ILS_Icao_text", missionx::strct_ils_layer.buf2, 8, ImGuiInputTextFlags_CharsUppercase)) // , ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal);
@@ -241,7 +242,7 @@ void ui_nav_screen::child_draw_ils_search()
         {
           ImGui::SameLine ();
           ImGui::PushID ("##ClearICAO"); // v25.12.1 fix button do not respond to clicks
-          if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).c_str (), "Clear to ICAO"))
+          if (mx_img_window::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).c_str (), "Clear to ICAO"))
           {
             missionx::strct_ils_layer.to_icao.clear ();
             memset (missionx::strct_ils_layer.buf2, 0, sizeof missionx::strct_ils_layer.buf2);
@@ -256,7 +257,7 @@ void ui_nav_screen::child_draw_ils_search()
           missionx::strct_ils_layer.flagIgnoreDistanceFilter = false;
 
         // ImGui::SameLine (0.0f, 5.0f); // v25.12.1 removed
-        ImgWindow::HelpMarker ("You must enter Two or more search characters to enable the option to ignore 'precise distance' filter.\nThe search result will be limited to 250 rows.");
+        mx_img_window::HelpMarker ("You must enter Two or more search characters to enable the option to ignore 'precise distance' filter.\nThe search result will be limited to 250 rows.");
         ImGui::SameLine ();
         const bool bICAO_isEmpty = this->mxStartUiDisableState (missionx::strct_ils_layer.to_icao.length() < 2); // v24.03.1 disable line ?
         ImGui::Checkbox ("Ignore Dist.", &missionx::strct_ils_layer.flagIgnoreDistanceFilter);
@@ -350,7 +351,7 @@ void ui_nav_screen::child_draw_ils_search()
         ImGui::SetNextItemWidth (70.0f);
         ImGui::Combo ("Limit rows", &missionx::strct_ils_layer.limit_indx, missionx::strct_ils_layer.limit_items, IM_ARRAYSIZE (missionx::strct_ils_layer.limit_items)); // default is 250 rows
         ImGui::SameLine ();
-        ImgWindow::mxUiHelpMarker (missionx::color::color_vec4_aquamarine, fmt::format ("How many rows to retrieve. Default {}.\nCan drastically affect FPS.", missionx::strct_ils_layer.limit_items[0]).c_str ());
+        mx_img_window::mxUiHelpMarker (missionx::color::color_vec4_aquamarine, fmt::format ("How many rows to retrieve. Default {}.\nCan drastically affect FPS.", missionx::strct_ils_layer.limit_items[0]).c_str ());
       } // limit rows
     }
     ImGui::EndChild (); // end left ILS child
@@ -685,7 +686,9 @@ void ui_nav_screen::child_draw_ils_search()
                 this->add_ui_pick_subcategories (missionx::mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]);
                 ImGui::Spacing ();
                 // v3.303.10 // v25.04.1 moved advance button to the popup window for better flow
-                this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked, mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.10 convert the random dateTime button to a self contain function
+                // this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked, mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.10 convert the random dateTime button to a self contain function
+                // v26.08.1
+                this->add_ui_advance_settings_random_date_time_weather_and_weight_button (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.10 convert the random dateTime button to a self contain function
                 ImGui::Spacing ();
                 add_designer_mode_checkbox (); // v24.03.2 Designer mode flag
 
@@ -837,7 +840,7 @@ void ui_nav_screen::child_draw_nav_search()
   this->mxUiReleaseLastFont (); // release title regular
   ImGui::SameLine (0.0f, 5.0f);
   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-  if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).append ("##ClearNavICAO").c_str (), "Clear Nav ICAO"))
+  if (mx_img_window::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).append ("##ClearNavICAO").c_str (), "Clear Nav ICAO"))
   {
     missionx::strct_ils_layer.sNavICAO.clear ();
     memset (missionx::strct_ils_layer.buf1, 0, sizeof missionx::strct_ils_layer.buf1);

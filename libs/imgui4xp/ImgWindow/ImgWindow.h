@@ -43,26 +43,10 @@
 
 #include <XPLMDisplay.h>
 #include <XPLMProcessing.h>
-// Saar: mission-x
-// imgui related
-
-// end saar
-
 #include <imgui.h>
-#include <imgui_internal.h>
-
-#include "../imgui/implot/implot.h" // v3.0.255.1
-
 #include <queue>
 
-// #include "ImgFontAtlas.h"
-#include "mx_colors.hpp"
-
-#include "../../../src/ui/MxUICore.hpp" // v3.303.14 holds Font related data
-#include "../../../src/core/xx_mission_constants.hpp" // v3.303.14 holds Font related data
-
-// #define NEW_FONT
-//#define DISABLE_ORIG_CODE
+#include "ImgFontAtlas.h"
 
 /** ImgWindow is a Window for creating dear imgui widgets within.
  *
@@ -90,35 +74,21 @@
  */
 class
 ImgWindow {
-private:
-  /** Shall window be locked in place, e.g. invisible full-screen root container? */
-  bool bCanMove = true;
-
-  /** Shall window allow ImGui to manage the mouse cursor inside windows? */
-  bool bUseImgCursors = false;
-
-  /** Shall reset the backspace key? (see HandleKeyFuncCB for details) */
-  bool bResetBackspace = false;
-
 public:
-    /** sFont1 is the global shared font-atlas.
+    /** sFontAtlas is the global shared font-atlas.
      *
      * If you want to share fonts between windows, this needs to be set before
      * any dialogs are actually instantiated.  It will be automatically handed
      * over to the contexts as they're created.
      */
-    //static std::shared_ptr<ImgFontAtlas> sFontAtlas;
-    // static std::shared_ptr<ImgFontAtlas> sFontAtlas;
-    static ImFontAtlas* sFontAtlas;
-    static int                           defaultFontPos; // holds the loaded font that we will refer to as the default. Should always be equal to Zero as of v3.303.14
+    static std::shared_ptr<ImgFontAtlas> sFontAtlas;
 
-  struct strct_texture_info {
-    unsigned char* pixels = nullptr;
-    int width = 0;
-    int height = 0;
-    int bytesPerPixel = 4; // RGBA32
-  };
-
+    /** sBlankoutUntilCycle is a global XPLM cycle number until which all
+     * windows will skip rendering.  This is useful for plugins that want to
+     * temporarily blank out all ImGui windows for a cycle or two, e.g., to
+     * avoid flicker during a plugin reload.
+     */
+    inline static int sBlankoutUntilCycle = 0;
 
     virtual ~ImgWindow();
     
@@ -147,7 +117,7 @@ public:
     { XPLMSetWindowGeometryVR(mWindowID, width, height); }
     
     /** Gets the current valid geometry (free, OS, or VR
-        If VR, then left=bottom=0 and right=width and top=height*/
+        If VR, then left=bottom=0 and right=width and top=height */
     void GetCurrentWindowGeometry (int& left, int& top, int& right, int& bottom) const;
     
     /** Set resize limits. If set this way then the window object knows. */
@@ -165,7 +135,7 @@ public:
     /** GetVisible() returns the current window visibility.
      * @return true if the window is visible, false otherwise.
     */
-    [[nodiscard]] bool GetVisible() const;
+    bool GetVisible() const;
     
     /** Is Window popped out */
     bool IsPoppedOut () const { return XPLMWindowIsPoppedOut(mWindowID) != 0; }
@@ -253,28 +223,13 @@ protected:
         int right,
         int bottom,
         XPLMWindowDecoration decoration = xplm_WindowDecorationRoundRectangle,
-        XPLMWindowLayer layer = xplm_WindowLayerFloatingWindows
-        ,bool cursors = false
-        );
-    
-    ImgWindow(
-        int left,
-        int top,
-        int right,
-        int bottom, 
-        // std::shared_ptr<ImgFontAtlas>& inFontAtlas = ImgWindow::sFontAtlas, // saar - dynamic font
-        ImFontAtlas* inFontAtlas = ImgWindow::sFontAtlas, // saar - dynamic font
-        XPLMWindowDecoration decoration = xplm_WindowDecorationRoundRectangle,
-        XPLMWindowLayer layer = xplm_WindowLayerFloatingWindows
-        ,bool cursors = false // prepare for imgui v1.92.8 
-        );
+        XPLMWindowLayer layer = xplm_WindowLayerFloatingWindows,
+        bool cursors = false);
     
     /** An ImgWindow object must not be copied!
      */
     ImgWindow (const ImgWindow&) = delete;
     ImgWindow& operator = (const ImgWindow&) = delete;
-
-    // ImGuiIO setFont(ImFontAtlas* iFontAtlas, std::shared_ptr<ImgFontAtlas>& inFont);
 
     /** SetWindowTitle sets the title of the window both in the ImGui layer and
      * at the XPLM layer.
@@ -286,7 +241,7 @@ protected:
     /** moveForVR() is an internal helper for moving the window to either it's
      * preferred layer or the VR layer depending on if the headset is in use.
      */
-    void moveForVR() const;
+    void moveForVR();
     
     /** A hook called right before ImGui::Begin in case you want to set up something
      * before interface building begins
@@ -300,7 +255,7 @@ protected:
      * @note You must NOT delete the window object inside buildInterface() -
      *     use SafeDelete() for that.
      */
-    virtual void buildInterface() {};
+    virtual void buildInterface() = 0;
 
     /** A hook called after all rendering is done, right before the
      * X-Plane window draw call back returns
@@ -331,8 +286,7 @@ protected:
     { bUseImgCursors = inIsEnabled; }
 
 private:
-    // std::shared_ptr<ImgFontAtlas> mFontAtlas;
-    ImFontAtlas* mFontAtlas;
+    std::shared_ptr<ImgFontAtlas> mFontAtlas;
 
     static void DrawWindowCB(XPLMWindowID inWindowID, void *inRefcon);
 
@@ -399,7 +353,6 @@ private:
 
     XPLMWindowID mWindowID;
     ImGuiContext *mImGuiContext;
-    ImPlotContext *mImPlotContext; // v3.0.255.1
     GLuint mFontTexture;
 
     int mTop;
@@ -409,14 +362,14 @@ private:
 
     XPLMWindowLayer mPreferredLayer;
 
-    // /** Shall window be locked in place, e.g. invisible full-screen root container? */
-    // bool bCanMove = true;
-    //
-    // /** Shall window allow ImGui to manage the mouse cursor inside windows? */
-    // bool bUseImgCursors = false;
-    //
-    // /** Shall reset the backspace key? (see HandleKeyFuncCB for details) */
-    // bool bResetBackspace = false;
+    /** Shall window be locked in place, e.g. invisible full-screen root container? */
+    bool bCanMove = true;
+
+    /** Shall window allow ImGui to manage the mouse cursor inside windows? */
+    bool bUseImgCursors = false;
+    
+    /** Shall reset the backspace key? (see HandleKeyFuncCB for details) */
+    bool bResetBackspace = false;
     
     /** Set if `xplm_WindowDecorationSelfDecoratedResizable`,
      *  ie. we need to handle resizing ourselves: X-Plane provides
@@ -424,9 +377,8 @@ private:
      *  cannot handle resizing. (And passing on mouse events is
      *  discouraged.
      *  @see https://developer.x-plane.com/sdk/XPLMHandleMouseClick_f/ */
-    // const bool bHandleWndResize;
-    bool bHandleWndResize = true;
-
+    const bool bHandleWndResize;
+    
     /** Resize limits. There's no way to query XP, so we need to keep track ourself */
     int minWidth    = 100;
     int minHeight   = 100;
@@ -438,11 +390,16 @@ private:
     int dragTop     = -1;
     int dragRight   = -1;       // right > left
     int dragBottom  = -1;       // bottom > top!
-    
+
     /** Last (processed) mouse drag pos while moving/resizing */
     int lastMouseDragX  = -1;
     int lastMouseDragY  = -1;
-    
+
+#ifdef IMGUI_V190_REFACTOR
+private:
+    bool bLastKeyboardFocused = false;  // last known keyboard focus state
+#endif /* IMGUI_V190_REFACTOR */
+
 protected:
     /** What are we dragging right now? */
     struct DragTy {
@@ -456,120 +413,6 @@ protected:
         void clear () { wnd = left = top = right = bottom = false; }
         operator bool() const { return wnd || left || top || right || bottom; }
     } dragWhat;
-
-    public:
-      // saar: for Mission-X
-      // This will replace the flight call back integration. In Mission-X there is only one flight call back managed from plugin() and Mission::flc()
-      virtual void flc() = 0;
-      void toggleWindowState();
-
-      /////// These functions where originaly in "starter window" and in their oen namespace. I don't see the reason not to move them into the base window class.
-      /// @brief Helper for creating unique IDs
-      /// @details Required when creating many widgets in a loop, e.g. in a table
-      ///
-      void PushID_formatted(const char* format, ...); // v3.303.14
-//#ifdef APL
-//      void PushID_formatted(const char* format, ...);
-//#else
-//      void PushID_formatted(const char* format, ...);
-//  void PushID_formatted(const char* format, ...)    IM_FMTARGS(1);
-//#endif
-      /// @brief Button with on-hover popup helper text
-      /// @param label Text on Button
-      /// @param tip Tooltip text when hovering over the button (or NULL of none)
-      /// @param colFg Foreground/text color (optional, otherwise no change)
-      /// @param colBg Background color (optional, otherwise no change)
-      /// @param size button size, 0 for either axis means: auto size
-
-      bool ButtonTooltip(const char* label,
-        const char* tip = nullptr,
-        ImU32 colFg = IM_COL32(1, 1, 1, 0),
-        ImU32 colBg = IM_COL32(1, 1, 1, 0),
-        const ImVec2& size = ImVec2(0, 0));
-
-      static ImVec4 getColorAsImVec4(const std::string& inColor_s);
-
-      static void HelpMarker(const char* desc, ImVec4 inTextColor = missionx::color::color_vec4_white); // from IMGUI demo // v3.303.14 added default color
-      static void mxUiHelpMarker(ImVec4 inTextColor,const char* desc); // saar, missionx. Prefer color first
-
-      //// @brief Add tooltip to cournet item
-      // @param inColor - (ImVec4) decimal color vector (R,G,B,A)
-      // @param inTip - (std::string) tip text.
-      void mx_add_tooltip(ImVec4 inColor/* = missionx::color::color_vec4_white*/, const std::string& inTip) const;
-
-      // Slider helper
-      template <typename T>
-      bool add_slider_float_helper(T& outRefParam, float min_f, float max_f, float inWidth_f = 400.0f)
-      {
-        float fSliderVal = (float)outRefParam;
-        ImGui::PushItemWidth(inWidth_f);
-        if (ImGui::DragFloat("SliderHelper", &fSliderVal, 1.0f, min_f, max_f, "%.0f px")) // debug window
-        {
-          outRefParam = fSliderVal;
-        }
-        ImGui::PopItemWidth();        
-
-        return true;
-      }
-
-      ImVec2 vec2_plus(ImVec2 v1, ImVec2 v2) { return ImVec2(v1.x + v2.x, v1.y + v1.y); };
-      ImVec2 vec2_minus(ImVec2 v1, ImVec2 v2) { return ImVec2(v1.x - v2.x, v1.y - v1.y); };
-      ImVec2 vec2_multi(ImVec2 v1, ImVec2 v2) { return ImVec2(v1.x * v2.x, v1.y * v1.y); };
-      ImVec2 vec2_multi_num(ImVec2 v1, float fVal) { return ImVec2(v1.x * fVal, v1.y * fVal); };
-
-
-      ImVec4 mxConvertMxVec4ToImVec4(const missionx::mxVec4 & inMxVec4 ); // the function replaces a deprecated ImGui::GetWindowContentRegionWidth(). The new replacer functions does not seem to do the trick in some cases, so I have copied the logic of the original function into my own one in the hope it will continue and server me.
-      float mxUiGetContentWidth(); // the function replaces a deprecated ImGui::GetWindowContentRegionWidth(). The new replacer functions does not seem to do the trick in some cases, so I have copied the logic of the original function into my own one in the hope it will continue and server me.
-      float mxUiGetContentHeight(); // 
-      ImVec2 mxUiGetWindowContentWxH(); // 
-
-      //std::list<int> lstFontQueue{}; // holds the "imgui::pushFont" order. We could just keep it as a counter too.
-      int            iFontQueue{ 0 };
-      //std::string prevFontTypeName{ "" };
-
-      // int prevFontPosition = 0;      
-      //int prevFontIndex = 0;
-
-      void mxUiSetDefaultFont();
-      void mxUiResetAllFontsToDefault();
-      
-      void mxUiSetFont(const std::string& inTextType); // set the font using the font type name liked TEXT_TYPE_TITLE_REG, TEXT_TYPE_TITLE_BIG, TEXT_TYPE_TEXT_REG
-      //void mxUiSetFontByPx(const int inFontPosition, const float inSizePx); // set the font using the size in px as key. example: mxUiSetFontByIndx(0, 16)
-      void mxUiReleaseLastFont(const int inHowManyCycles = 1); // pop out Fonts we pushed, default is only the last one but you can release more than one. Updates iFontQueue.
-
-      // In case of thread dependency, store the return value in a parameter and then send it when calling "mxEndUiDisableState()" function.
-      // In case of non thread state dependence, it is safe to use the same boolean condition for "inBoolState"
-      bool mxStartUiDisableState(const bool in_true_exp_to_disable); // v24.02.6 true means not disable
-      void mxEndUiDisableState(const bool in_true_exp_to_disable);   // v24.02.6 true means not disable
-
-      // void mxUiStartEvalDisableItems(const bool inFlag);
-      // void mxUiEndEvalDisableItems(const bool inFlag);
-
-      bool mxUiButtonTooltip(const char* label, const char* tip = nullptr, ImVec4 colFg = ImVec4(1.0f, 1.0f, 1.0f, 1.0f), ImVec4 colBg = ImVec4(1.0f, 1.0f, 1.0f, 1.0f), const ImVec2& size = ImVec2(0, 0));
-
-      static std::map<int, ImGuiKey> mapXPtoImgui_key;
-      static ImGuiKey                getKey(int inVirtualKey);
-
-      // Custom replacement function for extracting the font atlas pixel data in v1.92+
-      static bool GetCustomAtlasTextureData(ImFontAtlas* atlas, strct_texture_info& outInfo);
-    private:
-      //void                            initRemapKeys();
-
-      //#ifndef IMGUI_DISABLE_OBSOLETE_KEYIO
-      //void initOldKeymap(ImGuiIO& io);
-      //#endif // !IMGUI_DISABLE_OBSOLETE_KEYIO
-
-      static void initRemapKeys();
-
-  // bindTexture creates and binds the font texture to OpenGL, ready for use.
-  // This should be called after all fonts are loaded, before any rendering occurs!
-  virtual void bindTexture();
-  int         mGLTextureNum;
-  bool        mTextureBound;
-  // ImFontAtlas* getAtlas() { return mFontAtlas;};
-
-
-}; 
-
+};
 
 #endif // #ifndef IMGWINDOW_H

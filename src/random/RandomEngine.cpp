@@ -61,6 +61,17 @@ std::map<XPLMNavRef, missionx::NavAidInfo>     RandomEngine::mapNavAidsFromMainT
 
 IXMLNode RandomEngine::xDrefStartColdAndDark{IXMLNode::emptyIXMLNode}; // v25.10.1
 
+
+// Helper write callback for cURL
+static size_t CurlWriteCallback(void* contents, size_t size, size_t nmemb, void* userp)
+{
+  size_t total_size = size * nmemb;
+  auto*  response   = static_cast<std::string*>(userp);
+  response->append(static_cast<char*>(contents), total_size);
+  return total_size;
+}
+
+
 RandomEngine::RandomEngine()
 {
   // this line is to test against other compilers too.
@@ -444,6 +455,8 @@ RandomEngine::generateRandomMission()
 
   this->reset_sequence_numbers(); // v25.06.1
 
+  missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node = IXMLNode::emptyIXMLNode; // v26.08.1
+
   missionx::RandomEngine::random_thread_state.startThreadStopper();
 
   bool        result = true;
@@ -487,8 +500,18 @@ RandomEngine::generateRandomMission()
   this->pathToRandomRootFolder    = (RandomEngine::working_tempFile_ptr->missionFolderName.empty()) ? data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONS_ROOT_PATH(), "", err) : RandomEngine::working_tempFile_ptr->filePath; // v3.0.241.10 b2 decide from where to pick template file
   this->pathToRandomBrieferFolder = (RandomEngine::working_tempFile_ptr->missionFolderName.empty()) ? pathToRandomRootFolder + mxconst::get_FOLDER_SEPARATOR() + mxconst::get_FOLDER_RANDOM_MISSION_NAME() + mxconst::get_FOLDER_SEPARATOR() + mxconst::get_BRIEFER_FOLDER() : pathToRandomRootFolder + mxconst::get_FOLDER_SEPARATOR() + mxconst::get_BRIEFER_FOLDER(); // v3.0.241.10 b2 define the output folder of the template
 
+  // ---------------------------------------------------------------------
   // store current plane coordinate
+  // ---------------------------------------------------------------------
   RandomEngine::planeLocation = dataref_manager::getPlanePointLocationThreadSafe(); // v26.02.1 fix crash in xp v12.4.1.a1
+
+  // ---------------------------------------------------------------------
+  //  v26.08.1 Force read player aircraft
+  // ---------------------------------------------------------------------
+  if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, mx_flc_pre_command::get_player_aircraft_base_data))
+  {    
+    RandomEngine::setError(fmt::format("[{}] Failed to read player aircraft info.", __func__));
+  }
 
 
   #ifndef RELEASE
@@ -2113,7 +2136,9 @@ RandomEngine::gen_prepare_random_mission_based_on_leg_nodes_in_template(IXMLNode
   }
 
   // add Briefer description
-  gen_briefer_phase_03_add_desc(navaid_targets, flag_one_of_the_targets_above_water);
+  // gen_briefer_phase_03_add_desc(navaid_targets, flag_one_of_the_targets_above_water);
+  gen_briefer_phase_03_add_desc_ai(navaid_targets, flag_one_of_the_targets_above_water); // v26.08.1
+
   this->xBriefer = navaid_targets[0].fpln_xml_target_leg_node.deepCopy();
 
   // v25.10.1 Add Cold and dark
@@ -2136,7 +2161,7 @@ RandomEngine::gen_prepare_random_mission_based_on_leg_nodes_in_template(IXMLNode
   }
 
 
-  #ifdef DEBUG_GENERATED_CONTENT
+  #ifdef DEBUG_GENERATED_CONTENT_
   Log::logMsgThread(fmt::format("-------------- <CONTENT_MISSION> RESULTS - Post {} --------------", __func__));
   Log::logMsgThread(fmt::format("BRIEFER_INFO:\n{}\n", Utils::xml_get_node_content_as_text(this->xBriefer)));
   Log::logMsgThread(fmt::format("BRIEFER:\n{}\n", Utils::xml_get_node_content_as_text(navaid_targets[0].fpln_xml_target_leg_node))); // we store the briefer in [0]
@@ -2214,14 +2239,20 @@ RandomEngine::gen_create_all_leg_nodes_based_on_navaid_targets(std::map<int, Nav
 
     // TASK setup will initialize after trigger setup since we need values from the trigger node
     // Land + Hover Task Properties
+    #ifndef RELEASE
+    static constexpr char default_wait_time_until_success[] = "4"; // debug. Shorter wait time.
+    #else
+    static constexpr char default_wait_time_until_success[] = "20";
+    #endif
+
     const std::list<missionx::structs::strct_node_attribute_key_value> lsAttrib_land_task_target = {
       {mxconst::get_ELEMENT_TASK(), mxconst::get_ATTRIB_BASE_ON_TRIGGER(), Utils::readAttrib(xTriggerTargetLand, mxconst::get_ATTRIB_NAME(), "")},
-      {mxconst::get_ELEMENT_TASK(), mxconst::get_ATTRIB_MANDATORY(), "true"}, {mxconst::get_ELEMENT_TASK(), mxconst::get_ATTRIB_EVAL_SUCCESS_FOR_N_SEC(), "20"},
+      {mxconst::get_ELEMENT_TASK(), mxconst::get_ATTRIB_MANDATORY(), "true"}, {mxconst::get_ELEMENT_TASK(), mxconst::get_ATTRIB_EVAL_SUCCESS_FOR_N_SEC(), default_wait_time_until_success},
     };
     const std::list<missionx::structs::strct_node_attribute_key_value> lsAttrib_hover_task_target = {
       {mxconst::get_ELEMENT_TASK(), mxconst::get_ATTRIB_BASE_ON_TRIGGER(), Utils::readAttrib(xTriggerTargetHover, mxconst::get_ATTRIB_NAME(), "")},
       {mxconst::get_ELEMENT_TASK(), mxconst::get_ATTRIB_MANDATORY(), "true"},
-      {mxconst::get_ELEMENT_TASK(), mxconst::get_ATTRIB_EVAL_SUCCESS_FOR_N_SEC(), "20"},
+      {mxconst::get_ELEMENT_TASK(), mxconst::get_ATTRIB_EVAL_SUCCESS_FOR_N_SEC(), default_wait_time_until_success},
     };
 
     // Land Task
@@ -2480,6 +2511,8 @@ RandomEngine::gen_get_rw_metadata(const std::string& in_icao, int& out_rw_count,
   return false;
 }
 
+
+// -----------------------------------
 
 // -----------------------------------
 
@@ -3180,7 +3213,10 @@ RandomEngine::writeTargetFile()
   } // end if fail to write
 
   if (result) // v25.03.1
+  {
     missionx::data_manager::missionState = missionx::mx_mission_state_enum::mission_was_generated;
+    missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node = xBriefer.deepCopy(); // v26.08.1
+  }
   else
     missionx::data_manager::missionState = missionx::mx_mission_state_enum::mission_undefined;
 
@@ -5848,6 +5884,194 @@ RandomEngine::gen_briefer_phase_03_add_desc(std::map<int, NavAidInfo>& inout_tar
 
 // -----------------------------------
 
+void RandomEngine::gen_briefer_phase_03_add_desc_ai(std::map<int, NavAidInfo>& inout_targets, bool flag_has_wet_target)
+{
+  // FYI:
+  // in_osm_na_targets[0] = briefer
+  // in_osm_na_targets[1] = First Target
+  if (inout_targets.empty() || !inout_targets.contains(0) || !inout_targets.contains(1))
+  {
+    return;
+  }
+
+  auto start = std::chrono::high_resolution_clock::now();
+
+  // data_manager::strct_ui_share_data is a vector that holds the messages we would like to send to an LLM server.
+  // We need to concatenate all messages in the vector.
+  std::string ai_llm_description_s;
+  if (!data_manager::strct_ui_share_data.map_llm_requests_messages.empty())
+  {
+    std::ostringstream oss;
+    std::ranges::for_each(data_manager::strct_ui_share_data.map_llm_requests_messages
+                ,[&oss](const auto& item) {
+                      // C++17 structured binding (or use item.first and item.second)
+                      const auto& [key, value] = item;
+                      oss << key << ": " << value << "\n";
+                  }
+                );
+    auto mission_outline = oss.str();
+
+    // add target
+    std::string waypoints = "list of waypoints:";
+    int na_counter = 0;
+    for (auto& na: inout_targets | std::views::values)
+    {
+      na_counter++;
+      if (!na.get_loc_desc().empty())
+      {
+        if ( na_counter == 1 )
+          waypoints += fmt::format("\nstart: ");
+        else if ( na_counter == static_cast<int>(inout_targets.size()))
+          waypoints += fmt::format("\nend: ");
+        else
+          waypoints += fmt::format("\n{}: ", na_counter);
+
+        waypoints += fmt::format("{} ({})", na.get_loc_desc(), na.get_latLon_shortest());
+      }
+    }
+    mission_outline += fmt::format("\n{}", waypoints);
+
+    if (!data_manager::get_acf_icao().empty())
+      mission_outline += fmt::format("\nAirplane ICAO: {}", data_manager::get_acf_icao());
+    mission_outline += fmt::format("\nAirplane active plane filename: {}", data_manager::get_acf());
+
+    const auto llm_connection_timeout = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<long>( mxconst::get_OPT_AI_LLM_SERVER_TIMEOUT(), 60L);
+    const auto server_url = missionx::system_actions::pluginSetupOptions.getNodeText_type_6(mxconst::get_OPT_AI_SERVER_URL(), "");
+    auto bearer_auth_key =  system_actions::pluginSetupOptions.getNodeText_type_6(mxconst::get_OPT_AI_AUTH_KEY(), mxconst::get_OPT_AI_DEFAULT_AUTH_KEY());
+    if ( mxUtils::trim( bearer_auth_key ).empty())
+      bearer_auth_key = mxconst::get_OPT_AI_DEFAULT_AUTH_KEY();
+
+    std::vector<std::string> curl_headers = {"Content-Type: application/json", fmt::format("Authorization: Bearer {}", bearer_auth_key) };
+
+    missionx::structs::curl_request_data curl_conn_data = {.timeout = llm_connection_timeout, .url_s = server_url, .headers = curl_headers };
+    auto ai_request_result = data_manager::gen_request_mission_description_from_llm(&RandomEngine::random_thread_state, curl_conn_data, mission_outline);
+    if (ai_request_result.result)
+    {
+      // nlohmann::json j = nlohmann::json::parse(ai_request_result.string_value);
+      auto json_description = Utils::json_extract_by_path(ai_request_result.string_value, "/choices/0/message/content");
+      if (json_description.result)
+        ai_llm_description_s = mxUtils::trim ( mxUtils::remove_non_ascii( json_description.string_value, true ) );
+    }
+  }
+
+  // Prepare waiponts description text
+  std::string cumulative_location_desc_s;
+  for (int i1 = 0; i1 < static_cast<int>(inout_targets.size()) && inout_targets.contains(i1); i1++)
+  {
+    if (i1 == 0) // 0 = briefer
+      cumulative_location_desc_s = fmt::format("(start): {}.\n", inout_targets[i1].get_loc_desc());
+    else
+      cumulative_location_desc_s.append(inout_targets[i1].get_loc_desc()).append(".\n");
+
+    // validate briefer has starting attribute
+    if (i1 == 1) // validate starting leg
+    {
+      // get STARTING_LEG from briefer
+      if (!inout_targets[0].fpln_xml_target_leg_node.isEmpty())
+      {
+        const auto starting_leg_from_briefer = Utils::readAttrib( inout_targets[0].fpln_xml_target_leg_node, mxconst::get_ATTRIB_STARTING_LEG(), "");
+        if (starting_leg_from_briefer.empty())
+        {
+          const auto leg_index_1_name = Utils::readAttrib( inout_targets[1].fpln_xml_target_leg_node, mxconst::get_ATTRIB_NAME(), "");
+          Utils::xml_set_attribute_in_node_asString(inout_targets[0].fpln_xml_target_leg_node, mxconst::get_ATTRIB_STARTING_LEG(), leg_index_1_name, inout_targets[0].fpln_xml_target_leg_node.getName());
+        }
+      }
+    }
+
+  } // end loop over all targets
+
+
+
+  // v25.09.2 use the description from the <briefer_and_start_location>
+  std::string briefer_desc = mxUtils::trim(inout_targets[0].fpln_expected_location_data.desc, "");
+
+  // v25.10.1 check if the raw node has a <desc> element with description text. We use the same technique in "gen_leg_description()" function
+  if (briefer_desc.empty())
+  {
+    // get <desc> from the raw <q>
+    auto x_desc_node = inout_targets[0].fpln_xml_osm_q_or_raw_tmpl_node.getChildNode(mxconst::get_ELEMENT_DESC().c_str());
+    if (!x_desc_node.isEmpty())
+      briefer_desc = Utils::xml_get_text_or_cdata_text(x_desc_node, "");
+  }
+
+  // v26.08.1 should we inject the LLM description ?
+  bool flag_generated_using_llm = false;
+  const auto uiLayer = data_manager::getGeneratedFromLayer();
+  if (uiLayer == uiLayer_enum::option_user_generates_a_mission_layer && !ai_llm_description_s.empty())
+  {
+    briefer_desc = ai_llm_description_s;
+    flag_generated_using_llm = true;
+  }
+
+
+  // Create a generic description if no pre-defined text was defined in the template file.
+  // If we used the LLM description, this code will be skipped.
+  if (mxUtils::trim(briefer_desc).empty())
+  {
+    const auto lmbda_get_the_generic_briefer_desc_header = [&]() -> std::string
+    {
+      std::string desc_s;
+
+      auto med_cargo_or_oilrig_i = Utils::readNodeNumericAttrib<int>(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_MED_CARGO_OR_OILRIG(), static_cast<int>(missionx::mx_ui_mission_type::undefined)); // 0 = med, 1 = cargo
+      if (med_cargo_or_oilrig_i == static_cast<int>(missionx::mx_ui_mission_type::medevac))
+      {
+        return fmt::format("You have been assigned to a medevac mission. Your expected transportation is a {}.\n", "helo");
+      }
+
+      if (med_cargo_or_oilrig_i == static_cast<int>(missionx::mx_ui_mission_type::cargo))
+      {
+        return fmt::format("You have been assigned to a transportation mission.\n");
+      }
+
+      if (med_cargo_or_oilrig_i == static_cast<int>(missionx::mx_ui_mission_type::oil_rig))
+      {
+        return fmt::format("You have been assigned to an Oil-Rig mission.\n");
+      }
+
+      return "";
+    };
+
+    // Construct the generic briefer message
+    briefer_desc = "Hello Pilot\n\n";
+    briefer_desc += lmbda_get_the_generic_briefer_desc_header();
+
+    if (!inout_targets[0].getNavAidName().empty())
+      briefer_desc += fmt::format("You will fly from {}{}.", inout_targets[0].getNavAidName(), mxUtils::eval_text(!inout_targets[0].getID().empty(), "(" + inout_targets[0].getID() + ")", ""));
+    else if (!inout_targets[0].getID().empty())
+      briefer_desc += fmt::format("You will fly from {}.", inout_targets[0].getID());
+    else
+      briefer_desc += fmt::format("You will fly to {}.", inout_targets[1].get_loc_desc());
+  } // end if no "custom description" was found.
+
+  // -----------------------------------------
+  // Add more mission description information
+  // -----------------------------------------
+  briefer_desc += (flag_has_wet_target) ? "\n\nOne of the flight legs is above water body, make sure you have all needed equipment. " : "";
+
+  // v25.04.2 - fixed destination exposure, based on setup
+  if (missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE(), true))
+    briefer_desc += "\n\nExpected route:\n" + cumulative_location_desc_s;
+  else
+    briefer_desc += "\n\nFirst waypoint: " + inout_targets[1].get_loc_desc() + ".";
+
+  briefer_desc += "\n\nFly Safe !!!";
+
+  if (flag_generated_using_llm)
+    briefer_desc += "\n(Generated using LLM)";
+
+  Utils::xml_add_cdata(inout_targets[0].fpln_xml_target_leg_node, briefer_desc);
+
+  auto end = std::chrono::high_resolution_clock::now();
+  // Calculate duration in milliseconds (or microseconds / seconds)
+  std::chrono::duration<double, std::milli> duration = end - start;
+
+  //std::cout << "Execution time: " << duration.count() << " ms\n";    
+  Log::logMsgThread(fmt::format("[{}] Function ran for: {:.2f}ms {:.2f}sec", __func__, duration.count(), (duration.count() / 1000.0)));
+
+}
+
+// -----------------------------------
+
 IXMLNode
 RandomEngine::gen_mission_info_node(const IXMLNode& xRootTemplate, const std::string& in_template_name, const std::string& in_template_image_file_name, const std::string& in_mission_folder_name)
 {
@@ -6384,8 +6608,8 @@ RandomEngine::gen_2nm_to_N_nm_message(int& seq_trig, int& seq_msg, NavAidInfo& i
       return fmt::format("You are nearing the search area. [{}]. The target should be somewhere around the suggested location.", inout_target_na.get_skewed_desc());
 
     // if we have a unique target location description, we should use it, or else, we will use a generic message.
-    const std::string target_description = (inout_target_na.nav_aid_has_unique_name()) ? 
-                                             fmt::format("You are nearing {}{}", inout_target_na.get_loc_desc(), 
+    const std::string target_description = (inout_target_na.nav_aid_has_unique_name()) ?
+                                             fmt::format("You are nearing {}{}", inout_target_na.get_loc_desc(),
                                                                                         (inout_target_na.ramp_info.uq_name.empty())? ""
                                                                                                : fmt::format("(ramp: {})", inout_target_na.ramp_info.uq_name)
                                                                                                )
@@ -6442,7 +6666,7 @@ RandomEngine::gen_2nm_to_N_nm_message(int& seq_trig, int& seq_msg, NavAidInfo& i
   };
 
   const auto distance_in_meters = lmbda_get_trigger_radius_based_on_rw_data_in_mt();
-  
+
   const std::string trigger_name = fmt::format("trig_{}_{}", seq_trig, message_name); // v25.09.2 the trig name will reflect a skewed position
   const std::string radius_in_nm = fmt::format("{}", distance_in_meters);
 
@@ -8377,7 +8601,7 @@ RandomEngine::gen_prepare_mission_based_on_oilrig(IXMLNode& inRootTemplate, IXML
   // ----------------------
   // -- Add <briefer> node - Start Location
   // ----------------------
- 
+
   gen_briefer_phase_02_base_node_from_navaid(navaid_targets[0], RandomEngine::shared_navaid_info, flag_one_of_the_targets_above_water);
 
   // ----------------------
@@ -8487,7 +8711,8 @@ RandomEngine::gen_prepare_mission_based_on_oilrig(IXMLNode& inRootTemplate, IXML
   // ----------------------------
   // add Briefer description
   // ----------------------------
-  gen_briefer_phase_03_add_desc(navaid_targets, flag_one_of_the_targets_above_water);
+  // gen_briefer_phase_03_add_desc(navaid_targets, flag_one_of_the_targets_above_water);
+  gen_briefer_phase_03_add_desc_ai(navaid_targets, flag_one_of_the_targets_above_water); // v26.08.1
   this->xBriefer = navaid_targets[0].fpln_xml_target_leg_node.deepCopy();
 
   RandomEngine::xDrefStartColdAndDark = gen_set_and_get_start_cold_and_dark(inRootTemplate, navaid_targets[1]);
@@ -8567,7 +8792,7 @@ RandomEngine::gen_parse_plane_type(missionx::mx_base_node& in_user_property_ui_n
 
 void
 RandomEngine::calculate_bbox_coordinates(missionx::Point& outN0, missionx::Point& outS180, missionx::Point& outE90, missionx::Point& outW270, const float inRefLat, const float inRefLon, const double inMaxRadius_d)
-{  
+{
   Utils::calcPointBasedOnDistanceAndBearing_2DPlane(outN0.lat, outN0.lon, inRefLat, inRefLon, 0, inMaxRadius_d);
   Utils::calcPointBasedOnDistanceAndBearing_2DPlane(outS180.lat, outS180.lon, inRefLat, inRefLon, 180, inMaxRadius_d);
   Utils::calcPointBasedOnDistanceAndBearing_2DPlane(outE90.lat, outE90.lon, inRefLat, inRefLon, 90, inMaxRadius_d);
@@ -8575,9 +8800,9 @@ RandomEngine::calculate_bbox_coordinates(missionx::Point& outN0, missionx::Point
 }
 // -----------------------------------
 
-missionx::structs::strct_bbox 
+missionx::structs::strct_bbox
 RandomEngine::calculate_bbox_coordinates(float inRefLat, float inRefLon, double inMaxRadius_d)
-{ 
+{
   missionx::structs::strct_bbox bbox;
 
   // calculate overpass Bottom Left
@@ -8587,7 +8812,7 @@ RandomEngine::calculate_bbox_coordinates(float inRefLat, float inRefLon, double 
   mxUtils::mxCalcPointBasedOnDistanceInMetersAndBearing_2DPlane(bbox.maxLat, bbox.maxLon, inRefLat, inRefLon, (45), inMaxRadius_d * nm2meter);
 
 
-  return bbox; 
+  return bbox;
 }
 
 // -----------------------------------
@@ -8716,7 +8941,7 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
                                            std::map<std::string, std::string>& inMapLocationSplitValues,
                                            missionx::mx_base_node&             inProperties, // v3.305.1
                                            double                              sourceLat_d,
-                                           double                              sourceLon_d, 
+                                           double                              sourceLon_d,
                                            const structs::strct_bbox           bbox,
                                            double                              maxDistance_d,
                                            double                              minDistance_d)
@@ -8904,9 +9129,11 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
 
     Log::logMsgThread(fmt::format("[{}] WAYS URL: {}?{}\n", __func__, overpass_url_s, url_filter_s));
 
-    // -- Fetch data from cURL
-    const structs::strct_curl_result st_curl_result = missionx::data_manager::get_curl_request_respond (overpass_url_s, url_filter_s, 2);
-    
+    // -- Request data from cURL
+    // v26.08.1
+    missionx::structs::curl_request_data curl_conn_data = {.url_s = overpass_url_s, .post_request_field_s = url_filter_s};
+    const structs::strct_curl_result st_curl_result = missionx::data_manager::get_curl_request_respond (curl_conn_data);
+
 
     // check abort
     if (missionx::RandomEngine::random_thread_state.flagAbortThread)
@@ -8933,10 +9160,10 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
 
     // validate <osm> node has at least "three" nodes. IT always have <note> + <meta>
     const int nWayNodes = xmlOSM.nChildNode(mxconst::get_ELEMENT_WAY_OSM().c_str());
-    if (nWayNodes < 1) 
+    if (nWayNodes < 1)
     {
       Log::logMsgThread(fmt::format("[{}] Found no valid <osm> sub node elements, will try different <way> box.", __func__)); // debug
-      continue;      
+      continue;
     }
 
 
@@ -8946,8 +9173,8 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
     IXMLNode target_node = IXMLNode::emptyIXMLNode;
 
     // --------------------
-    // Loop over shuffled <way> indexed vector 
-    // --------------------    
+    // Loop over shuffled <way> indexed vector
+    // --------------------
     for (int internal_way_restrictor = 0; const auto& random_way_index : vec_shuffled_way_index)
     {
       outNavAid.init();
@@ -9014,7 +9241,7 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
           target_node = nd_node.deepCopy();
           break;
         }
-        
+
         // --------------------
         // Pick "ref=" attribute as a fallback and search for the <node id>
         // --------------------
@@ -9028,7 +9255,10 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
 
         // -- Fetch data from cURL
         const std::string node_url_s         = fmt::format("{}?data=node(id:{});out;", overpass_url_s, ref_attribute_value);
-        const auto        st_ref_node_result = missionx::data_manager::get_curl_request_respond(node_url_s);
+        // v26.08.1
+        curl_conn_data.reset();
+        curl_conn_data = {.url_s = node_url_s};
+        const auto        st_ref_node_result = missionx::data_manager::get_curl_request_respond(curl_conn_data);
 
         if (missionx::RandomEngine::random_thread_state.flagAbortThread)
           return false;
@@ -9052,7 +9282,7 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
           continue; // fetch other <nd>
         }
 
-        
+
         target_node = final_osm_xml_respond_that_holds_the_node.getChildNode(mxconst::get_ELEMENT_NODE_OSM().c_str()).deepCopy();
         if (target_node.isEmpty())
           continue;
@@ -9063,7 +9293,7 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
           #endif // !RELEASE
           break;
         }
-        
+
       } // end loop over ref and <node>
 
       // if we reach this point, a "target_node" should be available.
@@ -9077,7 +9307,7 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
 
       #ifndef RELEASE
       Log::logMsgThread(fmt::format("[{}] Target Navaid: {}", __func__, outNavAid.get_latLon()));
-      #endif 
+      #endif
 
       // validate distance from previous target
       if (sourceLat_d * sourceLon_d != 0.0)
@@ -9150,7 +9380,7 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
         outNavAid.loc_desc = designer_desc_s;
 
       // debug: show if a <way> has no name and id
-      #ifndef RELEASE 
+      #ifndef RELEASE
       if (outNavAid.getName().empty())
         Log::logMsgThread( fmt::format("[{}] FYI: Found <way> without a name key/value.", __func__) ); // outNavAid.setName("overpass");
       else
@@ -9194,8 +9424,10 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
         #endif // !RELEASE
 
         // const std::string around_result_s = missionx::data_manager::fetch_overpass_info(around_url_s, err);
-        const auto around_st_curl_result = missionx::data_manager::get_curl_request_respond(around_url_s);        
-
+        // v26.08.1
+        curl_conn_data.reset();
+        curl_conn_data = {.url_s = around_url_s};
+        const auto around_st_curl_result = missionx::data_manager::get_curl_request_respond(curl_conn_data);
 
         if (around_st_curl_result.request_err.empty() && !around_st_curl_result.response_text.empty())
           outNavAid.xml_osm_around = iDom.parseString(around_st_curl_result.response_text.c_str()).deepCopy();
@@ -9513,7 +9745,9 @@ PICK_RANDOM_OSM_BBOX:
 
     // url_s includes the "overpass url" + ?data=..."
     // const auto st_curl_result = missionx::data_manager::get_curl_request_respond(url_s);
-    const auto st_curl_result = missionx::data_manager::get_curl_request_respond(stored_overpass_url, url_filter_s, 2);
+    // v26.08.1
+    missionx::structs::curl_request_data curl_conn_data = {.url_s = stored_overpass_url, .post_request_field_s = url_filter_s};
+    const auto st_curl_result = missionx::data_manager::get_curl_request_respond(curl_conn_data);
     const auto result_s       = st_curl_result.response_text;
     err                       = st_curl_result.request_err;
 
@@ -9667,7 +9901,10 @@ PICK_OSM_CHILD_NODE:
             Log::logMsgThread(fmt::format("[{}] Searching a node in way_id: {} node id: {}", __func__, way_id_s, node_id_s) );
 
             //const std::string node_result_s = missionx::data_manager::fetch_overpass_info(node_url_s, err);
-            const auto        st_local_curl_result = missionx::data_manager::get_curl_request_respond(node_url_s);
+            // v26.08.1
+            curl_conn_data.reset();
+            curl_conn_data = {.url_s = node_url_s};
+            const auto        st_local_curl_result = missionx::data_manager::get_curl_request_respond(curl_conn_data);
             const std::string node_result_s  = st_local_curl_result.response_text;
             err                              = st_local_curl_result.request_err;
 
@@ -9901,7 +10138,10 @@ PICK_OSM_CHILD_NODE:
             #endif // !RELEASE
 
             //const std::string around_result_s = missionx::data_manager::fetch_overpass_info(around_url_s, err);
-            const auto around_st_curl_result  = missionx::data_manager::get_curl_request_respond(around_url_s);
+            // v26.08.1
+            curl_conn_data.reset();
+            curl_conn_data = {.url_s = around_url_s};
+            const auto around_st_curl_result  = missionx::data_manager::get_curl_request_respond(curl_conn_data);
             const auto around_result_s = around_st_curl_result.response_text;
             err                        = around_st_curl_result.request_err;
 

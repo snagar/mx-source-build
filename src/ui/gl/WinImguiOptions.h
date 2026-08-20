@@ -9,7 +9,8 @@
 
 // Definitions for OpenFontIcons
 #include <IconsFontAwesome5.h>   // inside libs/imgui4xp
-#include <ImgWindow/ImgWindow.h> // inside libs/imgui4xp
+// #include <ImgWindow/ImgWindow.h> // inside libs/imgui4xp
+#include "../core/mx_img_window.h" // v26.08.1 replaces ImgWindow
 
 namespace missionx
 {
@@ -20,7 +21,7 @@ namespace missionx
 void cleanupAfterImgWindow();
 // void CalcWinCoords(int& left, int& top, int& right, int& bottom);
 
-class WinImguiOptions : public ImgWindow
+class WinImguiOptions : public mx_img_window
 {
 protected:
   ///// @brief Helper for creating unique IDs
@@ -92,7 +93,7 @@ public:
   int       win_pad{ 75 };      ///< distance from left and top border
   const int win_coll_pad{ 30 }; ///< offset of collated windows
 
-  void flc() override;
+  void flc(); // override;
   void execAction(missionx::mx_window_actions actionCommand); // special function to handle specific requests from outside of the window
 };
 

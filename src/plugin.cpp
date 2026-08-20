@@ -556,15 +556,14 @@ XPluginDisable (void)
 }
 
 // -----------------------------------
-PLUGIN_API void
-XPluginReceiveMessage (XPLMPluginID inFrom, const intptr_t inMsg, void *inParam)
+PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFromWho, const intptr_t inMessage, void* inParam)
 {
   #ifdef DEBUG
 
   // Log::logMsg ("[PluginMsg]Message Sent: " + Utils:: );
   #endif
 
-  switch (inMsg)
+  switch (inMessage)
   {
     case XPLM_MSG_AIRPORT_LOADED:
     case XPLM_MSG_SCENERY_LOADED:
@@ -634,6 +633,7 @@ XPluginReceiveMessage (XPLMPluginID inFrom, const intptr_t inMsg, void *inParam)
     break;
     case XPLM_MSG_PLANE_LOADED:
     {
+      data_manager::get_current_acf();
     }
     break;
     default:
@@ -728,7 +728,7 @@ OptionsMenuHandler (void *inMenuRef, void *inItemRef)
                                                           mxconst::get_OPT_DISPLAY_MISSIONX_IN_VR (),
                                                           mxconst::DEFAULT_DISPLAY_MISSIONX_IN_VR); //  missionx::system_actions::pluginSetupOptions.getPropertyValue<int>(mxconst::get_OPT_DISPLAY_MISSIONX_IN_VR(), data_manager::errStr);
 
-      missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_DISPLAY_MISSIONX_IN_VR (), !val);
+      missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_OPT_DISPLAY_MISSIONX_IN_VR (), !val);
       mission.syncOptionsWithMenu ();
       missionx::system_actions::store_plugin_options ();
     }
@@ -742,7 +742,7 @@ OptionsMenuHandler (void *inMenuRef, void *inItemRef)
 
       const auto val = Utils::getNodeText_type_1_5<bool> (system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISABLE_PLUGIN_COLD_AND_DARK_WORKAROUND (), mxconst::DEFAULT_DISABLE_PLUGIN_COLD_AND_DARK);
 
-      missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_DISABLE_PLUGIN_COLD_AND_DARK_WORKAROUND (), !val);
+      missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_OPT_DISABLE_PLUGIN_COLD_AND_DARK_WORKAROUND (), !val);
       mission.syncOptionsWithMenu ();
       missionx::system_actions::store_plugin_options ();
     }
@@ -921,7 +921,7 @@ mxpadShowHideCommandHandler (XPLMCommandRef inCommand, XPLMCommandPhase inPhase,
                                                mxconst::get_OPT_AUTO_HIDE_SHOW_MXPAD (),
                                                false)) // meaning Auto Hide Option is set && if user setup was also set to true (auto hide mxpad)
         {
-          missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_AUTO_HIDE_SHOW_MXPAD (), false); // cancel auto hide, since user asked to "force" toggle manually
+          missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_OPT_AUTO_HIDE_SHOW_MXPAD (), false); // cancel auto hide, since user asked to "force" toggle manually
           // //missionx::system_actions::pluginSetupOptions.setIntProperty(mxconst::get_OPT_AUTO_HIDE_SHOW_MXPAD(), (int)0); // no
           missionx::Mission::uiImGuiMxpad->setWasHiddenByAutoHideOption (false); // reset its state since simmer changed the status manually
           missionx::mission.syncOptionsWithMenu (); // correctly flag menu options

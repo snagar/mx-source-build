@@ -326,7 +326,7 @@ enum class mx_flc_pre_command
   get_nav_aid_info_mainThread,                                  // v3.0.253.6
   get_icao_plane_is_in_its_boundaries_based_on_custom_lat_lon,  // v25.09.2 Find the ICAO a plane is in, if it is in its boundaries
   get_nearest_nav_aid_to_custom_lat_lon_mainThread,             // v3.0.241.10 b2
-  // get_nearest_nav_aid_to_randomLastFlightLeg_mainThread,        // v3.0.221.4 // v25.10.1 DEPRECATED
+  get_player_aircraft_base_data,                                // v26.08.1
   guess_waypoints_from_external_fpln_site,                      // v3.0.255.2
   handle_option_picked_from_choice,                             // v3.0.231.1
   hide_choice_window,                                           // v3.0.231.1
@@ -897,7 +897,9 @@ class data_manager
 {
 private:
   static uiLayer_enum generate_from_layer; // holds the layer were the RandomEngine was called from. This way we know if to use the UI Template options or not.
+  static std::string  acf_icao; // v26.08.1
   static std::string active_acf;
+  static std::string active_acf_path; // v26.08.1
   static std::string prev_acf;
 
 public:
@@ -1281,7 +1283,8 @@ public:
   // in_separate_data_from_url: a string that construct the data part of the URL. From the "?" onward.
   // in_loop_tries: represent how many time to try and send the request in the case of failure. Default 3.
   // in_call_id: unique thread number, so messages would be better distinguish when they are being called in parallel (more than one).
-  static missionx::structs::strct_curl_result     get_curl_request_respond(const std::string& in_url_s, const std::string& in_separate_data_from_url = "", const int & in_loop_tries = 2, const int & in_call_id = ++data_manager::curl_call_counter_i); // This function is part of the RandomEngine class call, which is threaded already.
+  // This function is part of the RandomEngine class call, which is threaded already.
+  static missionx::structs::strct_curl_result get_curl_request_respond(missionx::structs::curl_request_data& in_request_data, const int& in_call_id = ++data_manager::curl_call_counter_i);
 
   // v25.06.1 Use the sqlite db information to find the nearest navaid
   static void fetch_nearest_osm_navaid_from_sqlite (missionx::NavAidInfo *inFrom_navaid, missionx::NavAidInfo *out_navaid);
@@ -1372,6 +1375,10 @@ public:
 
     std::map<int, bool> map_ui_user_pickes_overpass_urls; // v26.04.4. Will hold what user prefer to use.
 
+    std::unordered_map<std::string, std::string> map_llm_requests_messages; // v26.08.1
+    // v26.08.1 store the Briefer node copy of the last sucessful generated node. Used in User Generation Screen, and hopefully others.
+    IXMLNode                                     xml_last_generated_briefer_node; 
+
     ui_shared_data_def_struct()
     {
       medevac_arr = { mxconst::CAT_ANY_LOCATION.data (), mxconst::CAT_ACCIDENT_OSM.data (), mxconst::CAT_SURPRISE_ME.data () };
@@ -1382,6 +1389,9 @@ public:
       ongoing_status_message_line2.clear();
       error_message_line3.clear();
       map_ui_user_pickes_overpass_urls.clear();
+
+      map_llm_requests_messages.clear(); // v26.08.1
+      xml_last_generated_briefer_node = IXMLNode::emptyIXMLNode;
     }
   };
   inline static ui_shared_data_def_struct strct_ui_share_data;
@@ -1510,8 +1520,12 @@ public:
 
   // v25.03.1
   static void flc_acf_change();
-  static void set_acf(const std::string& inFileName); // only set the current plane filename without calling "gather_acf_info" function.
-  static void set_active_acf_and_gather_info(const std::string& inFileName); // set the current plane filename and call the "gather_acf_info" function.
+  static void set_acf(const std::string& inFileName, const std::string &inFileNamePath); // only set the current plane filename without calling "gather_acf_info" function.
+  static std::string get_acf(); // v26.08.1
+  static std::string get_acf_icao(); // v26.08.1
+
+  static std::vector<std::string>   get_current_acf();
+  static void   set_active_acf_and_gather_info(const std::string& inFileName, const std::string &inFileNamePath) ; // set the current plane filename and call the "gather_acf_info" function.
 
   // v25.05.1
   static IXMLNode get_default_overpass_urls_node ();
@@ -1530,6 +1544,8 @@ public:
   static mx_return find_vector_between_two_osm_nodes(missionx::structs::strct_osm_query* q, int& in_nd_node_ref_index);
 
   static void fetch_ways_and_target_node_from_overpass_thread2 (missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
+  static missionx::mx_return gen_request_mission_description_from_llm(missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::curl_request_data &in_curl_request_data, const std::string& mission_outline);
+
 
   // A simple function to manage thread wait for main thread actions that needs to take place before it can continue. Default wait time is 500 milliseconds for 10 iteration (5 seconds)
   // For every function call we need to handle failure cases (false returned).

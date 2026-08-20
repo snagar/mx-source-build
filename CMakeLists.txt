@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(missionx LANGUAGES C CXX VERSION 26.04 DESCRIPTION "Mission-X X-Plane plugin v26.x")
+project(missionx LANGUAGES C CXX VERSION 26.06 DESCRIPTION "Mission-X X-Plane plugin v26.x")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -136,7 +136,10 @@ set(BASE_SRC src/core/coordinate/NavAidInfo.hpp
         src/plugin.cpp
         src/plugin.h
         src/core/mxconst.h
+        src/ui/core/mx_img_window.cpp
+        src/ui/core/mx_img_window.h
 )
+
 
 set(IMGUI_SQLITE_STB_POLY_LIB_SRC
         libs/imgui4xp/colors/mx_colors.hpp
@@ -163,8 +166,6 @@ set(IMGUI_SQLITE_STB_POLY_LIB_SRC
         libs/imgui4xp/imgui/imstb_truetype.h
         libs/imgui4xp/ImgWindow/ImgFontAtlas.cpp
         libs/imgui4xp/ImgWindow/ImgFontAtlas.h
-        libs/imgui4xp/ImgWindow/ImgFreeTypeFontAtlas.cpp
-        libs/imgui4xp/ImgWindow/ImgFreeTypeFontAtlas.h
         libs/imgui4xp/ImgWindow/ImgWindow.cpp
         libs/imgui4xp/ImgWindow/ImgWindow.h
         libs/imgui4xp/KHR/khrplatform.h

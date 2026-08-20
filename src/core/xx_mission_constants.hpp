@@ -31,7 +31,7 @@ namespace missionx
 
 inline constexpr const int MX_FEATURES_VERSION = 20260403; // Added min/max rw length to airports_vu // 20250501; //20241212; //20230917; // 330491; //302564;  // added SETUP_LOCK_OVERPASS_URL_TO_USER_PICK
 
-#define SPECIAL_BUILD "img v1.92"
+#define SPECIAL_BUILD "llm"
 
 inline constexpr auto PLUGIN_VER_MAJOR                  = "26"; // year
 inline constexpr auto PLUGIN_VER_MINOR                  = "08"; // month
@@ -193,6 +193,33 @@ enum class mx_semi_activities_enum
   ENUM_COUNT
 } ;
 
+#include <string_view>
+#include <cstdint>
+
+constexpr std::string_view to_string_llm(const mx_semi_activities_enum act) {
+  switch (act) {
+  // case mx_semi_activities_enum::act_none:                      return "act_none";
+  case mx_semi_activities_enum::act_helos_cargo_oilrig:       return "helicopter cargo oilrig";
+  case mx_semi_activities_enum::act_helos_medevac_oilrig:     return "helicopter medevac oilrig";
+  case mx_semi_activities_enum::act_helos_medevac_accident:   return "helicopter medevac accident";
+  case mx_semi_activities_enum::act_helos_medevac_surprise_me: return "helicopter medevac"; // used with external osm_gen.xml. Need generic medevac info.
+  case mx_semi_activities_enum::act_props:                     return "general aviation, non amphibian.";
+  case mx_semi_activities_enum::act_props_float:               return "general aviation, amphibian capable.";
+  case mx_semi_activities_enum::act_turboprops:                return "turboprops plane. Probably cargo or people based mission but can be a medevac one too";
+  case mx_semi_activities_enum::act_jets:                      return "jet plane. Executive type of flight and in rear cases can be medevac.";
+  case mx_semi_activities_enum::act_airline_short:             return "airline flight, short distance, around two to five hundreds nautical miles.";
+  case mx_semi_activities_enum::act_airline_medium:            return "airline flight, medium distance, around six hundreds to two thousand nautical miles.";
+  case mx_semi_activities_enum::act_heavy_airline_medium:      return "airline flight, widebody, medium distance, around six hundreds to two thousand nautical miles.";
+  case mx_semi_activities_enum::act_heavy_airline_long:        return "airline flight, widebody, long distance, up to ten thousand nautical miles.";
+  case mx_semi_activities_enum::act_cargo_short:               return "freight flight, short distance, around two to five hundreds nautical miles.";
+  case mx_semi_activities_enum::act_cargo_medium:              return "freight flight, medium distance, around six hundreds to two thousand nautical miles.";
+  case mx_semi_activities_enum::act_cargo_heavy_medium:       return "freight flight, big cargo plane, medium distance, around six hundreds to two thousand nautical miles.";
+  case mx_semi_activities_enum::act_cargo_heavy_long:         return "freight flight, big cargo plane, long distance, up to ten thousand nautical miles.";
+  default:
+    return "unknown";
+  }
+  return "unknown";
+}
 
 typedef enum class rnd_user_picked_mission_type_enum
   : int8_t
@@ -1381,17 +1408,67 @@ namespace conv
 
   };
 
+namespace llm_category {
+inline constexpr std::string_view mission_description   = "mission_description";
+inline constexpr std::string_view plane_type            = "plane_type";
+inline constexpr std::string_view locations             = "locations";
+inline constexpr std::string_view weather               = "weather";
+inline constexpr std::string_view special_instructions  = "special_instructions";
+}
+
   // v25.06.1 add structs namespace
   namespace structs
   {
-    typedef struct clock_time_struct_def
+    struct curl_request_data 
+    {
+      // bool flag_use_post = false; // if true, use post_request_field_s
+
+      int call_id = 0;
+      int how_many_tries = 2;
+
+      long timeout            = 25L;
+      long connection_timeout = 20L;
+      long follow_location    = 1L;
+      long ssl_verify_peer    = 0L;
+      long ssl_verify_host     = 0L;
+
+      std::string url_s = {""};
+      // std::string headers = {""};
+      std::string post_request_field_s = {""}; // in_separate_data_from_url
+      std::vector<std::string> headers = {};
+
+      void init() 
+      { 
+        call_id = 0;
+        how_many_tries = 2;
+        timeout        = 25L;
+        connection_timeout = 20L;
+        follow_location    = 1L;
+        ssl_verify_peer    = 0L;
+        ssl_verify_host     = 0L;
+
+        url_s.clear();
+        headers.clear();
+        post_request_field_s.clear();
+      }
+
+      void reset() 
+      { 
+        init();
+      }
+
+    };
+
+
+
+    struct mx_clock_time_strct
     {
       int xp_hours;
       int xp_min;
       float xp_sec;
 
       std::string os_time;
-    } mx_clock_time_strct;
+    } ;
 
 
     typedef struct node_attribute_key_value_struct

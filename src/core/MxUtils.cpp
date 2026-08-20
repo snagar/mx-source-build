@@ -401,6 +401,25 @@ missionx::mxUtils::sanitize_text (const std::string &inText, const std::string &
 
 // ----------------------------------------------
 
+std::string missionx::mxUtils::remove_non_ascii(std::string text, const bool in_replace_with_space)
+{
+  if (in_replace_with_space)
+  {
+    // Replace non-ASCII bytes (> 127) with ' ' in-place
+    // std::replace_if (text.begin(), text.end(), [](unsigned char c) { return c > 127; }, ' ');
+    std::ranges::replace_if (text, [](const unsigned char c) { return c > 127; }, ' ');
+  }
+  else
+  {
+    // Remove non-ASCII bytes entirely
+    std::erase_if(text, [](unsigned char c) { return c > 127; });
+  }
+
+  return text;
+}
+
+// ----------------------------------------------
+
 std::vector<std::string>
 missionx::mxUtils::split(const std::string& s, char delimiter, const bool bKeepEmptyTokens)
 {

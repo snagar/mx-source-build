@@ -38,12 +38,16 @@
 #include "SystemGL.h"
 #include <imgui.h>
 
+
+#if defined(IMGUI_VERSION_NUM) && (IMGUI_VERSION_NUM >= 19000)
+#define IMGUI_V190_REFACTOR
+#endif
+
 /** Construct an empty font atlas we can use later
  *
  * This also assigns the texture name which is necessary as, again, must be done
  * in an x-plane compatible manner.
  *
- * @return an empty font atlas ready to be initialised.
  */
 class ImgFontAtlas {
 public:
@@ -75,23 +79,23 @@ public:
                                                  const ImFontConfig *font_cfg = NULL,
                                                  const unsigned short *glyph_ranges = NULL);              // 'compressed_font_data_base85' still owned by caller. Compress with binary_to_compressed_c.cpp with -base85 parameter.
 
-    /** bindTexture creates and binds the font texture to OpenGL, ready for use.
-     *
-     * This should be called after all fonts are loaded, before any rendering occurs!
-     */
+    //bindTexture creates and binds the font texture to OpenGL, ready for use.
+    //This should be called after all fonts are loaded, before any rendering occurs!
     virtual void bindTexture();
 
     ImFontAtlas *getAtlas();
 
-  struct strct_texture_info {
-    unsigned char* pixels = nullptr;
-    int width = 0;
-    int height = 0;
-    int bytesPerPixel = 4; // RGBA32
-  };
+#ifdef IMGUI_V190_REFACTOR
+    struct strct_texture_info {
+        unsigned char* pixels = nullptr;
+        int width = 0;
+        int height = 0;
+        int bytesPerPixel = 4; // RGBA32
+    };
 
-  // Custom replacement function for extracting the font atlas pixel data in v1.92+
-  static bool GetCustomAtlasTextureData(ImFontAtlas* atlas, strct_texture_info& outInfo);
+    // Custom replacement function for extracting the font atlas pixel data in v1.92+
+    static bool GetCustomAtlasTextureData(ImFontAtlas* atlas, strct_texture_info& outInfo);
+#endif
 
 protected:
     ImFontAtlas *mOurAtlas;

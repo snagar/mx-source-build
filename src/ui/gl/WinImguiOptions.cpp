@@ -59,7 +59,7 @@ WinImguiOptions::flc()
 // --------------------------------------
 
 WinImguiOptions::WinImguiOptions(int left, int top, int right, int bot, XPLMWindowDecoration decoration, XPLMWindowLayer layer)
-  : ImgWindow(left, top, right, bot, decoration, layer)
+  : mx_img_window(left, top, right, bot, decoration, layer)
   , myWinNum(++num_win) // assign a unique window number
 {
   // Disable reading/writing of "imgui.ini"

@@ -10169,12 +10169,7 @@ static void ImGui::UpdateKeyboardInputs()
     // - Legacy backends:      set io.KeyXXX bools               -> (above) set key array from io.KeyXXX -> (here) deriving io.KeyMods + io.KeyXXX from key array.
     // So with legacy backends the 4 values will do a unnecessary back-and-forth but it makes the code simpler and future facing.
     const ImGuiKeyChord prev_key_mods = io.KeyMods;
-#ifndef LIN
-    if (!io.KeyMods) // saar missionx - added if statemenet to replace the GetMergedModsFromKeys() with our own logic from custom ImgWindows class.
-        io.KeyMods = GetMergedModsFromKeys();
-#else
-    io.KeyMods              = GetMergedModsFromKeys();
-#endif
+    io.KeyMods  = GetMergedModsFromKeys();
     io.KeyCtrl = (io.KeyMods & ImGuiMod_Ctrl) != 0;
     io.KeyShift = (io.KeyMods & ImGuiMod_Shift) != 0;
     io.KeyAlt = (io.KeyMods & ImGuiMod_Alt) != 0;

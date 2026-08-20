@@ -56,348 +56,13 @@ add_icons_to_fonts(ImFontAtlas* inOutFontAtlas, const float inFontSize)
   inOutFontAtlas->AddFontFromMemoryCompressedTTF(fa_solid_900_compressed_data, fa_solid_900_compressed_size, inFontSize, &config, icon_ranges.Data);
 }
 
-
-// void
-// add_icons_to_fonts(const std::shared_ptr<ImgFontAtlas>& inOutFontAtlas, const float inFontSize)
-// {
-//   // Now we merge some icons from the OpenFontsIcons font into the above font
-//   // (see `imgui/docs/FONTS.txt`)
-//   ImFontConfig config;
-//   config.MergeMode = true;
-//
-//   // We only read very selectively the individual glyphs we are actually using
-//   // to save on texture space
-//   static ImVector<ImWchar> icon_ranges;
-//
-//   ImFontGlyphRangesBuilder builder;
-//   // Add all icons that are actually used (they concatenate into one string)
-//   builder.AddText(ICON_FA_ARROW_DOWN ICON_FA_ARROW_UP ICON_FA_PLAY ICON_FA_REPLY ICON_FA_SAVE ICON_FA_SIGN_OUT_ALT ICON_FA_FAST_FORWARD ICON_FA_STEP_FORWARD ICON_FA_PAUSE ICON_FA_TRASH ICON_FA_TRASH_ALT ICON_FA_SEARCH ICON_FA_EXTERNAL_LINK_SQUARE_ALT ICON_FA_WINDOW_MAXIMIZE ICON_FA_WINDOW_MINIMIZE ICON_FA_WINDOW_RESTORE ICON_FA_WINDOW_CLOSE
-//                     ICON_FA_SYNC
-//                     ICON_FA_REPLY ICON_FA_USER_LOCK);
-//   builder.BuildRanges(&icon_ranges);
-//
-//   // Merge the icon font with the text font
-//   inOutFontAtlas->AddFontFromMemoryCompressedTTF(fa_solid_900_compressed_data, fa_solid_900_compressed_size, inFontSize, &config, icon_ranges.Data);
-// }
-
-// void
-// configureImgWindow()
-// {
-//   //ImgWindow::sFont1 = std::make_shared<ImgFontAtlas>();
-//
-//   ImgWindow::sFontAtlas = std::make_shared<ImgFontAtlas>();
-//   // Create default Font + icons
-//   // When calling: "ImFileOpen" we must have a context ready. This was not needed prior to ImGui v1.90
-//   ImGui::CreateContext();  // v3.305.3
-//
-//
-//   // use actual parameters to configure the font, or use one of the other methods.
-//
-//   // this is a post from kuroneko on x-plane.org explaining this use.
-//
-//   // Basic setup looks something like:
-//   // To avoid bleeding VRAM like it's going out of fashion, there is only one font atlas shared over all ImgWindows
-//   // and we keep the managed pointer to it in the ImgWindow class statics.
-//
-//   // I use the C++11 managed/smart pointers to enforce RAII behaviors rather than encouraging use of new/delete.
-//   //  This means the font atlas will only get destroyed when you break all references to it.
-//   // (ie: via ImgWindow::sFontAtlas.reset())  You should never really need to do that though,
-//   // unless you're being disabled (because you'll lose your texture handles anyway and it's probably a good idea
-//   // to forcibly tear down the font atlas then).
-//
-//   // It's probably a bug that the instance of ImgWindow doesn't actually take a copy of the shared_ptr to ensure
-//   // the font atlas remains valid until it's destroyed.  I was working on a lot of things when I threw that update
-//   // together and I was heading down that path, but I think I forgot to finish it.
-//
-//   // you can use any of these fonts that are provided with X-Plane or find you own.
-//   // Currently you can only load one font and not sure if this might change in the future.
-//   // ImgWindow::sFontAtlas->AddFontFromFileTTF("./Resources/fonts/DejaVuSans.ttf", FONT_SIZE);
-//
-//   std::string defaultMetaData = R"(## Created by Mission-X Plugin
-// ##
-// ## Mission-X font ini file.
-// ##
-// ## Please do not modify it unless you know what you are doing.
-// ## Remember: always make a copy before you alter anything
-// ##############################################################
-//
-// ## Font File
-// font=./Resources/fonts/DejaVuSans.ttf
-// font=./Resources/fonts/Inconsolata.ttf
-// font=./Resources/fonts/tahomabd.ttf
-// font=./Resources/fonts/Roboto-Bold.ttf
-// #font=./Resources/plugins/missionx/libs/fonts/EBGaramond-Bold.ttf
-//
-// default_font=DejaVuSans.ttf,13
-//
-// ## Font Type and Size
-// title_reg=tahomabd.ttf,15
-// title_small=tahomabd.ttf,14
-// title_smallest=tahomabd.ttf,13
-// title_med=tahomabd.ttf,18
-// title_big=tahomabd.ttf,24
-//
-// title_toolbar=DejaVuSans.ttf,24
-//
-// # text_reg=EBGaramond-Bold.ttf,18
-// # text_small=EBGaramond-Bold.ttf,16
-//
-// text_reg=Inconsolata.ttf,14
-// text_small=Inconsolata.ttf,13
-// text_med=Inconsolata.ttf,26
-//
-// msg_bottom=Roboto-Bold.ttf,13
-// msg_popup=Roboto-Bold.ttf,15
-// )";
-//
-//   const std::string cn_default_font_name = "DejaVuSans.ttf";
-//   const std::string cn_default_font_expr = "DejaVuSans.ttf,13";
-//
-//   int         seq {0}; // seq 0 is stored with the first default font
-//   float       fontSizePx{ 13.0f };
-//   std::string fontName;
-//   // Lambda functions
-//   const auto lmbda_eval_font_data = [func = __func__](const std::vector<std::string>& inVec
-//                                                     , std::string& outFontName_s
-//                                                     , float& outSizePx_f
-//                                                     , std::string inDefaultFontName
-//                                                     , const float inDefaultSize)
-//   {
-//
-//     assert( (inVec.empty() == false) && fmt::format ("[{}], Metadata Font must not be empty", func).c_str());
-//
-//     const std::string&              value_s  = inVec.at(0);
-//     if (const std::vector<std::string> vecSplit = mxUtils::split_v2(value_s, ",");
-//         vecSplit.size() < static_cast<size_t>(2))
-//     {
-//       outFontName_s = std::move(inDefaultFontName);
-//       outSizePx_f   = inDefaultSize;
-//     }
-//     else
-//     {
-//       outFontName_s = vecSplit.at(0);
-//       outSizePx_f   = mxUtils::stringToNumber<float>(vecSplit.at(1), 2);
-//     }
-//   };
-//
-//   const auto lmbda_eval_font_name_and_return_existing_one = [](std::string inFontName, std::string inDefaultName)
-//   {
-//     // if (mxUtils::isElementExists(MxUICore::mapFontsMeta, inFontName))
-//     //   return inFontName;
-//     // v26.08.1
-//     if (MxUICore::mapFontsMeta.contains(inFontName))
-//       return inFontName;
-//
-//     return inDefaultName;
-//   };
-//
-//   ////// End Lambda functions //////
-//
-//
-//   // Read fonts from fonts.ini file
-//   auto vecFonts = missionx::ListDir::readFontMetadata("font=", 0, cn_default_font_expr, defaultMetaData);
-//
-//   std::string sTitleRegFontName;
-//
-//   if (!vecFonts.empty())
-//   {
-//     // initialize the font file meta data
-//     std::vector<std::string> vecFontName;
-//     vecFontName.clear();
-//     std::ranges::for_each(std::as_const(vecFonts),
-//                   [&](const fs::path& p)
-//                   {
-//                     vecFontName.emplace_back(p.filename().string());
-//                     Utils::addElementToMap(MxUICore::mapFontsMeta, p.filename().string(), MxUICore::mxFontData(p.filename().string(), p.string())); // store font name and font location
-//                   });
-//
-//
-//     // read default font and force defaults for this specific font case
-//     std::vector<std::string> vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_DEFAULT() + "=", 1, cn_default_font_expr, defaultMetaData);
-//
-//     assert(vecTemp.empty() == false && std::string(__func__).append(", vecTemp Font must not be empty").c_str());
-//
-//
-//     if (vecTemp.empty())
-//       MxUICore::mxDefaultFontName = cn_default_font_name;
-//     else
-//     {
-//       auto vecDefaultFont = mxUtils::split_v2(vecTemp.at(0), ",");
-//       assert(vecDefaultFont.empty() == false && std::string(__func__).append(", vecDefaultFont must not be empty").c_str());
-//       MxUICore::mxDefaultFontName = vecDefaultFont.at(0);
-//     }
-//
-//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, cn_default_font_name, mxconst::FONT_PIXEL_13);
-//     fontName   = MxUICore::mxDefaultFontName;                                                         // force default font name
-//     fontSizePx = mxconst::FONT_PIXEL_13;                                                              // force size 13px as default size - special case
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_DEFAULT());            // init DEFAULT FONT
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx + 1, mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1()); // init DEFAULT FONT + 1
-//
-//
-//
-//     // read title font
-//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_REG() + "=", 1, cn_default_font_expr, defaultMetaData);
-//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_15);
-//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_REG());
-//     sTitleRegFontName = fontName; // v3.305.3
-//
-//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_MED() + "=", 1, cn_default_font_expr, defaultMetaData);
-//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_18);
-//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_MED());
-//
-//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_BIG() + "=", 1, cn_default_font_expr, defaultMetaData);
-//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_24);
-//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_BIG());
-//
-//     // Read text fonts
-//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TEXT_REG() + "=", 1, cn_default_font_expr, defaultMetaData);
-//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_14);
-//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TEXT_REG());
-//
-//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TEXT_MED() + "=", 1, cn_default_font_expr, defaultMetaData);
-//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_18);
-//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TEXT_MED());
-//
-//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TEXT_SMALL() + "=", 1, cn_default_font_expr, defaultMetaData);
-//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_14);
-//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TEXT_SMALL());
-//
-//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_MSG_BOTTOM() + "=", 1, cn_default_font_expr, defaultMetaData);
-//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_13);
-//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_MSG_BOTTOM());
-//
-//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_MSG_POPUP() + "=", 1, cn_default_font_expr, defaultMetaData);
-//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_13);
-//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_MSG_POPUP());
-//
-//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_TOOLBAR() + "=", 1, cn_default_font_expr, defaultMetaData);
-//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_18);
-//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_TOOLBAR());
-//
-//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_SMALL() + "=", 1, cn_default_font_expr, defaultMetaData);
-//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_14);
-//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_SMALL());
-//
-//     vecTemp = missionx::ListDir::readFontMetadata(mxconst::get_TEXT_TYPE_TITLE_SMALLEST() + "=", 1, cn_default_font_expr, defaultMetaData);
-//     lmbda_eval_font_data(vecTemp, fontName, fontSizePx, MxUICore::mxDefaultFontName, mxconst::FONT_PIXEL_13);
-//     fontName = lmbda_eval_font_name_and_return_existing_one(fontName, MxUICore::mxDefaultFontName);
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(fontSizePx, mxconst::get_TEXT_TYPE_TITLE_SMALLEST());
-//
-//
-//     if (auto fnt_default = ImgWindow::sFontAtlas->AddFontFromFileTTF(MxUICore::mapFontsMeta[MxUICore::mxDefaultFontName].fontLocation_s.c_str(), mxconst::FONT_PIXEL_13))
-//     {
-//       MxUICore::mapFontsMeta[MxUICore::mxDefaultFontName].setFontID(seq, mxconst::get_TEXT_TYPE_DEFAULT());
-//       seq++;
-//
-//       ImgWindow::sFontAtlas->AddFontFromFileTTF(MxUICore::mapFontsMeta[MxUICore::mxDefaultFontName].fontLocation_s.c_str(), mxconst::FONT_PIXEL_13 + 1);
-//       MxUICore::mapFontsMeta[MxUICore::mxDefaultFontName].setFontID(seq, mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1());
-//       seq++;
-//     }
-//
-//     // create the Atlas from all the fonts and their sizes
-//     for (auto& meta : MxUICore::mapFontsMeta | std::views::values)
-//     {
-//       // v3.305.3 loop over map_metaData
-//       for (auto& [fontType, fontMeta] : meta.mapMetaData)
-//       {
-//         if ((fontType == mxconst::get_TEXT_TYPE_DEFAULT()) || (fontType == mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1()))
-//           continue;
-//
-//         if (auto fnt = ImgWindow::sFontAtlas->AddFontFromFileTTF(meta.fontLocation_s.c_str(), fontMeta.fSizePx))
-//         {
-//           if (fontType == mxconst::get_TEXT_TYPE_TITLE_REG())
-//             add_icons_to_fonts(ImgWindow::sFontAtlas, fontMeta.fSizePx);
-//
-//           meta.setFontID(seq, fontType);
-//           //fontMeta.id = seq;
-//           seq++;
-//         }
-//       }
-//
-//     } // end loop over all font settings and creating the Atlas
-//   }
-//   else
-//   { // initialize internal font
-//
-//     constexpr auto imgui_internal_font        = "ProggyClean.ttf";
-//     MxUICore::mxDefaultFontName               = imgui_internal_font;
-//     sTitleRegFontName                         = MxUICore::mxDefaultFontName;
-//
-//     seq = 0;
-//
-//     // Prepare Meta Font data with all supported Text Types and sizes
-//     fontName   = MxUICore::mxDefaultFontName;                                                         // force default font name
-//     fontSizePx = mxconst::FONT_PIXEL_13;
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_13, mxconst::get_TEXT_TYPE_DEFAULT());            // init DEFAULT FONT
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1());
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_15, mxconst::get_TEXT_TYPE_TITLE_REG());
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_18, mxconst::get_TEXT_TYPE_TEXT_MED());
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_TEXT_REG());
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_TITLE_SMALL());
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_TITLE_SMALLEST());
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_18, mxconst::get_TEXT_TYPE_TITLE_MED());
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_24, mxconst::get_TEXT_TYPE_TITLE_BIG());
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_24, mxconst::get_TEXT_TYPE_TITLE_TOOLBAR());
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_MSG_BOTTOM());
-//     MxUICore::mapFontsMeta[fontName].initFontMeta(mxconst::FONT_PIXEL_14, mxconst::get_TEXT_TYPE_MSG_POPUP());
-//
-//
-//
-//     ImFontConfig font_cfg = ImFontConfig();
-//     font_cfg.SizePixels   = mxconst::FONT_PIXEL_13;
-//
-//     // Explicitly create the default font
-//     ImgWindow::sFontAtlas->AddFontDefault(&font_cfg);
-//     MxUICore::mapFontsMeta[fontName].setFontID(seq, mxconst::get_TEXT_TYPE_DEFAULT());
-//     //add_icons_to_fonts(ImgWindow::sFontAtlas, font_cfg.SizePixels); // v3.305.3 deprecated we add this to mxconst::get_TEXT_TYPE_TITLE_REG() and pixel 13
-//     seq++;
-//
-//
-//     // create the rest of the Atlas from all the fonts and their sizes
-//     for (auto& meta : MxUICore::mapFontsMeta | std::views::values)
-//     {
-//       // v3.305.3 loop over map_metaData
-//       for (auto& [fontType, fontMeta] : meta.mapMetaData)
-//       {
-//         if ((fontType == mxconst::get_TEXT_TYPE_DEFAULT()) || (fontType == mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1()))
-//           continue;
-//
-//         if (auto fnt = ImgWindow::sFontAtlas->AddFontFromFileTTF(meta.fontLocation_s.c_str(), fontMeta.fSizePx))
-//         {
-//           if (fontType == mxconst::get_TEXT_TYPE_TITLE_REG())
-//             add_icons_to_fonts(ImgWindow::sFontAtlas, fontMeta.fSizePx);
-//
-//           meta.setFontID(seq, fontType);
-//           //fontMeta.id = seq;
-//           seq++;
-//         }
-//       }
-//
-//     } // end loop over all font settings and creating the Atlas
-//
-//   } // end initializing internal font
-//
-//
-//
-// } // configureImgWindow
-
 // -------------------------------------
 static void
 configureImgWindow()
 {
   constexpr auto imgui_internal_font        = "ProggyClean.ttf";
-  // ImgWindow::sFontAtlas = std::make_shared<ImgFontAtlas>();
-  ImgWindow::sFontAtlas = new ImFontAtlas();
+  ImgWindow::sFontAtlas = std::make_shared<ImgFontAtlas>();
+  // ImgWindow::sFontAtlas = new ImFontAtlas();
 
   // When calling: "ImFileOpen" we must have a context ready. This was not needed prior to ImGui v1.90
   ImGui::CreateContext();  // v3.305.3
@@ -598,7 +263,7 @@ msg_popup=Roboto-Bold.ttf,15
           MxUICore::mapFontTypeMeta[fontType].id = fontMeta.id;
 
           // add special icons to the font buffer
-          add_icons_to_fonts(ImgWindow::sFontAtlas, fontMeta.fSizePx);
+          add_icons_to_fonts(ImgWindow::sFontAtlas->getAtlas(), fontMeta.fSizePx);
         }
       } // end loop over all font types and create their Atlas to their font
   }
@@ -621,7 +286,7 @@ msg_popup=Roboto-Bold.ttf,15
     auto fnt_default = ImgWindow::sFontAtlas->AddFontDefault(&font_cfg);
     assert(static_cast<int>( fnt_default->FontId - 1)  >= 0 && fmt::format("[{}] Fallback FontID can't be smaller than 'zero'", __func__).c_str());
     // add awsome icons
-    add_icons_to_fonts(ImgWindow::sFontAtlas, font_cfg.SizePixels);
+    add_icons_to_fonts(ImgWindow::sFontAtlas->getAtlas(), font_cfg.SizePixels);
 
     for ( auto& font_meta: MxUICore::mapFontTypeMeta | std::views::values)
       font_meta.id = static_cast<int>(fnt_default->FontId-1);
@@ -890,7 +555,7 @@ missionx::Mission::init()
   // v3.0.255.4.2 lock overpass url flag
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_LOCK_OVERPASS_URL_TO_USER_PICK()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_SETUP_LOCK_OVERPASS_URL_TO_USER_PICK(), false);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_SETUP_LOCK_OVERPASS_URL_TO_USER_PICK(), false);
     missionx::system_actions::store_plugin_options();
   }
 
@@ -926,21 +591,21 @@ missionx::Mission::init()
   // v3.0.215.1
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_HIDE_SHOW_MXPAD()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_AUTO_HIDE_SHOW_MXPAD(), true);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_OPT_AUTO_HIDE_SHOW_MXPAD(), true);
     missionx::system_actions::store_plugin_options();
   }
 
 
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISPLAY_VISUAL_CUES()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<int>(mxconst::get_OPT_DISPLAY_VISUAL_CUES(), (int)0);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<int>(mxconst::get_OPT_DISPLAY_VISUAL_CUES(), (int)0);
     missionx::system_actions::store_plugin_options();
   }
 
   // v3.0.221.7
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISPLAY_MISSIONX_IN_VR()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_DISPLAY_MISSIONX_IN_VR(), mxconst::DEFAULT_DISPLAY_MISSIONX_IN_VR);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_OPT_DISPLAY_MISSIONX_IN_VR(), mxconst::DEFAULT_DISPLAY_MISSIONX_IN_VR);
     missionx::system_actions::store_plugin_options();
   }
 
@@ -948,7 +613,7 @@ missionx::Mission::init()
   // v3.0.221.10
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISABLE_PLUGIN_COLD_AND_DARK_WORKAROUND()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_DISABLE_PLUGIN_COLD_AND_DARK_WORKAROUND(), mxconst::DEFAULT_DISABLE_PLUGIN_COLD_AND_DARK);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_OPT_DISABLE_PLUGIN_COLD_AND_DARK_WORKAROUND(), mxconst::DEFAULT_DISABLE_PLUGIN_COLD_AND_DARK);
     missionx::system_actions::store_plugin_options();
   }
 
@@ -956,7 +621,7 @@ missionx::Mission::init()
   // v3.0.241.2
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_WRITE_CONVERTED_FPLN_TO_XPLANE_FOLDER()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_WRITE_CONVERTED_FPLN_TO_XPLANE_FOLDER(), mxconst::DEFAULT_WRITE_CONVERTED_FMS_TO_XPLANE_FOLDER);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_OPT_WRITE_CONVERTED_FPLN_TO_XPLANE_FOLDER(), mxconst::DEFAULT_WRITE_CONVERTED_FMS_TO_XPLANE_FOLDER);
     missionx::system_actions::store_plugin_options();
   }
 
@@ -964,7 +629,7 @@ missionx::Mission::init()
   // v3.0.241.7
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_DISPLAY_TARGET_MARKERS()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_SETUP_DISPLAY_TARGET_MARKERS(), true);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_SETUP_DISPLAY_TARGET_MARKERS(), true);
     missionx::system_actions::store_plugin_options();
   }
 
@@ -972,7 +637,7 @@ missionx::Mission::init()
   // v3.0.251.1
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<double>(mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE(), (double)mxconst::DEFAULT_BASE_FONT_SCALE);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<double>(mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE(), (double)mxconst::DEFAULT_BASE_FONT_SCALE);
     missionx::system_actions::store_plugin_options();
   }
 
@@ -996,7 +661,7 @@ missionx::Mission::init()
   // v3.0.253.7 OPT_GPS_IMMEDIATE_EXPOSURE
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE(), true);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE(), true);
     missionx::system_actions::store_plugin_options();
   }
 
@@ -1004,7 +669,7 @@ missionx::Mission::init()
   // v3.0.253.7 missing SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET(), false);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET(), false);
     missionx::system_actions::store_plugin_options();
   }
 
@@ -1012,7 +677,7 @@ missionx::Mission::init()
   // v3.0.253.9.1
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_PAUSE_IN_2D()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_AUTO_PAUSE_IN_2D(), mxconst::DEFAULT_AUTO_PAUSE_IN_2D);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_OPT_AUTO_PAUSE_IN_2D(), mxconst::DEFAULT_AUTO_PAUSE_IN_2D);
     missionx::system_actions::store_plugin_options();
   }
 
@@ -1020,14 +685,14 @@ missionx::Mission::init()
   // v3.0.303.6
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_NORMALIZED_VOLUME()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<int>(mxconst::get_SETUP_NORMALIZED_VOLUME(), mxconst::DEFAULT_SETUP_MISSION_VOLUME_I);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<int>(mxconst::get_SETUP_NORMALIZED_VOLUME(), mxconst::DEFAULT_SETUP_MISSION_VOLUME_I);
     missionx::system_actions::store_plugin_options();
   }
 
   // v3.0.303.6
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_NORMALIZE_VOLUME_B()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_SETUP_NORMALIZE_VOLUME_B(), false);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_SETUP_NORMALIZE_VOLUME_B(), false);
     missionx::system_actions::store_plugin_options();
   }
 
@@ -1056,21 +721,21 @@ missionx::Mission::init()
   // v24.12.2 Inventory layout preference. XP11 or XP12 (XP12 = with stations support)
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::SETUP_USE_XP11_INV_LAYOUT).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::SETUP_USE_XP11_INV_LAYOUT, (missionx::data_manager::xplane_ver_i < missionx::XP12_VERSION_NO));
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::SETUP_USE_XP11_INV_LAYOUT, (missionx::data_manager::xplane_ver_i < missionx::XP12_VERSION_NO));
     missionx::system_actions::store_plugin_options();
   }
 
   // v25.03.1 Keep only one "missionx.log" file and don't cycle.
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_CYCLE_LOG_FILES()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_CYCLE_LOG_FILES(), true );
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_OPT_CYCLE_LOG_FILES(), true );
     missionx::system_actions::store_plugin_options();
   }
 
   // v25.05.1 Auto load waypoints to GPS
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B(), mxconst::DEFAULT_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B );
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B(), mxconst::DEFAULT_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B );
     missionx::system_actions::store_plugin_options();
   }
 
@@ -1085,28 +750,47 @@ missionx::Mission::init()
   // v26.02.1 ui clocks
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISPLAY_UI_CLOCKS()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_DISPLAY_UI_CLOCKS(), true);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_OPT_DISPLAY_UI_CLOCKS(), true);
     missionx::system_actions::store_plugin_options();
   }
 
   // v26.03.1 ui FPS
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISPLAY_UI_FPS()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_DISPLAY_UI_FPS(), true);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_OPT_DISPLAY_UI_FPS(), true);
     missionx::system_actions::store_plugin_options();
   }
 
   // v26.04.1 Autoload Simbrief extra data into notes
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SIMBRIEF_AUTO_LOAD_INTO_NOTES()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_SETUP_SIMBRIEF_AUTO_LOAD_INTO_NOTES(), false);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_SETUP_SIMBRIEF_AUTO_LOAD_INTO_NOTES(), false);
     missionx::system_actions::store_plugin_options();
   }
 
   // v26.04.4 Disable Inventory Image Load
   if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_DISABLE_INVENTORY_IMAGE_LOAD()).isEmpty())
   {
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_DISABLE_INVENTORY_IMAGE_LOAD(), false);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_OPT_DISABLE_INVENTORY_IMAGE_LOAD(), false);
+    missionx::system_actions::store_plugin_options();
+  }
+
+  // v26.08.1 ai server support
+  if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_AI_USE_AI()).isEmpty())
+  {
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_OPT_AI_USE_AI(), false);
+    missionx::system_actions::store_plugin_options();
+  }
+
+  if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_AI_SERVER_URL()).isEmpty())
+  {
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_6(mxconst::get_OPT_AI_SERVER_URL(), "");
+    missionx::system_actions::store_plugin_options();
+  }
+
+  if (Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_AI_AUTH_KEY()).isEmpty())
+  {
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_6(mxconst::get_OPT_AI_AUTH_KEY(), "");
     missionx::system_actions::store_plugin_options();
   }
 
@@ -1138,37 +822,6 @@ missionx::Mission::init()
 }
 
 // -------------------------------------
-
-// void
-// missionx::Mission::initImguiParametersAtPluginsStart()
-// {
-//   // This function will be called after Mission::init() and at the end of plugin::START_MISSION()
-//   // initialize first time IMGUI settings
-//   if (Mission::uiImGuiBriefer != nullptr)
-//   {
-//     // // init setup font scale = should be moved into a function inside Mission class
-//     // if (!Utils::xml_get_node_from_node_tree_IXMLNode(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE()).isEmpty())
-//     // {
-//     //
-//     //   float fScale = static_cast<float> (Utils::getNodeText_type_1_5<double> (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE (), (double)mxconst::DEFAULT_BASE_FONT_SCALE)); // default scale size
-//     //   if (fScale < missionx::missionx::strct_setup_layer.fFontMinScaleSize || fScale > missionx::missionx::strct_setup_layer.fFontMaxScaleSize)
-//     //     fScale = mxconst::DEFAULT_BASE_FONT_SCALE; // default size = no change in pixel scale
-//     //
-//     //   missionx::strct_setup_layer.fPreferredFontScale = fScale;
-//     // }
-//     //
-//     // missionx::strct_setup_layer.bPlaceMarkersAwayFromTarget =
-//     //   Utils::getNodeText_type_1_5<bool>(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET(), false); // display target away from target
-//     //
-//     // Mission::uiImGuiBriefer->set_vecOverpassUrls_char(missionx::data_manager::vecOverpassUrls); // v3.0.255.4.1 initialize overpass url from conf file
-//     //
-//     // // v3.303.8.3 add authorization key to the Briefer screen
-//     // const std::string authKey_s = Utils::getNodeText_type_6(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY(), "");
-//     // std::memcpy(missionx::missionx::strct_ext_layer.buf_authorization, authKey_s.substr(0, 255).c_str(), 255); // copy no more than 255 characters because our buffer is 256 in size
-//   } // end if uiImGuiBriefer was init
-//
-// } // initImguiParametersAtPluginsStart
-
 // -------------------------------------
 
 
@@ -1352,18 +1005,24 @@ missionx::Mission::START_MISSION()
     // station parsing if we are NOT in xp11 compatibility mode
     if (missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY)
     {
-      char outFileName[512]{ 0 };
-      char outPathAndFile[2048]{ 0 };
-      XPLMGetNthAircraftModel ( XPLM_USER_AIRCRAFT, outFileName, outPathAndFile ); // we will only return the file name
+      // char outFileName[512]{ 0 };
+      // char outPathAndFile[2048]{ 0 };
+      // XPLMGetNthAircraftModel ( XPLM_USER_AIRCRAFT, outFileName, outPathAndFile ); // we will only return the file name
+      auto vec_acf = missionx::data_manager::get_current_acf();
+      assert (vec_acf.size() > 1 && "Aircraft data doesnot contain at least two values, filename and path.");
+
+        if (vec_acf.size() > 1)
+          missionx::data_manager::set_acf (vec_acf.at(0), vec_acf.at(1));
 
       if (data_manager::missionState != missionx::mx_mission_state_enum::mission_loaded_from_savepoint) // mission_loaded_from_the_original_file
       {
-        missionx::data_manager::set_active_acf_and_gather_info (outFileName);
+        if (vec_acf.size() > 1)
+          missionx::data_manager::set_active_acf_and_gather_info (vec_acf.at(0), vec_acf.at(1));
       }
-      else
-      { // Loaded from savepoint
-        missionx::data_manager::set_acf (outFileName);
-      }
+      // else
+      // { // Loaded from savepoint
+      //   missionx::data_manager::set_acf (vec_acf.at(0), vec_acf.at(1));
+      // }
     }
     data_manager::dref_acf_station_max_kgs_f_arr.setAndInitializeKey("sim/aircraft/weight/acf_m_station_max");
     data_manager::dref_m_stations_kgs_f_arr.setAndInitializeKey("sim/flightmodel/weight/m_stations");
@@ -5134,7 +4793,7 @@ missionx::Mission::flcPRE()
 
         const bool val = Utils::getNodeText_type_1_5<bool>(missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_AUTO_HIDE_SHOW_MXPAD(), true); // toggle MXPAD if options is set
 
-        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(
+        missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(
           mxconst::get_OPT_AUTO_HIDE_SHOW_MXPAD(), !val);
         missionx::system_actions::store_plugin_options();
 
@@ -5738,17 +5397,17 @@ missionx::Mission::flcPRE()
       {
         const auto val = Utils::getNodeText_type_1_5<bool>(missionx::system_actions::pluginSetupOptions.node, mxconst::get_SETUP_DISPLAY_TARGET_MARKERS(), true); // toggle
 
-        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_SETUP_DISPLAY_TARGET_MARKERS(), !val);
+        missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_SETUP_DISPLAY_TARGET_MARKERS(), !val);
       }
       break;
       case missionx::mx_flc_pre_command::hide_target_marker_option: // v3.0.253.9.1 store the toggle option
       {
-        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_SETUP_DISPLAY_TARGET_MARKERS(), false); // false = hide //  // 0 = hide
+        missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_SETUP_DISPLAY_TARGET_MARKERS(), false); // false = hide //  // 0 = hide
       }
       break;
       case missionx::mx_flc_pre_command::show_target_marker_option: // v3.0.253.9.1 store the toggle option
       {
-        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_SETUP_DISPLAY_TARGET_MARKERS(), true); // true = show // 1 = show
+        missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_SETUP_DISPLAY_TARGET_MARKERS(), true); // true = show // 1 = show
       }
       break;
       case missionx::mx_flc_pre_command::save_user_setup_options: // v3.0.255.4.2 save user prefers settings
@@ -5921,6 +5580,18 @@ missionx::Mission::flcPRE()
           missionx::Mission::uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_HIDE_WINDOW);
       }
       break;
+      case missionx::mx_flc_pre_command::get_player_aircraft_base_data:
+      {
+        // v26.08.1
+        #ifndef RELEASE
+          Log::logMsg("Reading player aircraft base info.");
+        #endif // !RELEASE
+
+        missionx::data_manager::flc_acf_change(); 
+        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+
+      }
+      break;
       case missionx::mx_flc_pre_command::post_async_story_image_binding:
       {
         for (auto& [file, textureFile] :missionx::Message::mapStoryCachedImages)
@@ -6002,7 +5673,7 @@ missionx::Mission::flcPRE()
           auto val =  missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_DISPLAY_UI_CLOCKS(), true);
           val ^= 1;
 
-          missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_DISPLAY_UI_CLOCKS(), val);
+          missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_OPT_DISPLAY_UI_CLOCKS(), val);
           missionx::system_actions::store_plugin_options();
       }
       break;
@@ -6012,7 +5683,7 @@ missionx::Mission::flcPRE()
           auto val =  missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_DISPLAY_UI_FPS(), true);
           val ^= 1;
 
-          missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_OPT_DISPLAY_UI_FPS(), val);
+          missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_OPT_DISPLAY_UI_FPS(), val);
           missionx::system_actions::store_plugin_options();
       }
       break;

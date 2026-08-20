@@ -8,7 +8,8 @@
 
 
 // Definitions for OpenFontIcons
-#include <ImgWindow/ImgWindow.h> // inside libs/imgui4xp
+// #include <ImgWindow/ImgWindow.h> // inside libs/imgui4xp
+#include "../core/mx_img_window.h" // v26.08.1 replaces ImgWindow
 
 namespace missionx
 {
@@ -19,7 +20,7 @@ namespace missionx
 // void cleanupAfterImgWindow();
 // void CalcWinCoords(int& left, int& top, int& right, int& bottom);
 
-class WinImguiMxpad : public ImgWindow
+class WinImguiMxpad : public mx_img_window
 {
 public:
   // Counter for the number of windows opened
@@ -70,7 +71,7 @@ private:
 
 public:
   XPLMWindowID mWindow;
-  XPLMWindowID optionsWindow{ 0 }; // v3.303.13 will hold a reference to the options window
+  XPLMWindowID optionsWindow{ nullptr }; // v3.303.13 will hold a reference to the options window
 
   const static int WINDOWS_WIDTH;      
   const static int WINDOWS_MAX_HEIGHT; 
@@ -78,8 +79,9 @@ public:
 
   int       win_pad{ 75 };      ///< distance from left and top border
   const int win_coll_pad{ 30 }; ///< offset of collated windows
-  void      flc() override;
+  // void      flc() override;
   void      execAction(mx_window_actions actionCommand); // special function to handle specific requests from outside of the window
+void flc();
 
   void               flc_autoHideMXPAD (); // check if MX-Pad needs to be hidden automatically because of the "Auto Hide Option" is set (OPT_AUTO_HIDE_SHOW_MXPAD)
   [[nodiscard]] bool getWasHiddenByAutoHideOption () const { return this->wasHiddenByAutoHideOption; } //

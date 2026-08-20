@@ -619,6 +619,11 @@ const static ^std::string^                OPT_OVERPASS_URL                      
 const static ^std::string^                OPT_GPS_IMMEDIATE_EXPOSURE                             ^ "gps_immediate_exposure"; ^// v3.0.253.7 Display all points of global GPS in FMS or one by one
 const static ^std::string^                OPT_FLIGHT_LEG_PROGRESS_COUNTER                        ^ "flight_leg_progress_counter"; ^// v3.0.253.7 flight_leg_progress_counter_i
 const static ^std::string^                OPT_DISABLE_INVENTORY_IMAGE_LOAD                       ^ "disable_inventory_image_load"; ^// v26.04.4
+const static ^std::string^                OPT_AI_USE_AI                                          ^ "ai_use_ai"; ^// v26.08.1
+const static ^std::string^                OPT_AI_SERVER_URL                                      ^ "ai_server_url"; ^// v26.08.1
+const static ^std::string^                OPT_AI_AUTH_KEY                                        ^ "ai_auth_key"; ^// v26.08.1
+const static ^std::string^                OPT_AI_DEFAULT_AUTH_KEY                                ^ "missionx_no_auth"; ^// v26.08.1 This represent the fallback api key value the plugin will send.
+const static ^std::string^                OPT_AI_LLM_SERVER_TIMEOUT                              ^ "llm_server_timeout"; ^// v26.08.1
 
 
 static constexpr ^float   ^               MINIMUM_EXPECTED_PILOT_WEIGHT_IN_STATION               ^ 40.0f; ^// v24.12.2 used when evaluating if to add pilot weight to the plane.

@@ -39,7 +39,7 @@ namespace missionx
 {
 
 WinImguiMxpad::WinImguiMxpad(int left, int top, int right, int bot, XPLMWindowDecoration decoration, XPLMWindowLayer layer)
-  : ImgWindow(left, top, right, bot, decoration, layer)
+  : mx_img_window(left, top, right, bot, decoration, layer)
   , myWinNum(++num_win) // assign a unique window number
 {
   // Disable reading/writing of "imgui.ini"
@@ -242,7 +242,7 @@ WinImguiMxpad::buildInterface()
       this->mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_REG()); // v3.305.1 mxpad font
 
         ImGui::BeginGroup();
-        ImGui::TextColored(missionx::WinImguiMxpad::getColorAsImVec4(msg.label_color) , "%s", msg.label.c_str());
+        ImGui::TextColored(missionx::WinImguiMxpad::mx_get_color_as_im_vec4(msg.label_color) , "%s", msg.label.c_str());
 
         ImGui::EndGroup();
 

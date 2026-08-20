@@ -43,7 +43,7 @@ namespace missionx
 std::string err;
 // ------------ contractor --------------
 WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right, const int bot, const XPLMWindowDecoration decoration, const XPLMWindowLayer layer)
-  : ImgWindow (left, top, right, bot, decoration, layer)
+  : mx_img_window (left, top, right, bot, decoration, layer)
   , myWinNum (++num_win) // assign a unique window number
 {
   // Disable reading/writing of "imgui.ini"
@@ -72,13 +72,23 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
     return this->add_ui_checkbox_rerun_random_date_and_time();
   };
 
-  m_ui_conv_screen->add_ui_advance_settings_random_date_time_weather_and_weight_button = [this](int out_iClockDayOfYearPicked, int out_iClockHourPicked, int out_iClockMinutesPicked, std::string inTEXT_TYPE)->void
+  // m_ui_conv_screen->add_ui_advance_settings_random_date_time_weather_and_weight_button = [this](int out_iClockDayOfYearPicked, int out_iClockHourPicked, int out_iClockMinutesPicked, std::string inTEXT_TYPE)->void
+  // {
+  //   // handle empty default values
+  //   if (inTEXT_TYPE.empty())
+  //     this->add_ui_advance_settings_random_date_time_weather_and_weight_button(out_iClockDayOfYearPicked, out_iClockHourPicked, out_iClockMinutesPicked, mxconst::get_TEXT_TYPE_TITLE_REG ());
+  //   else
+  //     this->add_ui_advance_settings_random_date_time_weather_and_weight_button(out_iClockDayOfYearPicked, out_iClockHourPicked, out_iClockMinutesPicked, inTEXT_TYPE);
+  // };
+
+  // v26.08.1
+  m_ui_conv_screen->add_ui_advance_settings_random_date_time_weather_and_weight_button = [this](std::string inTEXT_TYPE)->void
   {
     // handle empty default values
     if (inTEXT_TYPE.empty())
-      this->add_ui_advance_settings_random_date_time_weather_and_weight_button(out_iClockDayOfYearPicked, out_iClockHourPicked, out_iClockMinutesPicked, mxconst::get_TEXT_TYPE_TITLE_REG ());
+      this->add_ui_advance_settings_random_date_time_weather_and_weight_button(mxconst::get_TEXT_TYPE_TITLE_REG ());
     else
-      this->add_ui_advance_settings_random_date_time_weather_and_weight_button(out_iClockDayOfYearPicked, out_iClockHourPicked, out_iClockMinutesPicked, inTEXT_TYPE);
+      this->add_ui_advance_settings_random_date_time_weather_and_weight_button(inTEXT_TYPE);
   };
 
   m_ui_conv_screen->execAction = [this](missionx::mx_window_actions in_action)
@@ -117,13 +127,13 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
     return this->add_ui_checkbox_rerun_random_date_and_time();
   };
 
-  m_ui_nav_screen->add_ui_advance_settings_random_date_time_weather_and_weight_button = [this](int out_iClockDayOfYearPicked, int out_iClockHourPicked, int out_iClockMinutesPicked, const std::string& inTEXT_TYPE)->void
+  m_ui_nav_screen->add_ui_advance_settings_random_date_time_weather_and_weight_button = [this](const std::string& inTEXT_TYPE)->void
   {
     // handle empty default values
     if (inTEXT_TYPE.empty())
-      this->add_ui_advance_settings_random_date_time_weather_and_weight_button(out_iClockDayOfYearPicked, out_iClockHourPicked, out_iClockMinutesPicked, mxconst::get_TEXT_TYPE_TITLE_REG ());
+      this->add_ui_advance_settings_random_date_time_weather_and_weight_button(mxconst::get_TEXT_TYPE_TITLE_REG ());
     else
-      this->add_ui_advance_settings_random_date_time_weather_and_weight_button(out_iClockDayOfYearPicked, out_iClockHourPicked, out_iClockMinutesPicked, inTEXT_TYPE);
+      this->add_ui_advance_settings_random_date_time_weather_and_weight_button(inTEXT_TYPE);
   };
 
   m_ui_nav_screen->execAction = [this](const missionx::mx_window_actions in_action)
@@ -254,6 +264,13 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
   const std::string authKey_s = Utils::getNodeText_type_6 (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY (), "");
   mxUtils::copy_string_to_buffer(authKey_s.substr(0, 255), this->strct_ext_layer.buf_authorization[0], 255); // copy no more than 255 characters because our buffer is 256 in size
 
+  // v26.08.1 read properties values
+  missionx::strct_setup_layer.b_use_ai = system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_AI_USE_AI(), false);
+  missionx::strct_setup_layer.ai_url = system_actions::pluginSetupOptions.getNodeText_type_6(mxconst::get_OPT_AI_SERVER_URL(), "");
+  missionx::strct_setup_layer.set_ai_url_buf(missionx::strct_setup_layer.ai_url);
+  missionx::strct_setup_layer.ai_auth_key = system_actions::pluginSetupOptions.getNodeText_type_6(mxconst::get_OPT_AI_AUTH_KEY(), "");
+  missionx::strct_setup_layer.set_ai_auth_key_buf(missionx::strct_setup_layer.ai_auth_key);
+
 
   // v25.03.3
   missionx::strct_setup_layer.setSimbriefPilotID (Utils::getNodeText_type_6 (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SIMBRIEF_PILOT_ID (), "")); // initialize Simbrief pilot ID from preference file
@@ -326,7 +343,7 @@ WinImguiBriefer::calc_and_getNewFontScaledSize (float inNewSize)
 void
 WinImguiBriefer::add_abort_all_channels_debug ()
 {
-  ImgWindow::HelpMarker ("Abort all active channels.\nCan help when a message has a long background or comm mix running.");
+  mx_img_window::HelpMarker ("Abort all active channels.\nCan help when a message has a long background or comm mix running.");
   ImGui::SameLine ();
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_orange);
   if (ImGui::Button ("Stop All Channels"))
@@ -345,7 +362,7 @@ WinImguiBriefer::add_pause_in_2d_mode ()
   if (ImGui::Checkbox ("Pause in 2D mode (ignored when popped out)", &missionx::strct_setup_layer.bPauseIn2D))
   {
     // ADD set option value
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_AUTO_PAUSE_IN_2D (), missionx::strct_setup_layer.bPauseIn2D);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_OPT_AUTO_PAUSE_IN_2D (), missionx::strct_setup_layer.bPauseIn2D);
     this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
   }
   ImGui::PopStyleColor ();
@@ -386,7 +403,7 @@ WinImguiBriefer::add_skewed_marker_checkbox ()
   if (ImGui::Checkbox (std::string ("Place markers near targets and not above them (in +/-" + mxUtils::formatNumber<double> (mxconst::MAX_AWAY_SKEWED_DISTANCE_NM, 1) + "nm radius).").c_str (), &missionx::strct_setup_layer.bPlaceMarkersAwayFromTarget))
   {
     // ADD set option value
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET (), missionx::strct_setup_layer.bPlaceMarkersAwayFromTarget);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET (), missionx::strct_setup_layer.bPlaceMarkersAwayFromTarget);
     missionx::system_actions::store_plugin_options ();
   }
 } // add_skewed_marker_checkbox
@@ -551,14 +568,14 @@ WinImguiBriefer::add_ui_expose_all_gps_waypoints (const missionx::mx_window_acti
 {
   if (this->getCurrentLayer () == missionx::uiLayer_enum::option_user_generates_a_mission_layer)
   {
-    ImgWindow::HelpMarker ("Will be saved in the preference file.");
+    mx_img_window::HelpMarker ("Will be saved in the preference file.");
     ImGui::SameLine ();
   }
 
   if (ImGui::Checkbox ("Expose All GPS legs at mission start", &missionx::strct_setup_layer.bGPSImmediateExposure))
   {
     // ADD set option value
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE (), missionx::strct_setup_layer.bGPSImmediateExposure);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE (), missionx::strct_setup_layer.bGPSImmediateExposure);
     this->execAction (inActionToExecute);
   }
 }
@@ -568,13 +585,13 @@ WinImguiBriefer::add_ui_expose_all_gps_waypoints (const missionx::mx_window_acti
 void
 WinImguiBriefer::add_ui_suppress_distance_messages_checkbox_ui (missionx::mx_window_actions inActionToExecute)
 {
-  ImgWindow::HelpMarker ("When the Random engine is generating a mission, do you want to suppress the progress messages as you near the target ?\nWill be saved in the preference file.");
+  mx_img_window::HelpMarker ("When the Random engine is generating a mission, do you want to suppress the progress messages as you near the target ?\nWill be saved in the preference file.");
   ImGui::SameLine ();
 
   if (ImGui::Checkbox ("Suppress distance messages, to a waypoint, when generating a random mission.", &missionx::strct_setup_layer.bSuppressDistanceMessages))
   {
     // ADD set option value
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_ATTRIB_SUPPRESS_DISTANCE_MESSAGES_B (), missionx::strct_setup_layer.bSuppressDistanceMessages);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_ATTRIB_SUPPRESS_DISTANCE_MESSAGES_B (), missionx::strct_setup_layer.bSuppressDistanceMessages);
     this->execAction (inActionToExecute);
   }
 }
@@ -590,7 +607,7 @@ WinImguiBriefer::add_ui_default_weights ()
   ImGui::Checkbox ("Add default base weights.\nThis will be added to the weight of any item you pick from an external inventory.\n(Not advisable for aircraft larger than General Aviation)", &missionx::adv_settings_strct.flag_add_default_weight_settings);
   if (missionx::adv_settings_strct.flag_add_default_weight_settings)
   {
-    ImgWindow::HelpMarker ("Define Pilot Weight (0..200)");
+    mx_img_window::HelpMarker ("Define Pilot Weight (0..200)");
     ImGui::SameLine ();
     ImGui::SetNextItemWidth (100.0f);
     if (ImGui::InputInt ("Pilot Weight", &missionx::adv_settings_strct.pilot_base_weight_i, 5, 100, ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal))
@@ -602,7 +619,7 @@ WinImguiBriefer::add_ui_default_weights ()
     }
     if (missionx::data_manager::flag_setupUseXP11InventoryUI)
     {
-      ImgWindow::HelpMarker ("Define the total passenger weight (0..50000)");
+      mx_img_window::HelpMarker ("Define the total passenger weight (0..50000)");
       ImGui::SameLine ();
       ImGui::SetNextItemWidth (100.0f);
       if (ImGui::InputInt ("Total Passengers Weight", &missionx::adv_settings_strct.passengers_base_weight_i, 5, 100, ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal))
@@ -613,7 +630,7 @@ WinImguiBriefer::add_ui_default_weights ()
           missionx::adv_settings_strct.passengers_base_weight_i = 50000;
       }
 
-      ImgWindow::HelpMarker ("Total Cargo Weight (0..80000)");
+      mx_img_window::HelpMarker ("Total Cargo Weight (0..80000)");
       ImGui::SameLine ();
       ImGui::SetNextItemWidth (100.0f);
       if (ImGui::InputInt ("Total Cargo Weight", &missionx::adv_settings_strct.cargo_base_weight, 5, 100, ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_CharsDecimal))
@@ -1399,7 +1416,7 @@ WinImguiBriefer::add_flight_planning ()
       ImGui::NewLine ();
  
       ImGui::SameLine ();
-      ImgWindow::HelpMarker ("Abort the background process.");
+      mx_img_window::HelpMarker ("Abort the background process.");
       ImGui::SameLine ();
  
       this->add_ui_abort_mission_creation_button (); // Add Abort Random Engine
@@ -1409,6 +1426,41 @@ WinImguiBriefer::add_flight_planning ()
     this->mxUiReleaseLastFont ();
   } // end if mission is not running
   ImGui::EndGroup ();
+}
+
+// -------------------------------------------
+
+bool
+WinImguiBriefer::add_briefer_description_post_mission_creation(const bool& in_display_last_generated_briefer)
+{
+  bool b_displayed {false};
+  // ------------------------
+  // Display briefer description as collapsing header
+  // ------------------------
+
+  ImGui::PushStyleColor (ImGuiCol_HeaderHovered, missionx::color::color_vec4_lightgreen);
+  ImGui::PushStyleColor (ImGuiCol_Header, missionx::color::color_vec4_green);
+  ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black); // Text
+
+  if (in_display_last_generated_briefer
+      && !missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node.isEmpty()
+      && ImGui::CollapsingHeader("Last Generated Mission Description")
+      )
+  {
+    b_displayed ^= 1;
+    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+    ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_white); // Text
+    ImGui::TextWrapped ("%s", Utils::xml_get_cdata_or_text(missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node, "No Briefer Datam Yet.").c_str() );
+    ImGui::PopStyleColor();
+    this->mxUiReleaseLastFont();
+  }
+
+  ImGui::PopStyleColor(3);
+
+  if (b_displayed)
+    ImGui::Separator();
+
+  return b_displayed;
 }
 
 
@@ -2640,7 +2692,7 @@ WinImguiBriefer::print_messages_ui_debug_info ()
   for (auto &msg : missionx::data_manager::mapMessages | std::views::values)
   {
     bool bIsStoryMode = (msg.mode == missionx::mx_msg_mode::mode_story);
-    ImgWindow::HelpMarker ("Use at your own risk.");
+    mx_img_window::HelpMarker ("Use at your own risk.");
     ImGui::SameLine ();
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
     if (this->ButtonTooltip (fmt::format ("{}{}{}", Utils::from_u8string (ICON_FA_PLAY), "##PlayMessage", counter++).c_str (), "Play Message"))
@@ -2676,7 +2728,7 @@ void
 WinImguiBriefer::add_ui_skip_abort_setup_checkbox ()
 {
   // v3.305.3 skip abort script on script error
-  ImgWindow::HelpMarker ("Ignore script errors and do not abort the mission.\nThis can allow you to fix it in the \"debug|script\" tab.");
+  mx_img_window::HelpMarker ("Ignore script errors and do not abort the mission.\nThis can allow you to fix it in the \"debug|script\" tab.");
   ImGui::SameLine ();
   ImGui::Checkbox ("Ignore \"script errors\" - do not abort the mission on compilation ERROR.", &missionx::data_manager::flag_setupSkipMissionAbortIfScriptIsInvalid);
 }
@@ -2687,7 +2739,7 @@ void
 WinImguiBriefer::add_designer_mode_checkbox ()
 {
   // v24.03.2 Designer mode flag
-  ImgWindow::HelpMarker ("Enable Designer mode from the setup screen instead from the XML file. The XML file has precedence over this setting, and it will update it when loading a mission.\nMakes the option flexiable during mission tests.\nIn debug binaries it is set to 'true' by default.\nUsage: Affects behaviour of 'force_leg_name' in the global_settings.");
+  mx_img_window::HelpMarker ("Enable Designer mode from the setup screen instead from the XML file. The XML file has precedence over this setting, and it will update it when loading a mission.\nMakes the option flexiable during mission tests.\nIn debug binaries it is set to 'true' by default.\nUsage: Affects behaviour of 'force_leg_name' in the global_settings.");
   ImGui::SameLine ();
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_aqua);
   ImGui::Checkbox ("Enable \"Designer Mode\"", &missionx::data_manager::flag_setupEnableDesignerMode);
@@ -2702,7 +2754,7 @@ void
 WinImguiBriefer::add_ui_xp11_comp_checkbox (const bool &inStorePreference)
 {
   // v24.12.2 compatibility flag
-  ImgWindow::HelpMarker ("Decide if inventory layout will be compatible with X-Plane 11 or 12. XP12 supports \"station\" locations inside acf. XP11 - one big container, payload distribute evenly.\n\nMight be ignored, if designer force specific inventory layout in the template file.");
+  mx_img_window::HelpMarker ("Decide if inventory layout will be compatible with X-Plane 11 or 12. XP12 supports \"station\" locations inside acf. XP11 - one big container, payload distribute evenly.\n\nMight be ignored, if designer force specific inventory layout in the template file.");
   ImGui::SameLine ();
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_aqua);
   if (ImGui::Checkbox ("XP11 Inventory Layout", &missionx::data_manager::flag_setupUseXP11InventoryUI))
@@ -2710,7 +2762,7 @@ WinImguiBriefer::add_ui_xp11_comp_checkbox (const bool &inStorePreference)
     // ADD set option value
     if (inStorePreference)
     {
-      missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::SETUP_USE_XP11_INV_LAYOUT, missionx::data_manager::flag_setupUseXP11InventoryUI);
+      missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::SETUP_USE_XP11_INV_LAYOUT, missionx::data_manager::flag_setupUseXP11InventoryUI);
       this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
     }
   }
@@ -2726,16 +2778,16 @@ WinImguiBriefer::add_ui_simbrief_pilot_id ()
   {
     Utils::xml_search_and_set_node_text (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_SIMBRIEF_PILOT_ID (), std::string (missionx::strct_setup_layer.buf_simbrief_pilot_id), this->mxcode.STRING, true);
     // v26.04.1
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool>(mxconst::get_SETUP_SIMBRIEF_AUTO_LOAD_INTO_NOTES(), missionx::strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_SETUP_SIMBRIEF_AUTO_LOAD_INTO_NOTES(), missionx::strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes);
     // save changes
-    missionx::system_actions::store_plugin_options();
+    // missionx::system_actions::store_plugin_options(); // v26.08.1 deprecated, use "execAction" below.
 
     this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
   };
 
   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
   {
-    ImgWindow::HelpMarker ("Stores your Simbrief Pilot ID, so we could fetch your last flight plan.\nCan be found in your 'Account Settings' menu");
+    mx_img_window::HelpMarker ("Stores your Simbrief Pilot ID, so we could fetch your last flight plan.\nCan be found in your 'Account Settings' menu");
     ImGui::SameLine ();
     ImGui::TextColored (missionx::color::color_vec4_turquoise, "Your Simbrief pilot ID:");
     ImGui::Text ("%s", "Pilot ID:");
@@ -2749,7 +2801,7 @@ WinImguiBriefer::add_ui_simbrief_pilot_id ()
       lmbda_save_simbrief_settings ();
 
     // v26.04.1
-    ImgWindow::HelpMarker (R"(When fetching the Simbrief flight plan, parts of the extra data will be written into the "notes" fields.)");
+    mx_img_window::HelpMarker (R"(When fetching the Simbrief flight plan, parts of the extra data will be written into the "notes" fields.)");
     ImGui::SameLine();
     if (ImGui::Checkbox(R"(Autoload extra data into the "notes" fields.)", &missionx::strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes))
       lmbda_save_simbrief_settings ();
@@ -2783,13 +2835,15 @@ WinImguiBriefer::add_ui_flightplandb_key (const bool isPopup)
 
     {
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
-      if (ImGui::Button ("Save", ImVec2 (60, 0)))
+      if (ImGui::Button ("Save##Saveflightplandb_key", ImVec2 (60, 0)))
       {
         if (isPopup)
           ImGui::CloseCurrentPopup ();
 
         Utils::xml_search_and_set_node_text (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY (), std::string (this->strct_ext_layer.buf_authorization), this->mxcode.STRING, true);
         this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
+
+        this->set_bottom_message_line1("Saved Key.", 5);
 
         if (mxUtils::trim (std::string (this->strct_ext_layer.buf_authorization)).empty ())
           this->strct_ext_layer.flag_flightplandatabase_auth_exists = false;
@@ -2816,7 +2870,7 @@ WinImguiBriefer::add_ui_pick_subcategories (const std::vector<const char *> &vec
     missionx::strct_user_create_layer.iMissionSubCategoryPicked = 0;
   }
 
-  ImgWindow::HelpMarker ("Pick one of the sub categories");
+  mx_img_window::HelpMarker ("Pick one of the sub categories");
   ImGui::SameLine ();
   ImGui::SetNextItemWidth (250.0f);
 
@@ -2832,12 +2886,12 @@ WinImguiBriefer::add_ui_auto_load_checkbox (const missionx::mx_window_actions &i
 {
   ImGui::Spacing ();
   ImGui::SameLine (0.0f, 10.0f);
-  ImgWindow::HelpMarker ("On flight start, the GPS waypoints will be loaded.\nThe setting will be saved into the preference file.", missionx::color::color_vec4_aqua);
+  mx_img_window::HelpMarker ("On flight start, the GPS waypoints will be loaded.\nThe setting will be saved into the preference file.", missionx::color::color_vec4_aqua);
   ImGui::SameLine ();
   if (ImGui::Checkbox ("Auto Load Route.\n(not advisable for FMS)", &missionx::strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms)) // v25.04.2
   {
     // ADD set option value
-    missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), missionx::strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms);
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), missionx::strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms);
     this->execAction (inActionToExecute);
   }
 }
@@ -2944,38 +2998,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_1_pick()
             missionx::strct_user_create_layer.user_semi_act_picked = btn_info;
             missionx::strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_accept;
 
-            // ---------------
-            // Randomize max distance to use with the "tweak" slider
-            // ---------------
-            missionx::strct_user_create_layer.user_semi_act_picked.randomize_max_distance();
-            // ------------------------
-            // Randomize how many "Flight Legs" to generate based on activity type
-            // ------------------------
-            strct_user_create_layer.iNumberOfFlighLegs = missionx::strct_user_create_layer.user_semi_act_picked.randomize_no_of_legs();
-
-            // prepare detail description for "add_ui_semi_act_phase_2_detail()" function
-            missionx::strct_user_create_layer.user_semi_act_picked.prepare_the_semi_activity_description();
-
-            // v26.04.5 prepare a "funny fact" description based on the plane type
-            if (map_activity_funny_descriptions.contains(btn_info.activity))
-            {
-              std::vector<std::string> vec_descriptions;
-              vec_descriptions = map_activity_funny_descriptions.at(btn_info.activity);
-              // pick random description from the vector
-              const auto random_index = Utils::getShuffledIndexVector_byType<size_t>(vec_descriptions.size()).front();
-              // assign the description
-              missionx::strct_user_create_layer.user_semi_act_picked.random_description = vec_descriptions[random_index];
-            }
-            else
-              missionx::strct_user_create_layer.user_semi_act_picked.random_description.clear(); 
-
-
-            // web osm
-            if (missionx::strct_user_create_layer.user_semi_act_picked.activity == enums::mx_semi_activities_enum::act_helos_medevac_accident
-              || missionx::strct_user_create_layer.user_semi_act_picked.activity == enums::mx_semi_activities_enum::act_helos_medevac_surprise_me)
-              missionx::strct_user_create_layer.flag_use_web_osm          = true;
-            else
-              missionx::strct_user_create_layer.flag_use_web_osm          = false;
+            gather_semi_act_phase1_data_based_on_picked_activity(missionx::strct_user_create_layer, true);
 
           }
           if (!btn_info.tip.empty ())
@@ -3022,7 +3045,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
   {
     // display back button
     this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
-    if (ImgWindow::ButtonTooltip(mxUtils::from_u8string(ICON_FA_REPLY).append("##BackButtonInSetup").c_str(), "Back", IM_COL32(255, 255, 0, 255), IM_COL32(0, 0, 0, 255), VEC2_BACK_BTN_SIZE)) //
+    if (mx_img_window::ButtonTooltip(mxUtils::from_u8string(ICON_FA_REPLY).append("##BackButtonInSetup").c_str(), "Back", IM_COL32(255, 255, 0, 255), IM_COL32(0, 0, 0, 255), VEC2_BACK_BTN_SIZE)) //
     {
       missionx::strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_pick;
       missionx::strct_user_create_layer.user_semi_act_picked.reset();
@@ -3037,7 +3060,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
 
     const auto activity_does_not_have_description = (!bPickedOilRigMission && !bPickedGAMission && !bPickedMedevacSurpriseMeMission);
     //const auto table_flags                        = (activity_does_not_have_description) ? ImGuiTableFlags_SizingFixedFit : ImGuiTableFlags_SizingStretchProp;
-    const auto table_flags                        = ImGuiTableFlags_SizingStretchProp;
+     constexpr auto table_flags                        = ImGuiTableFlags_SizingStretchProp;
 
     ImGui::BeginTable("mission_description#table_phase2_detail", 2, table_flags);
     {
@@ -3080,6 +3103,15 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
     {
       ImGui::Spacing();
 
+      // ------------------------
+      // Show briefer collapsing header
+      // ------------------------
+      // v26.08.1
+      this->add_briefer_description_post_mission_creation(!(missionx::data_manager::flag_generate_engine_is_running)
+                                                          && missionx::data_manager::missionState < mx_mission_state_enum::mission_is_running);
+
+      ImGui::Spacing();
+
       // Oil rig search area
       if (bPickedOilRigMission)
       {
@@ -3097,6 +3129,8 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
         {
           ImGui::SameLine(0.0f, 10.0f);
           WinImguiBriefer::add_ui_is_amphibian();
+          ImGui::SameLine(0.0f, 10.0f);
+          WinImguiBriefer::add_ui_is_ga_cross_country_checkbox();
         }
 
         ImGui::Spacing ();
@@ -3116,16 +3150,19 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
           if (ImGui::SliderFloat ("##tweak_max_distance", &strct_user_create_layer.user_semi_act_picked.max_distance_slider_f, missionx::strct_user_create_layer.user_semi_act_picked.distance_min_max.lowest_max, missionx::strct_user_create_layer.user_semi_act_picked.distance_min_max.max, "%.2f nm"))
           {
             // refresh description
-            strct_user_create_layer.user_semi_act_picked.prepare_the_semi_activity_description();
+            strct_user_create_layer.user_semi_act_picked.prepare_the_semi_activity_description(strct_user_create_layer.iNumberOfFlighLegs);
           }
         } // end oilrig and distance restriction
 
         // Customize the number of flight legs to generate.
+        const bool bDisableRadioLegs = mx_img_window::mxStartUiDisableState(strct_user_create_layer.flag_cross_country);
         if (WinImguiBriefer::add_ui_pick_how_many_legs(strct_user_create_layer.iNumberOfFlighLegs, "How Many Flight Legs ? ", missionx::strct_user_create_layer.user_semi_act_picked.legs_min_max.min, missionx::strct_user_create_layer.user_semi_act_picked.legs_min_max.max) )
         {
           strct_user_create_layer.user_semi_act_picked.final_legs_no_to_generate = strct_user_create_layer.iNumberOfFlighLegs;
-          strct_user_create_layer.user_semi_act_picked.prepare_the_semi_activity_description();
+          strct_user_create_layer.user_semi_act_picked.prepare_the_semi_activity_description(strct_user_create_layer.iNumberOfFlighLegs);
         }
+        mx_img_window::mxEndUiDisableState(bDisableRadioLegs);
+
 
       }
 
@@ -3158,7 +3195,9 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
     // Add Advance Configuration Button
     ImGui::NewLine();
     ImGui::SameLine(win_width_f - 230.0f);
-    this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked);
+    // this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked);
+    // v26.08.1
+    this->add_ui_advance_settings_random_date_time_weather_and_weight_button ();
 
     // Add [generate] button
     ImGui::SameLine(10.0f);
@@ -3240,7 +3279,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
         // -----------------------
         // DISPLAY [ABORT]
         // -----------------------
-        ImgWindow::HelpMarker("Abort the background process.");
+        mx_img_window::HelpMarker("Abort the background process.");
         ImGui::SameLine(0.0f, 5.0f);
         this->add_ui_abort_mission_creation_button(); // Add Abort Random Engine
       }
@@ -3257,7 +3296,6 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
         this->add_ui_warning_messages_button(); // v26.1.1. Also change the "start" button position to clear space for the warning button.
       }
 
-      // ImGui::SetWindowFontScale(mxconst::DEFAULT_BASE_FONT_SCALE);
     }
     this->mxUiReleaseLastFont();
 
@@ -3295,7 +3333,7 @@ WinImguiBriefer::add_ui_pick_how_many_legs(int & inout_radio_value_ref, const st
 
 void WinImguiBriefer::add_ui_oilrig_search_area_buttons()
 {
-  ImgWindow::HelpMarker (R"(Best used with the "OSM Offshore Oil-Rigs" custom scenery for full world coverage.
+  mx_img_window::HelpMarker (R"(Best used with the "OSM Offshore Oil-Rigs" custom scenery for full world coverage.
 
 The plugin will place you randomly in a location near an Oil Rig. The Oil Rig data is highly dependent on the Oil Rig information found in the apt.dat files, and not on what you see in your maps.
 
@@ -3314,6 +3352,15 @@ Filter options:
 
 }
 
+void
+WinImguiBriefer::add_ui_is_ga_cross_country_checkbox()
+{
+  if (ImGui::Checkbox("Is Cross Country##GACrossCountry", &strct_user_create_layer.flag_cross_country ) )
+  {
+    gather_semi_act_phase1_data_based_on_picked_activity(missionx::strct_user_create_layer, false);
+  }
+}
+
 void WinImguiBriefer::add_ui_mission_description(const std::string& in_description) 
 {
   this->mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_SMALL());
@@ -3326,47 +3373,6 @@ void WinImguiBriefer::add_ui_mission_description(const std::string& in_descripti
 }
 
 // -------------------------------------------
-
-// void WinImguiBriefer::add_ui_mission_description2(const std::vector<std::string>& in_descriptions)
-// {
-//   const auto n_descriptions = in_descriptions.size();
-//   // pick random description
-//   const auto random_index = Utils::getShuffledIndexVector_byType<size_t>(n_descriptions).front();
-//   this->mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_SMALL());
-//   {
-//     ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_yellow);
-//     ImGui::TextWrapped("%s", in_descriptions[random_index].c_str());
-//     ImGui::PopStyleColor(1);
-//   }
-//   this->mxUiReleaseLastFont();
-//
-// }
-//
-// // -------------------------------------------
-//
-// void WinImguiBriefer::add_ui_prop_mission_warning()
-// {
-//   this->mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_SMALL());
-//   {
-//     ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_yellow);
-//     ImGui::TextWrapped("%s", "Discover the airfields around you!\nThere are many hidden gems waiting to be found when flying a GA aircraft.");
-//     ImGui::PopStyleColor(1);
-//   }
-//   this->mxUiReleaseLastFont();
-// }
-//
-// // -------------------------------------------
-//
-// void WinImguiBriefer::add_ui_oilrig_warning()
-// {
-//   this->mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_SMALL());
-//   {
-//     ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_yellow);
-//     ImGui::TextWrapped("%s", "Best used with the \"OSM Offshore Oil - Rigs\" custom scenery for full world coverage.\nThe plugin will place you randomly in a location near an Oil Rig. The Oil Rig data is highly dependent on the Oil Rig information found in the apt.dat files, and not on what you see in your maps.");
-//     ImGui::PopStyleColor(1);
-//   }
-//   this->mxUiReleaseLastFont();
-// }
 
 void WinImguiBriefer::add_ui_medevac_surprise_me_warning()
 {
@@ -3388,6 +3394,108 @@ void WinImguiBriefer::add_ui_is_amphibian()
     // v26.04.4
     ImGui::Checkbox ("Is Amphibian##filterRamps", &strct_user_create_layer.flag_plane_is_amphibian);
 }
+
+// -------------------------------------------
+
+void
+WinImguiBriefer::add_ui_ai_use_ai_checkbox()
+{
+  // v26.08.1
+  mx_img_window::mxUiHelpMarker(missionx::color::color_vec4_beige, "Used only in the User Creation screen.");
+  ImGui::SameLine();
+  if (ImGui::Checkbox ("Use AI##ai_setup", &strct_setup_layer.b_use_ai) )
+  {
+    system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_OPT_AI_USE_AI(), strct_setup_layer.b_use_ai);
+    this->execAction(mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
+  }
+}
+
+// -------------------------------------------
+
+void WinImguiBriefer::add_ui_ai_server_url() 
+{
+  bool bNeedToSave = false;
+
+  missionx::mx_img_window::mxUiHelpMarker(missionx::color::color_vec4_aqua, "The only LLM format supported is \"OpenAI\".\nMake sure the server you are using supports it.\nExample: http://localhost:1234/v1/chat/completions");
+  ImGui::SameLine();
+  // disable or not the ai url field
+  const bool bDisable2 = this->mxStartUiDisableState(!strct_setup_layer.b_use_ai);
+
+  ImGui::TextColored(missionx::color::color_vec4_yellow, "LLM Server URL:");
+  ImGui::SetNextItemWidth(350.0f);
+  if (ImGui::InputTextWithHint("##ai_url_data", "http://localhost:1234/v1/chat/completions (OpenAI Format)", missionx::strct_setup_layer.buf_ai_url, sizeof(missionx::strct_setup_layer.buf_ai_url), ImGuiInputTextFlags_EnterReturnsTrue))  
+    bNeedToSave = true;
+  // tooltip
+  missionx::mx_img_window::mx_add_tooltip(missionx::color::color_vec4_beige, "OpenAI Format, example: http://{url}:{port}/v1/chat/completions");
+  // save button
+  ImGui::SameLine();
+  this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
+  if (ImGui::Button("Save##SaveServerUrl", ImVec2(60, 0)))
+    bNeedToSave = true;
+  this->mxUiReleaseLastFont();
+
+  // decide if to save llm server url
+  if (bNeedToSave)
+  {
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_6(mxconst::get_OPT_AI_SERVER_URL(), missionx::strct_setup_layer.buf_ai_url);
+    this->execAction(mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
+    bNeedToSave ^= 1; // reset to false
+    this->set_bottom_message_line1("Saved LLM Url settings.", 5);
+  } 
+
+
+  // LLM API KEY
+  ImGui::TextColored(missionx::color::color_vec4_yellow, "[Optional] LLM API Key:");
+  constexpr auto ai_tip_auth = R"(Some LLM servers require an API key.
+Local LLM servers usually do not require an API key.
+You should verify the authentication requirements for your specific LLM server.
+
+LM Studio can be configured to use or not use an API key.
+llama.cpp does not require an API key by default.
+
+If no API key is provided, Mission-X will send a dummy string.
+The API key will be ignored if your LLM server does not require one.)";
+
+  mx_img_window::mxUiHelpMarker(missionx::color::color_vec4_aqua, ai_tip_auth);
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(350.0f);
+
+  bNeedToSave = false; // manual reset state
+  if (ImGui::InputTextWithHint("##ai_auth_key", "Optional: Enter the API/Auth key.", missionx::strct_setup_layer.buf_ai_auth_key, sizeof(missionx::strct_setup_layer.buf_ai_auth_key), ImGuiInputTextFlags_EnterReturnsTrue))
+    bNeedToSave ^= 1;
+  
+  // save button
+  ImGui::SameLine();
+  this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
+  if (ImGui::Button("Save##SaveLLM_apiKey", ImVec2(60, 0)))
+    bNeedToSave ^= 1;
+  this->mxUiReleaseLastFont();
+
+  if (bNeedToSave)
+  {
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_6(mxconst::get_OPT_AI_AUTH_KEY(), missionx::strct_setup_layer.buf_ai_auth_key);
+    this->execAction(mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
+    bNeedToSave ^= 1; // back to false.
+    this->set_bottom_message_line1("Saved LLM API Key settings.", 5);
+  }
+
+  ImGui::TextColored(missionx::color::color_vec4_yellow, "LLM Server Timeout:");
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(80.0f);
+  if (ImGui::Combo("##LLMTimeout", &missionx::strct_setup_layer.llm_timeout_selected_index, missionx::mx_setup_layer::llm_server_timeout_items.data(), static_cast<int>(missionx::mx_setup_layer::llm_server_timeout_items.size())))
+  {
+    const int selected_timeout_length = (missionx::strct_setup_layer.llm_timeout_selected_index == 0) ? 60 : 120;
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<int>(mxconst::get_OPT_AI_LLM_SERVER_TIMEOUT(), selected_timeout_length);
+    this->execAction(mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
+
+  }
+
+
+
+  this->mxEndUiDisableState(bDisable2);
+  ImGui::NewLine();
+}
+
 
 // -------------------------------------------
 
@@ -3555,7 +3663,7 @@ WinImguiBriefer::draw_top_toolbar ()
       ImGui::SameLine (0.01f); // v3.0.253.9.1 we set to 0.01 since 0.0f do not display in popout window // should be beginning of toolbar
 
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-      if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_REPLY).append ("##BackButtonInSetup").c_str (), "Back", IM_COL32 (255, 255, 0, 255), IM_COL32 (0, 0, 0, 255), ImVec2 (32.0f, 32.0f))) //
+      if (mx_img_window::ButtonTooltip (mxUtils::from_u8string (ICON_FA_REPLY).append ("##BackButtonInSetup").c_str (), "Back", IM_COL32 (255, 255, 0, 255), IM_COL32 (0, 0, 0, 255), ImVec2 (32.0f, 32.0f))) //
       {
         missionx::strct_ils_layer.flagNavigatedFromOtherLayer = false; // v24025
         // change to last prev layer
@@ -3974,7 +4082,7 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
 
           ImGui::Checkbox ("Start from plane position", &missionx::strct_cross_layer_properties.flag_start_from_plane_position); // v3.0.253.11
           ImGui::Spacing ();
-          ImgWindow::mxUiHelpMarker (missionx::color::color_vec4_aqua, "Will create a Departure and Arrival entries.");
+          mx_img_window::mxUiHelpMarker (missionx::color::color_vec4_aqua, "Will create a Departure and Arrival entries.");
           ImGui::SameLine ();
           ImGui::Checkbox ("Generate GPS waypoints.", &missionx::strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12
 
@@ -3982,7 +4090,7 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
           {
             ImGui::Spacing ();
             ImGui::SameLine (0.0f, 10.0f);
-            ImgWindow::mxUiHelpMarker (missionx::color::color_vec4_aqua, R"(Add the "Route Waypoints" to the Flight Plan.)");
+            mx_img_window::mxUiHelpMarker (missionx::color::color_vec4_aqua, R"(Add the "Route Waypoints" to the Flight Plan.)");
             ImGui::SameLine ();
             ImGui::Checkbox ("Add Route Waypoints.", &missionx::strct_cross_layer_properties.flag_add_route_waypoints); // v25.04.2
           }
@@ -3995,7 +4103,8 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
           ImGui::Spacing ();
           this->add_ui_pick_subcategories (missionx::mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]);
           ImGui::Spacing ();
-          this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked);
+          // this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked);
+          this->add_ui_advance_settings_random_date_time_weather_and_weight_button ();
           ImGui::Spacing (); // v24.03.2
           add_designer_mode_checkbox (); // v24.03.2 Designer mode flag
         }
@@ -4251,7 +4360,6 @@ WinImguiBriefer::draw_setup_layer ()
   if (missionx::strct_setup_layer.is_first_time)
   {
     std::string stored_overpass_url = Utils::getNodeText_type_6 (missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_URL (), mxconst::get_DEFAULT_OVERPASS_URL ());
-    // std::memcpy (missionx::strct_setup_layer.overpass_url_buf, stored_overpass_url.c_str (), missionx::mx_setup_layer::OSM_BUFF_SIZE_I);
     mxUtils::copy_string_to_buffer (stored_overpass_url, missionx::strct_setup_layer.overpass_url_buf[0], sizeof(missionx::strct_setup_layer.overpass_url_buf));
 
     // v3.303.9.1
@@ -4259,7 +4367,6 @@ WinImguiBriefer::draw_setup_layer ()
     {
       IXMLNode    node          = missionx::data_manager::xMissionxProperties_node.getChildNode (mxconst::get_ELEMENT_SCORING ().c_str ());
       std::string nodeContent_s = Utils::xml_get_node_content_as_text (node);
-      // std::memcpy (missionx::strct_setup_layer.default_scoring_buf, nodeContent_s.c_str (), sizeof (missionx::strct_setup_layer.default_scoring_buf) - 1);
       mxUtils::copy_string_to_buffer (nodeContent_s, missionx::strct_setup_layer.default_scoring_buf[0], sizeof (missionx::strct_setup_layer.default_scoring_buf) );
 
     }
@@ -4319,7 +4426,7 @@ WinImguiBriefer::draw_setup_layer ()
 
     // v3.305.1 added Pilot name for story mode in <message> element.
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
-    ImgWindow::HelpMarker ("> Stores name in preference file only when pressing [Enter]\n> Only used in Messages that use the \"story mode\".\n> Might be extended in future builds to all missions.");
+    mx_img_window::HelpMarker ("> Stores name in preference file only when pressing [Enter]\n> Only used in Messages that use the \"story mode\".\n> Might be extended in future builds to all missions.");
     ImGui::SameLine ();
     ImGui::TextColored (missionx::color::color_vec4_turquoise, "Your pilot nick name:");
     ImGui::SameLine ();
@@ -4410,7 +4517,7 @@ WinImguiBriefer::draw_setup_layer ()
       if (ImGui::Checkbox ("Display Target Markers", &missionx::strct_setup_layer.bDisplayTargetMarkers))
       {
         // ADD set option value
-        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_SETUP_DISPLAY_TARGET_MARKERS (), missionx::strct_setup_layer.bDisplayTargetMarkers);
+        missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_SETUP_DISPLAY_TARGET_MARKERS (), missionx::strct_setup_layer.bDisplayTargetMarkers);
         this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
       }
 
@@ -4422,13 +4529,13 @@ WinImguiBriefer::draw_setup_layer ()
 
       ImGui::TextColored (missionx::color::color_vec4_yellow, "Font Scale:");
 
-      ImgWindow::HelpMarker ("Font Scale will resize font based on software interpolation code.\nIt is not the same as picking a larger font pixel.");
+      mx_img_window::HelpMarker ("Font Scale will resize font based on software interpolation code.\nIt is not the same as picking a larger font pixel.");
       ImGui::SameLine ();
       ImGui::PushItemWidth (100.0f);
       if (ImGui::SliderFloat ("Preferred Font Scale, Example:", &missionx::strct_setup_layer.fPreferredFontScale, missionx::strct_setup_layer.fFontMinScaleSize, missionx::strct_setup_layer.fFontMaxScaleSize, "scale %.1f"))
       {
         // ADD set option value
-        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<float> (mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE (), missionx::strct_setup_layer.fPreferredFontScale);
+        missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<float> (mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE (), missionx::strct_setup_layer.fPreferredFontScale);
         this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
       }
       ImGui::PopItemWidth ();
@@ -4453,6 +4560,23 @@ WinImguiBriefer::draw_setup_layer ()
         this->mxEndUiDisableState (bDisable);
       }
 
+      // ImGui::NewLine ();
+      // // v26.08.1
+      // this->add_ui_ai_use_ai_checkbox ();
+      //
+      // missionx::mx_img_window::mxUiHelpMarker(missionx::color::color_vec4_aqua, "LLM Format supported is \"OpenAI\".\nMake sure the server you are using supports it.\nExample: http://localhost:1234/v1/chat/completions");
+      // ImGui::SameLine();
+      // // disable or not the ai url field
+      // const bool bDisable2 = this->mxStartUiDisableState( !strct_setup_layer.b_use_ai );
+      // ImGui::TextColored (missionx::color::color_vec4_yellow, "AI Server URL:");
+      // if (ImGui::InputTextWithHint ("##ai_url_data", "http://localhost:1234/v1/chat/completions (OpenAI Format)", missionx::strct_setup_layer.buf_ai_url, sizeof (missionx::strct_setup_layer.buf_ai_url), ImGuiInputTextFlags_EnterReturnsTrue))
+      // {
+      //   missionx::system_actions::pluginSetupOptions.set_node_text_type_6(mxconst::get_OPT_AI_SERVER_URL(), missionx::strct_setup_layer.buf_ai_url);
+      //   this->execAction(mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
+      // }
+      // missionx::mx_img_window::mx_add_tooltip(missionx::color::color_vec4_beige, "OpenAI Format, example: http://{url}:{port}/v1/chat/completions");
+      // this->mxEndUiDisableState ( bDisable2);
+
       ImGui::NewLine ();
 
       // v25.06.1 deprecate the option
@@ -4463,7 +4587,7 @@ WinImguiBriefer::draw_setup_layer ()
       {
         missionx::strct_setup_layer.bPauseInVR = false;
         // ADD set option value
-        // missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_AUTO_PAUSE_IN_VR (), missionx::strct_setup_layer.bPauseInVR);
+        // missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_OPT_AUTO_PAUSE_IN_VR (), missionx::strct_setup_layer.bPauseInVR);
         // this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
       }
       this->mxEndUiDisableState (bDisable);
@@ -4471,12 +4595,12 @@ WinImguiBriefer::draw_setup_layer ()
 
       // Cycle Mission-X Log File
       ImGui::TextColored (missionx::color::color_vec4_yellow, "Cycle plugin log files:");
-      ImgWindow::HelpMarker ("Cycle Mission-X log file in every new session.\nThe plugin will keep few versions of the logfile for debug or as a reference.\n\nYou can find the files in the plugin folder.");
+      mx_img_window::HelpMarker ("Cycle Mission-X log file in every new session.\nThe plugin will keep few versions of the logfile for debug or as a reference.\n\nYou can find the files in the plugin folder.");
       ImGui::SameLine ();
       if (ImGui::Checkbox ("Cycle log files", &missionx::strct_setup_layer.bCycleLogFiles))
       {
         // ADD set option value
-        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_CYCLE_LOG_FILES (), missionx::strct_setup_layer.bCycleLogFiles);
+        missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_OPT_CYCLE_LOG_FILES (), missionx::strct_setup_layer.bCycleLogFiles);
         this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
       }
 
@@ -4504,7 +4628,21 @@ WinImguiBriefer::draw_setup_layer ()
         this->add_ui_simbrief_pilot_id ();
         ImGui::Spacing ();
         ImGui::Separator ();
+
+        ImGui::TextColored(missionx::color::color_vec4_greenyellow, "flightplandatabase:");
         this->add_ui_flightplandb_key (false);
+
+        // ------------------------
+        // -- AI info
+        // ------------------------
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::TextColored(missionx::color::color_vec4_greenyellow, "LLM Server (AI):");
+
+        // v26.08.1
+        this->add_ui_ai_use_ai_checkbox ();
+        this->add_ui_ai_server_url();
+
       }
       this->mxUiReleaseLastFont ();
 
@@ -4574,7 +4712,7 @@ WinImguiBriefer::draw_setup_layer ()
     {
       constexpr const static float BTN_WIDTH_F = 300.0f; // v3.305.1
 
-      ImgWindow::HelpMarker ("Create external flight plan files based on the \"fpln_folders.ini\" settings and the current GPS flight plan.");
+      mx_img_window::HelpMarker ("Create external flight plan files based on the \"fpln_folders.ini\" settings and the current GPS flight plan.");
       ImGui::SameLine ();
 
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
@@ -4596,7 +4734,7 @@ WinImguiBriefer::draw_setup_layer ()
 
 
       // v3.303.14 Write Plane Coordinates
-      ImgWindow::HelpMarker ("Write Plane coordinates into the missionx.log file.");
+      mx_img_window::HelpMarker ("Write Plane coordinates into the missionx.log file.");
       ImGui::SameLine ();
 
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
@@ -4617,7 +4755,7 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::NewLine ();
 
       // v3.303.14 Write Camera Coordinates
-      ImgWindow::HelpMarker ("Write Camera coordinates into the missionx.log file.");
+      mx_img_window::HelpMarker ("Write Camera coordinates into the missionx.log file.");
       ImGui::SameLine ();
 
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
@@ -4638,7 +4776,7 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::NewLine ();
 
       // v3.303.13 Write weather data
-      ImgWindow::HelpMarker ("Write Weather datarefs into the missionx.log file so you could use that in a scriptlet.\nXP12 designers are encourage to double check the \"change_mode, variability, turbulence, cloud_height_msl\" datarefs and tweak them for better experience.");
+      mx_img_window::HelpMarker ("Write Weather datarefs into the missionx.log file so you could use that in a scriptlet.\nXP12 designers are encourage to double check the \"change_mode, variability, turbulence, cloud_height_msl\" datarefs and tweak them for better experience.");
       ImGui::SameLine ();
 
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
@@ -4658,7 +4796,7 @@ WinImguiBriefer::draw_setup_layer ()
 
       ImGui::NewLine ();
 
-      ImgWindow::HelpMarker ("!!!This is a template designer feature!!!\n\nReads the file '{XP}/Custom Scenery/missionx/random/points.xml' and probe <point> locations to test if it is water or land.\nThe information will be used by the Random Engine (Read the designer guide, check the Appendix)");
+      mx_img_window::HelpMarker ("!!!This is a template designer feature!!!\n\nReads the file '{XP}/Custom Scenery/missionx/random/points.xml' and probe <point> locations to test if it is water or land.\nThe information will be used by the Random Engine (Read the designer guide, check the Appendix)");
       ImGui::SameLine ();
 
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
@@ -4701,7 +4839,7 @@ WinImguiBriefer::draw_setup_layer ()
       {
         ImGui::Text ("Force Normalized Mission Volume: ");
 
-        ImgWindow::HelpMarker ("Normalized mission volume means that we force a max volume over the mission volume definition (NOT X-Plane sound volume).\nThe effect takes place when the sound file starts to play and not during play.");
+        mx_img_window::HelpMarker ("Normalized mission volume means that we force a max volume over the mission volume definition (NOT X-Plane sound volume).\nThe effect takes place when the sound file starts to play and not during play.");
         ImGui::SameLine ();
         ImGui::Text ("Force Volume ?: ");
         ImGui::SameLine ();
@@ -4710,7 +4848,7 @@ WinImguiBriefer::draw_setup_layer ()
 
       if (ImGui::Checkbox ("##normalizedCheckbox", &missionx::strct_setup_layer.bForceNormalizedVolume))
       {
-        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_SETUP_NORMALIZE_VOLUME_B (), missionx::strct_setup_layer.bForceNormalizedVolume);
+        missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_SETUP_NORMALIZE_VOLUME_B (), missionx::strct_setup_layer.bForceNormalizedVolume);
         this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
       }
       if (missionx::strct_setup_layer.bForceNormalizedVolume)
@@ -4724,7 +4862,7 @@ WinImguiBriefer::draw_setup_layer ()
           else if (missionx::strct_setup_layer.iNormalizedVolume_val > static_cast<int> (mxconst::MAX_SOUND_VOLUME_F))
             missionx::strct_setup_layer.iNormalizedVolume_val = static_cast<int> (mxconst::MAX_SOUND_VOLUME_F);
 
-          missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<int> (mxconst::get_SETUP_NORMALIZED_VOLUME (), missionx::strct_setup_layer.iNormalizedVolume_val);
+          missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<int> (mxconst::get_SETUP_NORMALIZED_VOLUME (), missionx::strct_setup_layer.iNormalizedVolume_val);
           this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
         }
       }
@@ -4769,14 +4907,14 @@ WinImguiBriefer::draw_setup_layer ()
         ImGui::SameLine ();
         if (ImGui::Checkbox ("Lock URL", &missionx::strct_setup_layer.flag_lock_overpass_url))
         {
-          missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_SETUP_LOCK_OVERPASS_URL_TO_USER_PICK (), ((missionx::strct_setup_layer.flag_lock_overpass_url) ? true : false));
+          missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_SETUP_LOCK_OVERPASS_URL_TO_USER_PICK (), ((missionx::strct_setup_layer.flag_lock_overpass_url) ? true : false));
           this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
         }
 
         
         // --- Overpass list to choose from. Not stored in preferences file.
         ImGui::NewLine();
-        ImgWindow::HelpMarker("At least one URL must be selected from the list.\nYou can modify your preferences during mission creation.\nCheck the error message line during generation (scroll down if needed).");
+        mx_img_window::HelpMarker("At least one URL must be selected from the list.\nYou can modify your preferences during mission creation.\nCheck the error message line during generation (scroll down if needed).");
         ImGui::SameLine();
         ImGui::TextColored(missionx::color::color_vec4_yellow, "%s", "Limit available Overpass URLs (this setting is not saved in preferences):");
         for (int url_index = 0; const auto& url: missionx::data_manager::vecOverpassUrls)
@@ -4847,7 +4985,7 @@ WinImguiBriefer::draw_setup_layer ()
       if (ImGui::Checkbox ("Ignore custom FPLN folders and write to X-Plane 'FMS Plans' instead.", &missionx::strct_setup_layer.bOverideCustomExternalFPLN_folders))
       {
         // ADD set option value
-        missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_WRITE_CONVERTED_FPLN_TO_XPLANE_FOLDER (), missionx::strct_setup_layer.bOverideCustomExternalFPLN_folders);
+        missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_OPT_WRITE_CONVERTED_FPLN_TO_XPLANE_FOLDER (), missionx::strct_setup_layer.bOverideCustomExternalFPLN_folders);
         this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
       }
 
@@ -4962,7 +5100,7 @@ WinImguiBriefer::draw_setup_layer ()
         if (ImGui::Checkbox ("Disable Inventory Image Load ?", &missionx::strct_setup_layer.bDisableInventoryImageLoad))
         {
           // ADD set option value
-          missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<bool> (mxconst::get_OPT_DISABLE_INVENTORY_IMAGE_LOAD (), missionx::strct_setup_layer.bDisableInventoryImageLoad);
+          missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_OPT_DISABLE_INVENTORY_IMAGE_LOAD (), missionx::strct_setup_layer.bDisableInventoryImageLoad);
           this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
         }
 
@@ -4977,7 +5115,7 @@ WinImguiBriefer::draw_setup_layer ()
         ImGui::TextColored (missionx::color::color_vec4_yellow, "If that happens, please pick the Linux Distro version you are using and\nthe plugin will try to use a workaround for it.");
         if (ImGui::Combo ("Linux Flavor##LinuxFlavorCombo", &missionx::strct_setup_layer.iLinuxFlavor_val, missionx::strct_setup_layer.vecLinuxComboCodes_s.data (), static_cast<int> (missionx::strct_setup_layer.vecLinuxComboCodes_s.size ())))
         {
-          missionx::system_actions::pluginSetupOptions.setSetupNodeProperty<int> (mxconst::get_SETUP_LINUX_FLAVOR_CODE_I (), missionx::strct_setup_layer.iLinuxFlavor_val);
+          missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<int> (mxconst::get_SETUP_LINUX_FLAVOR_CODE_I (), missionx::strct_setup_layer.iLinuxFlavor_val);
           this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
         }
         #endif
@@ -5078,12 +5216,12 @@ WinImguiBriefer::draw_setup_layer ()
 
       // v24.03.2 Designer mode flag
       add_designer_mode_checkbox ();
-      // ImgWindow::HelpMarker("Enable Designer mode from the setup screen instead from the XML file. The XML file has precidence over this setting, and it will update it when loading a mission.\nMakes the option flexiable during mission tests.\nIn debug binaries it is set to 'true' by default.\nUsage: Affects behaviour of 'force_leg_name' in the global_settings.");
+      // mx_img_window::HelpMarker("Enable Designer mode from the setup screen instead from the XML file. The XML file has precidence over this setting, and it will update it when loading a mission.\nMakes the option flexiable during mission tests.\nIn debug binaries it is set to 'true' by default.\nUsage: Affects behaviour of 'force_leg_name' in the global_settings.");
       // ImGui::SameLine();
       // ImGui::Checkbox("Enable \"Designer Mode\"", &missionx::data_manager::flag_setupEnableDesignerMode);
 
       // v3.305.2 Debug tab during flight
-      ImgWindow::HelpMarker ("Display the \"debug\" tab during mission flight.\nBest used with unpausing in 2D mode, so info will be updated in real time.");
+      mx_img_window::HelpMarker ("Display the \"debug\" tab during mission flight.\nBest used with unpausing in 2D mode, so info will be updated in real time.");
       ImGui::SameLine ();
       ImGui::Checkbox ("Display \"debug\" tab.", &missionx::data_manager::flag_setupShowDebugTabDuringMission);
 
@@ -5091,7 +5229,7 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::NewLine ();
       ImGui::SameLine (0.0f, 28.0f);
 
-      ImgWindow::HelpMarker (
+      mx_img_window::HelpMarker (
         R"(Opt-In and display the message debug tab.
 ATTENTION !!! It allows you to execute the message even if it is not the correct flight leg. !!!
 1. Use to debug messages in story mode and testing background sounds.
@@ -5111,14 +5249,14 @@ Use at your own risk!!!
       add_ui_skip_abort_setup_checkbox ();
 
       // Display/Hide Auto skip option in the story mode screen
-      ImgWindow::HelpMarker ("Display \"force skip\" option in story mode to make messages complete faster.");
+      mx_img_window::HelpMarker ("Display \"force skip\" option in story mode to make messages complete faster.");
       ImGui::SameLine ();
       ImGui::Checkbox ("Display \"force skip\" option in story mode.", &missionx::data_manager::flag_setupDisplayAutoSkipInStoryMessage);
 
       // Disable / Enable "auto skip" if and only if the option is checked.
       ImGui::NewLine ();
       ImGui::SameLine (0.0f, 28.0f);
-      ImgWindow::HelpMarker ("When in story mode, force skip. This will actually make the story mode message display immediately");
+      mx_img_window::HelpMarker ("When in story mode, force skip. This will actually make the story mode message display immediately");
 
       bDisable = this->mxStartUiDisableState (!missionx::data_manager::flag_setupDisplayAutoSkipInStoryMessage);
       // Toggle Auto Skip
@@ -5129,12 +5267,12 @@ Use at your own risk!!!
 
 
       // Force Heading
-      ImgWindow::HelpMarker ("Force plane heading change even if we are close to the starting position.");
+      mx_img_window::HelpMarker ("Force plane heading change even if we are close to the starting position.");
       ImGui::SameLine ();
       ImGui::Checkbox ("When positioning a plane, enforce heading even if start location is in 20m", &missionx::data_manager::flag_setupChangeHeadingEvenIfPlaneIn_20meter_radius);
 
       // Force plane position
-      ImgWindow::HelpMarker ("Force the positioning of the plane even if it is near or at the starting location - will call XPLMPlaceUserAtLocation() function.");
+      mx_img_window::HelpMarker ("Force the positioning of the plane even if it is near or at the starting location - will call XPLMPlaceUserAtLocation() function.");
       ImGui::SameLine ();
       ImGui::Checkbox ("Force plane positioning at mission start", &missionx::data_manager::flag_setupForcePlanePositioningAtMissionStart);
 
@@ -5157,7 +5295,7 @@ Use at your own risk!!!
 
 
       // Dedicated buttons to print the parts of the mission
-      ImgWindow::HelpMarker ("Dump key parts of the loaded XML mission file into the log file.");
+      mx_img_window::HelpMarker ("Dump key parts of the loaded XML mission file into the log file.");
       ImGui::SameLine ();
       ImGui::TextColored (missionx::color::color_vec4_aqua, "%s", "The following buttons will dump the active mission XML parts into the Log file.\nYou can achieve the same by saving your work and checking the saved file.\nThat way you can understand what the plugin sees.");
 
@@ -5266,7 +5404,7 @@ Use at your own risk!!!
       ImGui::NewLine (); // v3.305.1
 
       // // v25.10.1
-      ImgWindow::HelpMarker ("Force displaying 2D Map Cues in release mode.");
+      mx_img_window::HelpMarker ("Force displaying 2D Map Cues in release mode.");
       ImGui::SameLine ();
       #ifndef RELEASE
       missionx::data_manager::flag_setupUseDraw2DMapInReleaseMode = true; // force value
@@ -5595,7 +5733,8 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
       ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", " Pick Type of Mission:");
 
       ImGui::SameLine (0.0f, 50.0f);
-      this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
+      // this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
+      this->add_ui_advance_settings_random_date_time_weather_and_weight_button (); // v3.303.10 convert the random dateTime button to a self contain function
 
       if (ImGui::RadioButton ("Medevac", missionx::strct_user_create_layer.iRadioMissionTypePicked == static_cast<int> (missionx::mx_ui_mission_type::medevac)))
       {
@@ -5625,7 +5764,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
         this->refresh_slider_data_based_on_plane_type (missionx::strct_user_create_layer.iRadioPlaneType); // v3.303.14
       }
       ImGui::SameLine ();
-      ImgWindow::HelpMarker ("The plugin will place you randomly in a location near an Oil Rig.\nThe Oil Rig data is highly dependent on the Oil Rig information found in the apt.dat files, and not on what you see in your maps.");
+      mx_img_window::HelpMarker ("The plugin will place you randomly in a location near an Oil Rig.\nThe Oil Rig data is highly dependent on the Oil Rig information found in the apt.dat files, and not on what you see in your maps.");
       // sub categories
       {
         const auto vecToDisplay = missionx::mapMissionCategories[missionx::strct_user_create_layer.iRadioMissionTypePicked];
@@ -6093,7 +6232,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
       else if (missionx::RandomEngine::random_thread_state.flagIsActive)
       {
 
-        ImgWindow::HelpMarker ("Abort the background process.");
+        mx_img_window::HelpMarker ("Abort the background process.");
         ImGui::SameLine (25.0f, 0.0f);
         this->add_ui_abort_mission_creation_button (); // Add Abort Random Engine
       }
@@ -6235,7 +6374,8 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
 
             // v3.303.12
             ImGui::SameLine (0.0f, 20.0f);
-            this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked, mxconst::get_TEXT_TYPE_TITLE_SMALLEST ());
+            // this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked, mxconst::get_TEXT_TYPE_TITLE_SMALLEST ());
+            this->add_ui_advance_settings_random_date_time_weather_and_weight_button (mxconst::get_TEXT_TYPE_TITLE_SMALLEST ());
           }
           else
           {
@@ -6366,21 +6506,17 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
               {
                 const std::string fileName = (missionx::strct_generate_template_layer.last_picked_template_key.find (mxconst::get_XML_EXTENSION ()) == std::string::npos) ? missionx::strct_generate_template_layer.last_picked_template_key + mxconst::get_XML_EXTENSION () : missionx::strct_generate_template_layer.last_picked_template_key;
 
-                // // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
                 if (Utils::isElementExists (data_manager::mapGenerateMissionTemplateFiles, missionx::strct_generate_template_layer.last_picked_template_key))
                 {
-
                   // Display the mission briefing description after generating the mission file
                   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
                   ImGui::TextWrapped ("%s", missionx::data_manager::mapGenerateMissionTemplateFiles[missionx::strct_generate_template_layer.last_picked_template_key].description.c_str ());
                   this->mxUiResetAllFontsToDefault ();
                 }
-                // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
               }
               else
               { // Display the "template" options, and basic description.
 
-                // // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
                 // show options combo box
                 // v24.12.2 multi options
                 if (mxUtils::isElementExists (data_manager::mapGenerateMissionTemplateFiles, missionx::strct_generate_template_layer.last_picked_template_key))
@@ -6472,7 +6608,8 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
             ImGui::Checkbox ("Add default base weights.\n(Not advisable for planes > GAs)", &missionx::adv_settings_strct.flag_add_default_weight_settings);
             ImGui::Spacing ();
 
-            this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
+            // this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
+            this->add_ui_advance_settings_random_date_time_weather_and_weight_button (); // v3.303.10 convert the random dateTime button to a self contain function
             ImGui::Spacing ();
             add_designer_mode_checkbox (); // v24.03.2 Designer mode flag
 
@@ -6883,7 +7020,7 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
             for (const auto &msg : missionx::QueueMessageManager::mxpad_messages) // calculate the overall height of all messages lines
             {
               ImGui::BeginGroup ();
-              ImGui::PushStyleColor (ImGuiCol_Text, missionx::WinImguiBriefer::getColorAsImVec4 (msg.label_color));
+              ImGui::PushStyleColor (ImGuiCol_Text, missionx::WinImguiBriefer::mx_get_color_as_im_vec4 (msg.label_color));
               this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
               ImGui::SetNextItemWidth (60.0f);
               ImGui::Text ("%s", msg.label.c_str ());
@@ -7140,7 +7277,7 @@ WinImguiBriefer::child_draw_STORY_mode_leg_info ()
   // v3.305.2
   const std::string sHISTORY_BUTTON = "Toggle History " + mxUtils::from_u8string (ICON_FA_PAUSE);
   ImGui::SameLine (vec2Window.x * 0.5f - (ImGui::CalcTextSize (sHISTORY_BUTTON.c_str ()).x * 0.5f)); // v3.305.3
-  if (ImgWindow::ButtonTooltip (sHISTORY_BUTTON.c_str (), "Message History and Pause Mode"))
+  if (mx_img_window::ButtonTooltip (sHISTORY_BUTTON.c_str (), "Message History and Pause Mode"))
   {
     this->strct_flight_leg_info.strct_story_mode.bPressedHistory ^= 1;
     this->strct_flight_leg_info.strct_story_mode.bScrollToEndOfHistoryMessages = true;
@@ -8622,7 +8759,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
 
   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.305.1
 
-  ImgWindow::HelpMarker ("This screen is dependent on \"flightplandatabase.com\".\n Fill in the information to query from the external site.");
+  mx_img_window::HelpMarker ("This screen is dependent on \"flightplandatabase.com\".\n Fill in the information to query from the external site.");
   ImGui::SameLine ();
   ImGui::TextUnformatted ("Flight plans are fetched from \"flightplandatabase.com\". It is only for Flight Simulation.");
 
@@ -8634,7 +8771,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
   this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
   ImGui::BeginChild ("draw_external_fpln_layer_01", ImVec2 (0.0f, win_size_vec2.y * 0.30f), ImGuiChildFlags_Borders); // consume 1/3 of screen
   {
-    ImgWindow::HelpMarker ("FROM or TO fields needs to have a value");
+    mx_img_window::HelpMarker ("FROM or TO fields needs to have a value");
     ImGui::SameLine ();
     {
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow);
@@ -8650,7 +8787,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
       ImGui::SameLine ();
 
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-      if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).append ("##ClearFromICAO").c_str (), "Clear from ICAO"))
+      if (mx_img_window::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).append ("##ClearFromICAO").c_str (), "Clear from ICAO"))
       {
         this->strct_ext_layer.from_icao.clear ();
         memset (this->strct_ext_layer.buf_from_icao, 0, sizeof this->strct_ext_layer.buf_from_icao);
@@ -8682,7 +8819,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
 
       ImGui::SameLine ();
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-      if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).append ("##ClearToICAO").c_str (), "Clear to ICAO"))
+      if (mx_img_window::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).append ("##ClearToICAO").c_str (), "Clear to ICAO"))
       {
         this->strct_ext_layer.to_icao.clear ();
         memset (this->strct_ext_layer.buf_to_icao, 0, sizeof this->strct_ext_layer.buf_to_icao);
@@ -8701,7 +8838,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
         const static std::string msg = "Restarting all plugins is a last resort and it might not have the expected effect.\nI suggest to do it:\n1. Only once per session.\n2.You should do it while using LR plane.\n3.If you find the "
                                        "conflicting plugin please notify developer.";
         ImGui::SameLine (0.0f, 20.0);
-        ImgWindow::HelpMarker (msg.c_str ());
+        mx_img_window::HelpMarker (msg.c_str ());
 
         int iStyles = 0;
         ImGui::SameLine ();
@@ -8723,24 +8860,24 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
 
     ImGui::PushItemWidth (520.0f);
     {
-      ImgWindow::HelpMarker ("Zero value means any range.\nMax manual range is 9000nm\nIf you receive Error 500, try to limit the range.");
+      mx_img_window::HelpMarker ("Zero value means any range.\nMax manual range is 9000nm\nIf you receive Error 500, try to limit the range.");
       ImGui::SameLine ();
       ImGui::DragFloat ("", &this->strct_ext_layer.ga_range_max_slider_f, ga_steps, ga_range_begin, ga_range_end, "Max Range: %.0f nm");
       ImGui::SameLine ();
       ImGui::TextColored (missionx::color::color_vec4_aqua, "%.0f - %.0f", ((this->strct_ext_layer.ga_range_max_slider_f-300.0f <= 0.0f)? 0.0f: (this->strct_ext_layer.ga_range_max_slider_f - 300.0f)), this->strct_ext_layer.ga_range_max_slider_f );
 
-      ImgWindow::HelpMarker ("How many rows to retrieve. Default 20, Max 100");
+      mx_img_window::HelpMarker ("How many rows to retrieve. Default 20, Max 100");
       ImGui::SameLine ();
       ImGui::Combo ("Limit rows", &this->strct_ext_layer.limit_indx, limit_items, IM_ARRAYSIZE (limit_items)); // default is 20 rows
 
-      ImgWindow::HelpMarker ("Sort options. Data is initially sorted by the external site and not sorted locally.");
+      mx_img_window::HelpMarker ("Sort options. Data is initially sorted by the external site and not sorted locally.");
       ImGui::SameLine ();
       ImGui::Combo ("Sort By", &this->strct_ext_layer.sort_indx, sort_items, IM_ARRAYSIZE (sort_items)); // default is "created"   { "created", "updated", "popularity", "distance" }
     }
     ImGui::PopItemWidth ();
 
     // v3.303.8.3
-    ImgWindow::HelpMarker ("Result should only contain one row per airport, remove duplications based on airport code and name.");
+    mx_img_window::HelpMarker ("Result should only contain one row per airport, remove duplications based on airport code and name.");
     ImGui::SameLine ();
     if (ImGui::Checkbox ("Remove duplicate airports", &this->strct_ext_layer.flag_remove_duplicate_airport_names))
     {
@@ -9037,6 +9174,100 @@ WinImguiBriefer::add_ui_stats_child (const bool isEmbedded)
   ImGui::EndGroup ();
 }
 
+// -----------------------------------------------
+
+void WinImguiBriefer::gather_semi_act_phase1_data_based_on_picked_activity(mx_user_create_mission_layer& in_usr_layer_strct, const bool in_is_first_time )
+{
+            // ---------------
+            // Randomize max distance to use with the "tweak" slider
+            // ---------------
+            const bool bPickedGAMission      = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_props
+                                               || strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_props_float);
+            if (!in_is_first_time && bPickedGAMission)
+            {
+              if (in_usr_layer_strct.flag_cross_country)
+              {
+                in_usr_layer_strct.user_semi_act_picked.distance_min_max.min  = mapListPlaneRadioLabel[mx_plane_types_enum::plane_type_turboprops].from_slider_min;
+                in_usr_layer_strct.user_semi_act_picked.distance_min_max.lowest_max = mapListPlaneRadioLabel[mx_plane_types_enum::plane_type_turboprops].from_slider_max;
+                in_usr_layer_strct.user_semi_act_picked.distance_min_max.max = mapListPlaneRadioLabel[mx_plane_types_enum::plane_type_turboprops].to_slider_max;
+                // reset the "iNumberOfFlighLegs"
+                in_usr_layer_strct.iNumberOfFlighLegs = 1; // only one leg for cross country
+                // in_strct.user_semi_act_picked.final_legs_no_to_generate = 1;
+
+                in_usr_layer_strct.user_semi_act_picked.final_legs_no_to_generate = in_usr_layer_strct.iNumberOfFlighLegs;
+                in_usr_layer_strct.user_semi_act_picked.prepare_the_semi_activity_description(in_usr_layer_strct.iNumberOfFlighLegs);
+              }
+              else
+              {
+                in_usr_layer_strct.user_semi_act_picked.distance_min_max.lowest_max = mapListPlaneRadioLabel[mx_plane_types_enum::plane_type_ga].from_slider_max;
+                in_usr_layer_strct.user_semi_act_picked.distance_min_max.max = mapListPlaneRadioLabel[mx_plane_types_enum::plane_type_ga].to_slider_max;
+                // ------------------------
+                // Randomize how many "Flight Legs" to generate based on activity type
+                // ------------------------
+                in_usr_layer_strct.iNumberOfFlighLegs = in_usr_layer_strct.user_semi_act_picked.randomize_no_of_legs(); // we will have to randomize the number of legs
+              }
+            }
+            else
+            {
+              in_usr_layer_strct.iNumberOfFlighLegs = in_usr_layer_strct.user_semi_act_picked.randomize_no_of_legs();
+            }
+
+            // Do the distance randomisation
+            in_usr_layer_strct.user_semi_act_picked.randomize_max_distance(in_usr_layer_strct.user_semi_act_picked.distance_min_max.lowest_max, in_usr_layer_strct.user_semi_act_picked.distance_min_max.max);
+
+
+            // decide if to prepare all mission data or only the distance and number of legs
+            if (in_is_first_time)
+            {
+              // reset the "cross country flag
+              in_usr_layer_strct.flag_cross_country = false;
+
+              // // ------------------------
+              // // Randomize how many "Flight Legs" to generate based on activity type
+              // // ------------------------
+              // in_strct.iNumberOfFlighLegs = in_strct.user_semi_act_picked.randomize_no_of_legs();
+
+              // // prepare detail description for "add_ui_semi_act_phase_2_detail()" function
+              // in_strct.user_semi_act_picked.prepare_the_semi_activity_description();
+
+              // v26.04.5 prepare a "funny fact" description based on the plane type
+              if (map_activity_funny_descriptions.contains(in_usr_layer_strct.user_semi_act_picked.activity))
+              {
+                const std::vector<std::string> vec_descriptions = map_activity_funny_descriptions.at(in_usr_layer_strct.user_semi_act_picked.activity);
+                // pick random description from the vector
+                const auto random_index = Utils::getShuffledIndexVector_byType<size_t>(vec_descriptions.size()).front();
+                // assign the description
+                in_usr_layer_strct.user_semi_act_picked.random_description = vec_descriptions[random_index];
+              }
+              else
+                in_usr_layer_strct.user_semi_act_picked.random_description.clear();
+
+              // v26.08.1 llm mission outline
+              data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::mission_description.data()] = missionx::enums::to_string_llm( in_usr_layer_strct.user_semi_act_picked.activity );
+
+
+              // web osm
+              if (in_usr_layer_strct.user_semi_act_picked.activity == enums::mx_semi_activities_enum::act_helos_medevac_accident
+                || in_usr_layer_strct.user_semi_act_picked.activity == enums::mx_semi_activities_enum::act_helos_medevac_surprise_me)
+                in_usr_layer_strct.flag_use_web_osm          = true;
+              else
+                in_usr_layer_strct.flag_use_web_osm          = false;
+
+            }
+            else
+            { // not the first time, meaning it can be cross country flag.
+
+              // v26.08.1 llm mission outline
+              data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::mission_description.data()] = missionx::enums::to_string_llm( in_usr_layer_strct.user_semi_act_picked.activity );
+
+            }
+
+            // prepare detail description for "add_ui_semi_act_phase_2_detail()" function
+            in_usr_layer_strct.user_semi_act_picked.prepare_the_semi_activity_description(in_usr_layer_strct.iNumberOfFlighLegs);
+
+
+}
+
 
 // -----------------------------------------------
 
@@ -9045,7 +9276,7 @@ WinImguiBriefer::draw_about_layer ()
 {
   const auto             win_size_vec2 = this->mxUiGetWindowContentWxH ();
   static constexpr float win_padding   = 30.0f;
-  // ImGui::BeginChild("draw_about_layer_01", ImVec2(0.0f, ImGui::GetWindowHeight() - this->fBottomToolbarPadding_f - this->fTopToolbarPadding_f - win_padding));
+
   ImGui::BeginChild ("draw_about_layer_01", ImVec2 (0.0f, win_size_vec2.y * 0.85f));
   {
     this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
@@ -9053,12 +9284,14 @@ WinImguiBriefer::draw_about_layer ()
       ImGui::TextColored (missionx::color::color_vec4_aqua, "%s%s", "Mission-X v", missionx::FULL_VERSION_ABOUT.c_str ());
       ImGui::TextColored (missionx::color::color_vec4_greenyellow, "%s", "Mission-X was written by Saar Nagar <snagar.dev@protonmail.com>");
       ImGui::TextColored (missionx::color::color_vec4_greenyellow, "%s", "Licensed under AFPL license, see license folder for more detail.");
-      ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", "Library Used");
+      ImGui::TextColored(missionx::color::color_vec4_yellow, "%s", data_manager::post_optimization_outcome.c_str()); // v26.08.1
+      ImGui::Spacing();
+      ImGui::TextColored(missionx::color::color_vec4_aqua, "%s", "Library Used");
 
 
       this->mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_BOTTOM ());
       ImGui::Separator ();
-      ImGui::TextUnformatted ("Uses the IMGUI library v" IMGUI_VERSION ", Copyright (c) 2014-2023 Omar Cornut.");
+      ImGui::TextUnformatted ("Uses the IMGUI library v" IMGUI_VERSION ", Copyright (c) 2014-2026 Omar Cornut.");
       ImGui::TextUnformatted ("Uses the ImPlot library v" IMPLOT_VERSION ", MIT License - Copyright (c) 2020 Evan Pezent.");
       ImGui::TextUnformatted ("Uses the Public (Source) Components from XSquawkBox, Copyright (c) 2018-2020 Christopher Collins.");
       ImGui::TextUnformatted ("Uses the CURL transfer library, Copyright (c) 1996 - 2020, Daniel Stenberg.");
@@ -9097,8 +9330,8 @@ WinImguiBriefer::draw_about_layer ()
     {
       if (mxUtils::isElementExists (MxUICore::mapFontTypesBeingUsedInProgram, fontType))
       {
-        std::string sText = fmt::format("Testing 1 2 3 ({}:{})", std::string (ImgWindow::sFontAtlas->Fonts[font_meta.id]->Sources[0]->Name ), font_meta.fSizePx ); // v26.08.1
-        ImGui::PushFont (ImgWindow::sFontAtlas->Fonts[font_meta.id], font_meta.fSizePx); // v26.08.1
+        std::string sText = fmt::format("Testing 1 2 3 ({}:{})", std::string (ImgWindow::sFontAtlas->getAtlas()->Fonts[font_meta.id]->Sources[0]->Name ), font_meta.fSizePx ); // v26.08.1
+        ImGui::PushFont (ImgWindow::sFontAtlas->getAtlas()->Fonts[font_meta.id], font_meta.fSizePx); // v26.08.1
         ImGui::TextWrapped ("[%s] %s", fontType.c_str (), sText.c_str ());
         ImGui::PopFont ();
       }
@@ -9112,8 +9345,8 @@ WinImguiBriefer::draw_about_layer ()
     for (const auto &[fontType, font_meta] : MxUICore::mapFontTypeMeta)
     {
       // std::string sText = "Testing 1 2 3 (" + std::string (ImgWindow::sFontAtlas->getAtlas ()->Fonts[i]->Sources[0]->Name) + ")"; // v26.08.1
-      const std::string sText = fmt::format("Testing 1 2 3 ({}:{})", std::string (ImgWindow::sFontAtlas->Fonts[font_meta.id]->Sources[0]->Name ), font_meta.fSizePx ); // v26.08.1
-      ImGui::PushFont (ImgWindow::sFontAtlas->Fonts[font_meta.id], font_meta.fSizePx); // v26.08.1
+      const std::string sText = fmt::format("Testing 1 2 3 ({}:{})", std::string (ImgWindow::sFontAtlas->getAtlas()->Fonts[font_meta.id]->Sources[0]->Name ), font_meta.fSizePx ); // v26.08.1
+      ImGui::PushFont (ImgWindow::sFontAtlas->getAtlas()->Fonts[font_meta.id], font_meta.fSizePx); // v26.08.1
       ImGui::TextWrapped ("%s", sText.c_str ());
       ImGui::PopFont ();
     }
@@ -9127,10 +9360,11 @@ WinImguiBriefer::draw_about_layer ()
 
 
 void
-WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_button (int &out_iClockDayOfYearPicked, int &out_iClockHourPicked, int &out_iClockMinutesPicked, const std::string &inTEXT_TYPE)
+// WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_button (int &out_iClockDayOfYearPicked, int &out_iClockHourPicked, int &out_iClockMinutesPicked, const std::string &inTEXT_TYPE)
+WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_button (const std::string &inTEXT_TYPE)
 {
   constexpr auto popupRandomize_Weather_DateTime = "set_weather_date_and_time_rules";
-  ImgWindow::HelpMarker ("Configure Preferred Weather, Default Weight and Date/Time.\nYou can disable default weight when flying online and you don't want Mission-X to mess with the weights.");
+  mx_img_window::HelpMarker ("Configure Preferred Weather, Default Weight and Date/Time.\nYou can disable default weight when flying online and you don't want Mission-X to mess with the weights.");
   ImGui::SameLine ();
   this->mxUiSetFont (inTEXT_TYPE); // default TEXT_TYPE_TITLE_REG
   if (ImGui::Button ("Advance Settings"))
@@ -9143,7 +9377,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
 
   // Display the Date + Time adjacent the button
   ImGui::SameLine (0.0f, 5.0f);
-  ImGui::TextColored (missionx::color::color_vec4_lightgoldenrodyellow, "Day: %i, %i:%i", out_iClockDayOfYearPicked, out_iClockHourPicked, out_iClockMinutesPicked);
+  ImGui::TextColored (missionx::color::color_vec4_lightgoldenrodyellow, "Day: %i, %i:%i", adv_settings_strct.iClockDayOfYearPicked, adv_settings_strct.iClockHourPicked, adv_settings_strct.iClockMinutesPicked);
 
 
   //// Randomize Date and Time popup
@@ -9207,17 +9441,32 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                 {
                   case missionx::mx_ui_random_date_time_type::xplane_day_and_time:
                   {
-                    out_iClockDayOfYearPicked = dataref_manager::getLocalDateDays (); // strct_user_create_layer.iClockDayOfYearPicked
-                    out_iClockHourPicked      = dataref_manager::getLocalHour (); // strct_user_create_layer.iClockHourPicked
-                    out_iClockMinutesPicked   = dataref_manager::getLocalMinutes (); // v25.04.2 How many minutes passed since the start of the hour
+                    // out_iClockDayOfYearPicked = dataref_manager::getLocalDateDays (); // strct_user_create_layer.iClockDayOfYearPicked
+                    // out_iClockHourPicked      = dataref_manager::getLocalHour (); // strct_user_create_layer.iClockHourPicked
+                    // out_iClockMinutesPicked   = dataref_manager::getLocalMinutes (); // v25.04.2 How many minutes passed since the start of the hour
+
+                    // v26.08.1 Forcing date/time to correctly init the struct. Workaround to solve the Nav screen bug
+                    adv_settings_strct.iClockDayOfYearPicked = dataref_manager::getLocalDateDays (); // strct_user_create_layer.iClockDayOfYearPicked
+                    adv_settings_strct.iClockHourPicked      = dataref_manager::getLocalHour (); // strct_user_create_layer.iClockHourPicked
+                    adv_settings_strct.iClockMinutesPicked   = dataref_manager::getLocalMinutes (); // v25.04.2 How many minutes passed since the start of the hour
+                    // out_iClockDayOfYearPicked = adv_settings_strct.iClockDayOfYearPicked;
+                    // out_iClockHourPicked      = adv_settings_strct.iClockHourPicked     ;
+                    // out_iClockMinutesPicked   = adv_settings_strct.iClockMinutesPicked  ;
+
                   }
                   break;
                   case missionx::mx_ui_random_date_time_type::os_day_and_time:
                   {
                     missionx::mx_clock_time_strct osClock = Utils::get_os_time ();
-                    out_iClockDayOfYearPicked             = osClock.dayInYear;
-                    out_iClockHourPicked                  = osClock.hour;
-                    out_iClockMinutesPicked               = osClock.minutes; // v25.04.2 How many minutes passed since the start of the hour
+                    // out_iClockDayOfYearPicked             = osClock.dayInYear;
+                    // out_iClockHourPicked                  = osClock.hour;
+                    // out_iClockMinutesPicked               = osClock.minutes; // v25.04.2 How many minutes passed since the start of the hour
+                    adv_settings_strct.iClockDayOfYearPicked = osClock.dayInYear;
+                    adv_settings_strct.iClockHourPicked      = osClock.hour;
+                    adv_settings_strct.iClockMinutesPicked   = osClock.minutes; // v25.04.2 How many minutes passed since the start of the hour
+                    // out_iClockDayOfYearPicked = adv_settings_strct.iClockDayOfYearPicked;
+                    // out_iClockHourPicked      = adv_settings_strct.iClockHourPicked     ;
+                    // out_iClockMinutesPicked   = adv_settings_strct.iClockMinutesPicked  ;
                   }
                   break;
                   case missionx::mx_ui_random_date_time_type::any_day_time:
@@ -9265,11 +9514,14 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                 }
 
                 this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
-                if (ImgWindow::ButtonTooltip (mxUtils::from_u8string (ICON_FA_SYNC).append ("##syncDayInYearAndHours").c_str (), "Reset to local day and hour"))
+                if (mx_img_window::ButtonTooltip (mxUtils::from_u8string (ICON_FA_SYNC).append ("##syncDayInYearAndHours").c_str (), "Reset to local day and hour"))
                 {
-                  out_iClockDayOfYearPicked = dataref_manager::getLocalDateDays (); // strct_user_create_layer.iClockDayOfYearPicked
-                  out_iClockHourPicked      = dataref_manager::getLocalHour (); // strct_user_create_layer.iClockHourPicked
-                  out_iClockMinutesPicked   = dataref_manager::getLocalMinutes (); // v25.04.2 How many minutes passed since the start of the hour
+                  // out_iClockDayOfYearPicked = dataref_manager::getLocalDateDays (); // strct_user_create_layer.iClockDayOfYearPicked
+                  // out_iClockHourPicked      = dataref_manager::getLocalHour (); // strct_user_create_layer.iClockHourPicked
+                  // out_iClockMinutesPicked   = dataref_manager::getLocalMinutes (); // v25.04.2 How many minutes passed since the start of the hour
+                  adv_settings_strct.iClockDayOfYearPicked = dataref_manager::getLocalDateDays (); // strct_user_create_layer.iClockDayOfYearPicked
+                  adv_settings_strct.iClockHourPicked      = dataref_manager::getLocalHour (); // strct_user_create_layer.iClockHourPicked
+                  adv_settings_strct.iClockMinutesPicked   = dataref_manager::getLocalMinutes (); // v25.04.2 How many minutes passed since the start of the hour
                 }
                 this->mxUiReleaseLastFont ();
 
@@ -9278,14 +9530,16 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
 
                 ImGui::SameLine ();
                 ImGui::SetNextItemWidth (80.0f);
-                ImGui::Combo ("##DayOfYear", &out_iClockDayOfYearPicked, missionx::clockDayOfYear_arr, IM_ARRAYSIZE (missionx::clockDayOfYear_arr));
-
+                // ImGui::Combo ("##DayOfYear", &out_iClockDayOfYearPicked, missionx::clockDayOfYear_arr, IM_ARRAYSIZE (missionx::clockDayOfYear_arr));
+                ImGui::Combo ("##DayOfYear", &adv_settings_strct.iClockDayOfYearPicked, missionx::clockDayOfYear_arr, IM_ARRAYSIZE (missionx::clockDayOfYear_arr));
+                  // adv_settings_strct.iClockDayOfYearPicked = out_iClockDayOfYearPicked; // v26.08.1 workaround
                 ImGui::SameLine (0.0f, 10.0f);
                 ImGui::TextColored (missionx::color::color_vec4_yellow, "HH:mm");
                 ImGui::SameLine ();
 
                 ImGui::SetNextItemWidth (50.0f);
-                ImGui::Combo ("##StartHours", &out_iClockHourPicked, missionx::clockHours_arr, IM_ARRAYSIZE (missionx::clockHours_arr));
+                ImGui::Combo ("##StartHours", &adv_settings_strct.iClockHourPicked, missionx::clockHours_arr, IM_ARRAYSIZE (missionx::clockHours_arr));
+                  // adv_settings_strct.iClockHourPicked = out_iClockHourPicked; // v26.08.1 workaround
                 ImGui::SameLine ();
                 ImGui::TextColored (missionx::color::color_vec4_yellow, ":");
                 ImGui::SameLine ();
@@ -9293,7 +9547,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                 static int st_minutes_picked = -1; // v25.04.2 added static variable
                 ImGui::Combo ("##StartMinutes", &st_minutes_picked, missionx::clockMinutes_arr, IM_ARRAYSIZE (missionx::clockMinutes_arr));
                 if (st_minutes_picked >= 0)
-                  out_iClockMinutesPicked = st_minutes_picked * 5;
+                  adv_settings_strct.iClockMinutesPicked = st_minutes_picked * 5;
               }
               break;
               case missionx::mx_ui_random_date_time_type::pick_months_and_part_of_preferred_day:
@@ -9505,7 +9759,8 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
 
     ImGui::SameLine (0.0f, 20.0f);
     ImGui::SetCursorPosY (ImGui::GetCursorPos ().y + 5.0f);
-    ImGui::TextColored (missionx::color::color_vec4_lightgoldenrodyellow, "Picked Day: %i, %i:%i", out_iClockDayOfYearPicked, out_iClockHourPicked, out_iClockMinutesPicked);
+    // ImGui::TextColored (missionx::color::color_vec4_lightgoldenrodyellow, "Picked Day: %i, %i:%i", out_iClockDayOfYearPicked, out_iClockHourPicked, out_iClockMinutesPicked);
+    ImGui::TextColored (missionx::color::color_vec4_lightgoldenrodyellow, "Picked Day: %i, %i:%i", adv_settings_strct.iClockDayOfYearPicked, adv_settings_strct.iClockHourPicked, adv_settings_strct.iClockMinutesPicked);
     // v25.09.2
     const std::string_view time_comment_vu = (missionx::adv_settings_strct.iRadioRandomDateTime_pick == missionx::mx_ui_random_date_time_type::xplane_day_and_time)? "\nTime will be re-read once [generate] button is pressed." : "";
     this->mx_add_tooltip (missionx::color::color_vec4_lightyellow, fmt::format("Day of Year, Hour and Minutes{}.", time_comment_vu) );
