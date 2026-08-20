@@ -1,11 +1,32 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(missionx LANGUAGES C CXX VERSION 26.06 DESCRIPTION "Mission-X X-Plane plugin v26.x")
+# To add slgoldberg@ImgWindow submodule run:
+# git submodule add https://github.com/slgoldberg/ImgWindow ImgWindow
+# or
+# git submodule update --init --recursive
+#
+# Update to the latest remote version of the submodule:
+# git submodule update --remote libs/img4xp/ImgWindow
+#
+
+# -- To change ImgWindow repository to snagar@ImgWindow run:
+# git submodule set-url libs/imgui4xp/ImgWindow https://github.com/snagar/ImgWindow.git
+# git submodule sync libs/imgui4xp/ImgWindow
+# git submodule update --init --remote libs/imgui4xp/ImgWindow
+# cd libs/imgui4xp/ImgWindow
+# git pull master
+# git branch -a
+# git pull {working branch}
+
+
+
+project(missionx LANGUAGES C CXX VERSION 26.08 DESCRIPTION "Mission-X X-Plane plugin v26.x")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Normalize build type string
 string(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_TYPE_LOWERCASE)
@@ -15,7 +36,6 @@ if (LINUX)
   set(CMAKE_PREFIX_PATH "/usr/bin")
 elseif (APPLE)
   set(CMAKE_OSX_ARCHITECTURES arm64;x86_64)
-  #set(CMAKE_OSX_ARCHITECTURES arm64)
   set(CMAKE_MACOSX_RPATH 1)
 endif()
 
@@ -111,6 +131,8 @@ set(BASE_SRC src/core/coordinate/NavAidInfo.hpp
         src/logic/MxParam.hpp
         src/random/RandomEngine.cpp
         src/random/RandomEngine.h
+        src/ui/core/mx_img_window.cpp
+        src/ui/core/mx_img_window.h
         src/ui/core/BitmapReader.cpp
         src/ui/core/BitmapReader.h
         src/ui/core/MxShader.hpp
@@ -136,10 +158,7 @@ set(BASE_SRC src/core/coordinate/NavAidInfo.hpp
         src/plugin.cpp
         src/plugin.h
         src/core/mxconst.h
-        src/ui/core/mx_img_window.cpp
-        src/ui/core/mx_img_window.h
 )
-
 
 set(IMGUI_SQLITE_STB_POLY_LIB_SRC
         libs/imgui4xp/colors/mx_colors.hpp
@@ -166,6 +185,8 @@ set(IMGUI_SQLITE_STB_POLY_LIB_SRC
         libs/imgui4xp/imgui/imstb_truetype.h
         libs/imgui4xp/ImgWindow/ImgFontAtlas.cpp
         libs/imgui4xp/ImgWindow/ImgFontAtlas.h
+        #    libs/imgui4xp/ImgWindow/ImgFreeTypeFontAtlas.cpp
+        #    libs/imgui4xp/ImgWindow/ImgFreeTypeFontAtlas.h
         libs/imgui4xp/ImgWindow/ImgWindow.cpp
         libs/imgui4xp/ImgWindow/ImgWindow.h
         libs/imgui4xp/KHR/khrplatform.h
@@ -518,8 +539,6 @@ if (WIN32 OR APPLE)
   # find_library(XPLM_LIBRARY NAMES XPLM XPLM_64.lib XPWidgets XPWidgets_64.lib)
 
 endif()
-
-
 
 # Linking by OS
 target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL)
