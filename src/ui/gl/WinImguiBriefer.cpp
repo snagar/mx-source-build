@@ -4521,35 +4521,11 @@ WinImguiBriefer::draw_setup_layer ()
         this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
       }
 
-      ImGui::NewLine ();
-
-      this->add_ui_suppress_distance_messages_checkbox_ui (); // v25.02.1
-
-      ImGui::NewLine ();
-
-      ImGui::TextColored (missionx::color::color_vec4_yellow, "Font Scale:");
-
-      mx_img_window::HelpMarker ("Font Scale will resize font based on software interpolation code.\nIt is not the same as picking a larger font pixel.");
-      ImGui::SameLine ();
-      ImGui::PushItemWidth (100.0f);
-      if (ImGui::SliderFloat ("Preferred Font Scale, Example:", &missionx::strct_setup_layer.fPreferredFontScale, missionx::strct_setup_layer.fFontMinScaleSize, missionx::strct_setup_layer.fFontMaxScaleSize, "scale %.1f"))
-      {
-        // ADD set option value
-        missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<float> (mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE (), missionx::strct_setup_layer.fPreferredFontScale);
-        this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
-      }
-      ImGui::PopItemWidth ();
-
-      ImGui::SameLine ();
-      // // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
-      ImGui::TextColored (missionx::color::color_vec4_aqua, "Mission-X v3.x");
-      // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+      ImGui::Separator ();
 
       // Inventory X11 compatibility mode // 24.12.2
       if (missionx::data_manager::xplane_ver_i > missionx::XP12_VERSION_NO)
       {
-        ImGui::NewLine ();
-
         // disable while running
         const bool bDisable = this->mxStartUiDisableState (missionx::data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running);
         {
@@ -4560,37 +4536,8 @@ WinImguiBriefer::draw_setup_layer ()
         this->mxEndUiDisableState (bDisable);
       }
 
-      // ImGui::NewLine ();
-      // // v26.08.1
-      // this->add_ui_ai_use_ai_checkbox ();
-      //
-      // missionx::mx_img_window::mxUiHelpMarker(missionx::color::color_vec4_aqua, "LLM Format supported is \"OpenAI\".\nMake sure the server you are using supports it.\nExample: http://localhost:1234/v1/chat/completions");
-      // ImGui::SameLine();
-      // // disable or not the ai url field
-      // const bool bDisable2 = this->mxStartUiDisableState( !strct_setup_layer.b_use_ai );
-      // ImGui::TextColored (missionx::color::color_vec4_yellow, "AI Server URL:");
-      // if (ImGui::InputTextWithHint ("##ai_url_data", "http://localhost:1234/v1/chat/completions (OpenAI Format)", missionx::strct_setup_layer.buf_ai_url, sizeof (missionx::strct_setup_layer.buf_ai_url), ImGuiInputTextFlags_EnterReturnsTrue))
-      // {
-      //   missionx::system_actions::pluginSetupOptions.set_node_text_type_6(mxconst::get_OPT_AI_SERVER_URL(), missionx::strct_setup_layer.buf_ai_url);
-      //   this->execAction(mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
-      // }
-      // missionx::mx_img_window::mx_add_tooltip(missionx::color::color_vec4_beige, "OpenAI Format, example: http://{url}:{port}/v1/chat/completions");
-      // this->mxEndUiDisableState ( bDisable2);
+      this->add_ui_suppress_distance_messages_checkbox_ui (); // v25.02.1
 
-      ImGui::NewLine ();
-
-      // v25.06.1 deprecate the option
-      const bool bDisable = this->mxStartUiDisableState(true);
-      ImGui::TextColored (missionx::color::color_vec4_yellow, "Pause X-Plane when Mission-X is open in VR Mode:");
-      // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
-      if (ImGui::Checkbox ("(Deprecated, always on) Pause in VR mode", &missionx::strct_setup_layer.bPauseInVR))
-      {
-        missionx::strct_setup_layer.bPauseInVR = false;
-        // ADD set option value
-        // missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_OPT_AUTO_PAUSE_IN_VR (), missionx::strct_setup_layer.bPauseInVR);
-        // this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
-      }
-      this->mxEndUiDisableState (bDisable);
       ImGui::Separator (); // v3.305.1
 
       // Cycle Mission-X Log File
@@ -4603,6 +4550,42 @@ WinImguiBriefer::draw_setup_layer ()
         missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_OPT_CYCLE_LOG_FILES (), missionx::strct_setup_layer.bCycleLogFiles);
         this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
       }
+
+      ImGui::Separator ();
+
+      ImGui::NewLine ();
+
+      const auto bDisableGeneralOptions = mx_img_window::mxStartUiDisableState(true);
+      {
+        ImGui::TextColored (missionx::color::color_vec4_yellow, "[DISABLED] Font Scale:");
+
+        mx_img_window::HelpMarker ("Font Scale will resize font based on software interpolation code.\nIt is not the same as picking a larger font pixel.");
+        ImGui::SameLine ();
+        ImGui::PushItemWidth (100.0f);
+        if (ImGui::SliderFloat ("Preferred Font Scale, Example:", &missionx::strct_setup_layer.fPreferredFontScale, missionx::strct_setup_layer.fFontMinScaleSize, missionx::strct_setup_layer.fFontMaxScaleSize, "scale %.1f"))
+        {
+          // ADD set option value
+          missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<float> (mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE (), missionx::strct_setup_layer.fPreferredFontScale);
+          this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
+        }
+        ImGui::PopItemWidth ();
+        ImGui::SameLine ();
+        ImGui::TextColored (missionx::color::color_vec4_aqua, "Mission-X v3.x");
+      }
+
+      ImGui::NewLine ();
+
+      // v25.06.1 deprecate the option
+      ImGui::TextColored (missionx::color::color_vec4_yellow, "Pause X-Plane when Mission-X is open in VR Mode:");
+      // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+      if (ImGui::Checkbox ("(Deprecated, always on) Pause in VR mode", &missionx::strct_setup_layer.bPauseInVR))
+      {
+        missionx::strct_setup_layer.bPauseInVR = false;
+        // ADD set option value
+        // missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_OPT_AUTO_PAUSE_IN_VR (), missionx::strct_setup_layer.bPauseInVR);
+        // this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
+      }
+      this->mxEndUiDisableState (bDisableGeneralOptions);
 
       ImGui::Separator ();
       ImGui::NewLine ();
@@ -9294,6 +9277,7 @@ WinImguiBriefer::draw_about_layer ()
       ImGui::TextUnformatted ("Uses the IMGUI library v" IMGUI_VERSION ", Copyright (c) 2014-2026 Omar Cornut.");
       ImGui::TextUnformatted ("Uses the ImPlot library v" IMPLOT_VERSION ", MIT License - Copyright (c) 2020 Evan Pezent.");
       ImGui::TextUnformatted ("Uses the Public (Source) Components from XSquawkBox, Copyright (c) 2018-2020 Christopher Collins.");
+      ImGui::TextUnformatted ("Uses the Public (Source) ImgWindow Components from slgoldberg/ImgWindow in Github.");
       ImGui::TextUnformatted ("Uses the CURL transfer library, Copyright (c) 1996 - 2020, Daniel Stenberg.");
       ImGui::TextUnformatted ("Uses the IXMLParser library, Copyright (c) 2013, Frank Vanden Berghen - All rights reserved (AFPL License).");
       ImGui::TextUnformatted ("Uses the Freetype2 library, Copyright 1996-2002, 2006 by David Turner, Robert Wilhelm, and Werner Lemberg (Freetype License).");

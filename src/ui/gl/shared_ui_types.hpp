@@ -317,7 +317,7 @@ struct mx_setup_layer
     int                                      headerIndex{ 0 }; // v25.03.3. Used only with mapSetupHeaders
     std::unordered_map<int, mx_header_state> mapSetupHeaders = {
                           { headerIndex, mx_header_state ("General Settings", false) }
-                        , { ++headerIndex, mx_header_state ("Simbrief & flightplandatabase.com & LLM setup", false) }
+                        , { ++headerIndex, mx_header_state ("Simbrief, flightplandatabase.com & LLM setup", false) }
                         , { ++headerIndex, mx_header_state ("APT data optimization", false) }
                         , { ++headerIndex, mx_header_state ("TOOLS", false) }
                         , { ++headerIndex, mx_header_state ("Normalize Mission Sound Volume", false) }
