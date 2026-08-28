@@ -222,8 +222,7 @@ int                      data_manager::curl_call_counter_i;                     
 std::vector<std::string> data_manager::vecOverpassUrls;                                         // v3.0.255.4.1
 int                      data_manager::overpass_user_picked_combo_i;                            // v3.0.255.4.1
 int                      data_manager::overpass_last_url_indx_used_i{ mxconst::INT_UNDEFINED }; // v3.0.255.4.1
-                                                                                                          // #ifdef USE_CURL
-CURL*       data_manager::curl = nullptr;
+
 std::string data_manager::curl_result_s;
 //std::string data_manager::error_message_line3; // v3.0.255.4
 
@@ -2429,11 +2428,12 @@ data_manager::init_static()
 {
   const dataref_const dc;
 
-  curl = curl_easy_init();
-  if (!curl)
-  {
-    throw std::runtime_error("[data_manager] Couldn't initialize curl");
-  }
+
+  //curl = curl_easy_init();
+  //if (!curl)
+  //{
+  //  throw std::runtime_error("[data_manager] Couldn't initialize curl");
+  //}
 
   xmlMappingNode = IXMLNode::emptyIXMLNode;
 
@@ -2459,10 +2459,14 @@ data_manager::init_static()
 void
 data_manager::release_static()
 {
-  if (curl)
-  {
-    curl_easy_cleanup(curl);
-  }
+  // v26.08.2 removed data_manage::curl global parameter
+  //#ifdef MX_ENABLE_HTTP_REQUESTS
+  //  if (curl)
+  //  {
+  //    curl_easy_cleanup(curl);
+  //  }
+  // #endif // !DISABLE_CURL
+
 }
 
 
@@ -6171,7 +6175,7 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
 
     if (!flag_got_metar)
     {
-      long              httpStatus = 0;
+      //long              httpStatus = 0;
       std::string       q          = "/weather/" + nav.icao; // we need to add the ICAO
       const std::string full_url_s = mxUtils::trim (fmt::format ("https://{}:443{}", url_s, q));
       Log::logMsgThread ("url: " + full_url_s); // debug
@@ -6187,56 +6191,36 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
       {
         iCurlTry++;
 
-        char errBuff[CURL_ERROR_SIZE]{ '\0' };
-        curl_easy_setopt (curl, CURLOPT_URL, full_url_s.c_str ());
-        // curl_easy_setopt(data_manager::curl, CURLOPT_PORT, 443L);
+        #ifdef MX_ENABLE_HTTP_REQUESTS
 
-        // set authorization key if present
-        if (!authKey_s.empty ())
+        missionx::structs::curl_request_data request_data;
+        request_data.timeout = 45L;
+        request_data.url_s   = full_url_s;
+        request_data.login_pass = authKey_s;
+
+        missionx::structs::strct_curl_result request_result = data_manager::get_curl_request_respond(request_data);
+        if (request_result.res_curl == CURLE_OK)
         {
-          curl_easy_setopt (curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-          curl_easy_setopt (curl, CURLOPT_USERPWD, authKey_s.c_str ());
-        }
-        // setup agent
-        curl_easy_setopt (curl, CURLOPT_USERAGENT, APP_NAME);
-        curl_easy_setopt (curl, CURLOPT_CONNECTTIMEOUT, 20L); // v24.06.1 /Timeout for server connection
-        curl_easy_setopt (curl, CURLOPT_TIMEOUT, 60L); // v24.06.1 overall work timeout - 60 seconds
-        curl_easy_setopt (curl, CURLOPT_NOSIGNAL, 0L); // CURLOPT_NOSIGNAL - skip all signal handling (values 0 or 1)
-
-        curl_easy_setopt (curl, CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt (curl, CURLOPT_SSL_VERIFYPEER, FALSE); // ignore SSL verify
-        curl_easy_setopt (curl, CURLOPT_NOPROGRESS, 0L);
-        // curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, onProgress); // simple function that manage cancel state
-
-        curl_easy_setopt (curl, CURLOPT_ERRORBUFFER, errBuff);
-
-        curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, my_write);
-        curl_easy_setopt (curl, CURLOPT_WRITEDATA, &result_s);
-        curl_easy_setopt (curl, CURLOPT_VERBOSE, 1L);
-
-        // https://curl.haxx.se/docs/sslcerts.html
-        // curl_easy_setopt(curl, CURLOPT_CAINFO, cacert);
-
-        if (CURLcode res_curl = curl_easy_perform (curl); CURLE_OK != res_curl)
-        {
-          Log::logMsgThread ("cURL error code while fetching JSON METAR information: " + Utils::formatNumber<int> (res_curl) + "\n");
-        }
-
-        std::string errBuff_s (errBuff);
-        curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &httpStatus);
-        if (httpStatus != 200 || !errBuff_s.empty ())
-        {
-          outStatusMessage->append (fmt::format ("CURL HTTP status: {}. {}. {}:{}", std::to_string (httpStatus), errBuff_s, ((iCurlTry < 3) ? "Will try again in 5 sec" : "No Luck"), iCurlTry)); // v24.03.1
-          Log::logMsgThread ((*outStatusMessage) + "\n"); // debug
-
-          std::this_thread::sleep_for (std::chrono::milliseconds (5000)); // sleep for 5 seconds
-          // goto CURL;
-        }
-        else // parse json
-        {
+          result_s            = request_result.response_text;
           flag_http_success   = true;
-          (*outStatusMessage) = "cURL fetched JSON METAR success.";
+          (*outStatusMessage) = "cURL fetched JSON METAR.";
         }
+        else
+        {
+          flag_http_success = false;          
+          if (request_result.http_status != 200 || !request_result.request_err.empty())
+          {
+            outStatusMessage->append(fmt::format("CURL HTTP status: {}. {}. {}:{}", std::to_string(request_result.http_status), request_result.request_err, ((iCurlTry < 3) ? "Will try again in 5 sec" : "No Luck"), iCurlTry)); // v24.03.1
+            Log::logMsgThread((*outStatusMessage) + "\n"); // debug
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(5000)); // sleep for 5 seconds
+            // goto CURL;
+          }
+        }
+
+        #endif // MX_ENABLE_HTTP_REQUESTS
+
+
       } // end while loop
 
       /////////////////////////////
@@ -6281,6 +6265,7 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
         }
       } // end if http success
     }
+
   } // end loop over all Nav Aids
 
   if (threadStateMetar.flagAbortThread)
@@ -6331,11 +6316,17 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
     // v26.08.1
     missionx::structs::curl_request_data strct_curl_data {.url_s = full_url_s};
     simbrief_st_curl_result = data_manager::get_curl_request_respond(strct_curl_data);
+
+    #ifdef MX_ENABLE_HTTP_REQUESTS
     if (CURLE_OK != simbrief_st_curl_result.res_curl)
     {
       msg = fmt::format("[{}] cURL error code: {}\n", __func__, Utils::formatNumber<int>(simbrief_st_curl_result.res_curl));
       Log::logMsgThread(msg);
     }
+    #else 
+      simbrief_st_curl_result.res_curl    = -1;
+      simbrief_st_curl_result.request_err = "cURL is disabled in this build.";
+    #endif // !DISABLE_CURL
 
     if (!simbrief_st_curl_result.request_err.empty())
     {
@@ -6611,116 +6602,92 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
 
   const std::string url_s      = "api.flightplandatabase.com";
   const std::string full_url_s = mxUtils::trim("https://" + url_s + ":443" + q);
-  Log::logMsgThread("url: " + full_url_s); // debug
+  Log::logMsgThread("flightplandatabase url: " + full_url_s); // debug
 
   //// Fetch information
   std::string err;
   std::string cert_loc_s = mx_folders_properties.getAttribStringValue(mxconst::get_PROP_MISSIONX_PATH(), "", err);
 
   std::string msg;
-  long httpStatus = 0;
+  //long httpStatus = 0;
   constexpr int max_loop = 3;
   int loop_counter = 0;
   while (loop_counter < max_loop && !flag_http_success)
   {
-    if (curl)
+    flag_http_success = false;
+
+#ifdef MX_ENABLE_HTTP_REQUESTS
+
+    missionx::structs::curl_request_data request_data;
+    request_data.timeout        = 45L;
+    request_data.url_s          = full_url_s;
+    request_data.login_pass     = authKey_s;
+    request_data.how_many_tries = 1;
+
+    (*outState)                                         = mxFetchState_enum::fetch_in_process;
+    missionx::structs::strct_curl_result request_result = data_manager::get_curl_request_respond(request_data);
+    if (CURLE_OK != request_result.res_curl)
     {
-      httpStatus = 0;
-      char errBuff[CURL_ERROR_SIZE]{ '\0' };
-      curl_easy_setopt (curl, CURLOPT_URL, full_url_s.c_str());
+      Log::logMsgThread("cURL error code: " + Utils::formatNumber<int>(request_result.res_curl) + "\n");
+    }
 
-      // https://curl.haxx.se/docs/sslcerts.html
-      if (std::filesystem::exists (data_manager::ca_path) && std::filesystem::is_regular_file(ca_path)) // v26.01.1
-        curl_easy_setopt(curl, CURLOPT_CAINFO, data_manager::ca_path.string().c_str());
-
-      // set authorization key if present
-      if (!authKey_s.empty ())
+    
+    if (request_result.http_status != 200 || !request_result.request_err.empty())
+    {
+      switch (request_result.http_status)
       {
-        curl_easy_setopt (curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-        curl_easy_setopt (curl, CURLOPT_USERPWD, authKey_s.c_str());
+      case 503:
+      case 522:
+        msg          = fmt::format("cURL HTTP status: {}. Error: {}", request_result.http_status, "Site might be unavailable.");
+        loop_counter = max_loop;
+        break;
+      case 500:
+        msg          = fmt::format("cURL HTTP status: {}. Error: {}", request_result.http_status, "Remote internal server error.");
+        loop_counter = max_loop;
+        break;
+      case 504:
+        msg = fmt::format("Try {}/{}: cURL HTTP status: {}. Error: {}", (loop_counter + 1), max_loop, request_result.http_status, "Gateway Timeout.");
+        break;
+      default:
+        msg = fmt::format("Try {}/{}: cURL HTTP status: {}. {}", (loop_counter + 1), max_loop, request_result.http_status, result_s);
+        break;
       }
-      // setup agent
-      curl_easy_setopt (curl, CURLOPT_USERAGENT, APP_NAME);
-      curl_easy_setopt (curl, CURLOPT_CONNECTTIMEOUT, 20L); // v24.06.1 /Timeout for server connection
-      curl_easy_setopt (curl, CURLOPT_TIMEOUT, 60L); // v24.06.1 overall work timeout - 60 seconds
-      curl_easy_setopt (curl, CURLOPT_NOSIGNAL, 0L); // CURLOPT_NOSIGNAL - skip all signal handling (values 0 or 1)
+      // (*outStatusMessage) = msg;
+      result_s.clear();
 
-      curl_easy_setopt (curl, CURLOPT_FOLLOWLOCATION, 1L);
-      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); // v26.01.1 fallback if SSL fails
-      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L); // v26.01.1 fallback if SSL fails
-      curl_easy_setopt (curl, CURLOPT_NOPROGRESS, 0L);
+      #ifndef RELEASE
+      Log::logMsgThread((*outStatusMessage)); // debug
+      #endif
 
-      curl_easy_setopt (curl, CURLOPT_ERRORBUFFER, errBuff);
+      std::this_thread::sleep_for(std::chrono::seconds(5));
+    }
 
-      curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, my_write);
-      curl_easy_setopt (curl, CURLOPT_WRITEDATA, &result_s);
-      curl_easy_setopt (curl, CURLOPT_VERBOSE, 1L);
+    if (request_result.http_status == 200) // parse json
+    {
+      result_s            = request_result.response_text;
+      flag_http_success   = true;
+      (*outStatusMessage) = "cURL fetch success.";
+    }
 
-      // Security setup
-      // https://curl.haxx.se/docs/sslcerts.html
-      // https://curl.se/ca/cacert.pem
-      const auto path_s = fmt::format ("{}/{}", cert_loc_s, "cacert.pem");
-      curl_easy_setopt (curl, CURLOPT_CAINFO, path_s.c_str ());
+    loop_counter++;
 
-      (*outState)       = mxFetchState_enum::fetch_in_process;
-      CURLcode res_curl = curl_easy_perform (curl); // execute the REQUEST
+    // ABORT CHECK
+    if (inoutThreadState && inoutThreadState->flagAbortThread)
+    {
+      flag_http_success = false;
+      loop_counter      = max_loop + 1;
+      msg               = "User ask to abort.";
+    }
 
-      if (CURLE_OK != res_curl)
-      {
-        Log::logMsgThread ("cURL error code: " + Utils::formatNumber<int> (res_curl) + "\n");
-      }
+#else 
+    msg = "cURL is disabled in this build.";
+    flag_http_success = false;
+    curl_result_s.clear();
+    loop_counter = max_loop + 1;
+#endif // !DISABLE_CURL
 
-      std::string errBuff_s (errBuff);
-      curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &httpStatus);
-      if (httpStatus != 200 || !errBuff_s.empty ())
-      {
-        switch (httpStatus)
-        {
-          case 503:
-          case 522:
-            msg = fmt::format ("cURL HTTP status: {}. Error: {}", httpStatus, "Site might be unavailable.");
-            loop_counter = max_loop;
-          break;
-          case 500:
-            msg = fmt::format ("cURL HTTP status: {}. Error: {}", httpStatus, "Remote internal server error.");
-            loop_counter = max_loop;
-          break;
-          case 504:
-            msg = fmt::format ("Try {}/{}: cURL HTTP status: {}. Error: {}", (loop_counter + 1), max_loop, httpStatus, "Gateway Timeout.");
-          break;
-          default:
-            msg = fmt::format ("Try {}/{}: cURL HTTP status: {}. {}", (loop_counter + 1), max_loop, httpStatus, result_s);
-          break;
-        }
-        // (*outStatusMessage) = msg;
-        result_s.clear();
 
-        #ifndef RELEASE
-        Log::logMsgThread ((*outStatusMessage)); // debug
-        #endif
-
-        std::this_thread::sleep_for (std::chrono::seconds (5));
-      }
-
-      if (httpStatus == 200) // parse json
-      {
-        flag_http_success   = true;
-        (*outStatusMessage) = "cURL fetch success.";
-      }
-
-      loop_counter++;
-
-      // ABORT CHECK
-      if (inoutThreadState && inoutThreadState->flagAbortThread)
-      {
-        flag_http_success = false;
-        loop_counter = max_loop + 1;
-      }
-
-    } // end while loop
-    // #endif // USE_CURL
-
-  } // end data_manager::curl - handling cURL
+  } // end while loop
 
   if (!msg.empty())
     (*outStatusMessage) = msg;
@@ -6838,10 +6805,11 @@ missionx::structs::strct_curl_result
 data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_request_data, const int& in_call_id)
 {
   //std::lock_guard<std::mutex> lock (mt_request_get_curl_request_respond_mutex); // v26.04.3 Special lock to solve racing issue in "osm_get_navaid_from_overpass()"
-  std::string curl = ""; // shadow the shared "curl" pointer, so we won't be able to use it in this function.
+  std::string curl = ""; // shadow the shared "data_manager::curl" pointer, so we won't be able to use it in this function.
 
   const auto lmbda_extract_host = [] (const std::string& url)->std::string
   {
+#ifdef MX_ENABLE_HTTP_REQUESTS    
     CURLU* url_handle = curl_url();
     if (!url_handle)
       return {};
@@ -6863,6 +6831,9 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
 
     curl_free(host);
     curl_url_cleanup(url_handle);
+#else 
+      std::string result(url); // don't do anything, just return the input url as a fallback if curl is disabled.
+#endif
 
     return result;
   };
@@ -6878,6 +6849,8 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
 
     long httpStatus = 0;
 
+#ifdef MX_ENABLE_HTTP_REQUESTS
+
     // v26.04.3
     if (auto curl_func = curl_easy_init())
     {
@@ -6890,7 +6863,7 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
         // sleep before calling overpass
         std::this_thread::sleep_for (std::chrono::seconds(2)); // v25.06.1 not overwhelm the overpass server
 
-        Log::logMsgThread(fmt::format("[{}] Call ID: {}\t from: \"{}\"", __func__, data_manager::curl_call_counter_i, base_url));
+        Log::logMsgThread(fmt::format("[{}] Call ID: {}\t url: \"{}\"", __func__, data_manager::curl_call_counter_i, in_request_data.url_s));
 
         char errBuff[CURL_ERROR_SIZE] = "\0"; // v3.305.3
 
@@ -6903,6 +6876,13 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
         curl_easy_setopt(curl_func, CURLOPT_USERAGENT, APP_NAME);
         curl_easy_setopt(curl_func, CURLOPT_CONNECTTIMEOUT, in_request_data.connection_timeout); // Timeout for server responds to our request
         curl_easy_setopt(curl_func, CURLOPT_TIMEOUT, in_request_data.timeout); // Time in seconds before session will be terminated and abort the request.
+
+        // set authorization key if present // v26.08.2
+        if (!in_request_data.login_pass.empty())
+        {
+          curl_easy_setopt(curl_func, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+          curl_easy_setopt(curl_func, CURLOPT_USERPWD, in_request_data.login_pass.c_str());
+        }
 
         // ignore SSL - important for Windows
         curl_easy_setopt(curl_func, CURLOPT_FOLLOWLOCATION, in_request_data.follow_location);
@@ -6945,8 +6925,9 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
         }
 
         st_result.request_err = std::string(errBuff); // v3.305.3
-        curl_easy_getinfo(curl_func, CURLINFO_RESPONSE_CODE, &httpStatus);
+        curl_easy_getinfo(curl_func, CURLINFO_RESPONSE_CODE, &st_result.http_status);
 
+        httpStatus = st_result.http_status;
         // if we have abnormal response code we will have to abort the loop. Example: site is not responding.
         if (mxUtils::mx_between( st_result.res_curl, CURLE_OK, CURLE_COULDNT_CONNECT, enums::mx_between_types::gt_min_eqles_max) )
         {
@@ -6997,6 +6978,12 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
       // Free the header list after curl_easy_perform
       curl_slist_free_all(p_headers);
     } // end curl_func - handling cURL  // end CURL call
+#else 
+    st_result.reset();
+    st_result.res_curl    = -1;
+    st_result.request_err = "CURL is disabled in this build. Please enable CURL to use this feature.";
+#endif // !DISABLE_CURL
+
 
   data_manager::strct_ui_share_data.error_message_line3 = st_result.request_err; // v3.0.255.4 error_message_line3 will get the error. This will clear the last error message error_message_line3 had.
 
@@ -8872,7 +8859,12 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
 
       q->osm_queries[mxUtils::get_mx_osm_region_trans (loc)] = filledQuery;
 
-      std::string fullQuery = fmt::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
+#ifdef MX_ENABLE_HTTP_REQUESTS
+      std::string fullQuery = fmt::format("data={}", curl_easy_escape(nullptr, filledQuery.c_str(), 0));
+#else 
+      std::string fullQuery = fmt::format("data={}", filledQuery.c_str());
+#endif // !DISABLE_CURL
+
 
       q->sanitized_id   = mxUtils::sanitize_text (q->id, " ,'\"\t\n");
       q->sanitized_bbox = mxUtils::sanitize_text (q->q_short_bbox_fmt, " ,'\"\t\n");
@@ -8962,6 +8954,11 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
 
           Log::logMsgThread(fmt::format("[{}] URL: {}", __func__, overpass_url));
 
+#ifndef MX_ENABLE_HTTP_REQUESTS
+          int CURLE_OK = 0;
+#endif // !DISABLE_CURL
+
+
           if (CURLE_OK == strct_result.res_curl)
           {
             found_valid_count_node = true;
@@ -8971,7 +8968,10 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
           else
           {
             // res != CURLE_OK
+#ifdef MX_ENABLE_HTTP_REQUESTS
             Log::logMsgThread(fmt::format("[{}]\tCurl error: \n\t{}\n", __func__, curl_easy_strerror(strct_result.res_curl)));
+#endif // !DISABLE_CURL
+
             std::this_thread::sleep_for(std::chrono::seconds(5)); // Sleep longer
           }
 
@@ -9256,6 +9256,8 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
   const size_t pos_all_bbox = filledQuery.find(q->ALL_BBOX_STR);
   const size_t pos_bbox = filledQuery.find(q->BBOX_STR);
 
+#ifdef MX_ENABLE_HTTP_REQUESTS
+
   if ((pos_bbox == std::string::npos) && (pos_all_bbox == std::string::npos) )
   {
     Log::logMsgThread (fmt::format ("[{}] No Valid BBOX filter was found. Aborting target search.\n", __func__) );
@@ -9266,7 +9268,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
   filledQuery = mxUtils::replaceAll (filledQuery, q->BBOX_STR, q->q_bbox); // replace all occurrences.
   filledQuery = mxUtils::replaceAll (filledQuery, q->ALL_BBOX_STR, q->q_all_bbox); // replace all occurrences.
   q->q_unescaped_request = fmt::format ("data={}", filledQuery.c_str ());
-  q->q_escaped_request          = fmt::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
+  q->q_escaped_request = fmt::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
 
   // #ifndef RELEASE
   Log::logMsgThread (fmt::format ("[{}] >>> 1. Pick a random <way> <<\n Query: {}\n", __func__, q->q_unescaped_request));
@@ -9588,6 +9590,11 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
   } // end respond is not empty
   // end if we found the BBOX string
 
+#else 
+  (*outStatusMessage) = fmt::format("[{}] DISABLE_CURL is defined. Skipping Overpass query.\n", __func__);
+#endif // !DISABLE_CURL
+
+
   q->end_time = std::chrono::steady_clock::now ();
 
 }
@@ -9678,7 +9685,11 @@ mx_return missionx::data_manager::find_vector_between_two_osm_nodes(missionx::st
 
         // prepare the osm filter
         std::string next_filledQuery         = fmt::format("[out:xml][timeout:20][bbox:{}];node({});out body;", q->q_all_bbox, node_ref_id);
+#ifdef MX_ENABLE_HTTP_REQUESTS
         std::string s_curl_vector_node_query = fmt::format("data={}", curl_easy_escape(nullptr, next_filledQuery.c_str(), 0));
+#else
+        std::string s_curl_vector_node_query = fmt::format("data={}", next_filledQuery);
+#endif // !DISABLE_CURL
 
         // -----------------------
         // call cURL

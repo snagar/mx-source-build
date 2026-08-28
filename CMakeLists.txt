@@ -342,7 +342,7 @@ if (LINUX)
           /usr/include/x86_64-linux-gnu/openssl
   )
 elseif (WIN32)
-  target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/libs/OpenSSL/openssl-3xx/include)
+  target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/libs/curl/include)
 endif()
 
 
@@ -361,7 +361,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 # OS-specific definitions
 if (WIN32)
-  target_compile_definitions(${PROJECT_NAME} PRIVATE IBM=1 _WIN32 _CONSOLE WIN32 _WINDOWS _WINDLL _MBCS _AFXDLL FMT_UNICODE=0 GLEW_STATIC)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE IBM=1 _WIN32 _CONSOLE WIN32 _WINDOWS _WINDLL _MBCS _AFXDLL FMT_UNICODE=0 GLEW_STATIC CURL_STATICLIB)
 elseif (APPLE)
   target_compile_definitions(${PROJECT_NAME} PRIVATE MAC=1 APL=1 GL_SILENCE_DEPRECATION)
 elseif (UNIX)
@@ -396,26 +396,6 @@ else()
   endif()
 endif()
 
-
-# Dependencies
-#find_package(OpenGL REQUIRED)
-#find_library(FMOD_LIBRARY NAMES fmod fmod_vc.lib)
-#
-#if (WIN32)
-#  find_library(FREETYPE2 NAMES freetype.lib)
-#endif()
-#if (NOT APPLE)
-#  if (WIN32)
-#    find_library(CURL_LIBRARY NAMES curl libcurl.lib)
-#    find_library(ZLIB_LIBRARY NAMES zlib.lib)
-#  else()
-#    find_library(OPENSSL_LIBRARY NAMES ssl crypto)
-#    find_library(CURL_LIBRARY NAMES curl)
-#  endif()
-#endif()
-#if (WIN32 OR APPLE)
-#  find_library(XPLM_LIBRARY NAMES XPLM XPLM_64.lib XPWidgets XPWidgets_64.lib)
-#endif()
 
 ##################################################
 # Dependencies
@@ -461,24 +441,36 @@ endif()
 # cURL + zlib
 # ==========================
 if (WIN32)
-  # ZLIB
-  add_library(ZLIB::ZLIB SHARED IMPORTED)
+  # Static ZLIB (using zs.lib from vcpkg)
+  add_library(ZLIB::ZLIB STATIC IMPORTED)
   set_target_properties(ZLIB::ZLIB PROPERTIES
-          IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/win/zlib.lib"
-          IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/win/zlib1.dll"
+          IMPORTED_LOCATION_RELEASE "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/win/zs.lib"
+          IMPORTED_LOCATION_DEBUG "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/win/debug/zsd.lib"
           INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/curl/include"
   )
 
-  # cURL (depends on zlib)
-  add_library(CURL::libcurl SHARED IMPORTED)
+  # Static cURL
+  add_library(CURL::libcurl STATIC IMPORTED)
   set_target_properties(CURL::libcurl PROPERTIES
-          IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/win/libcurl.lib"
-          IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/win/libcurl.dll"
+          IMPORTED_LOCATION_RELEASE "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/win/libcurl.lib"
+          IMPORTED_LOCATION_DEBUG "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/win/debug/libcurl-d.lib"
           INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/curl/include"
   )
 
   # Make cURL link against zlib
-  target_link_libraries(CURL::libcurl INTERFACE ZLIB::ZLIB)
+  # target_link_libraries(CURL::libcurl INTERFACE ZLIB::ZLIB)
+
+  # Link cURL to zlib and Windows system networking/crypto libraries
+  target_link_libraries(CURL::libcurl INTERFACE
+          ZLIB::ZLIB
+          ws2_32
+          crypt32
+          wldap32
+          normaliz
+          secur32.lib
+          bcrypt.lib     # Resolves BCryptGenRandom
+          iphlpapi.lib   # Resolves __imp_if_nametoindex
+  )
 
 else()
   # On Linux/macOS use system cURL and zlib
@@ -588,8 +580,6 @@ elseif (UNIX)
           "-Wl,-rpath,./Resources/plugins/missionx/libs/64"
           FMOD::FMOD
           CURL::libcurl
-          #    ${FMOD_LIBRARY}
-          #    ${CURL_LIBRARY}
   )
 endif()
 

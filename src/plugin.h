@@ -20,25 +20,64 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
+#include <XPLMUtilities.h>
 
 
-// v26.08.1 disabled as per gemini suggestion to avoid overriding other plugins dll search path. This is a known issue with X-Plane and the way it handles DLLs. The recommended approach is to use the X-Plane SDK's built-in functions to load DLLs from the plugin's own directory, rather than modifying the global DLL search path.
-BOOL APIENTRY
-DllMain(HANDLE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
+// v26.08.2 Disabled DllMain LoadLibraryExA implementation since we statically linked libcurl into the plugin.
+// Global handle to preserve your loaded library instance
+//HMODULE g_hCurlModule = NULL;
+//#define MX_MAX_PATH 2048
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
   switch (ul_reason_for_call)
   {
-    case DLL_PROCESS_ATTACH:
-    case DLL_THREAD_ATTACH:
-    case DLL_THREAD_DETACH:
-    case DLL_PROCESS_DETACH:
+  case DLL_PROCESS_ATTACH:
+    //{
+    //  // 1. Get absolute file path of missionx.xpl
+    //  char  pluginPath[MX_MAX_PATH];
+    //  DWORD length = GetModuleFileNameA(hModule, pluginPath, MX_MAX_PATH);
 
+    //  if (length > 0 && length < MX_MAX_PATH)
+    //  {
+    //    // 2. Extract directory (e.g., ".../missionx/win_x64/")
+    //    std::string pathStr(pluginPath);
+    //    size_t      lastSlash = pathStr.find_last_of("\\/");
+    //    if (lastSlash != std::string::npos)
+    //    {
+    //      std::string pluginDir = pathStr.substr(0, lastSlash);
+
+    //      const std::string debug_msg = "\nmissionx: Manually loading libcurl from: " + pluginDir + "\n\n";
+    //      XPLMDebugString(debug_msg.c_str());
+
+
+    //      // 3. Build full path to your specific cURL DLL
+    //      std::string curlPath = pluginDir + "\\libcurl.dll"; // Adjust filename if named curl.dll
+
+    //      // 4. Force Windows to load YOUR libcurl and resolve its dependencies from your directory
+    //      g_hCurlModule = LoadLibraryExA(curlPath.c_str(), NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
+    //    }
+    //  }
+    //  break;
+    //}
+
+  case DLL_PROCESS_DETACH:
+    //{
+    //  // Free the module on unload if it was loaded successfully
+    //  if (g_hCurlModule != NULL)
+    //  {
+    //    FreeLibrary(g_hCurlModule);
+    //    g_hCurlModule = NULL;
+    //  }
+    //  break;
+    //}
+
+  case DLL_THREAD_ATTACH:
+  case DLL_THREAD_DETACH:
     break;
   }
 
   return TRUE;
 }
-
 #endif // if IBM
 
 

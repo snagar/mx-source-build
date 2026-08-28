@@ -35,8 +35,18 @@
 // #include <format> // v25.04.2 added standard format library in the hope to replace "fmt/core.h" which is a 3rd library.
 #include <fmt/core.h>
 
-
+#define MX_ENABLE_HTTP_REQUESTS // v26.08.1 disable curl to test Error 127 root cause
+#ifdef MX_ENABLE_HTTP_REQUESTS
 #include "curl/curl.h"
+#endif
+
+//#define USE_CPP_HTTPLIB
+//#ifdef USE_CPP_HTTPLIB
+//  #define CPPHTTPLIB_OPENSSL_SUPPORT
+//  #include "httplib.h"
+//#endif
+
+
 #include "thread/gather_stats.h" // v3.303.14
 #include "../data/Briefer.hpp"
 #include "../data/Objective.h"
@@ -101,13 +111,23 @@ struct strct_shared_random_airport_info
 
   struct strct_curl_result
   {
+  #ifdef MX_ENABLE_HTTP_REQUESTS
     ::CURLcode  res_curl = CURLE_FAILED_INIT;
+  #else 
+    int res_curl = 0; // v26.08.1 disable curl to test Error 127 root cause
+  #endif  
+    long        http_status = 0L;
     std::string response_text;
     std::string request_err;
 
     void reset() 
     {
+#ifdef MX_ENABLE_HTTP_REQUESTS
       res_curl = CURLE_FAILED_INIT;
+#else
+      res_curl = 0; // v26.08.1 disable curl to test Error 127 root cause
+#endif     
+      http_status = 0;
       response_text.clear();
       request_err.clear();
     }
@@ -1304,7 +1324,9 @@ public:
 
   // cURL  
   static missionx::mutex s_thread_sync_mutex;
-  static CURL*       curl;
+  #ifdef MX_ENABLE_HTTP_REQUESTS 
+  //static CURL*       curl;
+  #endif 
   static std::string curl_result_s;
   static missionx::mutex mt_request_get_curl_request_respond_mutex; // v26.04.3 Used in get_curl_request_respond()
 

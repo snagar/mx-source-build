@@ -35,7 +35,7 @@ inline constexpr const int MX_FEATURES_VERSION = 20260403; // Added min/max rw l
 
 inline constexpr auto PLUGIN_VER_MAJOR                  = "26"; // year
 inline constexpr auto PLUGIN_VER_MINOR                  = "08"; // month
-inline constexpr auto PLUGIN_VER_SUB                    = "1"; // sub-version
+inline constexpr auto PLUGIN_VER_SUB                    = "2"; // sub-version
 inline constexpr auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 
@@ -1437,6 +1437,10 @@ inline constexpr std::string_view special_instructions  = "special_instructions"
       std::string post_request_field_s = {""}; // in_separate_data_from_url
       std::vector<std::string> headers = {};
 
+      std::string login_user = "";
+      std::string login_pass = "";
+
+
       void init() 
       { 
         call_id = 0;
@@ -1450,6 +1454,9 @@ inline constexpr std::string_view special_instructions  = "special_instructions"
         url_s.clear();
         headers.clear();
         post_request_field_s.clear();
+
+        login_user.clear();
+        login_pass.clear();
       }
 
       void reset() 
