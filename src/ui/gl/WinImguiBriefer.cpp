@@ -3163,7 +3163,6 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
         }
         mx_img_window::mxEndUiDisableState(bDisableRadioLegs);
 
-
       }
 
       ImGui::Spacing();
@@ -9198,20 +9197,11 @@ void WinImguiBriefer::gather_semi_act_phase1_data_based_on_picked_activity(mx_us
             // Do the distance randomisation
             in_usr_layer_strct.user_semi_act_picked.randomize_max_distance(in_usr_layer_strct.user_semi_act_picked.distance_min_max.lowest_max, in_usr_layer_strct.user_semi_act_picked.distance_min_max.max);
 
-
             // decide if to prepare all mission data or only the distance and number of legs
             if (in_is_first_time)
             {
               // reset the "cross country flag
               in_usr_layer_strct.flag_cross_country = false;
-
-              // // ------------------------
-              // // Randomize how many "Flight Legs" to generate based on activity type
-              // // ------------------------
-              // in_strct.iNumberOfFlighLegs = in_strct.user_semi_act_picked.randomize_no_of_legs();
-
-              // // prepare detail description for "add_ui_semi_act_phase_2_detail()" function
-              // in_strct.user_semi_act_picked.prepare_the_semi_activity_description();
 
               // v26.04.5 prepare a "funny fact" description based on the plane type
               if (map_activity_funny_descriptions.contains(in_usr_layer_strct.user_semi_act_picked.activity))

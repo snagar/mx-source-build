@@ -841,8 +841,13 @@ void ui_conv_screen::subDraw_fpln_table(IXMLNode& inMainNode, std::map<int, miss
   constexpr int col_i      = 10;
   int           COLUMN_NUM = (this->strct_conv_layer.flag_foundBriefer_index0) ? col_i : col_i + 1;
   {
-    mx_img_window::HelpMarker("The table holds the list of waypoints from the imported flight plan.\n\"Leg\": Mark as a waypoints you must reach.\n\t\tIndex 0 is your 'start' location.\n\"GD\": Flag flight leg to be on ground.\n\"BR\": Convert Index 1 waypoint to briefer, only if index 0 is unavailable.\n\"Details\": Opens a popup.\n\"IG\": Ignore this "
-                                          "waypoint. Won't be part of the GPS.");
+    mx_img_window::HelpMarker(R"(* Leg: Marks the waypoint as one that must be reached. Index 0 is the starting location.
+* GD: The aircraft must be on the ground for the leg to be marked as successfully completed.
+* BR: Converts Index 1 into the briefing location, but only when Index 0 is unavailable.
+* Details: Opens a popup with additional information to fill in.
+* IG: Ignores the waypoint. It will not be included in the GPS.
+)");
+
     if (ImGui::BeginTable("Table_fpln_lnm", COLUMN_NUM, ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingFixedFit))
     {
       ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible

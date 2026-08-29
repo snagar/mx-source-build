@@ -78,6 +78,7 @@ configureImgWindow()
 
 ## Font File
 font=./Resources/fonts/DejaVuSans.ttf
+font=./Resources/fonts/DejaVuSansMono.ttf
 font=./Resources/fonts/Inconsolata.ttf
 font=./Resources/fonts/tahomabd.ttf
 font=./Resources/fonts/Roboto-Bold.ttf
@@ -103,6 +104,8 @@ text_med=Inconsolata.ttf,26
 
 msg_bottom=Roboto-Bold.ttf,13
 msg_popup=Roboto-Bold.ttf,15
+
+fix_hint_med=DejaVuSansMono.ttf,16
 )";
 
   const std::string cn_default_font_name = "DejaVuSans.ttf";
@@ -127,6 +130,8 @@ msg_popup=Roboto-Bold.ttf,15
   MxUICore::mapFontTypeMeta[mxconst::get_TEXT_TYPE_TITLE_TOOLBAR()] = {.id = 0, .fSizePx = mxconst::FONT_PIXEL_24, .fontName = imgui_internal_font, .fontLocation = ""};
   MxUICore::mapFontTypeMeta[mxconst::get_TEXT_TYPE_MSG_BOTTOM()]    = {.id = 0, .fSizePx = mxconst::FONT_PIXEL_14, .fontName = imgui_internal_font, .fontLocation = ""};
   MxUICore::mapFontTypeMeta[mxconst::get_TEXT_TYPE_MSG_POPUP()]     = {.id = 0, .fSizePx = mxconst::FONT_PIXEL_14, .fontName = imgui_internal_font, .fontLocation = ""};
+  MxUICore::mapFontTypeMeta[mxconst::get_TEXT_TYPE_FIX_HINT_REG()]  = {.id = 0, .fSizePx = mxconst::FONT_PIXEL_14, .fontName = imgui_internal_font, .fontLocation = ""};
+  MxUICore::mapFontTypeMeta[mxconst::get_TEXT_TYPE_FIX_HINT_MED()]  = {.id = 0, .fSizePx = mxconst::FONT_PIXEL_16, .fontName = imgui_internal_font, .fontLocation = ""};
 
 
   // -------------------------------------------

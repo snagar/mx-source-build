@@ -51,6 +51,8 @@ const static ^std::string ^TEXT_TYPE_TEXT_MED       ^ "text_med";      ^ text me
 const static ^std::string ^TEXT_TYPE_TEXT_SMALL     ^ "text_small";    ^ text small
 const static ^std::string ^TEXT_TYPE_MSG_BOTTOM     ^ "msg_bottom";    ^ msg_bottom
 const static ^std::string ^TEXT_TYPE_MSG_POPUP      ^ "msg_popup";     ^ msg popup
+const static ^std::string ^TEXT_TYPE_FIX_HINT_REG   ^ "fix_hint_reg";     ^ hint regular
+const static ^std::string ^TEXT_TYPE_FIX_HINT_MED   ^ "fix_hint_med";     ^ hint medium
 const static ^std::string ^TEXT_TYPE_TITLE_TOOLBAR  ^ "title_toolbar"; ^ title toolbar
 
 static constexpr ^float ^FONT_PIXEL_13 ^ 13.0f; ^// v3.0.251.1 holds preferred font pixel size
