@@ -135,6 +135,7 @@ static constexpr ^float ^AGL_TO_GATHER_FPM_DATA ^ 15.0f; ^// v3.0.213.4 // used 
 
 static constexpr ^int ^INT_UNDEFINED ^ -1;
 static constexpr ^int ^INT_FIRST_0   ^ 0;
+static constexpr ^double ^DOUBLE_UNDEFINED ^ -1.0; // used with gen_target_base_on_icao_or_near_types()
 
 const static ^std::string ^ZERO  ^ "0";
 const static ^std::string ^ONE   ^ "1";
@@ -626,6 +627,7 @@ const static ^std::string^                OPT_AI_SERVER_URL                     
 const static ^std::string^                OPT_AI_AUTH_KEY                                        ^ "ai_auth_key"; ^// v26.08.1
 const static ^std::string^                OPT_AI_DEFAULT_AUTH_KEY                                ^ "missionx_no_auth"; ^// v26.08.1 This represent the fallback api key value the plugin will send.
 const static ^std::string^                OPT_AI_LLM_SERVER_TIMEOUT                              ^ "llm_server_timeout"; ^// v26.08.1
+const static ^std::string^                OPT_AI_USE_LLM_TO_GENERATE_MISSION                     ^ "use_llm_to_generate_mission"; ^// v26.09.1
 
 
 static constexpr ^float   ^               MINIMUM_EXPECTED_PILOT_WEIGHT_IN_STATION               ^ 40.0f; ^// v24.12.2 used when evaluating if to add pilot weight to the plane.

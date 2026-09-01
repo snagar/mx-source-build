@@ -21,6 +21,7 @@ class NavAidInfo : public missionx::mx_base_node
 private:
 
 public:
+  bool flag_fpln_generated_by_llm{false}; // v26.09.1
   bool flag_is_skewed; // v3.0.241.8 we use this flag when we have skewdPointNode that is different than our "node" or "Point p"
   bool flag_is_brieferOrStartLocation; // v3.303.10
   bool flag_is_same_as_start_location; // v29.09.2 used when "location type" or "template" are equal "start".
@@ -138,7 +139,7 @@ public:
 
      this->setBaseNodeName( in_na.getBaseNodeName () );
 
-
+     flag_fpln_generated_by_llm               = in_na.flag_fpln_generated_by_llm; // v26.09.1
      flag_is_skewed                           = in_na.flag_is_skewed;
      flag_is_brieferOrStartLocation           = in_na.flag_is_brieferOrStartLocation;
      flag_is_same_as_start_location           = in_na.flag_is_same_as_start_location;
@@ -238,6 +239,8 @@ public:
 
   void init()
   {
+
+    flag_fpln_generated_by_llm = false; // v26.09.1
     degRelativeToSearchPoint = -1.0f; // not set
 
     icao_id = 0;
@@ -413,18 +416,31 @@ public:
      return fmt::format("Gate Type: {}, For planes: {}, Ramp name: [{}]", this->ramp_info.gate, this->ramp_info.ramp_for_planes, this->ramp_info.uq_name);
    }
 
-  std::string get_loc_desc() const
-   {
-     return this->loc_desc;
-   }
+  std::string get_loc_desc() const { return this->loc_desc; }
 
-  bool nav_aid_has_unique_name ()
-   {
-     const bool has_coordinate_in_name = mxUtils::find_text (getNavAidName (), "coordinate", false) != std::string::npos;
-     const bool has_leg_string_in_name = mxUtils::find_text (getNavAidName (), mxconst::get_ELEMENT_LEG (), false) != std::string::npos;
 
-     return !(this->getNavAidName ().empty () + has_coordinate_in_name + has_leg_string_in_name ); // Logical OR. Unique name means we do not have "coordinates" not "leg" in the navaid name.
-   };
+  bool nav_aid_has_unique_name()
+  {
+    const bool has_coordinate_in_name = mxUtils::find_text(getNavAidName(), "coordinate", false) != std::string::npos;
+    const bool has_leg_string_in_name = mxUtils::find_text(getNavAidName(), mxconst::get_ELEMENT_LEG(), false) != std::string::npos;
+
+    return !(this->getNavAidName().empty() + has_coordinate_in_name + has_leg_string_in_name); // Logical OR. Unique name means we do not have "coordinates" not "leg" in the navaid name.
+  }
+
+
+  std::string get_loc_desc_for_llm()
+  {
+    std::string llm_loc_desc;
+    if (!this->getID().empty())
+      llm_loc_desc = fmt::format("{} ", this->getID());
+    if (!this->getName().empty())
+      llm_loc_desc += fmt::format("({}) ", this->getName());
+    
+    if (this->is_lat_lon_valid())
+      llm_loc_desc += fmt::format("coordinates - latitude: {:.4f}, longitude: {:.4f}", this->lat, this->lon);
+
+    return llm_loc_desc;
+  }
 
 
   // std::string init_locDesc()
@@ -482,9 +498,9 @@ public:
   {
 
     #ifdef IBM
-    strncpy_s(this->ID, 63, inVal.c_str(), 63);
+    strncpy_s(this->ID, 63, mxUtils::trim( inVal ).c_str(), 63);
     #else
-    std::strncpy(this->ID, inVal.c_str(), 63);
+    std::strncpy(this->ID, mxUtils::trim(inVal).c_str(), 63);
     #endif
   }
 
@@ -492,16 +508,12 @@ public:
   void setName(const std::string& inVal)
   {
     #ifdef IBM
-    strncpy_s(this->name, 250, inVal.c_str(), 250);
+    strncpy_s(this->name, 250, mxUtils::trim(inVal).c_str(), 250);
     #else
-    std::strncpy(this->name, inVal.c_str(), 250);
+    std::strncpy(this->name, mxUtils::trim(inVal).c_str(), 250);
     #endif
   }
 
-  // void setRegion(const char inVal)
-  // {
-  //   inRegion = inVal;
-  // }
 
   std::string getNavAsAptRampCode_1300() const { return mxconst::get_APT_1300_RAMP_CODE_v11_SPACE() + mxUtils::formatNumber<double>(this->lat, 8) + mxconst::get_SPACE() + mxUtils::formatNumber<double>(this->lon, 8); }
 

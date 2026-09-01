@@ -1099,6 +1099,7 @@ RandomEngine::gen_parse_template_leg(missionx::base_thread::strct_thread_state* 
   outErr.clear();
 
   missionx::NavAidInfo na;
+  na.fpln_seq                    = in_leg_counter;
   na.fpln_expected_location_data = missionx::NavAidInfo::parse_expected_location(xml_leg_node_from_template, "custom content", is_last_flight_leg);
 
   // check if "expected location" is valid
@@ -1192,8 +1193,8 @@ RandomEngine::gen_parse_template_leg(missionx::base_thread::strct_thread_state* 
     targetProp.setStringProperty("tag", mxUtils::getValueFromElement(na.fpln_expected_location_data.mapLocationSplitPropertiesValues, std::string("tag"), std::string(""))); // location type
     targetProp.setStringProperty("nm_between", mxUtils::getValueFromElement(na.fpln_expected_location_data.mapLocationSplitPropertiesValues, std::string("nm_between"), std::string(""))); // location type
     targetProp.setNodeProperty<double>("location_value_d", location_value_d); //
-    targetProp.setNodeProperty<double>("location_min_distance_d", na.fpln_expected_location_data.nm_between_min);
-    targetProp.setNodeProperty<double>("location_max_distance_d", na.fpln_expected_location_data.nm_between_max);
+    targetProp.setNodeProperty<double>(mxconst::get_PROP_MIN_DISTANCE_SLIDER(), na.fpln_expected_location_data.nm_between_min);
+    targetProp.setNodeProperty<double>(mxconst::get_PROP_MAX_DISTANCE_SLIDER(), na.fpln_expected_location_data.nm_between_max);
 
 
     if (missionx::RandomEngine::random_thread_state.flagAbortThread)
@@ -1392,6 +1393,9 @@ RandomEngine::gen_get_content_targets(missionx::base_thread::strct_thread_state*
 
         auto xLeg = xFlightLegNodeFromTemplate.getChildNode(mxconst::get_ELEMENT_LEG().c_str(), loop_i1);
         auto na   = gen_parse_template_leg(inoutThreadState, xTemplateNode, xLeg, inout_shared_navaid, local_target_navaids, static_cast<int>(local_target_navaids.size()), local_is_last_lag, outErr);
+
+        na.fpln_seq = loop_i1 + 1; // v26.09.1
+
         // Validate no errors during leg parsing from the template
         if (!na.is_lat_lon_valid() || !outErr.empty() || !na.err.empty())
         {
@@ -1919,6 +1923,8 @@ RandomEngine::gen_get_generic_template_targets(missionx::base_thread::strct_thre
     int      leg_counter = static_cast<int>(target_navaids.size());
     auto     na          = gen_parse_template_leg(&RandomEngine::random_thread_state, in_template_node, x_leg_node, RandomEngine::shared_navaid_info, target_navaids, leg_counter, (i1 + 1 == nChilds), outErr);
 
+    na.fpln_seq = i1 + 1; // v26.09.1
+
     // check abort
     if (missionx::RandomEngine::random_thread_state.flagAbortThread)
     {
@@ -2403,10 +2409,15 @@ RandomEngine::gen_get_cumulative_fpln_desc(std::map<int, NavAidInfo>& navaid_tar
   for (auto& target_navaid : navaid_targets | std::views::values)
   {
     // std::string prefix = (target_navaid.flag_fetched_from_webosm)? "(webosm)": ""; // Done in Navaid level
-    std::string postfix = (last_seq_i == target_navaid.fpln_seq) ? "" : ", ";
+    const std::string postfix = (last_seq_i == target_navaid.fpln_seq) ? "" : ", ";
 
-    // cumulative_fpln_desc += fmt::format ("{}{}{}", prefix, target_navaid.get_loc_desc (), postfix);
+    #ifndef RELEASE
+    const std::string prefix_llm = (target_navaid.flag_fpln_generated_by_llm) ? "(llm)" : ""; // V26.09.1
+    cumulative_fpln_desc += fmt::format("{}{}{}", prefix_llm, target_navaid.get_loc_desc(), postfix);
+    #else
     cumulative_fpln_desc += fmt::format("{}{}", target_navaid.get_loc_desc(), postfix);
+    #endif
+    
     // Add ramp name
     if (last_seq_i == target_navaid.fpln_seq && !target_navaid.ramp_info.uq_name.empty())
       cumulative_fpln_desc += fmt::format("(ramp: {})", target_navaid.ramp_info.uq_name);
@@ -3715,8 +3726,8 @@ RandomEngine::prepare_blank_template_with_flight_legs_based_on_ui(IXMLNode& pNod
 
   // Gather Flight Plan metadata
   const auto no_of_legs_i        = Utils::readNodeNumericAttrib<int>(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_NO_OF_LEGS(), 2); // no of legs
-  auto       min_distance_slider = Utils::readNodeNumericAttrib<double>(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_MIN_DISTANCE_SLIDER(), 5.0); // min slider
-  auto       max_distance_slider = Utils::readNodeNumericAttrib<double>(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_MAX_DISTANCE_SLIDER(), 45.0); // max slider
+  const auto min_distance_slider = Utils::readNodeNumericAttrib<double>(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_MIN_DISTANCE_SLIDER(), 5.0); // min slider
+  const auto max_distance_slider = Utils::readNodeNumericAttrib<double>(data_manager::prop_userDefinedMission_ui.node, mxconst::get_PROP_MAX_DISTANCE_SLIDER(), 45.0); // max slider
 
 
   const auto lmbda_get_ramp_type_H_or_S_or_any = [](auto in_plane_type_i)
@@ -5644,7 +5655,7 @@ RandomEngine::gen_briefer_phase_01_parse_briefer_and_start_location(const IXMLNo
     navAid.fpln_msg_text = fmt::format("You will fly from {}({}).", shared_navaid_info.navAid.getNavAidName(), shared_navaid_info.navAid.getID());
   }
 
-
+  navAid.fpln_seq = BRIEFER_INDEX; // v26.09.1
   return navAid; // later we will set the Briefer description and properties. This function handles the "base briefer" navaid
 }
 
@@ -5901,15 +5912,7 @@ void RandomEngine::gen_briefer_phase_03_add_desc_ai(std::map<int, NavAidInfo>& i
   std::string ai_llm_description_s;
   if (!data_manager::strct_ui_share_data.map_llm_requests_messages.empty())
   {
-    std::ostringstream oss;
-    std::ranges::for_each(data_manager::strct_ui_share_data.map_llm_requests_messages
-                ,[&oss](const auto& item) {
-                      // C++17 structured binding (or use item.first and item.second)
-                      const auto& [key, value] = item;
-                      oss << key << ": " << value << "\n";
-                  }
-                );
-    auto mission_outline = oss.str();
+    auto mission_outline = data_manager::get_mission_outline_base(data_manager::strct_ui_share_data.map_llm_requests_messages);
 
     // add target
     std::string waypoints = "list of waypoints:";
@@ -5935,15 +5938,10 @@ void RandomEngine::gen_briefer_phase_03_add_desc_ai(std::map<int, NavAidInfo>& i
       mission_outline += fmt::format("\nAirplane ICAO: {}", data_manager::get_acf_icao());
     mission_outline += fmt::format("\nAirplane active plane filename: {}", data_manager::get_acf());
 
-    const auto llm_connection_timeout = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<long>( mxconst::get_OPT_AI_LLM_SERVER_TIMEOUT(), 60L);
-    const auto server_url = missionx::system_actions::pluginSetupOptions.getNodeText_type_6(mxconst::get_OPT_AI_SERVER_URL(), "");
-    auto bearer_auth_key =  system_actions::pluginSetupOptions.getNodeText_type_6(mxconst::get_OPT_AI_AUTH_KEY(), mxconst::get_OPT_AI_DEFAULT_AUTH_KEY());
-    if ( mxUtils::trim( bearer_auth_key ).empty())
-      bearer_auth_key = mxconst::get_OPT_AI_DEFAULT_AUTH_KEY();
+    // prepare curl request info
+    missionx::structs::curl_request_data curl_conn_data = data_manager::get_llm_user_setup_info_to_use_with_curl(); 
 
-    std::vector<std::string> curl_headers = {"Content-Type: application/json", fmt::format("Authorization: Bearer {}", bearer_auth_key) };
-
-    missionx::structs::curl_request_data curl_conn_data = {.timeout = llm_connection_timeout, .url_s = server_url, .headers = curl_headers };
+    // Call LLM using curl
     auto ai_request_result = data_manager::gen_request_mission_description_from_llm(&RandomEngine::random_thread_state, curl_conn_data, mission_outline);
     if (ai_request_result.result)
     {
@@ -10698,8 +10696,8 @@ RandomEngine::gen_get_target_base_on_tag_name(NavAidInfo&                       
 
   const std::string location_value_tag_name_s = inProperties.getNodeStringProperty("tag");
   const auto        location_value_d          = inProperties.getAttribNumericValue<double>("location_value_d", -1.0);
-  auto              location_min_distance_d   = inProperties.getAttribNumericValue<double>("location_min_distance_d", location_value_d);
-  auto              location_max_distance_d   = inProperties.getAttribNumericValue<double>("location_max_distance_d", location_min_distance_d * 4.0);
+  auto              location_min_distance_d   = inProperties.getAttribNumericValue<double>(mxconst::get_PROP_MIN_DISTANCE_SLIDER(), location_value_d);
+  auto              location_max_distance_d   = inProperties.getAttribNumericValue<double>(mxconst::get_PROP_MAX_DISTANCE_SLIDER(), location_min_distance_d * 4.0);
 
 
   IXMLNode xPoint = IXMLNode::emptyIXMLNode; // local xml <point> element representative.
@@ -10875,9 +10873,9 @@ RandomEngine::gen_target_base_on_icao_or_near_types(NavAidInfo&                 
   // Gather needed data
   auto location_value_nm_s = mxUtils::getValueFromElement(inMapLocationSplitValues, std::string("nm"), std::string(""));
 
-  auto       location_value_d          = inProperties.getAttribNumericValue<double>("location_value_d", -1.0);
-  auto       location_min_distance_d   = inProperties.getAttribNumericValue<double>("location_min_distance_d", location_value_d);
-  auto       location_max_distance_d   = inProperties.getAttribNumericValue<double>("location_max_distance_d", location_value_d);
+  auto location_value_d = inProperties.getAttribNumericValue<double>("location_value_d", mxconst::DOUBLE_UNDEFINED);
+  auto       location_min_distance_d   = inProperties.getAttribNumericValue<double>(mxconst::get_PROP_MIN_DISTANCE_SLIDER(), location_value_d);
+  auto       location_max_distance_d   = inProperties.getAttribNumericValue<double>(mxconst::get_PROP_MAX_DISTANCE_SLIDER(), location_value_d);
   const auto location_value_tag_name_s = inProperties.getStringAttributeValue("tag", "");
 
   // replace "_" with empty string
@@ -10906,12 +10904,168 @@ RandomEngine::gen_target_base_on_icao_or_near_types(NavAidInfo&                 
   }
 
   // validate min distance
-  if (location_min_distance_d > location_value_d)
+  if (location_value_d > mxconst::DOUBLE_UNDEFINED && location_min_distance_d > location_value_d)
     location_min_distance_d = location_value_d;
 
   if (location_min_distance_d < 0.0)
     location_min_distance_d = ((4.0 * 1.5) < location_max_distance_d) ? 1.5 : location_max_distance_d * 0.25; // distance in nm
 
+  // v26.09.1
+  if (location_min_distance_d == location_max_distance_d)
+    location_max_distance_d *= 1.20;
+
+
+  // v26.09.1 Add AI option We still need a fallback if the suggested ICAO is no available in X-Plane
+  // bool flag_llm_found_valid_target{false};
+  const bool flag_use_ai = system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_AI_USE_AI(), false);
+  if (flag_use_ai && data_manager::flag_use_llm_to_generate_mission && !data_manager::strct_ui_share_data.map_llm_requests_messages.empty())
+  {
+    auto mission_outline = data_manager::get_mission_outline_base(data_manager::strct_ui_share_data.map_llm_requests_messages);
+
+    // Add previous waypoint information.
+    if (prev_na_ptr)
+    {
+      if (prev_na_ptr->fpln_seq == 0)
+        mission_outline += "Your current take off location is the startup position.\n";
+
+      mission_outline += fmt::format("Take off from waypoint: {}\n", prev_na_ptr->get_loc_desc_for_llm() );
+      mission_outline += fmt::format("Proximity Range must be between: {:.2f} and {:.2f} nautical miles relative to the take off waypoint.\n", location_min_distance_d, location_max_distance_d);
+      mission_outline += fmt::format("The airport you pick must have an ICAO with four characters and a name.\n");
+      mission_outline += R"(The response must be in the format: 
+icao:1|{full airport code}
+name:1|{name}
+position:2|{latitude}|{longitude}
+)";
+
+      mission_outline += fmt::format("Provide position of the target airport only if you have valid information.\n");
+    }
+
+    mission_outline += "You must find an airport that is not the same as the take off one, nor at the same direction to the take off waypoint.";
+    mission_outline += "Find an airport that is suitable to the plane type.";
+    mission_outline += fmt::format("Try to find an airport in {} seconds.", missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<long>(mxconst::get_OPT_AI_LLM_SERVER_TIMEOUT(), 60L) );
+
+    auto curl_conn_data = data_manager::get_llm_user_setup_info_to_use_with_curl();
+    // Call LLM using curl
+    auto ai_request_result = data_manager::gen_request_mission_leg_from_llm(&RandomEngine::random_thread_state, curl_conn_data, mission_outline);
+
+    Log::logMsgThread( fmt::format("[{}] llm leg result:\n{}\n", __func__, ai_request_result.string_value ) );
+
+    if (ai_request_result.result)
+    {      
+      auto json_description = Utils::json_extract_by_path(ai_request_result.string_value, "/choices/0/message/content");
+      if (json_description.result)
+      {
+        double      distance_nm          = std::numeric_limits<double>::max();
+        std::string ai_llm_description_s = mxUtils::trim(mxUtils::remove_non_ascii(json_description.string_value, true));
+        auto        map_ai_way_info      = data_manager::parse_llm_leg_data(ai_llm_description_s);
+        NavAidInfo  ai_nav;
+        if (map_ai_way_info.contains(mxconst::get_ELEMENT_ICAO()) && !map_ai_way_info[mxconst::get_ELEMENT_ICAO()].empty())
+          ai_nav.setID(map_ai_way_info[mxconst::get_ELEMENT_ICAO()].at(0));
+        if (map_ai_way_info.contains(mxconst::get_ATTRIB_NAME()) && !map_ai_way_info[mxconst::get_ATTRIB_NAME()].empty())
+          ai_nav.setName(map_ai_way_info[mxconst::get_ATTRIB_NAME()].at(0));
+        if (map_ai_way_info.contains(mxconst::get_ELEMENT_POSITION()) && map_ai_way_info[mxconst::get_ELEMENT_POSITION()].size() > 1)
+        {
+          auto [ptr1, ec1] = std::from_chars(map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(0).data(), map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(0).data() + map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(0).size(), ai_nav.lat);
+          if (ec1 != std::errc())
+            ai_nav.lat = 0.0f;
+          auto [ptr2, ec2] = std::from_chars(map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(1).data(), map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(1).data() + map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(1).size(), ai_nav.lon);
+          if (ec2 != std::errc())
+            ai_nav.lon = 0.0f;
+        } // end position
+
+        #ifndef RELEASE
+        Log::logMsgThread(fmt::format("[{}] LLM found ICAO: '{}', name: '{}', lat/lon: '{}'/'{}'\n", __func__, ai_nav.getID(), ai_nav.getName(), ai_nav.lat, ai_nav.lon));
+        #endif // !RELEASE
+
+        bool flag_distance_is_valid = true;
+        if (ai_nav.is_lat_lon_valid())
+        {
+          // check distance to previous location.
+          ai_nav.synchToPoint();
+          distance_nm = missionx::NavAidInfo::mxCalcDistanceBetween2Points(prev_na_ptr->lat, prev_na_ptr->lon, ai_nav.lat, ai_nav.lon);
+          flag_distance_is_valid = mxUtils::mx_between<double>(distance_nm, location_min_distance_d, location_max_distance_d, enums::mx_between_types::both_can_be_equal);
+        }
+
+        // validate if llm target distance is valid and not the same as previous target.
+        if ( flag_distance_is_valid && ai_nav.getID() != prev_na_ptr->getID() )
+        {
+          // try to read
+          RandomEngine::shared_navaid_info.navAid.init();
+          RandomEngine::shared_navaid_info.navAid = ai_nav;
+          RandomEngine::shared_navaid_info.navAid.navType = xplm_Nav_Airport;
+          RandomEngine::shared_navaid_info.navAid.synchToPoint();
+
+          // Fetch airport information based on the ICAO or lat/lon if we have it. This will be done in the main thread since we need to access X-Plane data.
+          if ( !ai_nav.getID().empty() && missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_nav_info_mainThread))
+          {
+            #ifndef RELEASE
+            Log::logMsgThread(fmt::format("[{}] First Try: waitForPluginCallbackJob result - ICAO: '{}', name: '{}', lat/lon: '{}'/'{}'\n", __func__, RandomEngine::shared_navaid_info.navAid.getID(), RandomEngine::shared_navaid_info.navAid.getName(), RandomEngine::shared_navaid_info.navAid.lat, RandomEngine::shared_navaid_info.navAid.lon));
+            #endif // !RELEASE
+
+
+            // if we found valid information.
+            RandomEngine::shared_navaid_info.navAid.synchToPoint();
+            // if we reached here then we should have startICAO NavAid information and the targetICAO
+            if (RandomEngine::shared_navaid_info.navAid.is_lat_lon_valid())
+            {
+              outNewNavInfo                            = RandomEngine::shared_navaid_info.navAid;
+              outNewNavInfo.flag_fpln_generated_by_llm = true;
+              outNewNavInfo.synchToPoint();
+              if (outNewNavInfo.is_lat_lon_valid())
+                return true;
+            }
+          }
+
+          if (ai_nav.is_lat_lon_valid() )
+          {
+
+            RandomEngine::shared_navaid_info.navAid.init();
+            RandomEngine::shared_navaid_info.navAid.lat     = ai_nav.lat;
+            RandomEngine::shared_navaid_info.navAid.lon     = ai_nav.lon;
+            RandomEngine::shared_navaid_info.navAid.navType = xplm_Nav_Airport;
+            if (missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_nav_info_mainThread))
+            {
+              #ifndef RELEASE
+              Log::logMsgThread(fmt::format("[{}] Second Try: waitForPluginCallbackJob result - ICAO: '{}', name: '{}', lat/lon: '{}'/'{}'\n", __func__, RandomEngine::shared_navaid_info.navAid.getID(), RandomEngine::shared_navaid_info.navAid.getName(), RandomEngine::shared_navaid_info.navAid.lat, RandomEngine::shared_navaid_info.navAid.lon));
+              #endif // !RELEASE
+
+              if (RandomEngine::shared_navaid_info.navAid.is_lat_lon_valid())
+              {
+                RandomEngine::shared_navaid_info.navAid.synchToPoint();
+
+                outNewNavInfo                            = RandomEngine::shared_navaid_info.navAid;
+                outNewNavInfo.flag_fpln_generated_by_llm = true;
+                outNewNavInfo.synchToPoint();
+                if (outNewNavInfo.is_lat_lon_valid())
+                  return true;
+              }
+            }
+
+          } // end try to find nearest nav aid based on lat/lon and custom nav type
+          else
+          {
+            #ifndef RELEASE
+            Log::logMsgThread(fmt::format("[{}] Invalid waitForPluginCallbackJob result - ICAO: '{}', name: '{}', lat/lon: '{}'/'{}'\n", __func__, RandomEngine::shared_navaid_info.navAid.getID(), RandomEngine::shared_navaid_info.navAid.getName(), RandomEngine::shared_navaid_info.navAid.lat, RandomEngine::shared_navaid_info.navAid.lon));
+            #endif // !RELEASE
+
+          }
+        } // end if distance is valid
+        else
+        {
+          #ifndef RELEASE
+          Log::logMsgThread(fmt::format("[{}] Invalid LLM airport. ICAO: '{}', distance: {:.2f}, lat/lon: '{}'/'{}'\n", __func__, RandomEngine::shared_navaid_info.navAid.getID(), distance_nm, RandomEngine::shared_navaid_info.navAid.lat, RandomEngine::shared_navaid_info.navAid.lon));
+          #endif // !RELEASE
+        }
+
+      } // end json_description
+    } // end ai_request_result is valid
+    
+  } // end LLM setup test and correct screen was triggered.
+
+
+  outNewNavInfo.init();
+
+  // If No LLM was used, fallback to the original code
   // Search ICAO
   if (mxconst::get_EXPECTED_LOCATION_TYPE_ICAO() == inLocationType)
   {
@@ -10971,8 +11125,8 @@ RandomEngine::gen_target_base_on_xy_osm_or_osmweb_types(NavAidInfo&             
   }
 
   auto location_value_d        = inProperties.getAttribNumericValue<double>("location_value_d", -1.0);
-  auto location_min_distance_d = inProperties.getAttribNumericValue<double>("location_min_distance_d", location_value_d);
-  auto location_max_distance_d = inProperties.getAttribNumericValue<double>("location_max_distance_d", location_value_d);
+  auto location_min_distance_d = inProperties.getAttribNumericValue<double>(mxconst::get_PROP_MIN_DISTANCE_SLIDER(), location_value_d);
+  auto location_max_distance_d = inProperties.getAttribNumericValue<double>(mxconst::get_PROP_MAX_DISTANCE_SLIDER(), location_value_d);
 
   // this->flag_force_template_distances_b to let designer force their "narative" when it comes to distances.
   const bool        flag_override_random_target_min_dist = (missionx::RandomEngine::flag_force_template_distances_b) ? false : missionx::system_actions::pluginSetupOptions.getBoolValue(mxconst::get_OPT_OVERRIDE_RANDOM_TARGET_MIN_DISTANCE()); 
@@ -11098,8 +11252,8 @@ RandomEngine::gen_target_base_on_xy_osm_or_osmweb_types2(NavAidInfo&            
   }
 
   auto location_value_d        = inProperties.getAttribNumericValue<double>("location_value_d", -1.0);
-  auto location_min_distance_d = inProperties.getAttribNumericValue<double>("location_min_distance_d", location_value_d);
-  auto location_max_distance_d = inProperties.getAttribNumericValue<double>("location_max_distance_d", location_value_d);
+  auto location_min_distance_d = inProperties.getAttribNumericValue<double>(mxconst::get_PROP_MIN_DISTANCE_SLIDER(), location_value_d);
+  auto location_max_distance_d = inProperties.getAttribNumericValue<double>(mxconst::get_PROP_MAX_DISTANCE_SLIDER(), location_value_d);
 
 
   const bool        flag_override_random_target_min_dist = (missionx::RandomEngine::flag_force_template_distances_b) ? false : missionx::system_actions::pluginSetupOptions.getBoolValue(mxconst::get_OPT_OVERRIDE_RANDOM_TARGET_MIN_DISTANCE()); // this->flag_force_template_distances_b to let designer force their "narative" when it comes to distances.
@@ -11222,8 +11376,8 @@ RandomEngine::gen_target_or_last_flight_leg_base_on_xy_or_osm(NavAidInfo&       
   }
 
   const auto location_value_d        = inProperties.getAttribNumericValue<double>("location_value_d", -1.0);
-  auto       location_min_distance_d = inProperties.getAttribNumericValue<double>("location_min_distance_d", (location_value_d > 0.0) ? location_value_d : 1.0);
-  auto       location_max_distance_d = inProperties.getAttribNumericValue<double>("location_max_distance_d", (location_value_d > location_min_distance_d) ? location_value_d : location_min_distance_d * 10.0);
+  auto       location_min_distance_d = inProperties.getAttribNumericValue<double>(mxconst::get_PROP_MIN_DISTANCE_SLIDER(), (location_value_d > 0.0) ? location_value_d : 1.0);
+  auto       location_max_distance_d = inProperties.getAttribNumericValue<double>(mxconst::get_PROP_MAX_DISTANCE_SLIDER(), (location_value_d > location_min_distance_d) ? location_value_d : location_min_distance_d * 10.0);
 
   mxUtils::mx_eval_min_always_smaller_than_max<double>(location_min_distance_d, location_max_distance_d, 0.1);
 

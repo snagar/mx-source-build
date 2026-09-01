@@ -346,6 +346,7 @@ enum class mx_flc_pre_command
   get_nav_aid_info_mainThread,                                  // v3.0.253.6
   get_icao_plane_is_in_its_boundaries_based_on_custom_lat_lon,  // v25.09.2 Find the ICAO a plane is in, if it is in its boundaries
   get_nearest_nav_aid_to_custom_lat_lon_mainThread,             // v3.0.241.10 b2
+  get_nearest_nav_aid_to_custom_nav_info_mainThread,            // v26.09.1
   get_player_aircraft_base_data,                                // v26.08.1
   guess_waypoints_from_external_fpln_site,                      // v3.0.255.2
   handle_option_picked_from_choice,                             // v3.0.231.1
@@ -1335,7 +1336,7 @@ public:
 
   // will fetch the closest ICAO to plane location. // v3.303.8.3 extended function by allowing snding custom position instead of getting the plane position. This is used with the stats table after the mission ended and not during flight.
   static missionx::NavAidInfo get_plane_airport_or_nearest_icao(const bool& inOnlySearchInDatabase = false, const double& inLat = 0.0, const double& inLon = 0.0, bool inIsThread = false);  // v3.303.14 added inIsThread
-  static missionx::NavAidInfo getICAO_info(const std::string& inICAO); // will fetch the closest ICAO to plane location
+  static missionx::NavAidInfo get_icao_info_closest_to_plane(const std::string& inICAO); // will fetch the closest ICAO to plane location
   static missionx::NavAidInfo get_and_guess_nav_info(const std::string& in_id_nav_name, const missionx::Point &prevPoint); // will fetch the closest guest navaid to a given coordinate
 
   // v3.0.255.2
@@ -1437,6 +1438,7 @@ public:
   static bool flag_setupShowDebugMessageTab; // v3.305.4
   static bool flag_setupUseXP11InventoryUI; // v24.12.2 toggle between inventory ui layout (with stations, xp12, and without xp11).
   static bool flag_setupUseDraw2DMapInReleaseMode; // v25.10.1 Can we draw 2D map cue in release
+  static bool flag_use_llm_to_generate_mission; // v26.09.1 random engine usage
 
   static int  ui_ifr_or_vfr_i; // 0 = IFR and 1 = VFR
   static int  ui_oilrig_globe_part_i; // 1 = globe, 2 = Half globe, 3 = quarter globe, 4 = local_region
@@ -1565,8 +1567,11 @@ public:
   static void fetch_ways_and_target_node_from_overpass_thread (missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
   static mx_return find_vector_between_two_osm_nodes(missionx::structs::strct_osm_query* q, int& in_nd_node_ref_index);
 
-  static void fetch_ways_and_target_node_from_overpass_thread2 (missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
-  static missionx::mx_return gen_request_mission_description_from_llm(missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::curl_request_data &in_curl_request_data, const std::string& mission_outline);
+  static void                                                      fetch_ways_and_target_node_from_overpass_thread2(missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query* q);
+  static missionx::mx_return                                       gen_request_mission_description_from_llm(missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::curl_request_data& in_curl_request_data, const std::string& mission_outline);
+  static missionx::mx_return                                       gen_request_mission_leg_from_llm(missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::curl_request_data& in_curl_request_data, const std::string& mission_outline);
+  static missionx::structs::curl_request_data                      get_llm_user_setup_info_to_use_with_curl(); // v26.09.1
+  static std::unordered_map<std::string, std::vector<std::string>> parse_llm_leg_data(const std::string& in_text); // v26.09.1
 
 
   // A simple function to manage thread wait for main thread actions that needs to take place before it can continue. Default wait time is 500 milliseconds for 10 iteration (5 seconds)
@@ -1580,6 +1585,8 @@ public:
 
 
   static int callback_sqlite_data (void *data, int argc, char **argv, char **azColName);
+
+  static std::string get_mission_outline_base(const std::unordered_map<std::string, std::string>& map_llm_requests_messages);
 
  private:
   static bool flag_found_missing_3D_object_files;

@@ -270,7 +270,7 @@ bool data_manager::flag_setupDisplayAutoSkipInStoryMessage{ true }; // v3.305.3 
 bool data_manager::flag_setupShowDebugMessageTab{ true };           // v3.305.4 Show message tab
 #endif
 
-
+bool data_manager::flag_use_llm_to_generate_mission{false}; // v26.09.1
 
 XPLMCameraPosition_t data_manager::mxCameraPosition;
 int                  data_manager::isLosingControl_i{ 1 };
@@ -957,8 +957,23 @@ data_manager::callback_sqlite_data (void *data, int argc, char **argv, char **az
   data_manager::row_gather_db_data.clear ();
 
   return 0;
-};
+}
 
+
+// -------------------------------------
+
+std::string missionx::data_manager::get_mission_outline_base(const std::unordered_map<std::string, std::string>& map_llm_requests_messages) 
+{ 
+  std::ostringstream oss;
+  std::ranges::for_each(data_manager::strct_ui_share_data.map_llm_requests_messages,
+                        [&oss](const auto& item)
+                        {
+                          // C++17 structured binding (or use item.first and item.second)
+                          const auto& [key, value] = item;
+                          oss << key << ": " << value << "\n";
+                        });
+ return oss.str(); 
+};
 
 
 // -------------------------------------
@@ -7128,7 +7143,7 @@ where is_plane_in_boundary = 1
 // -------------------------------------
 
 NavAidInfo
-data_manager::getICAO_info (const std::string &inICAO)
+data_manager::get_icao_info_closest_to_plane (const std::string &inICAO)
 {
   NavAidInfo  nNavAid;
   const Point planePosition = dataref_manager::getPlanePointLocationThreadSafe ();
@@ -9795,7 +9810,7 @@ missionx::mx_return missionx::data_manager::gen_request_mission_description_from
                               }
                               )
                           }
-                          , {"temperature", 0.4}
+                          , {"temperature", 0.9}
   };
 
 
@@ -9823,7 +9838,162 @@ missionx::mx_return missionx::data_manager::gen_request_mission_description_from
   return result_llm;
 }
 
+
 // -------------------------------------
+
+missionx::mx_return 
+missionx::data_manager::gen_request_mission_leg_from_llm (missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::curl_request_data& in_curl_request_data, const std::string& mission_outline) 
+{ 
+  // The following function should retrieve an ICAO from the LLM server.
+
+  missionx::mx_return result_llm = false;
+
+  Log::logMsgThread("url: " + in_curl_request_data.url_s); // debug
+
+  // Prepare cURL
+  bool        flag_http_success = false;
+  int         iCurlTry          = 0;
+  long        httpStatus        = 0;
+  std::string cert_loc_s        = missionx::data_manager::mx_folders_properties.getStringAttributeValue(mxconst::get_PROP_MISSIONX_PATH(), "");
+  std::string response_data;
+
+#ifndef RELEASE
+  Log::logMsgThread(fmt::format("[{}] mission outline: {}", __func__, mission_outline));
+#endif
+
+  const std::string system_prompt = "You will provide the airport information based on the format requested by the user."
+                                    //"You must not provide prefix answers like: Okay, here’s a flight simulator mission brief based on your request"
+                                    "If you do not find information, you must return an empty string as a result and nothing more.";
+
+  // Build the payload structure natively from "the "system_prompt" and "mission_outline"
+  nlohmann::json payload = {
+    {"model", "local-model"}, 
+    {"messages", nlohmann::json::array(
+          {
+            {
+              {"role", "system"}, 
+              {"content", system_prompt}
+            }, 
+          {
+            {"role", "user"}, 
+            {"content", mission_outline}
+          }
+      })
+  }, 
+    {"temperature", 0.6}};
+
+
+  // the ".dump" will take care of special json characters.
+  std::string json_payload                  = payload.dump();
+  in_curl_request_data.post_request_field_s = json_payload;
+  // in_curl_request_data.headers = "Content-Type: application/json";
+  in_curl_request_data.connection_timeout = 20L;
+  in_curl_request_data.how_many_tries     = 1; // we force only one try
+
+#ifndef RELEASE
+  Log::logMsgThread(fmt::format("[{}] {}", __func__, json_payload));
+#endif
+
+  // Call LLM server using cURL
+  auto curl_request_result = data_manager::get_curl_request_respond(in_curl_request_data);
+
+  if (curl_request_result.request_err.empty())
+  {
+    result_llm.reset();
+    result_llm              = true;
+    result_llm.string_value = curl_request_result.response_text;
+  }
+
+  return result_llm;
+}
+
+
+// -------------------------------------
+
+missionx::structs::curl_request_data 
+missionx::data_manager::get_llm_user_setup_info_to_use_with_curl() 
+{ 
+  const auto llm_connection_timeout = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<long>(mxconst::get_OPT_AI_LLM_SERVER_TIMEOUT(), 60L);
+  const auto server_url             = missionx::system_actions::pluginSetupOptions.getNodeText_type_6(mxconst::get_OPT_AI_SERVER_URL(), "");
+  auto       bearer_auth_key        = system_actions::pluginSetupOptions.getNodeText_type_6(mxconst::get_OPT_AI_AUTH_KEY(), mxconst::get_OPT_AI_DEFAULT_AUTH_KEY());
+
+  if (mxUtils::trim(bearer_auth_key).empty())
+    bearer_auth_key = mxconst::get_OPT_AI_DEFAULT_AUTH_KEY();
+
+  std::vector<std::string> curl_headers = {"Content-Type: application/json", fmt::format("Authorization: Bearer {}", bearer_auth_key)};
+
+  missionx::structs::curl_request_data curl_conn_data = {.timeout = llm_connection_timeout, .url_s = server_url, .headers = curl_headers};
+
+  return curl_conn_data;
+}
+
+// -------------------------------------
+
+std::unordered_map<std::string, std::vector<std::string>> 
+missionx::data_manager::parse_llm_leg_data(const std::string& in_text) 
+{ 
+  std::unordered_map<std::string, std::vector<std::string>> result;
+  std::istringstream                                        stream(in_text);
+  std::string                                               line;
+
+  while (std::getline(stream, line))
+  {
+    // Skip empty lines or carriage returns
+    if (line.empty() || line == "\r")
+    {
+      continue;
+    }
+
+    // Locate the key-value separator ':'
+    size_t colon_pos = line.find(':');
+    if (colon_pos == std::string::npos)
+    {
+      continue;
+    }
+
+    std::string key  = line.substr(0, colon_pos);
+    std::string rest = line.substr(colon_pos + 1);
+
+    // Locate the pipe '|' separating the count from values
+    size_t pipe_pos = rest.find('|');
+    if (pipe_pos == std::string::npos)
+    {
+      continue;
+    }
+
+    int count = 0;
+    try
+    {
+      count = std::stoi(rest.substr(0, pipe_pos));
+    }
+    catch (...)
+    {
+      continue; // Handle potential parsing errors for invalid count numbers
+    }
+
+    // Parse remaining pipe-separated value tokens
+    std::vector<std::string> values;
+    // values.reserve(count);
+
+    std::istringstream val_stream(rest.substr(pipe_pos + 1));
+    std::string        val;
+    while (std::getline(val_stream, val, '|'))
+    {
+      // Strip trailing \r if processing Windows newline formats (\r\n)
+      if (!val.empty() && val.back() == '\r')
+      {
+        val.pop_back();
+      }
+      values.push_back(val);
+    }
+
+    result[key] = std::move(values);
+  }
+
+  return result;
+}
+
+
 // -------------------------------------
 // -------------------------------------
 

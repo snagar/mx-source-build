@@ -5034,6 +5034,47 @@ missionx::Mission::flcPRE()
         #endif
       }
       break;
+      case missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_nav_info_mainThread: 
+      {
+        // v26.09.1 Use this when you have a navAidInfo and want to find the nearest navaid, based on "icao", "lat/lon" and custom "navaidinfo.navytpe"
+        #ifndef RELEASE
+        auto startClock = std::chrono::steady_clock::now();
+        #endif
+
+        const std::string icao               = (RandomEngine::shared_navaid_info.navAid.getID().empty()) ? "" : RandomEngine::shared_navaid_info.navAid.getID();
+        const auto        nav_type_to_search = (RandomEngine::shared_navaid_info.navAid.navType == xplm_Nav_Unknown) ? xplm_Nav_Airport : RandomEngine::shared_navaid_info.navAid.navType; // if navType is Unknown, we will search for airport
+
+        // v25.05.1 use of shared_navaid_info.navAid.navRef instead of local variable
+        missionx::RandomEngine::shared_navaid_info.navAid.navRef = XPLMFindNavAid(nullptr, (icao.empty() ? nullptr : icao.c_str()), &RandomEngine::shared_navaid_info.navAid.lat, &RandomEngine::shared_navaid_info.navAid.lon, nullptr, nav_type_to_search);
+
+        // If we found a navAid, we will fetch the information and store it in shared_navaid_info.navAid
+        if (RandomEngine::shared_navaid_info.navAid.navRef != XPLM_NAV_NOT_FOUND)
+        {
+          XPLMGetNavAidInfo(RandomEngine::shared_navaid_info.navAid.navRef,
+                            &RandomEngine::shared_navaid_info.navAid.navType,
+                            &RandomEngine::shared_navaid_info.navAid.lat,
+                            &RandomEngine::shared_navaid_info.navAid.lon,
+                            &RandomEngine::shared_navaid_info.navAid.height_mt,
+                            &RandomEngine::shared_navaid_info.navAid.freq,
+                            &RandomEngine::shared_navaid_info.navAid.heading,
+                            RandomEngine::shared_navaid_info.navAid.ID,
+                            RandomEngine::shared_navaid_info.navAid.name,
+                            nullptr);
+                            // &RandomEngine::shared_navaid_info.navAid.inRegion);
+        }
+
+        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+
+
+        #ifndef RELEASE
+        const auto   endThreadClock = std::chrono::steady_clock::now();
+        const auto   diff           = endThreadClock - startClock;
+        const double duration       = std::chrono::duration<double, std::milli>(diff).count();
+
+        Log::logMsg("*** Finished get_nearest_nav_aid_to_custom_nav_info_mainThread. Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec)  ****");
+        #endif
+      }
+      break;
       case missionx::mx_flc_pre_command::get_icao_plane_is_in_its_boundaries_based_on_custom_lat_lon: // v25.09.2
       {
         // use of shared_navaid_info.navAid to search if a plane is in an airport boundary.
@@ -5048,7 +5089,7 @@ missionx::Mission::flcPRE()
         auto startClock = std::chrono::steady_clock::now();
         #endif
 
-        RandomEngine::shared_navaid_info.navAid = data_manager::getICAO_info(RandomEngine::shared_navaid_info.navAid.getID());
+        RandomEngine::shared_navaid_info.navAid = data_manager::get_icao_info_closest_to_plane(RandomEngine::shared_navaid_info.navAid.getID());
 
         missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
 

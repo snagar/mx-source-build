@@ -519,9 +519,9 @@ WinImguiBriefer::add_ui_ils_vfr_search_airports_button (missionx::mx_window_acti
     if ((!missionx::strct_ils_layer.from_icao.empty ()) && (missionx::strct_ils_layer.navaid.getID ().empty () || missionx::strct_ils_layer.navaid.lat == 0 || missionx::strct_ils_layer.navaid.lon == 0))
     {
       #ifdef IBM
-      missionx::strct_ils_layer.navaid = data_manager::getICAO_info (missionx::strct_ils_layer.from_icao);
+      missionx::strct_ils_layer.navaid = data_manager::get_icao_info_closest_to_plane (missionx::strct_ils_layer.from_icao);
       #else
-      auto tempNav                 = data_manager::getICAO_info (missionx::strct_ils_layer.from_icao);
+      auto tempNav                 = data_manager::get_icao_info_closest_to_plane (missionx::strct_ils_layer.from_icao);
       missionx::strct_ils_layer.navaid = tempNav;
       #endif
     }
@@ -3096,12 +3096,24 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
   // ------------------------
   // Modification options
   // ------------------------
-  this->mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_REG()); // set font size
+  missionx::WinImguiBriefer::mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_REG()); // set font size
   ImGui::BeginGroup();
   {
     ImGui::BeginChild("Modify Semi-Automation Options", VEC2_MOD_CHILD, ImGuiChildFlags_None);
     {
       ImGui::Spacing();
+      // ------------------------
+      // Show AI option
+      // ------------------------
+      if (!bPickedOilRigMission && !bPickedMedevacSurpriseMeMission && missionx::strct_setup_layer.b_use_ai)
+      {
+        mx_img_window::mxUiHelpMarker(missionx::color::color_vec4_beige, "Make sure that your LLM settings are correct in the setup screen.\nDouble check the flight plan, after all it is still an AI ;-)");
+        ImGui::SameLine();
+        ImGui::Checkbox("##GenerateMissionUsingLLM", &data_manager::flag_use_llm_to_generate_mission);
+        ImGui::SameLine();
+        ImGui::TextColored(missionx::color::color_vec4_yellow, "[w.i.p] Construct a mission using AI");
+      }
+
 
       // ------------------------
       // Show briefer collapsing header
@@ -3226,6 +3238,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
 
         if (add_ui_generate_button())
         {
+          // generate random date/time ?
           if (bRerunRandomDateTime) // v3.303.10
             this->execAction(missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
 
@@ -3404,6 +3417,7 @@ WinImguiBriefer::add_ui_ai_use_ai_checkbox()
   ImGui::SameLine();
   if (ImGui::Checkbox ("Use AI##ai_setup", &strct_setup_layer.b_use_ai) )
   {
+    data_manager::flag_use_llm_to_generate_mission = false; // v26.09.1 reset ai generate mission flag
     system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_OPT_AI_USE_AI(), strct_setup_layer.b_use_ai);
     this->execAction(mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
   }
@@ -5494,6 +5508,12 @@ WinImguiBriefer::draw_home_layer ()
           this->setLayer (btn.layer);
 
 
+          if (btn.layer != missionx::uiLayer_enum::option_user_generates_a_mission_layer)
+          {
+            // disable find target using llm
+            data_manager::flag_use_llm_to_generate_mission = false; // v26.09.1
+          }
+
           // handle special actions per layer
           if (btn.layer == missionx::uiLayer_enum::option_user_generates_a_mission_layer)
           {
@@ -5647,6 +5667,9 @@ void WinImguiBriefer::draw_dynamic_mission_creation_screen_home()
     {
       if (ImGui::ImageButton ("Full Control", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_FULL_CONTROL ()].gTexture, btn_size_vec2))
       {
+        // disable find target using llm
+        data_manager::flag_use_llm_to_generate_mission = false; // v26.09.1
+
         // flag we want to display Option A Screen
         missionx::strct_user_create_layer.child_screen = mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_option_a;
         this->refresh_slider_data_based_on_plane_type(missionx::strct_user_create_layer.iRadioPlaneType);
@@ -10302,7 +10325,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
       {
         // Call savepoint action
         this->set_bottom_message_line1 ("Aborting, Please wait...", 5); // v3.0.160
-        missionx::Log::logMsg ("[WinImgBrieferGL] Aborting RandomEngine."); // debug
+        missionx::Log::logMsg (fmt::format("[{}] Aborting RandomEngine.", __func__)); // debug
         missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::abort_random_engine); //
       }
     }

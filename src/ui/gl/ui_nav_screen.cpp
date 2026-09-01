@@ -821,7 +821,7 @@ void ui_nav_screen::child_draw_nav_search()
       else
       {
         // get Navaid information
-        missionx::strct_ils_layer.navaid = missionx::data_manager::getICAO_info (missionx::strct_ils_layer.sNavICAO);
+        missionx::strct_ils_layer.navaid = missionx::data_manager::get_icao_info_closest_to_plane (missionx::strct_ils_layer.sNavICAO);
         if (missionx::strct_ils_layer.navaid.navRef)
         {
           missionx::strct_ils_layer.fetch_nav_state = missionx::mxFetchState_enum::fetch_not_started;
@@ -1179,17 +1179,17 @@ void ui_nav_screen::add_ui_ils_vfr_search_airports_button(missionx::mx_window_ac
       #ifdef IBM
       missionx::strct_ils_layer.navaid = data_manager::get_plane_airport_or_nearest_icao ();
       #else
-      auto tempNav                 = data_manager::get_plane_airport_or_nearest_icao ();
+      const auto tempNav                 = data_manager::get_plane_airport_or_nearest_icao ();
       missionx::strct_ils_layer.navaid = tempNav;
       #endif
     }
 
-    if ((!missionx::strct_ils_layer.from_icao.empty ()) && (missionx::strct_ils_layer.navaid.getID ().empty () || missionx::strct_ils_layer.navaid.lat == 0 || missionx::strct_ils_layer.navaid.lon == 0))
+    if ((!missionx::strct_ils_layer.from_icao.empty()) && (missionx::strct_ils_layer.navaid.getID().empty() || missionx::strct_ils_layer.navaid.lat == 0 || missionx::strct_ils_layer.navaid.lon == 0))
     {
       #ifdef IBM
-      missionx::strct_ils_layer.navaid = data_manager::getICAO_info (missionx::strct_ils_layer.from_icao);
+      missionx::strct_ils_layer.navaid = data_manager::get_icao_info_closest_to_plane(missionx::strct_ils_layer.from_icao);
       #else
-      auto tempNav                 = data_manager::getICAO_info (missionx::strct_ils_layer.from_icao);
+      const auto tempNav               = data_manager::get_icao_info_closest_to_plane(missionx::strct_ils_layer.from_icao);
       missionx::strct_ils_layer.navaid = tempNav;
       #endif
     }
