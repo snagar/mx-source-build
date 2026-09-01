@@ -10,8 +10,9 @@
 #include "../io/system_actions.h"
 
 #include <algorithm>
-// #include <math.h>
 #include <cmath>
+
+#include <limits>
 
 #ifdef MAC
 #if __has_include(<filesystem>) && (!defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500)
@@ -10955,7 +10956,10 @@ position:2|{latitude}|{longitude}
       auto json_description = Utils::json_extract_by_path(ai_request_result.string_value, "/choices/0/message/content");
       if (json_description.result)
       {
-        double      distance_nm          = std::numeric_limits<double>::max();
+        //// using "Prevent Macro Expansion using Parentheses" syntax, so the "max" macro won't fail compilation.
+        double distance_nm = -1.0;
+
+        
         std::string ai_llm_description_s = mxUtils::trim(mxUtils::remove_non_ascii(json_description.string_value, true));
         auto        map_ai_way_info      = data_manager::parse_llm_leg_data(ai_llm_description_s);
         NavAidInfo  ai_nav;
@@ -10965,12 +10969,20 @@ position:2|{latitude}|{longitude}
           ai_nav.setName(map_ai_way_info[mxconst::get_ATTRIB_NAME()].at(0));
         if (map_ai_way_info.contains(mxconst::get_ELEMENT_POSITION()) && map_ai_way_info[mxconst::get_ELEMENT_POSITION()].size() > 1)
         {
-          auto [ptr1, ec1] = std::from_chars(map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(0).data(), map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(0).data() + map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(0).size(), ai_nav.lat);
-          if (ec1 != std::errc())
-            ai_nav.lat = 0.0f;
-          auto [ptr2, ec2] = std::from_chars(map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(1).data(), map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(1).data() + map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(1).size(), ai_nav.lon);
-          if (ec2 != std::errc())
-            ai_nav.lon = 0.0f;
+          // v26.09.1 disable code since it might not be supported in GCC or CLANG
+          //auto [ptr1, ec1] = std::from_chars(map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(0).data(), map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(0).data() + map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(0).size(), ai_nav.lat);
+          //if (ec1 != std::errc())
+          //  ai_nav.lat = 0.0f;
+          //auto [ptr2, ec2] = std::from_chars(map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(1).data(), map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(1).data() + map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(1).size(), ai_nav.lon);
+          //if (ec2 != std::errc())
+          //  ai_nav.lon = 0.0f;
+
+          const std::string lat_s = map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(0);
+          const std::string lon_s = map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(1);
+
+          ai_nav.lat = mxUtils::stringToNumber<float>(lat_s, lat_s.size());
+          ai_nav.lon = mxUtils::stringToNumber<float>(lon_s, lon_s.size());
+
         } // end position
 
         #ifndef RELEASE
