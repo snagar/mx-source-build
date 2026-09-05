@@ -71,7 +71,7 @@ jobs:
           echo -e "\nGlobal Variable value for 'global-subversion-text' is: ${{ steps.strings.outputs.global-subversion-text }} "
   
   build-lin:
-    #if: ( 1 == 2 )
+    if: ( 1 == 2 )
     runs-on: ubuntu-22.04
     needs: [pre-build]
     strategy: # Set fail-fast too false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
@@ -150,13 +150,13 @@ jobs:
           printf "List folders:\n"
           ls -l
           printf "List SDK files recursively:\n"
-          ls -lr SDK
+          ls -lR SDK
       
 
-      - name: Stop workflow early
-        run: |
-          echo "Stopping here..."
-          exit 1  # Fails the step and halts subsequent steps unless configured otherwise
+#      - name: Stop workflow early
+#        run: |
+#          echo "Stopping here..."
+#          exit 1  # Fails the step and halts subsequent steps unless configured otherwise
       
 
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
@@ -209,15 +209,15 @@ jobs:
   
 
   build-osx:
-    if: ( 1 == 2 )
+#    if: ( 1 == 2 )
     runs-on: macos-14
     needs: [pre-build]
     strategy:
       fail-fast: true
       matrix:
         os: [macos-14]
-        build_type: [ Debug, Release ]
-        #build_type: [Debug]
+#        build_type: [ Debug, Release ]
+        build_type: [Debug]
         c_compiler: [clang]
         cpp_compiler: [clang++]
     steps:
@@ -255,6 +255,26 @@ jobs:
 #          echo -e "${{ needs.pre-build.outputs.global-special-build_text }} \" ${{ needs.pre-build.outputs.global-tag-type }}${{  needs.pre-build.outputs.global-subversion-text }}\" " >> src/core/version.hpp
 #          echo -e "\nVersion HPP file contains:"
 #          cat src/core/version.hpp
+
+
+      - name: Extract XPSDK
+        shell: bash
+        run: |
+          printf "Extract XPSDK"
+          cd libs
+          printf "Command: ditto -x -k XPSDK.zip "
+          printf "Current folder: %s\n" "$(pwd)"
+          ditto -V -x -k XPSDK.zip
+          printf "List folders:\n"
+          ls -la
+          printf "List SDK files recursively:\n"
+          ls -lR SDK
+
+
+      - name: Stop workflow early
+        run: |
+          echo "Stopping here..."
+          exit 1  # Fails the step and halts subsequent steps unless configured otherwise
 
 
 
