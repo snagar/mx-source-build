@@ -78,8 +78,8 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-22.04]
-#        build_type: [ Debug, Release ]
-        build_type: [ Debug ]
+        build_type: [ Debug, Release ]
+#        build_type: [ Debug ]
         #build_type: [ Release ]
         c_compiler: [gcc]
         #gcc_version: [11]
@@ -209,15 +209,15 @@ jobs:
   
 
   build-osx:
-#    if: ( 1 == 2 )
+    if: ( 1 == 2 )
     runs-on: macos-14
     needs: [pre-build]
     strategy:
       fail-fast: true
       matrix:
         os: [macos-14]
-#        build_type: [ Debug, Release ]
-        build_type: [Debug]
+        build_type: [ Debug, Release ]
+#        build_type: [Debug]
         c_compiler: [clang]
         cpp_compiler: [clang++]
     steps:
@@ -262,7 +262,7 @@ jobs:
         run: |
           printf "Extract XPSDK"
           cd libs
-          printf "Command: ditto -x -k XPSDK.zip \n"
+          printf "Command: ditto -x -k XPSDK.zip .\n"
           printf "Current folder: %s\n" "$(pwd)"
           ditto -V -x -k XPSDK.zip .
           printf "List folders:\n"
@@ -271,10 +271,10 @@ jobs:
           ls -lR SDK
 
 
-      - name: Stop workflow early
-        run: |
-          echo "Stopping here..."
-          exit 1  # Fails the step and halts subsequent steps unless configured otherwise
+#      - name: Stop workflow early
+#        run: |
+#          echo "Stopping here..."
+#          exit 1  # Fails the step and halts subsequent steps unless configured otherwise
 
 
 
@@ -333,7 +333,7 @@ jobs:
   
 
   build-win:
-    if: ( 1 == 2 )
+#    if: ( 1 == 2 )
     #runs-on: windows-latest
     runs-on: windows-2022
     needs: [pre-build]
@@ -342,8 +342,8 @@ jobs:
       matrix:
         #os: [windows-latest]
         os: [windows-2022]
-        build_type: [ Debug, Release ]
-        # build_type: [Debug]
+#        build_type: [ Debug, Release ]
+        build_type: [Debug]
         c_compiler: [cl]
         cpp_compiler: [cl]
     steps:
@@ -381,6 +381,30 @@ jobs:
           
           #- name: Fail the script
           #  run: exit 1
+
+
+      - name: Extract XPSDK
+        shell: pwsh
+        run: |
+          "Extracting XPSDK"
+          cd libs
+          Write-Host "Command: Expand-Archive XPSDK.zip -DestinationPath . -Force \n"
+          "Current folder: $(Get-Location)\n"
+          Expand-Archive XPSDK.zip -DestinationPath . -Force
+          
+          Write-Host "List folders:\n"
+          Get-ChildItem -Directory -Name
+          
+          Write-Host "List SDK files recursively:\n"
+          Get-ChildItem -Directory -Name -Recurse
+
+
+      - name: Stop workflow early
+        run: |
+          echo "Stopping here..."
+          exit 1  # Fails the step and halts subsequent steps unless configured otherwise
+        
+        
 
       - name: Configure & Build Windows Binaries using CMake
         shell: cmd
