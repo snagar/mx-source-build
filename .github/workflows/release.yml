@@ -143,10 +143,10 @@ jobs:
         shell: bash
         run: |
           printf "Extract XPSDK"
-          printf "Command: unzip -o libs/XPSDK430.zip -d libs/XPSDK"
           cd libs
+          printf "Command: unzip -o XPSDK.zip"
           printf "Current folder: %s\n" "$(pwd)"
-          unzip -o XPSDK430.zip
+          unzip -o XPSDK.zip
           printf "List folders:\n"
           ls -l
           printf "List SDK files recursively:\n"
