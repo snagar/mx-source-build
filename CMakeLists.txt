@@ -299,6 +299,18 @@ if(GIT_FOUND)
   )
 endif()
 
+
+# Minizip https://github.com/domoticz/minizip
+set(MINIZIP_LIB_SRC
+        libs/minizip/minizip.c
+        libs/minizip/ioapi.c
+        libs/minizip/unzip.c
+        libs/minizip/zip.c
+        #        libs/minizip/mztools.c
+        #        libs/minizip/miniunz.c
+)
+
+
 if(NOT GIT_SHA)
   set(GIT_SHA "UNKNOWN")
 endif()
@@ -314,6 +326,8 @@ add_library(${PROJECT_NAME} SHARED
         ${GLM_LIB_SRC}
         ${FREETYPE_LIB_SRC}
         ${DYNAMIC_SHA}
+        ${MINIZIP_LIB_SRC}
+
 )
 
 
@@ -338,7 +352,14 @@ target_include_directories(${PROJECT_NAME} PRIVATE
         ${CMAKE_SOURCE_DIR}/libs/freetype2/include
         ${CMAKE_SOURCE_DIR}/libs/brotil/include
         ${CMAKE_SOURCE_DIR}/libs/glm
+        ${CMAKE_SOURCE_DIR}/libs/minizip
 )
+
+INCLUDE(FindZLIB)
+
+IF(NOT ZLIB_FOUND)
+  message(FATAL_ERROR "zlib library is required for libminizip!")
+ENDIF(NOT ZLIB_FOUND)
 
 if (LINUX)
   target_include_directories(${PROJECT_NAME} PRIVATE
@@ -407,7 +428,6 @@ endif()
 ##################################################
 
 ## OpenGL libraries
-#find_library(OPENGL_LIBRARY NAMES OpenGL GL GLU OpenGL OpenGL32.lib GLUE32.lib ) # apt install freeglut3-dev
 find_package(OpenGL REQUIRED)
 if(OPENGL_FOUND)
   include_directories(${OPENGL_INCLUDE_DIR})
@@ -462,9 +482,6 @@ if (WIN32)
           INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/curl/include"
   )
 
-  # Make cURL link against zlib
-  # target_link_libraries(CURL::libcurl INTERFACE ZLIB::ZLIB)
-
   # Link cURL to zlib and Windows system networking/crypto libraries
   target_link_libraries(CURL::libcurl INTERFACE
           ZLIB::ZLIB
@@ -481,8 +498,6 @@ else()
   # On Linux/macOS use system cURL and zlib
   find_package(CURL REQUIRED)
   find_package(ZLIB REQUIRED)
-  #  add_library(CURL::libcurl ALIAS CURL::libcurl)
-  #  add_library(ZLIB::ZLIB ALIAS ZLIB::ZLIB)
 endif()
 
 
@@ -530,9 +545,6 @@ if (WIN32 OR APPLE)
     )
   endif()  # end APPLE
 
-  ## Old code
-  # find_library(XPLM_LIBRARY NAMES XPLM XPLM_64.lib XPWidgets XPWidgets_64.lib)
-
 endif()
 
 # Linking by OS
@@ -560,15 +572,10 @@ elseif (APPLE)
           "-framework ApplicationServices"
           "-framework Foundation"
           "-framework Security"
-          # "-framework XPLM"
-          # "-framework XPWidgets"
           XPLM::XPLM
           XPLM::XPWidgets
           FMOD::FMOD
           CURL::libcurl
-          #    ${FMOD_LIBRARY}
-          #    ${XPLM_LIBRARY}
-          #    curl
   )
 elseif (UNIX)
   target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -594,4 +601,7 @@ message("CMAKE_LIBRARY_PATH: ${CMAKE_LIBRARY_PATH}")
 message("OPENGL_LIBRARIES: ${OPENGL_LIBRARIES}")
 message("FMOD_LIBRARY: ${FMOD_LIBRARY}")
 message("CURL_LIBRARY: ${CURL_LIBRARY}")
+message("ZLIB_INCLUDE_DIR: ${ZLIB_INCLUDE_DIR}")
+message("ZLIB_LIBRARIES: ${ZLIB_LIBRARIES}")
+message("ZLIB_LIBRARY: ${ZLIB_FOUND}")
 message("CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")

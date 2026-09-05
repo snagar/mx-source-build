@@ -31,6 +31,7 @@ static const^std::vector<std::string>^vecMarkerTypeOptions_markers^{ "marker01",
 // inline static^std::map<mx_ils_type_enum, std::string>^mapILS_types^{ { mx_ils_type_enum::LOC, "LOC" },{ mx_ils_type_enum::ILS_cat_I, "ILS-cat-I" }, { mx_ils_type_enum::ILS_cat_II, "ILS-cat-II" },{ mx_ils_type_enum::ILS_cat_III, "ILS-cat-III" }, { mx_ils_type_enum::IGS, "IGS" }, { mx_ils_type_enum::LDA, "LDA" }, { mx_ils_type_enum::SDF, "SDF" }, { mx_ils_type_enum::GLS, "GLS" }, { mx_ils_type_enum::LP, "LP" }, { mx_ils_type_enum::LPV, "LPV" } };   ^ // v26.04.5
 
 static const^std::string^MISSIONX_PROPERTIES_FILE_NAME^"missionx_pref_v3.xml"; ^ // v26.04.5
+static const^std::string^MISSIONX_RANDOM_PACK_FILENAME^"missionx_random_pack.zip"; ^ // v26.09.2
 
 const static^std::string ^DEFAULT_CYCLE           ^ "1802";
 const static^std::string ^DEFAULT_FONT_LOCATION_0 ^ "./Resources/plugins/missionx/libs/fonts/DejaVuSansMono.ttf";

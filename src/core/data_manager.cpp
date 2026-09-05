@@ -985,6 +985,123 @@ std::string missionx::data_manager::get_mission_outline_base(const std::unordere
     oss << "Minutes: " << starting_minutes << "\n";
 
  return oss.str(); 
+}
+
+// -------------------------------------
+
+bool
+data_manager::extract_missionx_library(const std::filesystem::path& zipPath, const std::filesystem::path& customSceneryDir)
+{
+  // 1. Cross-platform path handling for file opening
+#if defined(_WIN32)
+    unzFile zip = unzOpen64(zipPath.wstring().c_str());
+#else
+    unzFile zip = unzOpen64(zipPath.string().c_str());
+#endif
+
+    if (!zip) {
+        return false;
+    }
+
+    unz_global_info64 globalInfo;
+    if (unzGetGlobalInfo64(zip, &globalInfo) != UNZ_OK) {
+        unzClose(zip);
+        return false;
+    }
+
+    constexpr size_t BUFFER_SIZE = 8192;
+    std::vector<char> buffer(BUFFER_SIZE);
+
+    for (uLong i = 0; i < globalInfo.number_entry; ++i) {
+        char filename[512];
+        unz_file_info64 fileInfo;
+
+        if (unzGetCurrentFileInfo64(zip, &fileInfo, filename, sizeof(filename), nullptr, 0, nullptr, 0) != UNZ_OK) {
+            unzClose(zip);
+            return false;
+        }
+
+        // Standardize POSIX forward slashes from zip header into target path
+        fs::path targetPath = customSceneryDir / fs::path(filename).lexically_normal();
+
+        // Check if entry is a directory
+        if (filename[strlen(filename) - 1] == '/' || filename[strlen(filename) - 1] == '\\') {
+            fs::create_directories(targetPath);
+        } else {
+            // Ensure parent directory exists
+            fs::create_directories(targetPath.parent_path());
+
+            if (unzOpenCurrentFile(zip) != UNZ_OK) {
+                unzClose(zip);
+                return false;
+            }
+
+            // std::ios::trunc forces overriding pre-existing scenery files
+            std::ofstream outFile(targetPath, std::ios::binary | std::ios::trunc);
+            if (!outFile.is_open()) {
+                unzCloseCurrentFile(zip);
+                unzClose(zip);
+                return false;
+            }
+
+            int readBytes = 0;
+            do {
+                readBytes = unzReadCurrentFile(zip, buffer.data(), BUFFER_SIZE);
+                if (readBytes < 0) {
+                    unzCloseCurrentFile(zip);
+                    unzClose(zip);
+                    return false;
+                }
+                if (readBytes > 0) {
+                    outFile.write(buffer.data(), readBytes);
+                }
+            } while (readBytes > 0);
+
+            outFile.close();
+            unzCloseCurrentFile(zip);
+        }
+
+        if (i < globalInfo.number_entry - 1) {
+            if (unzGoToNextFile(zip) != UNZ_OK) {
+                unzClose(zip);
+                return false;
+            }
+        }
+    }
+
+    unzClose(zip);
+    return true;
+}
+
+// -------------------------------------
+
+void data_manager::ensure_missionx_folder_exists()
+{
+  // const fs::path targetDir = "Custom Scenery/missionx/random";
+  // init custom folder path
+  const fs::path targetDir = fmt::format("{}", data_manager::getMissionsRootPath() );
+  // init random_pack path
+  const fs::path random_pack_file_s = fmt::format("{}{}", mx_folders_properties.getStringAttributeValue(mxconst::get_PROP_MISSIONX_PATH(), ""), mxconst::get_MISSIONX_RANDOM_PACK_FILENAME() );
+
+  try {
+    // create_directories creates the folder and any missing parent directories.
+    // It returns true if a NEW directory was created, or false if it already existed.
+    // if (fs::create_directories(targetDir))
+    if (true)
+    {
+      Log::logMsg( fmt::format("[{}] Folder created successfully: [{}].\n", __func__, targetDir.string()) );
+      if (data_manager::extract_missionx_library(random_pack_file_s, targetDir))
+        Log::logMsg( fmt::format("[{}] Random pack: '{}' extracted successfully to: '{}'.\n", __func__, random_pack_file_s.string(), targetDir.string()) );
+      else
+        Log::logMsg( fmt::format("[{}] !!! Failed extracting Random pack: '{}'!!!\n", __func__, random_pack_file_s.string(), targetDir.string()) );
+    }
+    else
+      Log::logMsg( fmt::format("[{}] Folder already exists: [{}].\n", __func__, targetDir.string()) );
+  }
+  catch (const fs::filesystem_error& e) {
+    Log::log_xplm_debug_string ( fmt::format("!! [{}] Filesystem error: {}\n\n", __func__, e.what() ) );
+  }
+
 };
 
 
@@ -2509,7 +2626,7 @@ data_manager::preparePluginFolders()
   mx_folders_properties.setStringProperty(mxconst::get_FLD_MISSIONX_SAVE_PATH(), Utils::getRelativePluginsPath() + "/" + PLUGIN_DIR_NAME + "/save");
   mx_folders_properties.setStringProperty(mxconst::get_FLD_MISSIONX_LOG_PATH(), Utils::getPluginDirectoryWithSep(PLUGIN_DIR_NAME) + "missionx.log");
 
-  mx_folders_properties.setStringProperty(mxconst::get_FLD_MISSIONS_ROOT_PATH(), getMissionsRootPath()); // v3.0.129
+  mx_folders_properties.setStringProperty(mxconst::get_FLD_MISSIONS_ROOT_PATH(), getMissionsRootPath()); // v3.0.129 {full path}/Custom Scenery/missionx
 
   // v3.0.217.1 Random folders
   mx_folders_properties.setStringProperty(mxconst::get_FLD_RANDOM_MISSION_PATH(), mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONS_ROOT_PATH(), "", errStr) + XPLMGetDirectorySeparator() + "random"); // v3.0.217.1

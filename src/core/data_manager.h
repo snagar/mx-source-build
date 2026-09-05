@@ -4,21 +4,6 @@
 #pragma once
 
 
-//#ifdef MAC
-//  #if __has_include(<format>) && (!defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 135000)
-//  #define GHC_USE_STD_FS
-//    #include <format>
-//  #endif
-//  #ifndef GHC_USE_STD_FS
-//    #include <fmt/core.h>
-//
-//  #endif
-//#else 
-//  // Linux and Windows
-//  #include <format>
-//#endif
-
-
 #include "XPLMMap.h" // v3.305.4
 #include "XPLMCamera.h" // v3.0.303.7
 
@@ -67,7 +52,8 @@
 #include "../core/embeded_script/script_manager.h" // v3.303.14 moved here from Task class, and being used by ext_script class.
 #include "../../libs/imgui4xp/imgui/imgui.h" // v3.303.14 instead of "ImgWindow.h" to resolve the ImVec2 in the header
 #include "../../libs/imgui4xp/colors/mx_colors.hpp" // v3.305.3 moved colors to its own file so we could integrate in any class without complex dependency
-
+#include "../../libs/minizip/minizip/zip.h"
+#include "../../libs/minizip/minizip/unzip.h"
 
 namespace missionx
 {
@@ -917,6 +903,9 @@ public:
 class data_manager
 {
 private:
+  static bool flag_found_missing_3D_object_files;
+  static bool flag_rebuild_apt_dat;
+
   static uiLayer_enum generate_from_layer; // holds the layer were the RandomEngine was called from. This way we know if to use the UI Template options or not.
   static std::string  acf_icao; // v26.08.1
   static std::string active_acf;
@@ -1613,10 +1602,8 @@ public:
   // This information was set in the WinImguiBriefer::add_ui_semi_act_phase_1_pick() and WinImguiBriefer::add_ui_semi_act_phase_2_detail()
   static std::string get_mission_outline_base(const std::unordered_map<std::string, std::string>& map_llm_requests_messages);
 
- private:
-  static bool flag_found_missing_3D_object_files;
-  static bool flag_rebuild_apt_dat;
-
+  static bool extract_missionx_library(const std::filesystem::path& zipPath, const std::filesystem::path& customSceneryDir);
+  static void ensure_missionx_folder_exists();
 }; // end class
 
 }

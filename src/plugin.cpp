@@ -368,6 +368,10 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
   missionx::system_actions::purge_cache_files (cache_folder);
 
 
+  // v26.09.2 check if Custom Scenery/missionx/random folder exists. Create it if it doesn't.
+  missionx::data_manager::ensure_missionx_folder_exists();
+
+
   const auto now = std::chrono::steady_clock::now();
   const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now-start_timer).count();
 
@@ -582,7 +586,7 @@ PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFromWho, const intptr_t inM
 
       if (first_load && data_manager::missionState == mx_mission_state_enum::mission_undefined)
       {
-        // v26.04.4
+        // v26.04.4 Store custom scenery hash and compare it with the stored one.
         const std::string scenery_packs_ini_file_path = fmt::format("{}/scenery_packs.ini", Utils::getCustomSceneryRelativePath());
         const std::string scenery_pack_hash_s         = fmt::format("{}", Utils::get_file_hash(scenery_packs_ini_file_path));
         const auto        prop_scenery_pack_hash_s    = Utils::readAttrib(missionx::data_manager::xMissionxProperties_node, mxconst::get_ATTRIB_SCENERY_HASH(), "n/a");
