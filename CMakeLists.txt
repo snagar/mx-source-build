@@ -306,8 +306,6 @@ set(MINIZIP_LIB_SRC
         libs/minizip/ioapi.c
         libs/minizip/unzip.c
         libs/minizip/zip.c
-        #        libs/minizip/mztools.c
-        #        libs/minizip/miniunz.c
 )
 
 
@@ -355,11 +353,57 @@ target_include_directories(${PROJECT_NAME} PRIVATE
         ${CMAKE_SOURCE_DIR}/libs/minizip
 )
 
-INCLUDE(FindZLIB)
+if (NOT WIN32)
+  message("Zlib search in Linux/Mac")
+  INCLUDE(FindZLIB)
+  IF(NOT ZLIB_FOUND)
+    message(FATAL_ERROR "zlib library is required for libminizip!")
+  ENDIF(NOT ZLIB_FOUND)
+else ()
+  message("Zlib search in Windows")
 
-IF(NOT ZLIB_FOUND)
-  message(FATAL_ERROR "zlib library is required for libminizip!")
-ENDIF(NOT ZLIB_FOUND)
+  # 1. Try standard system/vcpkg ZLIB first
+  find_package(ZLIB QUIET)
+
+  # 2. Fallback: Search explicitly for zs.lib or custom path
+  if(NOT ZLIB_FOUND)
+    # Define custom hint paths relative to your repo or custom dependencies directory
+    set(CUSTOM_ZLIB_HINTS
+            "${CMAKE_CURRENT_SOURCE_DIR}/libs/curl/libs/win"
+    )
+    set(CUSTOM_ZLIB_INCLUDE_HINTS
+            "${CMAKE_CURRENT_SOURCE_DIR}/libs/curl/include"
+            "${CMAKE_CURRENT_SOURCE_DIR}/libs/minizip/minizip"
+    )
+
+    # Search for header and library with hints
+    find_path(ZLIB_INCLUDE_DIR
+            NAMES zlib.h
+            HINTS ${CUSTOM_ZLIB_INCLUDE_HINTS}
+    )
+
+    find_library(ZLIB_LIBRARY
+            NAMES zs zlibstat zlibstatic zlib
+            HINTS ${CUSTOM_ZLIB_HINTS}
+    )
+
+    if(ZLIB_INCLUDE_DIR AND ZLIB_LIBRARY)
+      message(STATUS "Found ZLIB/zs.lib at: ${ZLIB_LIBRARY}")
+
+      # Create standard ZLIB::ZLIB target expected by minizip
+      if(NOT TARGET ZLIB::ZLIB)
+        add_library(ZLIB::ZLIB UNKNOWN IMPORTED)
+        set_target_properties(ZLIB::ZLIB PROPERTIES
+                IMPORTED_LOCATION "${ZLIB_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIR}"
+        )
+      endif()
+      set(ZLIB_FOUND TRUE)
+    else()
+      message(FATAL_ERROR "Could NOT find ZLIB or zs.lib! Please pass -DZLIB_LIBRARY=... and -DZLIB_INCLUDE_DIR=... to CMake.")
+    endif()
+  endif()
+endif ()
 
 if (LINUX)
   target_include_directories(${PROJECT_NAME} PRIVATE
