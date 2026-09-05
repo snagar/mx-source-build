@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
 
+# Sync folders - dry run (-n)
+# rsync -avc -n --exclude='mxconst_*' "/mnt/staff01/programming/xplane/missionx_v3/src/" "/mnt/staff01/programming/xplane/release/mx-source-build/src/"
+#
+# add "-- delete" to delete target files not present at source folder.
+
 # To add slgoldberg@ImgWindow submodule run:
 # git submodule add https://github.com/slgoldberg/ImgWindow ImgWindow
 # or
@@ -17,7 +22,7 @@ cmake_minimum_required(VERSION 3.20)
 # git pull master
 # git branch -a
 # git pull {working branch}
-
+#
 
 
 project(missionx LANGUAGES C CXX VERSION 26.08 DESCRIPTION "Mission-X X-Plane plugin v26.x")
