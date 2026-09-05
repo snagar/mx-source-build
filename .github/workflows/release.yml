@@ -262,9 +262,9 @@ jobs:
         run: |
           printf "Extract XPSDK"
           cd libs
-          printf "Command: ditto -x -k XPSDK.zip "
+          printf "Command: ditto -x -k XPSDK.zip \n"
           printf "Current folder: %s\n" "$(pwd)"
-          ditto -V -x -k XPSDK.zip
+          ditto -V -x -k XPSDK.zip .
           printf "List folders:\n"
           ls -la
           printf "List SDK files recursively:\n"
