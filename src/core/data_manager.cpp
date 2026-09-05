@@ -270,7 +270,7 @@ bool data_manager::flag_setupDisplayAutoSkipInStoryMessage{ true }; // v3.305.3 
 bool data_manager::flag_setupShowDebugMessageTab{ true };           // v3.305.4 Show message tab
 #endif
 
-bool data_manager::flag_use_llm_to_generate_mission{false}; // v26.09.1
+// bool data_manager::flag_llm_use_llm_to_generate_a_mission{false}; // v26.09.1 // v26.09.2 part of: "strct_ui_share_data"
 
 XPLMCameraPosition_t data_manager::mxCameraPosition;
 int                  data_manager::isLosingControl_i{ 1 };
@@ -972,6 +972,18 @@ std::string missionx::data_manager::get_mission_outline_base(const std::unordere
                           const auto& [key, value] = item;
                           oss << key << ": " << value << "\n";
                         });
+
+  // Add time data based on advanced settings
+ const auto day_in_year_i   = data_manager::prop_userDefinedMission_ui.getAttribNumericValue<int>(mxconst::get_PROP_STARTING_DAY(), -1);
+  const std::string starting_hour    = Utils::readAttrib(data_manager::prop_userDefinedMission_ui.node,   mxconst::get_PROP_STARTING_HOUR(), "");
+  const std::string starting_minutes = Utils::readAttrib(data_manager::prop_userDefinedMission_ui.node,   mxconst::get_PROP_STARTING_MINUTE(), "");
+  if (day_in_year_i >= 0)
+    oss << "Day in Year: " << mxUtils::get_month_and_day (day_in_year_i) << "\n";
+  if (!starting_hour.empty())
+    oss << "Hour: " << starting_hour << "\n";
+  if (!starting_minutes.empty())
+    oss << "Minutes: " << starting_minutes << "\n";
+
  return oss.str(); 
 };
 
@@ -8753,8 +8765,8 @@ std::string missionx::data_manager::gen_get_next_overpass_url(const bool in_igno
     {
       for (unsigned int trials = 0; trials < data_manager::vecOverpassUrls.size(); ++trials)
       {
-        if (data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls.contains(static_cast<int>(last_index))
-          && data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls[static_cast<int>(last_index)])
+        if (data_manager::strct_ui_share_data.map_ui_user_picks_overpass_urls.contains(static_cast<int>(last_index))
+          && data_manager::strct_ui_share_data.map_ui_user_picks_overpass_urls[static_cast<int>(last_index)])
         {
           return (data_manager::vecOverpassUrls.size() > last_index) ? data_manager::vecOverpassUrls.at(last_index) : "";
         }
@@ -8945,7 +8957,7 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
         // Call OVERPASS using cURL and make sure we do not have ABORT request.
         // Randomize the URL calls so not all threads will use same overpass url.
         std::vector<std::string> vec_active_urls;
-        for ( const auto &[key, v_bool] : data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls)
+        for ( const auto &[key, v_bool] : data_manager::strct_ui_share_data.map_ui_user_picks_overpass_urls)
         {
           if (v_bool)
             vec_active_urls.emplace_back( ((static_cast<size_t>(key) < data_manager::vecOverpassUrls.size())? data_manager::vecOverpassUrls[key] : mxconst::get_DEFAULT_OVERPASS_URL() ) );

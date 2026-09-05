@@ -389,7 +389,22 @@ public:
 
   std::string get_latLon_short() { return fmt::format("{:.5f},{:.5f}", lat, lon); }
 
-  std::string get_latLon_shortest() { return fmt::format("{:.3f},{:.3f}", lat, lon); } // v25.09.2
+  std::string get_latLon_shortest()
+   {
+     // | Coordinate   | Decimal places | Approx. resolution |
+     // | ------------ | -------------: | -----------------: |
+     // | `-23.2`      |              1 |       **~11.1 km** |
+     // | `-23.26`     |              2 |           ~1.11 km |
+     // | `-23.268`    |              3 |             ~111 m |
+     // | `-23.2689`   |              4 |            ~11.1 m |
+     // | `-23.26890`  |              5 |            ~1.11 m |
+     // | `-23.268900` |              6 |            ~0.11 m |
+
+     if (this->flag_is_skewed)
+       return fmt::format("{:.2f},{:.2f}", lat, lon); // ~1.11km
+
+     return fmt::format("{:.3f},{:.3f}", lat, lon);
+   } // v25.09.2
 
   std::string get_skewed_desc() { return fmt::format("{:.3f},{:.3f}", skewed_location.lat, skewed_location.lon); } // v25.09.2
 

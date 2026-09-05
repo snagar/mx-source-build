@@ -403,17 +403,57 @@ missionx::mxUtils::sanitize_text (const std::string &inText, const std::string &
 
 std::string missionx::mxUtils::remove_non_ascii(std::string text, const bool in_replace_with_space)
 {
+  // Step 1: Replace common multi-byte UTF-8 punctuation with standard ASCII equivalents
+  static const std::unordered_map<std::string, std::string> utf8_to_ascii = {
+    // Dashes & Hyphens
+    {"\xE2\x80\x93", "-"}, // En-dash (–)
+    {"\xE2\x80\x94", "-"}, // Em-dash (—)
+    {"\xE2\x80\x92", "-"}, // Figure dash
+    {"\xE2\x80\x90", "-"}, // Hyphen
+
+    // Smart Quotes & Apostrophes
+    {"\xE2\x80\x98", "'"}, // Left single quote (‘)
+    {"\xE2\x80\x99", "'"}, // Right single quote (’)
+    {"\xE2\x80\x9C", "\""},// Left double quote (“)
+    {"\xE2\x80\x9D", "\""},// Right double quote (”)
+
+    // Ellipsis & Misc Symbols
+    {"\xE2\x80\xA6", "..."}, // Ellipsis (…)
+    {"\xC2\xA0",     " "},   // Non-breaking space
+    {"\xC2\xA9",     "(c)"}, // Copyright (©)
+    {"\xC2\xAE",     "(r)"}  // Registered (®)
+  };
+
+  for (const auto& [utf8_seq, ascii_repl] : utf8_to_ascii) {
+    size_t pos = 0;
+    while ((pos = text.find(utf8_seq, pos)) != std::string::npos) {
+      text.replace(pos, utf8_seq.length(), ascii_repl);
+      pos += ascii_repl.length();
+    }
+  }
+
+  // Step 2: Identify remaining invalid non-ASCII (> 127) or non-printable bytes
+  constexpr static int CR = 13;
+  constexpr static int LF = 10;
+  auto is_invalid_ascii = [](const unsigned char c) {
+    return c > 127 || (!std::isprint(c) && c != CR && c != LF ) ;
+  };
+
+  // Step 3: Replace or remove any remaining unmapped non-ASCII bytes
   if (in_replace_with_space)
   {
-    // Replace non-ASCII bytes (> 127) with ' ' in-place
-    // std::replace_if (text.begin(), text.end(), [](unsigned char c) { return c > 127; }, ' ');
-    std::ranges::replace_if (text, [](const unsigned char c) { return c > 127; }, ' ');
+    std::ranges::replace_if(text, is_invalid_ascii, ' ');
   }
   else
   {
-    // Remove non-ASCII bytes entirely
-    std::erase_if(text, [](unsigned char c) { return c > 127; });
+    std::erase_if(text, is_invalid_ascii);
   }
+
+  // Step 4: Collapse consecutive spaces into a single space
+  auto [first, last] = std::ranges::unique(text, [](const char a, const char b) {
+      return a == ' ' && b == ' ';
+  });
+  text.erase(first, last);
 
   return text;
 }
@@ -421,7 +461,7 @@ std::string missionx::mxUtils::remove_non_ascii(std::string text, const bool in_
 // ----------------------------------------------
 
 std::vector<std::string>
-missionx::mxUtils::split(const std::string& s, char delimiter, const bool bKeepEmptyTokens)
+missionx::mxUtils::split(const std::string& s, const char delimiter, const bool bKeepEmptyTokens)
 {
   std::vector<std::string> tokens;
   std::string              token;
@@ -1186,6 +1226,72 @@ size_t missionx::mxUtils::copy_string_to_buffer(const std::string& in_source, ch
 
   // std::copy_n(stored_overpass_url.begin(), copy_len, dest.begin());
   // dest[copy_len] = '\0'; // Guaranteed safety
+}
+
+int missionx::mxUtils::get_current_year()
+{
+  // using namespace std::chrono;
+
+  // Get current system time point and convert to calendar date
+  const auto now = std::chrono::system_clock::now();
+  const std::chrono::year_month_day ymd{floor<std::chrono::days>(now)};
+
+  // Cast std::chrono::year to int
+  return static_cast<int>(ymd.year());
+}
+
+// ----------------------------------------------
+
+std::string missionx::mxUtils::get_month_and_day(int day_of_year)
+{
+  struct MonthData {
+    std::string name;
+    int days;
+  };
+  const auto is_leap_year = mxUtils::get_current_year();
+  const int total_days = is_leap_year ? 366 : 365;
+
+  // Handle 1-based indexing modulo arithmetic
+  // Converts to 0-based index [0, total_days - 1], applies mod, then shifts back to 1-based
+  int normalized_day = ((day_of_year - 1) % total_days + total_days) % total_days + 1;
+
+  // Months and day counts
+  const std::vector<MonthData> months = {
+    {"January", 31},
+    {"February", is_leap_year ? 29 : 28},
+    {"March", 31},
+    {"April", 30},
+    {"May", 31},
+    {"June", 30},
+    {"July", 31},
+    {"August", 31},
+    {"September", 30},
+    {"October", 31},
+    {"November", 30},
+    {"December", 31}
+  };
+
+  int remaining_days = normalized_day;
+  for (const auto& [name, days] : months) {
+    if (remaining_days <= days) {
+      // Suffix generation (st, nd, rd, th)
+      std::string suffix = "th";
+      if (remaining_days % 100 < 11 || remaining_days % 100 > 13) {
+        switch (remaining_days % 10) {
+        case 1: suffix = "st"; break;
+        case 2: suffix = "nd"; break;
+        case 3: suffix = "rd"; break;
+        default:
+          break;
+        }
+      }
+      // return name + " " + std::to_string(remaining_days) + suffix;
+      return fmt::format("{} {}{}", name, std::to_string(remaining_days), suffix);
+    }
+    remaining_days -= days;
+  }
+
+  return ""; // Unreachable
 }
 
 

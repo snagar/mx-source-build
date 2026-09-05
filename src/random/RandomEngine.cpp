@@ -2413,7 +2413,7 @@ RandomEngine::gen_get_cumulative_fpln_desc(std::map<int, NavAidInfo>& navaid_tar
     const std::string postfix = (last_seq_i == target_navaid.fpln_seq) ? "" : ", ";
 
     #ifndef RELEASE
-    const std::string prefix_llm = (target_navaid.flag_fpln_generated_by_llm) ? "(llm)" : ""; // V26.09.1
+    const std::string prefix_llm = (target_navaid.flag_fpln_generated_by_llm) ? "(LM)" : ""; // V26.09.1
     cumulative_fpln_desc += fmt::format("{}{}{}", prefix_llm, target_navaid.get_loc_desc(), postfix);
     #else
     cumulative_fpln_desc += fmt::format("{}{}", target_navaid.get_loc_desc(), postfix);
@@ -4787,27 +4787,107 @@ RandomEngine::gen_quadrant_bboxes(const double centerLat, const double centerLon
   #endif
   constexpr double exclusionNm = 1.5;
 
-  // Latitudinal deltas
-  constexpr double deltaLat     = rangeNm * NM_TO_DEG_LAT;
-  constexpr double exclusionLat = exclusionNm * NM_TO_DEG_LAT;
+  return gen_quadrant_bboxes (centerLat, centerLon, exclusionNm, rangeNm);
 
-  // Longitudinal deltas
-  const double deltaLon     = mxUtils::nmToDegLon(rangeNm, centerLat);
-  const double exclusionLon = mxUtils::nmToDegLon(exclusionNm, centerLat);
 
-  std::map<enums::mx_osm_region_enum, structs::strct_bbox> bboxes;
+  // v26.09.2 deprecated, use the overload "gen_quadrant_bboxes()" function instead
+  // // Latitudinal deltas
+  // constexpr double deltaLat     = rangeNm * NM_TO_DEG_LAT;
+  // constexpr double exclusionLat = exclusionNm * NM_TO_DEG_LAT;
+  //
+  // // Longitudinal deltas
+  // const double deltaLon     = mxUtils::nmToDegLon(rangeNm, centerLat);
+  // const double exclusionLon = mxUtils::nmToDegLon(exclusionNm, centerLat);
+  //
+  // std::map<enums::mx_osm_region_enum, structs::strct_bbox> bboxes;
+  //
+  // // Top Left (NW)
+  // bboxes[enums::mx_osm_region_enum::nw] = structs::strct_bbox({centerLat + exclusionLat, centerLon - deltaLon, centerLat + deltaLat, centerLon - exclusionLon});
+  //
+  // // Top Right (NE)
+  // bboxes[enums::mx_osm_region_enum::ne] = structs::strct_bbox({centerLat + exclusionLat, centerLon + exclusionLon, centerLat + deltaLat, centerLon + deltaLon});
+  //
+  // // Bottom Left (SW)
+  // bboxes[enums::mx_osm_region_enum::sw] = structs::strct_bbox({centerLat - deltaLat, centerLon - deltaLon, centerLat - exclusionLat, centerLon - exclusionLon});
+  //
+  // // Bottom Right (SE)
+  // bboxes[enums::mx_osm_region_enum::se] = structs::strct_bbox({centerLat - deltaLat, centerLon + exclusionLon, centerLat - exclusionLat, centerLon + deltaLon});
+  //
+  // return bboxes;
+}
 
-  // Top Left (NW)
-  bboxes[enums::mx_osm_region_enum::nw] = structs::strct_bbox({centerLat + exclusionLat, centerLon - deltaLon, centerLat + deltaLat, centerLon - exclusionLon});
+// -----------------------------------
 
-  // Top Right (NE)
-  bboxes[enums::mx_osm_region_enum::ne] = structs::strct_bbox({centerLat + exclusionLat, centerLon + exclusionLon, centerLat + deltaLat, centerLon + deltaLon});
+std::map<missionx::enums::mx_osm_region_enum, missionx::structs::strct_bbox> RandomEngine::gen_quadrant_bboxes(const double centerLat, const double centerLon, const double minDistNm, const double maxDistNm)
+{
 
-  // Bottom Left (SW)
-  bboxes[enums::mx_osm_region_enum::sw] = structs::strct_bbox({centerLat - deltaLat, centerLon - deltaLon, centerLat - exclusionLat, centerLon - exclusionLon});
+/*
+ * The idea is to have four big BBOX areas to search while leaving minDistNm of clear central area.
+ * The schema below is just an example.
+ * |--------|------------| lat
+ * |   NW   |       NE   |  |
+ * |        +-+-+--------|  V
+ * +        | P |        |
+ * |--------+-+-+        |
+ * |   SW       |   SE   |
+ * |---------------------|
+ *  lon ->
+ */
+  
+    // 1. Calculate overall outer deltas from center
+    const double maxLatDelta = maxDistNm * NM_TO_DEG_LAT;
+    const double maxLonDelta = mxUtils::nmToDegLon(maxDistNm, centerLat);
 
-  // Bottom Right (SE)
-  bboxes[enums::mx_osm_region_enum::se] = structs::strct_bbox({centerLat - deltaLat, centerLon + exclusionLon, centerLat - exclusionLat, centerLon + deltaLon});
+    const double outerMinLat = centerLat - maxLatDelta;
+    const double outerMaxLat = centerLat + maxLatDelta;
+    const double outerMinLon = centerLon - maxLonDelta;
+    const double outerMaxLon = centerLon + maxLonDelta;
+
+    // STEP 1: Calculate bottom-left and top-right of the central exclusion zone (P)
+    const double minLatDelta = minDistNm * NM_TO_DEG_LAT;
+    const double minLonDelta = mxUtils::nmToDegLon(minDistNm, centerLat);
+
+    const double exMinLat = centerLat - minLatDelta; // Bottom of exclusion box
+    const double exMaxLat = centerLat + minLatDelta; // Top of exclusion box
+    const double exMinLon = centerLon - minLonDelta; // Left of exclusion box
+    const double exMaxLon = centerLon + minLonDelta; // Right of exclusion box
+
+    std::map<enums::mx_osm_region_enum, structs::strct_bbox> bboxes;
+
+    // STEP 2: Build BBOXes anchored directly to exclusion corners (exMin / exMax)
+
+    // NW: Touches bottom of exclusion zone on the left, caps at centerLon on the right
+    bboxes[enums::mx_osm_region_enum::nw] = structs::strct_bbox({
+        exMinLat,     // exclude zone Min Lat
+        outerMinLon,  // Min Lon
+        outerMaxLat,  // Max Lat
+        exMinLon     // exclude zone Max Lon
+    });
+
+    // NE: Touches left of exclusion zone on the bottom, extends to outerMaxLon on the right
+    bboxes[enums::mx_osm_region_enum::ne] = structs::strct_bbox({
+        exMaxLat,     // exclude zone Max Lat
+        exMinLon,     // exclude zone Min Lon
+        outerMaxLat,  // Max Lat
+        outerMaxLon   // Max Lon
+    });
+
+    // SE: Touches top of exclusion zone on the right, caps at centerLon on the left
+    bboxes[enums::mx_osm_region_enum::se] = structs::strct_bbox({
+        outerMinLat, // Min Lat
+        exMaxLon,    // Min Lon
+        exMaxLat,    // Max Lat
+        outerMaxLon  // Max Lon
+    });
+
+    // SW: Touches right of exclusion zone on the top, extends to outerMinLon on the left
+    bboxes[enums::mx_osm_region_enum::sw] = structs::strct_bbox({
+        outerMinLat, // Min Lat
+        outerMinLon,    // Min Lon
+        exMinLat,    // Max Lat
+        exMaxLon  // Max Lon
+    });
+
 
   return bboxes;
 }
@@ -4817,26 +4897,18 @@ RandomEngine::gen_quadrant_bboxes(const double centerLat, const double centerLon
 std::vector<missionx::structs::strct_osm_query>
 RandomEngine::gen_osm_analyse(mx_return& out_mx_return, const std::string& xmlFilename, const std::string& in_cache_folder, const double centre_lat, const double centre_lon, IXMLNode& outRootNode)
 {
-/*
- * The idea is to have four big BBOX areas to search while leaving ~1.5nm of clear central area.
- * The schema below is just an example.
- * |---------------------|--------------------|
- * |                   |                      |
- * |                   |                      |
- * |                   |                      |
- * |     NW            |       NE             |
- * |                   |                      |
- * |                   +-+-+------------------|
- * +                   | P |                  |
- * | ------------------+-+-+                  |
- * |                       |                  |
- * |                       |                  |
- * |     SW                |   SE             |
- * |                       |                  |
- * |                       |                  |
- * |------------------------------------------|
- *
- */
+  /*
+   * The idea is to have four big BBOX areas to search while leaving ~1.5nm of clear central area.
+   * The schema below is just an example.
+   * |--------|------------| lat
+   * |   NW   |       NE   |  |
+   * |        +-+-+--------|  V
+   * +        | P |        |
+   * |--------+-+-+        |
+   * |   SW       |   SE   |
+   * |---------------------|
+   *  lon ->
+   */
 
 
   std::vector<missionx::structs::strct_osm_query> vec_osm_query_analyze_results;
@@ -5911,15 +5983,23 @@ void RandomEngine::gen_briefer_phase_03_add_desc_ai(std::map<int, NavAidInfo>& i
   // data_manager::strct_ui_share_data is a vector that holds the messages we would like to send to an LLM server.
   // We need to concatenate all messages in the vector.
   std::string ai_llm_description_s;
-  if (!data_manager::strct_ui_share_data.map_llm_requests_messages.empty())
+  if (data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission && !data_manager::strct_ui_share_data.map_llm_requests_messages.empty())
   {
     auto mission_outline = data_manager::get_mission_outline_base(data_manager::strct_ui_share_data.map_llm_requests_messages);
 
     // add target
+    auto flag_one_of_the_targets_is_in_water_body {false};
+    std::string water_body_targets_s = "water body waypoints: ";
     std::string waypoints = "list of waypoints:";
     int na_counter = 0;
     for (auto& na: inout_targets | std::views::values)
     {
+      if (na.fpln_is_wet)
+      {
+        flag_one_of_the_targets_is_in_water_body = true;
+        water_body_targets_s += fmt::format("\n{}", na.get_loc_desc());
+      }
+
       na_counter++;
       if (!na.get_loc_desc().empty())
       {
@@ -5930,13 +6010,31 @@ void RandomEngine::gen_briefer_phase_03_add_desc_ai(std::map<int, NavAidInfo>& i
         else
           waypoints += fmt::format("\n{}: ", na_counter);
 
-        waypoints += fmt::format("{} ({})", na.get_loc_desc(), na.get_latLon_shortest());
+        waypoints += fmt::format("{} ({})", na.get_loc_desc(), na.get_latLon_shortest()); // get_latLon_shortest() handles skewed coordinates too.
+        if (na.fpln_distance_between_prev_and_current_navaid > 0.0)
+          waypoints += fmt::format(" distance {:.2f}nm ", na.fpln_distance_between_prev_and_current_navaid);
       }
     }
     mission_outline += fmt::format("\n{}", waypoints);
 
+    // expose all waypoints configuration
+    const auto b_expose_all_waypoints = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE (), true);
+    if ( !b_expose_all_waypoints)
+      mission_outline += "\nThe user requested that not all waypoints be revealed at the start of the mission. "
+                         "Therefore, you must only refer to the first two waypoints: the starting point and the waypoint immediately after it. "
+                         "Do not reveal or refer to any subsequent waypoints.";
+
+    mission_outline += "\nConsider dark times between: 21:00 and 05:30, or 09:00 PM and 05:30 AM "
+                       "\nMake sure the description takes the flight time into consideration. "
+                       "For example, if the flight takes place at night, a scenic or sightseeing flight would generally not make sense. "
+                       "\nAdjust the description accordingly so that it remains realistic and contextually appropriate, unless a deliberately comic description is intended.";
+
+    // Add water body information
+    if (flag_one_of_the_targets_is_in_water_body)
+      mission_outline += fmt::format("\n{}\n", water_body_targets_s);
+
     if (!data_manager::get_acf_icao().empty())
-      mission_outline += fmt::format("\nAirplane ICAO: {}", data_manager::get_acf_icao());
+      mission_outline += fmt::format("\nAirplane code: {}", data_manager::get_acf_icao());
     mission_outline += fmt::format("\nAirplane active plane filename: {}", data_manager::get_acf());
 
     // prepare curl request info
@@ -5953,7 +6051,7 @@ void RandomEngine::gen_briefer_phase_03_add_desc_ai(std::map<int, NavAidInfo>& i
     }
   }
 
-  // Prepare waiponts description text
+  // Prepare waypoints description text
   std::string cumulative_location_desc_s;
   for (int i1 = 0; i1 < static_cast<int>(inout_targets.size()) && inout_targets.contains(i1); i1++)
   {
@@ -8717,7 +8815,7 @@ RandomEngine::gen_prepare_mission_based_on_oilrig(IXMLNode& inRootTemplate, IXML
   RandomEngine::xDrefStartColdAndDark = gen_set_and_get_start_cold_and_dark(inRootTemplate, navaid_targets[1]);
 
   // loop over all inventories and add to the global xInventories node
-  for (auto& [key, nav] : navaid_targets)
+  for (auto& nav : navaid_targets | std::views::values)
   {
     // add to inventories
     nav.fpln_xml_inv_node = this->xInventoris.addChild(nav.fpln_xml_inv_node);
@@ -8734,7 +8832,7 @@ RandomEngine::gen_prepare_mission_based_on_oilrig(IXMLNode& inRootTemplate, IXML
   Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventoris)));
   Log::logMsgThread(fmt::format("GPS:\n{}\n", Utils::xml_get_node_content_as_text(this->xGPS)));
   Log::logMsgThread(fmt::format("-------------- END OIL-RIG RESULTS - {} --------------", __func__));
-  #endif // !RELEASE
+  #endif // DEBUG_GENERATED_CONTENT
 
   // } // end loop over all target nodes
 
@@ -10916,10 +11014,12 @@ RandomEngine::gen_target_base_on_icao_or_near_types(NavAidInfo&                 
     location_max_distance_d *= 1.20;
 
 
-  // v26.09.1 Add AI option We still need a fallback if the suggested ICAO is no available in X-Plane
-  // bool flag_llm_found_valid_target{false};
+  // v26.09.1 OPT-IN: Use LLM to suggest a target.  We will fallback if the suggested ICAO is not available in X-Plane or is not in the correct area of search.
   const bool flag_use_ai = system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_OPT_AI_USE_AI(), false);
-  if (flag_use_ai && data_manager::flag_use_llm_to_generate_mission && !data_manager::strct_ui_share_data.map_llm_requests_messages.empty())
+  if (flag_use_ai
+    && data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission
+    && data_manager::strct_ui_share_data.flag_llm_use_llm_to_suggest_targets
+    && !data_manager::strct_ui_share_data.map_llm_requests_messages.empty())
   {
     auto mission_outline = data_manager::get_mission_outline_base(data_manager::strct_ui_share_data.map_llm_requests_messages);
 
@@ -10929,11 +11029,12 @@ RandomEngine::gen_target_base_on_icao_or_near_types(NavAidInfo&                 
       if (prev_na_ptr->fpln_seq == 0)
         mission_outline += "Your current take off location is the startup position.\n";
 
-      mission_outline += fmt::format("Take off from waypoint: {}\n", prev_na_ptr->get_loc_desc_for_llm() );
-      mission_outline += fmt::format("Proximity Range must be between: {:.2f} and {:.2f} nautical miles relative to the take off waypoint.\n", location_min_distance_d, location_max_distance_d);
-      mission_outline += fmt::format("The airport you pick must have an ICAO with four characters and a name.\n");
-      mission_outline += R"(The response must be in the format: 
-icao:1|{full airport code}
+      mission_outline += fmt::format("You will take off from waypoint: {}\n", prev_na_ptr->get_loc_desc_for_llm() );
+      mission_outline += fmt::format("The target airport, proximity Range is between: {:.2f} and {:.2f} nautical miles relative to the take off waypoint.\n", location_min_distance_d, location_max_distance_d);
+      mission_outline += fmt::format("The target airport to search must not exceed the maximum expected proximity range.\n");
+      mission_outline += fmt::format("The airport you pick must have an ICAO code four characters and a name.\n");
+      mission_outline += R"(The response must be in the format:
+icao:1|{icao code}
 name:1|{name}
 position:2|{latitude}|{longitude}
 )";
@@ -10969,14 +11070,6 @@ position:2|{latitude}|{longitude}
           ai_nav.setName(map_ai_way_info[mxconst::get_ATTRIB_NAME()].at(0));
         if (map_ai_way_info.contains(mxconst::get_ELEMENT_POSITION()) && map_ai_way_info[mxconst::get_ELEMENT_POSITION()].size() > 1)
         {
-          // v26.09.1 disable code since it might not be supported in GCC or CLANG
-          //auto [ptr1, ec1] = std::from_chars(map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(0).data(), map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(0).data() + map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(0).size(), ai_nav.lat);
-          //if (ec1 != std::errc())
-          //  ai_nav.lat = 0.0f;
-          //auto [ptr2, ec2] = std::from_chars(map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(1).data(), map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(1).data() + map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(1).size(), ai_nav.lon);
-          //if (ec2 != std::errc())
-          //  ai_nav.lon = 0.0f;
-
           const std::string lat_s = map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(0);
           const std::string lon_s = map_ai_way_info[mxconst::get_ELEMENT_POSITION()].at(1);
 
@@ -11030,7 +11123,6 @@ position:2|{latitude}|{longitude}
 
           if (ai_nav.is_lat_lon_valid() )
           {
-
             RandomEngine::shared_navaid_info.navAid.init();
             RandomEngine::shared_navaid_info.navAid.lat     = ai_nav.lat;
             RandomEngine::shared_navaid_info.navAid.lon     = ai_nav.lon;

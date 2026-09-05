@@ -1381,6 +1381,12 @@ public:
 
   struct ui_shared_data_def_struct
   {
+    // LLM
+    bool flag_llm_use_llm_to_generate_a_mission; // v26.09.1 random engine usage
+    bool flag_llm_use_llm_to_suggest_targets; // v26.09.2
+    bool flag_llm_add_background_story; // v26.09.2
+    std::unordered_map<std::string, std::string> map_llm_requests_messages; // v26.08.1
+
     // v26.04.4 consolidate all message parameters usage into one struct
     // We have three ways to display messages to a user:
     // 1. The "user_message_line1" is the first text a user sees.
@@ -1396,14 +1402,31 @@ public:
     std::vector<const char *> oilrig_arr  ; //= { "Oil Rig Cargo", "Medevac" };
     std::vector<const char *> cargo_arr   ; //= { "GA Cargo", "Farming Cargo", "Isolated Areas" }; // These are only baseline values, it is affected by the "cargo_data.xml" file.
 
-    std::map<int, bool> map_ui_user_pickes_overpass_urls; // v26.04.4. Will hold what user prefer to use.
+    std::map<int, bool> map_ui_user_picks_overpass_urls; // v26.04.4. Will hold what user prefer to use.
 
-    std::unordered_map<std::string, std::string> map_llm_requests_messages; // v26.08.1
-    // v26.08.1 store the Briefer node copy of the last sucessful generated node. Used in User Generation Screen, and hopefully others.
+    // v26.08.1 store the Briefer node copy of the last successful generated node. Used in User Generation Screen, and hopefully others.
     IXMLNode                                     xml_last_generated_briefer_node; 
+
+    void disable_llm()
+    {
+      flag_llm_use_llm_to_generate_a_mission = false; // v26.09.1
+      flag_llm_use_llm_to_suggest_targets = false; // v26.09.2
+      flag_llm_add_background_story = false; // v29.09.2
+    }
+
+    // reset shared llm flags and clears map_llm_requests_messages
+    void reset_llm()
+    {
+      disable_llm();
+      map_llm_requests_messages.clear();
+    }
 
     ui_shared_data_def_struct()
     {
+      flag_llm_use_llm_to_generate_a_mission = false;
+      flag_llm_use_llm_to_suggest_targets = false; // v26.09.2
+      flag_llm_add_background_story = false; // v26.09.2
+
       medevac_arr = { mxconst::CAT_ANY_LOCATION.data (), mxconst::CAT_ACCIDENT_OSM.data (), mxconst::CAT_SURPRISE_ME.data () };
       oilrig_arr  = { "Oil Rig Cargo", "Medevac" };
       cargo_arr   = { "GA Cargo", "Farming Cargo", "Isolated Areas" }; // These are only baseline values, it is affected by the "cargo_data.xml" file.
@@ -1411,7 +1434,7 @@ public:
       user_message_line1.clear();
       ongoing_status_message_line2.clear();
       error_message_line3.clear();
-      map_ui_user_pickes_overpass_urls.clear();
+      map_ui_user_picks_overpass_urls.clear();
 
       map_llm_requests_messages.clear(); // v26.08.1
       xml_last_generated_briefer_node = IXMLNode::emptyIXMLNode;
@@ -1438,7 +1461,7 @@ public:
   static bool flag_setupShowDebugMessageTab; // v3.305.4
   static bool flag_setupUseXP11InventoryUI; // v24.12.2 toggle between inventory ui layout (with stations, xp12, and without xp11).
   static bool flag_setupUseDraw2DMapInReleaseMode; // v25.10.1 Can we draw 2D map cue in release
-  static bool flag_use_llm_to_generate_mission; // v26.09.1 random engine usage
+  // static bool flag_llm_use_llm_to_generate_a_mission; // v26.09.1 random engine usage
 
   static int  ui_ifr_or_vfr_i; // 0 = IFR and 1 = VFR
   static int  ui_oilrig_globe_part_i; // 1 = globe, 2 = Half globe, 3 = quarter globe, 4 = local_region
@@ -1586,6 +1609,8 @@ public:
 
   static int callback_sqlite_data (void *data, int argc, char **argv, char **azColName);
 
+  // The function should provide basic activity type, background story if available and mission start time.
+  // This information was set in the WinImguiBriefer::add_ui_semi_act_phase_1_pick() and WinImguiBriefer::add_ui_semi_act_phase_2_detail()
   static std::string get_mission_outline_base(const std::unordered_map<std::string, std::string>& map_llm_requests_messages);
 
  private:

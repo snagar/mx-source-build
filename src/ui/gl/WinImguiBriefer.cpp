@@ -256,9 +256,9 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
   this->set_vecOverpassUrls_char (missionx::data_manager::vecOverpassUrls); // v3.0.255.4.1 initialize overpass url from conf file
 
   // init overpass user preference
-  data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls.clear();
+  data_manager::strct_ui_share_data.map_ui_user_picks_overpass_urls.clear();
   for (int url_index=0;const auto& v: data_manager::vecOverpassUrls)
-    data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls[url_index++] = true;
+    data_manager::strct_ui_share_data.map_ui_user_picks_overpass_urls[url_index++] = true;
 
   // v3.303.8.3 add authorization key to the Briefer screen
   const std::string authKey_s = Utils::getNodeText_type_6 (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY (), "");
@@ -462,7 +462,7 @@ WinImguiBriefer::add_ui_ils_vfr_search_airports_button (missionx::mx_window_acti
   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_indigo);
   style_i++;
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_orange);
   ImGui::PushStyleColor (ImGuiCol_ButtonActive, missionx::color::color_vec4_azure);
@@ -541,7 +541,7 @@ WinImguiBriefer::add_ui_ils_vfr_search_airports_button (missionx::mx_window_acti
   }
   ImGui::PopStyleColor (3);
 
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
   ImGui::PopStyleColor (style_i);
 
 }
@@ -713,7 +713,7 @@ WinImguiBriefer::add_story_message_history_text ()
   constexpr const static float fTitleHeight = 30.0f;
   constexpr const static float fPADDING     = 10.0f;
 
-  ImVec2 vec2Window = this->mxUiGetWindowContentWxH ();
+  const ImVec2 vec2Window = missionx::WinImguiBriefer::mxUiGetWindowContentWxH ();
 
   // draw end buttons
   ImGui::SameLine (vec2Window.x * 0.5f - 50.0f);
@@ -749,7 +749,7 @@ WinImguiBriefer::add_story_message_history_text ()
 void
 WinImguiBriefer::add_info_to_flight_leg ()
 {
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
   if (mxUtils::isElementExists (data_manager::mapBrieferMissionList, missionx::data_manager::selectedMissionKey))
   {
     ImGui::TextWrapped ("%s", data_manager::mapBrieferMissionList[missionx::data_manager::selectedMissionKey].missionDesc.c_str ());
@@ -758,7 +758,7 @@ WinImguiBriefer::add_info_to_flight_leg ()
   {
     ImGui::TextWrapped ("%s", missionx::data_manager::mapGenerateMissionTemplateFiles[missionx::data_manager::selectedMissionKey].description.c_str ());
   }
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 }
 
 
@@ -778,7 +778,7 @@ WinImguiBriefer::add_debug_info ()
       ImGui::BeginGroup ();
       ImGui::BeginChild ("flightLegInfoTabDebug", ImVec2 (0.0f, ImGui::GetContentRegionAvail ().y - fPADDING), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar); // v3.305.3
       {
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
         {
           auto       &leg = missionx::data_manager::mapFlightLegs[missionx::data_manager::currentLegName];
           std::string objName, tasksInfo;
@@ -789,25 +789,25 @@ WinImguiBriefer::add_debug_info ()
           ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", leg.to_string_ui_leg_info ().c_str ());
           ImGui::Spacing ();
 
-          for (const auto &objName : leg.listObjectivesInFlightLeg)
+          for (const auto &local_objName : leg.listObjectivesInFlightLeg)
           {
-            auto &obj = data_manager::mapObjectives[objName];
+            auto &obj = data_manager::mapObjectives[local_objName];
 
             // Display Objective + tasks
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
-            ImGui::TextColored (missionx::color::color_vec4_aqua, "Objective: %s:", objName.c_str ());
+            missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+            ImGui::TextColored (missionx::color::color_vec4_aqua, "Objective: %s:", local_objName.c_str ());
 
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
+            missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
             {
               ImGui::TextColored (missionx::color::color_vec4_grey, "(%s)", "ACM: all conditions are met, SCM: script condition met, TE: timer ended, In Area: physical + elev");
 
               this->print_tasks_ui_debug_info (obj);
             }
-            this->mxUiReleaseLastFont (2);
+            missionx::WinImguiBriefer::mxUiReleaseLastFont (2);
           }
 
         } // end flight leg debug info
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
       }
       ImGui::EndChild ();
       ImGui::EndGroup ();
@@ -820,14 +820,14 @@ WinImguiBriefer::add_debug_info ()
       ImGui::BeginGroup ();
       ImGui::BeginChild ("flightLegTriggerInfoDebug", ImVec2 (0.0f, 0.0f), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysVerticalScrollbar); // v3.305.3
       {
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
         ImGui::TextColored (missionx::color::color_vec4_lime, "%s\n", "Display Triggers that are linked to the current flight leg:");
         ImGui::TextColored (missionx::color::color_vec4_grey, "%s", "X-Plane should not be in PAUSE state. Use the debug buttons at your own risk !!!");
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
         this->print_triggers_ui_debug_info ();
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
       }
       ImGui::EndChild ();
       ImGui::EndGroup ();
@@ -840,15 +840,15 @@ WinImguiBriefer::add_debug_info ()
       ImGui::BeginGroup ();
       ImGui::BeginChild ("flightLegScriptsInfoDebug", ImVec2 (0.0f, ImGui::GetContentRegionAvail ().y)); // v3.305.3
       {
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
         ImGui::TextColored (missionx::color::color_vec4_lime, "%s\n", "Scripts available in current mission: \n(some might not be present at first and will be added once they are called - external file)");
         ImGui::Spacing ();
         ImGui::Separator ();
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
         this->print_scripts_ui_debug_info ();
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
       }
       ImGui::EndChild ();
       ImGui::EndGroup ();
@@ -861,15 +861,15 @@ WinImguiBriefer::add_debug_info ()
       ImGui::BeginGroup ();
       ImGui::BeginChild ("flightLegDatarefInfoDebug", ImVec2 (0.0f, ImGui::GetContentRegionAvail ().y)); // v3.305.3
       {
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
         ImGui::TextColored (missionx::color::color_vec4_lime, "%s\n", "Datarefs defined in current mission:");
         ImGui::Spacing ();
         ImGui::Separator ();
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
         this->print_datarefs_ui_debug_info ();
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
       }
       ImGui::EndChild ();
       ImGui::EndGroup ();
@@ -882,11 +882,11 @@ WinImguiBriefer::add_debug_info ()
       ImGui::BeginGroup ();
       ImGui::BeginChild ("GlobalScriptParameters", ImVec2 (0.0f, ImGui::GetContentRegionAvail ().y)); // v3.305.3
       {
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
         ImGui::TextColored (missionx::color::color_vec4_lime, "%s\n", "Global parameters set by a script or the mission:");
         ImGui::Spacing ();
         ImGui::Separator ();
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
         this->print_globals_ui_debug_info ();
       }
@@ -901,15 +901,15 @@ WinImguiBriefer::add_debug_info ()
       ImGui::BeginGroup ();
       ImGui::BeginChild ("flightLegInterpolationDebug", ImVec2 (0.0f, ImGui::GetContentRegionAvail ().y)); // v3.305.3
       {
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
         ImGui::TextColored (missionx::color::color_vec4_lime, "%s\n", "List of active interpolated datarefs:");
         ImGui::Spacing ();
         ImGui::Separator ();
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
-        this->print_interpolated_ui_debug_info ();
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
+        missionx::WinImguiBriefer::print_interpolated_ui_debug_info ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
       }
       ImGui::EndChild ();
       ImGui::EndGroup ();
@@ -922,18 +922,18 @@ WinImguiBriefer::add_debug_info ()
       ImGui::BeginGroup ();
       ImGui::BeginChild ("debugAllMessages", ImVec2 (0.0f, ImGui::GetContentRegionAvail ().y)); // v3.305.3
       {
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
         ImGui::TextColored (missionx::color::color_vec4_lime, "%s", "List of all messages. Make sure to un-pause. Standard messages are colored white.");
         this->add_pause_in_2d_mode ();
         ImGui::SameLine (0.0f, 50.0f);
         this->add_abort_all_channels_debug ();
         ImGui::Spacing ();
         ImGui::Separator ();
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
         this->print_messages_ui_debug_info ();
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
       }
       ImGui::EndChild ();
       ImGui::EndGroup ();
@@ -960,26 +960,26 @@ WinImguiBriefer::add_flight_planning ()
   constexpr static auto       multiLineSize_vec2_notes_child = ImVec2(0.0f, multiLineSize_vec2_vc.y); // Child for multiline notes
   constexpr static auto       multiLineSize_vec2_notes_wp = ImVec2(-10.0f, multiLineSize_vec2_vi.y); // notes multiline
 
-  const auto     win_size_vec2          = this->mxUiGetWindowContentWxH ();
+  const auto     win_size_vec2          = missionx::WinImguiBriefer::mxUiGetWindowContentWxH ();
   constexpr auto multiLineSize_vec2_wpc = ImVec2 (0.0f, 40.0f); // child size for waypoints multi line
 
-  const bool bFetchInProcess = this->mxStartUiDisableState (this->strct_ext_layer.simbrief_fetch_state == missionx::mxFetchState_enum::fetch_in_process || missionx::data_manager::flag_generate_engine_is_running);
+  const bool bFetchInProcess = missionx::WinImguiBriefer::mxStartUiDisableState (this->strct_ext_layer.simbrief_fetch_state == missionx::mxFetchState_enum::fetch_in_process || missionx::data_manager::flag_generate_engine_is_running);
   ImGui::BeginGroup ();
   {
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
     ImGui::TextDisabled ("%s", "Fetch pre-flight info from SimBrief or fill in manually");
 
     ImGui::SameLine (win_size_vec2.x - 80.0f);
     ImGui::TextColored (missionx::color::color_vec4_greenyellow, "%s", "Temp:");
     ImGui::SameLine ();
     ImGui::TextDisabled ("%.2f", this->strct_flight_leg_info.outside_air_temp_degc);
-    this->mxUiReleaseLastFont ();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
     // DEPARTURE Line
     const std::string_view sFromICAO = this->strct_flight_leg_info.mapNoteFieldShort[missionx::enums::mx_note_shortField_enum::fromICAO];
     const std::string_view sToICAO   = this->strct_flight_leg_info.mapNoteFieldShort[missionx::enums::mx_note_shortField_enum::toICAO];
 
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
     {
       if (sFromICAO.length () < 3)
         ImGui::TextColored (missionx::color::color_vec4_greenyellow, "%s", "Departure:");
@@ -1077,26 +1077,26 @@ WinImguiBriefer::add_flight_planning ()
       ImGui::SetNextItemWidth (200.0f);
       ImGui::InputTextWithHint ("##taxi", "Taxi Route", this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::taxi], missionx::WinImguiBriefer::mx_flight_leg_info_layer::LONG_FIELD_SIZE, ImGuiInputTextFlags_CharsUppercase);
       ImGui::SameLine ();
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
       if (ImGui::Button (mxUtils::from_u8string (ICON_FA_TRASH).c_str ()))
       {
         mxUtils::copy_string_to_buffer("\0", this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::taxi][0], sizeof(this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::taxi] ) );
       }
-      this->mxUiReleaseLastFont ();
+      missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
       // Display WAYPOINTS in its own line
       ImGui::TextColored (missionx::color::color_vec4_burlywood, "%s", "Enter Route Waypoints:");
 
       ImGui::BeginChild ("waypoints##Child", multiLineSize_vec2_wpc, ImGuiChildFlags_None, ImGuiWindowFlags_None);
       {
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
         ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_lightgoldenrodyellow);
         if (ImGui::InputTextMultiline ("##Waypoints", this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints], sizeof (this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints]), multiLineSize_vec2_wp, ImGuiInputTextFlags_CharsUppercase))
         {
           this->strct_flight_leg_info.setNoteLongField (missionx::enums::mx_note_longField_enum::waypoints,  Utils::wrap_text(this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::waypoints], strct_flight_leg_info.WAYPOINT_MAX_WIDTH_I) );
         }
         ImGui::PopStyleColor ();
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
       }
       ImGui::EndChild ();
 
@@ -1162,7 +1162,7 @@ WinImguiBriefer::add_flight_planning ()
       const auto posVec2        = ImVec2 (ImGui::GetCursorPosX (), ImGui::GetCursorPosY ());
       bool       bChangeToGreen = this->strct_flight_leg_info.tmPressedClearU.isRunning ();
 
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
 
       lmbda_start_timer_color (bChangeToGreen);
       if (ImGui::Button (std::string ("Clear " + mxUtils::from_u8string (ICON_FA_ARROW_UP)).c_str (), ImVec2 (80.0f, mid_btn_size_vec2_vc.y * 0.45f)))
@@ -1201,9 +1201,9 @@ WinImguiBriefer::add_flight_planning ()
       }
       lmbda_end_timer_color (bChangeToGreen);
 
-      this->mxUiReleaseLastFont (); // release title regular
+      missionx::WinImguiBriefer::mxUiReleaseLastFont (); // release title regular
     }
-    this->mxUiReleaseLastFont ();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont ();
   }
   ImGui::EndGroup ();
 
@@ -1219,7 +1219,7 @@ WinImguiBriefer::add_flight_planning ()
     if (missionx::strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes)
     {
       // OPTION 2.1 - Three buttons with interchangeable multi line field
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
       {
         // ------------------------------------------------
         // Display the flight stage BUTTONS: Takeoff/Cruise/Descent
@@ -1247,9 +1247,9 @@ WinImguiBriefer::add_flight_planning ()
           // End button highlight
 
           ImGui::SameLine ();
-          this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
+          missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
           ImGui::TextDisabled ("%s", fmt::format ("{}/{}", buff_s.length (), missionx::WinImguiBriefer::mx_flight_leg_info_layer::iMaxCharsInLongField).c_str ());
-          this->mxUiReleaseLastFont ();
+          missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
           ImGui::SameLine(0.0f, 20.0f);
         } // end loop over mx_note_longField_enum fields
@@ -1261,24 +1261,24 @@ WinImguiBriefer::add_flight_planning ()
         // ------------------------------------------------
         ImGui::BeginChild ("notes##NotesChild", multiLineSize_vec2_notes_child, ImGuiChildFlags_Borders, ImGuiWindowFlags_None);
         {
-          this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+          missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
           ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_lightgoldenrodyellow);
           if (ImGui::InputTextMultiline ("##notes_from_simbrief", this->strct_flight_leg_info.mapNoteFieldLong[this->strct_flight_leg_info.fpln_picked_note], sizeof (this->strct_flight_leg_info.mapNoteFieldLong[this->strct_flight_leg_info.fpln_picked_note]), multiLineSize_vec2_notes_wp, ImGuiInputTextFlags_AllowTabInput))
           {
             this->strct_flight_leg_info.setNoteLongField (this->strct_flight_leg_info.fpln_picked_note,  this->strct_flight_leg_info.mapNoteFieldLong[this->strct_flight_leg_info.fpln_picked_note] );
           }
           ImGui::PopStyleColor ();
-          this->mxUiReleaseLastFont ();
+          missionx::WinImguiBriefer::mxUiReleaseLastFont ();
         }
         ImGui::EndChild ();
 
       }
-      this->mxUiReleaseLastFont ();
+      missionx::WinImguiBriefer::mxUiReleaseLastFont ();
     }
     else
     {
       // OPTION 2.2 - Three vertical items
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
       {
         float i = 1.0f; // assist in calculating text header position
 
@@ -1292,18 +1292,18 @@ WinImguiBriefer::add_flight_planning ()
 
         ImGui::TextColored (missionx::color::color_vec4_burlywood, "Takeoff Notes:");
         ImGui::SameLine (0.0f, 5.0f);
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
         ImGui::TextDisabled ("%s", fmt::format ("{}/{}", buff_s.length (), missionx::WinImguiBriefer::mx_flight_leg_info_layer::iMaxCharsInLongField).c_str ());
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
 
         buff_s = this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::cruise_notes];
         ImGui::SameLine (multiLineSize_vec2_vc.x * i + (5.0f * i));
         ImGui::TextColored (missionx::color::color_vec4_burlywood, "%s", "Cruise Notes:");
         ImGui::SameLine (0.0f, 5.0f);
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
         ImGui::TextDisabled ("%s", fmt::format ("{}/{}", buff_s.length (), missionx::WinImguiBriefer::mx_flight_leg_info_layer::iMaxCharsInLongField).c_str ());
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
         i++;
 
@@ -1311,9 +1311,9 @@ WinImguiBriefer::add_flight_planning ()
         ImGui::SameLine (multiLineSize_vec2_vc.x * i + (5.0f * i));
         ImGui::TextColored (missionx::color::color_vec4_goldenrod, "%s", "Descent Notes:");
         ImGui::SameLine (0.0f, 5.0f);
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
         ImGui::TextDisabled ("%s", fmt::format ("{}/{}", buff_s.length (), missionx::WinImguiBriefer::mx_flight_leg_info_layer::iMaxCharsInLongField).c_str ());
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
         // MultiLine Input for Takeoff/Cruise/Descent
         ImGui::BeginChild ("takeoff##Child1", multiLineSize_vec2_vc, ImGuiChildFlags_Borders, ImGuiWindowFlags_None);
@@ -1339,12 +1339,12 @@ WinImguiBriefer::add_flight_planning ()
         ImGui::EndChild ();
       }
 
-      this->mxUiReleaseLastFont ();
+      missionx::WinImguiBriefer::mxUiReleaseLastFont ();
     }
   }
   ImGui::EndGroup ();
 
-  this->mxEndUiDisableState (bFetchInProcess);
+  missionx::WinImguiBriefer::mxEndUiDisableState (bFetchInProcess);
 
   // -----------------
   // Bottom BUTTONS
@@ -1353,7 +1353,7 @@ WinImguiBriefer::add_flight_planning ()
   // v25.03.3
   if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running)
   {
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
     ImGui::Spacing ();
 
     if (!missionx::RandomEngine::random_thread_state.flagIsActive)
@@ -1423,7 +1423,7 @@ WinImguiBriefer::add_flight_planning ()
     }
 
 
-    this->mxUiReleaseLastFont ();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont ();
   } // end if mission is not running
   ImGui::EndGroup ();
 }
@@ -1448,11 +1448,11 @@ WinImguiBriefer::add_briefer_description_post_mission_creation(const bool& in_di
       )
   {
     b_displayed ^= 1;
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_white); // Text
     ImGui::TextWrapped ("%s", Utils::xml_get_cdata_or_text(missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node, "No Briefer Datam Yet.").c_str() );
     ImGui::PopStyleColor();
-    this->mxUiReleaseLastFont();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont();
   }
 
   ImGui::PopStyleColor(3);
@@ -1623,7 +1623,6 @@ void WinImguiBriefer::action_prepare_dynamic_mission_properties_and_call_generat
   #ifndef RELEASE
   Log::logMsg(fmt::format("[{}] Query filter: {}", __func__, filter_query));
   #endif // !RELEASE
-
 
   this->async_message_line2.clear();
   this->set_bottom_message_line1("Random Engine is running, please wait...", 10);
@@ -2010,7 +2009,7 @@ WinImguiBriefer::buildInterface ()
   ImGui::BeginGroup ();
   ImGui::BeginChild ("briefer_bottom_region_01");
   {
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_BOTTOM ()); // v3.303.14
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_BOTTOM ()); // v3.303.14
     {
       // display message text in Yellow
       this->add_ui_bottom_message_text (); // v3.305.1 converted to function to be more modular
@@ -2036,7 +2035,7 @@ WinImguiBriefer::buildInterface ()
         }
       }
     }
-    this->mxUiReleaseLastFont (); // v3.303.14
+    missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.303.14
   }
   ImGui::EndChild (); // end region 2
   ImGui::EndGroup ();
@@ -2461,11 +2460,11 @@ WinImguiBriefer::print_globals_ui_debug_info ()
 
 
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
   ImGui::TextColored (missionx::color::color_vec4_aqua, "%s", "Bool:");
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
   for (auto &[key, val] : missionx::script_manager::mapScriptGlobalBoolArg)
   {
     lbl = fmt::format ("...##ModifyGlobal{}", ++seq);
@@ -2483,15 +2482,15 @@ WinImguiBriefer::print_globals_ui_debug_info ()
     ImGui::SameLine ();
     ImGui::TextColored (missionx::color::color_vec4_beige, "%s", (val) ? "true" : "false");
   }
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
   ImGui::Separator ();
   ImGui::Spacing ();
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
   ImGui::TextColored (missionx::color::color_vec4_aqua, "%s", "Numbers:");
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
   for (auto &[key, val] : missionx::script_manager::mapScriptGlobalDecimalArg)
   {
     lbl = fmt::format ("...##ModifyGlobal{}", ++seq);
@@ -2509,16 +2508,16 @@ WinImguiBriefer::print_globals_ui_debug_info ()
     ImGui::SameLine ();
     ImGui::TextColored (missionx::color::color_vec4_beige, "%.6f", val);
   }
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
 
   ImGui::Separator ();
   ImGui::Spacing ();
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
   ImGui::TextColored (missionx::color::color_vec4_aqua, "%s", "Strings:");
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
   for (auto &[key, val] : missionx::script_manager::mapScriptGlobalStringsArg)
   {
     lbl = fmt::format ("...##ModifyGlobal{}", ++seq);
@@ -2536,7 +2535,7 @@ WinImguiBriefer::print_globals_ui_debug_info ()
     ImGui::SameLine ();
     ImGui::TextColored (missionx::color::color_vec4_beige, "%s", val.c_str ());
   }
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
   this->draw_globals_online_edit_popup (missionx::POPUP_ONLINE_GLOBALS_EDIT, typePicked, keyPicked, valPicked);
 }
@@ -2694,7 +2693,7 @@ WinImguiBriefer::print_messages_ui_debug_info ()
     bool bIsStoryMode = (msg.mode == missionx::mx_msg_mode::mode_story);
     mx_img_window::HelpMarker ("Use at your own risk.");
     ImGui::SameLine ();
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
     if (this->ButtonTooltip (fmt::format ("{}{}{}", Utils::from_u8string (ICON_FA_PLAY), "##PlayMessage", counter++).c_str (), "Play Message"))
     {
       if (QueueMessageManager::is_queue_empty ())
@@ -2711,7 +2710,7 @@ WinImguiBriefer::print_messages_ui_debug_info ()
         this->set_bottom_message_line1 (fmt::format ("The message Queue is not empty. There are: {} in queue.", QueueMessageManager::listPoolMsg.size () + QueueMessageManager::listPadQueueMessages.size ()), 6);
       }
     }
-    this->mxUiReleaseLastFont ();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
     ImGui::SameLine ();
     ImGui::TextColored (((bIsStoryMode) ? missionx::color::color_vec4_aqua : missionx::color::color_vec4_white), "%s", msg.name.c_str ());
@@ -2785,7 +2784,7 @@ WinImguiBriefer::add_ui_simbrief_pilot_id ()
     this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
   };
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
   {
     mx_img_window::HelpMarker ("Stores your Simbrief Pilot ID, so we could fetch your last flight plan.\nCan be found in your 'Account Settings' menu");
     ImGui::SameLine ();
@@ -2806,7 +2805,7 @@ WinImguiBriefer::add_ui_simbrief_pilot_id ()
     if (ImGui::Checkbox(R"(Autoload extra data into the "notes" fields.)", &missionx::strct_setup_layer.flag_load_extra_data_from_simbrief_to_notes))
       lmbda_save_simbrief_settings ();
   }
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 }
 
 
@@ -2816,7 +2815,7 @@ WinImguiBriefer::add_ui_simbrief_pilot_id ()
 void
 WinImguiBriefer::add_ui_flightplandb_key (const bool isPopup)
 {
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
   {
     ImGui::TextColored (missionx::color::color_vec4_turquoise, "Enter authorization key (if you have one):");
     ImGui::SetNextItemWidth (300.0f);
@@ -2834,7 +2833,7 @@ WinImguiBriefer::add_ui_flightplandb_key (const bool isPopup)
       ImGui::SameLine ();
 
     {
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
       if (ImGui::Button ("Save##Saveflightplandb_key", ImVec2 (60, 0)))
       {
         if (isPopup)
@@ -2850,12 +2849,12 @@ WinImguiBriefer::add_ui_flightplandb_key (const bool isPopup)
         else
           this->strct_ext_layer.flag_flightplandatabase_auth_exists = true;
       }
-      this->mxUiReleaseLastFont ();
+      missionx::WinImguiBriefer::mxUiReleaseLastFont ();
     }
     if (isPopup)
       ImGui::PopStyleColor (2); // Release two button style settings
   }
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 }
 
 // -------------------------------------------
@@ -2998,15 +2997,16 @@ void WinImguiBriefer::add_ui_semi_act_phase_1_pick()
             missionx::strct_user_create_layer.user_semi_act_picked = btn_info;
             missionx::strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_accept;
 
+            // v26.09.1 Gather shared activity data, this includes "activity type" to the map_llm_requests_messages[].
             gather_semi_act_phase1_data_based_on_picked_activity(missionx::strct_user_create_layer, true);
 
           }
           if (!btn_info.tip.empty ())
             this->mx_add_tooltip(missionx::color::color_vec4_yellow, btn_info.tip);
 
-          this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_MED ()); // set font size
+          missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_MED ()); // set font size
           ImGui::TextColored(missionx::color::color_vec4_springgreen, "%s", btn_info.label.c_str());
-          this->mxUiReleaseLastFont();
+          missionx::WinImguiBriefer::mxUiReleaseLastFont();
 
           ImGui::Separator();
           ImGui::Spacing();
@@ -3035,28 +3035,28 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
   const auto win_width_f = this->mxUiGetContentWidth();
 
   // Initialize basic flags
-  const bool b_plane_is_helos      = strct_user_create_layer.user_semi_act_picked.activity < missionx::enums::mx_semi_activities_enum::act_props;
-  const bool bPickedMedevacMission = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_accident || strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me);
-  const bool bPickedOilRigMission  = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_cargo_oilrig);
-  const bool bPickedGAMission      = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_props || strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_props_float);
-  const bool bPickedMedevacSurpriseMeMission  = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me);
+  const bool b_plane_is_helos                = strct_user_create_layer.user_semi_act_picked.activity < missionx::enums::mx_semi_activities_enum::act_props;
+  const bool bPickedMedevacMission           = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_accident || strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me);
+  const bool bPickedOilRigMission            = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_cargo_oilrig);
+  const bool bPickedGAMission                = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_props || strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_props_float);
+  const bool bPickedMedevacSurpriseMeMission = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me);
 
   ImGui::BeginGroup();
   {
     // display back button
-    this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
+    missionx::WinImguiBriefer::mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
     if (mx_img_window::ButtonTooltip(mxUtils::from_u8string(ICON_FA_REPLY).append("##BackButtonInSetup").c_str(), "Back", IM_COL32(255, 255, 0, 255), IM_COL32(0, 0, 0, 255), VEC2_BACK_BTN_SIZE)) //
     {
       missionx::strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_pick;
       missionx::strct_user_create_layer.user_semi_act_picked.reset();
     }
-    this->mxUiReleaseLastFont();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont();
 
     // title
     ImGui::SameLine(0.0f, VEC2_IMAGE_BTN_SIZE.x - VEC2_BACK_BTN_SIZE.x + 10.0f);
-    this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_MED());
+    missionx::WinImguiBriefer::mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_MED());
     ImGui::TextColored(missionx::color::color_vec4_yellow, "%s", "Description");
-    this->mxUiReleaseLastFont();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont();
 
     const auto activity_does_not_have_description = (!bPickedOilRigMission && !bPickedGAMission && !bPickedMedevacSurpriseMeMission);
     //const auto table_flags                        = (activity_does_not_have_description) ? ImGuiTableFlags_SizingFixedFit : ImGuiTableFlags_SizingStretchProp;
@@ -3073,9 +3073,9 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
       }
       ImGui::TableNextColumn();
       {
-        this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG()); // set font size
+        missionx::WinImguiBriefer::mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG()); // set font size
           ImGui::Text("%s", missionx::strct_user_create_layer.user_semi_act_picked.desc.c_str());
-        this->mxUiReleaseLastFont();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont();
 
         // Display special message for SurpriseMe missions
         if (bPickedMedevacSurpriseMeMission)
@@ -3105,16 +3105,34 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
       // ------------------------
       // Show AI option
       // ------------------------
-      if (!bPickedOilRigMission && !bPickedMedevacSurpriseMeMission && missionx::strct_setup_layer.b_use_ai)
+      const bool b_disable_llm_options = mxStartUiDisableState(missionx::data_manager::flag_generate_engine_is_running);
       {
-        mx_img_window::mxUiHelpMarker(missionx::color::color_vec4_beige, "Make sure that your LLM settings are correct in the setup screen.\nDouble check the flight plan, after all it is still an AI ;-)");
-        ImGui::SameLine();
-        ImGui::Checkbox("##GenerateMissionUsingLLM", &data_manager::flag_use_llm_to_generate_mission);
-        ImGui::SameLine();
-        ImGui::TextColored(missionx::color::color_vec4_yellow, "[w.i.p] Construct a mission using AI");
+        if (missionx::strct_setup_layer.b_use_ai)
+        {
+          mx_img_window::mxUiHelpMarker(missionx::color::color_vec4_beige, "Enabling the A.I functionality will affect the mission description.\n\nMake sure that your LLM settings are correct in the setup screen.\nDouble check the flight plan, after all it is still an AI ;-)");
+          ImGui::SameLine();
+          ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_yellow);
+          ImGui::Checkbox("[w.i.p] Use AI##GenerateMissionUsingLLM", &data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission);
+          ImGui::PopStyleColor();
+          // v26.09.2
+          if (data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission)
+          {
+            ImGui::SameLine(0.0f, 10.0f);
+            ImGui::Checkbox("Generate a background Story", &data_manager::strct_ui_share_data.flag_llm_add_background_story);
+            if (!bPickedOilRigMission && !bPickedMedevacMission)
+            {
+              ImGui::SameLine(0.0f, 10.0f);
+              mx_img_window::mxUiHelpMarker(missionx::color::color_vec4_beige, "LLM suggestions have limited usability when it comes to geographical recommendations, especially with smaller LLM models. Sometimes, their suggestions are the result of LLM hallucinations.\n\nUse at your own risk.\n\nThe plugin will perform basic validation and fall back accordingly.");
+              ImGui::SameLine();
+              ImGui::Checkbox("Suggest Waypoints", &data_manager::strct_ui_share_data.flag_llm_use_llm_to_suggest_targets);
+            }
+            else
+              data_manager::strct_ui_share_data.flag_llm_use_llm_to_suggest_targets = false;
+          }
+        }
       }
-
-
+      mxEndUiDisableState(b_disable_llm_options);
+      
       // ------------------------
       // Show briefer collapsing header
       // ------------------------
@@ -3192,7 +3210,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
     ImGui::EndChild();
   }
   ImGui::EndGroup();
-  this->mxUiReleaseLastFont();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont();
 
   ImGui::Separator();
   ImGui::Spacing();
@@ -3212,7 +3230,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
 
     // Add [generate] button
     ImGui::SameLine(10.0f);
-    this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
+    missionx::WinImguiBriefer::mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
     {
 
       if (missionx::data_manager::flag_generate_engine_is_running && data_manager::strct_ui_share_data.user_message_line1.empty())
@@ -3276,6 +3294,56 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
 
           } // end switch subcategory
 
+          // v26.09.2 add LLM info
+          // // store semi activity type
+          // missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int>(mxconst::get_OPT_SEMI_ACTIVITY_PICKED_BY_THE_USER(),  static_cast<int>(missionx::strct_user_create_layer.user_semi_act_picked.activity));
+          // // store if to use llm
+          // missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_OPT_AI_USE_LLM_TO_GENERATE_MISSION(), data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission);
+          // missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_OPT_AI_USE_LLM_TO_SUGGEST_WAYPOINTS(), data_manager::strct_ui_share_data.flag_llm_use_llm_to_suggest_targets);
+          // missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_OPT_AI_USE_LLM_TO_GENERATE_BACKGROUND_STORY(), data_manager::strct_ui_share_data.flag_llm_add_background_story);
+
+          // v26.09.1 Reminder that in "add_ui_semi_act_phase_1_pick() we add the activity type to the map_llm_requests_messages[]
+          // v26.09.2 LLM add background Story text
+          if (data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission && data_manager::strct_ui_share_data.flag_llm_add_background_story)
+          {
+            switch (missionx::strct_user_create_layer.user_semi_act_picked.activity)
+            {
+            case missionx::enums::mx_semi_activities_enum::act_helos_medevac_accident:
+              data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::background_story.data()] = "Write a realistic, short background story about an accident that requires us to fly our helicopter to conduct a medevac evacuation.";
+              break;
+            case missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me:
+              data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::background_story.data()] = "Write a realistic but generic, short background story about a medevac evacuation that needs helicopter evacuation. Unfortunately we don't know if it is car or wilderness evacuation";
+              break;
+            case missionx::enums::mx_semi_activities_enum::act_helos_medevac_oilrig:
+              data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::background_story.data()] = "Write a realistic, short background story about Oilrig evacuation. Do not exaggerate in details, make it simple.";
+              break;
+            case missionx::enums::mx_semi_activities_enum::act_helos_cargo_oilrig:
+              data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::background_story.data()] = "Write a realistic, short background story about Oilrig cargo mission. Do not exaggerate details, make it simple.";
+              break;
+            case missionx::enums::mx_semi_activities_enum::act_jets:
+              data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::background_story.data()] = "Write a realistic and concise pre-flight background story for the upcoming jet flight based on the waypoints and type of plane.";
+              break;
+            case missionx::enums::mx_semi_activities_enum::act_props:
+            case missionx::enums::mx_semi_activities_enum::act_props_float:
+              data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::background_story.data()] = "Write a realistic and concise pre-flight for general aviation flight. Remember that they are mainly related to recreational activities, work or family activity. The background story should be light"
+              "\nIf the number of waypoints is more than one or the distances are short (less than 100 nautical miles), then treat it like recreational or short hop flight."
+              "\nIf there is only one waypoint and the distance is larger than 100 nautical miles, treat it as a cross country flight, so it could be a work, family, maintenance or even a trip flight. Something along those lines."
+              ;
+              break;
+            default:
+              data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::background_story.data()] = "Do not write a background story for this kind of flight. Keep it realistic and professional. Concentrate on the pre-flight activities and not on a story.";
+              break;
+            } // end switch subcategory
+
+            data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::background_story.data()] +=
+                    "\nTry to explain the reason for the flight and give the pilot a believable operational context, such as transporting passengers, medical evacuation, delivering cargo, positioning the aircraft, or completing a charter flight."
+                    "\nKeep the story grounded in realistic aviation operations. Do not invent flight-plan details, procedures, weather, aircraft malfunctions, or other information that has not been provided."
+                    "\nWrite 2-4 sentences in a professional but engaging tone. The result should feel like a real-world flight assignment rather than an adventure story."
+            ;
+
+          }
+
+
           // set plane type
           strct_user_create_layer.iRadioPlaneType = missionx::strct_user_create_layer.user_semi_act_picked.plane_type;
 
@@ -3309,7 +3377,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
       }
 
     }
-    this->mxUiReleaseLastFont();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont();
 
   } // end footer button group
   ImGui::EndGroup();
@@ -3375,20 +3443,20 @@ WinImguiBriefer::add_ui_is_ga_cross_country_checkbox()
 
 void WinImguiBriefer::add_ui_mission_description(const std::string& in_description) 
 {
-  this->mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_SMALL());
+  missionx::WinImguiBriefer::mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_SMALL());
   {
     ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_yellow);
     ImGui::TextWrapped("%s", in_description.c_str());
     ImGui::PopStyleColor(1);
   }
-  this->mxUiReleaseLastFont();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont();
 }
 
 // -------------------------------------------
 
 void WinImguiBriefer::add_ui_medevac_surprise_me_warning()
 {
-  this->mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_SMALL());
+  missionx::WinImguiBriefer::mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_SMALL());
   {
     ImGui::TextColored(missionx::color::color_vec4_aqua, "You can test this category, it is still a Work.In.Progress.");
     // v25.12.1
@@ -3396,7 +3464,7 @@ void WinImguiBriefer::add_ui_medevac_surprise_me_warning()
     ImGui::TextWrapped("%s", "All locations in the mission are based on OpenStreetMap data, including extraction and drop-off locations, which may not be positioned exactly at the helipad. This is the current limitation until a better solution is implemented. Enjoy.");
     ImGui::PopStyleColor(1);
   }
-  this->mxUiReleaseLastFont();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont();
 }
 
 // -------------------------------------------
@@ -3412,12 +3480,13 @@ void WinImguiBriefer::add_ui_is_amphibian()
 void
 WinImguiBriefer::add_ui_ai_use_ai_checkbox()
 {
-  // v26.08.1
+  // v26.08.1 part of the setup screen
   mx_img_window::mxUiHelpMarker(missionx::color::color_vec4_beige, "Used only in the User Creation screen.");
   ImGui::SameLine();
   if (ImGui::Checkbox ("Use AI##ai_setup", &strct_setup_layer.b_use_ai) )
   {
-    data_manager::flag_use_llm_to_generate_mission = false; // v26.09.1 reset ai generate mission flag
+    data_manager::strct_ui_share_data.disable_llm(); // v26.09.2 reset all llm flags: flag_llm_use_llm_to_generate_a_mission and flag_llm_add_background_story
+    // data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission = false; // v26.09.1 reset ai generate mission flag
     system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_OPT_AI_USE_AI(), strct_setup_layer.b_use_ai);
     this->execAction(mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
   }
@@ -3432,7 +3501,7 @@ void WinImguiBriefer::add_ui_ai_server_url()
   missionx::mx_img_window::mxUiHelpMarker(missionx::color::color_vec4_aqua, "The only LLM format supported is \"OpenAI\".\nMake sure the server you are using supports it.\nExample: http://localhost:1234/v1/chat/completions");
   ImGui::SameLine();
   // disable or not the ai url field
-  const bool bDisable2 = this->mxStartUiDisableState(!strct_setup_layer.b_use_ai);
+  const bool bDisable2 = missionx::WinImguiBriefer::mxStartUiDisableState(!strct_setup_layer.b_use_ai);
 
   ImGui::TextColored(missionx::color::color_vec4_yellow, "LLM Server URL:");
   ImGui::SetNextItemWidth(350.0f);
@@ -3442,10 +3511,10 @@ void WinImguiBriefer::add_ui_ai_server_url()
   missionx::mx_img_window::mx_add_tooltip(missionx::color::color_vec4_beige, "OpenAI Format, example: http://{url}:{port}/v1/chat/completions");
   // save button
   ImGui::SameLine();
-  this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
+  missionx::WinImguiBriefer::mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
   if (ImGui::Button("Save##SaveServerUrl", ImVec2(60, 0)))
     bNeedToSave = true;
-  this->mxUiReleaseLastFont();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont();
 
   // decide if to save llm server url
   if (bNeedToSave)
@@ -3479,10 +3548,10 @@ The API key will be ignored if your LLM server does not require one.)";
   
   // save button
   ImGui::SameLine();
-  this->mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
+  missionx::WinImguiBriefer::mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
   if (ImGui::Button("Save##SaveLLM_apiKey", ImVec2(60, 0)))
     bNeedToSave ^= 1;
-  this->mxUiReleaseLastFont();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont();
 
   if (bNeedToSave)
   {
@@ -3505,7 +3574,7 @@ The API key will be ignored if your LLM server does not require one.)";
 
 
 
-  this->mxEndUiDisableState(bDisable2);
+  missionx::WinImguiBriefer::mxEndUiDisableState(bDisable2);
   ImGui::NewLine();
 }
 
@@ -3622,7 +3691,7 @@ WinImguiBriefer::draw_top_toolbar ()
 
     // Button with fixed width 30 and standard height
     // to pop out the window in an OS window
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
 
     static float btnWidth  = ImGui::CalcTextSize (mxUtils::from_u8string (ICON_FA_WINDOW_MAXIMIZE).c_str ()).x + 5;
     const bool   bBtnPopIn = IsPoppedOut (); // || IsInVR();
@@ -3658,7 +3727,7 @@ WinImguiBriefer::draw_top_toolbar ()
 
     } // end drawing popout/in buttons
 
-    this->mxUiReleaseLastFont ();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
     ///////// SETUP BUTTON
     if (this->currentLayer != missionx::uiLayer_enum::option_setup_layer && this->currentLayer != missionx::uiLayer_enum::imgui_home_layer && !missionx::strct_ils_layer.flagNavigatedFromOtherLayer)
@@ -3675,7 +3744,7 @@ WinImguiBriefer::draw_top_toolbar ()
     {
       ImGui::SameLine (0.01f); // v3.0.253.9.1 we set to 0.01 since 0.0f do not display in popout window // should be beginning of toolbar
 
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
       if (mx_img_window::ButtonTooltip (mxUtils::from_u8string (ICON_FA_REPLY).append ("##BackButtonInSetup").c_str (), "Back", IM_COL32 (255, 255, 0, 255), IM_COL32 (0, 0, 0, 255), ImVec2 (32.0f, 32.0f))) //
       {
         missionx::strct_ils_layer.flagNavigatedFromOtherLayer = false; // v24025
@@ -3683,7 +3752,7 @@ WinImguiBriefer::draw_top_toolbar ()
         this->setLayer (this->prevBrieferLayer);
         missionx::strct_setup_layer.is_first_time = true; // v3.0.253.6 force re-read of first time values like "overpass url" from options map
       }
-      this->mxUiReleaseLastFont ();
+      missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
       // tooltip
       this->mx_add_tooltip (missionx::color::color_vec4_white, "Back to previous screen");
@@ -3691,7 +3760,7 @@ WinImguiBriefer::draw_top_toolbar ()
 
     ///////// Title in the TOP Toolbar
 
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_TOOLBAR ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_TOOLBAR ());
     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_aqua); //
     ImGui::SameLine (0.0f, 10.0f);
     switch (this->currentLayer)
@@ -3737,7 +3806,7 @@ WinImguiBriefer::draw_top_toolbar ()
     ImGui::PopStyleColor (1);
     // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
 
-    this->mxUiReleaseLastFont ();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
     /// Countdown
     if (data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
@@ -3870,7 +3939,7 @@ void WinImguiBriefer::popup_draw_load_warnings(std::string_view inPopupWindowNam
 
         bool is_even_line = false;
 
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
 
         for (const auto &txt: missionx::data_manager::lst_of_failed_3d_obj_to_load)
         {
@@ -3907,7 +3976,7 @@ void WinImguiBriefer::popup_draw_load_warnings(std::string_view inPopupWindowNam
           is_even_line ^= 1;
         } // end loop over all
 
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
       }
       ImGui::EndChild ();
@@ -3945,12 +4014,12 @@ WinImguiBriefer::popup_draw_quit_mission (std::string_view inPopupWindowName)
         ImGui::PushStyleColor (ImGuiCol_::ImGuiCol_TextSelectedBg, missionx::color::color_vec4_black);
         iStyle++;
 
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_POPUP ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_POPUP ());
         ImGui::TextColored (missionx::color::color_vec4_yellow, "Are you sure you want to Quit the mission ?\n");
         ImGui::Separator ();
         ImGui::Spacing ();
 
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
         if (ImGui::Button (std::string ("Yes Quit " + Utils::from_u8string (ICON_FA_SIGN_OUT_ALT)).c_str (), ImVec2 (90, 0)))
         {
           ImGui::CloseCurrentPopup ();
@@ -3976,7 +4045,7 @@ WinImguiBriefer::popup_draw_quit_mission (std::string_view inPopupWindowName)
 
         ImGui::PopStyleColor (iStyle); // pop out before EndPopup
 
-        this->mxUiReleaseLastFont (2);
+        missionx::WinImguiBriefer::mxUiReleaseLastFont (2);
       }
       ImGui::EndChild ();
 
@@ -3999,7 +4068,7 @@ WinImguiBriefer::draw_popup_extra_data_ext_fpln (std::string_view inPopupWindowN
   constexpr auto multiLineSize_vec2_wp  = ImVec2 (-FLT_MIN, multiLineSize_vec2_wpc.y - 10.0f); // waypoint multiline
 
   ImGui::PushStyleColor (ImGuiCol_PopupBg, missionx::color::color_vec4_black);
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
   {
     if (ImGui::BeginPopupModal (inPopupWindowName.data (), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
@@ -4008,11 +4077,11 @@ WinImguiBriefer::draw_popup_extra_data_ext_fpln (std::string_view inPopupWindowN
       ImGui::TextColored (missionx::color::color_vec4_burlywood, "%s", "Extra Data:");
       ImGui::BeginChild ("waypoints##Child", multiLineSize_vec2_wpc, ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
       {
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
         ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_lightgoldenrodyellow);
         ImGui::InputTextMultiline ("##extradata", this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::more_info], sizeof (this->strct_flight_leg_info.mapNoteFieldLong[missionx::enums::mx_note_longField_enum::more_info]), multiLineSize_vec2_wp, ImGuiInputTextFlags_ReadOnly);
         ImGui::PopStyleColor ();
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
       }
       ImGui::EndChild ();
 
@@ -4026,7 +4095,7 @@ WinImguiBriefer::draw_popup_extra_data_ext_fpln (std::string_view inPopupWindowN
       ImGui::EndPopup ();
     }
   }
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
   ImGui::PopStyleColor ();
 }
 
@@ -4037,7 +4106,7 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
   ImGui::SetNextWindowSize (ImVec2 (640.0f, 420.0f));
 
   ImGui::PushStyleColor (ImGuiCol_PopupBg, missionx::color::color_vec4_black);
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
   {
     if (ImGui::BeginPopupModal (inPopupWindowName.data (), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
@@ -4131,7 +4200,7 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
         static bool bRerunRandomDateTime{ false };
         bRerunRandomDateTime = add_ui_checkbox_rerun_random_date_and_time ();
 
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
         ImGui::SameLine (0.0f, 5.0f);
         if (ImGui::Button (">> Generate <<", ImVec2 (120, 0)))
         {
@@ -4182,7 +4251,7 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
           ImGui::CloseCurrentPopup ();
           this->execAction (mx_window_actions::ACTION_GENERATE_RANDOM_MISSION);
         }
-        this->mxUiReleaseLastFont (); // v25.04.2 Release the "generate button font"
+        missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v25.04.2 Release the "generate button font"
 
         ImGui::SetItemDefaultFocus ();
         ImGui::SameLine (modal_center.x * 1.25f);
@@ -4196,7 +4265,7 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
       ImGui::EndPopup ();
     }
   }
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
   ImGui::PopStyleColor ();
 }
 
@@ -4225,7 +4294,7 @@ WinImguiBriefer::draw_globals_online_edit_popup (std::string_view inPopupWindowN
       ImGui::PushStyleColor (ImGuiCol_::ImGuiCol_TextSelectedBg, missionx::color::color_vec4_black);
       iStyle++;
 
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_POPUP ());
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_POPUP ());
 
       ImGui::TextColored (missionx::color::color_vec4_yellow, "Modify the Global parameter and save:");
       if (ImGui::InputText ("##EditGlobalParam", this->strct_flight_leg_info.online_globals_buff, sizeof (this->strct_flight_leg_info.online_globals_buff)))
@@ -4276,7 +4345,7 @@ WinImguiBriefer::draw_globals_online_edit_popup (std::string_view inPopupWindowN
         ImGui::CloseCurrentPopup ();
       }
 
-      this->mxUiReleaseLastFont ();
+      missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
       ImGui::PopStyleColor (iStyle);
 
@@ -4310,7 +4379,7 @@ WinImguiBriefer::draw_script_online_edit_popup (std::string_view inPopupWindowNa
       ImGui::PushStyleColor (ImGuiCol_::ImGuiCol_TextSelectedBg, missionx::color::color_vec4_black);
       iStyle++;
 
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_POPUP ());
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_POPUP ());
       // v3.305.3 skip abort script on script error
       this->add_ui_skip_abort_setup_checkbox ();
 
@@ -4337,7 +4406,7 @@ WinImguiBriefer::draw_script_online_edit_popup (std::string_view inPopupWindowNa
         ImGui::CloseCurrentPopup ();
       }
 
-      this->mxUiReleaseLastFont ();
+      missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
       ImGui::PopStyleColor (iStyle);
 
@@ -4438,7 +4507,7 @@ WinImguiBriefer::draw_setup_layer ()
     //------------------------------------------------
 
     // v3.305.1 added Pilot name for story mode in <message> element.
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
     mx_img_window::HelpMarker ("> Stores name in preference file only when pressing [Enter]\n> Only used in Messages that use the \"story mode\".\n> Might be extended in future builds to all missions.");
     ImGui::SameLine ();
     ImGui::TextColored (missionx::color::color_vec4_turquoise, "Your pilot nick name:");
@@ -4489,7 +4558,7 @@ WinImguiBriefer::draw_setup_layer ()
     }
 
 
-    this->mxUiReleaseLastFont ();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont ();
     ImGui::Separator ();
     ImGui::Spacing ();
 
@@ -4502,12 +4571,12 @@ WinImguiBriefer::draw_setup_layer ()
     // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
 
 
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
 
     missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
     if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
       ImGui::TextColored (missionx::color::color_vec4_yellow, "GPS Waypoints & Markers:");
 
       // GPS Exposure
@@ -4540,13 +4609,13 @@ WinImguiBriefer::draw_setup_layer ()
       if (missionx::data_manager::xplane_ver_i > missionx::XP12_VERSION_NO)
       {
         // disable while running
-        const bool bDisable = this->mxStartUiDisableState (missionx::data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running);
+        const bool bDisable = missionx::WinImguiBriefer::mxStartUiDisableState (missionx::data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running);
         {
           ImGui::TextColored (missionx::color::color_vec4_yellow, "Inventory Layout:");
           // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
           this->add_ui_xp11_comp_checkbox (true); // v24.12.2
         }
-        this->mxEndUiDisableState (bDisable);
+        missionx::WinImguiBriefer::mxEndUiDisableState (bDisable);
       }
 
       this->add_ui_suppress_distance_messages_checkbox_ui (); // v25.02.1
@@ -4598,12 +4667,12 @@ WinImguiBriefer::draw_setup_layer ()
         // missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_OPT_AUTO_PAUSE_IN_VR (), missionx::strct_setup_layer.bPauseInVR);
         // this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
       }
-      this->mxEndUiDisableState (bDisableGeneralOptions);
+      missionx::WinImguiBriefer::mxEndUiDisableState (bDisableGeneralOptions);
 
       ImGui::Separator ();
       ImGui::NewLine ();
 
-      this->mxUiReleaseLastFont ();
+      missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
     } // end collapse
 
@@ -4616,7 +4685,7 @@ WinImguiBriefer::draw_setup_layer ()
     missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
     if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
       {
         ImGui::Spacing ();
         ImGui::TextColored (missionx::color::color_vec4_greenyellow, "Simbrief:");
@@ -4640,7 +4709,7 @@ WinImguiBriefer::draw_setup_layer ()
         this->add_ui_ai_server_url();
 
       }
-      this->mxUiReleaseLastFont ();
+      missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
       ImGui::Spacing ();
       ImGui::Separator ();
@@ -4655,7 +4724,7 @@ WinImguiBriefer::draw_setup_layer ()
     missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
     if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
       ImGui::Text ("Execute the apt data optimization scripts:");
@@ -4691,7 +4760,7 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::NewLine (); // v3.305.1
 
 
-      this->mxUiReleaseLastFont (); // v3.305.1
+      missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.305.1
     }
 
     ImGui::PopStyleColor (); // header color
@@ -4711,7 +4780,7 @@ WinImguiBriefer::draw_setup_layer ()
       mx_img_window::HelpMarker ("Create external flight plan files based on the \"fpln_folders.ini\" settings and the current GPS flight plan.");
       ImGui::SameLine ();
 
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
       ImGui::Text ("Create external FPLN based of GPS");
@@ -4813,7 +4882,7 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::NewLine ();
 
 
-      this->mxUiReleaseLastFont (); // v3.305.1
+      missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.305.1
 
     } // TOOLS
 
@@ -4828,7 +4897,7 @@ WinImguiBriefer::draw_setup_layer ()
     missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
     if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
       // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
@@ -4866,7 +4935,7 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::Separator ();
       ImGui::NewLine ();
 
-      this->mxUiReleaseLastFont (); // v3.305.1
+      missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.305.1
     }
 
 
@@ -4879,7 +4948,7 @@ WinImguiBriefer::draw_setup_layer ()
     missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
     if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
       ImGui::PushItemWidth (450.0f);
       {
 
@@ -4916,18 +4985,18 @@ WinImguiBriefer::draw_setup_layer ()
         for (int url_index = 0; const auto& url: missionx::data_manager::vecOverpassUrls)
         {
           ImGui::PushID(url_index);
-          if (ImGui::Checkbox("##urlCheckboxes", &data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls[url_index]))
+          if (ImGui::Checkbox("##urlCheckboxes", &data_manager::strct_ui_share_data.map_ui_user_picks_overpass_urls[url_index]))
           {
             // validate at least one of the items in the container is "true"
-            const bool at_least_one_is_picked = std::ranges::any_of(data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls, [](const auto v_pair) { return v_pair.second; });
+            const bool at_least_one_is_picked = std::ranges::any_of(data_manager::strct_ui_share_data.map_ui_user_picks_overpass_urls, [](const auto v_pair) { return v_pair.second; });
             if (!at_least_one_is_picked)            
             {
-              data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls[url_index] = true; // force at least one item to be true
+              data_manager::strct_ui_share_data.map_ui_user_picks_overpass_urls[url_index] = true; // force at least one item to be true
             }
           }
           ImGui::PopID();
           ImGui::SameLine();
-          const auto ui_text_color = (data_manager::strct_ui_share_data.map_ui_user_pickes_overpass_urls[url_index]) ? missionx::color::color_vec4_beige : missionx::color::color_vec4_darkgray;
+          const auto ui_text_color = (data_manager::strct_ui_share_data.map_ui_user_picks_overpass_urls[url_index]) ? missionx::color::color_vec4_beige : missionx::color::color_vec4_darkgray;
           ImGui::TextColored(ui_text_color, "%s", url.c_str());
           ++url_index;
         }
@@ -4936,7 +5005,7 @@ WinImguiBriefer::draw_setup_layer ()
         ImGui::NewLine (); // v3.305.1
       }
 
-      this->mxUiReleaseLastFont (); // v3.305.1
+      missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.305.1
     }
     //------------------------------------------------
     //                  Medevac Group
@@ -4946,7 +5015,7 @@ WinImguiBriefer::draw_setup_layer ()
     missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
     if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
       ImGui::Text ("Settings Will be applied only to helos missions");
@@ -4961,7 +5030,7 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::NewLine (); // v3.305.1
 
 
-      this->mxUiReleaseLastFont (); // v3.305.1
+      missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.305.1
     }
 
     //------------------------------------------------
@@ -4972,7 +5041,7 @@ WinImguiBriefer::draw_setup_layer ()
     missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
     if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
       ImGui::Text ("Override external flight plan location and write to X-Plane's 'FMS plans' folder");
@@ -4988,7 +5057,7 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::Separator (); // v3.305.1
       ImGui::NewLine (); // v3.305.1
 
-      this->mxUiReleaseLastFont (); // v3.305.1
+      missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.305.1
     }
 
     //------------------------------------------------
@@ -4999,7 +5068,7 @@ WinImguiBriefer::draw_setup_layer ()
     missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
     if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
       // Description Text
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow); // yellow
@@ -5079,7 +5148,7 @@ WinImguiBriefer::draw_setup_layer ()
       ImGui::Separator (); // v3.305.1
       ImGui::NewLine (); // v3.305.1
 
-      this->mxUiReleaseLastFont (); // v3.305.1
+      missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.305.1
     }
 
 
@@ -5090,7 +5159,7 @@ WinImguiBriefer::draw_setup_layer ()
     missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
     if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v26.04.4
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v26.04.4
       {
         ImGui::TextColored (missionx::color::color_vec4_aqua, "Disable Inventory image load, if Inventory screen CTD X-Plane.");
         if (ImGui::Checkbox ("Disable Inventory Image Load ?", &missionx::strct_setup_layer.bDisableInventoryImageLoad))
@@ -5120,7 +5189,7 @@ WinImguiBriefer::draw_setup_layer ()
         ImGui::NewLine ();
 
       }
-      this->mxUiReleaseLastFont ();
+      missionx::WinImguiBriefer::mxUiReleaseLastFont ();
     }
 
 
@@ -5135,7 +5204,7 @@ WinImguiBriefer::draw_setup_layer ()
     missionx::strct_setup_layer.mapSetupHeaders[index].setState ((ImGui::CollapsingHeader (missionx::strct_setup_layer.mapSetupHeaders[index].title.c_str ())));
     if (missionx::strct_setup_layer.mapSetupHeaders[index].bState)
     {
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
       ImGui::TextColored (missionx::color::color_vec4_yellow, "The following options won't be stored in the Mission-X preference file.");
       ImGui::TextColored (missionx::color::color_vec4_yellow, "You will have to set them every new X-Plane session.");
@@ -5233,12 +5302,12 @@ ATTENTION !!! It allows you to execute the message even if it is not the correct
 
 Use at your own risk!!!
 )");
-      bool bDisable = this->mxStartUiDisableState (!missionx::data_manager::flag_setupShowDebugTabDuringMission);
+      bool bDisable = missionx::WinImguiBriefer::mxStartUiDisableState (!missionx::data_manager::flag_setupShowDebugTabDuringMission);
       {
         ImGui::SameLine ();
         ImGui::Checkbox ("Display message debug tab.", &missionx::data_manager::flag_setupShowDebugMessageTab);
       }
-      this->mxEndUiDisableState (bDisable);
+      missionx::WinImguiBriefer::mxEndUiDisableState (bDisable);
 
 
       // v3.305.3 skip abort script on script error
@@ -5254,11 +5323,11 @@ Use at your own risk!!!
       ImGui::SameLine (0.0f, 28.0f);
       mx_img_window::HelpMarker ("When in story mode, force skip. This will actually make the story mode message display immediately");
 
-      bDisable = this->mxStartUiDisableState (!missionx::data_manager::flag_setupDisplayAutoSkipInStoryMessage);
+      bDisable = missionx::WinImguiBriefer::mxStartUiDisableState (!missionx::data_manager::flag_setupDisplayAutoSkipInStoryMessage);
       // Toggle Auto Skip
       ImGui::SameLine ();
       ImGui::Checkbox ("Force Auto Skip, in \"story\" based messages.", &missionx::data_manager::flag_setupAutoSkipStoryMessage);
-      this->mxEndUiDisableState (bDisable);
+      missionx::WinImguiBriefer::mxEndUiDisableState (bDisable);
       // end Disable / Enable "auto skip action"
 
 
@@ -5394,7 +5463,7 @@ Use at your own risk!!!
         std::for_each (missionx::data_manager::map3dInstances.begin (), missionx::data_manager::map3dInstances.end (), [] (std::pair<const std::string, missionx::obj3d> &pair) { Log::logMsg (fmt::format ("3D Instance Name: \"{}\"\n{}", pair.first, Utils::xml_get_node_content_as_text (pair.second.node))); });
       }
 
-      this->mxUiReleaseLastFont (); // v3.305.1
+      missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.305.1
 
       ImGui::Separator (); // v3.305.1
       ImGui::NewLine (); // v3.305.1
@@ -5404,16 +5473,16 @@ Use at your own risk!!!
       ImGui::SameLine ();
       #ifndef RELEASE
       missionx::data_manager::flag_setupUseDraw2DMapInReleaseMode = true; // force value
-      bool b_disable_force_2d_map_cues = this->mxStartUiDisableState (true);
+      bool b_disable_force_2d_map_cues = missionx::WinImguiBriefer::mxStartUiDisableState (true);
       #endif
       ImGui::Checkbox ("Force 2D map cues", &missionx::data_manager::flag_setupUseDraw2DMapInReleaseMode);
       #ifndef RELEASE
-      this->mxEndUiDisableState (b_disable_force_2d_map_cues);
+      missionx::WinImguiBriefer::mxEndUiDisableState (b_disable_force_2d_map_cues);
       #endif
 
     }
 
-    this->mxUiReleaseLastFont (); // v3.305.1
+    missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.305.1
   }
   ImGui::EndGroup (); // end setting UI groups
 
@@ -5511,7 +5580,7 @@ WinImguiBriefer::draw_home_layer ()
           if (btn.layer != missionx::uiLayer_enum::option_user_generates_a_mission_layer)
           {
             // disable find target using llm
-            data_manager::flag_use_llm_to_generate_mission = false; // v26.09.1
+            data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission = false; // v26.09.1
           }
 
           // handle special actions per layer
@@ -5580,7 +5649,7 @@ WinImguiBriefer::draw_home_layer ()
         this->mx_add_tooltip (missionx::color::color_vec4_yellow, btn.tip);
 
       //// Handle button label location
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
       {
         if (btn.layer == missionx::uiLayer_enum::flight_leg_info && missionx::data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running)
           ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_aqua);
@@ -5591,7 +5660,7 @@ WinImguiBriefer::draw_home_layer ()
           ImGui::PopStyleColor ();
       }
 
-      this->mxUiReleaseLastFont ();
+      missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
       if (disabled) // v24.06.1 moved from before the tooltip to after the button labels to better represent "inaccessibility".
       {
@@ -5648,16 +5717,16 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen ()
 void WinImguiBriefer::draw_dynamic_mission_creation_screen_home()
 {
   constexpr static auto btn_size_vec2 = ImVec2 (190.0f, 190.0f);
-  const auto                  win_size_vec2 = this->mxUiGetWindowContentWxH ();
+  const auto                  win_size_vec2 = missionx::WinImguiBriefer::mxUiGetWindowContentWxH ();
 
   ImGui::Spacing ();
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
   ImGui::TextWrapped ("%s", "Pick one of the options below.");
   ImGui::Separator ();
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
   ImGui::Spacing ();
   ImGui::Spacing ();
   ImGui::Spacing ();
@@ -5668,7 +5737,10 @@ void WinImguiBriefer::draw_dynamic_mission_creation_screen_home()
       if (ImGui::ImageButton ("Full Control", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_FULL_CONTROL ()].gTexture, btn_size_vec2))
       {
         // disable find target using llm
-        data_manager::flag_use_llm_to_generate_mission = false; // v26.09.1
+        data_manager::strct_ui_share_data.reset_llm();
+
+        // v26.09.2 reset the semi activity screen
+        missionx::strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_accept;
 
         // flag we want to display Option A Screen
         missionx::strct_user_create_layer.child_screen = mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_option_a;
@@ -5694,7 +5766,7 @@ void WinImguiBriefer::draw_dynamic_mission_creation_screen_home()
     } // end Some Control
     ImGui::EndTable ();
   } // end table
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
 
 }
@@ -5704,14 +5776,14 @@ void WinImguiBriefer::draw_dynamic_mission_creation_screen_home()
 void
 WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
 {
-  const auto win_size_vec2 = this->mxUiGetWindowContentWxH ();
+  const auto win_size_vec2 = missionx::WinImguiBriefer::mxUiGetWindowContentWxH ();
 
   if (missionx::strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw)
   {
     static constexpr float img_ps_f = 0.5f;
     float                  pos_x    = data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_LAB_24X18 ()].sImageData.getW_f () * img_ps_f;
 
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
 
     ImGui::BeginChild ("draw_user_create_mission_layer_01", ImVec2 (0.0f, win_size_vec2.y * 0.77f), ImGuiChildFlags_Borders);
     {
@@ -5838,7 +5910,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
         // -- Preferred Plane
         // ------------------------
 
-        this->mxStartUiDisableState (bPickedMedevacSurpriseMeMission); // v25.06.1 start disable/enable
+        missionx::WinImguiBriefer::mxStartUiDisableState (bPickedMedevacSurpriseMeMission); // v25.06.1 start disable/enable
 
         HelpMarker ("The aircraft you select will help filter the route distance and the available ramps at the destination airport.\n\nExample:\n\nJets: Small to medium Jets (B,C)\nAirline/Cargo: E190, B737, A320 (C,D)\nHeavy Airline/Cargo: B777, A350 (C,D,E,F)");
         ImGui::SameLine (0.0f, 2.0f);
@@ -5917,7 +5989,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
         }
 
 
-        this->mxEndUiDisableState ( bPickedMedevacSurpriseMeMission ); // v25.06.1 end disable/enable
+        missionx::WinImguiBriefer::mxEndUiDisableState ( bPickedMedevacSurpriseMeMission ); // v25.06.1 end disable/enable
         if (bPickedMedevacSurpriseMeMission)
           ImGui::TextColored (missionx::color::color_vec4_yellow, "Inventory will be XP11 compatible - No stations.");
 
@@ -6007,7 +6079,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
             this->mx_add_tooltip (missionx::color::color_vec4_yellow, "If OSM database is available, then try to get data from it before the Web OSM.");
 
             //// OSM Web filter popup
-            // auto vec2WindowSize = this->mxUiGetWindowContentWxH();
+            // auto vec2WindowSize = missionx::WinImguiBriefer::mxUiGetWindowContentWxH();
             ImGui::SetNextWindowSize (ImVec2 (590.0f, 230.0f));
             ImGui::PushStyleColor (ImGuiCol_ChildBg, missionx::color::color_vec4_black);
             {
@@ -6063,13 +6135,13 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
                   ImGui::SameLine ();
                   ImGui::TextColored (missionx::color::color_vec4_beige, "%i chars", static_cast<int> (std::string (buf1).length ()));
                   ImGui::SameLine (this->mxUiGetContentWidth () - 40.0f, 0.0f);
-                  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+                  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
                   if (ImGui::Button ("reset##resetButton1"))
                   {
                     mxUtils::copy_string_to_buffer(missionx::strct_user_create_layer.overpass_original_filter, buf1[0], sizeof(buf1)); // v26.04.3
                     missionx::strct_user_create_layer.overpass_pre_apply_filter_s = missionx::strct_user_create_layer.overpass_original_filter;
                   }
-                  this->mxUiReleaseLastFont ();
+                  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
                   ImGui::BeginChild ("overpassFilter##PopupOverpassWindowName", ImVec2 (0.0f, 55.0f), ImGuiChildFlags_Borders, ImGuiWindowFlags_AlwaysHorizontalScrollbar); // InputTextWithHint
 
@@ -6085,7 +6157,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
                   ImGui::EndChild ();
 
 
-                  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+                  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
                   ImGui::Separator ();
 
                   ImGui::SameLine (0.0f, 20.0f);
@@ -6111,7 +6183,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
                     ImGui::CloseCurrentPopup ();
                   }
 
-                  this->mxUiReleaseLastFont ();
+                  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
                   ImGui::PopStyleColor (iStyle); // pop out before EndPopup
 
@@ -6184,7 +6256,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
     }
     ImGui::EndChild (); // end main dynamic creation area child
 
-    this->mxUiReleaseLastFont ();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
     // ------------------------
     // ------------------------
@@ -6193,7 +6265,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
     // ------------------------
 
 
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
     ImGui::BeginGroup ();
     {
 
@@ -6255,7 +6327,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
       // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
     }
     ImGui::EndGroup ();
-    this->mxUiReleaseLastFont ();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
 
   } // end if (missionx::strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw)
@@ -6277,9 +6349,9 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
   {
     ImGui::NewLine ();
 
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
     ImGui::TextColored (missionx::color::color_vec4_magenta, "Please wait while testing validity of the data.... ");
-    this->mxUiReleaseLastFont (); // v3.303.14 release the last 2 fonts we pushed
+    missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.303.14 release the last 2 fonts we pushed
 
 
     if (missionx::strct_user_create_layer.layer_state < missionx::mx_layer_state_enum::validating_data)
@@ -6324,7 +6396,7 @@ void WinImguiBriefer::draw_dynamic_mission_creation_screen_child_2()
 void
 WinImguiBriefer::draw_template_mission_generator_screen ()
 {
-  const auto win_size_vec2 = this->mxUiGetWindowContentWxH ();
+  const auto win_size_vec2 = missionx::WinImguiBriefer::mxUiGetWindowContentWxH ();
 
   if (missionx::strct_generate_template_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw)
   {
@@ -6338,13 +6410,13 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                 "find it in the SETUP screen."); // v3.0.253.9 added optimization wording
     ImGui::SameLine ();
 
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
 
     ImGui::TextColored (missionx::color::color_vec4_yellow, "Please pick a template.");
     ImGui::SameLine (0.0f, 135.0f);
     add_skewed_marker_checkbox (); // v3.0.253.6
 
-    this->mxUiReleaseLastFont (); // v3.303.14
+    missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.303.14
 
     ImGui::EndChild ();
     ImGui::EndGroup ();
@@ -6367,7 +6439,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
           ImGui::SameLine ();
         ImGui::BeginGroup ();
 
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
         {
           constexpr const char *names[] = { "Templates", "Template Description" };
           ImGui::TextColored (ImVec4 (1, 1, 0, 1), "%s", names[i]);
@@ -6375,7 +6447,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
           {
             ImGui::SameLine (0.0f, 10.0f);
             add_font_size_scale_buttons ();
-            this->mxUiReleaseLastFont (); // v3.303.14
+            missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.303.14
 
             // v3.303.12
             ImGui::SameLine (0.0f, 20.0f);
@@ -6385,7 +6457,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
           else
           {
             ImGui::Spacing (); // v3.303.14
-            this->mxUiReleaseLastFont (); // v3.303.14
+            missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.303.14
           }
         }
         // Draw 2 regions
@@ -6514,9 +6586,9 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                 if (Utils::isElementExists (data_manager::mapGenerateMissionTemplateFiles, missionx::strct_generate_template_layer.last_picked_template_key))
                 {
                   // Display the mission briefing description after generating the mission file
-                  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+                  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
                   ImGui::TextWrapped ("%s", missionx::data_manager::mapGenerateMissionTemplateFiles[missionx::strct_generate_template_layer.last_picked_template_key].description.c_str ());
-                  this->mxUiResetAllFontsToDefault ();
+                  missionx::WinImguiBriefer::mxUiResetAllFontsToDefault ();
                 }
               }
               else
@@ -6538,7 +6610,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                       ImGui::PopStyleColor (1);
                       ImGui::SameLine (0.0f, 2.0f);
 
-                      this->mxUiSetFont (mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1 ());
+                      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1 ());
 
                       // Combo
                       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_orange);
@@ -6549,7 +6621,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                       ImGui::SameLine (0.0f, 2.0f);
                       ImGui::TextColored (missionx::color::color_vec4_lime, "%s", option_info.combo_label_s.c_str ());
 
-                      this->mxUiReleaseLastFont ();
+                      missionx::WinImguiBriefer::mxUiReleaseLastFont ();
                     }
 
                     ImGui::Separator ();
@@ -6559,9 +6631,9 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
                 // v24.12.2 end multi options
 
                 // Display template mission info text
-                this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+                missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
                 ImGui::TextWrapped ("%s", missionx::data_manager::mapGenerateMissionTemplateFiles[missionx::strct_generate_template_layer.last_picked_template_key].template_description.c_str ());
-                this->mxUiResetAllFontsToDefault ();
+                missionx::WinImguiBriefer::mxUiResetAllFontsToDefault ();
                 // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
               }
             }
@@ -6579,7 +6651,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
 
       ImGui::BeginGroup ();
 
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
 
       // v24.12.2 compatibility checkbox
       this->add_ui_xp11_comp_checkbox (false);
@@ -6634,7 +6706,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
               bRerunRandomDateTime = add_ui_checkbox_rerun_random_date_and_time ();
               ImGui::SameLine (0.0f, 5.0f);
 
-              this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+              missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
             }
 
             ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_red);
@@ -6691,7 +6763,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
             {
               ImGui::CloseCurrentPopup ();
             }
-            this->mxUiReleaseLastFont ();
+            missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
 
             ImGui::EndPopup ();
@@ -6722,9 +6794,9 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
     {
       ImGui::NewLine ();
 
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ()); // v3.303.14
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ()); // v3.303.14
       ImGui::TextColored (missionx::color::color_vec4_magenta, "Please wait while loading the templates.... ");
-      this->mxUiReleaseLastFont (); // v3.303.14
+      missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.303.14
     }
   }
   else if (missionx::strct_generate_template_layer.layer_state == missionx::mx_layer_state_enum::failed_data_is_not_present || missionx::strct_generate_template_layer.layer_state == missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly)
@@ -6744,16 +6816,16 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
   {
     ImGui::NewLine ();
 
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
     ImGui::TextColored (missionx::color::color_vec4_magenta, "Please wait while testing validity of the data.... ");
-    this->mxUiReleaseLastFont (); // v3.303.14 release the last 2 fonts we pushed
+    missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.303.14 release the last 2 fonts we pushed
 
     if (missionx::strct_generate_template_layer.layer_state < missionx::mx_layer_state_enum::validating_data)
     {
       missionx::strct_generate_template_layer.layer_state = missionx::mx_layer_state_enum::validating_data;
     }
   }
-  this->mxUiResetAllFontsToDefault (); // v3.303.14
+  missionx::WinImguiBriefer::mxUiResetAllFontsToDefault (); // v3.303.14
 
 } // draw_mission_generator_layer
 
@@ -6765,7 +6837,7 @@ WinImguiBriefer::draw_flight_leg_info ()
   constexpr const static ImVec2 IMVEC2_TOP_IMAGE_SIZE = { 87.0f, 126.0f };
   constexpr const static float  IMG_GROUP_WIDTH       = 102.0;
 
-  auto win_size_vec2 = this->mxUiGetWindowContentWxH ();
+  auto win_size_vec2 = missionx::WinImguiBriefer::mxUiGetWindowContentWxH ();
 
 
   constexpr const static float child_w[] = { IMG_GROUP_WIDTH, 0 }; // 102, 0; 0 = stretch to the end
@@ -6872,28 +6944,28 @@ WinImguiBriefer::draw_flight_leg_info ()
     {
       if (this->strct_flight_leg_info.internal_child_layer == missionx::uiLayer_enum::flight_leg_info_end_summary)
       {
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
         ImGui::TextWrapped ("%s", this->strct_flight_leg_info.end_description.c_str ());
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
       }
       else
       {
         const std::string sLegTitle = "Title: " + data_manager::getTitleOrNameFromNode (data_manager::mapFlightLegs[data_manager::currentLegName]);
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ()); // v3.303.14 // v24026
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ()); // v3.303.14 // v24026
         {
           ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow);
           ImGui::TextWrapped ("%s", sLegTitle.c_str ());
           ImGui::PopStyleColor ();
         }
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
 
         if (this->IsInVR ()) // When in VR mode, display flight leg detail in upper region
         {
           const std::string sDesc = data_manager::mapFlightLegs[data_manager::currentLegName].getNodeStringProperty (mxconst::get_ELEMENT_DESC (), "", true); // read description first from mapText and then from xml node.
-          this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.303.14
+          missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.303.14
           ImGui::TextWrapped ("%s", sDesc.c_str ());
-          this->mxUiReleaseLastFont ();
+          missionx::WinImguiBriefer::mxUiReleaseLastFont ();
         }
       }
     }
@@ -6961,7 +7033,7 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
   float                        child_w[]    = { 0.0f, 0.0f };
   constexpr const static float fTitleHeight = 30.0f;
 
-  ImVec2 vec2Window = this->mxUiGetWindowContentWxH ();
+  ImVec2 vec2Window = missionx::WinImguiBriefer::mxUiGetWindowContentWxH ();
 
   if (missionx::data_manager::mxChoice.is_choice_set ())
   {
@@ -6988,9 +7060,9 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
       {
         ImGui::BeginGroup ();
         ImGui::BeginChild ("child_draw_2D_flight_leg_info", ImVec2 (0.0f, ImGui::GetWindowHeight () - imvec2_flight_info_top_area_size.y - this->fTopToolbarPadding_f - this->fBottomToolbarPadding_f - fTitleHeight), ImGuiChildFlags_Borders);
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.303.14
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.303.14
         ImGui::TextWrapped ("%s", data_manager::mapFlightLegs[data_manager::currentLegName].getNodeStringProperty (mxconst::get_ELEMENT_DESC (), "", true).c_str ());
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
         ImGui::EndChild ();
         ImGui::EndGroup ();
 
@@ -7011,9 +7083,9 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
 
           if (i == 0 || (i == 1 && missionx::data_manager::mxChoice.is_choice_set ()))
           {
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+            missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
             ImGui::TextColored (ImVec4 (1, 1, 0, 1), "%s", names[i]);
-            this->mxUiReleaseLastFont ();
+            missionx::WinImguiBriefer::mxUiReleaseLastFont ();
           }
 
           // Draw 2 regions
@@ -7026,18 +7098,18 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
             {
               ImGui::BeginGroup ();
               ImGui::PushStyleColor (ImGuiCol_Text, missionx::WinImguiBriefer::mx_get_color_as_im_vec4 (msg.label_color));
-              this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+              missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
               ImGui::SetNextItemWidth (60.0f);
               ImGui::Text ("%s", msg.label.c_str ());
-              this->mxUiReleaseLastFont ();
+              missionx::WinImguiBriefer::mxUiReleaseLastFont ();
               ImGui::PopStyleColor (1);
               ImGui::EndGroup ();
 
               ImGui::BeginGroup ();
               ImGui::SameLine (70.0f);
-              this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+              missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
               ImGui::TextWrapped ("%s", msg.message_text.c_str ());
-              this->mxUiReleaseLastFont ();
+              missionx::WinImguiBriefer::mxUiReleaseLastFont ();
               store_last_message_s = msg.message_text; // v3.303.13
               ImGui::EndGroup ();
             }
@@ -7056,7 +7128,7 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
               // loop over options
               ImGui::PushStyleColor (ImGuiCol_Border, IM_COL32 (0, 160, 0, 255)); // Green
 
-              this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+              missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
               for (int i1 = 0; i1 < missionx::data_manager::mxChoice.nVecSize_i; ++i1) // mxChoice.mapOptions size must be equal to :mxChoice.vecXmlOptions
               {
                 int radioChoice = -1;
@@ -7078,7 +7150,7 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
                   } // end if not hidden
                 } // end if found option keyName in choice (can be sequence number also).
               } // end loop over all options
-              this->mxUiReleaseLastFont ();
+              missionx::WinImguiBriefer::mxUiReleaseLastFont ();
               ImGui::PopStyleColor (1);
             }
           }
@@ -7109,9 +7181,9 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
         // Draw history text
         ImGui::BeginGroup ();
         ImGui::BeginChild ("child_draw_history_story_messages", ImVec2 (0.0f, ImGui::GetWindowHeight () - imvec2_flight_info_top_area_size.y - this->fTopToolbarPadding_f - this->fBottomToolbarPadding_f - fTitleHeight), ImGuiChildFlags_Borders);
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.303.14
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.303.14
         this->add_story_message_history_text ();
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
         ImGui::EndChild ();
         ImGui::EndGroup ();
 
@@ -7171,7 +7243,7 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
 void
 WinImguiBriefer::child_draw_STORY_mode_leg_info ()
 {
-  auto vec2Window = this->mxUiGetWindowContentWxH ();
+  auto vec2Window = missionx::WinImguiBriefer::mxUiGetWindowContentWxH ();
 
   ImGui::BeginGroup ();
   auto debugWindowHeight = ImGui::GetWindowHeight ();
@@ -7243,13 +7315,13 @@ WinImguiBriefer::child_draw_STORY_mode_leg_info ()
 
 
   // print title
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
   {
     ImGui::TextColored (this->mxConvertMxVec4ToImVec4 (this->strct_flight_leg_info.strct_story_mode.characterInfo.getColorAsVec4 ()), "%s", this->strct_flight_leg_info.strct_story_mode.characterInfo.label.c_str ());
   }
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
 
   // Add [Next] / [Skip] Buttons
   if (Message::lineAction4ui.state == missionx::enum_mx_line_state::broadcasting)
@@ -7297,7 +7369,7 @@ WinImguiBriefer::child_draw_STORY_mode_leg_info ()
   }
 
 
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
 
 
@@ -7411,7 +7483,7 @@ WinImguiBriefer::child_draw_STORY_mode_leg_info ()
     ////////////////
     // Print TEXT
     ///////////////
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_MED ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_MED ());
 
     ImGui::TextWrapped ("%s", this->strct_flight_leg_info.strct_story_mode.sTextToPrint.substr (0, this->strct_flight_leg_info.strct_story_mode.iChar).c_str ());
     if (this->strct_flight_leg_info.strct_story_mode.prev_iChar != this->strct_flight_leg_info.strct_story_mode.iChar)
@@ -7420,7 +7492,7 @@ WinImguiBriefer::child_draw_STORY_mode_leg_info ()
       ImGui::SetScrollHereY (1.0f);
     }
 
-    this->mxUiReleaseLastFont ();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont ();
   }
   ImGui::EndChild ();
   ImGui::EndGroup ();
@@ -7436,9 +7508,9 @@ WinImguiBriefer::child_flight_leg_info_draw_inventory ()
   ImVec2                        vec2_btnSize = { 250.0f, missionx::strct_setup_layer.fPreferredFontScale * data_manager::FONT_SIZE + 6.0f }; // need to be dynamic
   constexpr static const ImVec2 vec2_portrait (50.0f, 40.0f); // v3.0.303.5
 
-  const auto window_content_xy = this->mxUiGetWindowContentWxH ();
+  const auto window_content_xy = missionx::WinImguiBriefer::mxUiGetWindowContentWxH ();
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
   {
 
     ImGui::PushID ("##invFlightLegInfo");
@@ -7544,7 +7616,7 @@ WinImguiBriefer::child_flight_leg_info_draw_inventory ()
     }
     ImGui::EndGroup ();
   }
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 }
 
 
@@ -7557,7 +7629,7 @@ WinImguiBriefer::child_draw_inv_plane_xp12_move_item (Inventory &inout_copied_pl
   if ((!this->strct_flight_leg_info.flagItemMoveWasPressedFromExternalInv) + (this->strct_flight_leg_info.ptrNodePicked.isEmpty ()))
     return;
 
-  const auto container_dim = this->mxUiGetWindowContentWxH ();
+  const auto container_dim = missionx::WinImguiBriefer::mxUiGetWindowContentWxH ();
 
   const std::string barcode         = Utils::readAttrib (this->strct_flight_leg_info.ptrNodePicked, mxconst::get_ATTRIB_BARCODE (), "");
   const std::string itemName        = Utils::readAttrib (this->strct_flight_leg_info.ptrNodePicked, mxconst::get_ATTRIB_NAME (), barcode);
@@ -7977,7 +8049,7 @@ WinImguiBriefer::child_draw_inv_external_store (const ImVec2 &in_vec2_inv_child)
   const ImVec2            vec2_btnSize = { 250.0f, missionx::strct_setup_layer.fPreferredFontScale * data_manager::FONT_SIZE + 6.0f }; // need to be dynamic
   static constexpr ImVec2 vec2_portrait (50.0f, 40.0f);
 
-  const bool bDisable = this->mxStartUiDisableState (this->strct_flight_leg_info.flagItemMoveWasPressedFromExternalInv);
+  const bool bDisable = missionx::WinImguiBriefer::mxStartUiDisableState (this->strct_flight_leg_info.flagItemMoveWasPressedFromExternalInv);
 
   const int nItems = missionx::data_manager::externalInventoryCopy.node.nChildNode (mxconst::get_ELEMENT_ITEM ().c_str ());
   for (int iExternalItemLoop = 0; iExternalItemLoop < nItems && iExternalItemLoop < mxconst::MAX_ITEMS_IN_EXTERNAL_INVENTORY; ++iExternalItemLoop)
@@ -8087,7 +8159,7 @@ WinImguiBriefer::child_draw_inv_external_store (const ImVec2 &in_vec2_inv_child)
     }
   } // end loop over external inventory items
 
-  this->mxEndUiDisableState (bDisable);
+  missionx::WinImguiBriefer::mxEndUiDisableState (bDisable);
 }
 
 // ------------------------------------------------
@@ -8218,9 +8290,9 @@ WinImguiBriefer::child_flight_leg_info_draw_end_summary ()
     {
       ImGui::BeginGroup ();
 
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ()); // v3.303.14
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ()); // v3.303.14
       ImGui::TextColored (missionx::color::color_vec4_yellow, "Please wait while reading the stats...");
-      this->mxUiReleaseLastFont (); // v3.303.14
+      missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.303.14
 
       ImGui::EndGroup ();
 
@@ -8228,7 +8300,7 @@ WinImguiBriefer::child_flight_leg_info_draw_end_summary ()
     }
     else if (this->strct_flight_leg_info.fetch_state == missionx::mxFetchState_enum::fetch_ended)
     {
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1 ()); // v3.303.14
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1 ()); // v3.303.14
 
       ImGui::BeginGroup ();
       ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "Time Flew: ");
@@ -8267,7 +8339,7 @@ WinImguiBriefer::child_flight_leg_info_draw_end_summary ()
       ImGui::Separator ();
       for (auto &land : missionx::data_manager::mission_stats_from_query.vecLandingStatsResults)
       {
-        const bool flag_bounced_row = this->mxStartUiDisableState (land.bounce == 1 && !land.did_landing_contained_bounce);
+        const bool flag_bounced_row = missionx::WinImguiBriefer::mxStartUiDisableState (land.bounce == 1 && !land.did_landing_contained_bounce);
         {
           ImGui::Text ("%s", fmt::format("{}", (flag_bounced_row)? fmt::format ("\t{:>10}", "[" + land.activity_s + "]") : "Landed in: " ).c_str());
           ImGui::SameLine ();
@@ -8299,13 +8371,13 @@ WinImguiBriefer::child_flight_leg_info_draw_end_summary ()
             }
           } // end if to display score + bounce info
         } // end enabled/disabled block
-        this->mxEndUiDisableState (flag_bounced_row);
+        missionx::WinImguiBriefer::mxEndUiDisableState (flag_bounced_row);
       }
       ImGui::Separator ();
 
       ImGui::EndGroup ();
 
-      this->mxUiReleaseLastFont (); // v3.303.14
+      missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.303.14
 
       ////// Draw per waypoint stats
       this->add_ui_stats_child (true); // v3.303.14
@@ -8378,7 +8450,7 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
 {
   if (this->strct_pick_layer.bFinished_loading_mission_images)
   {
-    const auto                   win_size_vec2           = this->mxUiGetWindowContentWxH ();
+    const auto                   win_size_vec2           = missionx::WinImguiBriefer::mxUiGetWindowContentWxH ();
     constexpr static const float fImageContainerWidth_px = 280.0f;
 
     constexpr float child_w[] = { fImageContainerWidth_px, 0.0f }; // v3.305.1 0.0f = until the end of the window so no calculation is needed from our end
@@ -8391,7 +8463,7 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
       ImGui::BeginGroup ();
       const char *names[] = { "Pick a Mission", "Mission Description" };
 
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
       ImGui::TextColored (ImVec4 (1, 1, 0, 1), "%s", names[i]);
 
       // add font size buttons
@@ -8401,7 +8473,7 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
         add_font_size_scale_buttons ();
       }
 
-      this->mxUiReleaseLastFont ();
+      missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
 
       // Draw 2 regions
@@ -8481,7 +8553,7 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
           if (!this->strct_pick_layer.last_picked_key.empty ())
           {
             // // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
+            missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
 
             ImGui::Text ("Title: ");
             ImGui::SameLine ();
@@ -8515,10 +8587,10 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
 
             // display briefer details
             ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow);
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+            missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
             ImGui::TextWrapped ("%s", data_manager::mapBrieferMissionList[this->strct_pick_layer.last_picked_key].missionDesc.c_str ());
 
-            this->mxUiResetAllFontsToDefault ();
+            missionx::WinImguiBriefer::mxUiResetAllFontsToDefault ();
             ImGui::PopStyleColor (1);
 
             // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
@@ -8549,12 +8621,12 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
 
         constexpr auto popupReminder = "Do you want to load the Save Point";
 
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
 
         if (ImGui::Button ("Load Savepoint"))
           ImGui::OpenPopup (popupReminder); // v3.303.12_r3 make it a popup
 
-        this->mxUiReleaseLastFont ();
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
         ImGui::PopStyleColor (1);
         bDrawLoadSavepointButton = true;
@@ -8571,12 +8643,12 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
           ImGui::PushStyleColor (ImGuiCol_ChildBg, missionx::color::color_vec4_black);
           ImGui::BeginChild ("quiteModalChild", ImVec2 (0.0f, ImGui::GetContentRegionAvail ().y), ImGuiChildFlags_None);
 
-          this->mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_POPUP ());
+          missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_POPUP ());
 
           ImGui::TextWrapped ("1. Remember to load and start the plane prior to loading the save point \n\t(if that was the state when you took it).\n2. It is best to load a save point that was taken on the ground.\n3. You might need to disable the servo (auto pilot) if Yoke/Stick do not auto center.");
           ImGui::Separator ();
 
-          this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+          missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
           if (ImGui::Button ("Continue Loading the Savepoint"))
           {
             this->execAction (missionx::mx_window_actions::ACTION_LOAD_SAVEPOINT); // should hide the window
@@ -8588,7 +8660,7 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
             ImGui::CloseCurrentPopup ();
           }
 
-          this->mxUiReleaseLastFont (2);
+          missionx::WinImguiBriefer::mxUiReleaseLastFont (2);
 
           ImGui::EndChild ();
           ImGui::PopStyleColor (); // inner child
@@ -8600,7 +8672,7 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
       }
 
       // place the next button
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
 
       if (bDrawLoadSavepointButton)
       {
@@ -8625,7 +8697,7 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
         add_ui_warning_messages_button(); // v26.1.1
       }
 
-      this->mxUiReleaseLastFont ();
+      missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
     } // end if strct_pick_layer.key has value
     ImGui::EndGroup ();
@@ -8635,9 +8707,9 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
     ImGui::NewLine ();
 
     // // // ImGui::SetWindowFontScale(2.0f);
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
     ImGui::TextColored (missionx::color::color_vec4_magenta, "Please wait while loading mission files.... ");
-    this->mxUiReleaseLastFont ();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
     // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
   }
@@ -8675,15 +8747,15 @@ void
 WinImguiBriefer::draw_child_ext_fpln_home_screen ()
 {
   constexpr static auto btn_size_vec2 = ImVec2 (190.0f, 190.0f);
-  const auto                  win_size_vec2 = this->mxUiGetWindowContentWxH ();
+  const auto                  win_size_vec2 = missionx::WinImguiBriefer::mxUiGetWindowContentWxH ();
 
   ImGui::Spacing ();
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
   ImGui::TextWrapped ("%s", "Pick one of the options below.");
   ImGui::Separator ();
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
   ImGui::Spacing ();
   ImGui::Spacing ();
   ImGui::Spacing ();
@@ -8733,7 +8805,7 @@ WinImguiBriefer::draw_child_ext_fpln_home_screen ()
     } // end Simbrief tab column
     ImGui::EndTable ();
   }
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 }
 
 
@@ -8741,7 +8813,7 @@ WinImguiBriefer::draw_child_ext_fpln_home_screen ()
 void
 WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
 {
-  const auto                   win_size_vec2  = this->mxUiGetWindowContentWxH ();
+  const auto                   win_size_vec2  = missionx::WinImguiBriefer::mxUiGetWindowContentWxH ();
   constexpr const static float ga_range_begin = 0.0f, ga_range_end = 9000.0f, ga_steps = 20.0f;
   constexpr const static char *limit_items[] = { "10", "20", "30", "40", "60", "80", "100" };
   constexpr const static char *sort_items[]  = { "created", "updated", "popularity", "distance" };
@@ -8762,7 +8834,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
 
   // // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.305.1
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.305.1
 
   mx_img_window::HelpMarker ("This screen is dependent on \"flightplandatabase.com\".\n Fill in the information to query from the external site.");
   ImGui::SameLine ();
@@ -8773,7 +8845,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
   ImGui::TextUnformatted ("You must fill one of the fields in Yellow labels");
   ImGui::PopStyleColor ();
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
   ImGui::BeginChild ("draw_external_fpln_layer_01", ImVec2 (0.0f, win_size_vec2.y * 0.30f), ImGuiChildFlags_Borders); // consume 1/3 of screen
   {
     mx_img_window::HelpMarker ("FROM or TO fields needs to have a value");
@@ -8791,13 +8863,13 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
 
       ImGui::SameLine ();
 
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
       if (mx_img_window::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).append ("##ClearFromICAO").c_str (), "Clear from ICAO"))
       {
         this->strct_ext_layer.from_icao.clear ();
         memset (this->strct_ext_layer.buf_from_icao, 0, sizeof this->strct_ext_layer.buf_from_icao);
       }
-      this->mxUiReleaseLastFont ();
+      missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
       ImGui::SameLine ();
       if (ImGui::Button ("From ICAO")) // first time initialization or manual ICAO fetch
@@ -8823,13 +8895,13 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
       this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Enter Arrival airport ICAO code");
 
       ImGui::SameLine ();
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
       if (mx_img_window::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).append ("##ClearToICAO").c_str (), "Clear to ICAO"))
       {
         this->strct_ext_layer.to_icao.clear ();
         memset (this->strct_ext_layer.buf_to_icao, 0, sizeof this->strct_ext_layer.buf_to_icao);
       }
-      this->mxUiReleaseLastFont ();
+      missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
       ImGui::SameLine ();
       ImGui::LabelText ("##To ICAO Label", "To ICAO");
@@ -8900,7 +8972,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
   ImGui::EndChild ();
   ImGui::EndGroup ();
 
-  this->mxUiReleaseLastFont (2); // v3.305.1 title and reg text
+  missionx::WinImguiBriefer::mxUiReleaseLastFont (2); // v3.305.1 title and reg text
 
   // ------------ Buttons -----------------------
 
@@ -8908,9 +8980,9 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
   const bool are_we_processing_the_fetch = mxUtils::mx_between <int>(static_cast<int>( this->strct_ext_layer.fetch_state ), static_cast<int>(missionx::mxFetchState_enum::fetch_in_process), static_cast<int>( missionx::mxFetchState_enum::fetch_guess_wp), missionx::enums::mx_between_types::both_can_be_equal);
 
   // v26.06.3 disable button instead of hiding it.
-  const auto bDisableFetchButton = this->mxStartUiDisableState(missionx::data_manager::flag_generate_engine_is_running || are_we_processing_the_fetch || (this->strct_ext_layer.from_icao.empty() && this->strct_ext_layer.to_icao.empty()));
+  const auto bDisableFetchButton = missionx::WinImguiBriefer::mxStartUiDisableState(missionx::data_manager::flag_generate_engine_is_running || are_we_processing_the_fetch || (this->strct_ext_layer.from_icao.empty() && this->strct_ext_layer.to_icao.empty()));
   {
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
 
     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
     ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_orange);
@@ -8936,18 +9008,18 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
 
     ImGui::PopStyleColor (3);
 
-    this->mxUiReleaseLastFont ();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
   }
-  this->mxEndUiDisableState(bDisableFetchButton);
+  missionx::WinImguiBriefer::mxEndUiDisableState(bDisableFetchButton);
 
 
   // ------------ Flight plan Table -----------------------
 
-  const bool bEnableState = this->mxStartUiDisableState (this->strct_ext_layer.fetch_state != missionx::mxFetchState_enum::fetch_not_started); // v24.03.1 disable table until fetch is ended
+  const bool bEnableState = missionx::WinImguiBriefer::mxStartUiDisableState (this->strct_ext_layer.fetch_state != missionx::mxFetchState_enum::fetch_not_started); // v24.03.1 disable table until fetch is ended
 
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
   ImGui::BeginGroup ();
   ImGui::BeginChild ("draw_external_fpln_layer_02", ImVec2 (0.0f, win_size_vec2.y * 0.36f), ImGuiChildFlags_Borders); // consume 1/3 of screen
@@ -9073,10 +9145,10 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
   ImGui::EndChild ();
   ImGui::EndGroup ();
 
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
 
-  this->mxEndUiDisableState (bEnableState); // v24.03.1 disable table until fetch is ended
+  missionx::WinImguiBriefer::mxEndUiDisableState (bEnableState); // v24.03.1 disable table until fetch is ended
 
   // ----------------------
   // -- Abort BUTTON
@@ -9097,9 +9169,9 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
       && missionx::strct_generate_template_layer.selectedTemplateKey.empty ()
       && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
   {
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
     this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
-    this->mxUiReleaseLastFont ();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont ();
   }
 
   // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
@@ -9138,7 +9210,7 @@ WinImguiBriefer::add_ui_stats_child (const bool isEmbedded)
 
   if (data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
   {
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
 
     ImGui::TextWrapped ("Overall Distance flew: %10.2f nm\tFuel Consumed: %5.2f", strctCurrentStats.fCumulativeDistance_nm, fuel_usage_kg);
     ImGui::TextWrapped ("Current Leg flew: %5.2f nm\tStarting Fuel: %5.2f\tPayload: %6.2f", (strctCurrentStats.fCumulativeDistance_nm - data_manager::strct_currentLegStats4UIDisplay.fCumulativeDistanceFlew_beforeCurrentLeg), data_manager::strct_currentLegStats4UIDisplay.fStartingFuel, data_manager::strct_currentLegStats4UIDisplay.fStartingPayload);
@@ -9150,13 +9222,13 @@ WinImguiBriefer::add_ui_stats_child (const bool isEmbedded)
       ImGui::TextColored (missionx::color::color_vec4_white, "Touch Down Weight: %6.2f\tPlane Max Weight: %3.2f", data_manager::strct_currentLegStats4UIDisplay.fTouchDownWeight, data_manager::strct_currentLegStats4UIDisplay.fTouchDown_acf_m_max); // v25.09.2 removed weight scoring
       add_landing_rate_ui (data_manager::strct_currentLegStats4UIDisplay);
     }
-    this->mxUiReleaseLastFont ();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont ();
     /// display the previous leg stats
     ImGui::NewLine ();
     ImGui::Separator ();
   }
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
   for (const auto &stats : data_manager::vecPreviousLegStats4UIDisplay)
   {
     const auto pctTdWeight_f = stats.fTouchDownWeight / stats.fTouchDown_acf_m_max;
@@ -9171,7 +9243,7 @@ WinImguiBriefer::add_ui_stats_child (const bool isEmbedded)
 
     ImGui::Separator ();
   }
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
   if (!isEmbedded)
     ImGui::EndChild ();
@@ -9270,12 +9342,12 @@ void WinImguiBriefer::gather_semi_act_phase1_data_based_on_picked_activity(mx_us
 void
 WinImguiBriefer::draw_about_layer ()
 {
-  const auto             win_size_vec2 = this->mxUiGetWindowContentWxH ();
+  const auto             win_size_vec2 = missionx::WinImguiBriefer::mxUiGetWindowContentWxH ();
   static constexpr float win_padding   = 30.0f;
 
   ImGui::BeginChild ("draw_about_layer_01", ImVec2 (0.0f, win_size_vec2.y * 0.85f));
   {
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
     {
       ImGui::TextColored (missionx::color::color_vec4_aqua, "%s%s", "Mission-X v", missionx::FULL_VERSION_ABOUT.c_str ());
       ImGui::TextColored (missionx::color::color_vec4_greenyellow, "%s", "Mission-X was written by Saar Nagar <snagar.dev@protonmail.com>");
@@ -9285,7 +9357,7 @@ WinImguiBriefer::draw_about_layer ()
       ImGui::TextColored(missionx::color::color_vec4_aqua, "%s", "Library Used");
 
 
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_BOTTOM ());
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_BOTTOM ());
       ImGui::Separator ();
       ImGui::TextUnformatted ("Uses the IMGUI library v" IMGUI_VERSION ", Copyright (c) 2014-2026 Omar Cornut.");
       ImGui::TextUnformatted ("Uses the ImPlot library v" IMPLOT_VERSION ", MIT License - Copyright (c) 2020 Evan Pezent.");
@@ -9316,7 +9388,7 @@ WinImguiBriefer::draw_about_layer ()
       ImGui::Separator ();
       ImGui::Image (data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_FMOD_LOGO ()].gTexture, ImVec2 (182.0f, 48.0f));
     }
-    this->mxUiResetAllFontsToDefault (); // v3.303.14 pop out all pushed fonts
+    missionx::WinImguiBriefer::mxUiResetAllFontsToDefault (); // v3.303.14 pop out all pushed fonts
 
     ImGui::NewLine ();
     ImGui::Separator ();
@@ -9363,12 +9435,12 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
   constexpr auto popupRandomize_Weather_DateTime = "set_weather_date_and_time_rules";
   mx_img_window::HelpMarker ("Configure Preferred Weather, Default Weight and Date/Time.\nYou can disable default weight when flying online and you don't want Mission-X to mess with the weights.");
   ImGui::SameLine ();
-  this->mxUiSetFont (inTEXT_TYPE); // default TEXT_TYPE_TITLE_REG
+  missionx::WinImguiBriefer::mxUiSetFont (inTEXT_TYPE); // default TEXT_TYPE_TITLE_REG
   if (ImGui::Button ("Advance Settings"))
   {
     ImGui::OpenPopup (popupRandomize_Weather_DateTime); // v3.303.10 make it a popup
   }
-  this->mxUiReleaseLastFont ();
+  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
   this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Configure Preferred Weather, Default Weight and Date/Time");
 
@@ -9408,11 +9480,11 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
           {
             // --------- Option Text -----------
 
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+            missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
             ImGui::TextColored (missionx::color::color_vec4_yellow, "How the engine should pick the date and time ?");
-            this->mxUiReleaseLastFont ();
+            missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+            missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
             ImGui::TextWrapped ("Pick X-Plane\nDate/Time");
             ImGui::SameLine (0.0f, 40.0f);
             ImGui::TextWrapped ("Pick OS\nDate/Time");
@@ -9423,7 +9495,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
             ImGui::SameLine (0.0f, 40.0f);
             ImGui::TextWrapped ("Pick Preferred\nMonths/Time");
             ImGui::NewLine ();
-            this->mxUiReleaseLastFont ();
+            missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
             // --------- Option Radio Buttons -----------
             ImGui::SameLine (fRadioPadding, 0.0f);
@@ -9494,9 +9566,9 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                   this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
                 }
                 ImGui::SameLine (0.0f, 2.0f);
-                this->mxUiSetFont (mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1 ());
+                missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1 ());
                 ImGui::TextColored (missionx::color::color_vec4_burlywood, "Include night hours.");
-                this->mxUiReleaseLastFont ();
+                missionx::WinImguiBriefer::mxUiReleaseLastFont ();
               }
               break;
               case missionx::mx_ui_random_date_time_type::exact_day_and_time:
@@ -9510,7 +9582,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                   ImGui::SameLine ();
                 }
 
-                this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+                missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
                 if (mx_img_window::ButtonTooltip (mxUtils::from_u8string (ICON_FA_SYNC).append ("##syncDayInYearAndHours").c_str (), "Reset to local day and hour"))
                 {
                   // out_iClockDayOfYearPicked = dataref_manager::getLocalDateDays (); // strct_user_create_layer.iClockDayOfYearPicked
@@ -9520,7 +9592,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                   adv_settings_strct.iClockHourPicked      = dataref_manager::getLocalHour (); // strct_user_create_layer.iClockHourPicked
                   adv_settings_strct.iClockMinutesPicked   = dataref_manager::getLocalMinutes (); // v25.04.2 How many minutes passed since the start of the hour
                 }
-                this->mxUiReleaseLastFont ();
+                missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
                 ImGui::SameLine ();
                 ImGui::TextColored (missionx::color::color_vec4_yellow, "Day:");
@@ -9572,12 +9644,12 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                     } // end X loop
 
                   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_green);
-                  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+                  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
                   if (ImGui::Button ("Pick Random Day/Time"))
                   {
                     this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
                   } // end push button
-                  this->mxUiReleaseLastFont (); // v3.303.14
+                  missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.303.14
                   ImGui::PopStyleColor ();
                 }
                 ImGui::EndGroup ();
@@ -9586,7 +9658,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                 ImGui::SameLine (0.0f, 60.0f);
 
                 // Time of day
-                this->mxUiSetFont (mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1 ()); // v3.303.14
+                missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1 ()); // v3.303.14
                 ImGui::BeginGroup ();
                 {
                   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellowgreen);
@@ -9613,7 +9685,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                   } // end time in day table
                 }
                 ImGui::EndGroup ();
-                this->mxUiReleaseLastFont (); // v3.303.14
+                missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.303.14
 
               } // pick_months_and_part_of_preferred_day
               break;
@@ -9631,16 +9703,16 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
           ImGui::BeginChild ("random_weather_tab", ImVec2 (-5.0f, 0.0f), ImGuiChildFlags_Borders); // The Apply button will be shown after the child and not part of it
           {
             // --------- Weather Header Text -----------
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+            missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
             ImGui::TextColored (missionx::color::color_vec4_yellow, "How do you want to setup the weather ?");
-            this->mxUiReleaseLastFont ();
+            missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
             ImGui::NewLine ();
 
             fRadioPadding = 20.0f;
             ImGui::SameLine (fRadioPadding, 0.0f);
 
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.303.14
+            missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.303.14
             for (const auto &radio : this->listRandomWeatherRadioLabel)
             {
               if (ImGui::RadioButton (radio.label.c_str (), radio.type == missionx::adv_settings_strct.iWeatherType_user_picked))
@@ -9665,7 +9737,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
               ImGui::SameLine (0.0f, fRadioPadding);
             } // end loop over all radio options
 
-            this->mxUiReleaseLastFont ();
+            missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
             fRadioPadding = 20.0; // reset to start of line
 
@@ -9676,7 +9748,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
               case missionx::mx_ui_random_weather_options::pick_pre_defined:
               {
                 // decide which array to pick
-                this->mxUiSetFont (mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1 ()); // v3.303.14
+                missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1 ()); // v3.303.14
                 ImGui::BeginGroup ();
                 {
                   if (ImGui::BeginTable ("Pick Custom Weather Type Table", missionx::mx_popup_adv_settings_strct::weather_x, ImGuiTableFlags_Borders)) // ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_Borders))
@@ -9702,7 +9774,7 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
                   } // end table
                 } // end ui group
                 ImGui::EndGroup ();
-                this->mxUiReleaseLastFont (); // v3.303.14
+                missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.303.14
               }
               break;
               default:
@@ -9723,12 +9795,12 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
           // ImGui::BeginChild("weight_tab", ImVec2(win_width - 10.0f, win_height - 95.0f), true);
           ImGui::BeginChild ("weight_tab", ImVec2 (-5.0f, 0.0f), ImGuiChildFlags_Borders); // v3.305.1
           {
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1 ()); // v3.303.14
+            missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1 ()); // v3.303.14
             this->add_ui_xp11_comp_checkbox (false);
             ImGui::Separator ();
             ImGui::NewLine ();
             this->add_ui_default_weights (); // v25.02.1
-            this->mxUiReleaseLastFont ();
+            missionx::WinImguiBriefer::mxUiReleaseLastFont ();
           }
           ImGui::EndChild ();
         }
@@ -9747,12 +9819,12 @@ WinImguiBriefer::add_ui_advance_settings_random_date_time_weather_and_weight_but
     ImGui::SetCursorPosY (win_height - 35.0f);
     ImGui::BeginGroup ();
 
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
     if (ImGui::Button ("Apply & Close##AdvSettingsApplyAndClose", ImVec2 (150, 0)))
     {
       ImGui::CloseCurrentPopup ();
     }
-    this->mxUiReleaseLastFont ();
+    missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
     ImGui::SameLine (0.0f, 20.0f);
     ImGui::SetCursorPosY (ImGui::GetCursorPos ().y + 5.0f);
@@ -9800,10 +9872,10 @@ WinImguiBriefer::display_shared_message_when_optimized_data_is_not_present (miss
     case missionx::mx_layer_state_enum::failed_data_is_not_present:
     {
       {
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ()); // v3.303.14
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ()); // v3.303.14
         ImGui::TextColored (missionx::color::color_vec4_magenta, "There was an error while validating data ");
 
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ()); // v3.303.14
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ()); // v3.303.14
         ImGui::TextColored (missionx::color::color_vec4_yellow, "Suggestion: re-run apt.dat optimization and set database initialization too (found in the plugin setup page)");
         ImGui::NewLine ();
         ImGui::TextColored (missionx::color::color_vec4_lightgreen, "If you want to automate this process, please click the button ");
@@ -9825,15 +9897,15 @@ WinImguiBriefer::display_shared_message_when_optimized_data_is_not_present (miss
         ImGui::NewLine ();
         ImGui::NewLine ();
 
-        this->mxUiReleaseLastFont (2); // v3.303.14 release the last 2 fonts we pushed
+        missionx::WinImguiBriefer::mxUiReleaseLastFont (2); // v3.303.14 release the last 2 fonts we pushed
       } // end failed_data_is_not_present
     } // end case
     break;
     case missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly:
     {
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ()); // v3.303.14
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ()); // v3.303.14
       ImGui::TextColored (missionx::color::color_vec4_magenta, "FATAL ERROR - Plugin failed to access airports database file ");
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ()); // v3.303.14
+      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ()); // v3.303.14
 
       ImGui::TextColored (missionx::color::color_vec4_yellow, "Suggestion: delete the database file in {missionx/db} plugin folder and reload X-Plane.");
       ImGui::TextColored (missionx::color::color_vec4_yellow, R"(Once loaded, enable the "Create cache SQLite DB format" option in the "setup" screen, then re-run "apt.dat" optimization.)");
@@ -9842,7 +9914,7 @@ WinImguiBriefer::display_shared_message_when_optimized_data_is_not_present (miss
       ImGui::NewLine ();
       ImGui::NewLine ();
 
-      this->mxUiReleaseLastFont (2); // v3.303.14 release the last 2 fonts we pushed
+      missionx::WinImguiBriefer::mxUiReleaseLastFont (2); // v3.303.14 release the last 2 fonts we pushed
     }
     break;
     default:

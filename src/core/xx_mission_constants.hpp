@@ -35,7 +35,7 @@ inline constexpr const int MX_FEATURES_VERSION = 20260403; // Added min/max rw l
 
 inline constexpr auto PLUGIN_VER_MAJOR                  = "26"; // year
 inline constexpr auto PLUGIN_VER_MINOR                  = "09"; // month
-inline constexpr auto PLUGIN_VER_SUB                    = "1"; // sub-version
+inline constexpr auto PLUGIN_VER_SUB                    = "2"; // sub-version
 inline constexpr auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 
@@ -89,16 +89,16 @@ inline constexpr float  EARTH_RADIUS_M                  = 6378145.0f;
 inline constexpr double LOWEST_GROUND_ELEV_FOR_TRIGGERS = -3000.0; // v3.0.253.5 used in cases we need to configure triggers with "--" or "---" signs
 
 
-inline constexpr float RadToDeg             = (float)(180.0f / PI); // 57.295779513082320876798154814105
-inline constexpr float DegToRad             = 1.0f / RadToDeg;      // 0.01745329251994329576923690768489
-inline constexpr float feet2meter           = 0.3048f;              // 1.0f / 3.28083f;
-inline constexpr float meter2feet           = 3.28083f;
-inline constexpr float meter2nm             = 0.000539957f;
-inline constexpr float nm2meter             = 1852.0f;
-inline constexpr float nm2km                = 1.852f;
-inline constexpr float km2nm                = 0.539957f;
-inline constexpr float OneNmh2meterInSecond = 0.5144444f;
-constexpr double              NM_TO_DEG_LAT        = (1.0 / 60.0); // v25.06.1
+inline constexpr float  RadToDeg             = (float)(180.0f / PI); // 57.295779513082320876798154814105
+inline constexpr float  DegToRad             = 1.0f / RadToDeg;      // 0.01745329251994329576923690768489
+inline constexpr float  feet2meter           = 0.3048f;              // 1.0f / 3.28083f;
+inline constexpr float  meter2feet           = 3.28083f;
+inline constexpr float  meter2nm             = 0.000539957f;
+inline constexpr float  nm2meter             = 1852.0f;
+inline constexpr float  nm2km                = 1.852f;
+inline constexpr float  km2nm                = 0.539957f;
+inline constexpr float  OneNmh2meterInSecond = 0.5144444f;
+inline constexpr double NM_TO_DEG_LAT        = (1.0 / 60.0); // v25.06.1
 
 inline constexpr float seconds2minutes_f = 0.0166f; // v3.305.3
 
@@ -174,10 +174,10 @@ enum class mx_semi_activities_enum
   : uint8_t
 {
   act_none = 0,
-  act_helos_cargo_oilrig,
   act_helos_medevac_oilrig,
   act_helos_medevac_accident,
   act_helos_medevac_surprise_me,
+  act_helos_cargo_oilrig,
   act_props,
   act_props_float,
   act_turboprops,
@@ -1410,6 +1410,7 @@ namespace conv
 
 namespace llm_category {
 inline constexpr std::string_view mission_description   = "mission_description";
+inline constexpr std::string_view background_story      = "background_story"; // v26.09.2
 inline constexpr std::string_view plane_type            = "plane_type";
 inline constexpr std::string_view locations             = "locations";
 inline constexpr std::string_view weather               = "weather";

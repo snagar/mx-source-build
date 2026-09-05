@@ -627,7 +627,10 @@ const static ^std::string^                OPT_AI_SERVER_URL                     
 const static ^std::string^                OPT_AI_AUTH_KEY                                        ^ "ai_auth_key"; ^// v26.08.1
 const static ^std::string^                OPT_AI_DEFAULT_AUTH_KEY                                ^ "missionx_no_auth"; ^// v26.08.1 This represent the fallback api key value the plugin will send.
 const static ^std::string^                OPT_AI_LLM_SERVER_TIMEOUT                              ^ "llm_server_timeout"; ^// v26.08.1
-const static ^std::string^                OPT_AI_USE_LLM_TO_GENERATE_MISSION                     ^ "use_llm_to_generate_mission"; ^// v26.09.1
+//const static ^std::string^                OPT_SEMI_ACTIVITY_PICKED_BY_THE_USER                   ^ "semi_activity_picked_by_the_user"; ^// v26.09.1 Used with the user semi activity screen.
+//const static ^std::string^                OPT_AI_USE_LLM_TO_GENERATE_MISSION                     ^ "use_llm_to_generate_mission"; ^// v26.09.1 Used with the user semi activity screen.
+//const static ^std::string^                OPT_AI_USE_LLM_TO_SUGGEST_WAYPOINTS                    ^ "use_llm_to_suggest_waypoints"; ^// v26.09.2 Used with the user semi activity screen.
+//const static ^std::string^                OPT_AI_USE_LLM_TO_GENERATE_BACKGROUND_STORY            ^ "use_llm_to_generate_background_story"; ^// v26.09.2 Used with the user semi activity screen.
 
 
 static constexpr ^float   ^               MINIMUM_EXPECTED_PILOT_WEIGHT_IN_STATION               ^ 40.0f; ^// v24.12.2 used when evaluating if to add pilot weight to the plane.

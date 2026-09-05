@@ -367,6 +367,8 @@ static bool gen_target_base_on_xy_osm_or_osmweb_types2(NavAidInfo&              
   // v25.02.1
   static std::vector<IXMLNode>                                             gen_land_hover_display_objects (const double &inLat, const double &inLon, const int &inRadiusMT, const int &inHowManyObjects, int &inout_seq, const std::string &inFileName = "land_hover01.obj");
   static std::map<missionx::enums::mx_osm_region_enum, missionx::structs::strct_bbox> gen_quadrant_bboxes (double centerLat, double centerLon);
+  static std::map<missionx::enums::mx_osm_region_enum, missionx::structs::strct_bbox> gen_quadrant_bboxes (const double centerLat, const double centerLon, const double minDistNm, const double maxDistNm);
+
 
   int seq_triggers   = 0;
   int seq_tasks      = 0;

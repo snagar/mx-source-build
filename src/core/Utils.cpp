@@ -3926,7 +3926,7 @@ Utils::json_extract_by_path(const std::string& json_str, const std::string& path
     nlohmann::json j = nlohmann::json::parse(json_str);
 
     // Convert the path string into a JSON Pointer
-    nlohmann::json::json_pointer ptr(path_str);
+    const nlohmann::json::json_pointer ptr(path_str);
 
     // Access using .at() for safe bounds checking
     result.string_value = j.at(ptr).get<std::string>();
