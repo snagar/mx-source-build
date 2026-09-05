@@ -439,7 +439,7 @@ if (APPLE)
 endif()
 
 if (MSVC)
-  target_compile_options(${PROJECT_NAME} PRIVATE /utf-8)
+  target_compile_options(${PROJECT_NAME} PRIVATE /utf-8 /bigobj)
 else()
   target_compile_options(${PROJECT_NAME} PRIVATE -fexceptions -fvisibility=hidden -Wall -Wpedantic -Wextra -Wno-unused)
   target_compile_options(${PROJECT_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
