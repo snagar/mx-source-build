@@ -390,7 +390,8 @@ jobs:
           cd libs
           Write-Host "Command: Expand-Archive XPSDK.zip -DestinationPath . -Force \n"
           "Current folder: $(Get-Location)\n"
-          Expand-Archive XPSDK.zip -DestinationPath . -Force
+          Remove-Item -Recurse -Force "SDK\Libraries\Mac" -ErrorAction SilentlyContinue
+          Expand-Archive XPSDK.zip -DestinationPath . -Force -ErrorAction SilentlyContinue
           
           Write-Host "List folders:\n"
           Get-ChildItem -Directory -Name
