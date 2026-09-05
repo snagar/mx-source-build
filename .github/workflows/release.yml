@@ -78,8 +78,8 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-22.04]
-        build_type: [ Debug, Release ]
-        #build_type: [ Debug ]
+#        build_type: [ Debug, Release ]
+        build_type: [ Debug ]
         #build_type: [ Release ]
         c_compiler: [gcc]
         #gcc_version: [11]
@@ -139,6 +139,26 @@ jobs:
 #          cat src/core/version.hpp
       
 
+      - name: Extract XPSDK
+        shell: bash
+        run: |
+          printf "Extract XPSDK"
+          printf "Command: unzip -o libs/XPSDK430.zip -d libs/XPSDK"
+          cd libs
+          printf "Current folder: %s\n" "$(pwd)"
+          unzip -o XPSDK430.zip
+          printf "List folders:\n"
+          ls -l
+          printf "List SDK files recursively:\n"
+          ls -lr SDK
+      
+
+      - name: Stop workflow early
+        run: |
+          echo "Stopping here..."
+          exit 1  # Fails the step and halts subsequent steps unless configured otherwise
+      
+
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       - name: Debug - Configure & Build Linux using CMake
@@ -189,7 +209,7 @@ jobs:
   
 
   build-osx:
-    #if: ( 1 == 2 )
+    if: ( 1 == 2 )
     runs-on: macos-14
     needs: [pre-build]
     strategy:
@@ -293,7 +313,7 @@ jobs:
   
 
   build-win:
-    #if: ( 1 == 2 )
+    if: ( 1 == 2 )
     #runs-on: windows-latest
     runs-on: windows-2022
     needs: [pre-build]
