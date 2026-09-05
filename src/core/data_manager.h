@@ -1603,7 +1603,7 @@ public:
   static std::string get_mission_outline_base(const std::unordered_map<std::string, std::string>& map_llm_requests_messages);
 
   static bool extract_missionx_library(const std::filesystem::path& zipPath, const std::filesystem::path& customSceneryDir);
-  static void ensure_missionx_folder_exists();
+  static void ensure_missionx_random_folder_exists();
 }; // end class
 
 }

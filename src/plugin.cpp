@@ -369,7 +369,7 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
 
 
   // v26.09.2 check if Custom Scenery/missionx/random folder exists. Create it if it doesn't.
-  missionx::data_manager::ensure_missionx_folder_exists();
+  missionx::data_manager::ensure_missionx_random_folder_exists();
 
 
   const auto now = std::chrono::steady_clock::now();

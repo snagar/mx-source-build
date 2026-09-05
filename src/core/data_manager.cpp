@@ -992,9 +992,15 @@ std::string missionx::data_manager::get_mission_outline_base(const std::unordere
 bool
 data_manager::extract_missionx_library(const std::filesystem::path& zipPath, const std::filesystem::path& customSceneryDir)
 {
+#ifndef RELEASE 
+Log::logMsg(fmt::format("[{}] Extracting missionx library:\n\tfrom: [{}]\n\tto: [{}].\n", __func__, zipPath.string(), customSceneryDir.string()));
+#endif // !RELEASE 
+
+
   // 1. Cross-platform path handling for file opening
 #if defined(_WIN32)
-    unzFile zip = unzOpen64(zipPath.wstring().c_str());
+    //unzFile zip = unzOpen64(zipPath.wstring().c_str());
+    unzFile zip = unzOpen64(zipPath.string().c_str());
 #else
     unzFile zip = unzOpen64(zipPath.string().c_str());
 #endif
@@ -1075,28 +1081,28 @@ data_manager::extract_missionx_library(const std::filesystem::path& zipPath, con
 
 // -------------------------------------
 
-void data_manager::ensure_missionx_folder_exists()
+void data_manager::ensure_missionx_random_folder_exists()
 {
   // const fs::path targetDir = "Custom Scenery/missionx/random";
-  // init custom folder path
-  const fs::path targetDir = fmt::format("{}", data_manager::getMissionsRootPath() );
+  // init custom scenery folder path
+  const std::filesystem::path target_dir = std::filesystem::weakly_canonical (std::filesystem::path(fmt::format("{}/{}", data_manager::getMissionsRootPath(), "random")));
   // init random_pack path
-  const fs::path random_pack_file_s = fmt::format("{}{}", mx_folders_properties.getStringAttributeValue(mxconst::get_PROP_MISSIONX_PATH(), ""), mxconst::get_MISSIONX_RANDOM_PACK_FILENAME() );
+  const std::filesystem::path random_pack_file_s = std::filesystem::weakly_canonical(fmt::format("{}{}", mx_folders_properties.getStringAttributeValue(mxconst::get_PROP_MISSIONX_PATH(), ""), mxconst::get_MISSIONX_RANDOM_PACK_FILENAME()));
+
 
   try {
     // create_directories creates the folder and any missing parent directories.
     // It returns true if a NEW directory was created, or false if it already existed.
-    // if (fs::create_directories(targetDir))
-    if (true)
+    if (fs::create_directories(target_dir))    
     {
-      Log::logMsg( fmt::format("[{}] Folder created successfully: [{}].\n", __func__, targetDir.string()) );
-      if (data_manager::extract_missionx_library(random_pack_file_s, targetDir))
-        Log::logMsg( fmt::format("[{}] Random pack: '{}' extracted successfully to: '{}'.\n", __func__, random_pack_file_s.string(), targetDir.string()) );
+      Log::log_xplm_debug_string(fmt::format("[{}] Folder created successfully: [{}].\n", __func__, target_dir.string()));
+      if (data_manager::extract_missionx_library(random_pack_file_s, target_dir.parent_path()))
+        Log::log_xplm_debug_string(fmt::format("[{}] Random pack: '{}' extracted successfully to: '{}'.\n", __func__, random_pack_file_s.string(), target_dir.string()));
       else
-        Log::logMsg( fmt::format("[{}] !!! Failed extracting Random pack: '{}'!!!\n", __func__, random_pack_file_s.string(), targetDir.string()) );
+        Log::log_xplm_debug_string(fmt::format("[{}] !!! Failed extracting Random pack: '{}'!!!\n", __func__, random_pack_file_s.string(), target_dir.string()));
     }
     else
-      Log::logMsg( fmt::format("[{}] Folder already exists: [{}].\n", __func__, targetDir.string()) );
+      Log::log_xplm_debug_string(fmt::format("[{}] Folder already exists: [{}].\n", __func__, target_dir.string()));
   }
   catch (const fs::filesystem_error& e) {
     Log::log_xplm_debug_string ( fmt::format("!! [{}] Filesystem error: {}\n\n", __func__, e.what() ) );
@@ -6945,7 +6951,6 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
 // -------------------------------------
 
 missionx::structs::strct_curl_result
-// data_manager::get_curl_request_respond(const std::string& in_url_s, const std::string& in_separate_data_from_url, const int& in_loop_tries, const int& in_call_id, const missionx::structs::curl_request_data& in_request_data)
 data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_request_data, const int& in_call_id)
 {
   //std::lock_guard<std::mutex> lock (mt_request_get_curl_request_respond_mutex); // v26.04.3 Special lock to solve racing issue in "osm_get_navaid_from_overpass()"
