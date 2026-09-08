@@ -76,7 +76,7 @@ public:
   void  add_info_to_flight_leg (); // v3.305.2
   void  add_debug_info (); // v3.305.2
   void  add_flight_planning (); // v24.03.1
-  bool  add_briefer_description_post_mission_creation( const bool & in_display_last_generated_briefer ); // v26.08.1
+  static bool  add_briefer_description_post_mission_creation( bool in_display_last_generated_briefer ); // v26.08.1
   void  add_other_settings_header( bool in_plane_is_helo, bool bPickedMedevacMission, bool bPickedOilRigMission ); // v26.04.1
   void  action_prepare_dynamic_mission_properties_and_call_generate_action(const float &in_distance_min, const float & in_distance_max, const bool & in_add_start_from_plane_position = true); // v26.04.1
   bool  add_ui_generate_button(); // v26.04.2
@@ -799,6 +799,7 @@ private:
   void                add_ui_oilrig_search_area_buttons ( ); // v26.04.1
   void                add_ui_is_ga_cross_country_checkbox ( ); // v26.08.1
   void                add_ui_mission_description ( const std::string & in_descriptions); // v26.04.5
+  static void         add_ui_llm_options ( missionx::enums::llm_ui_options_enum options_flags ); // v26.09.2
 
   void                add_ui_medevac_surprise_me_warning ( ); // v26.04.1
   static void         add_ui_is_amphibian ();

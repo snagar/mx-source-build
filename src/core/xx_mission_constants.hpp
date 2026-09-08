@@ -109,6 +109,9 @@ inline constexpr float kmh2mts = 0.27777778f; // v26.03.1
 inline constexpr float fts2kmh = 1.09728f;  // v3.0.202
 inline constexpr float mts2kmh = 3.6f;  // v3.0.202
 
+inline constexpr float kg2lbs = 2.2f; // v26.09.2
+inline constexpr float lbs2kg = 1/2.2f; // v26.09.2
+
 
 inline constexpr int   OUT_OF_BOUNDING_ALERT_TIMER_SEC = 30; // 30 sec. alert will broadcast every 30 seconds
 inline constexpr float MISSIONX_DOUBLE_CLICK           = 0.9f;
@@ -161,14 +164,28 @@ inline constexpr int PICKED_IN_MY_AREA = 5; // v25.09.2 dsf +/- 1 relative to pl
 ////// ENUMS & STRUCTS //////
 namespace enums
 {
-// // v24.12.2
-// typedef enum class _from_where_mission_was_loaded
-//   : uint8_t
-// {
-//   loaded_from_mission_file = 0,
-//   loaded_from_savepoint = 1,
-//   loaded_from_random = 2
-// } mx_from_where_mission_was_loaded;
+
+enum class llm_ui_options_enum : uint8_t {
+  none                 = 0,
+  llm_background_story = 1 << 0, // 0x01
+  llm_suggest_payloads = 1 << 1, // 0x02
+  llm_suggest_targets  = 1 << 2  // 0x04
+};
+// Enable bitwise OR operator for enum class
+inline constexpr llm_ui_options_enum operator|(llm_ui_options_enum a, llm_ui_options_enum b) {
+  return static_cast<llm_ui_options_enum>(
+      static_cast<std::underlying_type_t<llm_ui_options_enum>>(a) |
+      static_cast<std::underlying_type_t<llm_ui_options_enum>>(b)
+  );
+}
+
+// Enable bitwise AND operator to check active flags
+inline constexpr bool operator&(llm_ui_options_enum a, llm_ui_options_enum b) {
+  return (static_cast<std::underlying_type_t<llm_ui_options_enum>>(a) &
+          static_cast<std::underlying_type_t<llm_ui_options_enum>>(b)) != 0;
+}
+
+
 
 enum class mx_semi_activities_enum
   : uint8_t
@@ -1415,6 +1432,7 @@ inline constexpr std::string_view plane_type            = "plane_type";
 inline constexpr std::string_view locations             = "locations";
 inline constexpr std::string_view weather               = "weather";
 inline constexpr std::string_view special_instructions  = "special_instructions";
+inline constexpr std::string_view activity_picked       = "activity_picked"; // v26.09.2
 }
 
   // v25.06.1 add structs namespace
@@ -1508,7 +1526,7 @@ inline constexpr std::string_view special_instructions  = "special_instructions"
     };
 
     // v25.09.1
-    typedef struct def_expected_location_data
+    struct strct_expected_location_data
     {
       bool flag_force_template_distances_b;
 
@@ -1525,7 +1543,7 @@ inline constexpr std::string_view special_instructions  = "special_instructions"
       std::vector<std::string>           vecLocationPropertiesSplit_vec;
       std::map<std::string, std::string> mapLocationSplitPropertiesValues;
 
-      def_expected_location_data()
+      strct_expected_location_data()
       {
         flag_force_template_distances_b = false;
         nm_between_min = -1.0f;
@@ -1542,12 +1560,62 @@ inline constexpr std::string_view special_instructions  = "special_instructions"
 
       }
 
-      void reset()
-      {
-        def_expected_location_data ();
+      static void reset()
+      { 
+        strct_expected_location_data();
       }
 
-    } strct_expected_location_data;
+    };
+
+    // v26.09.2 used with llm
+    struct def_strct_plane_base_info
+    {
+      float plane_max_gross_weight_f_and_p_kg; // plane max gross weight = max payload + max fuel.
+      float plane_max_fuel_weight_kg; // sim/aircraft/weight/acf_m_fuel_tot
+      float plane_max_speed_vno; // sim/aircraft/view/acf_Vno
+      float plane_max_payload_kg; // Max gross weight - max fuel weight
+      float plane_current_total_weight_kg; // total weight of fuel and payload
+      float plane_empty_weight_kg; // total weight of fuel and payload
+      float plane_estimated_fuel_endurance_hours; // /estimated fuel flow
+    };
+
+    // Used to store the active acf base info
+    struct def_strct_acf_info
+    {
+      std::string active_acf      = "";
+      std::string active_acf_path = "";
+      std::string active_acf_icao = "";
+      std::string prev_acf = "";
+
+      void reset()
+      { 
+        prev_acf.clear();
+        active_acf.clear();
+        active_acf_path.clear();
+        active_acf_icao.clear();
+      }      
+    };
+
+  struct MissionPayloads {
+    float fuel_kg = 0.0f;
+    float fuel_lbs = 0.0f;
+    float payload_kg = 0.0f;
+    float payload_lbs = 0.0f;
+    float combined_kg = 0.0f;
+    float combined_lbs = 0.0f;
+
+    [[nodiscard]] bool is_valid () const { return (fuel_kg * payload_kg > 0); }
+
+    void reset()
+    {
+      fuel_kg = 0.0f;
+      fuel_lbs = 0.0f;
+      payload_kg = 0.0f;
+      payload_lbs = 0.0f;
+      combined_kg = 0.0f;
+      combined_lbs = 0.0f;
+    }
+  };
 
   } // namespace structs
 

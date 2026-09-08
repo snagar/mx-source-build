@@ -214,6 +214,17 @@ public:
   static std::string ltrim(std::string str, const std::string chars = std::string("\t\n\v\f\r "));
   static std::string rtrim(std::string str, const std::string chars = std::string("\t\n\v\f\r "));
   static std::string trim(std::string str, const std::string chars = std::string("\t\n\v\f\r "));
+  // -------------------------------------------
+  // v26.09.2
+  static constexpr std::string_view trim_view(std::string_view s)
+  {
+    size_t start = s.find_first_not_of(" \t\r\n");
+    if (start == std::string_view::npos) return "";
+    size_t end = s.find_last_not_of(" \t\r\n");
+    return s.substr(start, end - start + 1);
+  }
+  // -------------------------------------------
+
   static int         countCharsInString(const std::string& inText, const char& inCharToCount); // v3.303.9.1
   static bool        compare (const std::string &inStr1, const std::string &inStr2, bool inCaseSensitive = true ); // v24.05.1
   static size_t      find_text (const std::string &in_source, const std::string &in_search_text, bool inCaseSensitive = true ); // v25.06.1 find text with ignore case
@@ -653,9 +664,10 @@ public:
   static std::string get_month_and_day(int day_of_year);
 
   // -------------------------------------------
-  // -------------------------------------------
 };
-
+  // -------------------------------------------
+  // -------------------------------------------
+  // -------------------------------------------
 } // namespace missionx
 
 #endif // !MXUTILS_H_

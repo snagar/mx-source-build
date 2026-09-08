@@ -1010,25 +1010,14 @@ missionx::Mission::START_MISSION()
     // station parsing if we are NOT in xp11 compatibility mode
     if (missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY)
     {
-      // char outFileName[512]{ 0 };
-      // char outPathAndFile[2048]{ 0 };
-      // XPLMGetNthAircraftModel ( XPLM_USER_AIRCRAFT, outFileName, outPathAndFile ); // we will only return the file name
-      auto vec_acf = missionx::data_manager::get_current_acf();
-      assert (vec_acf.size() > 1 && "Aircraft data doesnot contain at least two values, filename and path.");
-
-        if (vec_acf.size() > 1)
-          missionx::data_manager::set_acf (vec_acf.at(0), vec_acf.at(1));
+      // v26.09.2 deprecated code
+      // auto acf_info = missionx::data_manager::get_current_acf(); // get_current_acf also calls "set_acf()"
+      // assert(!acf_info.active_acf.empty() && !acf_info.active_acf_path.empty() && "Aircraft data does not contain the minimal needed, filename and path.");
 
       if (data_manager::missionState != missionx::mx_mission_state_enum::mission_loaded_from_savepoint) // mission_loaded_from_the_original_file
-      {
-        if (vec_acf.size() > 1)
-          missionx::data_manager::set_active_acf_and_gather_info (vec_acf.at(0), vec_acf.at(1));
-      }
-      // else
-      // { // Loaded from savepoint
-      //   missionx::data_manager::set_acf (vec_acf.at(0), vec_acf.at(1));
-      // }
+        missionx::data_manager::set_active_acf_and_gather_info();
     }
+
     data_manager::dref_acf_station_max_kgs_f_arr.setAndInitializeKey("sim/aircraft/weight/acf_m_station_max");
     data_manager::dref_m_stations_kgs_f_arr.setAndInitializeKey("sim/flightmodel/weight/m_stations");
     // end v24.12.2
@@ -1230,11 +1219,6 @@ missionx::Mission::START_MISSION()
           missionx::Timer::start(dref.strctInterData.timerToRun, static_cast<float> (dref.strctInterData.seconds_to_run_i));
         }
 
-
-        //dref.strctInterData.timerToRun.reset();
-        //missionx::Timer::start(dref.strctInterData.timerToRun, dref.strctInterData.seconds_to_run_i);
-        //dref.strctInterData.timerToRun.setSecondsPassedForInterpolationInit( dref.getAttribNumericValue<float>(mxconst::PROP_SECONDS_PASSED_F, 0.0f ) );
-        //dref.strctInterData.timerToRun.start_timer_based_on_node(); // we use this function since we init the timepassed variable and we want it to be in the init settings.
       }
       else
         listEraseFromInterpolation.emplace_back(key); // add to delete container
@@ -1246,7 +1230,8 @@ missionx::Mission::START_MISSION()
   else
   {
     missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::set_time); // v3.0219.7 Set Mission Time
-    missionx::data_manager::timelapse.flag_isActive = true;                             // v3.303.8
+    missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::set_llm_base_weights_at_mission_start); // v26.09.2
+    missionx::data_manager::timelapse.flag_isActive = true; // v3.303.8
   }
 
 
@@ -1618,8 +1603,6 @@ missionx::Mission::flc()
 
       if (data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
       {
-        missionx::data_manager::flc_acf_change (); // v25.03.1
-
         data_manager::gather_stats.flc();
         // store last 15m fpm data
         if (data_manager::gather_stats.get_stats_object().fAGL > mxconst::AGL_TO_GATHER_FPM_DATA)
@@ -4232,6 +4215,22 @@ missionx::Mission::flcPRE()
 
       }
       break;
+      case missionx::mx_flc_pre_command::set_llm_base_weights_at_mission_start:
+      {
+        if ( !data_manager::mx_global_settings.xBaseWeight_ptr.isEmpty ())
+        {
+          //// Deprecated since the fuel suggestion is sometimes attrouches. To little.
+          //const auto base_fuel_f = Utils::readNodeNumericAttrib<float>( data_manager::mx_global_settings.xBaseWeight_ptr, mxconst::get_OPT_FUEL_BASE_WEIGHT(), 0.0f);
+          //if (base_fuel_f > 0.0f)
+          //  data_manager::SetFuelEquallyAcrossActiveTanks(base_fuel_f);
+
+          // Assign llm suggested weight
+          const auto storage_weight_f = Utils::readNodeNumericAttrib<float>( data_manager::mx_global_settings.xBaseWeight_ptr, mxconst::get_OPT_STORAGE_BASE_WEIGHT(), 0.0f);
+          if (data_manager::current_plane_payload_weight_f > 0.0f)
+            XPLMSetDataf(this->drefConst.dref_acf_m_fixed, data_manager::current_plane_payload_weight_f);
+        }
+      }
+      break;
       case missionx::mx_flc_pre_command::exec_apt_dat_optimization:
       {
         #ifndef RELEASE
@@ -4338,27 +4337,33 @@ missionx::Mission::flcPRE()
       }
       break;
 
+      case missionx::mx_flc_pre_command::gather_active_acf_info_for_llm:
+      {
+          // v26.09.2
+          missionx::dataref_manager::gather_active_acf_base_info_for_llm();
+      }
+      break;
+
       case missionx::mx_flc_pre_command::gather_acf_cargo_data:
       {
-        if (missionx::data_manager::flag_gather_acf_info_thread_is_running == true) // if thread is not running
+        if (missionx::data_manager::flag_gather_acf_info_thread_is_running == true) 
         {
           missionx::data_manager::iGatherAcfTryCounter = 0;
           // v3.303.9.1 save ACF custom datarefs
-          char outFileName[512]{ 0 };
-          char outPathAndFile[2048]{ 0 };
-          XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, outFileName, outPathAndFile); // we will only return the file name
+          
+          // v26.09.2 get current acf base info
+          missionx::structs::def_strct_acf_info acf_info = data_manager::get_current_acf();
 
-          const auto acf_path_s                          = std::string(outPathAndFile);
           missionx::data_manager::flag_abort_gather_acf_info_thread = false;
-          missionx::data_manager::mFetchFutures.push_back(std::async(std::launch::async, missionx::data_manager::gather_custom_acf_datarefs_as_a_thread, acf_path_s, &missionx::data_manager::flag_gather_acf_info_thread_is_running, &missionx::data_manager::flag_abort_gather_acf_info_thread));
+          missionx::data_manager::mFetchFutures.push_back(std::async(std::launch::async, missionx::data_manager::gather_custom_acf_datarefs_as_a_thread, acf_info.active_acf_path, &missionx::data_manager::flag_gather_acf_info_thread_is_running, &missionx::data_manager::flag_abort_gather_acf_info_thread));
         }
         else
         {
-          Log::logMsg("[gather_acf_cargo_data] missionx::data_manager::gather_custom_acf_datarefs_as_a_thread() is already running.");
+          Log::logMsg("[flcPRE gather_acf_cargo_data] missionx::data_manager::gather_custom_acf_datarefs_as_a_thread() is already running.");
           ++missionx::data_manager::iGatherAcfTryCounter;
           if (missionx::data_manager::iGatherAcfTryCounter < 30)
           {
-            Log::logMsg("[gather_acf_cargo_data] Will try next Flight Call Back, try no.: " + mxUtils::formatNumber<int>(missionx::data_manager::iGatherAcfTryCounter));
+            Log::logMsg("[flcPRE  gather_acf_cargo_data] Will try next Flight Call Back, try no.: " + mxUtils::formatNumber<int>(missionx::data_manager::iGatherAcfTryCounter));
             missionx::data_manager::postFlcActions.push_back(missionx::mx_flc_pre_command::gather_acf_cargo_data); //
           }
         }
@@ -5345,9 +5350,9 @@ missionx::Mission::flcPRE()
         // We first check if the Choice UI is visible in 2D or If we are in VR (where there is no 2D choice window). Last we test if user picked one of the options
         if (((Mission::uiImGuiOptions && Mission::uiImGuiOptions->GetVisible()) || (missionx::mxvr::vr_display_missionx_in_vr_mode)) && missionx::data_manager::mxChoice.optionPicked_key_i >= 0)
         {
-#ifndef RELEASE
+          #ifndef RELEASE
           Log::logMsg("[handle_option_picked_from_choice] Handling option: " + Utils::formatNumber<int>(missionx::data_manager::mxChoice.optionPicked_key_i));
-#endif // !RELEASE
+          #endif // !RELEASE
 
           Mission::handle_choice_option(); // Execute the choice handler code
 
@@ -5626,18 +5631,18 @@ missionx::Mission::flcPRE()
           missionx::Mission::uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_HIDE_WINDOW);
       }
       break;
-      case missionx::mx_flc_pre_command::get_player_aircraft_base_data:
-      {
-        // v26.08.1
-        #ifndef RELEASE
-          Log::logMsg("Reading player aircraft base info.");
-        #endif // !RELEASE
-
-        missionx::data_manager::flc_acf_change(); 
-        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
-
-      }
-      break;
+      // case missionx::mx_flc_pre_command::get_player_aircraft_base_data:
+      // {
+      //   // v26.08.1
+      //   #ifndef RELEASE
+      //     Log::logMsg("Reading player aircraft base info.");
+      //   #endif // !RELEASE
+      //
+      //   missionx::data_manager::trigger_acf_change();
+      //   missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+      //
+      // }
+      // break;
       case missionx::mx_flc_pre_command::post_async_story_image_binding:
       {
         for (auto& [file, textureFile] :missionx::Message::mapStoryCachedImages)

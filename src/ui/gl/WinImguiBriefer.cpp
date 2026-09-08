@@ -117,9 +117,9 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
     this->set_bottom_message_line1(msg, time_to_display);
   };
 
-  m_ui_nav_screen->add_designer_mode_checkbox = [this]()
+  m_ui_nav_screen->add_designer_mode_checkbox = []()
   {
-    this->add_designer_mode_checkbox();
+    missionx::WinImguiBriefer::add_designer_mode_checkbox();
   };
 
   m_ui_nav_screen->add_ui_checkbox_rerun_random_date_and_time = [this]()->bool
@@ -166,9 +166,21 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
     this->add_ui_pick_subcategories(in_vec_categories);
   };
 
-  m_ui_nav_screen->add_ui_is_amphibian = [this]()->void
+  m_ui_nav_screen->add_ui_is_amphibian = []()->void
   {
     missionx::WinImguiBriefer::add_ui_is_amphibian();
+  };
+
+  // v26.09.2
+  m_ui_nav_screen->add_briefer_description_post_mission_creation = [](const bool in_display_desc_flag)->bool
+  {
+    return missionx::WinImguiBriefer::add_briefer_description_post_mission_creation(in_display_desc_flag);
+  };
+
+  // v26.09.2
+  m_ui_nav_screen->add_ui_llm_options = [](const enums::llm_ui_options_enum in_options_flags)->void
+  {
+    missionx::WinImguiBriefer::add_ui_llm_options(in_options_flags);
   };
 
 
@@ -966,6 +978,13 @@ WinImguiBriefer::add_flight_planning ()
   const bool bFetchInProcess = missionx::WinImguiBriefer::mxStartUiDisableState (this->strct_ext_layer.simbrief_fetch_state == missionx::mxFetchState_enum::fetch_in_process || missionx::data_manager::flag_generate_engine_is_running);
   ImGui::BeginGroup ();
   {
+    // // v26.09.2
+    // add_flight_planning Show briefer collapsing header
+    // ------------------------
+    missionx::WinImguiBriefer::add_briefer_description_post_mission_creation(!missionx::data_manager::flag_generate_engine_is_running
+                                                                              && missionx::data_manager::missionState < mx_mission_state_enum::mission_is_running);
+    ImGui::Spacing();
+
     missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_SMALL ());
     ImGui::TextDisabled ("%s", "Fetch pre-flight info from SimBrief or fill in manually");
 
@@ -1431,7 +1450,7 @@ WinImguiBriefer::add_flight_planning ()
 // -------------------------------------------
 
 bool
-WinImguiBriefer::add_briefer_description_post_mission_creation(const bool& in_display_last_generated_briefer)
+WinImguiBriefer::add_briefer_description_post_mission_creation(const bool in_display_last_generated_briefer)
 {
   bool b_displayed {false};
   // ------------------------
@@ -1448,17 +1467,29 @@ WinImguiBriefer::add_briefer_description_post_mission_creation(const bool& in_di
       )
   {
     b_displayed ^= 1;
+
     missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
-    ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_white); // Text
-    ImGui::TextWrapped ("%s", Utils::xml_get_cdata_or_text(missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node, "No Briefer Datam Yet.").c_str() );
-    ImGui::PopStyleColor();
+    {
+      // Display Hide Description Button
+      if (!missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node.isEmpty())
+      {
+        ImGui::PushStyleColor(ImGuiCol_Button, missionx::color::color_vec4_lightgray);
+        if (ImGui::Button("Hide Description"))
+          missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node = IXMLNode::emptyIXMLNode;
+        ImGui::PopStyleColor();
+        ImGui::Separator();
+      }
+
+      // Display the description
+      ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_white); // Text
+      ImGui::TextWrapped ("%s", Utils::xml_get_cdata_or_text(missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node, "No Briefer Data Yet.").c_str() );
+      ImGui::PopStyleColor();
+    }
     missionx::WinImguiBriefer::mxUiReleaseLastFont();
+    ImGui::Separator();
   }
 
   ImGui::PopStyleColor(3);
-
-  if (b_displayed)
-    ImGui::Separator();
 
   return b_displayed;
 }
@@ -3032,10 +3063,11 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
   static constexpr auto VEC2_MOD_CHILD      = ImVec2(0.0f, 150.0f);
   static constexpr auto VEC2_BACK_BTN_SIZE  = ImVec2(32.0f, 32.0f);
 
-  const auto win_width_f = this->mxUiGetContentWidth();
+  const auto win_width_f = missionx::WinImguiBriefer::mxUiGetContentWidth();
 
   // Initialize basic flags
   const bool b_plane_is_helos                = strct_user_create_layer.user_semi_act_picked.activity < missionx::enums::mx_semi_activities_enum::act_props;
+  const bool b_plane_is_airline_type         = strct_user_create_layer.user_semi_act_picked.activity > missionx::enums::mx_semi_activities_enum::act_jets;
   const bool bPickedMedevacMission           = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_accident || strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me);
   const bool bPickedOilRigMission            = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_cargo_oilrig);
   const bool bPickedGAMission                = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_props || strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_props_float);
@@ -3103,41 +3135,26 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
     {
       ImGui::Spacing();
       // ------------------------
-      // Show AI option
+      // Show AI options
       // ------------------------
-      const bool b_disable_llm_options = mxStartUiDisableState(missionx::data_manager::flag_generate_engine_is_running);
+      auto  llm_enum_options = enums::llm_ui_options_enum::llm_background_story;
+      if (!bPickedOilRigMission && !bPickedMedevacMission)
       {
-        if (missionx::strct_setup_layer.b_use_ai)
-        {
-          mx_img_window::mxUiHelpMarker(missionx::color::color_vec4_beige, "Enabling the A.I functionality will affect the mission description.\n\nMake sure that your LLM settings are correct in the setup screen.\nDouble check the flight plan, after all it is still an AI ;-)");
-          ImGui::SameLine();
-          ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_yellow);
-          ImGui::Checkbox("[w.i.p] Use AI##GenerateMissionUsingLLM", &data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission);
-          ImGui::PopStyleColor();
-          // v26.09.2
-          if (data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission)
-          {
-            ImGui::SameLine(0.0f, 10.0f);
-            ImGui::Checkbox("Generate a background Story", &data_manager::strct_ui_share_data.flag_llm_add_background_story);
-            if (!bPickedOilRigMission && !bPickedMedevacMission)
-            {
-              ImGui::SameLine(0.0f, 10.0f);
-              mx_img_window::mxUiHelpMarker(missionx::color::color_vec4_beige, "LLM suggestions have limited usability when it comes to geographical recommendations, especially with smaller LLM models. Sometimes, their suggestions are the result of LLM hallucinations.\n\nUse at your own risk.\n\nThe plugin will perform basic validation and fall back accordingly.");
-              ImGui::SameLine();
-              ImGui::Checkbox("Suggest Waypoints", &data_manager::strct_ui_share_data.flag_llm_use_llm_to_suggest_targets);
-            }
-            else
-              data_manager::strct_ui_share_data.flag_llm_use_llm_to_suggest_targets = false;
-          }
-        }
+        if (!b_plane_is_airline_type)
+          llm_enum_options = llm_enum_options | enums::llm_ui_options_enum::llm_suggest_payloads;
+
+        llm_enum_options = llm_enum_options | enums::llm_ui_options_enum::llm_suggest_targets;
       }
-      mxEndUiDisableState(b_disable_llm_options);
+      if (missionx::strct_setup_layer.b_use_ai)
+      {
+        add_ui_llm_options(llm_enum_options);
+      }
       
       // ------------------------
       // Show briefer collapsing header
       // ------------------------
       // v26.08.1
-      this->add_briefer_description_post_mission_creation(!(missionx::data_manager::flag_generate_engine_is_running)
+      missionx::WinImguiBriefer::add_briefer_description_post_mission_creation(!(missionx::data_manager::flag_generate_engine_is_running)
                                                           && missionx::data_manager::missionState < mx_mission_state_enum::mission_is_running);
 
       ImGui::Spacing();
@@ -3180,7 +3197,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
           if (ImGui::SliderFloat ("##tweak_max_distance", &strct_user_create_layer.user_semi_act_picked.max_distance_slider_f, missionx::strct_user_create_layer.user_semi_act_picked.distance_min_max.lowest_max, missionx::strct_user_create_layer.user_semi_act_picked.distance_min_max.max, "%.2f nm"))
           {
             // refresh description
-            strct_user_create_layer.user_semi_act_picked.prepare_the_semi_activity_description(strct_user_create_layer.iNumberOfFlighLegs);
+            strct_user_create_layer.user_semi_act_picked.prepare_the_semi_activity_description_for_phase2(strct_user_create_layer.iNumberOfFlighLegs);
           }
         } // end oilrig and distance restriction
 
@@ -3189,7 +3206,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
         if (WinImguiBriefer::add_ui_pick_how_many_legs(strct_user_create_layer.iNumberOfFlighLegs, "How Many Flight Legs ? ", missionx::strct_user_create_layer.user_semi_act_picked.legs_min_max.min, missionx::strct_user_create_layer.user_semi_act_picked.legs_min_max.max) )
         {
           strct_user_create_layer.user_semi_act_picked.final_legs_no_to_generate = strct_user_create_layer.iNumberOfFlighLegs;
-          strct_user_create_layer.user_semi_act_picked.prepare_the_semi_activity_description(strct_user_create_layer.iNumberOfFlighLegs);
+          strct_user_create_layer.user_semi_act_picked.prepare_the_semi_activity_description_for_phase2(strct_user_create_layer.iNumberOfFlighLegs);
         }
         mx_img_window::mxEndUiDisableState(bDisableRadioLegs);
 
@@ -3293,14 +3310,6 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
             break;
 
           } // end switch subcategory
-
-          // v26.09.2 add LLM info
-          // // store semi activity type
-          // missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int>(mxconst::get_OPT_SEMI_ACTIVITY_PICKED_BY_THE_USER(),  static_cast<int>(missionx::strct_user_create_layer.user_semi_act_picked.activity));
-          // // store if to use llm
-          // missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_OPT_AI_USE_LLM_TO_GENERATE_MISSION(), data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission);
-          // missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_OPT_AI_USE_LLM_TO_SUGGEST_WAYPOINTS(), data_manager::strct_ui_share_data.flag_llm_use_llm_to_suggest_targets);
-          // missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_OPT_AI_USE_LLM_TO_GENERATE_BACKGROUND_STORY(), data_manager::strct_ui_share_data.flag_llm_add_background_story);
 
           // v26.09.1 Reminder that in "add_ui_semi_act_phase_1_pick() we add the activity type to the map_llm_requests_messages[]
           // v26.09.2 LLM add background Story text
@@ -3450,6 +3459,81 @@ void WinImguiBriefer::add_ui_mission_description(const std::string& in_descripti
     ImGui::PopStyleColor(1);
   }
   missionx::WinImguiBriefer::mxUiReleaseLastFont();
+}
+// -------------------------------------------
+
+void WinImguiBriefer::add_ui_llm_options(const missionx::enums::llm_ui_options_enum options_flags)
+{
+  const bool b_disable_llm_options = mxStartUiDisableState(missionx::data_manager::flag_generate_engine_is_running);
+  {
+    mx_img_window::mxUiHelpMarker(missionx::color::color_vec4_beige, "Enabling the A.I functionality will affect the mission description.\n\nMake sure that your LLM settings are correct in the setup screen.\nDouble check the flight plan, after all it is still an AI ;-)");
+    ImGui::SameLine();
+    ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_yellow);
+    ImGui::Checkbox("Use AI##GenerateMissionUsingLLM", &data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission);
+    ImGui::PopStyleColor();
+
+    // v26.09.2
+    if (data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission)
+    {
+
+      // ----------------------------------------------------
+      // Option 1: Background Story
+      // ----------------------------------------------------
+      if (options_flags & enums::llm_ui_options_enum::llm_background_story)
+      {
+        ImGui::SameLine(0.0f, 10.0f);
+        ImGui::Checkbox("Generate a background Story", &data_manager::strct_ui_share_data.flag_llm_add_background_story);
+      }
+      else
+        data_manager::strct_ui_share_data.flag_llm_add_background_story = false;
+
+      // ----------------------------------------------------
+      // Option 2: Suggest Payloads
+      // ----------------------------------------------------
+      if (options_flags & enums::llm_ui_options_enum::llm_suggest_payloads)
+      {
+        ImGui::SameLine(0.0f, 10.0f);
+        mx_img_window::mxUiHelpMarker(
+            missionx::color::color_vec4_beige,
+            R"(The LLM can suggest Fuel and Payloads to your plane, based on the flight plan.
+Only the payload will be assigned during mission start.
+You can alter them afterwards.
+
+Use at your own risk ;-))"
+        );
+        ImGui::SameLine();
+        ImGui::Checkbox("Suggest payloads", &data_manager::strct_ui_share_data.flag_llm_add_fuel_and_weight_payloads);
+      }
+      else
+        data_manager::strct_ui_share_data.flag_llm_add_fuel_and_weight_payloads = false;
+
+      // ----------------------------------------------------
+      // Option 3: Suggest Waypoints / Targets
+      // ----------------------------------------------------
+      if (options_flags & enums::llm_ui_options_enum::llm_suggest_targets)
+      {
+        ImGui::SameLine(0.0f, 20.0f);
+        mx_img_window::mxUiHelpMarker(
+            missionx::color::color_vec4_beige,
+            "LLM suggestions have limited usability when it comes to geographical recommendations, "
+            "especially with smaller LLM models. Sometimes, their suggestions are the result of "
+            "LLM hallucinations and it takes more time to construct the mission.\n\n"
+            "Use at your own risk.\n\n"
+            "The plugin will perform basic validations and fall back accordingly."
+        );
+        ImGui::SameLine();
+        ImGui::Checkbox("Suggest Waypoints", &data_manager::strct_ui_share_data.flag_llm_use_llm_to_suggest_targets);
+      }
+      else
+      {
+        // Reset flag if explicitly excluded from UI view
+        data_manager::strct_ui_share_data.flag_llm_use_llm_to_suggest_targets = false;
+      }
+
+    } // end if to use LLM
+  }
+  mxEndUiDisableState(b_disable_llm_options);
+
 }
 
 // -------------------------------------------
@@ -4062,7 +4146,7 @@ WinImguiBriefer::draw_popup_extra_data_ext_fpln (std::string_view inPopupWindowN
   ImVec2 center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f);
   ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
 
-  ImGui::SetNextWindowSize (ImVec2 (500.0f, 350.0f));
+  ImGui::SetNextWindowSize (ImVec2 (500.0f, 380.0f));
 
   constexpr auto multiLineSize_vec2_wpc = ImVec2 (0.0f, 250.0f); // child size for extra data
   constexpr auto multiLineSize_vec2_wp  = ImVec2 (-FLT_MIN, multiLineSize_vec2_wpc.y - 10.0f); // waypoint multiline
@@ -4103,7 +4187,7 @@ WinImguiBriefer::draw_popup_extra_data_ext_fpln (std::string_view inPopupWindowN
 void
 WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::string_view inPopupWindowName, const missionx::mx_ext_internet_fpln_strct &rowData, const int &picked_fpln_id_i)
 {
-  ImGui::SetNextWindowSize (ImVec2 (640.0f, 420.0f));
+  ImGui::SetNextWindowSize (ImVec2 (640.0f, 450.0f));
 
   ImGui::PushStyleColor (ImGuiCol_PopupBg, missionx::color::color_vec4_black);
   missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
@@ -4193,9 +4277,18 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
         ImGui::EndChild ();
 
         ImGui::Separator ();
+        // -------------------------
+        // v26.09.2 add LLM options
+        // -------------------------
+        constexpr enums::llm_ui_options_enum llm_options = enums::llm_ui_options_enum::llm_background_story | enums::llm_ui_options_enum::llm_suggest_payloads;
+        add_ui_llm_options(llm_options);
+
+
+        // -------------------------
+        // Buttons
+        // -------------------------
         ImGui::NewLine ();
         ImGui::SameLine (modal_center.x * 0.4f);
-
         // v3.303.10
         static bool bRerunRandomDateTime{ false };
         bRerunRandomDateTime = add_ui_checkbox_rerun_random_date_and_time ();
@@ -4206,6 +4299,19 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
         {
           if (bRerunRandomDateTime) // v3.303.10
             this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
+
+          // Add LLM base message info
+          if (data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission)
+            data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::background_story.data()] =
+                                "Write a realistic, short background story based on the flight plan waypoints that will be given."
+                                "\nTry to explain the reason for the flight and give the pilot a believable operational context, such as transporting passengers, medical evacuation, delivering cargo, positioning the aircraft, or completing a charter flight."
+                                "\nKeep the story grounded in realistic aviation operations. Do not invent flight-plan details, procedures, weather, aircraft malfunctions, or other information that has not been provided."
+                                "\nWrite 2-4 sentences in a professional but engaging tone. The result should feel like a real-world flight assignment rather than an adventure story."
+                                "\nYou must not provide estimated flight time, it must be vague."
+                        ;
+          else
+            data_manager::strct_ui_share_data.map_llm_requests_messages.clear();
+
 
           // Prepare and call ACTION_GENERATE_RANDOM_MISSION
           IXMLNode node_ptr = missionx::data_manager::prop_userDefinedMission_ui.node;
@@ -9272,7 +9378,7 @@ void WinImguiBriefer::gather_semi_act_phase1_data_based_on_picked_activity(mx_us
                 // in_strct.user_semi_act_picked.final_legs_no_to_generate = 1;
 
                 in_usr_layer_strct.user_semi_act_picked.final_legs_no_to_generate = in_usr_layer_strct.iNumberOfFlighLegs;
-                in_usr_layer_strct.user_semi_act_picked.prepare_the_semi_activity_description(in_usr_layer_strct.iNumberOfFlighLegs);
+                in_usr_layer_strct.user_semi_act_picked.prepare_the_semi_activity_description_for_phase2(in_usr_layer_strct.iNumberOfFlighLegs);
               }
               else
               {
@@ -9312,6 +9418,7 @@ void WinImguiBriefer::gather_semi_act_phase1_data_based_on_picked_activity(mx_us
 
               // v26.08.1 llm mission outline
               data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::mission_description.data()] = missionx::enums::to_string_llm( in_usr_layer_strct.user_semi_act_picked.activity );
+              data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::activity_picked.data()] = fmt::format("{}", static_cast<int>(in_usr_layer_strct.user_semi_act_picked.activity ) );
 
 
               // web osm
@@ -9331,7 +9438,7 @@ void WinImguiBriefer::gather_semi_act_phase1_data_based_on_picked_activity(mx_us
             }
 
             // prepare detail description for "add_ui_semi_act_phase_2_detail()" function
-            in_usr_layer_strct.user_semi_act_picked.prepare_the_semi_activity_description(in_usr_layer_strct.iNumberOfFlighLegs);
+            in_usr_layer_strct.user_semi_act_picked.prepare_the_semi_activity_description_for_phase2(in_usr_layer_strct.iNumberOfFlighLegs);
 
 
 }

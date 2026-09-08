@@ -15,27 +15,25 @@ namespace missionx
 
 void ui_nav_screen::draw_ils_screen()
 {
-  auto    win_size_vec2          = this->mxUiGetWindowContentWxH ();
+  auto    win_size_vec2          = missionx::ui_nav_screen::mxUiGetWindowContentWxH ();
   ImGuiID elevVerticalSlider_gid = 0;
 
   // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
 
   if (missionx::strct_ils_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw) // display the success screen - main search screen
   {
-    // auto win_size_vec2 = ImGui::GetWindowSize(); // v3.305.1 removed
-
     mx_img_window::HelpMarker ("The NAV information screen, allows you to search for airports with ILS/VFR approaches.\nYou can filter which types of airports you are looking for or\nLet the plugin randomize the filtering for you.\n\nIt will not "
                                            "generate your FMS nor fetch the ILS Plates for you, this will be up to you.\n");
     ImGui::SameLine ();
     ImGui::TextUnformatted ("NAV information depends on the data collected from X-Plane and Custom Sceneries.");
 
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
+    missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
     ImGui::BeginGroup ();
     ImGui::BeginChild ("##NavDataMainTabChild", ImVec2 (-5.0f, -35.0f));
     {
       if (ImGui::BeginTabBar ("NavDataMainTab", ImGuiTabBarFlags_None))
       {
-        if (ImGui::BeginTabItem ("ILS Search"))
+        if (ImGui::BeginTabItem ("ILS/VFR Search"))
         {
           this->child_draw_ils_search ();
 
@@ -58,7 +56,7 @@ void ui_nav_screen::draw_ils_screen()
     } // End Child
     ImGui::EndChild ();
     ImGui::EndGroup ();
-    this->mxUiReleaseLastFont (); // v3.305.1
+    missionx::ui_nav_screen::mxUiReleaseLastFont (); // v3.305.1
   }
   // Display failure message
   else if (missionx::strct_ils_layer.layer_state == missionx::mx_layer_state_enum::failed_data_is_not_present || missionx::strct_ils_layer.layer_state == missionx::mx_layer_state_enum::fatal_database_is_not_initializing_correctly)
@@ -79,9 +77,9 @@ void ui_nav_screen::draw_ils_screen()
     ImGui::NewLine ();
 
     // // ImGui::SetWindowFontScale(2.0f);
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
+    missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
     ImGui::TextColored (missionx::color::color_vec4_magenta, "Please wait while plugin tests the validity of the data.... ");
-    this->mxUiReleaseLastFont ();
+    missionx::ui_nav_screen::mxUiReleaseLastFont ();
     // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
 
     if (missionx::strct_ils_layer.layer_state < missionx::mx_layer_state_enum::validating_data)
@@ -101,13 +99,22 @@ void ui_nav_screen::child_draw_ils_search()
   constexpr static float CHILD_SIZE_MODIFIER_F    = 0.15f;
 
 
-  auto win_size_vec2    = this->mxUiGetWindowContentWxH ();
+  const auto win_size_vec2    = missionx::ui_nav_screen::mxUiGetWindowContentWxH ();
   auto uiUpperChildInfo = ImGui::GetCurrentWindow ();
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
+  missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
   ImGui::BeginGroup (); // group 1
   {
-    const auto child_vec2 = ImVec2 (this->mxUiGetWindowContentWxH ().x * 0.49f, this->mxUiGetWindowContentWxH ().y * 0.44f);
+    const auto child_vec2 = ImVec2 (missionx::ui_nav_screen::mxUiGetWindowContentWxH ().x * 0.49f, missionx::ui_nav_screen::mxUiGetWindowContentWxH ().y * 0.44f);
+
+    // -- v26.09.2 ------------
+    // Show briefer collapsing header
+    // ------------------------
+    add_briefer_description_post_mission_creation(!missionx::data_manager::flag_generate_engine_is_running
+                                                   && (missionx::data_manager::missionState < mx_mission_state_enum::mission_is_running));
+
+    ImGui::Spacing();
+
 
     // ------------------
     // IFR / VFR Buttons
@@ -165,7 +172,7 @@ void ui_nav_screen::child_draw_ils_search()
     // Display START mission button
     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow);
     ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_indigo);
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+    missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
     {
       if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running 
           && missionx::flag_generatedRandomFile_success 
@@ -176,7 +183,7 @@ void ui_nav_screen::child_draw_ils_search()
         this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
       }
     }
-    this->mxUiReleaseLastFont ();
+    missionx::ui_nav_screen::mxUiReleaseLastFont ();
     ImGui::PopStyleColor (2);
 
     ImGui::EndGroup ();
@@ -197,7 +204,7 @@ void ui_nav_screen::child_draw_ils_search()
         }
         this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Optional: enter departure airport ICAO code");
 
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+        missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
         {
           ImGui::SameLine ();
           if (mx_img_window::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).c_str (), "Clear From ICAO")) // should have been ImGui::ButtonTooltip
@@ -206,7 +213,7 @@ void ui_nav_screen::child_draw_ils_search()
             memset (missionx::strct_ils_layer.buf1, 0, sizeof missionx::strct_ils_layer.buf1);
           }
         }
-        this->mxUiReleaseLastFont ();
+        missionx::ui_nav_screen::mxUiReleaseLastFont ();
 
         ImGui::SameLine ();
         if (ImGui::Button ("From ICAO") || missionx::strct_ils_layer.bFirstTime) // first time initialization or manual ICAO fetch
@@ -238,7 +245,7 @@ void ui_nav_screen::child_draw_ils_search()
         }
         this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Optional: enter arrival airport ICAO code");
         ImGui::SameLine ();
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+        missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
         {
           ImGui::SameLine ();
           ImGui::PushID ("##ClearICAO"); // v25.12.1 fix button do not respond to clicks
@@ -249,7 +256,7 @@ void ui_nav_screen::child_draw_ils_search()
           }
           ImGui::PopID ();
         }
-        this->mxUiReleaseLastFont ();
+        missionx::ui_nav_screen::mxUiReleaseLastFont ();
         ImGui::SameLine ();
         ImGui::TextColored (missionx::color::color_vec4_white, "To ICAO");
 
@@ -349,7 +356,7 @@ void ui_nav_screen::child_draw_ils_search()
       // Limit Rows
       {
         ImGui::SetNextItemWidth (70.0f);
-        ImGui::Combo ("Limit rows", &missionx::strct_ils_layer.limit_indx, missionx::strct_ils_layer.limit_items, IM_ARRAYSIZE (missionx::strct_ils_layer.limit_items)); // default is 250 rows
+        ImGui::Combo ("Limit rows", &missionx::strct_ils_layer.limit_indx, missionx::mx_ils_layer::limit_items, IM_ARRAYSIZE (missionx::strct_ils_layer.limit_items)); // default is 250 rows
         ImGui::SameLine ();
         mx_img_window::mxUiHelpMarker (missionx::color::color_vec4_aquamarine, fmt::format ("How many rows to retrieve. Default {}.\nCan drastically affect FPS.", missionx::strct_ils_layer.limit_items[0]).c_str ());
       } // limit rows
@@ -445,7 +452,7 @@ void ui_nav_screen::child_draw_ils_search()
   // ImGui::EndChild (); // end outer child
   ImGui::EndGroup ();
 
-  this->mxUiReleaseLastFont (); // v3.305.1
+  missionx::ui_nav_screen::mxUiReleaseLastFont (); // v3.305.1
 
   //------------------------------------------------
   //     Status Messages
@@ -469,7 +476,7 @@ void ui_nav_screen::child_draw_ils_search()
                                     && missionx::strct_generate_template_layer.selectedTemplateKey.empty ()
                                     && !missionx::data_manager::flag_generate_engine_is_running) ? 25.0f : 0.0f;
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
+  missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
 
   ImGui::BeginGroup ();
   // ImGui::BeginChild ("draw_ils_layer_table_02", ImVec2 (0.0f, win_size_vec2.y - uiUpperChildSizeVec2.y - 0.0f /*buttons*/ - 10.0f /*bottom message space*/ - fStartButtonHeight /* Is StartButton visible */), ImGuiChildFlags_Borders); // Size relative to the upper child size
@@ -626,7 +633,10 @@ void ui_nav_screen::child_draw_ils_search()
           // DISPLAY POPUP
           ImVec2 center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f); // center of screen
           ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
-          ImGui::SetNextWindowSize (ImVec2 (480.0f, 435.0f));
+          if (data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission)
+            ImGui::SetNextWindowSize (ImVec2 (560.0f, 455.0f)); // wide enough to display LLM options
+          else
+            ImGui::SetNextWindowSize (ImVec2 (480.0f, 455.0f));
 
           ImGui::PushStyleColor (ImGuiCol_PopupBg, missionx::color::color_vec4_black);
           {
@@ -635,9 +645,9 @@ void ui_nav_screen::child_draw_ils_search()
               ImVec2 modal_center (mxUiGetContentWidth () * 0.5f, ImGui::GetWindowHeight () * 0.5f);
               if (rowData.seq == picked_fpln_id_i)
               {
-                this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+                missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
                 ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", "To: ");
-                this->mxUiReleaseLastFont ();
+                missionx::ui_nav_screen::mxUiReleaseLastFont ();
 
                 ImGui::SameLine (0.0f, 1.0f); // one space
                 ImGui::TextColored (missionx::color::color_vec4_greenyellow, "%s", (rowData.toICAO_s + " - " + rowData.toName_s.substr (0, 30)).c_str ());
@@ -685,14 +695,18 @@ void ui_nav_screen::child_draw_ils_search()
 
                 this->add_ui_pick_subcategories (missionx::mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]);
                 ImGui::Spacing ();
-                // v3.303.10 // v25.04.1 moved advance button to the popup window for better flow
-                // this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked, mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.10 convert the random dateTime button to a self contain function
                 // v26.08.1
                 this->add_ui_advance_settings_random_date_time_weather_and_weight_button (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.10 convert the random dateTime button to a self contain function
                 ImGui::Spacing ();
                 add_designer_mode_checkbox (); // v24.03.2 Designer mode flag
 
-                ImGui::NewLine ();
+                // -------------------------
+                // v26.09.2 add LLM options
+                // -------------------------
+                constexpr enums::llm_ui_options_enum llm_options = enums::llm_ui_options_enum::llm_background_story | enums::llm_ui_options_enum::llm_suggest_payloads;
+                add_ui_llm_options(llm_options);
+
+                // ImGui::NewLine ();
                 ImGui::Separator ();
                 ImGui::NewLine ();
                 ImGui::NewLine ();
@@ -709,7 +723,7 @@ void ui_nav_screen::child_draw_ils_search()
                   bRerunRandomDateTime = add_ui_checkbox_rerun_random_date_and_time ();
                   ImGui::SameLine (0.0f, 5.0f);
 
-                  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+                  missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
                 }
 
                 if (missionx::data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
@@ -720,6 +734,18 @@ void ui_nav_screen::child_draw_ils_search()
                 {
                   if (bRerunRandomDateTime) // v3.303.10
                     this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
+
+                  // Add LLM base message info
+                  if (data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission)
+                    data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::background_story.data()] =
+                                        "Write a realistic, short background story based on the flight plan waypoints that will be given."
+                                        "\nTry to explain the reason for the flight and give the pilot a believable operational context, such as transporting passengers, medical evacuation, delivering cargo, positioning the aircraft, or completing a charter flight."
+                                        "\nKeep the story grounded in realistic aviation operations. Do not invent flight-plan details, procedures, weather, aircraft malfunctions, or other information that has not been provided."
+                                        "\nWrite 2-4 sentences in a professional but engaging tone. The result should feel like a real-world flight assignment rather than an adventure story."
+                                        "\nYou must not provide estimated flight time, it must be vague."
+                                ;
+                  else
+                    data_manager::strct_ui_share_data.map_llm_requests_messages.clear();
 
                   // Prepare and call ACTION_GENERATE_RANDOM_MISSION
                   data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_FPLN_ID_PICKED (), picked_fpln_id_i);
@@ -752,7 +778,7 @@ void ui_nav_screen::child_draw_ils_search()
                 {
                   ImGui::CloseCurrentPopup ();
                 }
-                this->mxUiReleaseLastFont ();
+                missionx::ui_nav_screen::mxUiReleaseLastFont ();
               }
 
               ImGui::EndPopup ();
@@ -770,7 +796,7 @@ void ui_nav_screen::child_draw_ils_search()
   // ImGui::EndChild ();
   ImGui::EndGroup ();
 
-  this->mxUiReleaseLastFont ();
+  missionx::ui_nav_screen::mxUiReleaseLastFont ();
 
   // END DRAW ILS SCREEN
 }
@@ -784,7 +810,7 @@ void ui_nav_screen::child_draw_nav_search()
 
   ImGui::BeginGroup ();
   ImGui::PushItemWidth (100.0f);
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+  missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
   {
     ImGui::TextColored (missionx::color::color_vec4_aqua, "%s", "Enter airport ICAO:");
     ImGui::SameLine ();
@@ -794,7 +820,7 @@ void ui_nav_screen::child_draw_nav_search()
     }
     this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Enter airport name to fetch its data.");
   }
-  this->mxUiReleaseLastFont (); // release text regular
+  missionx::ui_nav_screen::mxUiReleaseLastFont (); // release text regular
 
   // ---------------
   //  Row 1 - Search
@@ -802,7 +828,7 @@ void ui_nav_screen::child_draw_nav_search()
 
 
   // search button
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+  missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
   ImGui::SameLine ();
   if (ImGui::Button (">> Search <<"))
   {
@@ -837,9 +863,9 @@ void ui_nav_screen::child_draw_nav_search()
   }
 
 
-  this->mxUiReleaseLastFont (); // release title regular
+  missionx::ui_nav_screen::mxUiReleaseLastFont (); // release title regular
   ImGui::SameLine (0.0f, 5.0f);
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+  missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
   if (mx_img_window::ButtonTooltip (mxUtils::from_u8string (ICON_FA_TRASH_ALT).append ("##ClearNavICAO").c_str (), "Clear Nav ICAO"))
   {
     missionx::strct_ils_layer.sNavICAO.clear ();
@@ -862,7 +888,7 @@ void ui_nav_screen::child_draw_nav_search()
   }
 
 
-  this->mxUiReleaseLastFont ();
+  missionx::ui_nav_screen::mxUiReleaseLastFont ();
 
 
   ImGui::EndGroup ();
@@ -874,7 +900,7 @@ void ui_nav_screen::child_draw_nav_search()
   // ---------------
 
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+  missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
   ImGui::BeginGroup ();
   ImGui::BeginChild ("draw_nav_info_output", ImVec2 (0.0f, win_size_vec2.y - 55.0f), ImGuiChildFlags_Borders, ImGuiWindowFlags_AlwaysVerticalScrollbar);
   {
@@ -885,29 +911,29 @@ void ui_nav_screen::child_draw_nav_search()
       {
         ////////////////////
         // Print ICAO title
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
+        missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
         {
 
-          this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+          missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
           {
             ImGui::TextColored (missionx::color::color_vec4_orange, "%s, %.0fnm", data.sApDesc.c_str (), data.dDistance);
             ImGui::SameLine ();
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+            missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
             ImGui::TextColored (missionx::color::color_vec4_dimgray, "(icao_id: %i)", data.icao_id);
-            this->mxUiReleaseLastFont ();
+            missionx::ui_nav_screen::mxUiReleaseLastFont ();
           }
-          this->mxUiReleaseLastFont ();
+          missionx::ui_nav_screen::mxUiReleaseLastFont ();
 
           ///////////////////////////////////
           // v24.03.1 METAR information
-          this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+          missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
           this->mxUiHelpMarker (missionx::color::color_vec4_greenyellow, "Place, Day+Time, COR/AUTO/NIL, Wind, Visibility, Weather, Clouds, Temperature, Air-Pressure, Trend\n\nhttps://metar-taf.com/explanation\nhttps://www.flightutilities.com/MRonline.aspx\n\nMETAR data is downloaded and dependent on flightplandatabase.com availability.\nThe site limits the number of anonymous requests to ~100 per hour, You can extend it to ~1000 if you will add your \"API authorization key\" in the External FPLN screen.");
-          this->mxUiReleaseLastFont ();
+          missionx::ui_nav_screen::mxUiReleaseLastFont ();
 
           if (missionx::strct_ils_layer.fetch_metar_state >= missionx::mxFetchState_enum::fetch_in_process)
           {
             ImGui::SameLine ();
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+            missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
             if (missionx::strct_ils_layer.fetch_metar_state == missionx::mxFetchState_enum::fetch_in_process)
               ImGui::TextColored (missionx::color::color_vec4_dimgray, "%s", "Fetching METAR... Please wait (will try 3 times with 5 sec sleep interval)." );
             else
@@ -917,7 +943,7 @@ void ui_nav_screen::child_draw_nav_search()
                 ImGui::TextColored (missionx::color::color_vec4_dimgray, "Taf: %s", data.sTaf.c_str () );
             }
             // ImGui::TextColored (missionx::color::color_vec4_dimgray, "%s", ((missionx::strct_ils_layer.fetch_metar_state == missionx::mxFetchState_enum::fetch_in_process) ? "Fetching METAR... Please wait (will try 3 times with 5 sec sleep interval)." : (data.sMetar.empty ()) ? "No METAR data was found." : data.sMetar.c_str ()));
-            this->mxUiReleaseLastFont ();
+            missionx::ui_nav_screen::mxUiReleaseLastFont ();
           }
 
 
@@ -931,7 +957,7 @@ void ui_nav_screen::child_draw_nav_search()
             // title
             ImGui::TextColored (missionx::color::color_vec4_beige, "%s", "Tower Frequencies");
 
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+            missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
             {
               bool nonEven = true;
               for (const auto &rw : data.listFrq)
@@ -947,7 +973,7 @@ void ui_nav_screen::child_draw_nav_search()
               if (!nonEven)
                 ImGui::NewLine ();
             }
-            this->mxUiReleaseLastFont ();
+            missionx::ui_nav_screen::mxUiReleaseLastFont ();
           }
 
           //////////////////////////////////
@@ -960,7 +986,7 @@ void ui_nav_screen::child_draw_nav_search()
             // title
             ImGui::TextColored (missionx::color::color_vec4_beige, "%s", "Runways");
 
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+            missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
             {
               for (const auto &[key, rw] : data.mapRunwayData)
               {
@@ -969,7 +995,7 @@ void ui_nav_screen::child_draw_nav_search()
                 ImGui::TextColored (missionx::color::color_vec4_dimgray, "(%.0fnm)", rw.dDistance);
               }
             }
-            this->mxUiReleaseLastFont ();
+            missionx::ui_nav_screen::mxUiReleaseLastFont ();
           }
 
           // Nearby Navigation aids information
@@ -981,13 +1007,13 @@ void ui_nav_screen::child_draw_nav_search()
             // title
             ImGui::TextColored (missionx::color::color_vec4_beige, "%s", "Navigation Aids");
 
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
+            missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
             {
               ImGui::TextColored (missionx::color::color_vec4_grey, "%s", "{ident} {frq}  ({brg. ap},{type}) {name} {dist. ap} ");
             }
-            this->mxUiReleaseLastFont ();
+            missionx::ui_nav_screen::mxUiReleaseLastFont ();
 
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+            missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
             {
               bool nonEven = true;
               for (const auto &loc : data.listVor)
@@ -1007,7 +1033,7 @@ void ui_nav_screen::child_draw_nav_search()
               if (!nonEven)
                 ImGui::NewLine ();
             }
-            this->mxUiReleaseLastFont ();
+            missionx::ui_nav_screen::mxUiReleaseLastFont ();
           }
 
           // Localizer information
@@ -1019,14 +1045,14 @@ void ui_nav_screen::child_draw_nav_search()
             // title
             ImGui::TextColored (missionx::color::color_vec4_beige, "%s", "Localizers");
 
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v24.06.1
+            missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v24.06.1
             {
               ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "%s", "Will display ILS and LOC first and then the other localizer types."); // v24.06.1
             }
-            this->mxUiReleaseLastFont (); // v24.06.1
+            missionx::ui_nav_screen::mxUiReleaseLastFont (); // v24.06.1
 
 
-            this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
+            missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_MED ());
             {
               // v24.06.1 visual separation between standard localizer frequencies and other type of navigation frequencies (LPV, VOR, DME).
               int loc_type                      = 1; // 1 = ILS or LOC, if it is not equal to "one", then it is
@@ -1051,10 +1077,10 @@ void ui_nav_screen::child_draw_nav_search()
                 ImGui::Separator ();
               }
             }
-            this->mxUiReleaseLastFont ();
+            missionx::ui_nav_screen::mxUiReleaseLastFont ();
           }
 
-          this->mxUiReleaseLastFont (); // release the TITLE BIG font
+          missionx::ui_nav_screen::mxUiReleaseLastFont (); // release the TITLE BIG font
         }
 
         ImGui::Spacing ();
@@ -1069,7 +1095,7 @@ void ui_nav_screen::child_draw_nav_search()
   }
   ImGui::EndChild ();
   ImGui::EndGroup ();
-  this->mxUiReleaseLastFont ();
+  missionx::ui_nav_screen::mxUiReleaseLastFont ();
 }
 
 
@@ -1130,7 +1156,7 @@ void ui_nav_screen::add_ui_ils_vfr_search_airports_button(missionx::mx_window_ac
   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_indigo);
   style_i++;
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+  missionx::ui_nav_screen::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_orange);
   ImGui::PushStyleColor (ImGuiCol_ButtonActive, missionx::color::color_vec4_azure);
@@ -1210,7 +1236,7 @@ void ui_nav_screen::add_ui_ils_vfr_search_airports_button(missionx::mx_window_ac
   }
   ImGui::PopStyleColor (3);
 
-  this->mxUiReleaseLastFont ();
+  missionx::ui_nav_screen::mxUiReleaseLastFont ();
   ImGui::PopStyleColor (style_i);
 
 }

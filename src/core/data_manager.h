@@ -302,26 +302,27 @@ enum class mx_flc_pre_command
   : uint8_t
 {
   abort_mission,  // 0
-  abort_random_engine,                         // v3.0.253.6
-  calculate_slope_for_build_flight_leg_thread, // v3.0.221.3
-  convert_icao_to_xml_point,                   // v3.0.221.5
-  create_savepoint,                            // v3.0.151
-  create_savepoint_and_quit,                   // v3.0.251.1 b2
-  disable_aptdat_optimize_menu,                // v3.0.219.12
-  disable_generator_menu,                      // v3.0.219.12
-  display_choice_window,                       // v3.0.231.1
-  dont_control_camera,                         // v3.0.303.7 XPLMDontControlCamera() - reset camera
-  enable_aptdat_optimize_menu, // 10           // v3.0.219.12
-  enable_generator_menu,                       // v3.0.219.12
+  abort_random_engine,                              // v3.0.253.6
+  calculate_slope_for_build_flight_leg_thread,      // v3.0.221.3
+  convert_icao_to_xml_point,                        // v3.0.221.5
+  create_savepoint,                                 // v3.0.151
+  create_savepoint_and_quit,                        // v3.0.251.1 b2
+  disable_aptdat_optimize_menu,                     // v3.0.219.12
+  disable_generator_menu,                           // v3.0.219.12
+  display_choice_window,                            // v3.0.231.1
+  dont_control_camera,                              // v3.0.303.7 XPLMDontControlCamera() - reset camera
+  enable_aptdat_optimize_menu, // 10                // v3.0.219.12
+  enable_generator_menu,                            // v3.0.219.12
   eval_end_flight_leg_after_all_qmm_broadcasted,    // v3.305.1 same as "end_mission_after_all_qmm_broadcasted" only at the flight leg level, and it might replace it too.
-  end_mission_after_all_qmm_broadcasted,       // v3.0.241.7.1
-  exec_apt_dat_optimization,                   // v3.0.253.6
-  execute_xp_command,                          // v3.0.221.9 allow plugin to call "XPLMCommandOnce()" to execute a mapped command
-  fetch_simbrief_fpln,                         // v25.03.3
+  end_mission_after_all_qmm_broadcasted,            // v3.0.241.7.1
+  exec_apt_dat_optimization,                        // v3.0.253.6
+  execute_xp_command,                               // v3.0.221.9 allow plugin to call "XPLMCommandOnce()" to execute a mapped command
+  fetch_simbrief_fpln,                              // v25.03.3
   force_pause_xplane,
-  fetch_metar_data_after_nav_info,             // v24.03.1
+  fetch_metar_data_after_nav_info,                  // v24.03.1
   gather_acf_cargo_data,                                 // v24.12.2
   gather_acf_custom_datarefs,                            // v3.303.9.1
+  gather_active_acf_info_for_llm,                        // v26.09.2
   gather_random_airport_mainThread, // 20                       // v3.0.221.4
   generate_mission_from_littlenavmap_fpln,                      // v3.0.301 converts imported LNM flight plan to a missionx mission file.
   get_current_weather_state_and_store_in_RandomEngine,          // v3.303.13
@@ -333,7 +334,7 @@ enum class mx_flc_pre_command
   get_icao_plane_is_in_its_boundaries_based_on_custom_lat_lon,  // v25.09.2 Find the ICAO a plane is in, if it is in its boundaries
   get_nearest_nav_aid_to_custom_lat_lon_mainThread,             // v3.0.241.10 b2
   get_nearest_nav_aid_to_custom_nav_info_mainThread,            // v26.09.1
-  get_player_aircraft_base_data,                                // v26.08.1
+  // get_player_aircraft_base_data,                                // v26.08.1
   guess_waypoints_from_external_fpln_site,                      // v3.0.255.2
   handle_option_picked_from_choice,                             // v3.0.231.1
   hide_choice_window,                                           // v3.0.231.1
@@ -353,22 +354,23 @@ enum class mx_flc_pre_command
   open_map_layout,                                       // v3.0.231.1 mainly from MXPAD, when simmer clicks on the map hint
   open_story_layout,                                     // v3.305.1 used when we have active story message
   pause_xplane,
-  position_camera,                     // v3.0.303.7 position camera view, based on https://developer.x-plane.com/code-sample/camera/
-  position_plane,                      // when we start a mission we need to move plane to its location. This is true to new and loaded savepoint/checkpoint Should be created by plugin
-  post_async_inv_image_binding,        // v3.0.303.5
-  post_async_story_image_binding,      // v3.305.1
-  post_mission_load_change_to_running, // 50 //  v3.0.223.5
-  post_position_plane,                 // can be called after position plane
-  post_story_message_cache_cleanup,    // v3.305.1
-  read_async_inv_image_files,          // v3.0.303.5
-  restart_all_plugins,                 // v3.0.253.1
-  save_notes_info,                     // v24.03.1
-  save_user_setup_options,             // v3.0.255.4.2 save user setup preference
-  set_briefer_text_message,            // v3.0.219.12+ send message to user from a threaded code (for example)
-  set_story_auto_pause_timer,          // v3.305.1 used with: strct_flight_leg_info.strct_story_mode.timerForAutoSkip
-  set_time,                            // v3.0.219.7
-  show_target_marker_option,           // v3.0.255.4.1
-  special_test_place_instance, // 60   // v3.0.251.1 used to test special action from imgui button.
+  position_camera,                          // v3.0.303.7 position camera view, based on https://developer.x-plane.com/code-sample/camera/
+  position_plane,                           // when we start a mission we need to move plane to its location. This is true to new and loaded savepoint/checkpoint Should be created by plugin
+  post_async_inv_image_binding,             // v3.0.303.5
+  post_async_story_image_binding,           // v3.305.1
+  post_mission_load_change_to_running,      // 50 //  v3.0.223.5
+  post_position_plane,                      // can be called after position plane
+  post_story_message_cache_cleanup,         // v3.305.1
+  read_async_inv_image_files,               // v3.0.303.5
+  restart_all_plugins,                      // v3.0.253.1
+  save_notes_info,                          // v24.03.1
+  save_user_setup_options,                  // v3.0.255.4.2 save user setup preference
+  set_briefer_text_message,                 // v3.0.219.12+ send message to user from a threaded code (for example)
+  set_llm_base_weights_at_mission_start,    // v26.09.2 called from START_MISSION() if not loaded from savepoint.
+  set_story_auto_pause_timer,               // v3.305.1 used with: strct_flight_leg_info.strct_story_mode.timerForAutoSkip
+  set_time,                                 // v3.0.219.7
+  show_target_marker_option,                // v3.0.255.4.1
+  special_test_place_instance, // 60        // v3.0.251.1 used to test special action from imgui button.
   start_mission,
   start_random_mission, // v3.0.219.1
   stop_mission,
@@ -385,7 +387,7 @@ enum class mx_flc_pre_command
   write_fpln_to_external_folder,                     // v3.0.255.4.4 used in setup and tools screen so we won't call it from draw callback
 };
 
-typedef enum class _mission_state
+enum class mx_mission_state_enum
   : uint8_t
 {
   mission_undefined                              = 0,
@@ -401,7 +403,7 @@ typedef enum class _mission_state
   stop_all_async_processes                       = 90,
   process_points                                 = 100,
   mission_aborted                                = 110
-} mx_mission_state_enum;
+};
 
 
 
@@ -907,10 +909,7 @@ private:
   static bool flag_rebuild_apt_dat;
 
   static uiLayer_enum generate_from_layer; // holds the layer were the RandomEngine was called from. This way we know if to use the UI Template options or not.
-  static std::string  acf_icao; // v26.08.1
-  static std::string active_acf;
-  static std::string active_acf_path; // v26.08.1
-  static std::string prev_acf;
+  static missionx::structs::def_strct_acf_info active_acf_info;
 
 public:
   data_manager();
@@ -1374,7 +1373,9 @@ public:
     bool flag_llm_use_llm_to_generate_a_mission; // v26.09.1 random engine usage
     bool flag_llm_use_llm_to_suggest_targets; // v26.09.2
     bool flag_llm_add_background_story; // v26.09.2
+    bool flag_llm_add_fuel_and_weight_payloads; // v26.09.2
     std::unordered_map<std::string, std::string> map_llm_requests_messages; // v26.08.1
+    structs::MissionPayloads strct_llm_suggested_payloads; // v26.09.2
 
     // v26.04.4 consolidate all message parameters usage into one struct
     // We have three ways to display messages to a user:
@@ -1401,6 +1402,7 @@ public:
       flag_llm_use_llm_to_generate_a_mission = false; // v26.09.1
       flag_llm_use_llm_to_suggest_targets = false; // v26.09.2
       flag_llm_add_background_story = false; // v29.09.2
+      flag_llm_add_fuel_and_weight_payloads  = false; // v29.09.2
     }
 
     // reset shared llm flags and clears map_llm_requests_messages
@@ -1415,6 +1417,7 @@ public:
       flag_llm_use_llm_to_generate_a_mission = false;
       flag_llm_use_llm_to_suggest_targets = false; // v26.09.2
       flag_llm_add_background_story = false; // v26.09.2
+      flag_llm_add_fuel_and_weight_payloads  = false; // v26.09.2
 
       medevac_arr = { mxconst::CAT_ANY_LOCATION.data (), mxconst::CAT_ACCIDENT_OSM.data (), mxconst::CAT_SURPRISE_ME.data () };
       oilrig_arr  = { "Oil Rig Cargo", "Medevac" };
@@ -1426,6 +1429,7 @@ public:
       map_ui_user_picks_overpass_urls.clear();
 
       map_llm_requests_messages.clear(); // v26.08.1
+      this->strct_llm_suggested_payloads.reset(); // v26.09.2
       xml_last_generated_briefer_node = IXMLNode::emptyIXMLNode;
     }
   };
@@ -1489,7 +1493,7 @@ public:
   static void apply_datarefs_from_text_based_on_parent_node_and_tag_name(const IXMLNode& inParentNode, const std::string& inTagName);// v3.305.1 renamed   // specialized function to pick the "TEXT" clear value of an element and then call
   static void set_success_or_reset_tasks_state(const std::string& inObjName, const std::string& inTaskList, const missionx::enums::mx_action_from_trigger_enum& in_action, const std::string& inCurrentTask = ""); // v25.02.1 mainly used from triggers
   static void set_trigger_state(const missionx::Trigger &inCallingTrig, const std::string& inTrigList, const missionx::enums::mx_action_from_trigger_enum& in_action); // v25.02.1 mainly used from triggers
-
+  static void SetFuelEquallyAcrossActiveTanks(float totalFuelKg);
 
   static std::map<int, std::unordered_map<std::string, std::string> > mapWeatherPreDefinedStrct_xp11;
   static std::map<int, std::unordered_map<std::string, std::string> > mapWeatherPreDefinedStrct_xp12;
@@ -1555,18 +1559,19 @@ public:
   static bool find_and_read_template_file(const std::string &inFileName);
 
   // v25.03.1
-  static void flc_acf_change();
-  static void set_acf(const std::string& inFileName, const std::string &inFileNamePath); // only set the current plane filename without calling "gather_acf_info" function.
+  static void trigger_acf_change();
+  static void set_acf(const missionx::structs::def_strct_acf_info& in_acf_info); // only set the current plane filename without calling "gather_acf_info" function.
   static std::string get_acf(); // v26.08.1
   static std::string get_acf_icao(); // v26.08.1
 
-  static std::vector<std::string>   get_current_acf();
-  static void   set_active_acf_and_gather_info(const std::string& inFileName, const std::string &inFileNamePath) ; // set the current plane filename and call the "gather_acf_info" function.
+  // the function get the active acf base info. It does not store it.
+  static structs::def_strct_acf_info   get_current_acf();
+  static void   set_active_acf_and_gather_info(); // v26.09.2 Get active plane and store it. Gather Station info.
 
   // v25.05.1
   static IXMLNode get_default_overpass_urls_node ();
   static std::vector<std::string> get_default_overpass_urls_as_vector (const IXMLNode& inNode);
-  static std::string              gen_get_next_overpass_url(const bool in_ignore_user_preference = false);
+  static std::string              gen_get_next_overpass_url(bool in_ignore_user_preference = false);
   static std::string              gen_get_user_preferred_overpass_url();
 
   // v25.06.1

@@ -897,11 +897,8 @@ dataref_param data_manager::dref_acf_station_max_kgs_f_arr;
 dataref_param data_manager::dref_m_stations_kgs_f_arr;
 std::string data_manager::mission_file_supported_versions; // v24.12.2
 
-// v25.03.1
-std::string missionx::data_manager::acf_icao;
-std::string missionx::data_manager::active_acf;
-std::string missionx::data_manager::active_acf_path;
-std::string missionx::data_manager::prev_acf;
+// v26.09.2
+missionx::structs::def_strct_acf_info data_manager::active_acf_info;
 
 // v25.05.1
 //missionx::data_manager::ui_shared_data_def_struct missionx::data_manager::strct_ui_share_data;
@@ -970,7 +967,8 @@ std::string missionx::data_manager::get_mission_outline_base(const std::unordere
                         {
                           // C++17 structured binding (or use item.first and item.second)
                           const auto& [key, value] = item;
-                          oss << key << ": " << value << "\n";
+                          if (key != llm_category::activity_picked) // skip this category
+                            oss << key << ": " << value << "\n";
                         });
 
   // Add time data based on advanced settings
@@ -2550,8 +2548,7 @@ data_manager::stopMission()
 
   listOfMessageStoryMessages.clear(); // v3.305.2
 
-  missionx::data_manager::active_acf.clear ();
-  missionx::data_manager::prev_acf.clear ();
+  missionx::data_manager::active_acf_info.reset(); // v26.09.2
 }
 
 // -------------------------------------
@@ -3286,7 +3283,7 @@ data_manager::prepareInventoryCopies(const std::string& inInventoryName)
 
   // v3.0.221.9 calculate but do not apply to dataref since we did not commit
   // v24.12.2 added "force inventory layout"
-  current_plane_payload_weight_f = calculatePlaneWeight(planeInventoryCopy, false, Inventory::opt_forceInventoryLayoutBasedOnVersion_i);
+  data_manager::current_plane_payload_weight_f = calculatePlaneWeight(planeInventoryCopy, false, Inventory::opt_forceInventoryLayoutBasedOnVersion_i);
 
   // v3.0.303.5 store all inventory image file names
   xp_mapInvImages.clear();
@@ -7783,11 +7780,13 @@ data_manager::add_advanceSettingsDateTime_and_Weather_to_node(IXMLNode& xGlobalS
       const auto pilotWeight      = prop_userDefinedMission_ui.getAttribNumericValue<float> ( mxconst::get_OPT_PILOT_BASE_WEIGHT(), 0.0f );
       const auto storedWeight     = prop_userDefinedMission_ui.getAttribNumericValue<float> ( mxconst::get_OPT_STORAGE_BASE_WEIGHT(), 0.0f );
       const auto passengersWeight = prop_userDefinedMission_ui.getAttribNumericValue<float> ( mxconst::get_OPT_PASSENGERS_BASE_WEIGHT(), 0.0f );
+      const auto fuel_base_weight = prop_userDefinedMission_ui.getAttribNumericValue<float> ( mxconst::get_OPT_FUEL_BASE_WEIGHT(), 0.0f );
 
       // set the global_settings weight sub node
       Utils::xml_set_attribute_in_node<float> ( xBaseWeights, mxconst::get_OPT_PILOT_BASE_WEIGHT(), pilotWeight );
       Utils::xml_set_attribute_in_node<float> ( xBaseWeights, mxconst::get_OPT_STORAGE_BASE_WEIGHT(), storedWeight );
       Utils::xml_set_attribute_in_node<float> ( xBaseWeights, mxconst::get_OPT_PASSENGERS_BASE_WEIGHT(), passengersWeight );
+      Utils::xml_set_attribute_in_node<float> ( xBaseWeights, mxconst::get_OPT_FUEL_BASE_WEIGHT(), fuel_base_weight); // v26.09.2
     }
   }
 
@@ -8751,81 +8750,94 @@ data_manager::find_and_read_template_file (const std::string &inFileName)
   return mxUtils::isElementExists (mapGenerateMissionTemplateFiles, inFileName);
 }
 
+// -------------------------------------
 
-void
-data_manager::flc_acf_change ()
+void 
+missionx::data_manager::set_acf(const missionx::structs::def_strct_acf_info& in_acf_info) 
 {
-  // char outFileName[512]{ 0 };
-  // char outPathAndFile[2048]{ 0 };
-  // XPLMGetNthAircraftModel (XPLM_USER_AIRCRAFT, outFileName, outPathAndFile); // we will only return the file name
-  auto vec_acf = missionx::data_manager::get_current_acf();
+  const auto temp_acf_info = missionx::data_manager::active_acf_info;
 
+  // assign the new acf_info
+  missionx::data_manager::active_acf_info = in_acf_info;
 
-  XPLMDataRef drICAO = XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
-
-  if ( vec_acf.size() > 1 &&  fmt::format("{}", vec_acf.at(0)) != data_manager::active_acf)
-  {
-    data_manager::set_active_acf_and_gather_info(vec_acf.at(0), vec_acf.at(1));
-
-  // v26.08.1 add plane ICAO from the dataref
-    data_manager::acf_icao.clear();
-    if (drICAO != nullptr)
-    {
-      char buffer[64];
-      // XPLMGetDatab is used for string (byte array) datarefs
-      int length = XPLMGetDatab(drICAO, buffer, 0, sizeof(buffer));
-      if (length > 0)
-        data_manager::acf_icao = std::string(buffer, length);
-    }
-    if (data_manager::acf_icao.empty())
-      data_manager::acf_icao = vec_acf.at(0);
-
-  }
-}
-
-  // -------------------------------------
-
-void
-data_manager::set_acf (const std::string &inFileName, const std::string &inFileNamePath )
-{
-  data_manager::prev_acf = data_manager::active_acf;
-  data_manager::active_acf = inFileName;
-  data_manager::active_acf_path = inFileNamePath; // v26.08.1
+  // store the prev acf based on the prev active plane
+  missionx::data_manager::active_acf_info.prev_acf = temp_acf_info.active_acf;
 }
 
 // -------------------------------------
 
 std::string
-missionx::data_manager::get_acf() { return data_manager::active_acf; }
+missionx::data_manager::get_acf() { return data_manager::active_acf_info.active_acf; }
 
 // -------------------------------------
 
 std::string 
-missionx::data_manager::get_acf_icao() { return data_manager::acf_icao; }
+missionx::data_manager::get_acf_icao() { return data_manager::active_acf_info.active_acf_icao; }
 
 // -------------------------------------
 
-std::vector<std::string> data_manager::get_current_acf()
+void data_manager::trigger_acf_change()
 {
-  char outFileName[512]{ 0 };
-  char outPathAndFile[2048]{ 0 };
-  XPLMGetNthAircraftModel ( XPLM_USER_AIRCRAFT, outFileName, outPathAndFile ); // we will only return the file name
+  auto acf_info = missionx::data_manager::get_current_acf();
 
-  missionx::data_manager::set_acf (outFileName, outPathAndFile);
-
-  return std::vector<std::string> {outFileName, outPathAndFile};
+  // if ( acf_info.size() > 1 &&  fmt::format("{}", acf_info.at(0)) != data_manager::active_acf)
+  // if (!acf_info.active_acf.empty() && !acf_info.active_acf_path.empty() && acf_info.active_acf != missionx::data_manager::active_acf_info.active_acf)
+  if (!acf_info.active_acf.empty() && !acf_info.active_acf_path.empty() && acf_info.active_acf != missionx::data_manager::active_acf_info.active_acf)
+  {
+    // also calls get_plane_icao() and set_acf()
+    data_manager::set_active_acf_and_gather_info();
+  }
 }
 
 // -------------------------------------
 
-void
-data_manager::set_active_acf_and_gather_info (const std::string &inFileName, const std::string &inFileNamePath)
-{
+missionx::structs::def_strct_acf_info
+data_manager::get_current_acf()
+{  
+  char outFileName[512]{ 0 };
+  char outPathAndFile[2048]{ 0 };
+  XPLMGetNthAircraftModel ( XPLM_USER_AIRCRAFT, outFileName, outPathAndFile ); // we will only return the file name
 
-#ifndef RELEASE
-  Log::logMsg (fmt::format ("Gathering ACF: {} Information.", inFileName));
-#endif
-  data_manager::set_acf (inFileName, inFileNamePath);
+  // v26.09.2
+  missionx::structs::def_strct_acf_info acf_info{.active_acf = outFileName, .active_acf_path = outPathAndFile, .active_acf_icao = missionx::dataref_manager::get_plane_icao()};
+ 
+  missionx::dataref_manager::gather_active_acf_base_info_for_llm();
+
+  return acf_info;
+}
+
+
+// -------------------------------------
+
+// void
+// data_manager::set_active_acf_and_gather_info (const std::string &inFileName, const std::string &inFileNamePath)
+// {
+//   const missionx::structs::def_strct_acf_info acf_info{.active_acf = inFileName, .active_acf_path = inFileNamePath, .active_acf_icao = missionx::dataref_manager::get_plane_icao()};
+//
+//   #ifndef RELEASE
+//   Log::logMsg (fmt::format ("Gathering ACF: {} Information.", inFileName));
+//   #endif
+//   // store acf info
+//   data_manager::set_acf (acf_info);
+//
+//   missionx::Inventory::gather_acf_cargo_data (data_manager::mapInventories[mxconst::get_ELEMENT_PLANE ()], true);
+//   data_manager::dref_acf_station_max_kgs_f_arr.setAndInitializeKey ("sim/aircraft/weight/acf_m_station_max");
+//   missionx::dataref_param::set_dataref_values_into_xplane (data_manager::dref_m_stations_kgs_f_arr); // force original weight on the new plane
+//
+//   missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::gather_acf_custom_datarefs); // v3.303.13 make sure we will have the plane dataref information
+// }
+
+// -------------------------------------
+
+void data_manager::set_active_acf_and_gather_info()
+{
+  const missionx::structs::def_strct_acf_info acf_info = data_manager::get_current_acf();
+
+  #ifndef RELEASE
+  Log::logMsg (fmt::format ("Gathering ACF: {} Information.", acf_info.active_acf));
+  #endif
+  // store acf info
+  data_manager::set_acf (acf_info);
 
   missionx::Inventory::gather_acf_cargo_data (data_manager::mapInventories[mxconst::get_ELEMENT_PLANE ()], true);
   data_manager::dref_acf_station_max_kgs_f_arr.setAndInitializeKey ("sim/aircraft/weight/acf_m_station_max");
@@ -10284,6 +10296,55 @@ data_manager::set_trigger_state(const Trigger& inCallingTrig, const std::string&
     } // end if trigger exists in container
 
   } // end loop over tasks
+}
+// -------------------------------------
+
+void data_manager::SetFuelEquallyAcrossActiveTanks(const float totalFuelKg)
+{
+  constexpr static int NUM_OF_TANKS = 9;
+  // Locate the required X-Plane datarefs
+  XPLMDataRef numTanksRef = XPLMFindDataRef("sim/aircraft/overflow/acf_num_tanks");
+  XPLMDataRef tankRatRef = XPLMFindDataRef("sim/aircraft/overflow/acf_tank_rat");
+  XPLMDataRef fuelQtyRef = XPLMFindDataRef("sim/flightmodel/weight/m_fuel");
+
+  if (!numTanksRef || !fuelQtyRef) {
+    return; // Required datarefs are missing
+  }
+
+  // Retrieve the total number of configured tanks[cite: 1]
+  int maxTanks = XPLMGetDatai (numTanksRef);
+  if (maxTanks <= 0) {
+    return;
+  }
+
+  // Retrieve tank capacity ratios to determine active tanks
+  std::vector<float> tankRatios(NUM_OF_TANKS, 0.0f);
+  if (tankRatRef) {
+    XPLMGetDatavf(tankRatRef, tankRatios.data(), 0, NUM_OF_TANKS);
+  }
+
+  // Check if we have an active tank (ratio > 0.0)
+  int activeTankCount = 0;
+  for (int i = 0; i < maxTanks && i < NUM_OF_TANKS && activeTankCount == 0; ++i) {
+    if (!tankRatRef || tankRatios[i] > 0.0f) {
+      activeTankCount++;
+    }
+  }
+
+  if (activeTankCount == 0) {
+    return;
+  }
+
+  // Distribute the fuel proportionally according to each tank's relative capacity ratio
+  float fuelQuantities[NUM_OF_TANKS] = {0.0f};
+  for (int i = 0; i < maxTanks && i < NUM_OF_TANKS; ++i) {
+    if (tankRatios[i] > 0.0f) {
+      fuelQuantities[i] = totalFuelKg * tankRatios[i];
+    }
+  }
+
+  // Apply the updated fuel quantities to X-Plane
+  XPLMSetDatavf(fuelQtyRef, fuelQuantities, 0, maxTanks);
 }
 
 // -------------------------------------

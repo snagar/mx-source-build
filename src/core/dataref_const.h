@@ -22,6 +22,10 @@ public:
 
     dref_acf_m_empty_weight = XPLMFindDataRef("sim/aircraft/weight/acf_m_empty"); // plane empty weight // v3.0.213.3
     dref_acf_m_max_weight   = XPLMFindDataRef("sim/aircraft/weight/acf_m_max");   // plane max weight (payload + fuel) // v3.0.213.3
+    dref_acf_m_fuel_tot_lbs     = XPLMFindDataRef("sim/aircraft/weight/acf_m_fuel_tot");  // read only, plane total fuel in tanks, in LBS.
+    dref_acf_m_fixed        = XPLMFindDataRef("sim/flightmodel/weight/m_fixed");  // plane payload, in kg.
+
+    dref_acf_fuel_totalizer_init_kg        = XPLMFindDataRef("sim/cockpit2/fuel/fuel_totalizer_init_kg");  // writeable, plane total fuel in tanks (kg).
 
     dref_lat_d             = XPLMFindDataRef("sim/flightmodel/position/latitude");    // latitude
     dref_lon_d             = XPLMFindDataRef("sim/flightmodel/position/longitude");   // longitude
@@ -35,11 +39,12 @@ public:
 
     dref_frame_rate_period = XPLMFindDataRef("sim/operation/misc/frame_rate_period"); // v3.0.207.1 // frame_rate_period - fps
 
+    dref_acf_num_tanks_i                 = XPLMFindDataRef("sim/aircraft/overflow/acf_num_tanks"); // how many active fuel tanks
     dref_m_fuel_f_arr                    = XPLMFindDataRef("sim/flightmodel/weight/m_fuel"); // weight for each 9 tanks
     dref_m_fuel1_f                       = XPLMFindDataRef("sim/flightmodel/weight/m_fuel1");
     dref_m_fuel2_f                       = XPLMFindDataRef("sim/flightmodel/weight/m_fuel2");
     dref_m_fuel3_f                       = XPLMFindDataRef("sim/flightmodel/weight/m_fuel3");
-    dref_m_fuel_total_f                  = XPLMFindDataRef("sim/flightmodel/weight/m_fuel_total");         // weight in Kg
+    dref_m_fuel_total_f                  = XPLMFindDataRef("sim/flightmodel/weight/m_fuel_total");         // read only, current fuel weight in Kg
     dref_m_total_f                       = XPLMFindDataRef("sim/flightmodel/weight/m_total");              // Current total payload + fuel weight in Kg
     dref_groundspeed_f                   = XPLMFindDataRef("sim/flightmodel2/position/groundspeed");       // Groundspeed meters/sec
     indicated_airspeed_f                 = XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed"); // indicated_airspeed Kias
@@ -112,6 +117,8 @@ public:
     dref_CG_indicator_f    = XPLMFindDataRef ("sim/cockpit2/gauges/indicators/CG_indicator"); // v25.03.3 Center of gravity - meters
 
     fps_f_dref = XPLMFindDataRef("sim/time/framerate_period"); // v26.03.1
+
+    dref_acf_vno_f = XPLMFindDataRef("sim/time/framerate_period"); // v26.09.2 kias(“knots of indicated airspeed.” Knots are a unit of speed)
   }
 
   XPLMDataRef dref_xplane_version_i             ;        // v3.0.241.5 xplane version number as integer
@@ -120,6 +127,9 @@ public:
 
   XPLMDataRef dref_acf_m_empty_weight ; // plane empty weight // v3.0.213.3
   XPLMDataRef dref_acf_m_max_weight   ; // plane max weight (payload + fuel) // v3.0.213.3
+  XPLMDataRef dref_acf_m_fuel_tot_lbs     ; // plane max fuel payload // v26.09.2
+  XPLMDataRef dref_acf_m_fixed        ; // plane payload // v26.09.2
+  XPLMDataRef dref_acf_fuel_totalizer_init_kg     ; // plane total fuel tanks weight // v26.09.2
 
   XPLMDataRef dref_lat_d             ; // latitude
   XPLMDataRef dref_lon_d             ; // longitude
@@ -133,6 +143,7 @@ public:
 
   XPLMDataRef dref_frame_rate_period ; // v3.0.207.1 // frame_rate_period - fps
 
+  XPLMDataRef dref_acf_num_tanks_i    ;// how many active tanks in plane sim/aircraft/overflow/acf_num_tanks
   XPLMDataRef dref_m_fuel_f_arr     ;// weight for each 9 tanks
   XPLMDataRef dref_m_fuel1_f        ;
   XPLMDataRef dref_m_fuel2_f        ;
@@ -211,6 +222,9 @@ public:
   XPLMDataRef dref_cg_offset_z_f; // v25.03.3 center of gravity sim/flightmodel2/misc/cg_offset_z (meter)
 
   XPLMDataRef fps_f_dref; // v26.03.1 //fps_dref = XPLMFindDataRef("sim/time/framerate_period");
+  XPLMDataRef dref_acf_vno_f; // v26.092 sim/aircraft/view/acf_Vno Maximum structural cruising speed, not to be exceeded except in smooth air
+
+
   // const XPLMDataRef dref_ {template}
 };
 

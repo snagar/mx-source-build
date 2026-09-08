@@ -614,8 +614,7 @@ PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFromWho, const intptr_t inM
     }
     break;
     case XPLM_MSG_PLANE_CRASHED: // abort only is mission is active and if auto abort on crash flag is true
-    {
-
+    {      
       if (data_manager::missionState == mx_mission_state_enum::mission_is_running)
       {
         const std::string msg = "Plane crashed, aborting mission.";
@@ -644,7 +643,14 @@ PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFromWho, const intptr_t inM
     break;
     case XPLM_MSG_PLANE_LOADED:
     {
-      data_manager::get_current_acf();
+      static bool first_plane_load = true; // v26.09.2
+      if (first_plane_load)
+      {
+        missionx::data_manager::set_acf(data_manager::get_current_acf());
+        first_plane_load ^= 1;
+      }
+      else
+        missionx::data_manager::trigger_acf_change();
     }
     break;
     default:

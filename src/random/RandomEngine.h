@@ -88,7 +88,7 @@ private:
   IXMLNode xBriefer;          // holds briefer element information
   IXMLNode xObjectives;       // holds Objectives element information
   IXMLNode xTriggers;         // holds all triggers element information
-  IXMLNode xInventoris;       // holds all inventories element information
+  IXMLNode xInventories;       // holds all inventories element information
   IXMLNode xMessages;         // holds all messages information
   IXMLNode xEnd;              // holds end element information
   IXMLNode xGPS;              // holds GPS coordinates
@@ -461,7 +461,8 @@ static bool gen_target_base_on_xy_osm_or_osmweb_types2(NavAidInfo&              
   // v25.10.2
   // Will return true if the function finds an airport data. out_rw_count and out_longest_rw should return a value greater than zero (0).
   static bool gen_get_rw_metadata (const std::string &in_icao, int &out_rw_count, float &out_longest_rw);
-  
+
+  static void gen_set_llm_payloads (const structs::MissionPayloads &in_llm_payloads, IXMLNode& in_global_setting_node);
 
   #ifndef RELEASE_DEBUG
   static void write_targets_to_file (const std::map<int, NavAidInfo>& navaid_targets);

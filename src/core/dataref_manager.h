@@ -23,7 +23,8 @@ private:
   static void  storeCameraPoint(); // flc
   static float fps;
 public:
-  // static dataref_const drefConst;
+
+  static missionx::structs::def_strct_plane_base_info strct_plane_base_info;
 
   dataref_manager();
   virtual ~dataref_manager();
@@ -126,7 +127,10 @@ public:
   static float init_raw_fps_f(bool b_store);
 
   static void setPlaneInLocalCoordiantes(double x, double y, double z);
-
+  static std::string get_plane_icao(); // v26.09.2
+  static void        gather_active_acf_base_info_for_llm(); // v26.09.2
+  // estimate fuel time per hour
+  static float CalculateEstimatedFuelTimeHours(); // v26.09.2
 };
 
 }

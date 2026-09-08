@@ -506,7 +506,7 @@ struct mx_setup_layer
     std::string  tip;
 
     // Non-List parameters
-    std::string desc {""}; // we need initializer, so ignore the CLion suggestion
+    std::string desc{""}; // we need initializer, so ignore the CLion suggestion
     std::string random_description{""}; // will hold a short description based on plane type. Might hold a funny description to make it more enjoyable for the user.
     float max_distance_slider_f {0.0f};
 
@@ -568,7 +568,7 @@ struct mx_setup_layer
     } // end randomize_no_of_legs
 
     // prepare desc
-    void prepare_the_semi_activity_description(const int& in_number_of_legs)
+    void prepare_the_semi_activity_description_for_phase2(const int& in_number_of_legs)
     {
       // Type of plane
       const std::string plane_type_desc = (id < 5)? "You will fly a helos mission" : "You will fly a plane mission";

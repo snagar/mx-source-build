@@ -6,6 +6,9 @@
 
 
 **************/
+#include <optional>
+#include <charconv>
+
 #include <deque>
 #include <random>
 #include <set>
@@ -1184,6 +1187,9 @@ static T get_random_number_by_type (const T inMin, const T inMax)
   static std::vector<IXMLNode> clone_xml_vector (std::vector<IXMLNode> in_vec);
 
   // -------------------------------------------
+  static std::optional<structs::MissionPayloads> extract_llm_payloads(std::string_view response_text);
+
+  // -------------------------------------------
 
  private:
   static std::vector<IXMLNode> xml_get_all_child_nodes_recurs_with_tagName(IXMLNode& inParent, std::string_view inTagName);     // this function can be called recursively
@@ -1220,7 +1226,6 @@ private:
   std::string                                        sourceFuncName;
   std::string                                        sourceFileName;
 };
-
 
 
 } // namespace

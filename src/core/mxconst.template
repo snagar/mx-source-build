@@ -693,6 +693,7 @@ constexpr const static ^char ^           *SETUP_FONT_PIXEL_SIZE                 
 constexpr const static ^char ^           *SETUP_FONT_LOCATION                                    ^ "setup_font_location"; ^// v3.0.251.1 holds preferred font pixel size
 
 
+const static ^std::string^                OPT_FUEL_BASE_WEIGHT                                   ^ "fuel_base_weight"; ^// v26.09.2 will be used with the llm suggested weight. Will apply the value to the airplane at the start of the mission.
 const static ^std::string^                OPT_PILOT_BASE_WEIGHT                                  ^ "pilot_base_weight"; ^// the following optional attributes are read from General_Properties of the mission, they are not stored in option file. // v3.0.213.3 assist in calculating weight of plane ^ empty plane + pilot + passengers + lauggage
 const static ^std::string^                OPT_STORAGE_BASE_WEIGHT                                ^ "storage_base_weight"; ^// v3.0.213.3 other payload
 const static ^std::string^                OPT_PASSENGERS_BASE_WEIGHT                             ^ "passengers_base_weight"; ^// v3.0.213.3 passengers

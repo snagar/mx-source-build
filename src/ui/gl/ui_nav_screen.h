@@ -56,8 +56,6 @@ public:
   std::function<void(std::string, int)> set_bottom_message_line1;
   std::function<void()> add_designer_mode_checkbox;
   std::function<bool()> add_ui_checkbox_rerun_random_date_and_time;
-  // void add_ui_advance_settings_random_date_time_weather_and_weight_button (int &out_iClockDayOfYearPicked, int &out_iClockHourPicked, int &out_iClockMinutesPicked, const std::string &inTEXT_TYPE = mxconst::get_TEXT_TYPE_TITLE_REG ());
-  // std::function<void(int&, int&, int&, const std::string&)> add_ui_advance_settings_random_date_time_weather_and_weight_button;
   std::function<void(const std::string&)> add_ui_advance_settings_random_date_time_weather_and_weight_button; // v26.08.1
   // execAction (mx_window_actions actionCommand)
   std::function<void(missionx::mx_window_actions)> execAction;
@@ -73,6 +71,10 @@ public:
   std::function<void(const std::vector<const char *>)> add_ui_pick_subcategories;
   // add ui is amphibian checkbox
   std::function<void()> add_ui_is_amphibian;
+  // v26.09.2 add "collapsing header" last mission description
+  std::function<void(const bool)> add_briefer_description_post_mission_creation;
+  // v26.09.2 add "collapsing header" last mission description
+  std::function<void(const enums::llm_ui_options_enum)> add_ui_llm_options;
 
 
   // -----------------------------------

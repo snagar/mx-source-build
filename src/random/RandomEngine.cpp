@@ -124,7 +124,7 @@ RandomEngine::init()
   this->xBriefer        = IXMLNode::emptyIXMLNode;
   this->xObjectives     = IXMLNode::emptyIXMLNode;
   this->xTriggers       = IXMLNode::emptyIXMLNode;
-  this->xInventoris     = IXMLNode::emptyIXMLNode;
+  this->xInventories    = IXMLNode::emptyIXMLNode;
   this->xMessages       = IXMLNode::emptyIXMLNode;
   this->xEnd            = IXMLNode::emptyIXMLNode; // holds end element information
   this->xGPS            = IXMLNode::emptyIXMLNode; // holds GPS coordinates
@@ -455,6 +455,7 @@ RandomEngine::generateRandomMission()
   missionx::RandomEngine::random_thread_state.flagAbortThread    = false;
 
   this->reset_sequence_numbers(); // v25.06.1
+  data_manager::strct_ui_share_data.strct_llm_suggested_payloads.reset(); // v26.09.2
 
   missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node = IXMLNode::emptyIXMLNode; // v26.08.1
 
@@ -509,8 +510,8 @@ RandomEngine::generateRandomMission()
   // ---------------------------------------------------------------------
   //  v26.08.1 Force read player aircraft
   // ---------------------------------------------------------------------
-  if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, mx_flc_pre_command::get_player_aircraft_base_data))
-  {    
+  if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, mx_flc_pre_command::gather_active_acf_info_for_llm, std::chrono::milliseconds(1000)))
+  {
     RandomEngine::setError(fmt::format("[{}] Failed to read player aircraft info.", __func__));
   }
 
@@ -585,7 +586,7 @@ RandomEngine::generateRandomMission()
   this->xFlightLegs = xDummyTopNode.addChild(mxconst::get_ELEMENT_FLIGHT_PLAN().c_str());
   this->xObjectives = xDummyTopNode.addChild(mxconst::get_ELEMENT_OBJECTIVES().c_str());
   this->xTriggers   = xDummyTopNode.addChild(mxconst::get_ELEMENT_TRIGGERS().c_str());
-  this->xInventoris = xDummyTopNode.addChild(mxconst::get_ELEMENT_INVENTORIES().c_str());
+  this->xInventories = xDummyTopNode.addChild(mxconst::get_ELEMENT_INVENTORIES().c_str());
   this->xGPS        = xDummyTopNode.addChild(mxconst::get_ELEMENT_GPS().c_str());
   this->xChoices    = xDummyTopNode.addChild(mxconst::get_ELEMENT_CHOICES().c_str());
 
@@ -1684,7 +1685,7 @@ RandomEngine::gen_content_option_01_random_mission_from_content(IXMLNode& xTempl
   for (auto& [key, nav] : navaid_targets)
   {
     // add to inventories
-    nav.fpln_xml_inv_node = this->xInventoris.addChild(nav.fpln_xml_inv_node);
+    nav.fpln_xml_inv_node = this->xInventories.addChild(nav.fpln_xml_inv_node);
   }
 
 
@@ -1695,7 +1696,7 @@ RandomEngine::gen_content_option_01_random_mission_from_content(IXMLNode& xTempl
   Log::logMsgThread(fmt::format("TRIGGERS:\n{}\n", Utils::xml_get_node_content_as_text(this->xTriggers)));
   Log::logMsgThread(fmt::format("OBJECTIVES:\n{}\n", Utils::xml_get_node_content_as_text(this->xObjectives)));
   Log::logMsgThread(fmt::format("FLIGHT LEGS:\n{}\n", Utils::xml_get_node_content_as_text(this->xFlightLegs)));
-  Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventoris)));
+  Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventories)));
   Log::logMsgThread(fmt::format("GPS:\n{}\n", Utils::xml_get_node_content_as_text(this->xGPS)));
   Log::logMsgThread(fmt::format("-------------- END <CONTENT_MISSION> RESULTS - {} --------------", __func__));
   #endif // !RELEASE
@@ -1819,8 +1820,8 @@ RandomEngine::gen_content_option_02_copy_as_is(IXMLNode& xTemplateNode, IXMLNode
   for (int i1 = 0; i1 < content_root_node.nChildNode(mxconst::get_ELEMENT_INVENTORIES().c_str()); ++i1)
   {
     auto node = content_root_node.getChildNode(mxconst::get_ELEMENT_INVENTORIES().c_str(), i1);
-    Utils::xml_copy_nodes_from_one_parent_to_another_IXMLNode(this->xInventoris, node, mxconst::get_ELEMENT_INVENTORY(), true);
-    Utils::xml_copy_nodes_from_one_parent_to_another_IXMLNode(this->xInventoris, node, mxconst::get_ELEMENT_PLANE(), true);
+    Utils::xml_copy_nodes_from_one_parent_to_another_IXMLNode(this->xInventories, node, mxconst::get_ELEMENT_INVENTORY(), true);
+    Utils::xml_copy_nodes_from_one_parent_to_another_IXMLNode(this->xInventories, node, mxconst::get_ELEMENT_PLANE(), true);
   }
 
   // add all 3D object to <object_template>, starting from the second element since the first element is always this->x3DObjTemplate that way we won't have duplication of <obj3d> elements.
@@ -1878,7 +1879,7 @@ RandomEngine::gen_content_option_02_copy_as_is(IXMLNode& xTemplateNode, IXMLNode
   Log::logMsgThread(fmt::format("TRIGGERS:\n{}\n", Utils::xml_get_node_content_as_text(this->xTriggers)));
   Log::logMsgThread(fmt::format("OBJECTIVES:\n{}\n", Utils::xml_get_node_content_as_text(this->xObjectives)));
   Log::logMsgThread(fmt::format("FLIGHT LEGS:\n{}\n", Utils::xml_get_node_content_as_text(this->xFlightLegs)));
-  Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventoris)));
+  Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventories)));
   Log::logMsgThread(fmt::format("GPS:\n{}\n", Utils::xml_get_node_content_as_text(this->xGPS)));
   Log::logMsgThread(fmt::format("-------------- END <CONTENT_MISSION> RESULTS - {} --------------", __func__));
   #endif // !RELEASE
@@ -2164,7 +2165,7 @@ RandomEngine::gen_prepare_random_mission_based_on_leg_nodes_in_template(IXMLNode
   {
     // add to inventories
     if (!nav.fpln_xml_inv_node.isEmpty())
-      nav.fpln_xml_inv_node = this->xInventoris.addChild(nav.fpln_xml_inv_node);
+      nav.fpln_xml_inv_node = this->xInventories.addChild(nav.fpln_xml_inv_node);
   }
 
 
@@ -2175,7 +2176,7 @@ RandomEngine::gen_prepare_random_mission_based_on_leg_nodes_in_template(IXMLNode
   Log::logMsgThread(fmt::format("TRIGGERS:\n{}\n", Utils::xml_get_node_content_as_text(this->xTriggers)));
   Log::logMsgThread(fmt::format("OBJECTIVES:\n{}\n", Utils::xml_get_node_content_as_text(this->xObjectives)));
   Log::logMsgThread(fmt::format("FLIGHT LEGS:\n{}\n", Utils::xml_get_node_content_as_text(this->xFlightLegs)));
-  Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventoris)));
+  Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventories)));
   Log::logMsgThread(fmt::format("GPS:\n{}\n", Utils::xml_get_node_content_as_text(this->xGPS)));
   Log::logMsgThread(fmt::format("-------------- END <CONTENT_MISSION> RESULTS - {} --------------", __func__));
   #endif // !RELEASE
@@ -2521,6 +2522,23 @@ RandomEngine::gen_get_rw_metadata(const std::string& in_icao, int& out_rw_count,
   } // end if database is open
 
   return false;
+}
+
+// -----------------------------------
+
+void RandomEngine::gen_set_llm_payloads(const structs::MissionPayloads& in_llm_payloads, IXMLNode& in_global_setting_node){
+  // make sure we have access to the base weight node
+  auto xBaseWeights_ptr = in_global_setting_node.getChildNode ( mxconst::get_ELEMENT_BASE_WEIGHTS_KG().c_str ());
+  if ( !xBaseWeights_ptr.isEmpty () && (in_llm_payloads.fuel_kg * in_llm_payloads.payload_kg > 0.0f) )
+  {
+
+    // set the global_settings weight sub node
+    Utils::xml_set_attribute_in_node<float> ( xBaseWeights_ptr, mxconst::get_OPT_STORAGE_BASE_WEIGHT(), in_llm_payloads.payload_kg, xBaseWeights_ptr.getName() );
+    Utils::xml_set_attribute_in_node<float> ( xBaseWeights_ptr, mxconst::get_OPT_FUEL_BASE_WEIGHT(), in_llm_payloads.fuel_kg, xBaseWeights_ptr.getName() );
+    Utils::xml_set_attribute_in_node<float> ( xBaseWeights_ptr, mxconst::get_OPT_PILOT_BASE_WEIGHT(), 0.0f, xBaseWeights_ptr.getName() );
+    Utils::xml_set_attribute_in_node<float> ( xBaseWeights_ptr, mxconst::get_OPT_PASSENGERS_BASE_WEIGHT(), 0.0f, xBaseWeights_ptr.getName() );
+  }
+
 }
 
 
@@ -3102,6 +3120,9 @@ RandomEngine::writeTargetFile()
     RandomEngine::setError(fmt::format("[{}] Failed to read current X-Plane weather information.", __func__) );
   }
   missionx::data_manager::add_advanceSettingsDateTime_and_Weather_to_node(this->xGlobalSettings, missionx::data_manager::prop_userDefinedMission_ui.node, missionx::RandomEngine::current_weather_datarefs_s);
+  // v26.09.2 apply ai payloads and override user preferences
+  if (data_manager::strct_ui_share_data.strct_llm_suggested_payloads.is_valid())
+    gen_set_llm_payloads(data_manager::strct_ui_share_data.strct_llm_suggested_payloads, this->xGlobalSettings);
 
   // ---------------------------------------------------------------------
   // v3.0.255.3 test validity of 3D Objects. Inject warning into Briefer
@@ -3155,7 +3176,7 @@ RandomEngine::writeTargetFile()
   xTargetTopNode.addChild(xMessages);
   Utils::add_xml_comment(xTargetTopNode);
 
-  xTargetTopNode.addChild(xInventoris); // v3.0.219.7
+  xTargetTopNode.addChild(xInventories); // v3.0.219.7
   Utils::add_xml_comment(xTargetTopNode);
 
   xTargetTopNode.addChild(x3DObjTemplate);
@@ -4116,7 +4137,8 @@ RandomEngine::gen_prepare_mission_based_on_databaseflightplan_site(IXMLNode& in_
   // ----------------------------
   // add Briefer description
   // ----------------------------
-  gen_briefer_phase_03_add_desc(navaid_targets, false);
+  // gen_briefer_phase_03_add_desc(navaid_targets, false);
+  gen_briefer_phase_03_add_desc_ai (navaid_targets, false);
   this->xBriefer = navaid_targets[0].fpln_xml_target_leg_node.deepCopy();
 
   // v25.10.1 Add Cold and dark
@@ -4136,7 +4158,7 @@ RandomEngine::gen_prepare_mission_based_on_databaseflightplan_site(IXMLNode& in_
   {
     // add to inventories
     if (!nav.fpln_xml_inv_node.isEmpty())
-      nav.fpln_xml_inv_node = this->xInventoris.addChild(nav.fpln_xml_inv_node);
+      nav.fpln_xml_inv_node = this->xInventories.addChild(nav.fpln_xml_inv_node);
   }
 
   #ifdef DEBUG_GENERATED_CONTENT
@@ -4146,7 +4168,7 @@ RandomEngine::gen_prepare_mission_based_on_databaseflightplan_site(IXMLNode& in_
   Log::logMsgThread(fmt::format("TRIGGERS:\n{}\n", Utils::xml_get_node_content_as_text(this->xTriggers)));
   Log::logMsgThread(fmt::format("OBJECTIVES:\n{}\n", Utils::xml_get_node_content_as_text(this->xObjectives)));
   Log::logMsgThread(fmt::format("FLIGHT LEGS:\n{}\n", Utils::xml_get_node_content_as_text(this->xFlightLegs)));
-  Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventoris)));
+  Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventories)));
   Log::logMsgThread(fmt::format("GPS:\n{}\n", Utils::xml_get_node_content_as_text(this->xGPS)));
   Log::logMsgThread(fmt::format("-------------- END <CONTENT_MISSION> RESULTS - {} --------------", __func__));
   #endif // !RELEASE
@@ -4402,7 +4424,8 @@ RandomEngine::gen_prepare_mission_based_on_ils_search(IXMLNode& in_xTemplateNode
   // ----------------------------
   // add Briefer description
   // ----------------------------
-  gen_briefer_phase_03_add_desc(navaid_targets, false);
+  // gen_briefer_phase_03_add_desc(navaid_targets, false);
+  gen_briefer_phase_03_add_desc_ai (navaid_targets, false);
   this->xBriefer = navaid_targets[0].fpln_xml_target_leg_node.deepCopy();
 
   // v25.10.1 Add Cold and dark
@@ -4417,11 +4440,11 @@ RandomEngine::gen_prepare_mission_based_on_ils_search(IXMLNode& in_xTemplateNode
   }
 
   // Add all inventories to the global xInventories node
-  for (auto& [key, nav] : navaid_targets)
+  for (auto& nav : navaid_targets | std::views::values)
   {
     // add to inventories
     if (!nav.fpln_xml_inv_node.isEmpty())
-      nav.fpln_xml_inv_node = this->xInventoris.addChild(nav.fpln_xml_inv_node);
+      nav.fpln_xml_inv_node = this->xInventories.addChild(nav.fpln_xml_inv_node);
   }
 
   #ifdef DEBUG_GENERATED_CONTENT
@@ -4431,10 +4454,10 @@ RandomEngine::gen_prepare_mission_based_on_ils_search(IXMLNode& in_xTemplateNode
   Log::logMsgThread(fmt::format("TRIGGERS:\n{}\n", Utils::xml_get_node_content_as_text(this->xTriggers)));
   Log::logMsgThread(fmt::format("OBJECTIVES:\n{}\n", Utils::xml_get_node_content_as_text(this->xObjectives)));
   Log::logMsgThread(fmt::format("FLIGHT LEGS:\n{}\n", Utils::xml_get_node_content_as_text(this->xFlightLegs)));
-  Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventoris)));
+  Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventories)));
   Log::logMsgThread(fmt::format("GPS:\n{}\n", Utils::xml_get_node_content_as_text(this->xGPS)));
   Log::logMsgThread(fmt::format("-------------- END <CONTENT_MISSION> RESULTS - {} --------------", __func__));
-  #endif // !RELEASE
+  #endif // !DEBUG_GENERATED_CONTENT
 
   return out_func_result; // should be true
 }
@@ -4737,7 +4760,8 @@ RandomEngine::gen_prepare_mission_based_on_user_fpln_or_simbrief(IXMLNode& in_xT
   // ----------------------------
   // add Briefer description
   // ----------------------------
-  gen_briefer_phase_03_add_desc(navaid_targets, false);
+  // gen_briefer_phase_03_add_desc(navaid_targets, false);
+  gen_briefer_phase_03_add_desc_ai (navaid_targets, false);
   this->xBriefer = navaid_targets[0].fpln_xml_target_leg_node.deepCopy();
 
   // v25.10.1 Add Cold and dark
@@ -4755,7 +4779,7 @@ RandomEngine::gen_prepare_mission_based_on_user_fpln_or_simbrief(IXMLNode& in_xT
   {
     // add to inventories
     if (!nav.fpln_xml_inv_node.isEmpty())
-      nav.fpln_xml_inv_node = this->xInventoris.addChild(nav.fpln_xml_inv_node);
+      nav.fpln_xml_inv_node = this->xInventories.addChild(nav.fpln_xml_inv_node);
   }
 
   #ifdef DEBUG_GENERATED_CONTENT
@@ -4765,7 +4789,7 @@ RandomEngine::gen_prepare_mission_based_on_user_fpln_or_simbrief(IXMLNode& in_xT
   Log::logMsgThread(fmt::format("TRIGGERS:\n{}\n", Utils::xml_get_node_content_as_text(this->xTriggers)));
   Log::logMsgThread(fmt::format("OBJECTIVES:\n{}\n", Utils::xml_get_node_content_as_text(this->xObjectives)));
   Log::logMsgThread(fmt::format("FLIGHT LEGS:\n{}\n", Utils::xml_get_node_content_as_text(this->xFlightLegs)));
-  Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventoris)));
+  Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventories)));
   Log::logMsgThread(fmt::format("GPS:\n{}\n", Utils::xml_get_node_content_as_text(this->xGPS)));
   Log::logMsgThread(fmt::format("-------------- END <CONTENT_MISSION> RESULTS - {} --------------", __func__));
   #endif // !RELEASE
@@ -5968,7 +5992,7 @@ RandomEngine::gen_briefer_phase_03_add_desc(std::map<int, NavAidInfo>& inout_tar
 
 // -----------------------------------
 
-void RandomEngine::gen_briefer_phase_03_add_desc_ai(std::map<int, NavAidInfo>& inout_targets, bool flag_has_wet_target)
+void RandomEngine::gen_briefer_phase_03_add_desc_ai(std::map<int, NavAidInfo>& inout_targets, const bool flag_has_wet_target)
 {
   // FYI:
   // in_osm_na_targets[0] = briefer
@@ -6024,9 +6048,9 @@ void RandomEngine::gen_briefer_phase_03_add_desc_ai(std::map<int, NavAidInfo>& i
                          "Therefore, you must only refer to the first two waypoints: the starting point and the waypoint immediately after it. "
                          "Do not reveal or refer to any subsequent waypoints.";
 
-    mission_outline += "\nConsider dark times between: 21:00 and 05:30, or 09:00 PM and 05:30 AM "
-                       "\nMake sure the description takes the flight time into consideration. "
-                       "For example, if the flight takes place at night, a scenic or sightseeing flight would generally not make sense. "
+    mission_outline += "\nTreat 21:00–05:30 as nighttime when using the 24-hour clock, or 09:00 PM–05:30 AM when using the 12-hour clock."
+                       "\nMake sure the description takes the flight time into consideration in terms of night or day. You must not estimate the enroute time. "
+                       "For example, if the flight takes place at night, a scenic or sightseeing flight would generally not make any sense. "
                        "\nAdjust the description accordingly so that it remains realistic and contextually appropriate, unless a deliberately comic description is intended.";
 
     // Add water body information
@@ -6036,6 +6060,72 @@ void RandomEngine::gen_briefer_phase_03_add_desc_ai(std::map<int, NavAidInfo>& i
     if (!data_manager::get_acf_icao().empty())
       mission_outline += fmt::format("\nAirplane code: {}", data_manager::get_acf_icao());
     mission_outline += fmt::format("\nAirplane active plane filename: {}", data_manager::get_acf());
+
+    // fuel and payload suggestion
+    const auto act_picked_s = data_manager::strct_ui_share_data.map_llm_requests_messages[llm_category::activity_picked.data()];
+    if (mxUtils::is_digits(act_picked_s))
+    {
+      auto act_enum = static_cast<enums::mx_semi_activities_enum>(mxUtils::stringToNumber<int>(act_picked_s));
+      if (data_manager::strct_ui_share_data.flag_llm_add_fuel_and_weight_payloads && act_enum <= enums::mx_semi_activities_enum::act_jets && act_enum >= enums::mx_semi_activities_enum::act_props)
+      {
+        if (dataref_manager::strct_plane_base_info.plane_max_gross_weight_f_and_p_kg > 0.0)
+        {
+          mission_outline += '\n';
+          mission_outline += fmt::format(R"(At the end of the description, add the payload and fuel suggestions using the exact format below.
+
+Do not add any text before or after the suggestion block.
+
+--llm_suggest_payloads--
+fuel: <suggested fuel weight in kg>
+payload: <suggested carry payload excluding fuel in kg>
+combined fuel + payload: <fuel + payload in kg>
+--llm_end_suggested_payloads--
+
+Use numeric values for all weights. Do not include units such as "kg" or "lbs" in the values.
+
+Current aircraft weight statistics:
+Empty aircraft weight: {:.2f} kg.
+Maximum fuel weight: {:.2f} kg.
+Fuel endurance: {:.2f} hours.
+Plane max speed: {:.2f} kias.
+Maximum carry payload: {:.2f} kg.
+Maximum gross weight: {:.2f} kg.
+
+Carry payload means the total weight of the pilot, passengers, staff, cargo, baggage, and other items carried by the aircraft, excluding fuel.
+
+Fuel:
+Suggest a reasonable total fuel load in kg based on the mission and flight activity. Always keep an appropriate amount of fuel available as a reserve for a go-around.
+The suggested fuel must not exceed the maximum fuel weight and you need to take into consideration the fuel endurance.
+
+Payload:
+Suggest a reasonable carry payload in kg, excluding fuel. 
+Consider the mission and the type of activity when determining the payload. 
+Assume the pilot weighs approximately 70–120 kg, then add the estimated weight of any passengers, staff, cargo, or other payload as appropriate.
+
+Vary the carry payload according to the mission and activity. Do not fill the aircraft to its maximum carry payload. Use a lighter payload when the mission does not require a full load.
+
+If a background story was requested, consider including the names of staff or other personnel who may be loaded onto the aircraft. There is no need to mention or estimate their individual weights.
+
+Combined fuel + payload:
+Calculate this value by adding the suggested fuel and suggested payload values. Do not independently estimate this value.
+
+Make sure that:
+- payload does not exceed the maximum carry payload.
+- empty aircraft weight + fuel + payload does not exceed the maximum gross weight.
+- fuel does not exceed the maximum fuel weight.
+- all three suggested values are consistent with each other.
+)",
+            dataref_manager::strct_plane_base_info.plane_empty_weight_kg
+            , dataref_manager::strct_plane_base_info.plane_max_fuel_weight_kg
+            , dataref_manager::strct_plane_base_info.plane_estimated_fuel_endurance_hours
+            , dataref_manager::strct_plane_base_info.plane_max_speed_vno
+            , dataref_manager::strct_plane_base_info.plane_max_payload_kg - 10.0 // reduce 10 kg to be on the safe side.
+            , dataref_manager::strct_plane_base_info.plane_max_gross_weight_f_and_p_kg
+            
+          ); // end payload instructions
+        }
+      }
+    }
 
     // prepare curl request info
     missionx::structs::curl_request_data curl_conn_data = data_manager::get_llm_user_setup_info_to_use_with_curl(); 
@@ -6047,7 +6137,13 @@ void RandomEngine::gen_briefer_phase_03_add_desc_ai(std::map<int, NavAidInfo>& i
       // nlohmann::json j = nlohmann::json::parse(ai_request_result.string_value);
       auto json_description = Utils::json_extract_by_path(ai_request_result.string_value, "/choices/0/message/content");
       if (json_description.result)
+      {
         ai_llm_description_s = mxUtils::trim ( mxUtils::remove_non_ascii( json_description.string_value, true ) );
+        // extruct payload based on llm suggestion
+        data_manager::strct_ui_share_data.strct_llm_suggested_payloads.reset();
+        if (auto payloads = Utils::extract_llm_payloads (ai_llm_description_s))
+          data_manager::strct_ui_share_data.strct_llm_suggested_payloads = *payloads; // used later in "write_targets_to_file()"
+      }
     }
   }
 
@@ -6080,7 +6176,7 @@ void RandomEngine::gen_briefer_phase_03_add_desc_ai(std::map<int, NavAidInfo>& i
 
 
   // v25.09.2 use the description from the <briefer_and_start_location>
-  std::string briefer_desc = mxUtils::trim(inout_targets[0].fpln_expected_location_data.desc, "");
+  std::string briefer_desc = mxUtils::trim(inout_targets[0].fpln_expected_location_data.desc, ai_llm_description_s);
 
   // v25.10.1 check if the raw node has a <desc> element with description text. We use the same technique in "gen_leg_description()" function
   if (briefer_desc.empty())
@@ -6094,7 +6190,7 @@ void RandomEngine::gen_briefer_phase_03_add_desc_ai(std::map<int, NavAidInfo>& i
   // v26.08.1 should we inject the LLM description ?
   bool flag_generated_using_llm = false;
   const auto uiLayer = data_manager::getGeneratedFromLayer();
-  if (uiLayer == uiLayer_enum::option_user_generates_a_mission_layer && !ai_llm_description_s.empty())
+  if (!ai_llm_description_s.empty())
   {
     briefer_desc = ai_llm_description_s;
     flag_generated_using_llm = true;
@@ -8246,7 +8342,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
   for (auto& nav : navaid_targets | std::views::values)
   {
     // add to inventories
-    nav.fpln_xml_inv_node = this->xInventoris.addChild(nav.fpln_xml_inv_node);
+    nav.fpln_xml_inv_node = this->xInventories.addChild(nav.fpln_xml_inv_node);
   }
 
 //#define DEBUG_GENERATED_CONTENT
@@ -8257,7 +8353,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
   // Log::logMsgThread(fmt::format("TRIGGERS:\n{}\n", Utils::xml_get_node_content_as_text(this->xTriggers)));
   // Log::logMsgThread(fmt::format("OBJECTIVES:\n{}\n", Utils::xml_get_node_content_as_text(this->xObjectives)));
   // Log::logMsgThread(fmt::format("FLIGHT LEGS:\n{}\n", Utils::xml_get_node_content_as_text(this->xFlightLegs)));
-  // Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventoris)));
+  // Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventories)));
   // Log::logMsgThread(fmt::format("GPS:\n{}\n", Utils::xml_get_node_content_as_text(this->xGPS)));
   Log::logMsgThread(fmt::format("-------------- END RESULTS - {} --------------", __func__));
   #endif // DEBUG_GENERATED_CONTENT
@@ -8596,7 +8692,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
 //   for (auto& nav : navaid_targets | std::views::values)
 //   {
 //     // add to inventories
-//     nav.fpln_xml_inv_node = this->xInventoris.addChild(nav.fpln_xml_inv_node);
+//     nav.fpln_xml_inv_node = this->xInventories.addChild(nav.fpln_xml_inv_node);
 //   }
 //
 // //#define DEBUG_GENERATED_CONTENT
@@ -8607,7 +8703,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
 //   // Log::logMsgThread(fmt::format("TRIGGERS:\n{}\n", Utils::xml_get_node_content_as_text(this->xTriggers)));
 //   // Log::logMsgThread(fmt::format("OBJECTIVES:\n{}\n", Utils::xml_get_node_content_as_text(this->xObjectives)));
 //   // Log::logMsgThread(fmt::format("FLIGHT LEGS:\n{}\n", Utils::xml_get_node_content_as_text(this->xFlightLegs)));
-//   // Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventoris)));
+//   // Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventories)));
 //   // Log::logMsgThread(fmt::format("GPS:\n{}\n", Utils::xml_get_node_content_as_text(this->xGPS)));
 //   Log::logMsgThread(fmt::format("-------------- END RESULTS - {} --------------", __func__));
 //   #endif // DEBUG_GENERATED_CONTENT
@@ -8818,7 +8914,7 @@ RandomEngine::gen_prepare_mission_based_on_oilrig(IXMLNode& inRootTemplate, IXML
   for (auto& nav : navaid_targets | std::views::values)
   {
     // add to inventories
-    nav.fpln_xml_inv_node = this->xInventoris.addChild(nav.fpln_xml_inv_node);
+    nav.fpln_xml_inv_node = this->xInventories.addChild(nav.fpln_xml_inv_node);
   }
 
 
@@ -8829,7 +8925,7 @@ RandomEngine::gen_prepare_mission_based_on_oilrig(IXMLNode& inRootTemplate, IXML
   Log::logMsgThread(fmt::format("TRIGGERS:\n{}\n", Utils::xml_get_node_content_as_text(this->xTriggers)));
   Log::logMsgThread(fmt::format("OBJECTIVES:\n{}\n", Utils::xml_get_node_content_as_text(this->xObjectives)));
   Log::logMsgThread(fmt::format("FLIGHT LEGS:\n{}\n", Utils::xml_get_node_content_as_text(this->xFlightLegs)));
-  Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventoris)));
+  Log::logMsgThread(fmt::format("Inventories:\n{}\n", Utils::xml_get_node_content_as_text(this->xInventories)));
   Log::logMsgThread(fmt::format("GPS:\n{}\n", Utils::xml_get_node_content_as_text(this->xGPS)));
   Log::logMsgThread(fmt::format("-------------- END OIL-RIG RESULTS - {} --------------", __func__));
   #endif // DEBUG_GENERATED_CONTENT
@@ -10153,7 +10249,7 @@ PICK_OSM_CHILD_NODE:
                 outNavAid.setName(value);
 
               if (!value.empty())
-                outNavAid.loc_desc = value;
+                outNavAid.loc_desc = value; 
             }
             else if (key == keydesc_s || key == "amenity") // There is duplications but it provides safety net
             {

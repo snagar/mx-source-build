@@ -74,6 +74,12 @@ TimerFunc::init(const std::string& inFilename, const std::string &inSourceFuncNa
 
   seq = ++Utils::seqTimerFunc;
 }
+// -------------------------------------------
+
+// std::optional<structs::MissionPayloads> extract_llm_payloads(std::string_view response_text)
+// {
+//
+// }
 
 // -------------------------------------------
 
@@ -3762,6 +3768,73 @@ Utils::clone_xml_vector (std::vector<IXMLNode> in_vec)
     vec_target.push_back(n.deepCopy ());
 
   return vec_target;
+}
+
+// -------------------------------------------
+
+std::optional<structs::MissionPayloads>
+Utils::extract_llm_payloads(std::string_view response_text)
+{
+  constexpr std::string_view start_marker = "--llm_suggest_payloads--";
+  constexpr std::string_view end_marker   = "--llm_end_suggested_payloads--";
+
+  // 1. Find block boundaries
+  auto start_pos = response_text.find(start_marker);
+  auto end_pos   = response_text.find(end_marker);
+
+  if (start_pos == std::string_view::npos || end_pos == std::string_view::npos || end_pos <= start_pos) {
+    return std::nullopt;
+  }
+
+  start_pos += start_marker.length();
+  std::string_view block = response_text.substr(start_pos, end_pos - start_pos);
+
+  structs::MissionPayloads result{};
+
+  // 2. Process block line by line
+  while (!block.empty()) {
+    auto line_end = block.find('\n');
+
+    std::string_view line = (line_end == std::string_view::npos) ? block : block.substr(0, line_end);
+
+    // Advance block buffer
+    block = (line_end == std::string_view::npos) ? "" : block.substr(line_end + 1);
+
+    line = mxUtils::trim_view (line);
+    if (line.empty()) continue;
+
+    // 3. Split line by ':'
+    auto colon1 = line.find(':');
+    if (colon1 == std::string_view::npos) 
+      continue;
+
+    //auto colon2 = line.find(':', colon1 + 1);
+    //if (colon2 == std::string_view::npos) 
+    //  continue;
+
+    // Extract 3 parts: [Key] : [KG Part] : [LBS Part]
+    std::string_view key      = mxUtils::trim_view(line.substr(0, colon1));
+    std::string_view kg_part  = mxUtils::trim_view(line.substr(colon1 + 1)); // from colon1+1 until the end
+    //std::string_view kg_part  = mxUtils::trim_view(line.substr(colon1 + 1, colon2 - colon1 - 1));
+    //std::string_view lbs_part = mxUtils::trim_view(line.substr(colon2 + 1));
+
+    auto kg  = mxUtils::stringToNumber<float>(kg_part.data(), kg_part.length());
+    //auto lbs = mxUtils::stringToNumber<float>(lbs_part.data(), lbs_part.length());
+
+    // 4. Assign to struct based on key
+    if (key == "fuel") {
+      result.fuel_kg  = kg;
+      result.fuel_lbs = kg * missionx::kg2lbs;
+    } else if (key == "payload") {
+      result.payload_kg  = kg;
+      result.payload_lbs = kg * missionx::kg2lbs;      
+    } else if (key == "combined fuel + payload" || key == "combined") {
+      result.combined_kg  = kg;
+      result.combined_lbs = kg * missionx::kg2lbs;
+    }
+  }
+
+  return result;
 }
 
 // -------------------------------------------

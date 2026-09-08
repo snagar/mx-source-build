@@ -16,6 +16,8 @@ Point          missionx::dataref_manager::planePoint;
 Point          missionx::dataref_manager::cameraPoint;
 XPLMDataTypeID missionx::dataref_manager::dataRefType;
 float          missionx::dataref_manager::fps = 0.0f;
+missionx::structs::def_strct_plane_base_info missionx::dataref_manager::strct_plane_base_info;
+
 
   float
   dataref_manager::getAirspeed()
@@ -125,6 +127,122 @@ float          missionx::dataref_manager::fps = 0.0f;
     XPLMSetDatad(dm.dref_local_y_d, y);
     XPLMSetDatad(dm.dref_local_z_d, z);
   }
+
+
+  std::string dataref_manager::get_plane_icao() 
+  { 
+
+    XPLMDataRef drICAO = XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
+    if (drICAO != nullptr)
+    {
+      char buffer[64];
+      // XPLMGetDatab is used for string (byte array) datarefs
+      const int length = XPLMGetDatab(drICAO, buffer, 0, sizeof(buffer));
+      if (length > 0)
+        return {buffer};
+        // return std::string(buffer, length);
+    }
+
+    return {};
+  }
+
+  void dataref_manager::gather_active_acf_base_info_for_llm() 
+  { 
+    dataref_manager::strct_plane_base_info.plane_max_gross_weight_f_and_p_kg = dataref_manager::get_acf_m_max_currentMaxPlaneAllowedWeightK(); // max total payload allowed
+    dataref_manager::strct_plane_base_info.plane_empty_weight_kg             = XPLMGetDataf(missionx::drefConst.dref_acf_m_empty_weight); // current plane empty weight
+    dataref_manager::strct_plane_base_info.plane_max_fuel_weight_kg          = XPLMGetDataf(missionx::drefConst.dref_acf_m_fuel_tot_lbs) * lbs2kg; // max allowed fuel. converted from lbs to kg
+    dataref_manager::strct_plane_base_info.plane_max_speed_vno               = XPLMGetDataf(missionx::drefConst.dref_acf_vno_f); // max allowed cruise speed
+
+    dataref_manager::strct_plane_base_info.plane_current_total_weight_kg = XPLMGetDataf(missionx::drefConst.dref_m_total_f); // current total weight: fuel+payload
+    dataref_manager::strct_plane_base_info.plane_max_payload_kg          = dataref_manager::strct_plane_base_info.plane_max_gross_weight_f_and_p_kg - dataref_manager::strct_plane_base_info.plane_max_fuel_weight_kg - dataref_manager::strct_plane_base_info.plane_empty_weight_kg;
+
+    dataref_manager::strct_plane_base_info.plane_estimated_fuel_endurance_hours = CalculateEstimatedFuelTimeHours();
+  }
+
+float dataref_manager::CalculateEstimatedFuelTimeHours()
+{
+    constexpr float POWER_ESTIMATE = 0.70f;
+    constexpr int MAX_NUM_OF_ENGINES = 16;
+    XPLMDataRef numEnginesRef = XPLMFindDataRef("sim/aircraft/engine/acf_num_engines");
+    XPLMDataRef pMaxRef = XPLMFindDataRef("sim/aircraft/engine/acf_pmax_per_engine");
+    // XPLMDataRef tMaxRef = XPLMFindDataRef("sim/aircraft/engine/acf_tmax");
+    XPLMDataRef tMaxRef = XPLMFindDataRef("sim/aircraft/engine/acf_tmax_per_engine");
+    XPLMDataRef clutchRef = XPLMFindDataRef("sim/aircraft/artstability/acf_has_clutch");
+    XPLMDataRef fuelWeightRef = XPLMFindDataRef("sim/flightmodel/weight/m_fuel");
+
+    const auto totalFuelKg = XPLMGetDataf(missionx::drefConst.dref_acf_m_fuel_tot_lbs) * lbs2kg;
+
+    Log::logMsgThread(fmt::format("[{}] FFFF plane max fuel: {:.2f} FFFF\n", __func__, totalFuelKg));
+
+    if (!numEnginesRef || !fuelWeightRef) return 0.0f;
+
+    const int numEngines = XPLMGetDatai(numEnginesRef);
+    if (numEngines <= 0) return 0.0f;
+
+    if (totalFuelKg <= 0.0f) return 0.0f;
+
+    const bool isHelicopter = clutchRef ? (XPLMGetDatai(clutchRef) != 0) : false;
+    float fuelFlowKgPerSec = 0.0f;
+
+    // 1. Check for Power-based engines (Pistons, Turboprops, Helicopters)
+    if (pMaxRef) {
+        float pMaxPerEngine[MAX_NUM_OF_ENGINES] = {0.0f};
+        XPLMGetDatavf(pMaxRef, pMaxPerEngine, 0, MAX_NUM_OF_ENGINES);
+
+        float totalPowerWatts = 0.0f;
+        for (int i = 0; i < numEngines && i < MAX_NUM_OF_ENGINES; ++i) {
+            totalPowerWatts += pMaxPerEngine[i];
+        }
+
+        if (totalPowerWatts > 0.0f) {
+            if (isHelicopter) {
+                // Helicopters demand higher average power for rotor management (~75%)
+                const float cruisePowerWatts = totalPowerWatts * 0.75f;
+                constexpr float turboshaftSfc = 0.00000010f;
+                fuelFlowKgPerSec = cruisePowerWatts * turboshaftSfc;
+            } else {
+                // Standard Props / Turboprops (~65-70% cruise power)
+                const float cruisePowerWatts = totalPowerWatts * 0.68f;
+                constexpr float propSfc = 0.00000008f;
+                fuelFlowKgPerSec = cruisePowerWatts * propSfc;
+            }
+        }
+    }
+
+    // 2. Fall back to Thrust-based engines (Jets / Turbofans) if power is zero
+    if (fuelFlowKgPerSec <= 0.0f && tMaxRef) {
+      float tMaxPerEngine[16] = {0.0f};
+      XPLMGetDatavf(tMaxRef, tMaxPerEngine, 0, 16);
+
+      float totalThrustNewtons = 0.0f;
+      for (int i = 0; i < numEngines && i < 16; ++i) {
+        totalThrustNewtons += tMaxPerEngine[i];
+      }
+
+      if (totalThrustNewtons > 0.0f) {
+        // Update the jet fuel flow calculation using this calibrated coefficient
+        // to match X-Plane's native 3.15-hour baseline estimation:
+        constexpr float correctedJetSfc = 0.00000325f;
+        fuelFlowKgPerSec = totalThrustNewtons * correctedJetSfc;
+      }
+    }
+
+    // Ultimate safety fallback
+    if (fuelFlowKgPerSec <= 0.0f) {
+        fuelFlowKgPerSec = 0.04f;
+    }
+
+    #ifndef RELEASE
+    auto debug_calc_result = (totalFuelKg / fuelFlowKgPerSec) / 3600.0f;
+    #endif
+
+    return (totalFuelKg / fuelFlowKgPerSec) / 3600.0f;
+    // const auto totalFuelKg = max_fuel_f;
+    // const float totalSeconds = totalFuelKg / fuelFlowKgPerSec;
+    //
+    // return totalSeconds / 3600.0f; // Returns estimated endurance in hours
+}
+
 
 } // namespace missionx
 
