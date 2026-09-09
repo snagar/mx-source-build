@@ -967,12 +967,12 @@ std::string missionx::data_manager::get_mission_outline_base(const std::unordere
                         {
                           // C++17 structured binding (or use item.first and item.second)
                           const auto& [key, value] = item;
-                          if (key != llm_category::activity_picked) // skip this category
+                          if (key != llm_category::activity_number_picked) // skip this category
                             oss << key << ": " << value << "\n";
                         });
 
   // Add time data based on advanced settings
- const auto day_in_year_i   = data_manager::prop_userDefinedMission_ui.getAttribNumericValue<int>(mxconst::get_PROP_STARTING_DAY(), -1);
+  const auto day_in_year_i   = data_manager::prop_userDefinedMission_ui.getAttribNumericValue<int>(mxconst::get_PROP_STARTING_DAY(), -1);
   const std::string starting_hour    = Utils::readAttrib(data_manager::prop_userDefinedMission_ui.node,   mxconst::get_PROP_STARTING_HOUR(), "");
   const std::string starting_minutes = Utils::readAttrib(data_manager::prop_userDefinedMission_ui.node,   mxconst::get_PROP_STARTING_MINUTE(), "");
   if (day_in_year_i >= 0)
@@ -1106,8 +1106,26 @@ void data_manager::ensure_missionx_random_folder_exists()
     Log::log_xplm_debug_string ( fmt::format("!! [{}] Filesystem error: {}\n\n", __func__, e.what() ) );
   }
 
-};
+}
 
+// -------------------------------------
+
+std::string data_manager::translatePlaneTypeToString(mx_plane_types_enum in_plane_type){
+  if (mapPlaneEnumToStringTypes.contains( in_plane_type))
+    return mapPlaneEnumToStringTypes[in_plane_type];
+
+  return ""; // v3.0.253.1 this->mapPlaneEnumToStringTypes[in_plane_type]; // should return empty string
+
+}
+
+// -------------------------------------
+
+missionx::mx_plane_types_enum data_manager::translatePlaneTypeToEnum(const std::string& in_plane_type){
+  if ( mapPlaneStringTypesToEnum.contains( in_plane_type))
+    return mapPlaneStringTypesToEnum[in_plane_type];
+
+  return mapPlaneStringTypesToEnum[EMPTY_STRING]; // should return any
+};
 
 // -------------------------------------
 
@@ -8751,99 +8769,82 @@ data_manager::find_and_read_template_file (const std::string &inFileName)
 }
 
 // -------------------------------------
-
-void 
-missionx::data_manager::set_acf(const missionx::structs::def_strct_acf_info& in_acf_info) 
-{
-  const auto temp_acf_info = missionx::data_manager::active_acf_info;
-
-  // assign the new acf_info
-  missionx::data_manager::active_acf_info = in_acf_info;
-
-  // store the prev acf based on the prev active plane
-  missionx::data_manager::active_acf_info.prev_acf = temp_acf_info.active_acf;
-}
-
-// -------------------------------------
-
-std::string
-missionx::data_manager::get_acf() { return data_manager::active_acf_info.active_acf; }
+//
+// void
+// missionx::data_manager::set_acf(const missionx::structs::def_strct_acf_info& in_acf_info)
+// {
+//   const auto temp_acf_info = missionx::data_manager::active_acf_info;
+//
+//   // assign the new acf_info
+//   missionx::data_manager::active_acf_info = in_acf_info;
+//
+//   // store the prev acf based on the prev active plane
+//   missionx::data_manager::active_acf_info.prev_acf = temp_acf_info.active_acf;
+// }
 
 // -------------------------------------
 
-std::string 
-missionx::data_manager::get_acf_icao() { return data_manager::active_acf_info.active_acf_icao; }
+structs::def_strct_acf_info data_manager::get_current_acf(){ return data_manager::active_acf_info; }
 
 // -------------------------------------
 
 void data_manager::trigger_acf_change()
 {
-  auto acf_info = missionx::data_manager::get_current_acf();
+  missionx::data_manager::acf_refresh_info();
 
-  // if ( acf_info.size() > 1 &&  fmt::format("{}", acf_info.at(0)) != data_manager::active_acf)
-  // if (!acf_info.active_acf.empty() && !acf_info.active_acf_path.empty() && acf_info.active_acf != missionx::data_manager::active_acf_info.active_acf)
-  if (!acf_info.active_acf.empty() && !acf_info.active_acf_path.empty() && acf_info.active_acf != missionx::data_manager::active_acf_info.active_acf)
+  if (!data_manager::active_acf_info.active_acf.empty()
+      && !data_manager::active_acf_info.active_acf_path.empty()
+      && data_manager::active_acf_info.prev_acf != missionx::data_manager::active_acf_info.active_acf)
   {
     // also calls get_plane_icao() and set_acf()
-    data_manager::set_active_acf_and_gather_info();
+    data_manager::acf_gather_cargo_info();
   }
 }
 
 // -------------------------------------
 
-missionx::structs::def_strct_acf_info
-data_manager::get_current_acf()
+void
+data_manager::acf_refresh_info()
 {  
   char outFileName[512]{ 0 };
   char outPathAndFile[2048]{ 0 };
   XPLMGetNthAircraftModel ( XPLM_USER_AIRCRAFT, outFileName, outPathAndFile ); // we will only return the file name
 
   // v26.09.2
-  missionx::structs::def_strct_acf_info acf_info{.active_acf = outFileName, .active_acf_path = outPathAndFile, .active_acf_icao = missionx::dataref_manager::get_plane_icao()};
+  const auto prev_acf = active_acf_info.active_acf;
+  data_manager::active_acf_info = {.active_acf = outFileName, .active_acf_path = outPathAndFile, .active_acf_icao = missionx::dataref_manager::get_plane_icao(), .prev_acf = prev_acf};
  
   missionx::dataref_manager::gather_active_acf_base_info_for_llm();
 
-  return acf_info;
+  // return data_manager::active_acf_info;
 }
 
 
 // -------------------------------------
 
-// void
-// data_manager::set_active_acf_and_gather_info (const std::string &inFileName, const std::string &inFileNamePath)
-// {
-//   const missionx::structs::def_strct_acf_info acf_info{.active_acf = inFileName, .active_acf_path = inFileNamePath, .active_acf_icao = missionx::dataref_manager::get_plane_icao()};
-//
-//   #ifndef RELEASE
-//   Log::logMsg (fmt::format ("Gathering ACF: {} Information.", inFileName));
-//   #endif
-//   // store acf info
-//   data_manager::set_acf (acf_info);
-//
-//   missionx::Inventory::gather_acf_cargo_data (data_manager::mapInventories[mxconst::get_ELEMENT_PLANE ()], true);
-//   data_manager::dref_acf_station_max_kgs_f_arr.setAndInitializeKey ("sim/aircraft/weight/acf_m_station_max");
-//   missionx::dataref_param::set_dataref_values_into_xplane (data_manager::dref_m_stations_kgs_f_arr); // force original weight on the new plane
-//
-//   missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::gather_acf_custom_datarefs); // v3.303.13 make sure we will have the plane dataref information
-// }
 
-// -------------------------------------
-
-void data_manager::set_active_acf_and_gather_info()
+void data_manager::acf_gather_cargo_info()
 {
-  const missionx::structs::def_strct_acf_info acf_info = data_manager::get_current_acf();
+  // const missionx::structs::def_strct_acf_info acf_info = data_manager::acf_refresh_info();
 
-  #ifndef RELEASE
-  Log::logMsg (fmt::format ("Gathering ACF: {} Information.", acf_info.active_acf));
-  #endif
-  // store acf info
-  data_manager::set_acf (acf_info);
+  // #ifndef RELEASE
+  // Log::logMsg (fmt::format ("Gathering ACF: {} Information.", acf_info.active_acf));
+  // #endif
+  // // store acf info
+  // data_manager::set_acf (acf_info);
 
   missionx::Inventory::gather_acf_cargo_data (data_manager::mapInventories[mxconst::get_ELEMENT_PLANE ()], true);
   data_manager::dref_acf_station_max_kgs_f_arr.setAndInitializeKey ("sim/aircraft/weight/acf_m_station_max");
   missionx::dataref_param::set_dataref_values_into_xplane (data_manager::dref_m_stations_kgs_f_arr); // force original weight on the new plane
 
   missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::gather_acf_custom_datarefs); // v3.303.13 make sure we will have the plane dataref information
+}
+
+void
+data_manager::acf_refresh_and_gather_active_plane_information()
+{
+  data_manager::acf_refresh_info();
+  data_manager::acf_gather_cargo_info();
 }
 
 // -------------------------------------
@@ -10972,6 +10973,14 @@ data_manager::data_manager()
     };
 
     mission_file_supported_versions = lmbda_prepare_version_as_string();
+
+    // this line is to test against other compilers too.
+    mapPlaneEnumToStringTypes.clear();
+    for (auto& [key, value] : mapPlaneStringTypesToEnum)
+    {
+      mapPlaneEnumToStringTypes[value] = key; // for translation
+    }
+
 
 }
 

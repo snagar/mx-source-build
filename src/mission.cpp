@@ -1011,11 +1011,11 @@ missionx::Mission::START_MISSION()
     if (missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY)
     {
       // v26.09.2 deprecated code
-      // auto acf_info = missionx::data_manager::get_current_acf(); // get_current_acf also calls "set_acf()"
+      // auto acf_info = missionx::data_manager::acf_refresh_info(); // acf_refresh_info also calls "set_acf()"
       // assert(!acf_info.active_acf.empty() && !acf_info.active_acf_path.empty() && "Aircraft data does not contain the minimal needed, filename and path.");
 
       if (data_manager::missionState != missionx::mx_mission_state_enum::mission_loaded_from_savepoint) // mission_loaded_from_the_original_file
-        missionx::data_manager::set_active_acf_and_gather_info();
+        missionx::data_manager::acf_gather_cargo_info();
     }
 
     data_manager::dref_acf_station_max_kgs_f_arr.setAndInitializeKey("sim/aircraft/weight/acf_m_station_max");
@@ -4340,7 +4340,8 @@ missionx::Mission::flcPRE()
       case missionx::mx_flc_pre_command::gather_active_acf_info_for_llm:
       {
           // v26.09.2
-          missionx::dataref_manager::gather_active_acf_base_info_for_llm();
+          data_manager::acf_refresh_info();
+          // missionx::dataref_manager::gather_active_acf_base_info_for_llm();
       }
       break;
 
@@ -4352,7 +4353,8 @@ missionx::Mission::flcPRE()
           // v3.303.9.1 save ACF custom datarefs
           
           // v26.09.2 get current acf base info
-          missionx::structs::def_strct_acf_info acf_info = data_manager::get_current_acf();
+          data_manager::acf_refresh_info();
+          auto acf_info = data_manager::get_current_acf();
 
           missionx::data_manager::flag_abort_gather_acf_info_thread = false;
           missionx::data_manager::mFetchFutures.push_back(std::async(std::launch::async, missionx::data_manager::gather_custom_acf_datarefs_as_a_thread, acf_info.active_acf_path, &missionx::data_manager::flag_gather_acf_info_thread_is_running, &missionx::data_manager::flag_abort_gather_acf_info_thread));

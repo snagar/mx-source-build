@@ -3091,8 +3091,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
     missionx::WinImguiBriefer::mxUiReleaseLastFont();
 
     const auto activity_does_not_have_description = (!bPickedOilRigMission && !bPickedGAMission && !bPickedMedevacSurpriseMeMission);
-    //const auto table_flags                        = (activity_does_not_have_description) ? ImGuiTableFlags_SizingFixedFit : ImGuiTableFlags_SizingStretchProp;
-     constexpr auto table_flags                        = ImGuiTableFlags_SizingStretchProp;
+    constexpr auto table_flags                    = ImGuiTableFlags_SizingStretchProp;
 
     ImGui::BeginTable("mission_description#table_phase2_detail", 2, table_flags);
     {
@@ -3150,10 +3149,9 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
         add_ui_llm_options(llm_enum_options);
       }
       
+      // - v26.08.1 -------------
+      // Show briefer description collapsing header
       // ------------------------
-      // Show briefer collapsing header
-      // ------------------------
-      // v26.08.1
       missionx::WinImguiBriefer::add_briefer_description_post_mission_creation(!(missionx::data_manager::flag_generate_engine_is_running)
                                                           && missionx::data_manager::missionState < mx_mission_state_enum::mission_is_running);
 
@@ -4300,15 +4298,21 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
           if (bRerunRandomDateTime) // v3.303.10
             this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
 
-          // Add LLM base message info
+          // EXT FPLN Add LLM base message info
           if (data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission)
-            data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::background_story.data()] =
-                                "Write a realistic, short background story based on the flight plan waypoints that will be given."
+          {
+            // we don't know exactly the activity. We can assume it is a general flight from point A to B.
+            data_manager::strct_ui_share_data.map_llm_requests_messages[llm_category::activity_number_picked.data()] = fmt::format("{}", static_cast<int>(missionx::enums::mx_semi_activities_enum::act_generic_flight ) );
+            data_manager::strct_ui_share_data.map_llm_requests_messages[llm_category::plane_type.data()] = data_manager::translatePlaneTypeToString(missionx::strct_ils_layer.iRadioPlaneType);
+            data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::mission_description.data()] =
                                 "\nTry to explain the reason for the flight and give the pilot a believable operational context, such as transporting passengers, medical evacuation, delivering cargo, positioning the aircraft, or completing a charter flight."
                                 "\nKeep the story grounded in realistic aviation operations. Do not invent flight-plan details, procedures, weather, aircraft malfunctions, or other information that has not been provided."
                                 "\nWrite 2-4 sentences in a professional but engaging tone. The result should feel like a real-world flight assignment rather than an adventure story."
                                 "\nYou must not provide estimated flight time, it must be vague."
                         ;
+            if (data_manager::strct_ui_share_data.flag_llm_add_background_story)
+              data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::background_story.data()] = "Write a realistic, short background story based on the flight plan waypoints that will be given.";
+          }
           else
             data_manager::strct_ui_share_data.map_llm_requests_messages.clear();
 
@@ -5901,6 +5905,15 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
       pos_x += 50.0f;
       ImGui::SameLine (pos_x);
       ImGui::BeginGroup ();
+
+
+
+      // v26.09.2 --------------------------------------
+      //                  Topic 0 - Briefer description      
+      // Show briefer description collapsing header
+      // ------------------------
+      missionx::WinImguiBriefer::add_briefer_description_post_mission_creation(!(missionx::data_manager::flag_generate_engine_is_running) && missionx::data_manager::missionState < mx_mission_state_enum::mission_is_running);
+
 
       //------------------------------------------------
       //                  Topic 1 - Header
@@ -8954,6 +8967,13 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
   missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.305.1
   ImGui::BeginChild ("draw_external_fpln_layer_01", ImVec2 (0.0f, win_size_vec2.y * 0.30f), ImGuiChildFlags_Borders); // consume 1/3 of screen
   {
+    // -- v26.09.2 ------------
+    // Briefer description
+    // Show briefer description collapsing header
+    // ------------------------
+    missionx::WinImguiBriefer::add_briefer_description_post_mission_creation(!(missionx::data_manager::flag_generate_engine_is_running) && missionx::data_manager::missionState < mx_mission_state_enum::mission_is_running);
+
+
     mx_img_window::HelpMarker ("FROM or TO fields needs to have a value");
     ImGui::SameLine ();
     {
@@ -9418,7 +9438,7 @@ void WinImguiBriefer::gather_semi_act_phase1_data_based_on_picked_activity(mx_us
 
               // v26.08.1 llm mission outline
               data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::mission_description.data()] = missionx::enums::to_string_llm( in_usr_layer_strct.user_semi_act_picked.activity );
-              data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::activity_picked.data()] = fmt::format("{}", static_cast<int>(in_usr_layer_strct.user_semi_act_picked.activity ) );
+              data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::activity_number_picked.data()] = fmt::format("{}", static_cast<int>(in_usr_layer_strct.user_semi_act_picked.activity ) );
 
 
               // web osm

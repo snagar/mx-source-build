@@ -469,24 +469,24 @@ static bool gen_target_base_on_xy_osm_or_osmweb_types2(NavAidInfo&              
   #endif
 
 public:
+  // TODO: deprecate this containers and use the data_manager ones instead.
+  // inline static std::map<std::string, mx_plane_types_enum> mapPlaneStringTypesToEnum = {
+  //   {"", missionx::mx_plane_types_enum::plane_type_any},
+  //   {"helos", missionx::mx_plane_types_enum::plane_type_helos},
+  //   {"prop", missionx::mx_plane_types_enum::plane_type_props},
+  //   {"prop_floats", missionx::mx_plane_types_enum::plane_type_prop_floats},
+  //   {"ga", missionx::mx_plane_types_enum::plane_type_ga},
+  //   {"ga_floats", missionx::mx_plane_types_enum::plane_type_ga_floats},
+  //   {"turboprops", missionx::mx_plane_types_enum::plane_type_turboprops},
+  //   {"jet", missionx::mx_plane_types_enum::plane_type_jets},
+  //   {"airline", missionx::mx_plane_types_enum::plane_type_airline},
+  //   {"cargo", missionx::mx_plane_types_enum::plane_type_cargo},
+  //   {"heavy_airline", missionx::mx_plane_types_enum::plane_type_heavy_airline},
+  //   {"heavy_cargo", missionx::mx_plane_types_enum::plane_type_heavy_cargo},
+  //   {"fighter", missionx::mx_plane_types_enum::plane_type_fighter}
+  // };
 
-  inline static std::map<std::string, mx_plane_types_enum> mapPlaneStringTypesToEnum = {
-    {"", missionx::mx_plane_types_enum::plane_type_any},
-    {"helos", missionx::mx_plane_types_enum::plane_type_helos},
-    {"prop", missionx::mx_plane_types_enum::plane_type_props},
-    {"prop_floats", missionx::mx_plane_types_enum::plane_type_prop_floats},
-    {"ga", missionx::mx_plane_types_enum::plane_type_ga},
-    {"ga_floats", missionx::mx_plane_types_enum::plane_type_ga_floats},
-    {"turboprops", missionx::mx_plane_types_enum::plane_type_turboprops},
-    {"jet", missionx::mx_plane_types_enum::plane_type_jets},
-    {"airline", missionx::mx_plane_types_enum::plane_type_airline},
-    {"cargo", missionx::mx_plane_types_enum::plane_type_cargo},
-    {"heavy_airline", missionx::mx_plane_types_enum::plane_type_heavy_airline},
-    {"heavy_cargo", missionx::mx_plane_types_enum::plane_type_heavy_cargo},
-    {"fighter", missionx::mx_plane_types_enum::plane_type_fighter}
-  };
-
-  inline static std::map<mx_plane_types_enum, std::string> mapPlaneEnumToStringTypes;
+  // inline static std::map<mx_plane_types_enum, std::string> mapPlaneEnumToStringTypes;
   // Stores the tag names need to fetch from the <MAPPING> part of the template file to use as navaid.fpln_xml_leg
   inline static std::map<int, std::string> map_flight_legs_translation_from_template = {}; // v25.09.1 used with the new oil-rig function since gen_osm template is different.
 

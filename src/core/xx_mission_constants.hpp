@@ -207,6 +207,7 @@ enum class mx_semi_activities_enum
   act_cargo_medium,
   act_cargo_heavy_medium,
   act_cargo_heavy_long,
+  act_generic_flight, // v26.09.2
   ENUM_COUNT
 } ;
 
@@ -1432,7 +1433,7 @@ inline constexpr std::string_view plane_type            = "plane_type";
 inline constexpr std::string_view locations             = "locations";
 inline constexpr std::string_view weather               = "weather";
 inline constexpr std::string_view special_instructions  = "special_instructions";
-inline constexpr std::string_view activity_picked       = "activity_picked"; // v26.09.2
+inline constexpr std::string_view activity_number_picked       = "activity_number_picked"; // v26.09.2
 }
 
   // v25.06.1 add structs namespace

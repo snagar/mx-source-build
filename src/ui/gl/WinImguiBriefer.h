@@ -788,11 +788,9 @@ private:
   void                add_ui_flightplandb_key(bool isPopup); // v25.03.3
   void                add_ui_pick_subcategories(const std::vector<const char*>& vecToDisplay); // v25.04.1
   void                add_ui_auto_load_checkbox(const missionx::mx_window_actions& inActionToExecute = missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS); // v25.04.2
-  //int                 add_ui_two_option_buttons(bool& bOptA, bool& bOptB, const int& returnValueForA, const int& returnValueForB);
   int                 add_ui_dynamic_options_buttons(const int& inout_picked_lbl, std::map<int, std::string>& map_lbl_and_values);
   static void         add_ui_os_and_xp_clock_times(const float& in_x_pos);
   static void         add_ui_fps();
-  //void                callNavData(std::string_view inICAO, bool bNavigatingFromOtherLayer); // v24.03.1
   void                add_ui_semi_act_phase_1_pick (); // v26.04.1
   void                add_ui_semi_act_phase_2_detail (); // v26.04.1
   static bool         add_ui_pick_how_many_legs ( int & inout_radio_value_ref, const std::string & in_label, const int & in_minButtons, const int & in_maxButtons); // v26.04.1

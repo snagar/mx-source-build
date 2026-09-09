@@ -75,13 +75,6 @@ static size_t CurlWriteCallback(void* contents, size_t size, size_t nmemb, void*
 
 RandomEngine::RandomEngine()
 {
-  // this line is to test against other compilers too.
-  mapPlaneEnumToStringTypes.clear();
-  for (auto& [key, value] : mapPlaneStringTypesToEnum)
-  {
-    mapPlaneEnumToStringTypes[value] = key; // for translation
-  }
-
   missionx::RandomEngine::working_tempFile_ptr = nullptr; // v3.0.241.9
   this->flag_rules_defined_by_user_ui          = false; // v3.0.241.9
   // missionx::RandomEngine::flag_picked_from_osm_database = false; // v3.0.241.10
@@ -2528,8 +2521,9 @@ RandomEngine::gen_get_rw_metadata(const std::string& in_icao, int& out_rw_count,
 
 void RandomEngine::gen_set_llm_payloads(const structs::MissionPayloads& in_llm_payloads, IXMLNode& in_global_setting_node){
   // make sure we have access to the base weight node
-  auto xBaseWeights_ptr = in_global_setting_node.getChildNode ( mxconst::get_ELEMENT_BASE_WEIGHTS_KG().c_str ());
-  if ( !xBaseWeights_ptr.isEmpty () && (in_llm_payloads.fuel_kg * in_llm_payloads.payload_kg > 0.0f) )
+  // auto xBaseWeights_ptr = in_global_setting_node.getChildNode ( mxconst::get_ELEMENT_BASE_WEIGHTS_KG().c_str ());
+  auto xBaseWeights_ptr = Utils::xml_get_or_create_node_ptr( in_global_setting_node, mxconst::get_ELEMENT_BASE_WEIGHTS_KG());
+  if ( !xBaseWeights_ptr.isEmpty () && in_llm_payloads.is_valid() )
   {
 
     // set the global_settings weight sub node
@@ -3545,8 +3539,8 @@ RandomEngine::calc_slope_at_point_mainThread(NavAidInfo& inNavAid)
 std::string
 RandomEngine::translatePlaneTypeToString(const mx_plane_types_enum in_plane_type)
 {
-  if (Utils::isElementExists(RandomEngine::mapPlaneEnumToStringTypes, in_plane_type))
-    return RandomEngine::mapPlaneEnumToStringTypes[in_plane_type];
+  if (Utils::isElementExists(data_manager::mapPlaneEnumToStringTypes, in_plane_type))
+    return data_manager::mapPlaneEnumToStringTypes[in_plane_type];
 
   return ""; // v3.0.253.1 this->mapPlaneEnumToStringTypes[in_plane_type]; // should return empty string
 }
@@ -3556,10 +3550,10 @@ RandomEngine::translatePlaneTypeToString(const mx_plane_types_enum in_plane_type
 missionx::mx_plane_types_enum
 RandomEngine::translatePlaneTypeToEnum(const std::string& in_plane_type)
 {
-  if (Utils::isElementExists(RandomEngine::mapPlaneStringTypesToEnum, in_plane_type))
-    return RandomEngine::mapPlaneStringTypesToEnum[in_plane_type];
+  if (Utils::isElementExists(data_manager::mapPlaneStringTypesToEnum, in_plane_type))
+    return data_manager::mapPlaneStringTypesToEnum[in_plane_type];
 
-  return RandomEngine::mapPlaneStringTypesToEnum[EMPTY_STRING]; // should return any
+  return data_manager::mapPlaneStringTypesToEnum[EMPTY_STRING]; // should return any
 }
 
 // -----------------------------------
@@ -3567,7 +3561,7 @@ RandomEngine::translatePlaneTypeToEnum(const std::string& in_plane_type)
 bool
 RandomEngine::is_plane_type_valid(const std::string& in_plane_type)
 {
-  return Utils::isElementExists(RandomEngine::mapPlaneStringTypesToEnum, Utils::stringToLower(in_plane_type));
+  return Utils::isElementExists(data_manager::mapPlaneStringTypesToEnum, Utils::stringToLower(in_plane_type));
 }
 
 // -----------------------------------
@@ -3576,9 +3570,9 @@ mx_plane_types_enum
 RandomEngine::setPlaneType(std::string inPlaneType)
 {
   inPlaneType = Utils::stringToLower(inPlaneType);
-  if (Utils::isElementExists(RandomEngine::mapPlaneStringTypesToEnum, inPlaneType))
+  if (Utils::isElementExists(data_manager::mapPlaneStringTypesToEnum, inPlaneType))
   {
-    missionx::RandomEngine::template_plane_type_enum = RandomEngine::mapPlaneStringTypesToEnum[inPlaneType];
+    missionx::RandomEngine::template_plane_type_enum = data_manager::mapPlaneStringTypesToEnum[inPlaneType];
     this->randomPlaneType                            = inPlaneType;
   }
   else
@@ -3597,9 +3591,9 @@ RandomEngine::setPlaneType(const mx_plane_types_enum inPlaneType)
 {
   this->randomPlaneType = missionx::RandomEngine::translatePlaneTypeToString(inPlaneType);
   // v3.0.253.1 extended like setPlaneType(std::string) since we need also "this->template_plane_type_enum" to be initialized when searching for ramps
-  if (RandomEngine::mapPlaneStringTypesToEnum.contains( this->randomPlaneType) )
+  if (data_manager::mapPlaneStringTypesToEnum.contains( this->randomPlaneType) )
   {
-    missionx::RandomEngine::template_plane_type_enum = RandomEngine::mapPlaneStringTypesToEnum[this->randomPlaneType];
+    missionx::RandomEngine::template_plane_type_enum = data_manager::mapPlaneStringTypesToEnum[this->randomPlaneType];
   }
   else
   {
@@ -3614,9 +3608,9 @@ RandomEngine::setPlaneType(const mx_plane_types_enum inPlaneType)
 mx_plane_types_enum RandomEngine::get_plane_type_enum(std::string inPlaneType)
 {
   inPlaneType = Utils::stringToLower(inPlaneType);
-  if ( RandomEngine::mapPlaneStringTypesToEnum.contains( inPlaneType) )
+  if ( data_manager::mapPlaneStringTypesToEnum.contains( inPlaneType) )
   {
-    return RandomEngine::mapPlaneStringTypesToEnum[inPlaneType];
+    return data_manager::mapPlaneStringTypesToEnum[inPlaneType];
   }
     return missionx::mx_plane_types_enum::plane_type_any;
 }
@@ -6057,16 +6051,21 @@ void RandomEngine::gen_briefer_phase_03_add_desc_ai(std::map<int, NavAidInfo>& i
     if (flag_one_of_the_targets_is_in_water_body)
       mission_outline += fmt::format("\n{}\n", water_body_targets_s);
 
-    if (!data_manager::get_acf_icao().empty())
-      mission_outline += fmt::format("\nAirplane code: {}", data_manager::get_acf_icao());
-    mission_outline += fmt::format("\nAirplane active plane filename: {}", data_manager::get_acf());
+    const auto acf_info = data_manager::get_current_acf();
+
+    if (!acf_info.active_acf_icao.empty())
+      mission_outline += fmt::format("\nAirplane code: {}", acf_info.active_acf_icao);
+    mission_outline += fmt::format("\nAirplane active plane filename: {}", acf_info.active_acf);
 
     // fuel and payload suggestion
-    const auto act_picked_s = data_manager::strct_ui_share_data.map_llm_requests_messages[llm_category::activity_picked.data()];
+    const auto act_picked_s = data_manager::strct_ui_share_data.map_llm_requests_messages[llm_category::activity_number_picked.data()];
     if (mxUtils::is_digits(act_picked_s))
     {
       auto act_enum = static_cast<enums::mx_semi_activities_enum>(mxUtils::stringToNumber<int>(act_picked_s));
-      if (data_manager::strct_ui_share_data.flag_llm_add_fuel_and_weight_payloads && act_enum <= enums::mx_semi_activities_enum::act_jets && act_enum >= enums::mx_semi_activities_enum::act_props)
+      if (data_manager::strct_ui_share_data.flag_llm_add_fuel_and_weight_payloads
+          &&
+          ( (act_enum <= enums::mx_semi_activities_enum::act_jets && act_enum >= enums::mx_semi_activities_enum::act_props) || act_enum == enums::mx_semi_activities_enum::act_generic_flight)
+         )
       {
         if (dataref_manager::strct_plane_base_info.plane_max_gross_weight_f_and_p_kg > 0.0)
         {

@@ -1560,13 +1560,17 @@ public:
 
   // v25.03.1
   static void trigger_acf_change();
-  static void set_acf(const missionx::structs::def_strct_acf_info& in_acf_info); // only set the current plane filename without calling "gather_acf_info" function.
-  static std::string get_acf(); // v26.08.1
-  static std::string get_acf_icao(); // v26.08.1
+  // static void set_acf(const missionx::structs::def_strct_acf_info& in_acf_info); // only set the current plane filename without calling "gather_acf_info" function.
 
   // the function get the active acf base info. It does not store it.
   static structs::def_strct_acf_info   get_current_acf();
-  static void   set_active_acf_and_gather_info(); // v26.09.2 Get active plane and store it. Gather Station info.
+  // Function does not gather station/cargo info.
+  static void acf_refresh_info();
+
+  // v26.09.2 The function only gather cargo and station information. It won't refresh the acf file information.
+  static void   acf_gather_cargo_info();
+  // Executes "acf_refresh_info()" and "acf_gather_cargo_info()" in the same function.
+  static void acf_refresh_and_gather_active_plane_information();
 
   // v25.05.1
   static IXMLNode get_default_overpass_urls_node ();
@@ -1609,6 +1613,30 @@ public:
 
   static bool extract_missionx_library(const std::filesystem::path& zipPath, const std::filesystem::path& customSceneryDir);
   static void ensure_missionx_random_folder_exists();
+
+  // v26.09.2
+  inline static std::map<std::string, mx_plane_types_enum> mapPlaneStringTypesToEnum = {
+    {"", missionx::mx_plane_types_enum::plane_type_any},
+    {"helos", missionx::mx_plane_types_enum::plane_type_helos},
+    {"prop", missionx::mx_plane_types_enum::plane_type_props},
+    {"prop_floats", missionx::mx_plane_types_enum::plane_type_prop_floats},
+    {"ga", missionx::mx_plane_types_enum::plane_type_ga},
+    {"ga_floats", missionx::mx_plane_types_enum::plane_type_ga_floats},
+    {"turboprops", missionx::mx_plane_types_enum::plane_type_turboprops},
+    {"jet", missionx::mx_plane_types_enum::plane_type_jets},
+    {"airline", missionx::mx_plane_types_enum::plane_type_airline},
+    {"cargo", missionx::mx_plane_types_enum::plane_type_cargo},
+    {"heavy_airline", missionx::mx_plane_types_enum::plane_type_heavy_airline},
+    {"heavy_cargo", missionx::mx_plane_types_enum::plane_type_heavy_cargo},
+    {"fighter", missionx::mx_plane_types_enum::plane_type_fighter}
+  };
+
+  inline static std::map<mx_plane_types_enum, std::string> mapPlaneEnumToStringTypes;
+
+  static std::string                   translatePlaneTypeToString (mx_plane_types_enum in_plane_type);
+  static missionx::mx_plane_types_enum translatePlaneTypeToEnum (const std::string &in_plane_type);
+
+
 }; // end class
 
 }

@@ -735,17 +735,24 @@ void ui_nav_screen::child_draw_ils_search()
                   if (bRerunRandomDateTime) // v3.303.10
                     this->execAction (missionx::mx_window_actions::ACTION_GENERATE_RANDOM_DATE_TIME);
 
-                  // Add LLM base message info
+                  // ILS/VFR Add LLM base message info
                   if (data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission)
-                    data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::background_story.data()] =
-                                        "Write a realistic, short background story based on the flight plan waypoints that will be given."
+                  {
+                    // we don't know exactly the activity. We can assume it is a general flight from point A to B.
+                    data_manager::strct_ui_share_data.map_llm_requests_messages[llm_category::activity_number_picked.data()] = fmt::format("{}", static_cast<int>(missionx::enums::mx_semi_activities_enum::act_generic_flight ) );
+                    data_manager::strct_ui_share_data.map_llm_requests_messages[llm_category::plane_type.data()] = data_manager::translatePlaneTypeToString(missionx::strct_ils_layer.iRadioPlaneType);
+                    data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::mission_description.data()] = "This is a plane expected mission, not a helicopter."
                                         "\nTry to explain the reason for the flight and give the pilot a believable operational context, such as transporting passengers, medical evacuation, delivering cargo, positioning the aircraft, or completing a charter flight."
                                         "\nKeep the story grounded in realistic aviation operations. Do not invent flight-plan details, procedures, weather, aircraft malfunctions, or other information that has not been provided."
                                         "\nWrite 2-4 sentences in a professional but engaging tone. The result should feel like a real-world flight assignment rather than an adventure story."
                                         "\nYou must not provide estimated flight time, it must be vague."
                                 ;
+                    if (data_manager::strct_ui_share_data.flag_llm_add_background_story)
+                      data_manager::strct_ui_share_data.map_llm_requests_messages[missionx::llm_category::background_story.data()] = "Write a realistic, short background story based on the flight plan waypoints that will be given.";
+                  }
                   else
                     data_manager::strct_ui_share_data.map_llm_requests_messages.clear();
+
 
                   // Prepare and call ACTION_GENERATE_RANDOM_MISSION
                   data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_FPLN_ID_PICKED (), picked_fpln_id_i);

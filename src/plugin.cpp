@@ -646,7 +646,7 @@ PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFromWho, const intptr_t inM
       static bool first_plane_load = true; // v26.09.2
       if (first_plane_load)
       {
-        missionx::data_manager::set_acf(data_manager::get_current_acf());
+        data_manager::acf_refresh_info();
         first_plane_load ^= 1;
       }
       else
