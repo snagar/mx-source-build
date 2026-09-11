@@ -1010,9 +1010,6 @@ missionx::Mission::START_MISSION()
     // station parsing if we are NOT in xp11 compatibility mode
     if (missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY)
     {
-      // v26.09.2 deprecated code
-      // auto acf_info = missionx::data_manager::acf_refresh_info(); // acf_refresh_info also calls "set_acf()"
-      // assert(!acf_info.active_acf.empty() && !acf_info.active_acf_path.empty() && "Aircraft data does not contain the minimal needed, filename and path.");
 
       if (data_manager::missionState != missionx::mx_mission_state_enum::mission_loaded_from_savepoint) // mission_loaded_from_the_original_file
         missionx::data_manager::acf_gather_cargo_info();

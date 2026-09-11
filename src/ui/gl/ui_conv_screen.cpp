@@ -805,11 +805,6 @@ void ui_conv_screen::subDraw_popup_outcome(mx_trig_strct_& inout_trig, IXMLNode&
     IXMLRenderer xmlRenderer;
     std::string  outcom_s = xmlRenderer.getString (xOutcome);
     char         buf[missionx::LOG_BUFF_SIZE]{ 0 };
-//#ifdef IBM
-//    memcpy_s (buf, sizeof (buf), outcom_s.c_str (), (sizeof (buf) > outcom_s.length ()) ? outcom_s.length () : sizeof (buf));
-//#else
-//    memcpy (buf, outcom_s.c_str (), (sizeof (buf) > outcom_s.length ()) ? outcom_s.length () : sizeof (buf));
-//#endif
     mxUtils::copy_string_to_buffer(outcom_s, buf[0], sizeof(buf));
 
 
@@ -2320,6 +2315,8 @@ There are other options that are best handle manually inside an editor and not i
       ImGui::BeginChild ("TableOfLNM_Waypoints", child_size_vec2, ImGuiChildFlags_Borders);
       {
         this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+
+
         ImGui::TextColored (missionx::color::color_vec4_bisque, "Picked File: ");
         ImGui::SameLine (0.0f, 2.0f);
 
@@ -2332,6 +2329,14 @@ There are other options that are best handle manually inside an editor and not i
           ImGui::TextColored (missionx::color::color_vec4_green, "%s", mxconst::get_CONVERTER_FILE ().c_str ());
         }
         this->mxUiReleaseLastFont ();
+
+
+        //// -- v26.09.3 ------------
+        //// Show briefer collapsing header
+        //// ------------------------
+        //add_briefer_description_post_mission_creation(!missionx::data_manager::flag_generate_engine_is_running && (missionx::data_manager::missionState < mx_mission_state_enum::mission_is_running));
+        //ImGui::Spacing();
+
 
 
         /////// BUTTONS //////

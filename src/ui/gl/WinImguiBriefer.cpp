@@ -100,6 +100,14 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
   { 
     this->add_ui_bottom_message_text();  
   };
+
+  // v26.09.3
+  m_ui_conv_screen->add_briefer_description_post_mission_creation = [](const bool in_display_desc_flag) -> bool 
+  { 
+    return missionx::WinImguiBriefer::add_briefer_description_post_mission_creation(in_display_desc_flag); 
+  };
+
+
   // -------------------------------------------
   // END pointers to the ui m_ui_conv_screen
   // -------------------------------------------
@@ -1452,41 +1460,61 @@ WinImguiBriefer::add_flight_planning ()
 bool
 WinImguiBriefer::add_briefer_description_post_mission_creation(const bool in_display_last_generated_briefer)
 {
-  bool b_displayed {false};
-  // ------------------------
-  // Display briefer description as collapsing header
-  // ------------------------
+  constexpr static auto HIDE_LABEL = "Hide Description";
+  constexpr static auto COLLAPSE_LABEL = "Last Generated Mission Description";
 
-  ImGui::PushStyleColor (ImGuiCol_HeaderHovered, missionx::color::color_vec4_lightgreen);
-  ImGui::PushStyleColor (ImGuiCol_Header, missionx::color::color_vec4_green);
-  ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black); // Text
+  bool b_displayed{false};
 
-  if (in_display_last_generated_briefer
-      && !missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node.isEmpty()
-      && ImGui::CollapsingHeader("Last Generated Mission Description")
-      )
+  ImGui::PushStyleColor(ImGuiCol_HeaderHovered, missionx::color::color_vec4_lightgreen);
+  ImGui::PushStyleColor(ImGuiCol_Header, missionx::color::color_vec4_green);
+  ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_black); // Text
+
+  if (in_display_last_generated_briefer && !missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node.isEmpty())
   {
-    b_displayed ^= 1;
+    // Use TreeNodeEx with CollapsingHeader flag to allow custom widgets on the same line
+    const ImGuiTreeNodeFlags header_flags = ImGuiTreeNodeFlags_CollapsingHeader | ImGuiTreeNodeFlags_AllowOverlap;
+    const bool               b_is_open    = ImGui::TreeNodeEx(COLLAPSE_LABEL, header_flags);
 
-    missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+    // ----------------------------------------------------
+    // Draw "Hide Description" button on the SAME line, centered
+    // ----------------------------------------------------
+    if (b_is_open)
     {
-      // Display Hide Description Button
-      if (!missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node.isEmpty())
+      //const char* button_label = "Hide Description"; // replaced with: HIDE_LABEL
+      const float button_width = ImGui::CalcTextSize(HIDE_LABEL).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+      const float window_width = ImGui::GetWindowWidth();
+      const float center_pos_x = (window_width - button_width) * 0.5f;
+
+      ImGui::SameLine(center_pos_x);
+
+      ImGui::PushStyleColor(ImGuiCol_Button, missionx::color::color_vec4_lightgrey);
+      //ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_black); // Ensure button text is readable
+
+      if (ImGui::Button(HIDE_LABEL))
       {
-        ImGui::PushStyleColor(ImGuiCol_Button, missionx::color::color_vec4_lightgray);
-        if (ImGui::Button("Hide Description"))
-          missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node = IXMLNode::emptyIXMLNode;
-        ImGui::PopStyleColor();
-        ImGui::Separator();
+        missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node = IXMLNode::emptyIXMLNode;
       }
 
-      // Display the description
-      ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_white); // Text
-      ImGui::TextWrapped ("%s", Utils::xml_get_cdata_or_text(missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node, "No Briefer Data Yet.").c_str() );
-      ImGui::PopStyleColor();
+      ImGui::PopStyleColor(1);
     }
-    missionx::WinImguiBriefer::mxUiReleaseLastFont();
-    ImGui::Separator();
+
+    // ----------------------------------------------------
+    // Display Description Body (if header is expanded)
+    // ----------------------------------------------------
+    if (b_is_open)
+    {
+      b_displayed ^= 1;
+
+      missionx::WinImguiBriefer::mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_REG());
+      {
+        // Display the description text
+        ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_white); // Text
+        ImGui::TextWrapped("%s", Utils::xml_get_cdata_or_text(missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node, "No Briefer Data Yet.").c_str());
+        ImGui::PopStyleColor();
+      }
+      missionx::WinImguiBriefer::mxUiReleaseLastFont();
+      ImGui::Separator();
+    }
   }
 
   ImGui::PopStyleColor(3);

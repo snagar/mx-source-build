@@ -73,7 +73,7 @@ public:
   std::function<void()> add_ui_is_amphibian;
   // v26.09.2 add "collapsing header" last mission description
   std::function<void(const bool)> add_briefer_description_post_mission_creation;
-  // v26.09.2 add "collapsing header" last mission description
+  // v26.09.2 add ui LLM options
   std::function<void(const enums::llm_ui_options_enum)> add_ui_llm_options;
 
 

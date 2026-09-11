@@ -134,9 +134,6 @@ public:
                  {};
 
 
-// ----- virtual functions ----------------
-  // void flc() override {};
-
 // ----- Pointers to parent functions -----
 
   //
@@ -150,6 +147,8 @@ public:
   std::function<void(missionx::mx_window_actions)> execAction;
   // void  add_message_text ();
   std::function<void()> add_message_text;
+  // v26.09.3 add "collapsing header" last mission description
+  std::function<void(const bool)> add_briefer_description_post_mission_creation;
 
 
 
