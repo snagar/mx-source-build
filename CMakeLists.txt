@@ -370,6 +370,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Wrappers
     ${CMAKE_SOURCE_DIR}/libs/curl/include
     ${CMAKE_SOURCE_DIR}/libs/fmod/inc
+    ${CMAKE_SOURCE_DIR}/libs/fmod/studio/inc
     ${CMAKE_SOURCE_DIR}/libs/json/include
     ${CMAKE_SOURCE_DIR}/libs/imgui4xp
     ${CMAKE_SOURCE_DIR}/libs/imgui4xp/imgui
