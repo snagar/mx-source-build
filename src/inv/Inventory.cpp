@@ -9,6 +9,8 @@
 
 #include <fmt/core.h>
 #include <filesystem>
+
+#include "XPLMPlanes.h"
 namespace fs = std::filesystem;
 
 #include "../core/data_manager.h"

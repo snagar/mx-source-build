@@ -1,7 +1,9 @@
 #include "BitmapReader.h"
 #include <filesystem>
 
-namespace fs = std::filesystem;
+#include "mx_img_window.h"
+
+//namespace fs = std::filesystem;
 
 /**************
 **************/
@@ -9,14 +11,42 @@ namespace fs = std::filesystem;
 missionx::BitmapReader::BitmapReader () { }
 
 
+bool BitmapReader::load_texture_no_bind(mxTextureFile& inTextureFile, std::string& outErr, const bool flipImage_b)
+{
+  bool bTextureLoad = false;
+
+  #ifndef RELEASE
+  Log::logMsgThread(fmt::format( "[{}] Loading texture image: {}", __func__, inTextureFile.getAbsoluteFileLocation() ), format_type::none_cr); // don't add "\n"
+  #endif
+
+  const std::filesystem::path texturePath = inTextureFile.getAbsoluteFileLocation();
+  if (std::filesystem::is_regular_file(texturePath))
+  {
+    // STB Load Image
+    if (loadImageStb(texturePath.string(), &inTextureFile.sImageData, flipImage_b, outErr))
+    {
+      // Successfully loaded
+      bTextureLoad = true;
+
+      inTextureFile.store_hash();
+    }
+  }
+
+  #ifndef RELEASE
+  Log::logMsgThread(" - loaded.\n");
+  #endif
+
+  return bTextureLoad;
+}
+
+
 bool
-missionx::BitmapReader::loadGLTexture(mxTextureFile& inTextureFile, std::string &outErr, bool flipImage_b, bool is_sync_b)
+missionx::BitmapReader::load_textute_and_bind(mxTextureFile& inTextureFile, std::string &outErr, bool flipImage_b, bool is_bind_texture_thread_safe)
 {
   // int Status=FALSE;
   bool bTextureLoad = false;
 
-  if (const fs::path texturePath     = inTextureFile.getAbsoluteFileLocation()
-    ; fs::is_regular_file(texturePath))
+  if (const std::filesystem::path texturePath = inTextureFile.getAbsoluteFileLocation(); std::filesystem::is_regular_file(texturePath))
   {
     // STB Load Image
     if (loadImageStb(texturePath.string(), &inTextureFile.sImageData, flipImage_b, outErr))
@@ -24,91 +54,20 @@ missionx::BitmapReader::loadGLTexture(mxTextureFile& inTextureFile, std::string 
       // Status=TRUE;
       bTextureLoad = true;
 
-      if (is_sync_b)
+      // v25.08.1 store hash. Caching tests should be done before generating GL texture information.
+      inTextureFile.store_hash();
+
+      if (is_bind_texture_thread_safe)
       {
-
-        // ==> Start Old and working Code
-        // v25.08.1 store hash. Caching tests should be done before generating GL texture information.
-        inTextureFile.store_hash ();
-
-
-        // Generate texture ID and bind it
-        XPLMGenerateTextureNumbers (&inTextureFile.gTexture, 1);
-        XPLMBindTexture2d (inTextureFile.gTexture, 0);
-
-        glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        //glPixelStorei (GL_UNPACK_ROW_LENGTH, 0); // from imgui
-
-        // Upload image data using a sized internal format
-        const GLenum format         = (inTextureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA;
-        const GLenum internalFormat = (inTextureFile.sImageData.Channels < 4) ? GL_RGB8 : GL_RGBA8;
-        glTexImage2D (GL_TEXTURE_2D, 0, static_cast<GLint>(internalFormat), inTextureFile.sImageData.Width, inTextureFile.sImageData.Height, 0, format, GL_UNSIGNED_BYTE, inTextureFile.sImageData.pData);
-
-        // Free the CPU-side image data
-        stbi_image_free (inTextureFile.sImageData.pData);
-
-        inTextureFile.sImageData.pData = nullptr;
-
-        // <<===== End Old and working Code
-
-        
-
-        // // v25.08.1 store hash. Caching tests should be done before generating GL texture information.
-        // inTextureFile.store_hash ();
-        //
-        // // Check if dimensions are a power of two
-        // const bool isPowerOfTwo = ((inTextureFile.sImageData.Width & (inTextureFile.sImageData.Width - 1)) == 0) && ((inTextureFile.sImageData.Height & (inTextureFile.sImageData.Height - 1)) == 0);
-        //
-        // // Generate texture ID and bind it
-        // XPLMGenerateTextureNumbers(&inTextureFile.gTexture, 1);
-        // XPLMBindTexture2d(inTextureFile.gTexture, 0);
-        //
-        // // Set texture parameters
-        // if (isPowerOfTwo)
-        // {
-        //   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        //   // Setting max level to 2 as per your previous request
-        //   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 2); // Set max mipmap level  64x64, 32x32 and 16x16, no smaller
-        // }
-        // else
-        // {
-        //   glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        // }
-        //
-         // These are common parameters that can be set regardless of mipmapping
-         //glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-         //glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-         //glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        //
-        //
-        // // Upload image data using a sized internal format
-        // const GLenum format         = (inTextureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA;
-        // const GLenum internalFormat = (inTextureFile.sImageData.Channels < 4) ? GL_RGB8 : GL_RGBA8;
-        // glTexImage2D (GL_TEXTURE_2D, 0, static_cast<GLint>(internalFormat), inTextureFile.sImageData.Width, inTextureFile.sImageData.Height, 0, format, GL_UNSIGNED_BYTE, inTextureFile.sImageData.pData);
-        //
-        // // Only generate mipmaps if the dimensions are a power of two
-        // if (isPowerOfTwo)
-        // {
-        //   // The glGenerateMipmap call should now work directly
-        //   glGenerateMipmap (GL_TEXTURE_2D);  // <== CTD X-Plane. Crashes X-Plane.
-        // }
-        //
-        // // Free the CPU-side image data
-        // stbi_image_free (inTextureFile.sImageData.pData);
-        //
-        // inTextureFile.sImageData.pData = nullptr;
-      }
+        bind_texture(inTextureFile);
+      } // end if synch
     } // end if loadImageStb
   } // end if fs::path is valid
   // end if
 
   return bTextureLoad;
 }
-// end loadGLTexture
+// end load_textute_and_bind
 
 
 
@@ -119,13 +78,15 @@ missionx::BitmapReader::loadImageStb(std::string fileName, mxTextureFile::IMAGED
 
   outErr.clear();
 
-
-  //if (inFlipImage_b)
-  //  stbi_set_flip_vertically_on_load(true);
-  //else
   stbi_set_flip_vertically_on_load(false);
+  #ifdef IMGWINDOW_USE_PANEL_GRAPHICS
+  const int desired_channels = (ImgPanelGraphics::IsAvailable())? 4 : 0;
+  #else
+  constexpr int desired_channels = 0;
+  #endif
 
-  ImageData->pData = stbi_load(fileName.c_str(), &x, &y, &channels, 0, &outErr); // v3.0.243.1 newer version + compatibility with imgui3xp
+
+  ImageData->pData = stbi_load(fileName.c_str(), &x, &y, &channels, desired_channels, &outErr); // v3.0.243.1 newer version + compatibility with imgui4xp
   if (!outErr.empty())
     Log::logMsgThread(outErr);
 
@@ -142,4 +103,34 @@ missionx::BitmapReader::loadImageStb(std::string fileName, mxTextureFile::IMAGED
 
   return false;
 }
+
+
+
+int BitmapReader::bind_texture(mxTextureFile& inTextureFile)
+{
+  if (!inTextureFile.sImageData.pData)
+  {
+    Log::logDebugBO(fmt::format("[{}] Cannot bind texture: {}. Texture data is empty.\n", __func__, inTextureFile.getAbsoluteFileLocation()), false, true);
+    return 0;
+  }
+
+  const auto win = mx_img_window_weak_ptr.lock();
+  // Log::logDebugBO(fmt::format("[{}] mx_inv_window_weak_ptr: .", __func__), false, true);
+  if (!win)
+  {
+    Log::logDebugBO(fmt::format("[{}] Cannot bind texture: {}. Window Pointer expired or uninitialized.\n", __func__, inTextureFile.getAbsoluteFileLocation()), false, true);
+    return 0;
+  }
+
+  // Delegate creation entirely through the weak_ptr
+  // inTextureFile.gTexture = win->CreateTexture(inTextureFile.sImageData.pData, inTextureFile.sImageData.Width, inTextureFile.sImageData.Height, inTextureFile.sImageData.Channels);
+  inTextureFile.gTexture = static_cast<XPLMTextureID>( win->CreateTexture(inTextureFile) );
+
+  // Free CPU buffer
+  stbi_image_free(inTextureFile.sImageData.pData);
+  inTextureFile.sImageData.pData = nullptr;
+
+  return (inTextureFile.gTexture != 0) ? 1 : 0;
+}
+
 

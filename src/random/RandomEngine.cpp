@@ -389,7 +389,8 @@ RandomEngine::inject_files_into_xml(missionx::TemplateFileInfo* tempFile_ptr)
               Log::logMsgThread("[random] error in generated TEMPLATE element. " + translateError + ", line: " + mxUtils::formatNumber<long long>(parse_result_strct.nLine) + ", column: " + mxUtils::formatNumber<int>(parse_result_strct.nColumn) + " \n");
               RandomEngine::setError("[random] TEMPLATE ERROR: modified template is not a valid XML. Check Log.txt for more information.");
               missionx::RandomEngine::random_thread_state.flagAbortThread = true;
-              this->abortThread();
+              this->abort_thread();
+              return ""; // v26.09.3 return empty value de to abort request.
             }
             else
             {
@@ -486,6 +487,7 @@ RandomEngine::generateRandomMission()
   {
     RandomEngine::setError("[Random]Failed to find template by the name: " + inKey); // this should be displayed
     missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+    RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
   }
 
@@ -520,6 +522,7 @@ RandomEngine::generateRandomMission()
     RandomEngine::setError("[random engine] Failed generating mission using template: " + inKey);
 
     missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+    RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
   }
 
@@ -534,7 +537,10 @@ RandomEngine::generateRandomMission()
       pathToTemplateFile = newTemplateFile;
 
     if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+    {
+      RandomEngine::force_end_thread_states(); // v26.09.3
       return false;
+    }
   }
 
   ////// READ MAPPING from template file /////////
@@ -544,7 +550,7 @@ RandomEngine::generateRandomMission()
   {
     RandomEngine::setError("[random] ERROR: Mapping element is missing from template file: " + inKey + ". Fix template file. Aborting mission generating.");
     missionx::RandomEngine::random_thread_state.flagAbortThread = true;
-
+    RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
   }
 
@@ -558,6 +564,7 @@ RandomEngine::generateRandomMission()
   {
     RandomEngine::setError(err);
     missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+    RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
   }
 
@@ -653,7 +660,10 @@ RandomEngine::generateRandomMission()
 
         // check [abort]
         if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+        {
+          RandomEngine::force_end_thread_states(); // v26.09.3
           return false;
+        }
       }
 
       // check oilrig
@@ -712,6 +722,7 @@ RandomEngine::generateRandomMission()
       Log::logMsgThread(func_result.getErrorsAsText()); // debug to log
       RandomEngine::setError(func_result.getErrorsAsText());
       missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+      RandomEngine::force_end_thread_states(); // v26.09.3
       return false;
     }
 
@@ -721,7 +732,10 @@ RandomEngine::generateRandomMission()
 
 
   if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+  {
+    RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
+  }
 
   ///// =========================================================================================
 
@@ -736,7 +750,10 @@ RandomEngine::generateRandomMission()
   {
     // read the briefer element before calling "readFlightLegs_directlyFromTemplate()"
     if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+    {
+      RandomEngine::force_end_thread_states(); // v26.09.3
       return false;
+    }
 
 
     // Construct mission from template <leg>s. The most basic form of mission creation.
@@ -746,6 +763,7 @@ RandomEngine::generateRandomMission()
     {
       missionx::RandomEngine::setError(local_result.getErrorsAsText());
       missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+      RandomEngine::force_end_thread_states(); // v26.09.3
       return false;
     }
   }
@@ -756,14 +774,23 @@ RandomEngine::generateRandomMission()
 
   // call readMissionInfoElement // v3.0.253.1 moved to this location so fetch external code will create briefer info too.
   if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+  {
+    RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
+  }
   if (!flag_created_based_on_content_element && !flag_generic_template_b && !gen_read_mission_info_element()) // we can skip this function call if we built the mission based on content element. We need to read it inside content to have the custom <overpass> element from <mission_info>
+  {
+    RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
+  }
 
   Utils::xml_delete_empty_nodes(xDummyTopNode); // v3.0.219.3 remove invalid points
 
   if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+  {
+    RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
+  }
 
   // v3.0.221.10 Add <xpdata> element if exists
   if (xRootTemplate.nChildNode(mxconst::get_ELEMENT_XPDATA().c_str()) > 0)
@@ -776,13 +803,17 @@ RandomEngine::generateRandomMission()
   this->xCompatibility = xRootTemplate.getChildNode(mxconst::get_ELEMENT_COMPATIBILITY().c_str()).deepCopy(); // v24.12.2
 
   if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+  {
+    RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
+  }
 
   // Final validations
   if (int nFlightLegs = this->xFlightLegs.nChildNode(mxconst::get_ELEMENT_LEG().c_str()); nFlightLegs == 0)
   {
     RandomEngine::setError("[random] No flight leg has been created. Try to re-generate a mission, tweak the template or re-run APT.DAT optimization (setup screen).");
-    this->abortThread();
+    this->abort_thread();
+    RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
   }
 
@@ -807,7 +838,7 @@ RandomEngine::generateRandomMission()
   /// finalize thread
   missionx::RandomEngine::random_thread_state.flagIsActive       = false;
   missionx::RandomEngine::random_thread_state.flagThreadDoneWork = true; // we reset the thread at Mission::flc_aptdat() function
-
+  
   return result;
 }
 
@@ -834,7 +865,7 @@ RandomEngine::gen_read_mission_info_element()
 
   // add the template file name to other settings
   // v25.02.1
-  const std::string template_name = (missionx::RandomEngine::working_tempFile_ptr != nullptr) ? std::filesystem::path(RandomEngine::working_tempFile_ptr->fullFilePath).filename().string() : "";
+  const std::string template_name = (missionx::RandomEngine::working_tempFile_ptr != nullptr) ? std::filesystem::path(RandomEngine::working_tempFile_ptr->xml_file_path).filename().string() : "";
 
   std::string other_settings = Utils::readAttrib(xBrieferInfo, mxconst::get_ATTRIB_OTHER_SETTINGS(), ""); // v3.0.241.1
   other_settings             = "Based on: " + ((!template_name.empty()) ? template_name : "Error: No Template Data") + ". " + other_settings;
@@ -2142,6 +2173,9 @@ RandomEngine::gen_prepare_random_mission_based_on_leg_nodes_in_template(IXMLNode
 
   this->xBriefer = navaid_targets[0].fpln_xml_target_leg_node.deepCopy();
 
+  // v26.09.3 Add <end_node> to the mission template
+  gen_end_node(navaid_targets);
+
   // v25.10.1 Add Cold and dark
   RandomEngine::xDrefStartColdAndDark = gen_set_and_get_start_cold_and_dark(in_xTemplateNode, navaid_targets[1]);
 
@@ -2151,7 +2185,6 @@ RandomEngine::gen_prepare_random_mission_based_on_leg_nodes_in_template(IXMLNode
     missionx::RandomEngine::random_thread_state.flagAbortThread = true;
     out_func_result.addErrMsg("No <mission_info> node was found in template.", true);
   }
-
 
   // Add all inventories to the global xInventories node
   for (auto& [key, nav] : navaid_targets)
@@ -3194,7 +3227,7 @@ RandomEngine::writeTargetFile()
 
 
   // ---------------------------------------------------------------------
-  // Add <end_node>
+  // Add <end_node_ptr>
   // ---------------------------------------------------------------------
   this->xEnd = missionx::RandomEngine::xRootTemplate.getChildNode(mxconst::get_ELEMENT_END_MISSION().c_str()).deepCopy(); // v3.305.1 added template read first
   if (xEnd.isEmpty()) // try to read from mapping if we don't find one in the template
@@ -3235,7 +3268,7 @@ RandomEngine::writeTargetFile()
 
     setError("[random] Error code while writing: " + translatedError + " (Check save folder is set: " + savePathAndFile + ")"); // v3.0.255.3 minor wording and save path modification
 
-    missionx::RandomEngine::abortThread(); // v3.0.219.14
+    missionx::RandomEngine::abort_thread(); // v3.0.219.14
     result = false;
   } // end if fail to write
 
@@ -3632,10 +3665,19 @@ RandomEngine::getPlaneType_enum()
 
 // -----------------------------------
 void
-RandomEngine::abortThread()
+RandomEngine::abort_thread()
 {
   if (missionx::RandomEngine::random_thread_state.flagIsActive)
     missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+}
+
+// -----------------------------------
+
+void 
+RandomEngine::force_end_thread_states() 
+{ 
+  missionx::RandomEngine::random_thread_state.flagIsActive = false;
+  missionx::RandomEngine::random_thread_state.flagThreadDoneWork = true;
 }
 
 // -----------------------------------
@@ -4135,6 +4177,9 @@ RandomEngine::gen_prepare_mission_based_on_databaseflightplan_site(IXMLNode& in_
   gen_briefer_phase_03_add_desc_ai (navaid_targets, false);
   this->xBriefer = navaid_targets[0].fpln_xml_target_leg_node.deepCopy();
 
+  // v26.09.3 Add <end_node> to the mission template
+  gen_end_node(navaid_targets);
+
   // v25.10.1 Add Cold and dark
   RandomEngine::xDrefStartColdAndDark = gen_set_and_get_start_cold_and_dark(in_xTemplateNode, navaid_targets[1]);
 
@@ -4421,6 +4466,10 @@ RandomEngine::gen_prepare_mission_based_on_ils_search(IXMLNode& in_xTemplateNode
   // gen_briefer_phase_03_add_desc(navaid_targets, false);
   gen_briefer_phase_03_add_desc_ai (navaid_targets, false);
   this->xBriefer = navaid_targets[0].fpln_xml_target_leg_node.deepCopy();
+
+
+  // v26.09.3 Add <end_node> to the mission template
+  gen_end_node(navaid_targets);
 
   // v25.10.1 Add Cold and dark
   RandomEngine::xDrefStartColdAndDark = gen_set_and_get_start_cold_and_dark(in_xTemplateNode, navaid_targets[1]);
@@ -4757,6 +4806,9 @@ RandomEngine::gen_prepare_mission_based_on_user_fpln_or_simbrief(IXMLNode& in_xT
   // gen_briefer_phase_03_add_desc(navaid_targets, false);
   gen_briefer_phase_03_add_desc_ai (navaid_targets, false);
   this->xBriefer = navaid_targets[0].fpln_xml_target_leg_node.deepCopy();
+
+  // v26.09.3 Add <end_node> to the mission template
+  gen_end_node(navaid_targets);
 
   // v25.10.1 Add Cold and dark
   RandomEngine::xDrefStartColdAndDark = gen_set_and_get_start_cold_and_dark(in_xTemplateNode, navaid_targets[1]);
@@ -6126,11 +6178,23 @@ Make sure that:
       }
     }
 
+    // prepare system prompt
+    const std::string system_prompt = "You will provide only the text for the flight description."
+                                      "Make sure to check the provided mission_description. It will hint which type of plane and mission the user requested to generate."
+                                      "Generate a realistic mission description based on the user's outline. "
+                                      "Return the description in a simple text format (ascii), and no more than 150 words."
+                                      "You must not use \" in the text description."
+                                      "You must not provide prefix answers like: Okay, here’s a flight simulator mission brief based on your request"
+                                      "If you want to estimate flight time, you must check the waypoints provided. Their should be waypoint coordinates. Evaluate based on their data."
+                                      "If no waypoint coordinates are present, provide a vague timeline, if any."
+                                      ;
+
+
     // prepare curl request info
     missionx::structs::curl_request_data curl_conn_data = data_manager::get_llm_user_setup_info_to_use_with_curl(); 
 
     // Call LLM using curl
-    auto ai_request_result = data_manager::gen_request_mission_description_from_llm(&RandomEngine::random_thread_state, curl_conn_data, mission_outline);
+    auto ai_request_result = data_manager::gen_request_from_the_llm_server(&RandomEngine::random_thread_state, curl_conn_data, mission_outline, system_prompt);
     if (ai_request_result.result)
     {
       // nlohmann::json j = nlohmann::json::parse(ai_request_result.string_value);
@@ -6249,7 +6313,7 @@ Make sure that:
   briefer_desc += "\n\nFly Safe !!!";
 
   if (flag_generated_using_llm)
-    briefer_desc += "\n(Generated using LLM)";
+    briefer_desc += fmt::format("\n({})", mxconst::LLM_DESCRIPTION_FOOTNOTE);
 
   Utils::xml_add_cdata(inout_targets[0].fpln_xml_target_leg_node, briefer_desc);
 
@@ -6260,6 +6324,85 @@ Make sure that:
   //std::cout << "Execution time: " << duration.count() << " ms\n";    
   Log::logMsgThread(fmt::format("[{}] Function ran for: {:.2f}ms {:.2f}sec", __func__, duration.count(), (duration.count() / 1000.0)));
 
+}
+
+// -----------------------------------
+
+void RandomEngine::gen_end_node(std::map<int, NavAidInfo>& inout_targets) 
+{
+  auto end_node_ptr = missionx::RandomEngine::xRootTemplate.getChildNode(mxconst::get_ELEMENT_END_MISSION().c_str());
+  if (end_node_ptr.isEmpty()) // try to read from mapping if we don't find one in the template
+    end_node_ptr = data_manager::xmlMappingNode.getChildNode(mxconst::get_ELEMENT_END_MISSION().c_str());
+  if (end_node_ptr.isEmpty())
+    end_node_ptr = Utils::xml_get_or_create_node_ptr(missionx::RandomEngine::xRootTemplate, mxconst::get_ELEMENT_END_MISSION().c_str());
+
+  // Check briefer exists and fetch the briefer description.
+  if (inout_targets.empty() || !inout_targets.contains(0))
+  {
+    Log::logMsgThread(fmt::format("[{}] No briefer found in the targets map. Notify developer !!!", __func__));
+    return;
+  }
+  if (end_node_ptr.isEmpty())
+  {
+    Log::logMsgThread(fmt::format("[{}] No <end> node found in the template or mapping. Notify developer !!!", __func__));
+    return;
+  }
+
+  auto success_node_ptr = end_node_ptr.getChildNode(mxconst::get_ELEMENT_END_SUCCESS_MSG().c_str());
+  if (success_node_ptr.isEmpty())
+    success_node_ptr = Utils::xml_get_or_create_node_ptr(end_node_ptr, mxconst::get_ELEMENT_END_SUCCESS_MSG().c_str());
+
+  if (success_node_ptr.isEmpty())
+  {
+    Log::logMsgThread(fmt::format("[{}] No <end_success_msg> node found in the template or mapping. Notify developer !!!", __func__));
+    return;
+  }
+
+  // Fetch the briefer description from its "cdata" or "text" node.
+  std::string briefer_desc = Utils::xml_get_text_or_cdata_text(inout_targets[0].fpln_xml_target_leg_node, "");
+
+  // Check if the briefer description contains the text: "generated by LLM" (case-insensitive)
+  if (mxUtils::find_text (briefer_desc, mxconst::LLM_DESCRIPTION_FOOTNOTE.data(), false) != std::string::npos)
+  {
+    // Add a note to the <end> node indicating that the mission description was generated by LLM.
+    std::string end_outline_for_llm = fmt::format("Context (Original Briefing):\n{}\n", briefer_desc);
+    end_outline_for_llm += fmt::format(R"(== end Context (Original Briefing) ==
+
+Mission Outcome:
+State: SUCCESSFUL
+
+Task: Generate a concise, immersive post-mission success debriefing in 2–3 sentences. The debriefing should directly reference the challenges or objectives described in the original briefing and acknowledge their successful completion.
+
+You may add a light comedic joke to make the overall tone more enjoyable, but do not exaggerate or make the message unrealistic.
+
+Do not mention, repeat, or reference any specific time, time of day, duration, or schedule from the briefing description.
+)");
+
+    // prepare system prompt
+    const std::string system_prompt = R"(You are an aviation mission narrative generator. You will provide only the text for the successfully end description in ascii characters.
+You must not provide timing or timeline in your description.)"
+;
+
+    // prepare curl request info
+    missionx::structs::curl_request_data curl_conn_data = data_manager::get_llm_user_setup_info_to_use_with_curl(); 
+    auto                                 ai_request_result = data_manager::gen_request_from_the_llm_server(&RandomEngine::random_thread_state, curl_conn_data, end_outline_for_llm, system_prompt);
+    if (ai_request_result.result)
+    {
+      // nlohmann::json j = nlohmann::json::parse(ai_request_result.string_value);
+      auto json_description = Utils::json_extract_by_path(ai_request_result.string_value, "/choices/0/message/content");
+      if (json_description.result)
+      {
+        auto ai_llm_end_description_s = mxUtils::trim(mxUtils::remove_non_ascii(json_description.string_value, true));
+        if (!ai_llm_end_description_s.empty())
+        {
+          ai_llm_end_description_s += fmt::format("\n({})", mxconst::LLM_DESCRIPTION_FOOTNOTE);
+          Utils::xml_add_cdata(success_node_ptr, ai_llm_end_description_s);
+          Log::logMsgThread(fmt::format("[{}] LLM generated end node success description: {}", __func__, ai_llm_end_description_s));
+        }
+      }
+    }
+
+  }
 }
 
 // -----------------------------------
@@ -8185,7 +8328,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
   if (missionx::RandomEngine::working_tempFile_ptr != nullptr)
   {
     auto template_image_file_name = (missionx::RandomEngine::working_tempFile_ptr->getTemplateImageFileName().empty()) ? mxconst::get_DEFAULT_RANDOM_IMAGE_FILE() : missionx::RandomEngine::working_tempFile_ptr->getTemplateImageFileName();
-    auto template_name            = missionx::RandomEngine::working_tempFile_ptr->fullFilePath;
+    auto template_name            = missionx::RandomEngine::working_tempFile_ptr->xml_file_path;
     auto template_folder_name     = missionx::RandomEngine::working_tempFile_ptr->missionFolderName;
 
     x_local_BrieferInfo = gen_mission_info_node(inRootTemplate, template_name, template_image_file_name, template_folder_name);
@@ -8535,7 +8678,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
 //   if (missionx::RandomEngine::working_tempFile_ptr != nullptr)
 //   {
 //     auto template_image_file_name = (missionx::RandomEngine::working_tempFile_ptr->getTemplateImageFileName().empty()) ? mxconst::get_DEFAULT_RANDOM_IMAGE_FILE() : missionx::RandomEngine::working_tempFile_ptr->getTemplateImageFileName();
-//     auto template_name            = missionx::RandomEngine::working_tempFile_ptr->fullFilePath;
+//     auto template_name            = missionx::RandomEngine::working_tempFile_ptr->xml_file_path;
 //     auto template_folder_name     = missionx::RandomEngine::working_tempFile_ptr->missionFolderName;
 //
 //     x_local_BrieferInfo = gen_mission_info_node(inRootTemplate, template_name, template_image_file_name, template_folder_name);
@@ -8803,7 +8946,7 @@ RandomEngine::gen_prepare_mission_based_on_oilrig(IXMLNode& inRootTemplate, IXML
   if (missionx::RandomEngine::working_tempFile_ptr != nullptr)
   {
     auto template_image_file_name = (missionx::RandomEngine::working_tempFile_ptr->getTemplateImageFileName().empty()) ? mxconst::get_DEFAULT_RANDOM_IMAGE_FILE() : missionx::RandomEngine::working_tempFile_ptr->getTemplateImageFileName();
-    auto template_name            = missionx::RandomEngine::working_tempFile_ptr->fullFilePath;
+    auto template_name            = missionx::RandomEngine::working_tempFile_ptr->xml_file_path;
     auto template_folder_name     = missionx::RandomEngine::working_tempFile_ptr->missionFolderName;
 
     x_local_BrieferInfo = gen_mission_info_node(inRootTemplate, template_name, template_image_file_name, template_folder_name);
@@ -8907,6 +9050,10 @@ RandomEngine::gen_prepare_mission_based_on_oilrig(IXMLNode& inRootTemplate, IXML
   gen_briefer_phase_03_add_desc_ai(navaid_targets, flag_one_of_the_targets_above_water); // v26.08.1
   this->xBriefer = navaid_targets[0].fpln_xml_target_leg_node.deepCopy();
 
+  // v26.09.3 Add <end_node> to the mission template
+  gen_end_node(navaid_targets);
+
+  // v25.10.1 Add Cold and dark
   RandomEngine::xDrefStartColdAndDark = gen_set_and_get_start_cold_and_dark(inRootTemplate, navaid_targets[1]);
 
   // loop over all inventories and add to the global xInventories node

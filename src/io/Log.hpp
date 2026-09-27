@@ -9,9 +9,8 @@
 #ifndef LOG_H_
 #define LOG_H_
 
-#include "../core/base_xp_include.h"
+// #include "../core/base_xp_include.h"
 #include <deque>
-#include <forward_list>
 #include <string>
 #include "writeLogThread.h"
 
@@ -79,7 +78,7 @@ public:
 
   static void logAttention(const std::string &message, bool isThread = false); // v3.0.219.10
 
-  static void logDebugBO(const std::string& message, bool isThread = false); // v3.0.221.15 rc4 rares - Log in debug build only
+  static void logDebugBO(const std::string& message, bool isThread = false, bool print_to_xp_logfile = false); // v3.0.221.15 rc4 rares - Log in debug build only
 
   static void log_xplm_debug_string(const std::string& message, const bool &b_add_plugin_name_as_prefix = true, const bool &b_force_write_to_xplane_log_file = true); // v3.0.221.9 // v3.0.301 B3 added  "bool bDecoration"
 

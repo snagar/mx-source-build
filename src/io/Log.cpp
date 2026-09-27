@@ -22,8 +22,7 @@ ToDo:
 #include <iomanip>
 #include <ctime>
 #include <sstream>
-//#include <thread>
-
+#include <fstream>
 
 using namespace missionx;
 
@@ -129,9 +128,12 @@ missionx::Log::logAttention(const std::string &message, bool isThread)
 }
 
 void
-missionx::Log::logDebugBO(const std::string& message, bool isThread) // log debug in Build Only mode
+missionx::Log::logDebugBO(const std::string& message, bool isThread, bool print_to_xp_logfile) // log debug in Build Only mode
 {
   #ifndef RELEASE
+  if (print_to_xp_logfile)
+    XPLMDebugString(fmt::format("{}\n",message).c_str());
+
   printToLog("[#debug] " + message, isThread);
   #endif
 }

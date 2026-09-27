@@ -82,7 +82,8 @@ missionx::BrieferInfo::init()
   this->vecSentences.clear();
   this->other_settings.clear();
   this->pathToMissionPackFolderInCustomScenery.clear();
-  this->mapImages.clear();
+  //this->mapImages.clear();
+  this->briefer_image.init(); // v26.09.3
   this->scenery_settings.clear();
   this->written_by.clear();
 }

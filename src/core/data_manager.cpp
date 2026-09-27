@@ -3,8 +3,8 @@
 
 
 #include <filesystem>
-namespace fs = std::filesystem;
 
+// #include "mx_img_window.h"
 #include <nlohmann/json.hpp>
 
 #include "data_manager.h"
@@ -23,7 +23,8 @@ namespace fs = std::filesystem;
 #include "../io/system_actions.h"                       // v3.0.241.1
 #include "../ui/core/BitmapReader.h"                    // v3.303.14
 #include "coordinate/NavAidInfo.hpp"
-
+#include "../../libs/minizip/minizip/zip.h"
+#include "../../libs/minizip/minizip/unzip.h"
 
 namespace missionx
 {
@@ -106,10 +107,11 @@ std::deque<mx_flc_pre_command> data_manager::queFlcActions;
 std::deque<mx_flc_pre_command> data_manager::postFlcActions; // v3.0.146
 
 std::map<std::string, mxTextureFile>    data_manager::mapCachedPluginTextures;                // v3.0.118 // plugin specific vecTextures
+std::map<std::string, mxTextureFile>    data_manager::mapTemplatesTextures;                   // v26.09.3
 std::map<std::string, TemplateFileInfo> data_manager::mapGenerateMissionTemplateFiles;        // Generate mission vecTextures // v3.0.217.2
-std::map<int, std::string>                        data_manager::mapGenerateMissionTemplateFilesLocator; // Generate mission vecTextures // v3.0.217.2
+std::map<int, std::string>              data_manager::mapGenerateMissionTemplateFilesLocator; // Generate mission vecTextures // v3.0.217.2
 TemplateFileInfo                        data_manager::user_driven_template_info;              // v3.0.241.9 store user driven bare bone template to build on
-int                                               data_manager::seqElementId{ 0 };
+int                                     data_manager::seqElementId{ 0 };
 
 // Global Settings
 GLobalSettings data_manager::mx_global_settings; // v3.303.8.2
@@ -1125,7 +1127,8 @@ missionx::mx_plane_types_enum data_manager::translatePlaneTypeToEnum(const std::
     return mapPlaneStringTypesToEnum[in_plane_type];
 
   return mapPlaneStringTypesToEnum[EMPTY_STRING]; // should return any
-};
+}
+
 
 // -------------------------------------
 
@@ -1304,18 +1307,30 @@ data_manager::readPluginTextures()
     tFile.fileName = f;
     tFile.filePath = bitmapPath;
 
-    BitmapReader::loadGLTexture(tFile, errorMsg, false); // v3.0.253.8 do not flip image
-
-    if (tFile.gTexture != 0)
+    // BitmapReader::load_textute_and_bind(tFile, errorMsg, false); // v3.0.253.8 do not flip image
+    if (BitmapReader::load_texture_no_bind(tFile, errorMsg, false)) // v26.09.3
     {
-      Utils::addElementToMap(mapCachedPluginTextures, tFile.fileName, tFile);
-
+      mapCachedPluginTextures[tFile.fileName] = tFile;
       // v25.08.1
-      const std::string feedback = fmt::format("Loaded bitmap: {} [{}]\n", tFile.getAbsoluteFileLocation (), tFile.texture_hash_simple); // debug
+      const std::string feedback = fmt::format("Loaded bitmap without binding: {} [{}]\n", tFile.getAbsoluteFileLocation (), tFile.texture_hash_simple); // debug
       Log::log_xplm_debug_string(feedback, false); // debug
     }
-  }
+  } // end texture load without binding
+
+  // v26.09.3 set the bind action to call when x-plane world loads
+  set_texture_bind_for_flc_pre(enums::textures_type_enum::plugin_start, mx_flc_pre_command::bind_textures);
 }
+
+// -------------------------------------
+
+void data_manager::set_texture_bind_for_flc_pre(const missionx::enums::textures_type_enum in_texture_type, const mx_flc_pre_command in_action_to_call)
+{
+  g_queue_texture_to_load.push_back(in_texture_type);
+  //queFlcActions.push_back(in_action_to_call);
+  postFlcActions.push_back(in_action_to_call);
+};
+
+
 
 // -------------------------------------
 
@@ -1510,17 +1525,12 @@ data_manager::clearMissionLoadedTextures()
   // clear maps and images data
   XPLMDebugString("\n\tReleasing mission textures."); // debug
   mapCurrentMissionTexturePathLocator.clear();
-  for ( auto &val : mapCurrentMissionTextures | std::views::values )
-  {
-    glDeleteTextures(1, reinterpret_cast<const GLuint *> ( &val.gTexture ) ); // v3.0.211.2
-  }
+
+  BitmapReader::destroy_textures(mapCurrentMissionTextures); // v26.09.3
   mapCurrentMissionTextures.clear();
 
   XPLMDebugString("\n\tReleasing inventory textures."); // debug
-  for ( auto &val : xp_mapInvImages | std::views::values )
-  {
-    glDeleteTextures(1, reinterpret_cast<const GLuint *> ( &val.gTexture ) );
-  }
+  BitmapReader::destroy_textures(xp_mapInvImages); // v26.09.3
   xp_mapInvImages.clear();
 
 
@@ -1543,10 +1553,12 @@ data_manager::releaseMessageStoryCachedTextures()
   for (size_t loop1 = 0; loop1 < Message::VEC_STORY_IMAGE_SIZE_I; ++loop1) // should have 7
     Message::vecStoryCurrentImages_p.emplace_back(nullptr);
 
-  for ( auto &img : Message::mapStoryCachedImages | std::views::values )
-  {
-    glDeleteTextures(1, reinterpret_cast<const GLuint *> ( &img.gTexture ) );
-  }
+  BitmapReader::destroy_textures(Message::mapStoryCachedImages); // v26.09.3
+  // for ( auto &img : Message::mapStoryCachedImages | std::views::values )
+  // {
+  //   if (img.gTexture != 0)
+  //     glDeleteTextures(1, reinterpret_cast<const GLuint *> ( &img.gTexture ) );
+  // }
 
   Message::mapStoryCachedImages.clear();
 }
@@ -1558,12 +1570,36 @@ data_manager::clearRandomTemplateTextures()
 {
 
   mapGenerateMissionTemplateFilesLocator.clear(); // clear locator for layer set
-  for (auto& img : mapGenerateMissionTemplateFiles)
-  {
-    // glDeleteTextures(1, (const GLuint*)&img.second.imageFile.gTexture); // v3.0.217.2
-    glDeleteTextures(1, reinterpret_cast<const GLuint *> (&img.second.imageFile.gTexture)); // v3.0.217.2
-  }
+  // OpenGL original code
+  // for (auto& img : mapGenerateMissionTemplateFiles)
+  // {
+  //   if (img.second.imageFile.gTexture != 0)
+  //     glDeleteTextures(1, reinterpret_cast<const GLuint *> (&img.second.imageFile.gTexture)); // v3.0.217.2
+  // }
+  // mapGenerateMissionTemplateFiles.clear();
+
+  // OpenGL and Panel graphics support code
+  BitmapReader::destroy_textures(data_manager::mapTemplatesTextures);
+
+  // for (auto& [img_name, img] : missionx::data_manager::mapTemplatesTextures)
+  // {
+  //   if (img.gTexture != 0)
+  //   {
+  //     #ifdef IMGWINDOW_USE_PANEL_GRAPHICS
+  //     if (ImgPanelGraphics::IsAvailable())
+  //       ImgPanelGraphics::DestroyTexture(&img.gTexture);
+  //     #else
+  //     glDeleteTextures(1, reinterpret_cast<const GLuint *> (&img.gTexture));
+  //     #endif
+  //
+  //     #ifndef RELEASE
+  //     Log::logMsg(fmt::format("[{}] Deleted texture: {}.", __func__, img_name));
+  //     #endif
+  //   }
+  // }
   mapGenerateMissionTemplateFiles.clear();
+  mapTemplatesTextures.clear(); // v26.09.3
+
 }
 
 // -------------------------------------
@@ -1646,7 +1682,7 @@ data_manager::loadInventoryImages()
     btnImage.fileName = file;
     btnImage.filePath = mapBrieferMissionList[selectedMissionKey].pathToMissionPackFolderInCustomScenery + XPLMGetDirectorySeparator();
 
-    if (BitmapReader::loadGLTexture(btnImage, errorMsg, false, false)) // load image but do not flip it
+    if (BitmapReader::load_texture_no_bind(btnImage, errorMsg, false)) // load image but do not flip it
     {
       // store vecTextures as generic texture button
       texture = btnImage;
@@ -1661,10 +1697,10 @@ data_manager::loadInventoryImages()
     }
   }
 
-  if (!xp_mapInvImages.empty())
-    postFlcActions.push_back(mx_flc_pre_command::post_async_inv_image_binding);
-}
+   if (!xp_mapInvImages.empty())
+    postFlcActions.push_back(mx_flc_pre_command::inv_post_async_inv_image_binding);
 
+}
 
 // -------------------------------------
 
@@ -1786,7 +1822,7 @@ data_manager::loadStoryImage(Message* msg, const std::string& inImageName_vu)
       #endif // !RELEASE
 
       std::string errorMsg; // v24.06.1
-      if (!btnImage.fileName.empty() && BitmapReader::loadGLTexture(btnImage, errorMsg, false, false)) // load image but do not flip it
+      if (!btnImage.fileName.empty() && BitmapReader::load_texture_no_bind(btnImage, errorMsg, false))
       {
         Utils::addElementToMap(Message::mapStoryCachedImages, inImageName_vu, btnImage);
         Message::lineAction4ui.state = enum_mx_line_state::ready;
@@ -1844,26 +1880,27 @@ data_manager::loadStoryImage(Message* msg, const std::string& inImageName_vu)
 // -------------------------------------
 
 void
-data_manager::loadAllMissionsImages() // used in list mission screen (for example)
+data_manager::load_all_missions_images_no_bind() // used in list mission screen (for example)
 {
   iMissionImageCounter = 0;
   std::string errorMsg; // v24.06.1
 
+  // v26.09.3 release textures
+  if (!xp_mapMissionIconImages.empty())
+    BitmapReader::destroy_textures(xp_mapMissionIconImages);
+  xp_mapMissionIconImages.clear(); // v26.09.3
+
   for (auto& [file_s, mInfo] : mapBrieferMissionList)
   {
-    if (mxUtils::isElementExists(mInfo.mapImages, file_s) && !mInfo.mapImages[file_s].fileName.empty() && !mInfo.mapImages[file_s].filePath.empty())
+    if (!mInfo.briefer_image.fileName.empty() && !mInfo.briefer_image.filePath.empty())
     {
-
-      if (BitmapReader::loadGLTexture(mInfo.mapImages[file_s], errorMsg, false)) // load image but do not flip it
+      if (BitmapReader::load_texture_no_bind(mInfo.briefer_image, errorMsg, false)) // load image but do not flip it
       {
-        // store Texture as generic texture button
-        mxTextureFile texture = mInfo.mapImages[file_s];
-        Utils::addElementToMap(xp_mapMissionIconImages, file_s, texture); // store the mxTextureFile in our generic image map for later use
+                
+        // Store in texture container
+        xp_mapMissionIconImages[file_s] = mInfo.briefer_image; // v26.09.3 store the mxTextureFile in our generic image map for later use
 
-        //Log::logMsg(fmt::format("Loaded Mission Image: {} [{}/{}]", mInfo.mapImages[file_s].fileName, mInfo.mapImages[file_s].texture_hash_simple, mInfo.mapImages[file_s].texture_hash_sha256) ); // debug
-        Log::logMsg(fmt::format("Loaded Mission Image: {} [{}]", mInfo.mapImages[file_s].fileName, mInfo.mapImages[file_s].texture_hash_simple) ); // debug
-
-        ++iMissionImageCounter;
+        Log::logMsg(fmt::format("Loaded Mission Image - not bind texture: {} [{}]", mInfo.briefer_image.fileName, mInfo.briefer_image.texture_hash_simple)); // debug
       }
       else
       {
@@ -1873,7 +1910,11 @@ data_manager::loadAllMissionsImages() // used in list mission screen (for exampl
 
   } // end loop over valid missions
 
-  Log::logMsg("After loadAllMissionsImages!! ");
+  // v26.09.3 add bind_texture_request
+  if (!xp_mapMissionIconImages.empty())
+    data_manager::set_texture_bind_for_flc_pre(enums::textures_type_enum::mission_list_screen, mx_flc_pre_command::bind_textures);
+
+  Log::logMsg("!! After loading all mission list images, without binding !! ");
 }
 
 // -------------------------------------
@@ -3338,7 +3379,7 @@ data_manager::prepareInventoryCopies(const std::string& inInventoryName)
     lmbda_read_image_file_names(planeInventoryCopy.node);
 
   if (xp_mapInvImages.size() > static_cast<size_t>(0)) // call execute read async images only if there are any
-    queFlcActions.push_back(mx_flc_pre_command::read_async_inv_image_files);
+    queFlcActions.push_back(mx_flc_pre_command::inv_read_async_inv_image_files);
 }
 
 
@@ -9904,8 +9945,8 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread2 (missionx::base_t
 {
   // https://wiki.openstreetmap.org/wiki/Overpass_API
 
-  if (q == nullptr)
-    return;
+  // if (q == nullptr)
+  //   return;
 
 }
 
@@ -9913,7 +9954,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread2 (missionx::base_t
 // -------------------------------------
 
 
-missionx::mx_return missionx::data_manager::gen_request_mission_description_from_llm(missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::curl_request_data &in_curl_request_data, const std::string& mission_outline/*, std::string* outStatusMessage*/)
+missionx::mx_return missionx::data_manager::gen_request_from_the_llm_server(missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::curl_request_data &in_curl_request_data, const std::string& user_prompt, const std::string& system_prompt)
 {
   missionx::mx_return result_llm = false;
 
@@ -9928,20 +9969,20 @@ missionx::mx_return missionx::data_manager::gen_request_mission_description_from
   std::string response_data;
 
   #ifndef RELEASE
-    Log::logMsgThread(fmt::format("[{}] mission outline: {}", __func__, mission_outline));
+    Log::logMsgThread(fmt::format("[{}] mission outline: {}", __func__, user_prompt));
   #endif
 
-  const std::string system_prompt = "You will provide only the text for the flight description."
-                                    "Make sure to check the provided mission_description. It will hint which type of plane and mission the user requested to generate."
-                                    "Generate a realistic mission description based on the user's outline. "
-                                    "Return the description in a simple text format (ascii), and no more than 150 words."
-                                    "You must not use \" in the text description."
-                                    "You must not provide prefix answers like: Okay, here’s a flight simulator mission brief based on your request"
-                                    "If you want to estimate flight time, you must check the waypoints provided. Their should be waypoint coordinates. Evaluate based on their data."
-                                    "If no waypoint coordinates are present, provide a vague timeline, if any."
-                                    ;
+  // const std::string system_prompt = "You will provide only the text for the flight description."
+  //                                   "Make sure to check the provided mission_description. It will hint which type of plane and mission the user requested to generate."
+  //                                   "Generate a realistic mission description based on the user's outline. "
+  //                                   "Return the description in a simple text format (ascii), and no more than 150 words."
+  //                                   "You must not use \" in the text description."
+  //                                   "You must not provide prefix answers like: Okay, here’s a flight simulator mission brief based on your request"
+  //                                   "If you want to estimate flight time, you must check the waypoints provided. Their should be waypoint coordinates. Evaluate based on their data."
+  //                                   "If no waypoint coordinates are present, provide a vague timeline, if any."
+  //                                   ;
 
-  // Build the payload structure natively from "the "system_prompt" and "mission_outline"
+  // Build the payload structure natively from "the "system_prompt" and "user_prompt"
   nlohmann::json payload = {
                           {"model", "local-model"},
                           {"messages", nlohmann::json::array(
@@ -9952,7 +9993,7 @@ missionx::mx_return missionx::data_manager::gen_request_mission_description_from
                                    }
                                 , {
                                     {"role", "user"}
-                                  , {"content", mission_outline}
+                                  , {"content", user_prompt}
                                 }
                               }
                               )
@@ -10450,7 +10491,7 @@ data_manager::loadImage(const std::string& inFileName, std::map<std::string, mxT
   mxTextureFile texture;
 
   texture.setTextureFile(inFileName, fldMissionCustom_withSep);
-  if (BitmapReader::loadGLTexture(texture, errorMsg, false)) // load image but do not flip it
+  if (BitmapReader::load_textute_and_bind(texture, errorMsg, false)) // load image but do not flip it
   {
     Utils::addElementToMap(in_outTextureMapToStore, inFileName, texture); // store texture data in map
 

@@ -3,6 +3,8 @@
 #include <limits>
 #include <filesystem>
 #include <utility>
+
+#include "fmt/os.h"
 // #include <XPLMWeather.h>
 
 namespace fs = std::filesystem;
@@ -837,7 +839,7 @@ missionx::Mission::prepareMissionBrieferInfo()
   missionx::ListDir::readMissionsBrieferInfo(missionx_mission_folder, data_manager::mapBrieferMissionList, data_manager::mapBrieferMissionListLocator);
 
   //// Move Random to the beginning of the list, if it exists
-  if (Utils::isElementExists(data_manager::mapBrieferMissionList, mxconst::get_RANDOM_MISSION_DATA_FILE_NAME()))
+  if (data_manager::mapBrieferMissionList.contains( mxconst::get_RANDOM_MISSION_DATA_FILE_NAME() ))
   {
     // find random sequence image number
     int randomSeq = -1;
@@ -853,11 +855,11 @@ missionx::Mission::prepareMissionBrieferInfo()
     if (randomSeq > 1) // if "random.xml" file is not already first
     {
       // switch with the first file
-      if (Utils::isElementExists(data_manager::mapBrieferMissionListLocator, 1))
+      if (data_manager::mapBrieferMissionListLocator.contains(1))
       {
         std::string prevFileName   = mxconst::get_RANDOM_MISSION_DATA_FILE_NAME();
 
-        for (auto& [seq, fileName] : data_manager::mapBrieferMissionListLocator) // push all files so random will switch with first file
+        for (const auto& seq : data_manager::mapBrieferMissionListLocator | std::views::keys) // push all files so random will switch with first file
         {
           std::string storedFileName                      = data_manager::mapBrieferMissionListLocator[seq];
           data_manager::mapBrieferMissionListLocator[seq] = prevFileName;
@@ -865,8 +867,8 @@ missionx::Mission::prepareMissionBrieferInfo()
 
           if (seq > 1 && (mxconst::get_RANDOM_MISSION_DATA_FILE_NAME() == storedFileName))
             break;
-          else
-            prevFileName = storedFileName;
+
+          prevFileName = storedFileName;
 
         }
 
@@ -1288,7 +1290,7 @@ missionx::Mission::readCurrentMissionTextures()
     mxTextureFile texture;
     texture.setTextureFile(fileName, filePath);
 
-    if (missionx::BitmapReader::loadGLTexture(texture, errorMsg, false)) // load image but do not flip it
+    if (missionx::BitmapReader::load_textute_and_bind(texture, errorMsg, false)) // load image but do not flip it
     {
       Utils::addElementToMap(data_manager::mapCurrentMissionTextures, fileName, texture); // v3.0.211.2 store texture data in map
 
@@ -1318,7 +1320,7 @@ missionx::Mission::readCurrentMissionTextures()
             mxTextureFile texture;
             texture.setTextureFile(file_name, fldMissionCustom_withSep);
 
-            if (missionx::BitmapReader::loadGLTexture(texture, local_errorMsg, false)) // load image but do not flip it
+            if (missionx::BitmapReader::load_textute_and_bind(texture, local_errorMsg, false)) // load image but do not flip it
             {
               Utils::addElementToMap(missionx::data_manager::mapFlightLegs[leg_name].map2DMapsNodes, file_name, xChild.deepCopy()); // v3.0.241.7.1
               Utils::addElementToMap(data_manager::mapCurrentMissionTextures, file_name, texture);                                  // store texture data in map
@@ -1353,7 +1355,7 @@ missionx::Mission::readCurrentMissionTextures()
     std::string local_errorMsg;
     mxTextureFile texture;
     texture.setTextureFile(end_file_name, fldMissionCustom_withSep + "briefer");
-    if (missionx::BitmapReader::loadGLTexture(texture, local_errorMsg, false)) // load image but do not flip it
+    if (missionx::BitmapReader::load_textute_and_bind(texture, local_errorMsg, false)) // load image but do not flip it
     {
       Utils::addElementToMap(data_manager::mapCurrentMissionTextures, end_file_name, texture);   // store texture data in map
       Log::logDebugBO("Loaded End Success image Texture: " + texture.getAbsoluteFileLocation()); // debug
@@ -1366,7 +1368,7 @@ missionx::Mission::readCurrentMissionTextures()
     end_file_name              = Utils::readAttrib(nodeEndFail, mxconst::get_ATTRIB_FILE_NAME(), "");
 #endif
     texture.setTextureFile(end_file_name, fldMissionCustom_withSep + "briefer");
-    if (missionx::BitmapReader::loadGLTexture(texture, local_errorMsg, false)) // load image but do not flip it
+    if (missionx::BitmapReader::load_textute_and_bind(texture, local_errorMsg, false)) // load image but do not flip it
     {
       Utils::addElementToMap(data_manager::mapCurrentMissionTextures, end_file_name, texture);  // store texture data in map
       Log::logDebugBO("Loaded End Failed image Texture: " + texture.getAbsoluteFileLocation()); // debug
@@ -1586,10 +1588,10 @@ missionx::Mission::flc()
         missionx::data_manager::timelapse.flc_timelapse();
       }
 
-      return;
+      //return;
     }
-
-    if (data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running || data_manager::missionState == missionx::mx_mission_state_enum::pre_mission_running)
+    // v26.09.2 added "else". This will prevent the "return" from the "pause state" and thus miss the "postFlcActions"
+    else if (data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running || data_manager::missionState == missionx::mx_mission_state_enum::pre_mission_running)
     {
       std::string err;
       // v3.0.221.15rc5 flc timelapse
@@ -1728,7 +1730,7 @@ missionx::Mission::flc_threads()
 {
   ///////////////////////////////
   //  Apt Dat Thread
-  if (missionx::OptimizeAptDat::aptState.flagAbortThread)
+  if (missionx::OptimizeAptDat::aptState.flagAbortThread && missionx::OptimizeAptDat::aptState.flagThreadDoneWork)
   {
     if (missionx::OptimizeAptDat::thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
       missionx::OptimizeAptDat::thread_ref.join();
@@ -1750,6 +1752,8 @@ missionx::Mission::flc_threads()
       // reset thread
       if (missionx::OptimizeAptDat::aptState.flagThreadDoneWork)
       {
+        missionx::OptimizeAptDat::aptState.flagAbortThread = true; // v26.09.3 force it
+
         //const std::string msg = "\t\t--- APT.DAT optimization finished (" + OptimizeAptDat::aptState.getDuration() + "s) ---";
         const std::string msg = fmt::format("--- APT DATA optimization finished ({}s) ---{}", OptimizeAptDat::aptState.getDuration(), data_manager::post_optimization_outcome.empty ()? "":"\n" + data_manager::post_optimization_outcome);
 
@@ -1772,7 +1776,7 @@ missionx::Mission::flc_threads()
 
   ///////////////////////////////
   //  Random Engine Thread
-  if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+  if (missionx::RandomEngine::random_thread_state.flagAbortThread && missionx::RandomEngine::random_thread_state.flagThreadDoneWork)
   {
     if (RandomEngine::thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
       RandomEngine::thread_ref.join();
@@ -1791,9 +1795,6 @@ missionx::Mission::flc_threads()
     missionx::flag_generatedRandomFile_success = false; // we should remove this flag, and only use "missionx::data_manager::flag_generate_engine_is_running"
     missionx::strct_generate_template_layer.selectedTemplateKey.clear();              // reset and hide generate file button
     missionx::strct_generate_template_layer.last_picked_template_key.clear();          // reset and hide generate file button
-    //Mission::uiImGuiBriefer->flag_generatedRandomFile_success = false; // we should remove this flag, and only use "missionx::data_manager::flag_generate_engine_is_running"
-    //Mission::uiImGuiBriefer->strct_generate_template_layer.selectedTemplateKey.clear();              // reset and hide generate file button
-    //Mission::uiImGuiBriefer->strct_generate_template_layer.last_picked_template_key.clear();          // reset and hide generate file button
 
     missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::enable_generator_menu);
 
@@ -1804,14 +1805,12 @@ missionx::Mission::flc_threads()
     if (RandomEngine::random_thread_state.flagIsActive && !RandomEngine::random_thread_state.flagThreadDoneWork)
     {
       missionx::data_manager::flag_generate_engine_is_running   = true;
-      //Mission::uiImGuiBriefer->flag_generatedRandomFile_success = false; // we should remove this flag, and only use "missionx::data_manager::flag_generate_engine_is_running"
       missionx::flag_generatedRandomFile_success = false; // we should remove this flag, and only use "missionx::data_manager::flag_generate_engine_is_running"
 
       missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::disable_generator_menu);
     }
     else
     {
-
       // reset thread
       if (RandomEngine::random_thread_state.flagThreadDoneWork)
       {
@@ -1896,64 +1895,64 @@ missionx::Mission::flc_threads()
   //////////////////////////////
   // Optimization Threads  // v3.305.2
 
-  #ifdef USE_TRIGGER_OPTIMIZATION
-  if (missionx::data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running)
-  {
-    if (data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state.abort_thread)
-    {
-      if (data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
-        data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_ref.join();
-
-      data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state.init();
-
-      // missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::enable_aptdat_optimize_menu);
-    }
-    else
-    {
-
-      if (!data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state.flagIsActive)
-      {
-        if (data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state.thread_done_work)
-        {
-          if (data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
-            data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_ref.join();
-
-          data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state.init();
-
-          // copy triggers from
-          data_manager::mapFlightLegs[data_manager::currentLegName].listTriggersByDistance.clear();
-          data_manager::mapFlightLegs[data_manager::currentLegName].listTriggersByDistance = data_manager::mapFlightLegs[data_manager::currentLegName].listTriggersByDisatnce_thread;
-
-          this->timerOptLegTriggersTimer.reset();
-          missionx::Timer::start(this->timerOptLegTriggersTimer, 10.0f);
-        }
-        else if (missionx::data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
-        {
-
-          if (Timer::evalTime(this->timerOptLegTriggersTimer))
-          {
-            this->timerOptLegTriggersTimer.reset();
-
-            missionx::data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_planePos = missionx::dataref_manager::getCurrentPlanePointLocation();
-
-            missionx::data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_ref = std::thread(&missionx::data_manager::optimizeLegTriggers_thread,
-                                                                            &missionx::data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state,
-                                                                            &missionx::data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_planePos,
-                                                                            &data_manager::mapTriggers,
-                                                                            &data_manager::mapFlightLegs[data_manager::currentLegName].listTriggersByDistance,
-                                                                            &data_manager::mapFlightLegs[data_manager::currentLegName].listTriggersByDisatnce_thread);
-          }
-          else if (this->timerOptLegTriggersTimer.getState() == mx_timer_state::timer_not_set)
-          {
-            this->timerOptLegTriggersTimer.reset();
-            missionx::Timer::start(this->timerOptLegTriggersTimer, 1.0f); // as soon as possible
-          }
-
-        }  // is mission running ?
-      } // end else data_manager::optLegTriggers_thread_state.flagIsActive && !data_manager::optLegTriggers_thread_state.thread_done_work
-    }
-  } // end if mission is, at least, running
-  #endif
+//  #ifdef USE_TRIGGER_OPTIMIZATION
+//  if (missionx::data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running)
+//  {
+//    if (data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state.abort_thread)
+//    {
+//      if (data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
+//        data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_ref.join();
+//
+//      data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state.init();
+//
+//      // missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::enable_aptdat_optimize_menu);
+//    }
+//    else
+//    {
+//
+//      if (!data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state.flagIsActive)
+//      {
+//        if (data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state.thread_done_work)
+//        {
+//          if (data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
+//            data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_ref.join();
+//
+//          data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state.init();
+//
+//          // copy triggers from
+//          data_manager::mapFlightLegs[data_manager::currentLegName].listTriggersByDistance.clear();
+//          data_manager::mapFlightLegs[data_manager::currentLegName].listTriggersByDistance = data_manager::mapFlightLegs[data_manager::currentLegName].listTriggersByDisatnce_thread;
+//
+//          this->timerOptLegTriggersTimer.reset();
+//          missionx::Timer::start(this->timerOptLegTriggersTimer, 10.0f);
+//        }
+//        else if (missionx::data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
+//        {
+//
+//          if (Timer::evalTime(this->timerOptLegTriggersTimer))
+//          {
+//            this->timerOptLegTriggersTimer.reset();
+//
+//            missionx::data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_planePos = missionx::dataref_manager::getCurrentPlanePointLocation();
+//
+//            missionx::data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_ref = std::thread(&missionx::data_manager::optimizeLegTriggers_thread,
+//                                                                            &missionx::data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_state,
+//                                                                            &missionx::data_manager::optimize_leg_triggers_strct.optLegTriggers_thread_planePos,
+//                                                                            &data_manager::mapTriggers,
+//                                                                            &data_manager::mapFlightLegs[data_manager::currentLegName].listTriggersByDistance,
+//                                                                            &data_manager::mapFlightLegs[data_manager::currentLegName].listTriggersByDisatnce_thread);
+//          }
+//          else if (this->timerOptLegTriggersTimer.getState() == mx_timer_state::timer_not_set)
+//          {
+//            this->timerOptLegTriggersTimer.reset();
+//            missionx::Timer::start(this->timerOptLegTriggersTimer, 1.0f); // as soon as possible
+//          }
+//
+//        }  // is mission running ?
+//      } // end else data_manager::optLegTriggers_thread_state.flagIsActive && !data_manager::optLegTriggers_thread_state.thread_done_work
+//    }
+//  } // end if mission is, at least, running
+//  #endif
 
 } // end flcThread()
 
@@ -4236,7 +4235,92 @@ missionx::Mission::flcPRE()
         exec_apt_dat_optimization();
       }
       break;
-      case missionx::mx_flc_pre_command::imgui_reload_templates_data_and_images:
+      case missionx::mx_flc_pre_command::bind_textures:
+      {
+        // point to container that holds the texture type we are using ?
+        static std::map<std::string, missionx::mxTextureFile>* texture_map_ptr =  nullptr;
+        static auto  handling_textures_of_type = enums::textures_type_enum::none;
+        if (!data_manager::g_queue_texture_to_load.empty() && !data_manager::g_flag_there_are_textures_waiting_in_queue_to_bind)
+        {
+          handling_textures_of_type = data_manager::g_queue_texture_to_load.front();
+          data_manager::g_queue_texture_to_load.pop_front();
+          data_manager::g_flag_there_are_textures_waiting_in_queue_to_bind = true;
+
+          // init pointer based on type
+          switch (handling_textures_of_type)
+          {
+          case  enums::textures_type_enum::plugin_start:
+            texture_map_ptr = &data_manager::mapCachedPluginTextures;
+          break;
+          case  enums::textures_type_enum::mission_list_screen:
+            texture_map_ptr = &data_manager::xp_mapMissionIconImages;
+          break;
+          case  enums::textures_type_enum::template_screen:
+            texture_map_ptr = &data_manager::mapTemplatesTextures;
+          break;
+          default:
+          {
+            texture_map_ptr = nullptr;
+            data_manager::g_flag_there_are_textures_waiting_in_queue_to_bind = false;
+          }
+          }; // end init container to handle
+        }
+
+        // static size_t container_size = (texture_map_ptr)?texture_map_ptr->size() : 0;
+
+
+        #ifndef RELEASE
+        missionx::Log::logMsg(fmt::format("[{}] >> Binding Textures type: {} <<\n", __func__,  enums::to_string (handling_textures_of_type) ) );
+        #endif
+
+        if (texture_map_ptr)
+        {
+          size_t loop_counter = 0;
+          for (auto &[file, textureFile] : (*texture_map_ptr) )
+          {
+            loop_counter += 1;
+            if (file.empty() || textureFile.getWidth() == 0 || textureFile.getHeight() == 0 || textureFile.sImageData.pData == nullptr || textureFile.texture_hash_simple == 0)
+              continue;
+
+            #ifndef RELEASE
+            missionx::Log::log_xplm_debug_string (fmt::format("[{}] >> Binding Texture: {}.\n", __func__,  textureFile.getAbsoluteFileLocation() ) );
+            #endif
+
+            // v26.09.3 Bind the textures
+            if ( BitmapReader::bind_texture(textureFile) == 0)
+              Log::log_xplm_debug_string(fmt::format("[{}] Texture: {} failed to bind.\n", __func__, textureFile.getAbsoluteFileLocation()) );
+
+            // TODO: Future implementation - postpone binding of next texture file, for next "flight loop"
+            // // we will try to load the textures one by one in each loop and not all at the same time
+            // data_manager::postFlcActions.push_back(mx_flc_pre_command::bind_texture);
+            // break; // force exit loop
+            //
+          } // end loop over texture file container
+
+          // Cleanup and reset state of static variables
+          if (texture_map_ptr && loop_counter >= texture_map_ptr->size())
+          {
+            // special flag settings for UI
+            if (handling_textures_of_type == enums::textures_type_enum::mission_list_screen)
+              Mission::uiImGuiBriefer->strct_pick_layer.bFinished_loading_mission_images = true;
+            else if (handling_textures_of_type == enums::textures_type_enum::template_screen)
+              data_manager::postFlcActions.push_back(mx_flc_pre_command::imgui_reload_templates_data_and_images_step02);
+
+            // Reset bind textures flags
+            data_manager::g_flag_there_are_textures_waiting_in_queue_to_bind = false;
+            handling_textures_of_type = enums::textures_type_enum::none;
+            texture_map_ptr =  nullptr;
+          }
+
+        } // end if map_container_ptr is valid
+
+        #ifndef RELEASE
+        missionx::Log::log_xplm_debug_string(fmt::format("[{}] >> Finished Binding Textures !!! <<\n", __func__) );
+        #endif
+
+      } // end bind textures
+      break;
+      case missionx::mx_flc_pre_command::imgui_reload_templates_data_and_images_step01:
       {
         // reload all templates and do nothing on the UI
         // Command will do the following:
@@ -4253,12 +4337,14 @@ missionx::Mission::flcPRE()
         const std::string template_folder       = data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_RANDOM_TEMPLATES_PATH(), "", err); // get path to template folder
         const std::string custom_mission_folder = data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_FLD_MISSIONS_ROOT_PATH(), "", err);     // get path to custom missionx folder "/Custom Scenery/missionx"
 
-        if (missionx::ListDir::read_all_templates(template_folder, custom_mission_folder, missionx::data_manager::mapGenerateMissionTemplateFiles))
+        // if (missionx::ListDir::read_all_templates(template_folder, custom_mission_folder, missionx::data_manager::mapGenerateMissionTemplateFiles))
+        if (missionx::ListDir::read_all_templates_02(template_folder, custom_mission_folder, missionx::data_manager::mapGenerateMissionTemplateFiles, data_manager::mapTemplatesTextures) )
         {
           missionx::data_manager::mapGenerateMissionTemplateFilesLocator.clear();
 
           // v3.0.241.9 extract and remove the special BLANK Template from the real template maps
-          if (Utils::isElementExists(missionx::data_manager::mapGenerateMissionTemplateFiles, mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI()))
+          // if (Utils::isElementExists(missionx::data_manager::mapGenerateMissionTemplateFiles, mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI()))
+          if (missionx::data_manager::mapGenerateMissionTemplateFiles.contains( mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI()) )
           {
             data_manager::user_driven_template_info = missionx::data_manager::mapGenerateMissionTemplateFiles[mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI()];
             missionx::data_manager::mapGenerateMissionTemplateFiles.erase(mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI());
@@ -4268,41 +4354,75 @@ missionx::Mission::flcPRE()
           missionx::data_manager::mapGenerateMissionTemplateFilesLocator.clear();
           int seq = 0;
           // load textures and build file locator: mapGenerateMissionTemplateFilesLocator
-
           std::string errorMsg; // v24.06.1
-          for (auto& f : missionx::data_manager::mapGenerateMissionTemplateFiles)
+          for (auto& [file_name, template_file_info] : missionx::data_manager::mapGenerateMissionTemplateFiles)
           {
             ++seq;
-            Utils::addElementToMap(missionx::data_manager::mapGenerateMissionTemplateFilesLocator, seq, f.first);
-            f.second.seq = seq;
+            // Utils::addElementToMap(missionx::data_manager::mapGenerateMissionTemplateFilesLocator, seq, file_name);
+            // v26.09.3
+            missionx::data_manager::mapGenerateMissionTemplateFilesLocator[ seq ] = file_name;
+            template_file_info.seq = seq;
 
             // Read textures
-            missionx::BitmapReader::loadGLTexture(f.second.imageFile, errorMsg, false); // v3.0.253.9 do not flip image
+            // missionx::BitmapReader::load_textute_and_bind(texture_file.imageFile, errorMsg, false); // v3.0.253.9 do not flip image
 
-            if (f.second.imageFile.gTexture != 0)
+            // v26.09.3
+            if (missionx::BitmapReader::load_texture_no_bind(data_manager::mapTemplatesTextures[ template_file_info.full_path_to_image_file] , errorMsg, false) )
             {
-              Log::logMsg("Loaded Template bitmap: " + f.second.imageFile.getAbsoluteFileLocation()); // debug
+              // keep the template texture image file in both containers until we will convert it to a pointer.
+              template_file_info.imageFile = data_manager::mapTemplatesTextures[ template_file_info.full_path_to_image_file];
+              Log::logMsg("Loaded Template bitmap unbind: " + data_manager::mapTemplatesTextures[template_file_info.full_path_to_image_file].getAbsoluteFileLocation() ); // debug
             }
             else
             {
-              Log::logMsgErr("Failed Loading Template bitmap: " + f.second.imageFile.getAbsoluteFileLocation()); // debug
+              Log::logMsgErr("Failed Loading Template bitmap: " + data_manager::mapTemplatesTextures[template_file_info.full_path_to_image_file].getAbsoluteFileLocation()); // debug
             }
+            // if (template_file_info.imageFile.gTexture != 0)
+            // {
+            //   Log::logMsg("Loaded Template bitmap: " + template_file_info.imageFile.getAbsoluteFileLocation()); // debug
+            // }
+            // else
+            // {
+            //   Log::logMsgErr("Failed Loading Template bitmap: " + template_file_info.imageFile.getAbsoluteFileLocation()); // debug
+            // }
           }
         } // end read templates
+
+        data_manager::set_texture_bind_for_flc_pre(enums::textures_type_enum::template_screen, mx_flc_pre_command::bind_textures);
+
+
+        // // 3. display random templates layer ?
+        // if (missionx::data_manager::mapGenerateMissionTemplateFiles.empty())
+        // {
+        //   Mission::uiImGuiBriefer->set_bottom_message_line1("No Mission Template File Found.");
+        //   Log::logDebugBO("No mission template file found");
+        // }
+        // else
+        // {
+        //
+        //   Mission::uiImGuiBriefer->set_bottom_message_line1("Templates were loaded....");
+        //   Mission::uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_POST_TEMPLATE_LOAD_DISPLAY_IMGUI_GENERATE_TEMPLATES_IMAGES); // v3.0.255.4 missing action, was in "reload_templates_data_and_images". After some tests all seem to
+        //                                                                                                                                 // function as expected so we deprecated: "reload_templates_data_and_images" case.
+        // }
+      }
+      break;
+
+      case missionx::mx_flc_pre_command::imgui_reload_templates_data_and_images_step02:
+      {
+        // reload all templates and do nothing on the UI
+        // Command will do the following:
+        // Do step 3 a fter texture bindings. if there are templates then set briefer layer and display it
 
         // 3. display random templates layer ?
         if (missionx::data_manager::mapGenerateMissionTemplateFiles.empty())
         {
           Mission::uiImGuiBriefer->set_bottom_message_line1("No Mission Template File Found.");
-
           Log::logDebugBO("No mission template file found");
         }
         else
         {
-
           Mission::uiImGuiBriefer->set_bottom_message_line1("Templates were loaded....");
-          Mission::uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_POST_TEMPLATE_LOAD_DISPLAY_IMGUI_GENERATE_TEMPLATES_IMAGES); // v3.0.255.4 missing action, was in "reload_templates_data_and_images". After some tests all seem to
-                                                                                                                                        // function as expected so we deprecated: "reload_templates_data_and_images" case.
+          Mission::uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_POST_TEMPLATE_LOAD_DISPLAY_IMGUI_GENERATE_TEMPLATES_IMAGES); // v3.0.255.4 missing action, was in "reload_templates_data_and_images". After some tests all seem to// function as expected so we deprecated: "reload_templates_data_and_images" case.
         }
       }
       break;
@@ -4442,11 +4562,13 @@ missionx::Mission::flcPRE()
       break;
       case missionx::mx_flc_pre_command::imgui_prepare_mission_files_briefer_info:
       {
-        this->prepareMissionBrieferInfo(); // v3.0.241.10 b3 refresh list of all missions in folders. Should pick new mission files created by plugin and might not be present before
+        // deprecated in v26.09.3. we already call this function from prepareUiMissionList()
+        // this->prepareMissionBrieferInfo(); // v3.0.241.10 b3 refresh list of all missions in folders. Should pick new mission files created by plugin and might not be present before
         this->prepareUiMissionList();      // will reload data and images
 
         assert(Mission::uiImGuiBriefer && "uiImguiBriefer is not initialized correctly !!!");
-        Mission::uiImGuiBriefer->strct_pick_layer.bFinished_loading_mission_images = true;
+        // v26.09.3 We flag the texture load as success in the "mx_flc_pre_command::bind_texture" action.
+        // Mission::uiImGuiBriefer->strct_pick_layer.bFinished_loading_mission_images = true;
       }
       break;
       case missionx::mx_flc_pre_command::imgui_check_validity_of_db_file: // v3.0.253.9
@@ -4483,7 +4605,7 @@ missionx::Mission::flcPRE()
             {
               missionx::strct_generate_template_layer.bFinished_loading_templates = false;
               Mission::uiImGuiBriefer->set_bottom_message_line1("Please wait while loading mission templates...", 8);
-              missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::imgui_reload_templates_data_and_images);
+              missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::imgui_reload_templates_data_and_images_step01);
             }
           }
           else
@@ -4579,11 +4701,17 @@ missionx::Mission::flcPRE()
         }
       }
       break;
-      case missionx::mx_flc_pre_command::start_random_mission: // v3.0.219.1
+      case missionx::mx_flc_pre_command::start_random_mission_step01: // v3.0.219.1
       {
-        this->prepareMissionBrieferInfo(); // v3.0.241.10 b3 refresh list of all missions in folders. Should pick new mission files created by plugin and might not be present before
+        // this->prepareMissionBrieferInfo(); // v3.0.241.10 b3 refresh list of all missions in folders. Should pick new mission files created by plugin and might not be present before
         this->prepareUiMissionList();      // will reload data and images
 
+        // v26.09.3 must come after binding the textures
+        data_manager::postFlcActions.push_back(mx_flc_pre_command::start_random_mission_step02);
+      }
+      break;
+      case missionx::mx_flc_pre_command::start_random_mission_step02: // v26.09.3
+      {
         if (missionx::data_manager::selectedMissionKey.empty())                                // v3.0.241.10 b3 do not automatically assume to use "random.xml" file since it might be based on "template mission folder" = "template.xml".
           missionx::data_manager::selectedMissionKey = mxconst::get_RANDOM_MISSION_DATA_FILE_NAME(); // v3.0.241.1 replaced uiWinBriefer.mediaBriefer.selectedMissionKey // reset and hide generate file button after successfull creation
 
@@ -4761,12 +4889,8 @@ missionx::Mission::flcPRE()
       case missionx::mx_flc_pre_command::stop_mission:
       {
         Mission::uiImGuiBriefer->setLayer(missionx::uiLayer_enum::imgui_home_layer); // v3.0.251.1
-        // if (data_manager::missionState <= missionx::mx_mission_state_enum::mission_loaded_from_savepoint)
-        //   Mission::uiImGuiBriefer->setLayer(missionx::uiLayer_enum::imgui_home_layer); // v3.0.251.1
-        // else
-        //   Mission::uiImGuiBriefer->setLayer(missionx::uiLayer_enum::imgui_home_layer); // v3.0.251.1
 
-        Mission::stopMission(); // need to replace this with MenuHandler ?
+        Mission::stopMission();
 
         missionx::data_manager::selectedMissionKey.clear(); // v3.0.241.1
         missionx::Message::lineAction4ui.init();
@@ -5440,7 +5564,7 @@ missionx::Mission::flcPRE()
       break;
       case missionx::mx_flc_pre_command::abort_random_engine:
       {
-        this->engine.abortThread();
+        this->engine.abort_thread();
       }
       break;
       case missionx::mx_flc_pre_command::toggle_target_marker_option: // v3.0.253.9.1 store the toggle option
@@ -5530,13 +5654,10 @@ missionx::Mission::flcPRE()
 
       }
       break;
-      case missionx::mx_flc_pre_command::read_async_inv_image_files:
-      {
-
-        for (const auto &[imgName, btnTexture] : data_manager::xp_mapInvImages)
-        {
-          glDeleteTextures(1, reinterpret_cast<const GLuint *> (&btnTexture.gTexture)); //
-        }
+      case missionx::mx_flc_pre_command::inv_read_async_inv_image_files:
+      {       
+        // Original Code
+        BitmapReader::destroy_textures(data_manager::xp_mapInvImages); // v26.09.3
 
         // v26.04.4
         const auto b_disable_inventory_images = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool> (mxconst::get_OPT_DISABLE_INVENTORY_IMAGE_LOAD (), false);
@@ -5544,63 +5665,23 @@ missionx::Mission::flcPRE()
           auto future = std::async(std::launch::async, &missionx::data_manager::loadInventoryImages);
       }
       break;
-      case missionx::mx_flc_pre_command::post_async_inv_image_binding:
-      {
-        for (auto& [file, textureFile] : missionx::data_manager::xp_mapInvImages)
-        {
-          if (file.empty() || textureFile.getWidth() == 0 || textureFile.getHeight() == 0 || textureFile.sImageData.pData == nullptr || textureFile.texture_hash_simple == 0) // v3.0.303.7 hopefully will solve a bug if image file was not found
-            continue;
+      case missionx::mx_flc_pre_command::inv_post_async_inv_image_binding:
+      {      
+       // ORIGINAL CODE
+       for (auto& [file, textureFile] : missionx::data_manager::xp_mapInvImages)
+       {
+         if (file.empty() || textureFile.getWidth() == 0 || textureFile.getHeight() == 0 || textureFile.sImageData.pData == nullptr || textureFile.texture_hash_simple == 0) // v3.0.303.7 hopefully will solve a bug if image file was not found
+           continue;
 
-          XPLMGenerateTextureNumbers(&textureFile.gTexture, 1);
-          XPLMBindTexture2d(textureFile.gTexture, 0);
-          glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); // added from imgui // v24.06.1 disabled
+         // v26.09.3 Bind the textures
+         if ( BitmapReader::bind_texture(textureFile) == 0)
+           Log::logMsg(fmt::format("[{}] Texture: {} failed to bind.", __func__, textureFile.getAbsoluteFileLocation()) );
 
-          if (textureFile.gTexture == 0)
-            continue;
-
-
-          const std::string err = this->checkGLError("After XPLMBindTexture2d");
-
-          XPLMDebugString( fmt::format("[{}] Image hash: {}, for file: {}, GL Check Error: {}\n", __func__, textureFile.texture_hash_simple, file, err).c_str() );
-
-
-          if (err.empty())
-          {
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-            // Upload image data using a sized internal format
-            const GLenum format         = (textureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA;
-            const GLenum internalFormat = (textureFile.sImageData.Channels < 4) ? GL_RGB8 : GL_RGBA8;
-            glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(internalFormat), textureFile.sImageData.Width, textureFile.sImageData.Height, 0, format, GL_UNSIGNED_BYTE, textureFile.sImageData.pData);
-
-
-            //#ifdef FLIP_IMAGE
-            //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLint)inTextureFile.sImageData.Width, (GLint)inTextureFile.sImageData.Height, 0, ((inTextureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, img);
-            //#else
-            //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLint)textureFile.sImageData.Width, (GLint)textureFile.sImageData.Height, 0, ((textureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, textureFile.sImageData.pData);
-            //#endif
-
-            //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            ////glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // removed v3.0.251.1
-            ////glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // removed v3.0.251.1
-
-          }
-          else
-          {
-              missionx::Log::logMsgThread(fmt::format("failed to set image: {}, Error: {}", file, err)); // v24.06.1
-          }
-
-          stbi_image_free(textureFile.sImageData.pData);
-          #ifdef FLIP_IMAGE
-          stbi_image_free(img);
-          #endif
-
-          textureFile.sImageData.pData = nullptr;
-        }
+      
+         // we will try to load the textures one by one in each loop and not all at the same time
+          data_manager::postFlcActions.push_back(mx_flc_pre_command::inv_post_async_inv_image_binding);
+          break; // force exit loop
+       } // end loop over item files
       }
       break;
       case missionx::mx_flc_pre_command::set_story_auto_pause_timer:
@@ -5630,18 +5711,6 @@ missionx::Mission::flcPRE()
           missionx::Mission::uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_HIDE_WINDOW);
       }
       break;
-      // case missionx::mx_flc_pre_command::get_player_aircraft_base_data:
-      // {
-      //   // v26.08.1
-      //   #ifndef RELEASE
-      //     Log::logMsg("Reading player aircraft base info.");
-      //   #endif // !RELEASE
-      //
-      //   missionx::data_manager::trigger_acf_change();
-      //   missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
-      //
-      // }
-      // break;
       case missionx::mx_flc_pre_command::post_async_story_image_binding:
       {
         for (auto& [file, textureFile] :missionx::Message::mapStoryCachedImages)
@@ -5650,25 +5719,10 @@ missionx::Mission::flcPRE()
           if (file.empty() || textureFile.sImageData.Width == 0 || textureFile.sImageData.Height == 0 || textureFile.sImageData.pData == nullptr) // v3.305.1 if pData is not nullptr then it needs to be bind
             continue;
 
-          XPLMGenerateTextureNumbers(&textureFile.gTexture, 1);
-          XPLMBindTexture2d(textureFile.gTexture, 0);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+          // v26.09.3 Bind the textures
+          if ( BitmapReader::bind_texture(textureFile) == 0)
+            Log::logMsg(fmt::format("[{}] Texture: {} failed to bind.", __func__, textureFile.getAbsoluteFileLocation()) );
 
-          glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); // added from imgui
-          #ifdef FLIP_IMAGE
-          glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLint)inTextureFile.sImageData.Width, (GLint)inTextureFile.sImageData.Height, 0, ((inTextureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, img);
-          #else
-          glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLint)textureFile.sImageData.Width, (GLint)textureFile.sImageData.Height, 0, ((textureFile.sImageData.Channels < 4) ? GL_RGB : GL_RGBA), GL_UNSIGNED_BYTE, textureFile.sImageData.pData);
-          #endif
-
-
-          stbi_image_free(textureFile.sImageData.pData);
-          #ifdef FLIP_IMAGE
-          stbi_image_free(img);
-          #endif
-
-          textureFile.sImageData.pData = nullptr;
         }
 
         Message::lineAction4ui.state = missionx::enum_mx_line_state::action_ended;
@@ -5826,21 +5880,20 @@ missionx::Mission::flcPRE()
         missionx::Mission::uiImGuiBriefer->execAction (missionx::mx_window_actions::ACTION_FETCH_FPLN_FROM_SIMBRIEF_SITE);
       }
       break;
-      case missionx::mx_flc_pre_command::load_briefer_textures:
-      {
-        missionx::data_manager::readPluginTextures ();
-      }
-      break;
+      //case missionx::mx_flc_pre_command::load_briefer_textures:
+      //{
+      //  missionx::data_manager::readPluginTextures ();
+      //}
+      //break;
       case missionx::mx_flc_pre_command::get_metar_for_airport:
       {
         // v25.09.1 get METAR from X-Plane if a version is 12.x or newer
 
-        // #ifndef MAC  // Using XPLM400 SDK
+        // Using XPLM400 SDK
         using GetMetarPtr = void(*)(const char *id, XPLMFixedString150_t *outMETAR);
         if (data_manager::xplm_version >= 400)
         {
           GetMetarPtr getMetar_func{};
-          // getMetar = (GetMetarPtr) XPLMFindSymbol("XPLMGetMETARForAirport");
           getMetar_func = reinterpret_cast<GetMetarPtr>( XPLMFindSymbol("XPLMGetMETARForAirport") );
           if (getMetar_func)
           {
@@ -6309,14 +6362,15 @@ missionx::Mission::setUiEndMissionTexture()
 // -------------------------------------
 
 void
-missionx::Mission::prepareUiMissionList()
+missionx::Mission::prepareUiMissionList(const bool load_images)
 {
   // load all mission briefer info
-  void* inItemRef = reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_OPEN_LIST_OF_MISSIONS);
+  auto  inItemRef = reinterpret_cast<void *> (Mission::mx_menuIdRefs::MENU_OPEN_LIST_OF_MISSIONS);
   this->MissionMenuHandler (nullptr, inItemRef);
 
-  // load all images
-  missionx::data_manager::loadAllMissionsImages(); // v3.0.251.1 replace uiWinBriefer.loadAllMissionsImages()
+  // load all images but do not bind immediately
+  if (load_images)
+    missionx::data_manager::load_all_missions_images_no_bind(); // v3.0.251.1 replace uiWinBriefer.load_all_missions_images_no_bind()
 }
 // -------------------------------------
 void

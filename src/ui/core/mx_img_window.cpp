@@ -4,18 +4,28 @@
 #include <cassert>
 #include "mx_img_window.h"
 #include "../../../libs/imgui4xp/imgui/imgui_internal.h"
+#include "../../io/Log.hpp"
 
 namespace missionx {
 int            mx_img_window::iFontQueue{ 0 };
+
+// -------------------------------------
 
 mx_img_window::mx_img_window(const int left, const int top, const int right, const int bottom,
                 const XPLMWindowDecoration decoration, const XPLMWindowLayer layer,
                 const bool cursors)
       : ImgWindow(left, top, right, bottom, decoration, layer, cursors)
 {
+  #ifdef IMGWINDOW_USE_PANEL_GRAPHICS
+  if (ImgPanelGraphics::IsAvailable())
+    SetTextureBakeDelay(true, 4);
+  #endif
+
   mImPlotContext = ImPlot::CreateContext();
 }
 
+
+// -------------------------------------
 
 mx_img_window::~mx_img_window()
 {
@@ -24,6 +34,8 @@ mx_img_window::~mx_img_window()
   }
 }
 
+// -------------------------------------
+
 void mx_img_window::toggleWindowState()
 {
   if (this->GetVisible())
@@ -31,6 +43,8 @@ void mx_img_window::toggleWindowState()
   else
     this->SetVisible(true); // show
 }
+
+// -------------------------------------
 
 void mx_img_window::PushID_formatted(const char* format, ...)
 {
@@ -43,6 +57,8 @@ void mx_img_window::PushID_formatted(const char* format, ...)
   // Call the actual push function
   ImGui::PushID(sz);
 }
+
+// -------------------------------------
 
 bool mx_img_window::ButtonTooltip(const char* label, const char* tip, ImU32 colFg, ImU32 colBg, const ImVec2& size)
 {
@@ -69,6 +85,9 @@ bool mx_img_window::ButtonTooltip(const char* label, const char* tip, ImU32 colF
   return b;
 }
 
+
+// -------------------------------------
+
 ImVec4 mx_img_window::mx_get_color_as_im_vec4(const std::string& inColor_s)
 {
   if ( missionx::mxconst::get_YELLOW() == inColor_s)
@@ -91,6 +110,8 @@ ImVec4 mx_img_window::mx_get_color_as_im_vec4(const std::string& inColor_s)
   return {1.0f, 1.0f, 1.0f, 1.0}; // white
 }
 
+// -------------------------------------
+
 void mx_img_window::HelpMarker(const char* desc, ImVec4 inTextColor)
 {
   ImGui::TextDisabled("(?)");
@@ -112,10 +133,13 @@ void mx_img_window::HelpMarker(const char* desc, ImVec4 inTextColor)
   }
 }
 
-void mx_img_window::mxUiHelpMarker(ImVec4 inTextColor, const char* desc)
-{
+// -------------------------------------
+
+void mx_img_window::mxUiHelpMarker(ImVec4 inTextColor, const char* desc) {
   HelpMarker(desc, inTextColor);
 }
+
+// -------------------------------------
 
 void mx_img_window::mx_add_tooltip(const ImVec4 inColor, const std::string& inTip) const
 {
@@ -133,10 +157,13 @@ void mx_img_window::mx_add_tooltip(const ImVec4 inColor, const std::string& inTi
   }
 }
 
-ImVec4 mx_img_window::mxConvertMxVec4ToImVec4(const missionx::mxVec4& inMxVec4)
-{
+// -------------------------------------
+
+ImVec4 mx_img_window::mxConvertMxVec4ToImVec4(const missionx::mxVec4& inMxVec4) {
   return {inMxVec4.x, inMxVec4.y, inMxVec4.z, inMxVec4.w};
 }
+
+// -------------------------------------
 
 float mx_img_window::mxUiGetContentWidth()
 {
@@ -144,21 +171,27 @@ float mx_img_window::mxUiGetContentWidth()
   return window->ContentRegionRect.GetWidth();
 }
 
+// -------------------------------------
+
 float mx_img_window::mxUiGetContentHeight()
 {
   const ImGuiWindow* window = GImGui->CurrentWindow;
   return window->ContentRegionRect.GetHeight();
 }
 
-ImVec2 mx_img_window::mxUiGetWindowContentWxH()
-{
+// -------------------------------------
+
+ImVec2 mx_img_window::mxUiGetWindowContentWxH() {
   return {mxUiGetContentWidth(), mxUiGetContentHeight()};
 }
 
-void mx_img_window::mxUiSetDefaultFont()
-{
+// -------------------------------------
+
+void mx_img_window::mxUiSetDefaultFont() {
   missionx::mx_img_window::mxUiResetAllFontsToDefault();
 }
+
+// -------------------------------------
 
 void mx_img_window::mxUiResetAllFontsToDefault()
 {
@@ -167,6 +200,8 @@ void mx_img_window::mxUiResetAllFontsToDefault()
 
   missionx::mx_img_window::iFontQueue = 0;
 }
+
+// -------------------------------------
 
 void mx_img_window::mxUiSetFont(const std::string& inTextType)
 {
@@ -183,6 +218,8 @@ void mx_img_window::mxUiSetFont(const std::string& inTextType)
   }
 }
 
+// -------------------------------------
+
 void mx_img_window::mxUiReleaseLastFont(const int inHowManyCycles)
 {
   for (int loop1 = 0; loop1 < inHowManyCycles; ++loop1)
@@ -195,6 +232,8 @@ void mx_img_window::mxUiReleaseLastFont(const int inHowManyCycles)
   }
 }
 
+// -------------------------------------
+
 bool mx_img_window::mxStartUiDisableState(const bool in_true_exp_to_disable)
 {
   if (!in_true_exp_to_disable) // if expression is false, skip.
@@ -206,6 +245,8 @@ bool mx_img_window::mxStartUiDisableState(const bool in_true_exp_to_disable)
   return in_true_exp_to_disable;
 }
 
+// -------------------------------------
+
 void mx_img_window::mxEndUiDisableState(const bool in_true_exp_to_disable)
 {
   if (! in_true_exp_to_disable)
@@ -214,6 +255,8 @@ void mx_img_window::mxEndUiDisableState(const bool in_true_exp_to_disable)
   ImGui::PopItemFlag();
   ImGui::PopStyleVar();
 }
+
+// -------------------------------------
 
 bool mx_img_window::mxUiButtonTooltip(const char* label, const char* tip, ImVec4 colFg, ImVec4 colBg, const ImVec2& size)
 {
@@ -235,5 +278,95 @@ bool mx_img_window::mxUiButtonTooltip(const char* label, const char* tip, ImVec4
   // return if button pressed
   return b;
 }
+
+// -------------------------------------
+
+ImTextureID
+mx_img_window::CreateTexture(const mxTextureFile &in_texture)
+{
+  if (!in_texture.sImageData.pData || in_texture.sImageData.Width <= 0 || in_texture.sImageData.Height <= 0)
+    return 0;
+
+  #ifdef IMGWINDOW_USE_PANEL_GRAPHICS
+  if (IsUsingPanelGraphics())
+  {
+    #ifndef RELEASE
+    Log::log_xplm_debug_string(fmt::format("[{}] Calling ImgPanelGraphics::CreateTexture for: {}.\n", __func__, in_texture.fileName));
+    #endif
+    void* handle = ImgPanelGraphics::CreateTexture(in_texture.sImageData.pData, in_texture.sImageData.Width, in_texture.sImageData.Height);
+    return static_cast<ImTextureID>(reinterpret_cast<intptr_t>(handle));
+  }
+  #endif
+
+  // OpenGL fallback
+  int glTexNum = 0;
+  XPLMGenerateTextureNumbers(&glTexNum, 1);
+  XPLMBindTexture2d(glTexNum, 0);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+  const GLenum format         = (in_texture.sImageData.Channels < 4) ? GL_RGB : GL_RGBA;
+  const GLenum internalFormat = (in_texture.sImageData.Channels < 4) ? GL_RGB8 : GL_RGBA8;
+  glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(internalFormat), in_texture.sImageData.Width, in_texture.sImageData.Height, 0, format, GL_UNSIGNED_BYTE, in_texture.sImageData.pData);
+
+  return static_cast<ImTextureID>(reinterpret_cast<intptr_t>((void*)(intptr_t)glTexNum));
+}
+
+// -------------------------------------
+
+void ui::wrap_imgui::Image(ImTextureRef tex_ref, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1){
+  if (tex_ref != 0)
+  {
+    ImGui::Image(tex_ref, image_size, uv0, uv1);
+    return;
+  }
+#ifndef RELEASE
+  else
+  {
+    static int seq_number = 1;
+    ImGui::Button(fmt::format("Image {}##fallbackImage", seq_number).c_str());
+    return;
+  }
+#endif // !RELEASE
+
+  //Log::logMsgErr(fmt::format("[{}] Assertion Error. notify the developer.", __func__));
+
+}
+
+// -------------------------------------
+
+bool ui::wrap_imgui::ImageButton(const char* str_id, ImTextureRef tex_ref, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& bg_col, const ImVec4& tint_col)
+{
+  if (str_id && tex_ref != 0)
+    return ImGui::ImageButton(str_id, tex_ref, image_size, uv0, uv1, bg_col, tint_col );
+  #ifndef RELEASE
+  else 
+    return ImGui::Button(str_id, image_size);
+  #endif // !RELEASE
+
+
+  Log::logMsgErr(fmt::format("[{}] Assertion Error. notify the developer.", __func__));
+
+  return false;
+}
+
+// -------------------------------------
+
+void ui::wrap_imgui::ImageWithBg(ImTextureRef tex_ref, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& bg_col, const ImVec4& tint_col)
+{
+  if (tex_ref != 0)
+    ImGui::ImageWithBg(tex_ref, image_size, uv0, uv1, bg_col, tint_col );
+  else
+    Log::logMsgErr(fmt::format("[{}] Assertion Error. notify the developer.", __func__));
+
+}
+
+// -------------------------------------
+// -------------------------------------
+// -------------------------------------
+
 
 } // missionx namespace

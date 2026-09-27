@@ -32,11 +32,12 @@ public:
   size_t   size_of_vecReplaceOptions_n{ (size_t)0 }; // v3.0.255.4 holds vecReplaceOptions_s size
 
   missionx::mxTextureFile                              imageFile;
+  std::string                                          full_path_to_image_file; // v26.09.3
   std::string                                          fileName;
   std::string                                          fileProposedName;  // v3.0.241.10 b2 holds the folder name
   std::string                                          missionFolderName; // v3.0.241.10 b2
   std::string                                          filePath;
-  std::string                                          fullFilePath;
+  std::string                                          xml_file_path;
   std::string                                          desc_from_vector_with_tabs_s;                    // v3.0.251.1 // holds the description with '\t' but without the "\n\r".
   std::string                                          description;                                     // v3.0.251.1 will hold a generated mission description (the plugin initializes this)
   std::string                                          template_description;                            // v25.09.2 holds the original template description. Won't be overridden.
@@ -89,7 +90,7 @@ public:
     std::string path;
     path.clear();
 
-    path = this->fullFilePath;
+    path = this->xml_file_path;
 
     return path; //
   }
@@ -103,6 +104,11 @@ public:
   std::string getFileName()
   {
     return this->fileName;
+  }
+
+std::string get_full_path_to_image_file()
+  {
+    return this->full_path_to_image_file; // v26.09.3
   }
 
   std::string getTemplateImageFileName()

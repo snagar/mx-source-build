@@ -6,8 +6,12 @@
 //#include "../../data/mxProperties.hpp"
 #include "../mx_base_node.h"
 #include "../Timer.hpp"
-#include "fmod.hpp"
-//#include "fmod_errors.h"
+#include "XPLMSound.h"
+// #ifndef IMGWINDOW_USE_PANEL_GRAPHICS
+// #include "fmod.hpp"
+// //#include "fmod_errors.h"
+// #endif
+
 
 using namespace missionx;
 // using namespace mxconst;
@@ -64,6 +68,7 @@ public:
   // core attributes for Sound use
   FMOD::Sound*   sound;                          // used by Sound
   FMOD::Channel* channel;                        // used by Sound
+
   bool           isRepeating; // v24026 used by Sound when repeating command
   bool           areWeWaitingForSoundFileToLoad; // used by Sound
   bool           isSoundFileReadyToBePlayed;     // used by Sound

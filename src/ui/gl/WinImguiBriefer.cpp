@@ -1052,7 +1052,7 @@ WinImguiBriefer::add_flight_planning ()
       ImGui::SameLine ();
       const auto posVec3 = ImVec2 (ImGui::GetCursorPosX (), ImGui::GetCursorPosY ());
 
-      if (ImGui::ImageButton ("Simbrief", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_SIMBRIEF_ICO ()].gTexture, simbrief_btn_size_vec2))
+      if (ui::wrap_imgui::ImageButton ("Simbrief", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_SIMBRIEF_ICO ()].gTexture, simbrief_btn_size_vec2))
       {
         this->execAction (mx_window_actions::ACTION_FETCH_FPLN_FROM_SIMBRIEF_SITE);
       }
@@ -1430,7 +1430,7 @@ WinImguiBriefer::add_flight_planning ()
       // -------------------
       // START BUTTON - FPLN
       // -------------------
-      if (mxUtils::mx_between(data_manager::missionState, missionx::mx_mission_state_enum::mission_loaded_from_the_original_file, missionx::mx_mission_state_enum::mission_is_running, enums::mx_between_types::eqgt_min_less_max) 
+      if (mxUtils::mx_between(data_manager::missionState, missionx::mx_mission_state_enum::mission_loaded_from_the_original_file, missionx::mx_mission_state_enum::mission_is_running, enums::mx_between_types::eqgt_min_less_max)
         && !missionx::data_manager::flag_generate_engine_is_running)
       {
         ImGui::SameLine (0.0f, 60.0f);
@@ -1441,11 +1441,11 @@ WinImguiBriefer::add_flight_planning ()
     {
       // ABORT button
       ImGui::NewLine ();
- 
+
       ImGui::SameLine ();
       mx_img_window::HelpMarker ("Abort the background process.");
       ImGui::SameLine ();
- 
+
       this->add_ui_abort_mission_creation_button (); // Add Abort Random Engine
     }
 
@@ -1691,14 +1691,14 @@ void WinImguiBriefer::action_prepare_dynamic_mission_properties_and_call_generat
 // -------------------------------------------
 
 bool
-WinImguiBriefer::add_ui_generate_button() 
+WinImguiBriefer::add_ui_generate_button()
 {
   ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_black);
   ImGui::PushStyleColor(ImGuiCol_Button, missionx::color::color_vec4_orange);
   ImGui::PushStyleColor(ImGuiCol_ButtonActive, missionx::color::color_vec4_azure);
-  
+
   auto pressed = ImGui::Button(">> Generate Mission <<");
-  
+
   ImGui::PopStyleColor(3);
 
   return pressed;
@@ -1724,7 +1724,7 @@ WinImguiBriefer::flc ()
     {
       this->SetWindowPositioningMode(xplm_WindowPositionFree);
       this->flag_displayedOnce = true;
-    }      
+    }
   }
 
 
@@ -1880,12 +1880,12 @@ WinImguiBriefer::flc ()
           this->countdown_success_textColorVec4 = missionx::color::color_vec4_deepskyblue;
       }
     }
-    else 
+    else
     {
       // v26.01.3
       if (this->currentLayer == missionx::uiLayer_enum::option_external_fpln_layer)
       {
-        if (this->strct_ext_layer.from_icao.empty () && this->strct_ext_layer.buf_from_icao[0] != '\0') 
+        if (this->strct_ext_layer.from_icao.empty () && this->strct_ext_layer.buf_from_icao[0] != '\0')
           this->strct_ext_layer.from_icao = std::string (this->strct_ext_layer.buf_from_icao);
 
         if (this->strct_ext_layer.to_icao.empty () && this->strct_ext_layer.buf_to_icao[0] != '\0')
@@ -3051,7 +3051,8 @@ void WinImguiBriefer::add_ui_semi_act_phase_1_pick()
         ImGui::BeginGroup();
         {
           // Display big ICON image
-          if (ImGui::ImageButton (btn_info.imgName.c_str(), data_manager::mapCachedPluginTextures[btn_info.imgName].gTexture, VEC2_BTN_SIZE))
+          // if (ui::imgui::ImageButton (btn_info.imgName.c_str(), data_manager::mapCachedPluginTextures[btn_info.imgName].gTexture, VEC2_BTN_SIZE))
+          if ( missionx::ui::wrap_imgui::ImageButton (btn_info.imgName.c_str(), data_manager::mapCachedPluginTextures[btn_info.imgName].gTexture, VEC2_BTN_SIZE))
           {
             missionx::strct_user_create_layer.user_semi_act_picked = btn_info;
             missionx::strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_accept;
@@ -3128,7 +3129,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
       ImGui::TableNextColumn();
       {
         //  Display button image
-        ImGui::Image(data_manager::mapCachedPluginTextures[missionx::strct_user_create_layer.user_semi_act_picked.imgName].gTexture, VEC2_IMAGE_BTN_SIZE);
+        ui::wrap_imgui::Image(data_manager::mapCachedPluginTextures[missionx::strct_user_create_layer.user_semi_act_picked.imgName].gTexture, VEC2_IMAGE_BTN_SIZE);
       }
       ImGui::TableNextColumn();
       {
@@ -3142,7 +3143,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
           ImGui::Spacing();
           this->add_ui_medevac_surprise_me_warning();
         }
-        else 
+        else
           this->add_ui_mission_description(missionx::strct_user_create_layer.user_semi_act_picked.random_description);
 
       }
@@ -3176,7 +3177,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
       {
         add_ui_llm_options(llm_enum_options);
       }
-      
+
       // - v26.08.1 -------------
       // Show briefer description collapsing header
       // ------------------------
@@ -3291,7 +3292,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
         bRerunRandomDateTime = add_ui_checkbox_rerun_random_date_and_time();
         ImGui::SameLine();
 
-        missionx::flag_generatedRandomFile_success = false;        
+        missionx::flag_generatedRandomFile_success = false;
 
         // -----------------------
         // DISPLAY GENERATE BUTTON
@@ -3307,11 +3308,11 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
           missionx::strct_generate_template_layer.selectedTemplateKey = mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI();
 
           // ---------------------
-          // Prepare layer data to be compatible with the - 
+          // Prepare layer data to be compatible with the -
           // "action_prepare_dynamic_mission_properties_and_call_generate_action()" function properties
           // ---------------------
-          
-          // type of mission          
+
+          // type of mission
           if (mxUtils::mx_between<missionx::enums::mx_semi_activities_enum>(missionx::strct_user_create_layer.user_semi_act_picked.activity, missionx::enums::mx_semi_activities_enum::act_none, missionx::enums::mx_semi_activities_enum::act_helos_medevac_oilrig, missionx::enums::mx_between_types::gt_min_eqles_max))
             strct_user_create_layer.iRadioMissionTypePicked = 2; // oilrig
           else if (missionx::strct_user_create_layer.user_semi_act_picked.activity < missionx::enums::mx_semi_activities_enum::act_props)
@@ -3399,7 +3400,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
         this->add_ui_abort_mission_creation_button(); // Add Abort Random Engine
       }
 
-      if (mxUtils::mx_between(data_manager::missionState, missionx::mx_mission_state_enum::mission_loaded_from_the_original_file, missionx::mx_mission_state_enum::mission_is_running, enums::mx_between_types::eqgt_min_less_max) 
+      if (mxUtils::mx_between(data_manager::missionState, missionx::mx_mission_state_enum::mission_loaded_from_the_original_file, missionx::mx_mission_state_enum::mission_is_running, enums::mx_between_types::eqgt_min_less_max)
         && !missionx::data_manager::flag_generate_engine_is_running)
       {
         // -----------------------
@@ -3476,7 +3477,7 @@ WinImguiBriefer::add_ui_is_ga_cross_country_checkbox()
   }
 }
 
-void WinImguiBriefer::add_ui_mission_description(const std::string& in_description) 
+void WinImguiBriefer::add_ui_mission_description(const std::string& in_description)
 {
   missionx::WinImguiBriefer::mxUiSetFont(mxconst::get_TEXT_TYPE_TEXT_SMALL());
   {
@@ -3604,7 +3605,7 @@ WinImguiBriefer::add_ui_ai_use_ai_checkbox()
 
 // -------------------------------------------
 
-void WinImguiBriefer::add_ui_ai_server_url() 
+void WinImguiBriefer::add_ui_ai_server_url()
 {
   bool bNeedToSave = false;
 
@@ -3615,7 +3616,7 @@ void WinImguiBriefer::add_ui_ai_server_url()
 
   ImGui::TextColored(missionx::color::color_vec4_yellow, "LLM Server URL:");
   ImGui::SetNextItemWidth(350.0f);
-  if (ImGui::InputTextWithHint("##ai_url_data", "http://localhost:1234/v1/chat/completions (OpenAI Format)", missionx::strct_setup_layer.buf_ai_url, sizeof(missionx::strct_setup_layer.buf_ai_url), ImGuiInputTextFlags_EnterReturnsTrue))  
+  if (ImGui::InputTextWithHint("##ai_url_data", "http://localhost:1234/v1/chat/completions (OpenAI Format)", missionx::strct_setup_layer.buf_ai_url, sizeof(missionx::strct_setup_layer.buf_ai_url), ImGuiInputTextFlags_EnterReturnsTrue))
     bNeedToSave = true;
   // tooltip
   missionx::mx_img_window::mx_add_tooltip(missionx::color::color_vec4_beige, "OpenAI Format, example: http://{url}:{port}/v1/chat/completions");
@@ -3633,7 +3634,7 @@ void WinImguiBriefer::add_ui_ai_server_url()
     this->execAction(mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
     bNeedToSave ^= 1; // reset to false
     this->set_bottom_message_line1("Saved LLM Url settings.", 5);
-  } 
+  }
 
 
   // LLM API KEY
@@ -3655,7 +3656,7 @@ The API key will be ignored if your LLM server does not require one.)";
   bNeedToSave = false; // manual reset state
   if (ImGui::InputTextWithHint("##ai_auth_key", "Optional: Enter the API/Auth key.", missionx::strct_setup_layer.buf_ai_auth_key, sizeof(missionx::strct_setup_layer.buf_ai_auth_key), ImGuiInputTextFlags_EnterReturnsTrue))
     bNeedToSave ^= 1;
-  
+
   // save button
   ImGui::SameLine();
   missionx::WinImguiBriefer::mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
@@ -3701,16 +3702,16 @@ WinImguiBriefer::set_bottom_message_line1 (const std::string &inMsg, int secToDi
 
 // -------------------------------------------
 
-void WinImguiBriefer::set_async_message_text_line2(const std::string& in_text, int secToDisplayMessage) { 
-  this->async_message_line2 = in_text; 
+void WinImguiBriefer::set_async_message_text_line2(const std::string& in_text, int secToDisplayMessage) {
+  this->async_message_line2 = in_text;
    missionx::Timer::start(this->timer_message_line2, static_cast<float>(secToDisplayMessage));
 }
 
 // -------------------------------------------
 
 void WinImguiBriefer::set_error_message_text_line3(const std::string& in_text, int secToDisplayMessage)
-{ 
-  //data_manager::error_message_line3 = in_text; 
+{
+  //data_manager::error_message_line3 = in_text;
   this->error_message_line3 = in_text;
    missionx::Timer::start(this->timer_message_line3, static_cast<float>(secToDisplayMessage));
 }
@@ -3844,7 +3845,7 @@ WinImguiBriefer::draw_top_toolbar ()
     {
       ImGui::SameLine (0.01f); // v3.0.253.9.1 we set to 0.01 since 0.0f do not display in popout window
 
-      if (ImGui::ImageButton ("SetupButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_TOOLBAR_SETUP_64x64 ()].gTexture, this->vec2_sizeTopBtn)) //
+      if (ui::wrap_imgui::ImageButton ("SetupButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_TOOLBAR_SETUP_64x64 ()].gTexture, this->vec2_sizeTopBtn)) //
       {
         this->setLayer (missionx::uiLayer_enum::option_setup_layer);
       }
@@ -3932,7 +3933,7 @@ WinImguiBriefer::draw_top_toolbar ()
 
     ///////// HOME BUTTON - center
     ImGui::SameLine ((win_width / 2.0f) - (vec2_sizeTopBtn.x / 2.0f));
-    if (ImGui::ImageButton ("HomeButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_HOME ()].gTexture, this->vec2_sizeTopBtn)) // Home Button (will navigate dependent of the
+    if (ui::wrap_imgui::ImageButton ("HomeButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_HOME ()].gTexture, this->vec2_sizeTopBtn)) // Home Button (will navigate dependent of the
     {
       missionx::strct_generate_template_layer.user_pick_from_replaceOptions_combo_i = mxconst::INT_UNDEFINED; // v3.0.255.4 reset user pick
       missionx::strct_ils_layer.flagNavigatedFromOtherLayer                         = false; // v24025
@@ -3941,7 +3942,7 @@ WinImguiBriefer::draw_top_toolbar ()
 
       // v26.04.4 reset dynamic mission creation layout
       missionx::strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_pick;
-      missionx::strct_user_create_layer.user_semi_act_picked.reset();      
+      missionx::strct_user_create_layer.user_semi_act_picked.reset();
 
       switch (this->currentLayer)
       {
@@ -3995,7 +3996,7 @@ WinImguiBriefer::draw_top_toolbar ()
     if (this->currentLayer == missionx::uiLayer_enum::imgui_home_layer)
     {
       ImGui::SameLine (mxUiGetContentWidth () - 60.0f);
-      if (ImGui::ImageButton ("AboutButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_ABOUT_64x64 ()].gTexture, this->vec2_sizeTopBtn)) //
+      if (ui::wrap_imgui::ImageButton ("AboutButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_ABOUT_64x64 ()].gTexture, this->vec2_sizeTopBtn)) //
       {
         this->setLayer (missionx::uiLayer_enum::about_layer);
       }
@@ -4009,7 +4010,7 @@ WinImguiBriefer::draw_top_toolbar ()
       if (this->currentLayer != missionx::uiLayer_enum::imgui_home_layer && this->currentLayer != missionx::uiLayer_enum::about_layer) // v3.0.253.2 display QUIT in all layers except HOME layer. This to not conflict with the "about" button
       {
         ImGui::SameLine (mxUiGetContentWidth () - 60.0f);
-        if (ImGui::ImageButton ("QuitButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_QUIT_48x48 ()].gTexture, this->vec2_sizeTopBtn)) // QUIT Button (will navigate dependent of the
+        if (ui::wrap_imgui::ImageButton ("QuitButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_QUIT_48x48 ()].gTexture, this->vec2_sizeTopBtn)) // QUIT Button (will navigate dependent of the
         {
           ImGui::OpenPopup (popupWindowName.data ());
         }
@@ -4073,7 +4074,7 @@ void WinImguiBriefer::popup_draw_load_warnings(std::string_view inPopupWindowNam
         is_even_line = false;
         for (const auto &txt: missionx::data_manager::lst_of_errors_and_warnings_during_mission_validation)
         {
-          
+
           if (is_even_line)
             ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_white);
           else
@@ -4623,7 +4624,7 @@ WinImguiBriefer::draw_setup_layer ()
     {
       ///////// Image ////////
       ImGui::BeginGroup ();
-      ImGui::Image (data_manager::mapCachedPluginTextures[IMAGE].gTexture, ImVec2 (data_manager::mapCachedPluginTextures[IMAGE].sImageData.getW_f () * img_ps_f, data_manager::mapCachedPluginTextures[IMAGE].sImageData.getH_f () * img_ps_f));
+      ui::wrap_imgui::Image (data_manager::mapCachedPluginTextures[IMAGE].gTexture, ImVec2 (data_manager::mapCachedPluginTextures[IMAGE].sImageData.getW_f () * img_ps_f, data_manager::mapCachedPluginTextures[IMAGE].sImageData.getH_f () * img_ps_f));
       ImGui::EndGroup ();
     }
     ImGui::PopStyleColor (1);
@@ -5114,7 +5115,7 @@ WinImguiBriefer::draw_setup_layer ()
           this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
         }
 
-        
+
         // --- Overpass list to choose from. Not stored in preferences file.
         ImGui::NewLine();
         mx_img_window::HelpMarker("At least one URL must be selected from the list.\nYou can modify your preferences during mission creation.\nCheck the error message line during generation (scroll down if needed).");
@@ -5127,7 +5128,7 @@ WinImguiBriefer::draw_setup_layer ()
           {
             // validate at least one of the items in the container is "true"
             const bool at_least_one_is_picked = std::ranges::any_of(data_manager::strct_ui_share_data.map_ui_user_picks_overpass_urls, [](const auto v_pair) { return v_pair.second; });
-            if (!at_least_one_is_picked)            
+            if (!at_least_one_is_picked)
             {
               data_manager::strct_ui_share_data.map_ui_user_picks_overpass_urls[url_index] = true; // force at least one item to be true
             }
@@ -5698,7 +5699,7 @@ WinImguiBriefer::draw_home_layer ()
 
       // DISPLAY ICONS
       ImGui::BeginGroup ();
-      if (ImGui::ImageButton ("DisplayIconsButtonImage", data_manager::mapCachedPluginTextures[btn.imgName].gTexture, VEC2_BTN_SIZE, uv0, uv1, missionx::color::color_vec4_black))
+      if (ui::wrap_imgui::ImageButton ("DisplayIconsButtonImage", data_manager::mapCachedPluginTextures[btn.imgName].gTexture, VEC2_BTN_SIZE, uv0, uv1, missionx::color::color_vec4_black))
       {
         this->clearMessage ();
 
@@ -5872,7 +5873,7 @@ void WinImguiBriefer::draw_dynamic_mission_creation_screen_home()
   {
     ImGui::TableNextColumn ();
     {
-      if (ImGui::ImageButton ("Full Control", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_FULL_CONTROL ()].gTexture, btn_size_vec2))
+      if (ui::wrap_imgui::ImageButton ("Full Control", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_FULL_CONTROL ()].gTexture, btn_size_vec2))
       {
         // disable find target using llm
         data_manager::strct_ui_share_data.reset_llm();
@@ -5892,7 +5893,7 @@ void WinImguiBriefer::draw_dynamic_mission_creation_screen_home()
 
     ImGui::TableNextColumn ();
     {
-      if (ImGui::ImageButton ("Some Control", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_SOME_CONTROL()].gTexture, btn_size_vec2))
+      if (ui::wrap_imgui::ImageButton ("Some Control", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_SOME_CONTROL()].gTexture, btn_size_vec2))
       {
         // flag we want to display Option B Screen
         missionx::strct_user_create_layer.child_screen = mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_option_b;
@@ -5927,7 +5928,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
     {
       ///////// Image ////////
       ImGui::BeginGroup ();
-      ImGui::Image (data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_LAB_24X18 ()].gTexture, ImVec2 (data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_LAB_24X18 ()].sImageData.getW_f () * img_ps_f, data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_LAB_24X18 ()].sImageData.getH_f () * img_ps_f));
+      ui::wrap_imgui::Image (data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_LAB_24X18 ()].gTexture, ImVec2 (data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_LAB_24X18 ()].sImageData.getW_f () * img_ps_f, data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_LAB_24X18 ()].sImageData.getH_f () * img_ps_f));
       ImGui::EndGroup ();
 
       pos_x += 50.0f;
@@ -5937,7 +5938,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
 
 
       // v26.09.2 --------------------------------------
-      //                  Topic 0 - Briefer description      
+      //                  Topic 0 - Briefer description
       // Show briefer description collapsing header
       // ------------------------
       missionx::WinImguiBriefer::add_briefer_description_post_mission_creation(!(missionx::data_manager::flag_generate_engine_is_running) && missionx::data_manager::missionState < mx_mission_state_enum::mission_is_running);
@@ -6462,7 +6463,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
       }
 
       //if (!RandomEngine::random_thread_state.flagIsActive || !missionx::data_manager::flag_generate_engine_is_running)
-      if ( mxUtils::mx_between( data_manager::missionState, missionx::mx_mission_state_enum::mission_loaded_from_the_original_file, missionx::mx_mission_state_enum::mission_is_running, enums::mx_between_types::eqgt_min_less_max)           
+      if ( mxUtils::mx_between( data_manager::missionState, missionx::mx_mission_state_enum::mission_loaded_from_the_original_file, missionx::mx_mission_state_enum::mission_is_running, enums::mx_between_types::eqgt_min_less_max)
           && !missionx::data_manager::flag_generate_engine_is_running)
       {
         ImGui::SameLine ((mxUiGetContentWidth () * 0.40f) - (ImGui::CalcTextSize (missionx::LBL_START_MISSION.c_str ()).x * 0.5f));
@@ -6636,7 +6637,9 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
               // Draw template image button
               ImGui::PushID (imgNo);
               {
-                if (!key.empty () && data_manager::mapGenerateMissionTemplateFiles[key].imageFile.gTexture && ImGui::ImageButton ("##templateImg", data_manager::mapGenerateMissionTemplateFiles[key].imageFile.gTexture, ImVec2 (240.0f, 190.0f), this->uv0, this->uv1))
+                const auto template_image_path = data_manager::mapGenerateMissionTemplateFiles[key].full_path_to_image_file;
+                // if (!key.empty () && data_manager::mapGenerateMissionTemplateFiles[key].imageFile.gTexture && ui::imgui::ImageButton ("##templateImg", data_manager::mapGenerateMissionTemplateFiles[key].imageFile.gTexture, ImVec2 (240.0f, 190.0f), this->uv0, this->uv1))
+                if (!key.empty () && ui::wrap_imgui::ImageButton ("##templateImg", data_manager::mapTemplatesTextures[template_image_path].gTexture, ImVec2 (240.0f, 190.0f), this->uv0, this->uv1))
                 {
                   constexpr auto combo_label_s = "Select an Option";
 
@@ -6924,9 +6927,9 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
         ImGui::SameLine (region_width_arr[0] + 10.0f);
         this->add_ui_abort_mission_creation_button (); // Add Abort Random Engine
       }
-      else if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running 
-               && missionx::flag_generatedRandomFile_success 
-               && missionx::strct_generate_template_layer.selectedTemplateKey.empty () 
+      else if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running
+               && missionx::flag_generatedRandomFile_success
+               && missionx::strct_generate_template_layer.selectedTemplateKey.empty ()
                && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
       {
         ImGui::SameLine (region_width_arr[0] + 10.0f); // pad to the right so the button will better aligned with above frame.
@@ -7005,7 +7008,7 @@ WinImguiBriefer::draw_flight_leg_info ()
       if (!bDisplayMarkers)
         ImGui::PushStyleVar (ImGuiStyleVar_Alpha, ImGui::GetStyle ().Alpha * 0.25f);
 
-      if (ImGui::ImageButton ("TargetMarkerButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_TARGET_MARKER_ICON ()].gTexture, this->vec2_sizeTopBtn))
+      if (ui::wrap_imgui::ImageButton ("TargetMarkerButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_TARGET_MARKER_ICON ()].gTexture, this->vec2_sizeTopBtn))
       {
         missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::toggle_target_marker_option);
       }
@@ -7017,7 +7020,7 @@ WinImguiBriefer::draw_flight_leg_info ()
       ImGui::SameLine (mxUiGetContentWidth () * 0.85f);
 
       // v3.305.1 hide button if we have an active message type story / active timer / gather acf stats
-      if (missionx::Message::lineAction4ui.actionCode == '\0' && !missionx::data_manager::timelapse.flag_isActive && false == missionx::data_manager::flag_gather_acf_info_thread_is_running && ImGui::ImageButton ("SaveButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_SAVE_48x48 ()].gTexture, this->vec2_sizeTopBtn))
+      if (missionx::Message::lineAction4ui.actionCode == '\0' && !missionx::data_manager::timelapse.flag_isActive && false == missionx::data_manager::flag_gather_acf_info_thread_is_running && ui::wrap_imgui::ImageButton ("SaveButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_SAVE_48x48 ()].gTexture, this->vec2_sizeTopBtn))
       {
         this->execAction (missionx::mx_window_actions::ACTION_CREATE_SAVEPOINT);
       }
@@ -7025,7 +7028,7 @@ WinImguiBriefer::draw_flight_leg_info ()
       this->mx_add_tooltip (missionx::color::color_vec4_white, "Create Savepoint");
 
       ImGui::SameLine (mxUiGetContentWidth () * 0.15f + TOOLBAR_SPACE_PAD * iButtonsAdded);
-      if (ImGui::ImageButton ("InvButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_INVENTORY_MXPAD ()].gTexture, this->vec2_sizeTopBtn))
+      if (ui::wrap_imgui::ImageButton ("InvButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_INVENTORY_MXPAD ()].gTexture, this->vec2_sizeTopBtn))
       {
         this->execAction (missionx::mx_window_actions::ACTION_TOGGLE_INVENTORY);
       }
@@ -7035,7 +7038,7 @@ WinImguiBriefer::draw_flight_leg_info ()
       if (missionx::data_manager::strct_flight_leg_info_totalMapsCounter > 0)
       {
         ImGui::SameLine (mxUiGetContentWidth () * 0.15f + TOOLBAR_SPACE_PAD * iButtonsAdded);
-        if (ImGui::ImageButton ("MXpadButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_MAP_MXPAD ()].gTexture, this->vec2_sizeTopBtn))
+        if (ui::wrap_imgui::ImageButton ("MXpadButtonImage", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_MAP_MXPAD ()].gTexture, this->vec2_sizeTopBtn))
         {
           this->execAction (missionx::mx_window_actions::ACTION_TOGGLE_MAP);
         }
@@ -7045,7 +7048,7 @@ WinImguiBriefer::draw_flight_leg_info ()
       iButtonsAdded++;
 
       ImGui::SameLine (mxUiGetContentWidth () * 0.15f + TOOLBAR_SPACE_PAD * iButtonsAdded);
-      if (ImGui::ImageButton ("NavInfo", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_NAVINFO ()].gTexture, this->vec2_sizeTopBtn))
+      if (ui::wrap_imgui::ImageButton ("NavInfo", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_NAVINFO ()].gTexture, this->vec2_sizeTopBtn))
       {
         this->execAction (missionx::mx_window_actions::ACTION_OPEN_NAV_LAYER);
       }
@@ -7078,7 +7081,7 @@ WinImguiBriefer::draw_flight_leg_info ()
     ImGui::BeginGroup ();
     ImGui::BeginChild ("FlightLegImage", ImVec2 (child_w[i], this->imvec2_flight_info_top_area_size.y - y_shorten), ImGuiChildFlags_Borders, ((i == 0) ? ImGuiWindowFlags_NoScrollbar : ImGuiWindowFlags_None)); // height of image area
     {
-      ImGui::Image (missionx::data_manager::xp_mapMissionIconImages[missionx::data_manager::selectedMissionKey].gTexture, IMVEC2_TOP_IMAGE_SIZE);
+      ui::wrap_imgui::Image (missionx::data_manager::xp_mapMissionIconImages[missionx::data_manager::selectedMissionKey].gTexture, IMVEC2_TOP_IMAGE_SIZE);
     }
     ImGui::EndChild ();
     ImGui::EndGroup ();
@@ -7406,43 +7409,43 @@ WinImguiBriefer::child_draw_STORY_mode_leg_info ()
     if (Message::vecStoryCurrentImages_p.at (Message::IMG_BACKROUND) != nullptr && Message::vecStoryCurrentImages_p.at (Message::IMG_BACKROUND)->sImageData.pData == nullptr && Message::vecStoryCurrentImages_p.at (Message::IMG_BACKROUND)->gTexture != 0)
     {
       ImGui::SameLine (vec2Window.x * 0.5f - (missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::background_img_vec2.x * 0.5f)); // center of screen
-      ImGui::Image (Message::vecStoryCurrentImages_p.at (Message::IMG_BACKROUND)->gTexture, missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::background_img_vec2);
+      ui::wrap_imgui::Image (Message::vecStoryCurrentImages_p.at (Message::IMG_BACKROUND)->gTexture, missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::background_img_vec2);
     }
     // draw left image
     if (Message::vecStoryCurrentImages_p.at (Message::IMG_LEFT) != nullptr && Message::vecStoryCurrentImages_p.at (Message::IMG_LEFT)->sImageData.pData == nullptr && Message::vecStoryCurrentImages_p.at (Message::IMG_LEFT)->gTexture != 0)
     {
       ImGui::SameLine (5.0f); // left image will start from 5.0f
-      ImGui::Image (Message::vecStoryCurrentImages_p.at (Message::IMG_LEFT)->gTexture, missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::small_img_vec2);
+      ui::wrap_imgui::Image (Message::vecStoryCurrentImages_p.at (Message::IMG_LEFT)->gTexture, missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::small_img_vec2);
     }
     // draw right image
     if (Message::vecStoryCurrentImages_p.at (Message::IMG_RIGHT) != nullptr && Message::vecStoryCurrentImages_p.at (Message::IMG_RIGHT)->sImageData.pData == nullptr && Message::vecStoryCurrentImages_p.at (Message::IMG_RIGHT)->gTexture != 0)
     {
       ImGui::SameLine (vec2Window.x - missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::small_img_vec2.x - 5.0f); // Left of screen
-      ImGui::Image (Message::vecStoryCurrentImages_p.at (Message::IMG_RIGHT)->gTexture, missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::small_img_vec2);
+      ui::wrap_imgui::Image (Message::vecStoryCurrentImages_p.at (Message::IMG_RIGHT)->gTexture, missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::small_img_vec2);
     }
     // draw center image
     if (Message::vecStoryCurrentImages_p.at (Message::IMG_CENTER) != nullptr && Message::vecStoryCurrentImages_p.at (Message::IMG_CENTER)->sImageData.pData == nullptr && Message::vecStoryCurrentImages_p.at (Message::IMG_CENTER)->gTexture != 0)
     {
       ImGui::SameLine (vec2Window.x * 0.5f - (missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::small_img_vec2.x * 0.5f)); // center of screen
-      ImGui::Image (Message::vecStoryCurrentImages_p.at (Message::IMG_CENTER)->gTexture, missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::small_img_vec2);
+      ui::wrap_imgui::Image (Message::vecStoryCurrentImages_p.at (Message::IMG_CENTER)->gTexture, missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::small_img_vec2);
     }
     // draw left med image
     if (Message::vecStoryCurrentImages_p.at (Message::IMG_LEFT_MED) != nullptr && Message::vecStoryCurrentImages_p.at (Message::IMG_LEFT_MED)->sImageData.pData == nullptr && Message::vecStoryCurrentImages_p.at (Message::IMG_LEFT_MED)->gTexture != 0)
     {
       ImGui::SameLine (5.0f); // left image will start from 0 + 5px
-      ImGui::Image (Message::vecStoryCurrentImages_p.at (Message::IMG_LEFT_MED)->gTexture, missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::med_img_vec2);
+      ui::wrap_imgui::Image (Message::vecStoryCurrentImages_p.at (Message::IMG_LEFT_MED)->gTexture, missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::med_img_vec2);
     }
     // draw right med image
     if (Message::vecStoryCurrentImages_p.at (Message::IMG_RIGHT_MED) != nullptr && Message::vecStoryCurrentImages_p.at (Message::IMG_RIGHT_MED)->sImageData.pData == nullptr && Message::vecStoryCurrentImages_p.at (Message::IMG_RIGHT_MED)->gTexture != 0)
     {
       ImGui::SameLine (vec2Window.x - missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::med_img_vec2.x - 5.0f); // Right of screen
-      ImGui::Image (Message::vecStoryCurrentImages_p.at (Message::IMG_RIGHT_MED)->gTexture, missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::med_img_vec2);
+      ui::wrap_imgui::Image (Message::vecStoryCurrentImages_p.at (Message::IMG_RIGHT_MED)->gTexture, missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::med_img_vec2);
     }
     // draw center med image
     if (Message::vecStoryCurrentImages_p.at (Message::IMG_CENTER_MED) != nullptr && Message::vecStoryCurrentImages_p.at (Message::IMG_CENTER_MED)->sImageData.pData == nullptr && Message::vecStoryCurrentImages_p.at (Message::IMG_CENTER_MED)->gTexture != 0)
     {
       ImGui::SameLine (vec2Window.x * 0.5f - (missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::med_img_vec2.x * 0.5f)); // center of screen
-      ImGui::Image (Message::vecStoryCurrentImages_p.at (Message::IMG_CENTER_MED)->gTexture, missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::med_img_vec2);
+      ui::wrap_imgui::Image (Message::vecStoryCurrentImages_p.at (Message::IMG_CENTER_MED)->gTexture, missionx::WinImguiBriefer::_flight_leg_info_layer::mx_story_mode_strct::med_img_vec2);
     }
   }
   else
@@ -7884,7 +7887,7 @@ WinImguiBriefer::child_draw_inv_plane_xp12_move_item (Inventory &inout_copied_pl
       const float xPos_f   = std::fabs ((container_dim.x - data_manager::xp_mapInvImages[image_file_name].sImageData.getW_f () * wRatio_f) * 0.5f);
       ImGui::NewLine ();
       ImGui::SameLine (xPos_f);
-      ImGui::Image (data_manager::xp_mapInvImages[image_file_name].gTexture, ImVec2 (data_manager::xp_mapInvImages[image_file_name].sImageData.getW_f () * wRatio_f, data_manager::xp_mapInvImages[image_file_name].sImageData.getH_f () * wRatio_f), this->uv0, this->uv1);
+      ui::wrap_imgui::Image (data_manager::xp_mapInvImages[image_file_name].gTexture, ImVec2 (data_manager::xp_mapInvImages[image_file_name].sImageData.getW_f () * wRatio_f, data_manager::xp_mapInvImages[image_file_name].sImageData.getH_f () * wRatio_f), this->uv0, this->uv1);
     }
 
   } // end child
@@ -7925,7 +7928,7 @@ WinImguiBriefer::child_draw_inv_plane_xp12 (Inventory &inoutPlaneInventory, cons
           const std::string barcode          = Utils::readAttrib (xPlane_Item_ptr, mxconst::get_ATTRIB_BARCODE (), "");
           const std::string itemName         = Utils::readAttrib (xPlane_Item_ptr, mxconst::get_ATTRIB_NAME (), barcode);
           const std::string quantity_s       = Utils::readAttrib (xPlane_Item_ptr, mxconst::get_ATTRIB_QUANTITY (), "0");
-          const int         item_quantity_i  = Utils::readNodeNumericAttrib<int> (xPlane_Item_ptr, mxconst::get_ATTRIB_QUANTITY (), 0); // v25.08.1        
+          const int         item_quantity_i  = Utils::readNodeNumericAttrib<int> (xPlane_Item_ptr, mxconst::get_ATTRIB_QUANTITY (), 0); // v25.08.1
           const std::string image_file_name  = Utils::readAttrib (xPlane_Item_ptr, mxconst::get_PROP_IMAGE_FILE_NAME (), ""); // v3.0.303.5
           const auto        weight_f         = Utils::readNodeNumericAttrib<float> (xPlane_Item_ptr, mxconst::get_ATTRIB_WEIGHT_KG (), 0.0f);
           const auto        bItemIsMandatory = Utils::readBoolAttrib (xPlane_Item_ptr, mxconst::get_ATTRIB_MANDATORY (), false);
@@ -7952,7 +7955,7 @@ WinImguiBriefer::child_draw_inv_plane_xp12 (Inventory &inoutPlaneInventory, cons
 
             ImGui::PushStyleVar (ImGuiStyleVar_FramePadding, ImVec2 (4.0f, 0.0f)); // v4.23.4
             {
-              if (ImGui::ImageButton ("##InvLeftItemButtonImage", data_manager::xp_mapInvImages[image_file_name].gTexture, ((this->strct_flight_leg_info.left_index_image_clicked == -1) ? vec2_portrait : this->strct_flight_leg_info.vec2_left_image_big), this->uv0, this->uv1))
+              if (ui::wrap_imgui::ImageButton ("##InvLeftItemButtonImage", data_manager::xp_mapInvImages[image_file_name].gTexture, ((this->strct_flight_leg_info.left_index_image_clicked == -1) ? vec2_portrait : this->strct_flight_leg_info.vec2_left_image_big), this->uv0, this->uv1))
               {
                 if (this->strct_flight_leg_info.left_index_image_clicked > -1)
                   this->strct_flight_leg_info.left_index_image_clicked = -1;
@@ -8015,9 +8018,9 @@ WinImguiBriefer::child_draw_inv_plane_xp12 (Inventory &inoutPlaneInventory, cons
                 }
 
                 // move item only if it exists and if external inventory is available
-                if (const int quantity_i = Utils::stringToNumber<int> (quantity_s); 
-                  !(this->strct_flight_leg_info.externalInventoryName.empty ()) 
-                  && quantity_i > 0 
+                if (const int quantity_i = Utils::stringToNumber<int> (quantity_s);
+                  !(this->strct_flight_leg_info.externalInventoryName.empty ())
+                  && quantity_i > 0
                   && missionx::data_manager::externalInventoryCopy.node.nChildNode (mxconst::get_ELEMENT_ITEM ().c_str ()) < mxconst::MAX_ITEMS_IN_PLANE_INVENTORY
                   )
                 {
@@ -8093,7 +8096,7 @@ WinImguiBriefer::child_draw_inv_plane_xp11 (const missionx::mx_ui_inv_regions &i
 
       ImGui::PushStyleVar (ImGuiStyleVar_FramePadding, ImVec2 (4.0f, 0.0f)); // v4.23.4
       {
-        if (ImGui::ImageButton ("##InvLeftItemButtonImage", data_manager::xp_mapInvImages[image_file_name].gTexture, ((this->strct_flight_leg_info.left_index_image_clicked == -1) ? vec2_portrait : this->strct_flight_leg_info.vec2_left_image_big), this->uv0, this->uv1))
+        if (ui::wrap_imgui::ImageButton ("##InvLeftItemButtonImage", data_manager::xp_mapInvImages[image_file_name].gTexture, ((this->strct_flight_leg_info.left_index_image_clicked == -1) ? vec2_portrait : this->strct_flight_leg_info.vec2_left_image_big), this->uv0, this->uv1))
         {
           if (this->strct_flight_leg_info.left_index_image_clicked > -1)
             this->strct_flight_leg_info.left_index_image_clicked = -1;
@@ -8148,9 +8151,9 @@ WinImguiBriefer::child_draw_inv_plane_xp11 (const missionx::mx_ui_inv_regions &i
 
 
           // move item
-          if (int quantity_i = Utils::stringToNumber<int> (quantity_s); 
-            !(this->strct_flight_leg_info.externalInventoryName.empty ()) 
-            && quantity_i > 0 
+          if (int quantity_i = Utils::stringToNumber<int> (quantity_s);
+            !(this->strct_flight_leg_info.externalInventoryName.empty ())
+            && quantity_i > 0
             && missionx::data_manager::externalInventoryCopy.node.nChildNode (mxconst::get_ELEMENT_ITEM ().c_str ()) < mxconst::MAX_ITEMS_IN_EXTERNAL_INVENTORY // limit inventory
             )
           {
@@ -8254,7 +8257,7 @@ WinImguiBriefer::child_draw_inv_external_store (const ImVec2 &in_vec2_inv_child)
       else
         ImGui::SameLine (0.0f, 5.0f);
 
-      if (ImGui::ImageButton ("##InvRightItemButtonImage", data_manager::xp_mapInvImages[image_file_name].gTexture, ((this->strct_flight_leg_info.right_index_image_clicked == -1) ? vec2_portrait : this->strct_flight_leg_info.vec2_right_image_big), this->uv0, this->uv1)) // padding 4
+      if (ui::wrap_imgui::ImageButton ("##InvRightItemButtonImage", data_manager::xp_mapInvImages[image_file_name].gTexture, ((this->strct_flight_leg_info.right_index_image_clicked == -1) ? vec2_portrait : this->strct_flight_leg_info.vec2_right_image_big), this->uv0, this->uv1)) // padding 4
       {
         if (this->strct_flight_leg_info.right_index_image_clicked > -1)
           this->strct_flight_leg_info.right_index_image_clicked = -1;
@@ -8395,7 +8398,7 @@ WinImguiBriefer::child_flight_leg_info_draw_map ()
         if (size_vec2.x < x1)
           ImGui::SameLine ((x1 - size_vec2.x) * 0.5f); // center image
 
-        if (ImGui::ImageButton ("MapOrImageButtonImage", missionx::data_manager::maps2d_to_display[this->strct_flight_leg_info.iMapNumberToDisplay].gTexture, size_vec2))
+        if (ui::wrap_imgui::ImageButton ("MapOrImageButtonImage", missionx::data_manager::maps2d_to_display[this->strct_flight_leg_info.iMapNumberToDisplay].gTexture, size_vec2))
         {
           bMapPressed = !bMapPressed;
         }
@@ -8579,7 +8582,7 @@ WinImguiBriefer::child_flight_leg_info_draw_end_summary ()
       ImGui::SameLine ((fWinWidth - imgSize_vec2.x) * 0.5f);
     }
 
-    if (ImGui::ImageButton ("EndButtonImage", this->strct_flight_leg_info.endTexture.gTexture, imgSize_vec2))
+    if (ui::wrap_imgui::ImageButton ("EndButtonImage", this->strct_flight_leg_info.endTexture.gTexture, imgSize_vec2))
     {
       bImagePressed = !bImagePressed;
     }
@@ -8595,8 +8598,10 @@ WinImguiBriefer::child_flight_leg_info_draw_end_summary ()
 void
 WinImguiBriefer::draw_load_existing_mission_screen ()
 {
+  // Log::log_xplm_debug_string(fmt::format("[{}] 1.0\n", __func__));
   if (this->strct_pick_layer.bFinished_loading_mission_images)
   {
+    // Log::log_xplm_debug_string(fmt::format("[{}] 2.0\n", __func__));
     const auto                   win_size_vec2           = missionx::WinImguiBriefer::mxUiGetWindowContentWxH ();
     constexpr static const float fImageContainerWidth_px = 280.0f;
 
@@ -8613,6 +8618,7 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
       missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
       ImGui::TextColored (ImVec4 (1, 1, 0, 1), "%s", names[i]);
 
+      // Log::log_xplm_debug_string(fmt::format("[{}] 2.1 \n", __func__));
       // add font size buttons
       if (i == 1)
       {
@@ -8634,12 +8640,12 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
 
           for (const auto &imageFileKey : data_manager::mapBrieferMissionListLocator | std::views::values) // missionx::data_manager::xp_mapMissionIconImages)
           {
-            int iStyle = 0;
             if (imageFileKey.empty ())
               continue;
 
             if (mxUtils::isElementExists (missionx::data_manager::xp_mapMissionIconImages, imageFileKey))
             {
+              int iStyle = 0;
               static constexpr ImVec2 vec2_landscape (240.0f, 190.0f);
               static constexpr ImVec2 vec2_portrait (145.0f, 210.0f);
               // calculate image ration and decide which size to use the new one: 240x190 or the old one 290x420. portrait vs landscape
@@ -8663,9 +8669,10 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
               else
                 ImGui::SameLine ((child_w[0] - vec2_portrait.x) / 2.0f); // center portrait image
 
+              // Log::log_xplm_debug_string(fmt::format("[{}/{}] 2.2 before imageButton: {}.\n", __func__, __LINE__, data_manager::xp_mapMissionIconImages[imageFileKey].fileName ));
               ImGui::PushID (imgIdNo); // v3.303.14
               {
-                if (data_manager::xp_mapMissionIconImages[imageFileKey].gTexture && ImGui::ImageButton ("##MxImgBtn", data_manager::xp_mapMissionIconImages[imageFileKey].gTexture, (bIsLandscape) ? vec2_landscape : vec2_portrait, this->uv0, this->uv1))
+                if (ui::wrap_imgui::ImageButton ("##MxImgBtn", data_manager::xp_mapMissionIconImages[imageFileKey].gTexture, (bIsLandscape) ? vec2_landscape : vec2_portrait, this->uv0, this->uv1))
                 {
                   // prepare template briefer text so we will display it in the detailed region
                   this->strct_pick_layer.last_picked_key = imageFileKey;
@@ -8694,12 +8701,15 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
             }
 
           } // end loop over all images
+          // Log::log_xplm_debug_string(fmt::format("[{}/{}] 2.3 End ImageButton loop.\n", __func__, __LINE__ ));
+
         }
         else
         {
+          // Log::log_xplm_debug_string(fmt::format("[{}/{}] 3.0 Print mission description.\n", __func__, __LINE__ ));
+
           if (!this->strct_pick_layer.last_picked_key.empty ())
           {
-            // // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
             missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
 
             ImGui::Text ("Title: ");
@@ -8740,8 +8750,10 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
             missionx::WinImguiBriefer::mxUiResetAllFontsToDefault ();
             ImGui::PopStyleColor (1);
 
-            // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
           }
+
+          // Log::log_xplm_debug_string(fmt::format("[{}/{}] 3.1 End print mission description.\n", __func__, __LINE__ ));
+
         }
       }
 
@@ -8851,14 +8863,15 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
   } // display Pick Layer
   else
   {
+    // Log::log_xplm_debug_string(fmt::format("[{}] 1.1\n", __func__));
+
     ImGui::NewLine ();
 
-    // // // ImGui::SetWindowFontScale(2.0f);
     missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_BIG ());
     ImGui::TextColored (missionx::color::color_vec4_magenta, "Please wait while loading mission files.... ");
     missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
-    // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+    // Log::log_xplm_debug_string(fmt::format("[{}] 1.2\n", __func__));
   }
 }
 
@@ -8910,7 +8923,7 @@ WinImguiBriefer::draw_child_ext_fpln_home_screen ()
   {
     ImGui::TableNextColumn ();
     {
-      if (ImGui::ImageButton ("FlightPlanDB", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_FLIGHTPLANDB ()].gTexture, btn_size_vec2))
+      if (ui::wrap_imgui::ImageButton ("FlightPlanDB", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_FLIGHTPLANDB ()].gTexture, btn_size_vec2))
       {
         if (this->strct_ext_layer.from_icao.empty ())
         {
@@ -8920,7 +8933,7 @@ WinImguiBriefer::draw_child_ext_fpln_home_screen ()
             //std::memcpy(this->strct_ext_layer.buf_from_icao, nNavAid.ID, 10);
             mxUtils::copy_string_to_buffer(nNavAid.getID(), this->strct_ext_layer.buf_from_icao[0], sizeof(this->strct_ext_layer.buf_from_icao)); // v26.04.3
           }
-            
+
           // Change layer
           this->strct_ext_layer.from_icao = std::string (this->strct_ext_layer.buf_from_icao);
         }
@@ -8938,7 +8951,7 @@ WinImguiBriefer::draw_child_ext_fpln_home_screen ()
 
     ImGui::TableNextColumn ();
     {
-      if (ImGui::ImageButton ("Simbrief", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_SIMBRIEF_BIG ()].gTexture, btn_size_vec2))
+      if (ui::wrap_imgui::ImageButton ("Simbrief", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_SIMBRIEF_BIG ()].gTexture, btn_size_vec2))
       {
         this->strct_ext_layer.ext_screen = mx_ext_fpln_screen::ext_simbrief;
       }
@@ -9504,7 +9517,7 @@ WinImguiBriefer::draw_about_layer ()
   {
     missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ());
     {
-      ImGui::TextColored (missionx::color::color_vec4_aqua, "%s%s", "Mission-X v", missionx::FULL_VERSION_ABOUT.c_str ());
+      ImGui::TextColored (missionx::color::color_vec4_aqua, "%s%s%s", "Mission-X v", missionx::FULL_VERSION_ABOUT.c_str (), (ImgWindow::IsUsingPanelGraphics()) ? " (Panel Graphics)" : " (OGL)");
       ImGui::TextColored (missionx::color::color_vec4_greenyellow, "%s", "Mission-X was written by Saar Nagar <snagar.dev@protonmail.com>");
       ImGui::TextColored (missionx::color::color_vec4_greenyellow, "%s", "Licensed under AFPL license, see license folder for more detail.");
       ImGui::TextColored(missionx::color::color_vec4_yellow, "%s", data_manager::post_optimization_outcome.c_str()); // v26.08.1
@@ -9541,7 +9554,7 @@ WinImguiBriefer::draw_about_layer ()
       ImGui::TextUnformatted ("@Daikan, Ptimib, @FlightOfImagination, wolfram and more. Thanks for your cooperation.");
       // Logos
       ImGui::Separator ();
-      ImGui::Image (data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_FMOD_LOGO ()].gTexture, ImVec2 (182.0f, 48.0f));
+      ui::wrap_imgui::Image (data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_FMOD_LOGO ()].gTexture, ImVec2 (182.0f, 48.0f));
     }
     missionx::WinImguiBriefer::mxUiResetAllFontsToDefault (); // v3.303.14 pop out all pushed fonts
 
@@ -10086,7 +10099,7 @@ WinImguiBriefer::add_missing_3d_files_message ()
 {
   if (missionx::data_manager::get_are_there_missing_3D_object_files ())
   {
-    ImGui::Image (data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_WARN_SMALL_32x28 ()].gTexture, ImVec2 (16.0f, 14.0f));
+    ui::wrap_imgui::Image (data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_WARN_SMALL_32x28 ()].gTexture, ImVec2 (16.0f, 14.0f));
     ImGui::SameLine ();
     ImGui::Text ("There might be missing 3D files. Check missionx.log file for more information.");
   }
@@ -10193,10 +10206,10 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
         this->async_message_line2.clear ();
         missionx::data_manager::set_found_missing_3D_object_files (false); // v3.0.255.3 reset missing 3D files state
 
-        // v25.02.1 Deprecated call to "mx_flc_pre_command::imgui_reload_templates_data_and_images", instead we will check and read template from "mx_flc_pre_command::imgui_generate_random_mission_file"
+        // v25.02.1 Deprecated call to "mx_flc_pre_command::imgui_reload_templates_data_and_images_step01", instead we will check and read template from "mx_flc_pre_command::imgui_generate_random_mission_file"
         // v25.01.2 - hotfix - When calling "[generate]" and not from the "template" screen, then we must initialize the templates, so we will have the "TemplateInfo" information for the "template_blank_4_ui.xml" file.
         if (this->currentLayer != missionx::uiLayer_enum::option_generate_mission_from_a_template_layer)
-          missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::imgui_reload_templates_data_and_images); // since we have changed the flow in IMGUI, we have to initialize the templates list to make sure we have all templates available for the Random engine
+          missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::imgui_reload_templates_data_and_images_step01); // since we have changed the flow in IMGUI, we have to initialize the templates list to make sure we have all templates available for the Random engine
 
         missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::imgui_generate_random_mission_file); // Special imgui flcPRE() directive
       }
@@ -10313,7 +10326,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
       else
         missionx::data_manager::selectedMissionKey = missionx::strct_generate_template_layer.last_picked_template_key + mxconst::get_XML_EXTENSION (); // lastSelectedTemplateKey holds the folder keyName so we ned to add the extension
 
-      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::start_random_mission); // place action in Queue. Mission class will pick it and handle it.
+      missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::start_random_mission_step01); // place action in Queue. Mission class will pick it and handle it.
 
       // v3.0.253.3 reset current airport location
       if (this->getCurrentLayer () == missionx::uiLayer_enum::option_external_fpln_layer)

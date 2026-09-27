@@ -165,6 +165,28 @@ inline constexpr int PICKED_IN_MY_AREA = 5; // v25.09.2 dsf +/- 1 relative to pl
 namespace enums
 {
 
+enum class textures_type_enum : uint8_t {
+  none                = 0,
+  plugin_start        = 1, // data_manager::mapCachedPluginTextures []
+  mission_list_screen = 2,
+  template_screen     = 3,
+  inventory_screen    = 4
+};
+
+[[nodiscard]] constexpr std::string_view to_string(const textures_type_enum type) noexcept
+{
+  switch (type)
+  {
+  case textures_type_enum::none:                return "none";
+  case textures_type_enum::plugin_start:        return "plugin_start";
+  case textures_type_enum::mission_list_screen: return "mission_list_screen";
+  case textures_type_enum::template_screen:     return "template_screen";
+  case textures_type_enum::inventory_screen:    return "inventory_screen";
+  }
+  return "unknown";
+}
+
+
 enum class llm_ui_options_enum : uint8_t {
   none                 = 0,
   llm_background_story = 1 << 0, // 0x01

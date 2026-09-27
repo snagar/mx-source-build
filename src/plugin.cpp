@@ -5,6 +5,8 @@
 #include "core/base_xp_include.h"
 #include "core/QueueMessageManager.h"
 #include "mission.h" // include data_manager
+#include "ui/gl/WinImguiBriefer.h" // v26.09.3
+#include "ui/core/BitmapReader.h" // v26.09.3
 
 #ifdef LIN
 // __asm__(".symver realpath,realpath@GLIBC_2.35");
@@ -97,7 +99,9 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
 
   // data_manager::device_init(data_manager::mx_device_nk); // moved from read fonts nk. seem more suitable
 
+  // deprecate for panel graphics SDK440
   data_manager::readPluginTextures (); // v3.0.118
+  // data_manager::postFlcActions.push_back(missionx::mx_flc_pre_command::load_briefer_textures); // v26.09.3 Start only after 3D world loaded.
 
   std::memset (missionx::LOG_BUFF, '\0', missionx::LOG_BUFF_SIZE); // First time initialization of LOG_BUFF so it will have a concrete set of memory to work on.
   auto start_timer = std::chrono::steady_clock::now();
@@ -204,6 +208,9 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
     Mission::uiImGuiBriefer = std::make_shared<WinImguiBriefer> (left, top, right, bottom); // decoration and layer will use default values
     Mission::uiImGuiBriefer->SetWindowPositioningMode (xplm_WindowCenterOnMonitor);
   }
+  // init Briefer ImgWindow pointer in BitmapReader
+  if (Mission::uiImGuiBriefer)
+    missionx::BitmapReader::mx_img_window_weak_ptr = Mission::uiImGuiBriefer;
 
 
   // COMMANDS
@@ -905,11 +912,12 @@ BriefCommandHandler (XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void *i
 
   if (inPhase == xplm_CommandBegin)
   {
-    // reload mission list if mission is in undefined state and briefer window is closed
-    if (data_manager::missionState == missionx::mx_mission_state_enum::mission_undefined && (missionx::Mission::uiImGuiBriefer->GetVisible () == false))
-    {      
-      missionx::mission.prepareUiMissionList ();
-    }
+    // disabled mission list load. We only need to call "prepareUiMissionList()" when we are opening the list of existing missions screeb.
+    // // reload mission list if mission is in undefined state and briefer window is closed
+    // if (data_manager::missionState == missionx::mx_mission_state_enum::mission_undefined && (missionx::Mission::uiImGuiBriefer->GetVisible () == false))
+    // {
+    // missionx::mission.prepareUiMissionList ( true );
+    // }
 
     missionx::Mission::uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_TOGGLE_BRIEFER);
   }

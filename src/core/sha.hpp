@@ -1,4 +1,4 @@
 #ifndef SHA_HPP
 #define SHA_HPP
-#define GIT_SHA "65de0e6"
+#define GIT_SHA "5c997b8"
 #endif

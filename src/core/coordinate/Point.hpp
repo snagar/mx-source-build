@@ -11,9 +11,11 @@
 #include "../Utils.h"
 #include "../xx_mission_constants.hpp"
 #include <math.h>
+#include <XPLMGraphics.h>
+#include <XPLMScenery.h>
 
 using namespace missionx;
-// using namespace mxconst;
+
 
 namespace missionx
 {

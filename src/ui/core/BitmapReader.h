@@ -6,18 +6,13 @@
 
 **************/
 
-#include <array>
-
-//#ifdef LIN
-//#include "../../src/core/unix/make_unique_unix.h"
-//#endif
-
+// #include <array>
+#include <memory>
 #include "../../core/MxUtils.h"
 #include "../../io/Log.hpp"
-#include "XPLMDisplay.h"
-#include "XPLMGraphics.h"
 
 #include "TextureFile.h"
+#include "mx_img_window.h" // v26.09.3 Pointer to the briefer ImgWindow. Used with Bind and safe delete textures using ImgPanelGraphics.
 
 #define STBI_NO_PSD
 #define STBI_NO_TGA
@@ -39,31 +34,45 @@ class BitmapReader
 public:
   BitmapReader();
 
-  static bool loadGLTexture(mxTextureFile& inTextureFile, std::string &outErr, bool flipImage_b = true, bool is_sync_b = true); // v3.0.140 added flip flag for nuklear library since it might not need it.
+  // The function is thread safe, it only loads the texture but does not bind it.
+  static bool load_texture_no_bind(mxTextureFile& inTextureFile, std::string &outErr, bool flipImage_b = false);  // v26.09.3
+  // v3.0.140 added flip flag.
+  // The "is_bind_texture_thread_safe" (former: is_thread_safe) makes sure that we are calling from the main callback loop, will skip texture binding if the value is false.
+  static bool load_textute_and_bind(mxTextureFile& inTextureFile, std::string &outErr, bool flipImage_b = true, bool is_bind_texture_thread_safe = true);
 
   static bool loadImageStb(std::string fileName, mxTextureFile::IMAGEDATA* ImageData, bool inFlipImage_b, std::string &outErr);
+  static int bind_texture(mxTextureFile &inout_texture);
+
+  // v26.09.3
+  inline static std::weak_ptr<mx_img_window> mx_img_window_weak_ptr;
+  static void destroy_textures(std::ranges::input_range auto& inout_textures_map)
+  {
+    const auto win = mx_img_window_weak_ptr.lock();
+    if (!win)
+      return;
+
+    for (auto& [file_path, texture_info] : inout_textures_map)
+    {
+      if (texture_info.gTexture)
+      {
+         win->SafeDeleteTexture(texture_info.gTexture); // Safe 3-frame deferred destruction
+
+        //auto glTextureID = static_cast<GLuint>(static_cast<intptr_t>(texture_info.gTexture));
+        //if (ImgPanelGraphics::IsAvailable())
+        //  ImgPanelGraphics::DestroyTexture(&glTextureID);
+        //else
+        //  glDeleteTextures(1, &glTextureID);
+
+        texture_info.gTexture = 0;
+      }
+
+      #ifndef RELEASE
+      Log::logMsg(fmt::format("[{}] Deleted texture: {}.", __func__, file_path));
+      #endif
+    }
+  }
 
 
-  //////////////// DEPRECATED /////////////////
-  
-  // XPLMDrawingPhase draw_phase;    // holds which phase to display widget
-  // XPLMDrawingPhase current_phase; // holds current drawing phase
-  //
-  // void set_draw_phase(XPLMDrawingPhase inPhase) { draw_phase = inPhase; }
-  // void set_current_draw_phase(XPLMDrawingPhase inPhase) { current_phase = inPhase; }
-  //
-  //
-  // static std::vector<uint8_t> readFile(const char* path, std::string& errMsg); //->std::vector<uint8_t>;
-  //
-  //// Used for dragging plugin panel window. x,y,left,top,right,bottom
-  // bool CoordInCloseRect(float x, float y, float l, float t, float r, [[maybe_unused]] float b) { return (((x >= l) && (x <= l + 8) && (y < t) && (y >= t - 8)) || ((x <= r) && (x >= r - 8) && (y < t) && (y >= t - 8))); }
-  //
-private:
-  // XPLMDataRef RED, GREEN, BLUE, COCKPIT_LIGHTS, LIGHTS_ON;
-  //
-  //
-  // saar
-  // float imageWidth, imageHeight, imageWidthRatio, imageHeightRatio; // saar
 
 };
 

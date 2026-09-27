@@ -34,14 +34,34 @@
 
 #include "ImgWindow.h"
 
+#include <cmath>
+#include <XPLMUtilities.h>
 #include <XPLMDataAccess.h>
 #include <XPLMDisplay.h>
 #include <XPLMGraphics.h>
 
 #include "imgui_internal.h"
 
+/* ImGui version checks and refactor macros.
+ * IMGUI_V190_REFACTOR defined for ImGui v1.90.0 and above (keyboard API refactor).
+ * IMGUI_V192_REFACTOR defined for ImGui v1.92.0 and above (font atlas refactor).
+ */
 #if defined(IMGUI_VERSION_NUM) && (IMGUI_VERSION_NUM >= 19000)
 #define IMGUI_V190_REFACTOR
+
+#if IMGUI_VERSION_NUM >= 19200
+#define IMGUI_V192_REFACTOR
+#endif
+
+#endif
+/* End ImGui version checks and refactor macros. */
+
+/* Fallback for ImDrawCallback_ResetRenderState if not defined by the user's ImGui version */
+#ifndef ImDrawCallback_ResetRenderState
+#define ImDrawCallback_ResetRenderState (ImDrawCallback)(-8)
+#endif
+
+#ifdef IMGUI_V190_REFACTOR
 static ImGuiKey vpXPLMKeyToImGuiKey(int inVirtualKey) {
     switch (inVirtualKey) {
         case XPLM_VK_TAB: return ImGuiKey_Tab;
@@ -103,13 +123,26 @@ static XPLMDataRef gViewportRef         = nullptr;
 static XPLMDataRef gProjectionMatrixRef = nullptr;
 static XPLMDataRef gFrameRatePeriodRef  = nullptr;
 
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+static std::vector<void*> s_vulkanDisposalQueue;
+#endif
+
 std::shared_ptr<ImgFontAtlas> ImgWindow::sFontAtlas;
 
-#ifdef IMGUI_V190_REFACTOR
+#ifdef IMGUI_V192_REFACTOR
 // Helper to safely rebuild the atlas if it gets dirty at runtime.
 // (IMPORTANT: This is required for ImGui v1.92+ since the font atlas is now self-managed, to preserve the semantics of XPLM windows created with ImgWindow on older versions of ImGui where the font atlas is shared across all such windows. This means it should "just work" to swap your legacy ImGui implementation for ImGui v1.92 or later, without having to change your code.)
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+void CheckAndRebuildAtlas(ImFontAtlas* atlas, void*& textureID)
+#else
 void CheckAndRebuildAtlas(ImFontAtlas* atlas, GLuint& textureID)
+#endif
 {
+    // Honor "blankout" period, if any. (If so, skip rebuilding the atlas this frame.)
+    if (XPLMGetCycleNumber() < ImgWindow::sBlankoutUntilCycle) {
+        return;  // Skip checking/rebuilding this frame for now.
+    }
+    
     // Check 1: Is the atlas dirty? (e.g. User added a dynamic font)
     // Check 2: Is the texture missing? (e.g. X-Plane reloaded)
     // Check 3: Is the last font unbaked? (e.g. Partial build)
@@ -117,10 +150,32 @@ void CheckAndRebuildAtlas(ImFontAtlas* atlas, GLuint& textureID)
 
     // if (!need_rebuild && atlas->TexID.GetTexID()) {
     //   if (!glIsTexture((GLuint)(uintptr_t)atlas->TexID.GetTexID())) need_rebuild = true;
-    if (!need_rebuild && atlas->TexData->GetTexRef().GetTexID()) {
-        if (!glIsTexture((GLuint)(uintptr_t)atlas->TexData->GetTexRef().GetTexID()))
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+    if (!need_rebuild) {
+        if (atlas->TexData == nullptr) {
             need_rebuild = true;
+        } else if (ImgPanelGraphics::IsAvailable()) {
+            if ((void*)(intptr_t)atlas->TexData->GetTexRef().GetTexID() == nullptr) {
+                need_rebuild = true;
+            }
+        } else {
+            if (atlas->TexData->GetTexRef().GetTexID()) {
+                if (!glIsTexture((GLuint)(uintptr_t)atlas->TexData->GetTexRef().GetTexID())) {
+                    need_rebuild = true;
+                }
+            }
+        }
     }
+#else
+    if (!need_rebuild) {
+        if (atlas->TexData == nullptr) {
+            need_rebuild = true;
+        } else if (atlas->TexData->GetTexRef().GetTexID()) {
+            if (!glIsTexture((GLuint)(uintptr_t)atlas->TexData->GetTexRef().GetTexID()))
+                need_rebuild = true;
+        }
+    }
+#endif
     if (!need_rebuild && atlas->Fonts.Size > 0) {
         if (atlas->Fonts.back()->LastBaked == 0)
             need_rebuild = true;
@@ -128,42 +183,104 @@ void CheckAndRebuildAtlas(ImFontAtlas* atlas, GLuint& textureID)
 
     if (need_rebuild)
     {
-        // 1. Force full rebuild
-        atlas->TexIsBuilt = false; 
-
         // 2. CPU Rasterize (RGBA32 for stability)
         ImgFontAtlas::strct_texture_info outInfo;
         ImgFontAtlas::GetCustomAtlasTextureData(atlas, outInfo);
 
-        // 3. GPU Upload
-        // If texture ID is 0 or invalid, generate a new one.
-        if (textureID == 0 || !glIsTexture(textureID)) {
-            int texNum = 0;
-            XPLMGenerateTextureNumbers(&texNum, 1);
-            textureID = (GLuint)texNum;
+        // 3. GPU Upload & Link
+        if (outInfo.pixels && outInfo.width > 0 && outInfo.height > 0)
+        {
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+            if (ImgPanelGraphics::IsAvailable()) {
+                if (textureID != nullptr) {
+                    ImgPanelGraphics::DestroyTexture(textureID);
+                }
+                
+                std::vector<unsigned char> lin_pixels(outInfo.pixels, outInfo.pixels + (outInfo.width * outInfo.height * 4));
+                
+                // N.B.: ImGui's font atlas generator can sometimes leave RGB values as black (0,0,0) in otherwise fully transparent areas.
+                // Because X-Plane Panel Graphics uses straight alpha blending, those black pixels would bleed into the semi-transparent,
+                // anti-aliased edges of the fonts, creating horrific muddy/black halos around the text.
+                // By forcing every pixel's RGB to pure white (255), we guarantee such textures act strictly as pure opacity masks,
+                // so the text color comes 100% from the vertex color.
+                // (This loop only runs ONCE when the font atlas is rebuilt, so the CPU cost is negligible. It does NOT run every frame!)
+                for (int i = 0; i < outInfo.width * outInfo.height; i++) {
+                    unsigned char* p = &lin_pixels[i * 4];
+                    p[0] = 255;
+                    p[1] = 255;
+                    p[2] = 255;
+                }
+                textureID = ImgPanelGraphics::CreateTexture(lin_pixels.data(), outInfo.width, outInfo.height);
+                
+                // 4. Link
+                if (atlas->TexData) {
+                    atlas->TexData->SetTexID((ImTextureID)(intptr_t)textureID);
+                }
+                if (ImgWindow::sFontAtlas && ImgWindow::sFontAtlas->getAtlas()) {
+                    ImgWindow::sFontAtlas->updateTextureTracking(textureID);
+                }
+            } else
+#endif
+            {
+                // OpenGL fallback logic
+                GLuint glTextureID = (GLuint)(intptr_t)textureID;
+                if (glTextureID == 0 || !glIsTexture(glTextureID)) {
+                    int texNum = 0;
+                    XPLMGenerateTextureNumbers(&texNum, 1);
+                    glTextureID = (GLuint)texNum;
+                }
+
+                XPLMBindTexture2d((int)glTextureID, 0);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, outInfo.width, outInfo.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, outInfo.pixels);
+
+                // 4. Link
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+                textureID = (void*)(intptr_t)glTextureID;
+                if (atlas->TexData) {
+                    atlas->TexData->SetTexID((ImTextureID)(uintptr_t)glTextureID);
+                }
+                if (ImgWindow::sFontAtlas && ImgWindow::sFontAtlas->getAtlas()) {
+                    ImgWindow::sFontAtlas->updateTextureTracking(textureID);
+                }
+#else
+                textureID = glTextureID;
+                if (atlas->TexData) {
+                    atlas->TexData->SetTexID((ImTextureID)(uintptr_t)glTextureID);
+                }
+                if (ImgWindow::sFontAtlas && ImgWindow::sFontAtlas->getAtlas()) {
+                    ImgWindow::sFontAtlas->updateTextureTracking((int)textureID);
+                }
+#endif
+            }
         }
-
-        XPLMBindTexture2d((int)textureID, 0);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, outInfo.width, outInfo.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, outInfo.pixels);
-
-        // 4. Link
-        atlas->TexData->SetTexID ((ImTextureID)(uintptr_t)textureID);
+        // 5. Safely mark as built to prevent infinite FLCB rebuild loops.
+        // We only do this if we actually extracted valid pixels (meaning ImGui actually built it).
+        if (outInfo.pixels) {
+            atlas->TexIsBuilt = true;
+        }
     }
     else
     {
         if (atlas->TexData && atlas->TexData->GetTexRef().GetTexID() != 0)
         {
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+            void* currentAtlasId = (void*)(intptr_t)atlas->TexData->GetTexRef().GetTexID();
+            if (textureID != currentAtlasId) {                
+                textureID = currentAtlasId; // Catch up to the active pipeline instantly!
+            }
+#else
             GLuint currentAtlasId = static_cast<GLuint>((intptr_t)atlas->TexData->GetTexRef().GetTexID());
             if (textureID != currentAtlasId) {                
                 textureID = currentAtlasId; // Catch up to the active pipeline instantly!
             }
+#endif
         }
     }
 }
-#endif /* IMGUI_V190_REFACTOR */
+#endif /* IMGUI_V192_REFACTOR */
 
 ImgWindow::ImgWindow(
     int left,
@@ -194,7 +311,7 @@ ImgWindow::ImgWindow(
     ImGui::SetCurrentContext(mImGuiContext);
     auto &io = ImGui::GetIO();
 
-#ifdef IMGUI_V190_REFACTOR
+#ifdef IMGUI_V192_REFACTOR
     // Use "modern" self-managed font atlas to provide the same atlas semantics as the legacy code below, but in a way that is compatible with ImGui v1.92+.
     // (IMPORTANT: the font atlas is shared across all XPLM windows created from ImgWindow or ImgWindow-derived classes.)
     io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
@@ -218,7 +335,7 @@ ImgWindow::ImgWindow(
             }
         }
     }
-#endif /* IMGUI_V190_REFACTOR */
+#endif /* IMGUI_V192_REFACTOR */
 
     static bool first_init=false;
     if (!first_init) {
@@ -230,11 +347,14 @@ ImgWindow::ImgWindow(
         first_init=true;
     }
 
-#ifndef IMGUI_V190_REFACTOR
+#ifndef IMGUI_V192_REFACTOR
 #ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
     // we render ourselves, we don't use the DrawListsFunc
     io.RenderDrawListsFn = nullptr;
 #endif
+#endif /* IMGUI_V192_REFACTOR */
+
+#ifndef IMGUI_V190_REFACTOR
     // set up the Keymap
     io.KeyMap[ImGuiKey_Tab] = XPLM_VK_TAB;
     io.KeyMap[ImGuiKey_LeftArrow] = XPLM_VK_LEFT;
@@ -264,7 +384,7 @@ ImgWindow::ImgWindow(
     auto &style = ImGui::GetStyle();
     style.WindowRounding = 0;
 
-#ifndef IMGUI_V190_REFACTOR
+#ifndef IMGUI_V192_REFACTOR
     // bind the font
     if (mFontAtlas) {
         mFontTexture = static_cast<GLuint>(reinterpret_cast<intptr_t>(io.Fonts->TexID));
@@ -300,11 +420,16 @@ ImgWindow::ImgWindow(
 #else
     // Sync texture ID:
     // if CheckAndRebuildAtlas() above did its job, mFontTexture is set; if the shared atlas was already built, grab the ID here.
-    if (io.Fonts->TexData->GetTexID() != 0) {
-      mFontTexture = static_cast<GLuint>((intptr_t)io.Fonts->TexData->GetTexID());
-
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+    if (io.Fonts->TexData && (void*)(intptr_t)io.Fonts->TexData->GetTexID() != nullptr) {
+        mFontTexture = (void*)(intptr_t)io.Fonts->TexData->GetTexID();
     }
-#endif /* IMGUI_V190_REFACTOR */
+#else
+    if (io.Fonts->TexData && io.Fonts->TexData->GetTexID() != 0) {
+        mFontTexture = static_cast<GLuint>((intptr_t)io.Fonts->TexData->GetTexID());
+    }
+#endif
+#endif /* IMGUI_V192_REFACTOR */
 
     // disable OSX-like keyboard behaviours always - we don't have the keymapping for it.
     io.ConfigMacOSXBehaviors = false;
@@ -320,30 +445,71 @@ ImgWindow::ImgWindow(
     io.ConfigWindowsResizeFromEdges = false;
     io.ConfigWindowsMoveFromTitleBarOnly = true;
 
-    XPLMCreateWindow_t windowParams = {
-        sizeof(windowParams),
-        left,
-        top,
-        right,
-        bottom,
-        0,
-        DrawWindowCB,
-        HandleMouseClickCB,
-        HandleKeyFuncCB,
-        HandleCursorFuncCB,
-        HandleMouseWheelFuncCB,
-        reinterpret_cast<void*>(this),
-        decoration,
-        layer,
-        HandleRightClickFuncCB,
-    };
-    mWindowID = XPLMCreateWindowEx(&windowParams);
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+    if (ImgPanelGraphics::IsAvailable()) {
+#if defined(XPLM440)
+        XPLMCreateWindow_t windowParams = {0};
+        windowParams.structSize = sizeof(XPLMCreateWindow_t);
+#else
+        SpoofedXPLMCreateWindow_t_440 windowParams = {0};
+        windowParams.structSize = sizeof(SpoofedXPLMCreateWindow_t_440);
+#endif
+        windowParams.left = left;
+        windowParams.top = top;
+        windowParams.right = right;
+        windowParams.bottom = bottom;
+        windowParams.visible = 0;
+        windowParams.drawWindowFunc = DrawWindowCB;
+        windowParams.handleMouseClickFunc = HandleMouseClickCB;
+        windowParams.handleKeyFunc = HandleKeyFuncCB;
+        windowParams.handleCursorFunc = HandleCursorFuncCB;
+        windowParams.handleMouseWheelFunc = HandleMouseWheelFuncCB;
+        windowParams.refcon = reinterpret_cast<void*>(this);
+        windowParams.decorateAsFloatingWindow = decoration;
+        windowParams.layer = layer;
+        windowParams.handleRightClickFunc = HandleRightClickFuncCB;
+        windowParams.contentType = xplm_WindowContentTypePanelGraphics;
+        
+        mWindowID = XPLMCreateWindowEx(reinterpret_cast<XPLMCreateWindow_t*>(&windowParams));
+        
+        if (sFontAtlasRebuildHandler == nullptr) {
+            XPLMCreateFlightLoop_t flParams = {
+                sizeof(XPLMCreateFlightLoop_t),
+                xplm_FlightLoop_Phase_BeforeFlightModel,
+                FontAtlasRebuildFLCB,
+                nullptr
+            };
+            sFontAtlasRebuildHandler = XPLMCreateFlightLoop(&flParams);
+            XPLMScheduleFlightLoop(sFontAtlasRebuildHandler, -1.0f, 1);
+        }
+    } else 
+#endif
+    {
+        XPLMCreateWindow_t windowParams = {
+            sizeof(windowParams),
+            left,
+            top,
+            right,
+            bottom,
+            0,
+            DrawWindowCB,
+            HandleMouseClickCB,
+            HandleKeyFuncCB,
+            HandleCursorFuncCB,
+            HandleMouseWheelFuncCB,
+            reinterpret_cast<void*>(this),
+            decoration,
+            layer,
+            HandleRightClickFuncCB,
+        };
+        mWindowID = XPLMCreateWindowEx(&windowParams);
+    }
 }
 
 ImgWindow::~ImgWindow()
 {
     ImGui::SetCurrentContext(mImGuiContext);
-#ifdef IMGUI_V190_REFACTOR
+#ifdef IMGUI_V192_REFACTOR
     ImGuiIO& io = ImGui::GetIO();
     if (io.Fonts)
     {
@@ -362,10 +528,21 @@ ImgWindow::~ImgWindow()
         // 3. NOW it is safe to sever the link (prevent double free):
         io.Fonts = NULL;
     }
-#endif /* IMGUI_V190_REFACTOR */
+#endif /* IMGUI_V192_REFACTOR */
     if (!mFontAtlas) {
         // if we didn't have an explicit font atlas, destroy the texture.
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+        if (mFontTexture) {
+            if (ImgPanelGraphics::IsAvailable()) {
+                ImgPanelGraphics::DestroyTexture(mFontTexture);
+            } else {
+                GLuint glTextureID = (GLuint)(intptr_t)mFontTexture;
+                glDeleteTextures(1, &glTextureID);
+            }
+        }
+#else
         glDeleteTextures(1, &mFontTexture);
+#endif
     }
     ImGui::DestroyContext(mImGuiContext);
     XPLMDestroyWindow(mWindowID);
@@ -427,12 +604,6 @@ ImgWindow::boxelsToNative(int x, int y, int &outX, int &outY)
     outY = static_cast<int>((ndc[1] * 0.5f + 0.5f) * mViewport[3] + mViewport[1]);
 }
 
-/*
- * NB: This is a modified version of the imGui OpenGL2 renderer - however, because
- *     we need to play nice with the X-Plane GL state management, we cannot use
- *     the upstream one.
- */
-
 void
 ImgWindow::RenderImGui(ImDrawData *draw_data)
 {
@@ -442,13 +613,19 @@ ImgWindow::RenderImGui(ImDrawData *draw_data)
         return;  // Skip rendering this frame.
     }
     
-#ifdef IMGUI_V190_REFACTOR
+#ifdef IMGUI_V192_REFACTOR
     if (mFontAtlas && mFontAtlas->getAtlas()) {
         // rebuild and upload *only* if the atlas is actually out of date (e.g., dynamic font size or style changes, etc.)
         // (Note: very inexpensive with early-out returns in common case.)
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+        if (!ImgPanelGraphics::IsAvailable()) {
+            CheckAndRebuildAtlas(mFontAtlas->getAtlas(), mFontTexture);
+        }
+#else
         CheckAndRebuildAtlas(mFontAtlas->getAtlas(), mFontTexture);
+#endif
     }
-#endif /* IMGUI_V190_REFACTOR */
+#endif /* IMGUI_V192_REFACTOR */
 
     // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
     ImGuiIO& io = ImGui::GetIO();
@@ -456,6 +633,76 @@ ImgWindow::RenderImGui(ImDrawData *draw_data)
         io.DisplayFramebufferScale.y != 1.0)
         draw_data->ScaleClipRects(io.DisplayFramebufferScale);
 
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+    if (ImgPanelGraphics::IsAvailable()) {
+        static bool s_logged_backend = false;
+        if (!s_logged_backend) {
+            XPLMDebugString("ImgWindow: Rendering via XPLM v4.4 Panel Graphics\n");
+            s_logged_backend = true;
+        }
+
+        if (mFontTexture == nullptr || draw_data->CmdListsCount == 0)
+            return;
+
+        // Render command lists
+        for (int n = 0; n < draw_data->CmdListsCount; n++)
+        {
+            const ImDrawList* cmd_list = draw_data->CmdLists[n];
+
+            XPLMMesh_t mesh;
+            mesh.vertex_count = cmd_list->VtxBuffer.Size;
+            mesh.vertices = (const float*)cmd_list->VtxBuffer.Data;
+            mesh.index_count = cmd_list->IdxBuffer.Size;
+            static_assert(sizeof(ImDrawIdx) == 2, "X-Plane 12 Panel Graphics API strictly requires 16-bit ImGui indices.");
+            mesh.indices = (const uint16_t*)cmd_list->IdxBuffer.Data;
+            
+            std::vector<XPLMDrawCall_t> draw_calls;
+            draw_calls.reserve(cmd_list->CmdBuffer.Size);
+
+            for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
+            {
+                const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
+                if (pcmd->UserCallback != nullptr) {
+                    if (pcmd->UserCallback == ImDrawCallback_ResetRenderState) {
+                        // Safely ignore ImGui's internal render state reset request
+                        continue; 
+                    }
+                    if (!draw_calls.empty()) {
+                        ImgPanelGraphics::DrawCalls(&mesh, draw_calls.size(), draw_calls.data());
+                        draw_calls.clear();
+                    }
+                    pcmd->UserCallback(cmd_list, pcmd);
+                } else {
+                    XPLMDrawCall_t dc;
+#ifndef IMGUI_V192_REFACTOR
+                    dc.tex_ref = (void*)(intptr_t)pcmd->TextureId;
+#else
+                    dc.tex_ref = (void*)(intptr_t)(pcmd->TexRef._TexData ? pcmd->TexRef._TexData->TexID : pcmd->TexRef._TexID);
+#endif
+                    
+                    // CRITICAL GUARD: Vulkan will segfault if tex_ref is null.
+                    if (dc.tex_ref == nullptr) {
+                        continue;
+                    }
+
+                    dc.scissors[0] = pcmd->ClipRect.x;
+                    dc.scissors[1] = pcmd->ClipRect.y;
+                    dc.scissors[2] = pcmd->ClipRect.z;
+                    dc.scissors[3] = pcmd->ClipRect.w;
+                    dc.idx_offset = pcmd->IdxOffset;
+                    dc.element_count = pcmd->ElemCount;
+                    dc.vtx_offset = pcmd->VtxOffset;
+                    draw_calls.push_back(dc);
+                }
+            }
+            
+            if (!draw_calls.empty()) {
+                ImgPanelGraphics::DrawCalls(&mesh, draw_calls.size(), draw_calls.data());
+            }
+        }
+    } else
+#endif
+    {
     updateMatrices();
 
     // We are using the OpenGL fixed pipeline because messing with the
@@ -484,27 +731,31 @@ ImgWindow::RenderImGui(ImDrawData *draw_data)
         const ImDrawList* cmd_list = draw_data->CmdLists[n];
         const ImDrawVert* vtx_buffer = cmd_list->VtxBuffer.Data;
         const ImDrawIdx* idx_buffer = cmd_list->IdxBuffer.Data;
-#ifndef IMGUI_V190_REFACTOR
+#ifndef IMGUI_V192_REFACTOR
         glVertexPointer(2, GL_FLOAT, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, pos)));
         glTexCoordPointer(2, GL_FLOAT, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, uv)));
         glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, col)));
-#else /* IMGUI_V190_REFACTOR: */
+#else /* IMGUI_V192_REFACTOR: */
         glVertexPointer(2, GL_FLOAT, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + offsetof(ImDrawVert, pos)));
         glTexCoordPointer(2, GL_FLOAT, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + offsetof(ImDrawVert, uv)));
         glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + offsetof(ImDrawVert, col)));
-#endif /* IMGUI_V190_REFACTOR */
+#endif /* IMGUI_V192_REFACTOR */
 
         for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
         {
             const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
-            if (pcmd->UserCallback) {
+            if (pcmd->UserCallback != nullptr) {
+                if (pcmd->UserCallback == ImDrawCallback_ResetRenderState) {
+                    // Safely ignore ImGui's internal render state reset request
+                    continue; 
+                }
                 pcmd->UserCallback(cmd_list, pcmd);
             } else {
-#ifndef IMGUI_V190_REFACTOR
+#ifndef IMGUI_V192_REFACTOR
                 XPLMBindTexture2d((int)(intptr_t)pcmd->TextureId, 0);
 #else
-                XPLMBindTexture2d((int)(intptr_t)pcmd->GetTexID(), 0);
-#endif /* IMGUI_V190_REFACTOR */
+                XPLMBindTexture2d((int)(intptr_t)(pcmd->TexRef._TexData ? pcmd->TexRef._TexData->TexID : pcmd->TexRef._TexID), 0);
+#endif
 
                 // Scissors work in viewport space - must translate the coordinates from ImGui -> Boxels, then Boxels -> Native.
                 //FIXME: it must be possible to apply the scale+transform manually to the projection matrix so we don't need to doublestep.
@@ -530,6 +781,7 @@ ImgWindow::RenderImGui(ImDrawData *draw_data)
     glBindTexture(GL_TEXTURE_2D, 0);    // fix from Mark Parker 2026
     glPopAttrib();
     glPopClientAttrib();
+    }
 }
 
 void
@@ -581,16 +833,37 @@ ImgWindow::updateImgui()
     // in boxels, we're always scale 1, 1.
     io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 
-#ifdef IMGUI_V190_REFACTOR
+#ifdef IMGUI_V192_REFACTOR
     // Just-in-time rebuild:
     // If the ImGui client code added a font or scaled text since the last frame, the atlas will be "dirty".
     // (So we catch such things here and rebuild what's needed instantly before ImGui tries to draw.)
     if (mFontAtlas && mFontAtlas->getAtlas()) {
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+        if (!ImgPanelGraphics::IsAvailable()) {
+            CheckAndRebuildAtlas(mFontAtlas->getAtlas(), mFontTexture);
+        } else {
+            // Panel Graphics handles rebuilding asynchronously in FontAtlasRebuildFLCB,
+            // but we MUST sync our local mFontTexture to the active backend texture ID here
+            // to prevent ~ImgWindow() from double-freeing a destroyed texture upon exit.
+            if (mFontAtlas->getAtlas()->TexData) {
+                mFontTexture = (void*)(intptr_t)mFontAtlas->getAtlas()->TexData->GetTexRef().GetTexID();
+            }
+        }
+#else
         CheckAndRebuildAtlas(mFontAtlas->getAtlas(), mFontTexture);
+#endif
     }
-#endif /* IMGUI_V190_REFACTOR */
+#endif /* IMGUI_V192_REFACTOR */
 
     ImGui::NewFrame();
+
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+    bool isGhosting = (mGhostFramesRemaining > 0);
+    if (isGhosting) {
+        // Hide everything while ImGui lays out the glyphs.
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.0f);
+    }
+#endif
 
     ImGui::SetNextWindowPos(ImVec2((float) 0.0, (float) 0.0), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(win_width, win_height), ImGuiCond_Always);
@@ -601,6 +874,13 @@ ImgWindow::updateImgui()
     ImGui::Begin(mWindowTitle.c_str(), nullptr, userFlags | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
     buildInterface();
     ImGui::End();
+
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+    if (isGhosting) {
+        ImGui::PopStyleVar();
+        mGhostFramesRemaining--;
+    }
+#endif
 
     // finally, handle window focus.
     int hasKeyboardFocus = XPLMHasKeyboardFocus(mWindowID);
@@ -632,12 +912,19 @@ ImgWindow::DrawWindowCB(XPLMWindowID /* inWindowID */, void *inRefcon)
 {
     auto *thisWindow = reinterpret_cast<ImgWindow *>(inRefcon);
 
+    // CRITICAL GUARD: Do not draw zombie windows that are queued for deletion!
+    if (thisWindow->mIsPendingDestruction) {
+        return;
+    }
+
     thisWindow->updateImgui();
 
     ImGui::SetCurrentContext(thisWindow->mImGuiContext);
     ImGui::Render();
 
     thisWindow->RenderImGui(ImGui::GetDrawData());
+
+
 
     // Give subclasses a chance to do something after all rendering
     thisWindow->afterRendering();
@@ -1032,6 +1319,15 @@ ImgWindow::GetVisible() const
     return XPLMGetWindowIsVisible(mWindowID) != 0;
 }
 
+bool
+ImgWindow::IsUsingPanelGraphics () const
+{
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+    return ImgPanelGraphics::IsAvailable();
+#else
+    return false;
+#endif
+}
 
 bool
 ImgWindow::onShow()
@@ -1087,9 +1383,26 @@ ImgWindow::IsInsideWindowDragArea (int x, int y) const
         dragTop  <= y && y <= dragBottom;
 }
 
+void ImgWindow::SetTextureBakeDelay(bool enableDelay, int frameCount) {
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+    // Texture bake delay only makes sense for Panel Graphics windows...
+    if (!ImgPanelGraphics::IsAvailable()) {
+        return;  // Ignore the request entirely for OpenGL windows.
+    }
+    mGhostFramesRemaining = enableDelay ? frameCount : 0;
+#else
+    // Logically, this method isn't useful whatsoever without Panel Graphics.
+    // We thus ignore the request here, since it has no effect for OpenGL.
+    // (This is provided the caller doesn't need to know whether Panel Graphics is being used or not.)
+    (void)enableDelay;
+    (void)frameCount;
+#endif
+}
+
 void
 ImgWindow::SafeDelete()
 {
+    mIsPendingDestruction = true;
     sPendingDestruction.push(this);
     if (sSelfDestructHandler == nullptr) {
         XPLMCreateFlightLoop_t flParams{
@@ -1103,8 +1416,41 @@ ImgWindow::SafeDelete()
     XPLMScheduleFlightLoop(sSelfDestructHandler, -1, 1);
 }
 
+#ifdef IMGUI_V192_REFACTOR
+void ImgWindow::SafeDeleteTexture(ImTextureID texture) {
+    if (!texture) return;
+
+#ifdef IMGWINDOW_USE_PANEL_GRAPHICS
+    if (ImgPanelGraphics::IsAvailable()) {
+        // --- EAGER FLCB STARTUP ---
+        // If a developer deletes a texture BEFORE they open their first window,
+        // the FLCB won't be running to empty the queue. We must eagerly start it here!
+        if (sFontAtlasRebuildHandler == nullptr) {
+            XPLMCreateFlightLoop_t flParams = {
+                sizeof(XPLMCreateFlightLoop_t),
+                xplm_FlightLoop_Phase_BeforeFlightModel,
+                FontAtlasRebuildFLCB,
+                nullptr
+            };
+            sFontAtlasRebuildHandler = XPLMCreateFlightLoop(&flParams);
+            XPLMScheduleFlightLoop(sFontAtlasRebuildHandler, -1.0f, 1);
+        }
+        // --------------------------
+
+        // Defer destruction to the next flight loop (Vulkan requirement)
+        s_vulkanDisposalQueue.push_back((void*)(intptr_t)texture);
+        return;
+    }
+#endif
+    // For legacy OpenGL, it is safe to destroy synchronously.
+    GLuint glTextureId = (GLuint)(intptr_t)texture;
+    glDeleteTextures(1, &glTextureId);
+}
+#endif /* IMGUI_V192_REFACTOR */
+
 std::queue<ImgWindow *>  ImgWindow::sPendingDestruction;
 XPLMFlightLoopID         ImgWindow::sSelfDestructHandler = nullptr;
+XPLMFlightLoopID         ImgWindow::sFontAtlasRebuildHandler = nullptr;
 
 float
 ImgWindow::SelfDestructCallback(float /*inElapsedSinceLastCall*/,
@@ -1119,3 +1465,87 @@ ImgWindow::SelfDestructCallback(float /*inElapsedSinceLastCall*/,
     }
     return 0;
 }
+
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+float ImgWindow::FontAtlasRebuildFLCB(float inElapsedSinceLastCall,
+                                      float inElapsedTimeSinceLastFlightLoop,
+                                      int inCounter,
+                                      void *inRefcon)
+{
+    // Before anything, check whether we are still in the "blankout" period.
+    // (If so, skip this frame and wait for the next one.)
+    if (XPLMGetCycleNumber() < ImgWindow::sBlankoutUntilCycle) {
+        return -1.0f;  // Skip rendering this frame.
+    }
+    
+    // Process Vulkan safe disposal queue safely outside the draw loop
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+    for (void* tex : s_vulkanDisposalQueue) {
+        ImgPanelGraphics::DestroyTexture(tex);
+    }
+    s_vulkanDisposalQueue.clear();
+#endif
+    
+    // ONLY run the background atlas rebuild if we are using Panel Graphics!
+    // Legacy OpenGL MUST rebuild during the draw callback (updateImgui) to have a valid GL context.
+    if (ImgPanelGraphics::IsAvailable() && sFontAtlas && sFontAtlas->getAtlas()) {
+        // We pass a dummy ID reference because the shared atlas texture ID tracker 
+        // handles the actual updates underneath inside CheckAndRebuildAtlas.
+        void* dummyTexID = nullptr;
+        if (sFontAtlas->getAtlas()->TexData) {
+            dummyTexID = (void*)(intptr_t)sFontAtlas->getAtlas()->TexData->GetTexRef().GetTexID();
+        }
+        CheckAndRebuildAtlas(sFontAtlas->getAtlas(), dummyTexID);
+    }
+    return -1.0f; // Call every frame
+}
+
+/** Support dynamic binding to the panel graphics library.
+ *  This allows us to use the panel graphics library if requested when it
+ *  is available, or to fall back to the standard OpenGL rendering if
+ *  not -- but only if the plugin has defined IMGWINDOW_USE_PANEL_GRAPHICS
+ *  in its build configuration.
+ */
+namespace ImgPanelGraphics {
+
+    // Function pointers
+    static void* (*s_CreateTexture)(const unsigned char*, int, int) = nullptr;
+    static void (*s_DestroyTexture)(void*) = nullptr;
+    static void (*s_DrawCalls)(const XPLMMesh_t*, int, const XPLMDrawCall_t*) = nullptr;
+
+    static bool s_initialized = false;
+    static bool s_available = false;
+
+    static void InitDynamic() {
+        if (s_initialized) return;
+        s_initialized = true;
+
+        s_CreateTexture = (void* (*)(const unsigned char*, int, int)) XPLMFindSymbol("XPLMCreateTexture");
+        s_DestroyTexture = (void (*)(void*)) XPLMFindSymbol("XPLMDestroyTexture");
+        s_DrawCalls = (void (*)(const XPLMMesh_t*, int, const XPLMDrawCall_t*)) XPLMFindSymbol("XPLMDrawCalls");
+
+        if (s_CreateTexture && s_DestroyTexture && s_DrawCalls) {
+            s_available = true;
+        }
+    }
+
+    bool IsAvailable() {
+        InitDynamic();
+        return s_available;
+    }
+
+    void* CreateTexture(const unsigned char* rgba_image, int width, int height) {
+        if (s_CreateTexture) return s_CreateTexture(rgba_image, width, height);
+        return nullptr;
+    }
+
+    void DestroyTexture(void* tex_ref) {
+        if (s_DestroyTexture) s_DestroyTexture(tex_ref);
+    }
+
+    void DrawCalls(const XPLMMesh_t* inMesh, int inCount, const XPLMDrawCall_t inDrawCalls[]) {
+        if (s_DrawCalls) s_DrawCalls(inMesh, inCount, inDrawCalls);
+    }
+}
+
+#endif /* IMGWINDOW_USE_PANEL_GRAPHICS */

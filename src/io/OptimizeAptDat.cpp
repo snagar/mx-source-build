@@ -109,14 +109,14 @@ missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(strct_thread_state* i
   ///////////////////////////////////////////////
   // REMEMBER that every new table needs respective copy command from memory db to the file db. Found at the end of "read_and_parse_all_apt_files() function.
   ///////////////////////////////////////////////
-
+  bool result = true;
 
   double       duration         = 0.0;
   unsigned int lineCounter      = 0; // count the lines written to file
   auto         startThreadClock = std::chrono::steady_clock::now();
 
   inThreadState->flagIsActive        = true;
-  inThreadState->flagThreadDoneWork = false;
+  inThreadState->flagThreadDoneWork  = false;
   inThreadState->flagAbortThread     = false;
 
   inThreadState->startThreadStopper();
@@ -227,61 +227,6 @@ missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(strct_thread_state* i
     if (infs.is_open())
       infs.close();
 
-    // ///// Flush to disk
-    // {
-    //   auto start = std::chrono::steady_clock::now();
-    //   for (auto &[airport_code, info] : missionx::data_manager::cachedNavInfo_map)
-    //   {
-    //     bool bWroteNav = false;
-    //     ++lineCounter;
-    //     for (auto nav : info.listNavInfo) // flush data into optimized apt.dat
-    //     {
-    //       // lambda to find first space TODO: make a function out of this
-    //       const auto lmbda_get_first_space_in_line = [](std::string& inLine)
-    //       {
-    //         // loop until you find first space
-    //         int i = 0;
-    //         for (auto c : inLine)
-    //         {
-    //           if (c == ' ')
-    //             return i;
-    //
-    //           ++i;
-    //         }
-    //
-    //         return 0;
-    //       };
-    //       auto space_location_i = lmbda_get_first_space_in_line(nav);
-    //       const std::string code_s = mxUtils::rtrim(nav.substr(0, space_location_i));
-    //       if (code_s.compare("100") == 0) // do not store runway info
-    //         continue;
-    //       else
-    //       {
-    //         outCustAptdatFile << nav;
-    //         ++lineCounter;
-    //         bWroteNav = true;
-    //       }
-    //     }
-    //     if (info.isCustom && bWroteNav) // * at the end of the NavAid means custom airport
-    //       outCustAptdatFile << "*"
-    //                         << "\n";
-    //
-    //     outCustAptdatFile << '\n';
-    //   }
-    //
-    //   auto end  = std::chrono::steady_clock::now();
-    //   auto diff = end - start;
-    //   duration  = std::chrono::duration<double, std::milli>(diff).count();
-    //   Log::logAttention("Flush to Disk Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec). Lines Written:  " + Utils::formatNumber<int>(lineCounter) + "\n", true);
-    // }
-    //
-    // //// Close files
-    // if (outCustAptdatFile.is_open())
-    //   outCustAptdatFile.close();
-
-    if (infs.is_open())
-      infs.close();
-
 
     auto endCacheLoad = std::chrono::steady_clock::now();
     auto diff_cache   = endCacheLoad - startThreadClock;
@@ -294,7 +239,7 @@ missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(strct_thread_state* i
     std::string err;
     //bool        write_to_db_b = Utils::getNodeText_type_1_5<bool>(missionx::system_actions::pluginSetupOptions.node, mxconst::SETUP_WRITE_CACHE_TO_DB, true);
 
-    if ( OptimizeAptDat::db_airports_cache_ptr != nullptr) // v3.303.14 deprecated write_to_db_b - always true, always write to DB
+    if (OptimizeAptDat::db_airports_cache_ptr != nullptr && !(inThreadState->flagAbortThread)) // v3.303.14 deprecated write_to_db_b - always true, always write to DB
     {
       Log::logMsgThread(">>> Finished Database load <<<\n");
       upload_navdata_to_inMemory_db(inThreadState, *OptimizeAptDat::db_airports_cache_ptr);
@@ -453,17 +398,20 @@ where  xp_ap_metadata.icao not in (select t1.icao
 
     }
 
-    inThreadState->flagIsActive        = false;
-    inThreadState->flagThreadDoneWork = true; // we reset the thread at Mission::flc_aptdat() function
+    //inThreadState->flagIsActive       = false;
+    //inThreadState->flagThreadDoneWork = true; // we reset the thread at Mission::flc_aptdat() function
   }
   else
   {
+    // failed to find the custom scenery ini folder
     Log::logAttention("[Parse Custom ini] Failed to open information folder: " + inThreadState->mapValues[mxconst::get_FLD_CUSTOM_SCENERY_FOLDER_PATH()], true);
-    return false; // skip
+    result = false; // skip
   }
 
+  inThreadState->flagIsActive       = false;
+  inThreadState->flagThreadDoneWork = true; // we reset the thread at Mission::flc_aptdat() function
 
-  return true;
+  return result;
 }
 
 

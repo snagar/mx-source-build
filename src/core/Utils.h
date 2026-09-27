@@ -22,8 +22,16 @@
 
 #include "../io/IXMLParser.h"
 #include "../io/Log.hpp"
-#include "fmod.hpp"
-//#include "fmod_errors.h"
+
+#include <sstream>
+#include <fstream> // used in utils.cpp
+
+#include <XPLMScenery.h>
+#include <XPLMDisplay.h>
+#include <XPLMPlanes.h> // used in utils.cpp
+#include <XPLMNavigation.h>
+#include <XPLMPlugin.h>
+
 
 // using namespace std;
 using namespace missionx;

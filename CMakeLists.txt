@@ -466,6 +466,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     IMGUI_INCLUDE_IMCONFIG_H IMGUI_IMPL_OPENGL_LOADER_GLEW ENABLE_MISSIONX_LOG MB_DOUBLE_FLOAT
     glm_shared_EXPORTS FT2_BUILD_LIBRARY _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_WARNINGS
     ENABLE_EXPERIMENTAL_DISABLE MISSIONX_LIBRARY
+    XPLM
 )
 
 # OS-specific definitions
@@ -632,28 +633,6 @@ else()
         IMPORTED_LOCATION "${CURL_STATIC_DIR}/libz.a"
         INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/curl/include"
     )
-
-#    # Static OpenSSL
-#    add_library(OpenSSL::SSL STATIC IMPORTED)
-#    set_target_properties(OpenSSL::SSL PROPERTIES
-#        IMPORTED_LOCATION "${CURL_STATIC_DIR}/libssl.a"
-#        INTERFACE_INCLUDE_DIRECTORIES "/usr/include"
-#    )
-#
-#    add_library(OpenSSL::Crypto STATIC IMPORTED)
-#    set_target_properties(OpenSSL::Crypto PROPERTIES
-#        IMPORTED_LOCATION "${CURL_STATIC_DIR}/libcrypto.a"
-#        INTERFACE_INCLUDE_DIRECTORIES "/usr/include"
-#    )
-#
-#    # Static cURL
-#    # The archive is named curl.a in the repository.
-#    add_library(CURL::libcurl STATIC IMPORTED)
-#    set_target_properties(CURL::libcurl PROPERTIES
-#        IMPORTED_LOCATION "${CURL_STATIC_DIR}/libcurl.a"
-#        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/curl/include"
-#    )
-
 
     # This will link the minizip library against static zlib.
     target_link_libraries(minizip PRIVATE

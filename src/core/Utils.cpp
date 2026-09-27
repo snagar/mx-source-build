@@ -2,10 +2,8 @@
 #include <iostream>
 #include <iomanip>
 #include <ctime>
-#include <sstream>
 
 #include "Utils.h"
-#include "XPLMScenery.h"
 #include "fmod_errors.h"
 
 

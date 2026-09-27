@@ -288,7 +288,7 @@ public:
   static ImguiBrieferSPtrTy uiImGuiBriefer; // ImGUI: mxpad 2D window
 
   // void initFonts();
-  void prepareUiMissionList ();
+  void prepareUiMissionList (bool load_images = true);
 
   //// plugin related members - for init and cleanup
   void stop_plugin (); // v3.0.149

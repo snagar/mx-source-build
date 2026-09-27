@@ -1,4 +1,7 @@
 #include "Briefer.hpp"
+
+#include <XPLMPlanes.h>
+
 #include "../core/dataref_manager.h" // v3.303.14 moved from header
 #include "../core/data_manager.h"
 #include "../core/coordinate/NavAidInfo.hpp"

@@ -29,6 +29,8 @@
 #endif
 #endif
 
+#include <XPLMScenery.h>
+
 using namespace missionx;
 
 namespace missionx

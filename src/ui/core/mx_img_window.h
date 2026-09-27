@@ -6,6 +6,7 @@
 #define MISSIONX_MX_IMG_WINDOW_H
 #include <queue>
 
+#include "TextureFile.h"
 #include "../../../libs/imgui4xp/ImgWindow/ImgWindow.h"
 #include "mx_colors.hpp"
 #include "../../../libs/imgui4xp/imgui/implot/implot.h" // v3.0.255.1
@@ -73,9 +74,52 @@ public:
 
   static bool mxUiButtonTooltip(const char* label, const char* tip = nullptr, ImVec4 colFg = ImVec4(1.0f, 1.0f, 1.0f, 1.0f), ImVec4 colBg = ImVec4(1.0f, 1.0f, 1.0f, 1.0f), const ImVec2& size = ImVec2(0, 0));
 
+  void destroy_textures(std::ranges::input_range auto& inout_textures_map)
+  {
+    for (auto& [file_path, texture_info] : inout_textures_map)
+    {
+      if (texture_info.gTexture)
+      {
+
+        #ifdef IMGWINDOW_USE_PANEL_GRAPHICS
+        if (ImgPanelGraphics::IsAvailable())
+          ImgPanelGraphics::DestroyTexture(&texture_info.gTexture);
+        else
+          #endif
+          // OpenGL
+        {
+          glDeleteTextures(1, reinterpret_cast<const GLuint *> (&texture_info.gTexture));
+        }
+      }
+
+      #ifndef RELEASE
+      Log::logMsg(fmt::format("[{}] Deleted texture: {}.", __func__, file_path));
+      #endif
+    }
+  }
+
+  // v26.09.3
+  // Creates a texture handle compatible with this window's active backend (Panel Graphics or OpenGL) 
+  // This should be part of the binding texture workflow
+  // ImTextureID CreateTexture(const unsigned char* pData, int width, int height, int channels);
+  ImTextureID CreateTexture(const mxTextureFile &in_texture);
+
+}; // mx_img_window
+
+namespace ui
+{
+  class wrap_imgui
+  {
+  public:
+    static void Image(ImTextureRef tex_ref, const ImVec2& image_size, const ImVec2& uv0 = ImVec2(0, 0), const ImVec2& uv1 = ImVec2(1, 1));
+    static bool ImageButton(const char* str_id, ImTextureRef tex_ref, const ImVec2& image_size, const ImVec2& uv0 = ImVec2(0, 0), const ImVec2& uv1 = ImVec2(1, 1), const ImVec4& bg_col = ImVec4(0, 0, 0, 0), const ImVec4& tint_col = ImVec4(1, 1, 1, 1));;
+    static void ImageWithBg(ImTextureRef tex_ref, const ImVec2& image_size, const ImVec2& uv0 = ImVec2(0, 0), const ImVec2& uv1 = ImVec2(1, 1), const ImVec4& bg_col = ImVec4(0, 0, 0, 0), const ImVec4& tint_col = ImVec4(1, 1, 1, 1));
+
+  };
+}
 
 
-};
+
 
 } // missionx
 

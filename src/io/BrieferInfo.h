@@ -47,7 +47,7 @@ public:
   std::string pathToMissionFile;
   std::string pathToMissionPackFolderInCustomScenery;
 
-  std::map<std::string, mxTextureFile> mapImages; // at startup we only read the briefer image, but when we press start we can load all mission specific images. We store the filename +
+  mxTextureFile briefer_image; // v26.09.3 replaces the "mapImages" container.
 
 
   // Function will remove special characters and split into sentences based on "BRIEFERINFO_SENTENCE_LENGTH" constant.

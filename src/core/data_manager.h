@@ -3,29 +3,27 @@
 
 #pragma once
 
+#include <queue>
+#include <set>
+#include <unordered_map>
+#include <fmt/core.h>
+
 
 #include "XPLMMap.h" // v3.305.4
 #include "XPLMCamera.h" // v3.0.303.7
 
 #include "mxconst.h"
 
-#ifdef USE_HTTPLIB
-#include <httplib.h> // cpp-httplib https://github.com/yhirose/cpp-httplib
-#endif
-
-
-#include <queue>
-#include <set>
-#include <unordered_map>
-// #include <format> // v25.04.2 added standard format library in the hope to replace "fmt/core.h" which is a 3rd library.
-#include <fmt/core.h>
+// #ifdef USE_HTTPLIB
+// #include <httplib.h>
+// #endif
 
 #define MX_ENABLE_HTTP_REQUESTS // v26.08.1 disable curl to test Error 127 root cause
 #ifdef MX_ENABLE_HTTP_REQUESTS
 #include "curl/curl.h"
 #endif
 
-//#define USE_CPP_HTTPLIB
+//#define USE_CPP_HTTPLIB // cpp-httplib https://github.com/yhirose/cpp-httplib
 //#ifdef USE_CPP_HTTPLIB
 //  #define CPPHTTPLIB_OPENSSL_SUPPORT
 //  #include "httplib.h"
@@ -51,9 +49,9 @@
 #include "../io/dbase.h" // v3.0.241.10
 #include "../core/embeded_script/script_manager.h" // v3.303.14 moved here from Task class, and being used by ext_script class.
 #include "../../libs/imgui4xp/imgui/imgui.h" // v3.303.14 instead of "ImgWindow.h" to resolve the ImVec2 in the header
-#include "../../libs/imgui4xp/colors/mx_colors.hpp" // v3.305.3 moved colors to its own file so we could integrate in any class without complex dependency
-#include "../../libs/minizip/minizip/zip.h"
-#include "../../libs/minizip/minizip/unzip.h"
+// #include "../../libs/imgui4xp/colors/mx_colors.hpp" // v3.305.3 moved colors to its own file so we could integrate in any class without complex dependency
+// #include "../../libs/minizip/minizip/zip.h"
+// #include "../../libs/minizip/minizip/unzip.h"
 
 namespace missionx
 {
@@ -304,6 +302,7 @@ enum class mx_flc_pre_command
   abort_mission,  // 0
   abort_random_engine,                              // v3.0.253.6
   calculate_slope_for_build_flight_leg_thread,      // v3.0.221.3
+  bind_textures,                                    // v26.09.3
   convert_icao_to_xml_point,                        // v3.0.221.5
   create_savepoint,                                 // v3.0.151
   create_savepoint_and_quit,                        // v3.0.251.1 b2
@@ -344,24 +343,25 @@ enum class mx_flc_pre_command
   imgui_check_validity_of_db_file,                       // v3.0.253.9 Will help force the simmer to execute "run APT.dat optimization"
   imgui_generate_random_mission_file,                    // v3.0.251.1
   imgui_prepare_mission_files_briefer_info,              // v3.0.251.1 same as MENU_OPEN_LIST_OF_MISSIONS
-  imgui_reload_templates_data_and_images,                // v3.0.251.1 only reload templates and image
+  imgui_reload_templates_data_and_images_step01,         // v3.0.251.1 only reload templates and image
+  imgui_reload_templates_data_and_images_step02,         // v26.09.3 post texture load, will bind and flag the textures as ready
   inject_metar_file,                                     // v3.0.223.1
+  inv_read_async_inv_image_files, // v3.0.303.5
+  inv_post_async_inv_image_binding, // v3.0.303.5
   load_mission,
   load_notes_info,                                        // v24.03.1
   load_savepoint, // 40                                  // v3.0.151
-  load_briefer_textures,                                // v25.04.2
+  //load_briefer_textures,                                // v25.04.2 // v26.09.3 deprecated
   open_inventory_layout,                                 // v3.0.213.2 mainly from MXPAD, when simmer clicks on the inventory hint
   open_map_layout,                                       // v3.0.231.1 mainly from MXPAD, when simmer clicks on the map hint
   open_story_layout,                                     // v3.305.1 used when we have active story message
   pause_xplane,
   position_camera,                          // v3.0.303.7 position camera view, based on https://developer.x-plane.com/code-sample/camera/
   position_plane,                           // when we start a mission we need to move plane to its location. This is true to new and loaded savepoint/checkpoint Should be created by plugin
-  post_async_inv_image_binding,             // v3.0.303.5
   post_async_story_image_binding,           // v3.305.1
   post_mission_load_change_to_running,      // 50 //  v3.0.223.5
   post_position_plane,                      // can be called after position plane
   post_story_message_cache_cleanup,         // v3.305.1
-  read_async_inv_image_files,               // v3.0.303.5
   restart_all_plugins,                      // v3.0.253.1
   save_notes_info,                          // v24.03.1
   save_user_setup_options,                  // v3.0.255.4.2 save user setup preference
@@ -372,7 +372,8 @@ enum class mx_flc_pre_command
   show_target_marker_option,                // v3.0.255.4.1
   special_test_place_instance, // 60        // v3.0.251.1 used to test special action from imgui button.
   start_mission,
-  start_random_mission, // v3.0.219.1
+  start_random_mission_step01, // v3.0.219.1
+  start_random_mission_step02, // v26.09.3
   stop_mission,
   stop_position_camera,                 // v3.0.303.7 position camera view, based on https://developer.x-plane.com/code-sample/camera/
   sound_abort_all_channels,             // v3.305.1c abort and clean all channels in Sound class. Usefull when there are many channels and some might not be cleaned gracefully
@@ -1028,7 +1029,8 @@ public:
   static std::map<std::string, missionx::mxTextureFile> mapCurrentMissionTextures;           // current running mission images
 
   // USED by generic buttons and not NK. Plugin bitmap files map, no need to store in savepoint
-  static std::map<std::string, missionx::mxTextureFile>    mapCachedPluginTextures;                      // plugin specific vecTextures
+  static std::map<std::string, missionx::mxTextureFile>    mapCachedPluginTextures;                // plugin specific vecTextures
+  static std::map<std::string, missionx::mxTextureFile>    mapTemplatesTextures;                   // Template texture images
   static std::map<std::string, missionx::TemplateFileInfo> mapGenerateMissionTemplateFiles;        // Generate mission vecTextures // v3.0.217.2
   static missionx::TemplateFileInfo                        user_driven_template_info;              // v3.0.241.9 used in conjunction of the mission ui build layer
   static std::map<int, std::string>                        mapGenerateMissionTemplateFilesLocator; // v3.0.217.2 locator for template vecTextures. used in the briefer layer
@@ -1065,10 +1067,12 @@ public:
   static int                                              iMissionImageCounter;
   static std::map<std::string, missionx::mxTextureFile>   xp_mapMissionIconImages;
   static std::map<std::string, missionx::mxTextureFile>   xp_mapInvImages; // v3.0.303.5 inventory images
-  static void                                             loadAllMissionsImages();
+  static void                                             load_all_missions_images_no_bind();
   static void                                             loadInventoryImages(); // v3.0.303.5 inventory images
   static void                                             loadStoryImage(missionx::Message *msg, const std::string &inImageName_vu); // v3.305.1
   static bool                                             flag_finished_load_inventory_images; // v3.0.303.5 inventory images
+  // static void                                             destroy_textures(std::map<std::string, missionx::mxTextureFile> &inout_textures_map);
+
 
   static std::string errStr;
 
@@ -1589,7 +1593,7 @@ public:
   static mx_return find_vector_between_two_osm_nodes(missionx::structs::strct_osm_query* q, int& in_nd_node_ref_index);
 
   static void                                                      fetch_ways_and_target_node_from_overpass_thread2(missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query* q);
-  static missionx::mx_return                                       gen_request_mission_description_from_llm(missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::curl_request_data& in_curl_request_data, const std::string& mission_outline);
+  static missionx::mx_return                                       gen_request_from_the_llm_server(missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::curl_request_data& in_curl_request_data, const std::string& user_prompt, const std::string& system_prompt);
   static missionx::mx_return                                       gen_request_mission_leg_from_llm(missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::curl_request_data& in_curl_request_data, const std::string& mission_outline);
   static missionx::structs::curl_request_data                      get_llm_user_setup_info_to_use_with_curl(); // v26.09.1
   static std::unordered_map<std::string, std::vector<std::string>> parse_llm_leg_data(const std::string& in_text); // v26.09.1
@@ -1636,6 +1640,15 @@ public:
   static std::string                   translatePlaneTypeToString (mx_plane_types_enum in_plane_type);
   static missionx::mx_plane_types_enum translatePlaneTypeToEnum (const std::string &in_plane_type);
 
+
+  // Staging queue for textures loaded from disk, awaiting main-thread GPU binding
+  inline static std::queue<missionx::mxTextureFile> g_readyTextureQueue;
+  inline static std::mutex                          g_textureQueueMutex;
+
+  // v26.09.3 assign the texture type to bind in the flcPRE() function
+  inline static std::deque<missionx::enums::textures_type_enum> g_queue_texture_to_load;
+  inline static bool g_flag_there_are_textures_waiting_in_queue_to_bind {false};
+  static void set_texture_bind_for_flc_pre (missionx::enums::textures_type_enum in_texture_type, mx_flc_pre_command in_action_to_call);
 
 }; // end class
 

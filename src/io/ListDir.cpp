@@ -231,10 +231,8 @@ missionx::ListDir::readMissionsBrieferInfo(const std::string& inCustomMissionFol
                   if (!xBrieferInfoNode.isEmpty())
                   {
                     // fetch information on mission image file
-                    mxTextureFile texture;
-                    texture.fileName = Utils::readAttrib(xBrieferInfoNode, mxconst::get_ATTRIB_MISSION_IMAGE_FILE_NAME(), "briefer.png");
-                    texture.filePath = brieferFolder_s;
-                    Utils::addElementToMap(brieferInfo.mapImages, fileName, texture); // mFile.first = root mission folder name
+                    brieferInfo.briefer_image.fileName = Utils::readAttrib(xBrieferInfoNode, mxconst::get_ATTRIB_MISSION_IMAGE_FILE_NAME(), "briefer.png");
+                    brieferInfo.briefer_image.filePath = brieferFolder_s;
 
                     brieferInfo.planeTypeDesc    = Utils::readAttrib(xBrieferInfoNode, mxconst::get_ATTRIB_PLANE_DESC(), EMPTY_STRING);
                     brieferInfo.difficultyDesc   = Utils::readAttrib(xBrieferInfoNode, mxconst::get_ATTRIB_DIFFICULTY(), EMPTY_STRING);
@@ -310,6 +308,34 @@ missionx::ListDir::read_all_templates(const std::string& inPluginTemplateFolder,
     for (const auto &[folderName_s, path_s] : mapListFiles)
     {
       readTemplateFilesInfo(path_s, outMapTemplateFilesInfo, static_cast<int>(outMapTemplateFilesInfo.size()), true, folderName_s);
+    }
+  } // end get list of folders
+
+  return true;
+}
+
+// -----------------------------------
+
+bool
+missionx::ListDir::read_all_templates_02(const std::string& inPluginTemplateFolder, const std::string& inCustomMissionFolder, std::map<std::string, TemplateFileInfo>& outMapTemplateFilesInfo, std::map<std::string, missionx::mxTextureFile> &outTemplatesImages)
+{
+  std::string                        folderName;
+  std::map<std::string, std::string> mapListFiles;
+
+  // readTemplateFilesInfo(inPluginTemplateFolder, outMapTemplateFilesInfo, static_cast<int>(outMapTemplateFilesInfo.size()), false);
+  readTemplateFilesInfo_02(inPluginTemplateFolder, outMapTemplateFilesInfo, static_cast<int>(outMapTemplateFilesInfo.size()), outTemplatesImages, false);
+
+  // point to a folder
+  mapListFiles.clear();
+
+  if (getListOfDirectories(inCustomMissionFolder.c_str(), &mapListFiles, missionx::EMPTY_STRING)) // valid folder list
+  {
+    std::string preferred_name;
+
+    for (const auto &[folderName_s, path_s] : mapListFiles)
+    {
+      // readTemplateFilesInfo(path_s, outMapTemplateFilesInfo, static_cast<int>(outMapTemplateFilesInfo.size()), true, folderName_s);
+      readTemplateFilesInfo_02(path_s, outMapTemplateFilesInfo, static_cast<int>(outMapTemplateFilesInfo.size()), outTemplatesImages, true, folderName_s);
     }
   } // end get list of folders
 
@@ -400,15 +426,86 @@ missionx::ListDir::readTemplateFilesInfo(const std::string& inPath, std::map<std
 }
 
 // -----------------------------------
-// bool
-// missionx::ListDir::readTemplateFilesInfo_v1(const std::string& inPath, std::map<std::string, missionx::TemplateFileInfo>& outMapTemplateFilesInfo, int inSeq, bool flag_is_custom_folder, std::string in_main_mission_folder_name_s)
-// {
-//   bool                               result = true;
-//   std::string                        errMsg;
-//   std::string                        folderName;
-//   std::map<std::string, std::string> mapListFiles;
-//   return result;
-// }
+bool
+missionx::ListDir::readTemplateFilesInfo_02(const std::string& inPath, std::map<std::string, missionx::TemplateFileInfo>& outMapTemplateFilesInfo, int inSeq, std::map<std::string, missionx::mxTextureFile> &outTemplatesImages, bool flag_is_custom_folder, std::string in_main_mission_folder_name_s)
+{
+  bool                               result = true;
+  std::string                        errMsg;
+  std::string                        folderName;
+  std::string                        failedTemplatesFilesList_s;
+  std::map<std::string, std::string> mapListFiles;
+
+  errMsg.clear();
+  mapListFiles.clear();
+  int seq = inSeq;
+
+  //// point to a folder
+  if (fs::directory_entry(inPath).is_directory()) // if parentDir fail initialization
+  {
+
+    // loop over all files and check if they are V3 ready.
+    // file that can't be open will be removed
+    if (getListOfFiles(inPath.c_str(), mapListFiles, ".xml")) // valid folder list
+    {
+      // int counterOfWrongFormatFiles = 0; // add
+
+      for (const auto& fileName : mapListFiles | std::views::keys)
+      {
+        missionx::TemplateFileInfo fileInfo;
+
+        fileInfo.fileName = fileName;
+
+        if (flag_is_custom_folder)
+        {
+          if (mxconst::get_TEMPLATE_FILE_NAME() != fileInfo.fileName) // if file name is not "template.xml"
+          {
+            // Log::logMsg("Skipping XML File: " + fileName + " - not a template.xml" + mxconst::get_UNIX_EOL()); // debug
+            Log::logMsg(fmt::format(R"(Skipping XML File: "{}" - not a template.xml\n)", fileName)); // debug
+            continue;
+          }
+        }
+
+        // Call read_template_file
+        errMsg = read_template_file_02(inPath, fileName, fileInfo, outTemplatesImages, flag_is_custom_folder, in_main_mission_folder_name_s);
+        if (!errMsg.empty())
+        {
+          failedTemplatesFilesList_s += (failedTemplatesFilesList_s.empty() ? "" : ", ");
+          failedTemplatesFilesList_s += fileInfo.getAbsoluteTemplateXmlFilePath();
+          continue;
+        }
+
+        // check if template is valid and store it or not
+        const std::string key_s = (fileInfo.missionFolderName.empty() ? fileInfo.fileName : fileInfo.missionFolderName);
+        assert(!key_s.empty());
+        if (!key_s.empty())
+        {
+          ++seq;
+          fileInfo.seq = seq;
+          Utils::addElementToMap(outMapTemplateFilesInfo, key_s, fileInfo);
+        }
+
+      } // end loop over mapListFiles
+
+      // send message if found a template with wrong template version
+      if (!failedTemplatesFilesList_s.empty())
+      {
+        const std::string message = fmt::format(R"(The following templates are invalid, either has wrong format version, or missing mandatory information: {})", failedTemplatesFilesList_s);
+        Log::logMsgWarn(message);
+      }
+
+    } // end get List of files
+  }
+  else
+  {
+    #ifndef RELEASE
+    Log::logMsg("[ListDir ERROR] Fail open folder information: " + inPath);
+    #endif // !RELEASE
+
+    return false; // skip
+  }
+
+  return result;
+}
 
 
 // -----------------------------------
@@ -424,11 +521,11 @@ ListDir::read_template_file(const std::string& inPath, const std::string& fileNa
 
   fileInfo.imageFile.filePath = fileInfo.filePath = inPath;
 
-  fileInfo.fullFilePath = inPath + std::string(XPLMGetDirectorySeparator()).append(fileName); // absolute path with file name
+  fileInfo.xml_file_path = inPath + std::string(XPLMGetDirectorySeparator()).append(fileName); // absolute path with file name
 
   //// Read XML mission file
   IXMLDomParser iDom;
-  ITCXMLNode    xParent = iDom.openFileHelper(fileInfo.fullFilePath.c_str(), mxconst::get_TEMPLATE_ROOT_DOC().c_str(), &errMsg);
+  ITCXMLNode    xParent = iDom.openFileHelper(fileInfo.xml_file_path.c_str(), mxconst::get_TEMPLATE_ROOT_DOC().c_str(), &errMsg);
   ITCXMLNode    xRoot;
 
   // check if mission file is present. If error string is empty, file is present
@@ -488,13 +585,104 @@ ListDir::read_template_file(const std::string& inPath, const std::string& fileNa
 
 // -----------------------------------
 
+
+std::string
+ListDir::read_template_file_02(const std::string& inPath, const std::string& fileName, missionx::TemplateFileInfo& fileInfo, std::map<std::string, missionx::mxTextureFile> &outTemplatesImages, const bool& flag_is_custom_folder, const std::string& in_main_mission_folder_name_s, const bool& isThread)
+{
+  const std::string file_path = std::string(inPath) + "/" + fileName;
+  std::string       errMsg;
+
+  Log::logMsg(fmt::format(R"(Reading File: "{}/{}")", inPath, fileName));
+
+  fileInfo.imageFile.filePath = fileInfo.filePath = inPath;
+
+  fileInfo.xml_file_path = inPath + std::string(XPLMGetDirectorySeparator()).append(fileName); // absolute path with file name
+
+  //// Read XML mission file
+  IXMLDomParser iDom;
+  ITCXMLNode    xParent = iDom.openFileHelper(fileInfo.xml_file_path.c_str(), mxconst::get_TEMPLATE_ROOT_DOC().c_str(), &errMsg);
+  ITCXMLNode    xRoot;
+
+  // check if mission file is present. If error string is empty, file is present
+  if (errMsg.empty()) // if file exists
+  {
+    /* read MISSION attributes */
+
+    if (const std::string attrib = Utils::readAttrib(xParent, "version", "0"); missionx::RANDOM_TEMPLATE_VER != attrib) // skip if not correct version
+    {
+      errMsg = fmt::format(R"(Template file: "{}", is not in the correct version - "{}", currently it is: "{}". Check documentation.)", file_path, missionx::RANDOM_TEMPLATE_VER, attrib);
+      Log::logMsgErr(errMsg, isThread);
+      return errMsg;
+    }
+
+    const auto xTemplateMissionInfoNode = xParent.getChildNode(mxconst::get_ELEMENT_MISSION_INFO().c_str());
+    if (xTemplateMissionInfoNode.isEmpty())
+    {
+      errMsg = "Fail to load template file: " + fileName + ". No <mission_info> element found. skipping...";
+      Log::logMsgErr(errMsg, isThread);
+      // continue;
+      return errMsg;
+    }
+
+    fileInfo.node = xTemplateMissionInfoNode.deepCopy();
+
+    missionx::mxTextureFile texture_file;
+
+    // prepare image information
+    // fileInfo.imageFile.fileName = Utils::readAttrib(fileInfo.node, mxconst::get_ATTRIB_TEMPLATE_IMAGE_FILE_NAME(), "");
+    texture_file.fileName = Utils::readAttrib(fileInfo.node, mxconst::get_ATTRIB_TEMPLATE_IMAGE_FILE_NAME(), "");
+
+    // read short_desc
+    if (const std::string short_desc_s = Utils::readAttrib(fileInfo.node, mxconst::get_ATTRIB_SHORT_DESC(), ""); !short_desc_s.empty())
+    {
+      fileInfo.prepareSentenceBasedOnString(short_desc_s); // v3.303.14
+      fileInfo.template_description = fileInfo.desc_from_vector_with_tabs_s; // v25.09.2
+    }
+
+    // validate a template image name is present
+    if (!texture_file.fileName.empty() || fileInfo.fileName == mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI()) // v3.0.241.9 modified to handle the special template file: "template_blank_4_ui.xml" that we will remove from map later.
+    {
+      // Handle random image location in "custom scenery" folder and not part of the template folder.
+      if (fileInfo.fileName == mxconst::get_RANDOM_TEMPLATE_BLANK_4_UI())
+      {
+        texture_file.fileName = mxconst::get_DEFAULT_RANDOM_IMAGE_FILE();
+        texture_file.filePath = "Custom Scenery/missionx/random/" + mxconst::get_BRIEFER_FOLDER(); // path to image folder only.
+      }
+      else
+        texture_file.filePath = fileInfo.getPath() + XPLMGetDirectorySeparator() + ((flag_is_custom_folder)? mxconst::get_BRIEFER_FOLDER(): "") ; // v25.02.1 if this a custom folder, then image should reside in "briefer" folder.
+
+      if (flag_is_custom_folder)
+      {
+        fileInfo.missionFolderName = in_main_mission_folder_name_s;
+      }
+
+      fileInfo.full_path_to_image_file = texture_file.getAbsoluteFileLocation();
+      // v26.09.3 initialize the template key. We will initialize the texture later in mission class.
+      outTemplatesImages[fileInfo.full_path_to_image_file] = texture_file;
+      fileInfo.imageFile = texture_file;
+
+      // v3.0.255.4.1 initial options vector, this will be used with ImGui::Combo
+      parse_replace_options_into_template(fileInfo);
+    }
+  }
+  else
+  {
+    Log::logMsgErr(errMsg);
+    return errMsg;
+  }
+
+  return errMsg; // empty error message should be success
+}
+
+// -----------------------------------
+
 bool
 ListDir::parse_replace_options_into_template(missionx::TemplateFileInfo& fileInfo)
 {
   std::string errMsg;
 
   IXMLDomParser iDomReplaceOptions;
-  ITCXMLNode    xREPLACE_OPTIONS = iDomReplaceOptions.openFileHelper(fileInfo.fullFilePath.c_str(), mxconst::get_ELEMENT_TEMPLATE_REPLACE_OPTIONS().c_str(), &errMsg);
+  ITCXMLNode    xREPLACE_OPTIONS = iDomReplaceOptions.openFileHelper(fileInfo.xml_file_path.c_str(), mxconst::get_ELEMENT_TEMPLATE_REPLACE_OPTIONS().c_str(), &errMsg);
   if (errMsg.empty())
   {
     fileInfo.vecReplaceOptions_s.clear();

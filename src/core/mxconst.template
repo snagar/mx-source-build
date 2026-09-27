@@ -1126,3 +1126,5 @@ constexpr static ^std::string_view ^        DEFAULT_HOVER_VOL_HEIGHT_FOR_OSM_FT 
 
 constexpr static ^std::string_view ^        BLANK_3D_OBJ   ^ "blank"^// v26.01.5 Used with <display_object>. If above water, the plugin might use a "blank" obj3d to skip.
 
+constexpr static ^std::string_view ^        LLM_DESCRIPTION_FOOTNOTE   ^ "Generated using LLM"^// v26.09.3 used to identify that the flight plan was generated using LLM. It is used in the briefer description and when constructing the end node.
+
