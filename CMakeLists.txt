@@ -391,15 +391,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 
-
-#if (NOT WIN32)
-#  message("Zlib search in Linux/Mac")
-#  INCLUDE(FindZLIB)
-#  IF(NOT ZLIB_FOUND)
-#    message(FATAL_ERROR "zlib library is required for libminizip!")
-#  ENDIF(NOT ZLIB_FOUND)
-#endif()
-
 if (APPLE)
   message("Zlib search in Mac")
   find_package(ZLIB REQUIRED)
@@ -435,13 +426,6 @@ if (WIN32)
     message ("Debug: ZLIB_INCLUDE_DIR: ${ZLIB_INCLUDE_DIR}")
     message ("Debug: ZLIB_LIBRARY: ${ZLIB_LIBRARY}")
 
-#    if(ZLIB_INCLUDE_DIR AND ZLIB_LIBRARY)
-#      message(STATUS "Found ZLIB/zs.lib at: ${ZLIB_LIBRARY}")
-#    else()
-#      message(FATAL_ERROR "Could NOT find ZLIB or zs.lib! Please pass -DZLIB_LIBRARY=... and -DZLIB_INCLUDE_DIR=... to CMake.")
-#    endif()
-
-
 endif ()
 
 
@@ -470,6 +454,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     glm_shared_EXPORTS FT2_BUILD_LIBRARY _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_WARNINGS
     ENABLE_EXPERIMENTAL_DISABLE MISSIONX_LIBRARY
     XPLM
+    IMGWINDOW_USE_PANEL_GRAPHICS XPLM400=1 XPLM410=1 XPLM430=1
 )
 
 # OS-specific definitions
