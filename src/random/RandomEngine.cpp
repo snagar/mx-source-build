@@ -37,7 +37,7 @@ namespace missionx
 #define DEBUG_GENERATED_CONTENT  // v26.03.1
 
 std::thread                               missionx::RandomEngine::thread_ref;
-missionx::base_thread::strct_thread_state missionx::RandomEngine::random_thread_state;
+// missionx::base_thread::strct_thread_state missionx::data_manager::random_thread_state;
 
 std::map<std::string, std::string>                          missionx::RandomEngine::row_gather_db_data;
 std::unordered_map<int, std::map<std::string, std::string>> missionx::RandomEngine::resultTable_gather_random_airports;
@@ -138,7 +138,7 @@ RandomEngine::init()
 
   expected_slope_at_target_location_d = 0.0f;
 
-  missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::not_waiting; // v3.0.221.3
+  missionx::data_manager::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::not_waiting; // v3.0.221.3
   missionx::RandomEngine::mapNavAidsFromMainThread.clear();
 
   this->cumulative_location_desc_s.clear();
@@ -212,20 +212,20 @@ RandomEngine::setError(const std::string& inMsg)
 bool
 RandomEngine::exec_generate_mission_thread(const std::string& inKey)
 {
-  if (missionx::RandomEngine::random_thread_state.flagIsActive)
+  if (missionx::data_manager::random_thread_state.flagIsActive)
   {
     RandomEngine::setError("\"Generate Mission Engine\" is already running. Please wait for it to finish.");
     return false;
   }
 
   // start thread
-  if (!missionx::RandomEngine::random_thread_state.flagIsActive)
+  if (!missionx::data_manager::random_thread_state.flagIsActive)
   {
     if (missionx::RandomEngine::thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
       missionx::RandomEngine::thread_ref.join(); // joining also solved our issue with crashing xplane. error: abort() was called from "win.xpl"
 
     this->init(); // reset all variables
-    RandomEngine::random_thread_state.dataString = inKey;
+    data_manager::random_thread_state.dataString = inKey;
     missionx::RandomEngine::thread_ref           = std::thread(&missionx::RandomEngine::generateRandomMission, this);
   }
 
@@ -237,10 +237,13 @@ RandomEngine::exec_generate_mission_thread(const std::string& inKey)
 void
 RandomEngine::stop_plugin()
 {
-  RandomEngine::random_thread_state.flagAbortThread = true;
-  if (RandomEngine::random_thread_state.flagIsActive)
+  constexpr static int wait_time = 5;
+
+  data_manager::random_thread_state.flagAbortThread = true;
+  if (data_manager::random_thread_state.flagIsActive)
   {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    XPLMDebugString (fmt::format("\nmissionx: RandomEngine: [{}] Waiting for random_thread_state.flagIsActive.\n Wait for {} seconds.", __func__, wait_time).c_str()); // debug
+    std::this_thread::sleep_for(std::chrono::seconds(wait_time));
   }
   if (RandomEngine::thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
     RandomEngine::thread_ref.join(); // joining also solved our issue with crashing xplane. error: abort() was called from "win.xpl"
@@ -388,7 +391,7 @@ RandomEngine::inject_files_into_xml(missionx::TemplateFileInfo* tempFile_ptr)
               Log::logMsgThread("[ERROR in Template]: \n===================>>\n" + xml_template_node_content_s + "\n<<===========================\n");
               Log::logMsgThread("[random] error in generated TEMPLATE element. " + translateError + ", line: " + mxUtils::formatNumber<long long>(parse_result_strct.nLine) + ", column: " + mxUtils::formatNumber<int>(parse_result_strct.nColumn) + " \n");
               RandomEngine::setError("[random] TEMPLATE ERROR: modified template is not a valid XML. Check Log.txt for more information.");
-              missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+              missionx::data_manager::random_thread_state.flagAbortThread = true;
               this->abort_thread();
               return ""; // v26.09.3 return empty value de to abort request.
             }
@@ -444,16 +447,16 @@ RandomEngine::generateRandomMission()
 
   std::string err;
   //// Thread initialization state
-  missionx::RandomEngine::random_thread_state.flagIsActive       = true;
-  missionx::RandomEngine::random_thread_state.flagThreadDoneWork = false;
-  missionx::RandomEngine::random_thread_state.flagAbortThread    = false;
+  missionx::data_manager::random_thread_state.flagIsActive       = true;
+  missionx::data_manager::random_thread_state.flagThreadDoneWork = false;
+  missionx::data_manager::random_thread_state.flagAbortThread    = false;
 
   this->reset_sequence_numbers(); // v25.06.1
   data_manager::strct_ui_share_data.strct_llm_suggested_payloads.reset(); // v26.09.2
 
   missionx::data_manager::strct_ui_share_data.xml_last_generated_briefer_node = IXMLNode::emptyIXMLNode; // v26.08.1
 
-  missionx::RandomEngine::random_thread_state.startThreadStopper();
+  missionx::data_manager::random_thread_state.startThreadStopper();
 
   bool        result = true;
   std::string pathToTemplateFile;
@@ -462,7 +465,7 @@ RandomEngine::generateRandomMission()
   missionx::RandomEngine::map_flight_legs_translation_from_template.clear(); // v25.09.1
   missionx::RandomEngine::map_osm_inventory_track.clear(); // v25.09.2
 
-  std::string inKey = missionx::RandomEngine::random_thread_state.dataString;
+  std::string inKey = missionx::data_manager::random_thread_state.dataString;
 
   /////////////////////////////////////////////////////////////////////
   ////// Read queries from external file //////////////////////////////
@@ -486,7 +489,7 @@ RandomEngine::generateRandomMission()
   if (missionx::RandomEngine::working_tempFile_ptr == nullptr) // v3.0.241.9 work with pointer to File Information
   {
     RandomEngine::setError("[Random]Failed to find template by the name: " + inKey); // this should be displayed
-    missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+    missionx::data_manager::random_thread_state.flagAbortThread = true;
     RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
   }
@@ -505,7 +508,7 @@ RandomEngine::generateRandomMission()
   // ---------------------------------------------------------------------
   //  v26.08.1 Force read player aircraft
   // ---------------------------------------------------------------------
-  if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, mx_flc_pre_command::gather_active_acf_info_for_llm, std::chrono::milliseconds(1000)))
+  if (!missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, mx_flc_pre_command::gather_active_acf_info_for_llm, std::chrono::milliseconds(1000)))
   {
     RandomEngine::setError(fmt::format("[{}] Failed to read player aircraft info.", __func__));
   }
@@ -521,7 +524,7 @@ RandomEngine::generateRandomMission()
   {
     RandomEngine::setError("[random engine] Failed generating mission using template: " + inKey);
 
-    missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+    missionx::data_manager::random_thread_state.flagAbortThread = true;
     RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
   }
@@ -536,7 +539,7 @@ RandomEngine::generateRandomMission()
       !newTemplateFile.empty())
       pathToTemplateFile = newTemplateFile;
 
-    if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+    if (missionx::data_manager::random_thread_state.flagAbortThread)
     {
       RandomEngine::force_end_thread_states(); // v26.09.3
       return false;
@@ -549,7 +552,7 @@ RandomEngine::generateRandomMission()
   if (missionx::data_manager::xmlMappingNode.isEmpty()) // v3.0.221.15rc3.4
   {
     RandomEngine::setError("[random] ERROR: Mapping element is missing from template file: " + inKey + ". Fix template file. Aborting mission generating.");
-    missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+    missionx::data_manager::random_thread_state.flagAbortThread = true;
     RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
   }
@@ -563,7 +566,7 @@ RandomEngine::generateRandomMission()
   if (!err.empty() && missionx::RandomEngine::xRootTemplate.isEmpty()) // check if there is any failure during read
   {
     RandomEngine::setError(err);
-    missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+    missionx::data_manager::random_thread_state.flagAbortThread = true;
     RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
   }
@@ -626,7 +629,7 @@ RandomEngine::generateRandomMission()
       if (!this->prepare_blank_template_with_flight_legs_based_on_ui(xRootTemplate, this->xMetadata, local_err))
       {
         RandomEngine::setError(local_err);
-        missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+        missionx::data_manager::random_thread_state.flagAbortThread = true;
       }
 
 
@@ -655,11 +658,11 @@ RandomEngine::generateRandomMission()
           Log::logMsgThread(mxReturn.getInfoAsText());
           Log::logMsgThread(mxReturn.getErrorsAsText());
           RandomEngine::setError(mxReturn.getErrorsAsText());
-          missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+          missionx::data_manager::random_thread_state.flagAbortThread = true;
         }
 
         // check [abort]
-        if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+        if (missionx::data_manager::random_thread_state.flagAbortThread)
         {
           RandomEngine::force_end_thread_states(); // v26.09.3
           return false;
@@ -674,7 +677,7 @@ RandomEngine::generateRandomMission()
         if (!func_result.result)
         {
           RandomEngine::setError(func_result.getErrorsAsText());
-          missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+          missionx::data_manager::random_thread_state.flagAbortThread = true;
         }
       } // end if oilrig mission
     } // end handling user_driven_mission_layer
@@ -684,7 +687,7 @@ RandomEngine::generateRandomMission()
       if (!out_result.result)
       {
         RandomEngine::setError(out_result.getErrorsAsText());
-        missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+        missionx::data_manager::random_thread_state.flagAbortThread = true;
       }
       else
         goto post_mission_action;
@@ -695,7 +698,7 @@ RandomEngine::generateRandomMission()
       if (!out_result.result)
       {
         RandomEngine::setError(out_result.getErrorsAsText());
-        missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+        missionx::data_manager::random_thread_state.flagAbortThread = true;
       }
       else
         goto post_mission_action;
@@ -706,7 +709,7 @@ RandomEngine::generateRandomMission()
       if (!out_result.result)
       {
         RandomEngine::setError(out_result.getErrorsAsText());
-        missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+        missionx::data_manager::random_thread_state.flagAbortThread = true;
       }
       else
         goto post_mission_action;
@@ -721,7 +724,7 @@ RandomEngine::generateRandomMission()
     {
       Log::logMsgThread(func_result.getErrorsAsText()); // debug to log
       RandomEngine::setError(func_result.getErrorsAsText());
-      missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+      missionx::data_manager::random_thread_state.flagAbortThread = true;
       RandomEngine::force_end_thread_states(); // v26.09.3
       return false;
     }
@@ -731,7 +734,7 @@ RandomEngine::generateRandomMission()
   }
 
 
-  if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+  if (missionx::data_manager::random_thread_state.flagAbortThread)
   {
     RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
@@ -749,7 +752,7 @@ RandomEngine::generateRandomMission()
   if (!flag_surprise_me_b && !flag_oilrig_b && nContentChilds_i == 0) // v25.08.1 split the "content" code and moved it before the call to "parse_3D_object_template_element"
   {
     // read the briefer element before calling "readFlightLegs_directlyFromTemplate()"
-    if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+    if (missionx::data_manager::random_thread_state.flagAbortThread)
     {
       RandomEngine::force_end_thread_states(); // v26.09.3
       return false;
@@ -762,7 +765,7 @@ RandomEngine::generateRandomMission()
     if (!local_result.result)
     {
       missionx::RandomEngine::setError(local_result.getErrorsAsText());
-      missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+      missionx::data_manager::random_thread_state.flagAbortThread = true;
       RandomEngine::force_end_thread_states(); // v26.09.3
       return false;
     }
@@ -773,7 +776,7 @@ RandomEngine::generateRandomMission()
   post_mission_action:
 
   // call readMissionInfoElement // v3.0.253.1 moved to this location so fetch external code will create briefer info too.
-  if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+  if (missionx::data_manager::random_thread_state.flagAbortThread)
   {
     RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
@@ -786,7 +789,7 @@ RandomEngine::generateRandomMission()
 
   Utils::xml_delete_empty_nodes(xDummyTopNode); // v3.0.219.3 remove invalid points
 
-  if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+  if (missionx::data_manager::random_thread_state.flagAbortThread)
   {
     RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
@@ -802,7 +805,7 @@ RandomEngine::generateRandomMission()
   this->xScoring       = xRootTemplate.getChildNode(mxconst::get_ELEMENT_SCORING().c_str()).deepCopy(); // v3.303.9
   this->xCompatibility = xRootTemplate.getChildNode(mxconst::get_ELEMENT_COMPATIBILITY().c_str()).deepCopy(); // v24.12.2
 
-  if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+  if (missionx::data_manager::random_thread_state.flagAbortThread)
   {
     RandomEngine::force_end_thread_states(); // v26.09.3
     return false;
@@ -836,8 +839,8 @@ RandomEngine::generateRandomMission()
   Log::logAttention("*** Finished Generating RANDOM Mission, Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec)  ****", true);
 
   /// finalize thread
-  missionx::RandomEngine::random_thread_state.flagIsActive       = false;
-  missionx::RandomEngine::random_thread_state.flagThreadDoneWork = true; // we reset the thread at Mission::flc_aptdat() function
+  missionx::data_manager::random_thread_state.flagIsActive       = false;
+  missionx::data_manager::random_thread_state.flagThreadDoneWork = true; // we reset the thread at Mission::flc_aptdat() function
   
   return result;
 }
@@ -1149,7 +1152,7 @@ RandomEngine::gen_parse_template_leg(missionx::base_thread::strct_thread_state* 
     if (na.getID().empty())
     {
       inout_shared_navaid.navAid = na;
-      if (missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_lat_lon_mainThread))
+      if (missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_lat_lon_mainThread))
       {
         // check distance and hopefully pick the correct airport. Since we are using a fixed distance, this might not be a 100% guaranty
         inout_shared_navaid.navAid.synchToPoint();
@@ -1223,7 +1226,7 @@ RandomEngine::gen_parse_template_leg(missionx::base_thread::strct_thread_state* 
     targetProp.setNodeProperty<double>(mxconst::get_PROP_MAX_DISTANCE_SLIDER(), na.fpln_expected_location_data.nm_between_max);
 
 
-    if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+    if (missionx::data_manager::random_thread_state.flagAbortThread)
     {
       outErr = "User asked to Abort!";
       na.init();
@@ -1494,7 +1497,7 @@ RandomEngine::gen_content_option_01_random_mission_from_content(IXMLNode& xTempl
   std::string         err;
   missionx::mx_return out_func_result;
 
-  std::map<int, NavAidInfo> navaid_targets = RandomEngine::gen_get_content_targets(&RandomEngine::random_thread_state, xTemplateNode, xContent, RandomEngine::shared_navaid_info, err);
+  std::map<int, NavAidInfo> navaid_targets = RandomEngine::gen_get_content_targets(&data_manager::random_thread_state, xTemplateNode, xContent, RandomEngine::shared_navaid_info, err);
 
   ///////////////////
   // Validations
@@ -1540,7 +1543,7 @@ RandomEngine::gen_content_option_01_random_mission_from_content(IXMLNode& xTempl
   }
 
   // check [abort] by user
-  if (RandomEngine::random_thread_state.flagAbortThread)
+  if (data_manager::random_thread_state.flagAbortThread)
   {
     out_func_result.addErrMsg("User asked to abort.", true);
     return out_func_result;
@@ -1653,7 +1656,7 @@ RandomEngine::gen_content_option_01_random_mission_from_content(IXMLNode& xTempl
 
 
     // check [abort]
-    if (RandomEngine::random_thread_state.flagAbortThread)
+    if (data_manager::random_thread_state.flagAbortThread)
     {
       out_func_result.addErrMsg("User asked to abort.", true);
       return out_func_result;
@@ -1701,7 +1704,7 @@ RandomEngine::gen_content_option_01_random_mission_from_content(IXMLNode& xTempl
   // add <mission_info>
   if (!gen_read_mission_info_element()) // <mission_info>
   {
-    missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+    missionx::data_manager::random_thread_state.flagAbortThread = true;
     out_func_result.addErrMsg("No <mission_info> node was found in template.", true);
   }
 
@@ -1943,16 +1946,16 @@ RandomEngine::gen_get_generic_template_targets(missionx::base_thread::strct_thre
   // ----------------------
   // -- Prepare <leg> nodes from template
   // ----------------------
-  for (int i1 = 0; i1 < nChilds && !(missionx::RandomEngine::random_thread_state.flagAbortThread); ++i1)
+  for (int i1 = 0; i1 < nChilds && !(missionx::data_manager::random_thread_state.flagAbortThread); ++i1)
   {
     IXMLNode x_leg_node  = in_template_node.getChildNode(mxconst::get_ELEMENT_LEG().c_str(), i1).deepCopy();
     int      leg_counter = static_cast<int>(target_navaids.size());
-    auto     na          = gen_parse_template_leg(&RandomEngine::random_thread_state, in_template_node, x_leg_node, RandomEngine::shared_navaid_info, target_navaids, leg_counter, (i1 + 1 == nChilds), outErr);
+    auto     na          = gen_parse_template_leg(&data_manager::random_thread_state, in_template_node, x_leg_node, RandomEngine::shared_navaid_info, target_navaids, leg_counter, (i1 + 1 == nChilds), outErr);
 
     na.fpln_seq = i1 + 1; // v26.09.1
 
     // check abort
-    if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+    if (missionx::data_manager::random_thread_state.flagAbortThread)
     {
       outErr = "User asked to Abort!";
       target_navaids.clear();
@@ -2000,9 +2003,9 @@ RandomEngine::gen_prepare_random_mission_based_on_leg_nodes_in_template(IXMLNode
   // Get all targets including the "starting location" (briefer)
   //-----------------------------------------------
   std::string               outErr;
-  std::map<int, NavAidInfo> navaid_targets = RandomEngine::gen_get_generic_template_targets(&RandomEngine::random_thread_state, in_xTemplateNode, RandomEngine::shared_navaid_info, outErr);
+  std::map<int, NavAidInfo> navaid_targets = RandomEngine::gen_get_generic_template_targets(&data_manager::random_thread_state, in_xTemplateNode, RandomEngine::shared_navaid_info, outErr);
 
-  if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+  if (missionx::data_manager::random_thread_state.flagAbortThread)
   {
     navaid_targets.clear();
     out_func_result.result = false;
@@ -2137,7 +2140,7 @@ RandomEngine::gen_prepare_random_mission_based_on_leg_nodes_in_template(IXMLNode
   this->cumulative_location_desc_s = gen_get_cumulative_fpln_desc(navaid_targets);
 
   // check [abort]
-  if (RandomEngine::random_thread_state.flagAbortThread)
+  if (data_manager::random_thread_state.flagAbortThread)
   {
     out_func_result.addErrMsg("User asked to abort.", true);
     return out_func_result;
@@ -2182,7 +2185,7 @@ RandomEngine::gen_prepare_random_mission_based_on_leg_nodes_in_template(IXMLNode
   // add <mission_info>
   if (!gen_read_mission_info_element()) // <mission_info>
   {
-    missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+    missionx::data_manager::random_thread_state.flagAbortThread = true;
     out_func_result.addErrMsg("No <mission_info> node was found in template.", true);
   }
 
@@ -2825,7 +2828,7 @@ RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_targe
             NavAidInfo wet_nav_check;
             wet_nav_check.lat = inout_target_navaid.ramp_info.lat;
             wet_nav_check.lon = inout_target_navaid.ramp_info.lon;
-            const auto is_wet_result = missionx::data_manager::get_is_wet_at_point_thread_unsafe(wet_nav_check, RandomEngine::random_thread_state, RandomEngine::shared_navaid_info);
+            const auto is_wet_result = missionx::data_manager::get_is_wet_at_point_thread_unsafe(wet_nav_check, data_manager::random_thread_state, RandomEngine::shared_navaid_info);
             if (is_wet_result.result) // if it is wet
               continue; // pick next ramp
           }
@@ -2979,6 +2982,10 @@ RandomEngine::gen_get_ramp_based_on_plane_type(missionx::NavAidInfo& inout_targe
 void
 RandomEngine::gen_add_inventory_phase02_add_items(missionx::NavAidInfo& inOutNavAidInfo)
 {
+  const auto flag_no_inventories = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_SETUP_NO_INVENTORIES (), true);
+  if (flag_no_inventories)
+    return;
+
   const std::string inFlightLegName = (inOutNavAidInfo.flag_is_brieferOrStartLocation) ? "Briefer" : inOutNavAidInfo.getName();
   std::string       invName         = inFlightLegName + " Inventory"; // v24.06.1 changed from: "inv_" + inFlightLegName
   IXMLNode          xPoint;
@@ -3082,7 +3089,7 @@ RandomEngine::writeTargetFile()
   const std::string savePathAndFile = (RandomEngine::working_tempFile_ptr->missionFolderName.empty()) ? this->pathToRandomBrieferFolder + mxconst::get_FOLDER_SEPARATOR() + mxconst::get_RANDOM_MISSION_DATA_FILE_NAME() : this->pathToRandomBrieferFolder + mxconst::get_FOLDER_SEPARATOR() + RandomEngine::working_tempFile_ptr->missionFolderName + ".xml";
 
 
-  const std::string_view mission_name_con = (!RandomEngine::working_tempFile_ptr->missionFolderName.empty()) ? RandomEngine::working_tempFile_ptr->missionFolderName : RandomEngine::random_thread_state.dataString;
+  const std::string_view mission_name_con = (!RandomEngine::working_tempFile_ptr->missionFolderName.empty()) ? RandomEngine::working_tempFile_ptr->missionFolderName : data_manager::random_thread_state.dataString;
   #ifndef RELEASE
   Log::logMsgThread("\n[DEBUG random writeTargetFile] Write to file: " + savePathAndFile + "\n");
   #endif
@@ -3141,7 +3148,7 @@ RandomEngine::writeTargetFile()
   // ---------------------------------------------------------------------
   // -- Read Weather
   // ---------------------------------------------------------------------
-  if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_current_weather_state_and_store_in_RandomEngine))
+  if (!missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::get_current_weather_state_and_store_in_RandomEngine))
   {
     missionx::RandomEngine::current_weather_datarefs_s.clear();
     RandomEngine::setError(fmt::format("[{}] Failed to read current X-Plane weather information.", __func__) );
@@ -3667,8 +3674,8 @@ RandomEngine::getPlaneType_enum()
 void
 RandomEngine::abort_thread()
 {
-  if (missionx::RandomEngine::random_thread_state.flagIsActive)
-    missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+  if (missionx::data_manager::random_thread_state.flagIsActive)
+    missionx::data_manager::random_thread_state.flagAbortThread = true;
 }
 
 // -----------------------------------
@@ -3676,8 +3683,8 @@ RandomEngine::abort_thread()
 void 
 RandomEngine::force_end_thread_states() 
 { 
-  missionx::RandomEngine::random_thread_state.flagIsActive = false;
-  missionx::RandomEngine::random_thread_state.flagThreadDoneWork = true;
+  missionx::data_manager::random_thread_state.flagIsActive = false;
+  missionx::data_manager::random_thread_state.flagThreadDoneWork = true;
 }
 
 // -----------------------------------
@@ -3711,13 +3718,13 @@ RandomEngine::get_num_of_flight_legs()
 double
 RandomEngine::get_slope_at_point(const missionx::NavAidInfo& outNavAid)
 {
-  missionx::RandomEngine::random_thread_state.pipeProperties.setNodeProperty<float>(mxconst::get_ATTRIB_LAT(), outNavAid.lat);
-  missionx::RandomEngine::random_thread_state.pipeProperties.setNodeProperty<float>(mxconst::get_ATTRIB_LONG(), outNavAid.lon);
+  missionx::data_manager::random_thread_state.pipeProperties.setNodeProperty<float>(mxconst::get_ATTRIB_LAT(), outNavAid.lat);
+  missionx::data_manager::random_thread_state.pipeProperties.setNodeProperty<float>(mxconst::get_ATTRIB_LONG(), outNavAid.lon);
   RandomEngine::shared_navaid_info.p = outNavAid.p;
 
   double found_slope_d = 0.0;
-  if (missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::calculate_slope_for_build_flight_leg_thread))
-    found_slope_d = missionx::RandomEngine::random_thread_state.pipeProperties.getAttribNumericValue<double>(mxconst::get_ATTRIB_TERRAIN_SLOPE(), 0.0); // v3.305.1 updated
+  if (missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::calculate_slope_for_build_flight_leg_thread))
+    found_slope_d = missionx::data_manager::random_thread_state.pipeProperties.getAttribNumericValue<double>(mxconst::get_ATTRIB_TERRAIN_SLOPE(), 0.0); // v3.305.1 updated
 
   RandomEngine::errMsg.clear();
   return found_slope_d;
@@ -3729,13 +3736,13 @@ bool
 RandomEngine::get_is_wet_at_point(const missionx::NavAidInfo& inNavAid)
 {
   // RandomEngine::shared_navaid_info.p = inNavAid.p;
-  // if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_is_point_wet))
+  // if (!missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::get_is_point_wet))
   // {
   //   RandomEngine::setError("[random isWet] Failed to probe for wet. Will treat target coordinates as \"land\". ");
   // }
 
   // Call data manager thread unsafe function to test if a point is above water
-  auto result = missionx::data_manager::get_is_wet_at_point_thread_unsafe(inNavAid, RandomEngine::random_thread_state, RandomEngine::shared_navaid_info);
+  auto result = missionx::data_manager::get_is_wet_at_point_thread_unsafe(inNavAid, data_manager::random_thread_state, RandomEngine::shared_navaid_info);
   return RandomEngine::shared_navaid_info.isWet;
 }
 
@@ -3746,7 +3753,7 @@ float
 RandomEngine::get_terrain_elevation_at_point_in_mt(const missionx::NavAidInfo& inNavAid)
 {
   RandomEngine::shared_navaid_info.p = inNavAid.p;
-  if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_terrain_elev_in_point))
+  if (!missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::get_terrain_elev_in_point))
   {
     RandomEngine::setError(fmt::format("[{}] Failed to probe for terrain elevation. Will treat target terrain elevation as \"Zero\". ", __func__));
   }
@@ -3917,7 +3924,7 @@ RandomEngine::gen_get_databaseflightplan_site_targets(missionx::base_thread::str
         RandomEngine::shared_navaid_info.navAid.init();
         RandomEngine::shared_navaid_info.navAid.lat = na.lat;
         RandomEngine::shared_navaid_info.navAid.lon = na.lon;
-        if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_lat_lon_mainThread))
+        if (!missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_lat_lon_mainThread))
         {
           navaid_targets.clear();
           outErr = fmt::format("[{}] Navaid: {}, Failed to find Airport NEAR given location. Still using original Navaid.", __func__, counter);
@@ -4029,7 +4036,7 @@ RandomEngine::gen_prepare_mission_based_on_databaseflightplan_site(IXMLNode& in_
   this->setPlaneType(plane_type_enum_i); // set plane type in class level for other function usage too
 
   std::string outErr;
-  auto        navaid_targets = gen_get_databaseflightplan_site_targets(&RandomEngine::random_thread_state, in_xTemplateNode, RandomEngine::shared_navaid_info, outErr);
+  auto        navaid_targets = gen_get_databaseflightplan_site_targets(&data_manager::random_thread_state, in_xTemplateNode, RandomEngine::shared_navaid_info, outErr);
 
   // validations
   if (!outErr.empty() || navaid_targets.empty())
@@ -4147,7 +4154,7 @@ RandomEngine::gen_prepare_mission_based_on_databaseflightplan_site(IXMLNode& in_
 
 
   // check [abort]
-  if (RandomEngine::random_thread_state.flagAbortThread)
+  if (data_manager::random_thread_state.flagAbortThread)
   {
     out_func_result.addErrMsg("User asked to abort.", true);
     return out_func_result;
@@ -4187,7 +4194,7 @@ RandomEngine::gen_prepare_mission_based_on_databaseflightplan_site(IXMLNode& in_
   // add <mission_info>
   if (!gen_read_mission_info_element()) // <mission_info>
   {
-    missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+    missionx::data_manager::random_thread_state.flagAbortThread = true;
     out_func_result.addErrMsg("No <mission_info> node was found in template.", true);
   }
 
@@ -4260,7 +4267,7 @@ RandomEngine::gen_get_ils_targets(missionx::base_thread::strct_thread_state* ino
 
   RandomEngine::shared_navaid_info.navAid.init();
   RandomEngine::shared_navaid_info.navAid.setID(fromICAO);
-  if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_nav_aid_info_mainThread))
+  if (!missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::get_nav_aid_info_mainThread))
   {
     outErr = fmt::format("[{}] Start Navaid: {}. Failed to find Airport using original Navaid. Notify developer.", __func__, fromICAO);
     return navaid_targets;
@@ -4293,7 +4300,7 @@ RandomEngine::gen_get_ils_targets(missionx::base_thread::strct_thread_state* ino
   // Get target Navaid data from the main thread.
   RandomEngine::shared_navaid_info.navAid.init();
   RandomEngine::shared_navaid_info.navAid.setID(toICAO);
-  if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_nav_aid_info_mainThread))
+  if (!missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::get_nav_aid_info_mainThread))
   {
     outErr = fmt::format("[{}] Target Navaid: {}, Failed to find Airport using original Navaid. Notify developer.", __func__, toICAO);
     return navaid_targets;
@@ -4346,7 +4353,7 @@ RandomEngine::gen_prepare_mission_based_on_ils_search(IXMLNode& in_xTemplateNode
   this->setPlaneType(plane_type_enum_i); // set plane type in class level for other function usage too
 
 
-  auto navaid_targets = gen_get_ils_targets(&RandomEngine::random_thread_state, in_xTemplateNode, RandomEngine::shared_navaid_info, outErr);
+  auto navaid_targets = gen_get_ils_targets(&data_manager::random_thread_state, in_xTemplateNode, RandomEngine::shared_navaid_info, outErr);
   if (!outErr.empty() || navaid_targets.empty())
   {
     // missionx::RandomEngine::setError (outErr);
@@ -4437,7 +4444,7 @@ RandomEngine::gen_prepare_mission_based_on_ils_search(IXMLNode& in_xTemplateNode
   this->cumulative_location_desc_s = gen_get_cumulative_fpln_desc(navaid_targets);
 
   // check [abort]
-  if (RandomEngine::random_thread_state.flagAbortThread)
+  if (data_manager::random_thread_state.flagAbortThread)
   {
     out_func_result.addErrMsg("User asked to abort.", true);
     return out_func_result;
@@ -4478,7 +4485,7 @@ RandomEngine::gen_prepare_mission_based_on_ils_search(IXMLNode& in_xTemplateNode
   // add <mission_info>
   if (!gen_read_mission_info_element()) // <mission_info>
   {
-    missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+    missionx::data_manager::random_thread_state.flagAbortThread = true;
     out_func_result.addErrMsg("No <mission_info> node was found in template.", true);
   }
 
@@ -4539,7 +4546,7 @@ RandomEngine::add_waypoints_for_fpln_or_simbrief(IXMLNode& pNode)
 
           RandomEngine::shared_navaid_info.navAid.synchToPoint(); // the internal Point will be used later
 
-          if (missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_and_guess_nav_aid_info_mainThread))
+          if (missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::get_and_guess_nav_aid_info_mainThread))
           {
             if (RandomEngine::shared_navaid_info.navAid.navRef != XPLM_NAV_NOT_FOUND)
             {
@@ -4592,7 +4599,7 @@ RandomEngine::gen_get_user_fpln_or_simbrief_targets(missionx::base_thread::strct
   RandomEngine::shared_navaid_info.navAid.init();
   RandomEngine::shared_navaid_info.navAid.setID(fpln.fromICAO_s);
 
-  if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_nav_aid_info_mainThread))
+  if (!missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::get_nav_aid_info_mainThread))
   {
     navaid_targets.clear();
     outErr = fmt::format("[{}] Start Navaid: {}, Failed to find Airport using original Navaid. Notify developer.", __func__, fpln.fromICAO_s);
@@ -4629,7 +4636,7 @@ RandomEngine::gen_get_user_fpln_or_simbrief_targets(missionx::base_thread::strct
   /////////////////////////
   RandomEngine::shared_navaid_info.navAid.init();
   RandomEngine::shared_navaid_info.navAid.setID(fpln.toICAO_s);
-  if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_nav_aid_info_mainThread))
+  if (!missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::get_nav_aid_info_mainThread))
   {
     navaid_targets.clear();
     outErr = fmt::format("[{}] Target Navaid: {}, Failed to find Airport using original Navaid. Notify developer.", __func__, fpln.toICAO_s);
@@ -4681,7 +4688,7 @@ RandomEngine::gen_prepare_mission_based_on_user_fpln_or_simbrief(IXMLNode& in_xT
   this->setPlaneType(plane_type_enum_i); // set plane type in class level for other function usage too
 
   std::string               outErr;
-  std::map<int, NavAidInfo> navaid_targets = gen_get_user_fpln_or_simbrief_targets(&RandomEngine::random_thread_state, in_xTemplateNode, RandomEngine::shared_navaid_info, outErr);
+  std::map<int, NavAidInfo> navaid_targets = gen_get_user_fpln_or_simbrief_targets(&data_manager::random_thread_state, in_xTemplateNode, RandomEngine::shared_navaid_info, outErr);
   if (!outErr.empty() || navaid_targets.empty())
   {
     if (outErr.empty())
@@ -4777,7 +4784,7 @@ RandomEngine::gen_prepare_mission_based_on_user_fpln_or_simbrief(IXMLNode& in_xT
   this->cumulative_location_desc_s = gen_get_cumulative_fpln_desc(navaid_targets);
 
   // check [abort]
-  if (RandomEngine::random_thread_state.flagAbortThread)
+  if (data_manager::random_thread_state.flagAbortThread)
   {
     out_func_result.addErrMsg("User asked to abort.", true);
     return out_func_result;
@@ -4816,7 +4823,7 @@ RandomEngine::gen_prepare_mission_based_on_user_fpln_or_simbrief(IXMLNode& in_xT
   // add <mission_info>
   if (!gen_read_mission_info_element()) // <mission_info>
   {
-    missionx::RandomEngine::random_thread_state.flagAbortThread = true;
+    missionx::data_manager::random_thread_state.flagAbortThread = true;
     out_func_result.addErrMsg("No <mission_info> node was found in template.", true);
   }
 
@@ -5093,7 +5100,7 @@ RandomEngine::gen_osm_analyse(mx_return& out_mx_return, const std::string& xmlFi
     int seconds_counter = 0;
     for (auto& q : vec_osm_query_analyze_results)
     {
-      overpassThreads.emplace_back(missionx::data_manager::fetch_overpass_info_analyze_thread, &missionx::RandomEngine::random_thread_state, &q, set_areas_to_work_on, map_bbox);
+      overpassThreads.emplace_back(missionx::data_manager::fetch_overpass_info_analyze_thread, &missionx::data_manager::random_thread_state, &q, set_areas_to_work_on, map_bbox);
       // Sleep 2 seconds between thread dispatch
       const int sleep_for_sec = 2 + seconds_counter%4;
       std::this_thread::sleep_for(std::chrono::seconds( sleep_for_sec )); // wait for 2 seconds before sending a new request
@@ -5107,7 +5114,7 @@ RandomEngine::gen_osm_analyse(mx_return& out_mx_return, const std::string& xmlFi
     }
 
     // check [abort]
-    if (RandomEngine::random_thread_state.flagAbortThread)
+    if (data_manager::random_thread_state.flagAbortThread)
     {
       vec_osm_query_analyze_results.clear();
       return vec_osm_query_analyze_results;
@@ -5256,7 +5263,7 @@ RandomEngine::gen_osm_analyse(mx_return& out_mx_return, const std::string& xmlFi
 //   //   int seconds_counter = 0;
 //   //   for (auto& q : vec_osm_query_analyze_results)
 //   //   {
-//   //     overpassThreads.emplace_back(missionx::data_manager::fetch_overpass_info_analyze_thread, &missionx::RandomEngine::random_thread_state, &q, map_bbox);
+//   //     overpassThreads.emplace_back(missionx::data_manager::fetch_overpass_info_analyze_thread, &missionx::data_manager::random_thread_state, &q, map_bbox);
 //   //     // Sleep 2 seconds between thread dispatch
 //   //     const int sleep_for_sec = 2 + seconds_counter%4;
 //   //     std::this_thread::sleep_for(std::chrono::seconds( sleep_for_sec )); // wait for 2 seconds before sending a new request
@@ -5270,7 +5277,7 @@ RandomEngine::gen_osm_analyse(mx_return& out_mx_return, const std::string& xmlFi
 //   //   }
 //   //
 //   //   // check [abort]
-//   //   if (RandomEngine::random_thread_state.flagAbortThread)
+//   //   if (data_manager::random_thread_state.flagAbortThread)
 //   //   {
 //   //     vec_osm_query_analyze_results.clear();
 //   //     return vec_osm_query_analyze_results;
@@ -5718,7 +5725,7 @@ RandomEngine::gen_briefer_phase_01_parse_briefer_and_start_location(const IXMLNo
       }
 
       RandomEngine::shared_navaid_info.parentNode_ptr = xLocationNodePtr; // store pointer to XML node
-      missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::convert_icao_to_xml_point); // will call missionx::flcPRE() and try to convert any <icao name="icao name" /> to <point targetLat="" targetLon="" />
+      missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::convert_icao_to_xml_point); // will call missionx::flcPRE() and try to convert any <icao name="icao name" /> to <point targetLat="" targetLon="" />
 
       IXMLNode xPoint = Utils::xml_get_node_randomly_by_name_IXMLNode(xLocationNodePtr, mxconst::get_ELEMENT_POINT());
       if (xPoint.isEmpty())
@@ -5893,7 +5900,7 @@ RandomEngine::gen_briefer_phase_02_base_node_from_navaid(missionx::NavAidInfo& i
       // Try to find the closest location, but we should not use it as a starting_icao location.
       inout_strct_shared_navaid_info.init();
       inout_strct_shared_navaid_info.navAid = inout_start_navaid;
-      if (missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_lat_lon_mainThread))
+      if (missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_lat_lon_mainThread))
       {
         // check distance and hopefully pick the correct airport. Since we are using a fixed distance, this might not be a 100% guaranty
         inout_strct_shared_navaid_info.navAid.synchToPoint();
@@ -6194,7 +6201,7 @@ Make sure that:
     missionx::structs::curl_request_data curl_conn_data = data_manager::get_llm_user_setup_info_to_use_with_curl(); 
 
     // Call LLM using curl
-    auto ai_request_result = data_manager::gen_request_from_the_llm_server(&RandomEngine::random_thread_state, curl_conn_data, mission_outline, system_prompt);
+    auto ai_request_result = data_manager::gen_request_from_the_llm_server(&data_manager::random_thread_state, curl_conn_data, mission_outline, system_prompt);
     if (ai_request_result.result)
     {
       // nlohmann::json j = nlohmann::json::parse(ai_request_result.string_value);
@@ -6385,7 +6392,7 @@ You must not provide timing or timeline in your description.)"
 
     // prepare curl request info
     missionx::structs::curl_request_data curl_conn_data = data_manager::get_llm_user_setup_info_to_use_with_curl(); 
-    auto                                 ai_request_result = data_manager::gen_request_from_the_llm_server(&RandomEngine::random_thread_state, curl_conn_data, end_outline_for_llm, system_prompt);
+    auto                                 ai_request_result = data_manager::gen_request_from_the_llm_server(&data_manager::random_thread_state, curl_conn_data, end_outline_for_llm, system_prompt);
     if (ai_request_result.result)
     {
       // nlohmann::json j = nlohmann::json::parse(ai_request_result.string_value);
@@ -6438,6 +6445,10 @@ RandomEngine::gen_mission_info_node(const IXMLNode& xRootTemplate, const std::st
 IXMLNode
 RandomEngine::gen_add_inventory_phase01_node(const int& in_seq, missionx::NavAidInfo& inout_navaid, std::unordered_map<int, mx_inventory_track_strct>& inout_map_osm_inventory_track, const float& in_radius, const std::list<missionx::structs::strct_node_attribute_key_value>* in_override_attrib_list)
 {
+  const auto flag_no_inventories = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_SETUP_NO_INVENTORIES (), true);
+  if (flag_no_inventories)
+    return IXMLNode::emptyIXMLNode;
+
   // If we already have an inventory, skip this phase
   if (!inout_navaid.fpln_xml_inv_node.isEmpty())
     return inout_navaid.fpln_xml_inv_node;
@@ -7668,7 +7679,7 @@ order by RANDOM() limit 1
   }
 
 
-  if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_lat_lon_mainThread))
+  if (!missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_lat_lon_mainThread))
   {
     outErr = ("[" + std::string(__func__) + "] Start Navaid: " + inout_shared_navaid.navAid.getID() + " Failed to find Airport using query navaid. Notify developer.");
     return target_navaids;
@@ -7683,7 +7694,7 @@ order by RANDOM() limit 1
   inout_shared_navaid.navAid.setID(row_oilrig_and_start_location[q0_columns[2]]); // Oil Rig ICAO
   inout_shared_navaid.navAid.lat = mxUtils::stringToNumber<float>(row_oilrig_and_start_location[q0_columns[4]], 8); // Oil Rig Lat
   inout_shared_navaid.navAid.lon = mxUtils::stringToNumber<float>(row_oilrig_and_start_location[q0_columns[5]], 8); // Oil Rig Lon
-  if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_lat_lon_mainThread))
+  if (!missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_lat_lon_mainThread))
   {
     outErr = ("[" + std::string(__func__) + "] Oil Rig Navaid: " + inout_shared_navaid.navAid.getID() + " Failed to find Oil Rig using query navaid. Notify developer.");
     target_navaids.clear();
@@ -8183,7 +8194,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
   Log::logMsgThread(fmt::format("[{}] Will read xml file: '{}'", __func__, xml_filename));
 
   // check [abort]
-  if (RandomEngine::random_thread_state.flagAbortThread)
+  if (data_manager::random_thread_state.flagAbortThread)
   {
     out_func_result.addErrMsg("User asked to abort.", true);
     return out_func_result;
@@ -8192,12 +8203,12 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
   // ----------------------
   // OSM ANALYZE - Step 01
   // ----------------------
-  //RandomEngine::random_thread_state.ongoing_status_message_line2 = fmt::format("Start analyzing area using OSM. Can take some time if it is the first time from your location.");
+  //data_manager::random_thread_state.ongoing_status_message_line2 = fmt::format("Start analyzing area using OSM. Can take some time if it is the first time from your location.");
   data_manager::strct_ui_share_data.ongoing_status_message_line2        = fmt::format("Start analyzing area using OSM. Can take some time due to overpass servers response capabilities.");
   const std::vector<missionx::structs::strct_osm_query> vec_osm_queries = gen_osm_analyse(out_func_result, xml_filename, cache_folder, in_plane_location.lat, in_plane_location.lon, osm_gen_xml_root_node);
 
   // check [abort]
-  if (RandomEngine::random_thread_state.flagAbortThread)
+  if (data_manager::random_thread_state.flagAbortThread)
   {
     out_func_result.addErrMsg("User asked to abort.", true);
     return out_func_result;
@@ -8217,11 +8228,11 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
   osm_query.cache_folder = cache_folder; // INITIALIZING THE CACHE FOLDER
 
   IXMLNode         main_subject_node           = IXMLNode::emptyIXMLNode; // initialized in "gen_shuffled_q_from_osm_subject_node()" function.
-  std::vector<int> vec_shuffle_subject_queries = missionx::RandomEngine::gen_shuffled_q_from_osm_subject_node(&RandomEngine::random_thread_state, osm_gen_xml_root_node, vec_osm_queries, main_subject_node, osm_query);
+  std::vector<int> vec_shuffle_subject_queries = missionx::RandomEngine::gen_shuffled_q_from_osm_subject_node(&data_manager::random_thread_state, osm_gen_xml_root_node, vec_osm_queries, main_subject_node, osm_query);
   for (const auto& randomNumber : vec_shuffle_subject_queries)
   {
     // check [abort]
-    if (RandomEngine::random_thread_state.flagAbortThread)
+    if (data_manager::random_thread_state.flagAbortThread)
     {
       out_func_result.addErrMsg("User asked to abort.", true);
       return out_func_result;
@@ -8235,10 +8246,10 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
     // ----------------------
     //  >> GET TARGETS  <<  - CALL GENERIC OVERPASS - Step 2
     // ----------------------
-    //RandomEngine::random_thread_state.ongoing_status_message_line2 = fmt::format("Gathering Targets.");
+    //data_manager::random_thread_state.ongoing_status_message_line2 = fmt::format("Gathering Targets.");
     data_manager::strct_ui_share_data.ongoing_status_message_line2 = fmt::format("Gathering Targets.");
 
-    navaid_targets = gen_get_targets_using_osm_queries_from_a_thread(&RandomEngine::random_thread_state, osm_gen_xml_root_node, osm_query, RandomEngine::shared_navaid_info);
+    navaid_targets = gen_get_targets_using_osm_queries_from_a_thread(&data_manager::random_thread_state, osm_gen_xml_root_node, osm_query, RandomEngine::shared_navaid_info);
     if (!navaid_targets.empty() || navaid_targets.size() > 1)
       break; // Exit loop
 
@@ -8247,7 +8258,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
 
 
   // check [abort]
-  if (RandomEngine::random_thread_state.flagAbortThread)
+  if (data_manager::random_thread_state.flagAbortThread)
   {
     out_func_result.addErrMsg("User asked to abort.", true);
     return out_func_result;
@@ -8311,7 +8322,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
   // ----------------------
   // -- Add <briefer> node - Start Location
   // ----------------------
-  //RandomEngine::random_thread_state.ongoing_status_message_line2 = fmt::format("Add Briefer information.");
+  //data_manager::random_thread_state.ongoing_status_message_line2 = fmt::format("Add Briefer information.");
   data_manager::strct_ui_share_data.ongoing_status_message_line2 = fmt::format("Add Briefer information.");
 
   NavAidInfo start_navaid;
@@ -8402,7 +8413,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
 
 
     // add 3D object sets
-    //RandomEngine::random_thread_state.ongoing_status_message_line2 = fmt::format("Add 3D Objects.");
+    //data_manager::random_thread_state.ongoing_status_message_line2 = fmt::format("Add 3D Objects.");
     data_manager::strct_ui_share_data.ongoing_status_message_line2 = fmt::format("Add 3D Objects.");
     gen_add_3d_objects_for_surprise_me_base_on_predefined_attributes(target_navaid, target_navaid.fpln_xml_target_leg_node, inRootTemplate, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
 
@@ -8430,7 +8441,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
 
 
     // check [abort]
-    if (RandomEngine::random_thread_state.flagAbortThread)
+    if (data_manager::random_thread_state.flagAbortThread)
     {
       out_func_result.addErrMsg("User asked to abort.", true);
       return out_func_result;
@@ -8470,7 +8481,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
 
 
   // add Briefer description
-  //RandomEngine::random_thread_state.ongoing_status_message_line2 = fmt::format("Add Briefer Description.");
+  //data_manager::random_thread_state.ongoing_status_message_line2 = fmt::format("Add Briefer Description.");
   data_manager::strct_ui_share_data.ongoing_status_message_line2 = fmt::format("Add Briefer Description.");
 
   gen_briefer_phase_03_add_desc(navaid_targets, flag_one_of_the_targets_above_water);
@@ -8533,7 +8544,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
 //   Log::logMsgThread(fmt::format("[{}] Will read xml file: '{}'", __func__, xml_filename));
 //
 //   // check [abort]
-//   if (RandomEngine::random_thread_state.flagAbortThread)
+//   if (data_manager::random_thread_state.flagAbortThread)
 //   {
 //     out_func_result.addErrMsg("User asked to abort.", true);
 //     return out_func_result;
@@ -8542,12 +8553,12 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
 //   // ----------------------
 //   // OSM ANALYZE - Step 01
 //   // ----------------------
-//   //RandomEngine::random_thread_state.ongoing_status_message_line2 = fmt::format("Start analyzing area using OSM. Can take some time if it is the first time from your location.");
+//   //data_manager::random_thread_state.ongoing_status_message_line2 = fmt::format("Start analyzing area using OSM. Can take some time if it is the first time from your location.");
 //   data_manager::strct_ui_share_data.ongoing_status_message_line2        = fmt::format("Start analyzing area using OSM. Can take some time due to overpass servers response capabilities.");
 //   const std::vector<missionx::structs::strct_osm_query> vec_osm_queries = gen_osm_analyse(out_func_result, xml_filename, cache_folder, in_plane_location.lat, in_plane_location.lon, osm_gen_xml_root_node);
 //
 //   // check [abort]
-//   if (RandomEngine::random_thread_state.flagAbortThread)
+//   if (data_manager::random_thread_state.flagAbortThread)
 //   {
 //     out_func_result.addErrMsg("User asked to abort.", true);
 //     return out_func_result;
@@ -8567,11 +8578,11 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
 //   osm_query.cache_folder = cache_folder; // INITIALIZING THE CACHE FOLDER
 //
 //   IXMLNode         main_subject_node           = IXMLNode::emptyIXMLNode; // initialized in "gen_shuffled_q_from_osm_subject_node()" function.
-//   std::vector<int> vec_shuffle_subject_queries = missionx::RandomEngine::gen_shuffled_q_from_osm_subject_node(&RandomEngine::random_thread_state, osm_gen_xml_root_node, vec_osm_queries, main_subject_node, osm_query);
+//   std::vector<int> vec_shuffle_subject_queries = missionx::RandomEngine::gen_shuffled_q_from_osm_subject_node(&data_manager::random_thread_state, osm_gen_xml_root_node, vec_osm_queries, main_subject_node, osm_query);
 //   for (const auto& randomNumber : vec_shuffle_subject_queries)
 //   {
 //     // check [abort]
-//     if (RandomEngine::random_thread_state.flagAbortThread)
+//     if (data_manager::random_thread_state.flagAbortThread)
 //     {
 //       out_func_result.addErrMsg("User asked to abort.", true);
 //       return out_func_result;
@@ -8585,10 +8596,10 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
 //     // ----------------------
 //     //  >> GET TARGETS  <<  - CALL GENERIC OVERPASS - Step 2
 //     // ----------------------
-//     //RandomEngine::random_thread_state.ongoing_status_message_line2 = fmt::format("Gathering Targets.");
+//     //data_manager::random_thread_state.ongoing_status_message_line2 = fmt::format("Gathering Targets.");
 //     data_manager::strct_ui_share_data.ongoing_status_message_line2 = fmt::format("Gathering Targets.");
 //
-//     navaid_targets = gen_get_targets_using_osm_queries_from_a_thread(&RandomEngine::random_thread_state, osm_gen_xml_root_node, osm_query, RandomEngine::shared_navaid_info);
+//     navaid_targets = gen_get_targets_using_osm_queries_from_a_thread(&data_manager::random_thread_state, osm_gen_xml_root_node, osm_query, RandomEngine::shared_navaid_info);
 //     if (!navaid_targets.empty() || navaid_targets.size() > 1)
 //       break; // Exit loop
 //
@@ -8597,7 +8608,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
 //
 //
 //   // check [abort]
-//   if (RandomEngine::random_thread_state.flagAbortThread)
+//   if (data_manager::random_thread_state.flagAbortThread)
 //   {
 //     out_func_result.addErrMsg("User asked to abort.", true);
 //     return out_func_result;
@@ -8661,7 +8672,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
 //   // ----------------------
 //   // -- Add <briefer> node - Start Location
 //   // ----------------------
-//   //RandomEngine::random_thread_state.ongoing_status_message_line2 = fmt::format("Add Briefer information.");
+//   //data_manager::random_thread_state.ongoing_status_message_line2 = fmt::format("Add Briefer information.");
 //   data_manager::strct_ui_share_data.ongoing_status_message_line2 = fmt::format("Add Briefer information.");
 //
 //   NavAidInfo start_navaid;
@@ -8752,7 +8763,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
 //
 //
 //     // add 3D object sets
-//     //RandomEngine::random_thread_state.ongoing_status_message_line2 = fmt::format("Add 3D Objects.");
+//     //data_manager::random_thread_state.ongoing_status_message_line2 = fmt::format("Add 3D Objects.");
 //     data_manager::strct_ui_share_data.ongoing_status_message_line2 = fmt::format("Add 3D Objects.");
 //     gen_add_3d_objects_for_surprise_me_base_on_predefined_attributes(target_navaid, target_navaid.fpln_xml_target_leg_node, inRootTemplate, this->x3DObjTemplate, this->expected_slope_at_target_location_d);
 //
@@ -8780,7 +8791,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
 //
 //
 //     // check [abort]
-//     if (RandomEngine::random_thread_state.flagAbortThread)
+//     if (data_manager::random_thread_state.flagAbortThread)
 //     {
 //       out_func_result.addErrMsg("User asked to abort.", true);
 //       return out_func_result;
@@ -8820,7 +8831,7 @@ RandomEngine::gen_prepare_medevac_surprise_me(IXMLNode& inRootTemplate, const IX
 //
 //
 //   // add Briefer description
-//   //RandomEngine::random_thread_state.ongoing_status_message_line2 = fmt::format("Add Briefer Description.");
+//   //data_manager::random_thread_state.ongoing_status_message_line2 = fmt::format("Add Briefer Description.");
 //   data_manager::strct_ui_share_data.ongoing_status_message_line2 = fmt::format("Add Briefer Description.");
 //
 //   gen_briefer_phase_03_add_desc(navaid_targets, flag_one_of_the_targets_above_water);
@@ -8868,7 +8879,7 @@ RandomEngine::gen_prepare_mission_based_on_oilrig(IXMLNode& inRootTemplate, IXML
   const auto plane_type_enum_i = RandomEngine::gen_parse_plane_type(data_manager::prop_userDefinedMission_ui, inRootTemplate, inout_meta_node);
   this->setPlaneType(plane_type_enum_i); // set plane type in class level for other function usage too
 
-  auto navaid_targets = gen_oilrig_targets(&RandomEngine::random_thread_state, missionx::data_manager::xmlMappingNode, this->xMetadata, RandomEngine::shared_navaid_info, outErr);
+  auto navaid_targets = gen_oilrig_targets(&data_manager::random_thread_state, missionx::data_manager::xmlMappingNode, this->xMetadata, RandomEngine::shared_navaid_info, outErr);
 
   if (!outErr.empty())
   {
@@ -8885,7 +8896,7 @@ RandomEngine::gen_prepare_mission_based_on_oilrig(IXMLNode& inRootTemplate, IXML
 
 
   // check [abort]
-  if (RandomEngine::random_thread_state.flagAbortThread)
+  if (data_manager::random_thread_state.flagAbortThread)
   {
     out_func_result.addErrMsg("User asked to abort.", true);
     return out_func_result;
@@ -9019,7 +9030,7 @@ RandomEngine::gen_prepare_mission_based_on_oilrig(IXMLNode& inRootTemplate, IXML
 
 
   // check [abort]
-  if (RandomEngine::random_thread_state.flagAbortThread)
+  if (data_manager::random_thread_state.flagAbortThread)
   {
     out_func_result.addErrMsg("User asked to abort.", true);
     return out_func_result;
@@ -9428,7 +9439,7 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
     trials++;
 
     // Check if to abort
-    if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+    if (missionx::data_manager::random_thread_state.flagAbortThread)
       return false;
 
 
@@ -9475,7 +9486,7 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
 
 
     // check abort
-    if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+    if (missionx::data_manager::random_thread_state.flagAbortThread)
       return false;
 
     // check errors and result. skip if one of them is not valid.
@@ -9599,7 +9610,7 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
         curl_conn_data = {.url_s = node_url_s};
         const auto        st_ref_node_result = missionx::data_manager::get_curl_request_respond(curl_conn_data);
 
-        if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+        if (missionx::data_manager::random_thread_state.flagAbortThread)
           return false;
 
         if (!st_ref_node_result.request_err.empty() || st_ref_node_result.response_text.empty())
@@ -9728,7 +9739,7 @@ RandomEngine::osm_get_navaid_from_overpass(NavAidInfo&                         o
 
 
       // Check abort
-      if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+      if (missionx::data_manager::random_thread_state.flagAbortThread)
         return false;
 
 
@@ -9940,7 +9951,7 @@ RandomEngine::osm_get_navaid_from_overpass2(NavAidInfo&                         
   const std::string plugin_user_filter = Utils::getNodeText_type_6(system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_FILTER(), mxconst::get_DEFAULT_OVERPASS_WAYS_FILTER()); // missionx::system_actions::pluginSetupOptions.getPropertyValue(mxconst::get_OPT_OVERPASS_FILTER(), err);
 
 PICK_RANDOM_OSM_BBOX:
-  if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+  if (missionx::data_manager::random_thread_state.flagAbortThread)
     return false;
 
   iTryCounter++;
@@ -10090,7 +10101,7 @@ PICK_RANDOM_OSM_BBOX:
     const auto result_s       = st_curl_result.response_text;
     err                       = st_curl_result.request_err;
 
-    if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+    if (missionx::data_manager::random_thread_state.flagAbortThread)
       return false;
 
 
@@ -10247,7 +10258,7 @@ PICK_OSM_CHILD_NODE:
             const std::string node_result_s  = st_local_curl_result.response_text;
             err                              = st_local_curl_result.request_err;
 
-            if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+            if (missionx::data_manager::random_thread_state.flagAbortThread)
               return false;
 
             #ifndef RELEASE
@@ -10418,7 +10429,7 @@ PICK_OSM_CHILD_NODE:
             Log::logMsgThread("[osm_get_navaid_overpass] FYI: Found <way> with name: " + outNavAid.getName()); // outNavAid.setName("overpass");
 
 
-          if (missionx::RandomEngine::random_thread_state.flagAbortThread)
+          if (missionx::data_manager::random_thread_state.flagAbortThread)
             return false;
 
 
@@ -11052,7 +11063,7 @@ RandomEngine::gen_get_target_base_on_tag_name(NavAidInfo&                       
 
   RandomEngine::shared_navaid_info.init();
   RandomEngine::shared_navaid_info.parentNode_ptr = rNode; // store pointer to XML node
-  missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::convert_icao_to_xml_point); // will call missionx::flcPRE() and try to convert any <icao name="icao name" /> to <point targetLat="" targetLon="" />
+  missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::convert_icao_to_xml_point); // will call missionx::flcPRE() and try to convert any <icao name="icao name" /> to <point targetLat="" targetLon="" />
 
   // NEAR - do we need to find the nearest location?
   if (inLocationType == mxconst::get_EXPECTED_LOCATION_TYPE_NEAR())
@@ -11290,7 +11301,7 @@ position:2|{latitude}|{longitude}
 
     auto curl_conn_data = data_manager::get_llm_user_setup_info_to_use_with_curl();
     // Call LLM using curl
-    auto ai_request_result = data_manager::gen_request_mission_leg_from_llm(&RandomEngine::random_thread_state, curl_conn_data, mission_outline);
+    auto ai_request_result = data_manager::gen_request_mission_leg_from_llm(&data_manager::random_thread_state, curl_conn_data, mission_outline);
 
     Log::logMsgThread( fmt::format("[{}] llm leg result:\n{}\n", __func__, ai_request_result.string_value ) );
 
@@ -11343,7 +11354,7 @@ position:2|{latitude}|{longitude}
           RandomEngine::shared_navaid_info.navAid.synchToPoint();
 
           // Fetch airport information based on the ICAO or lat/lon if we have it. This will be done in the main thread since we need to access X-Plane data.
-          if ( !ai_nav.getID().empty() && missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_nav_info_mainThread))
+          if ( !ai_nav.getID().empty() && missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_nav_info_mainThread))
           {
             #ifndef RELEASE
             Log::logMsgThread(fmt::format("[{}] First Try: waitForPluginCallbackJob result - ICAO: '{}', name: '{}', lat/lon: '{}'/'{}'\n", __func__, RandomEngine::shared_navaid_info.navAid.getID(), RandomEngine::shared_navaid_info.navAid.getName(), RandomEngine::shared_navaid_info.navAid.lat, RandomEngine::shared_navaid_info.navAid.lon));
@@ -11369,7 +11380,7 @@ position:2|{latitude}|{longitude}
             RandomEngine::shared_navaid_info.navAid.lat     = ai_nav.lat;
             RandomEngine::shared_navaid_info.navAid.lon     = ai_nav.lon;
             RandomEngine::shared_navaid_info.navAid.navType = xplm_Nav_Airport;
-            if (missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_nav_info_mainThread))
+            if (missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_nav_info_mainThread))
             {
               #ifndef RELEASE
               Log::logMsgThread(fmt::format("[{}] Second Try: waitForPluginCallbackJob result - ICAO: '{}', name: '{}', lat/lon: '{}'/'{}'\n", __func__, RandomEngine::shared_navaid_info.navAid.getID(), RandomEngine::shared_navaid_info.navAid.getName(), RandomEngine::shared_navaid_info.navAid.lat, RandomEngine::shared_navaid_info.navAid.lon));
@@ -11784,7 +11795,7 @@ RandomEngine::gen_target_or_last_flight_leg_base_on_xy_or_osm(NavAidInfo&       
         RandomEngine::shared_navaid_info.navAid.lon = outNewNavInfo.lon;
 
         // test against the nearest navaid
-        if (!missionx::data_manager::waitForPluginCallbackJob(&RandomEngine::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_lat_lon_mainThread))
+        if (!missionx::data_manager::waitForPluginCallbackJob(&data_manager::random_thread_state, missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_lat_lon_mainThread))
         {
           RandomEngine::setError(fmt::format("[{}] Last Navaid. Failed to find an airport NEAR given location. Will use original Navaid data: {}", __func__, outNewNavInfo.gen_locDesc_short()));
         }

@@ -59,10 +59,13 @@ public:
 
   void  setLayer (missionx::uiLayer_enum inLayer);
   float calc_and_getNewFontScaledSize (float inNewSize); // value should be +0.N or -0.N
-  void  add_abort_all_channels_debug (); // v24026
-  void  add_pause_in_2d_mode ();
+  void  add_ui_abort_all_channels_debug (); // v24026
+  void  add_ui_pause_in_2d_mode ();
   void  add_font_size_scale_buttons ();
-  void  add_skewed_marker_checkbox (); // v3.0.253.6
+  // v3.0.253.6 updates: missionx::strct_setup_layer.bPlaceMarkersAwayFromTarget
+  static void  add_ui_skewed_marker_checkbox ();
+  // v26.09.3 updates "missionx::strct_setup_layer.bNoInventories".
+  static void  add_ui_no_inventories_checkbox (ImVec4 inColor = missionx::color::color_vec4_yellow);
   void  add_ui_start_mission_button (missionx::mx_window_actions inActionToExecute = mx_window_actions::ACTION_NONE);
   void  add_ui_warning_messages_button ();
   void  add_ui_ils_vfr_search_airports_button (missionx::mx_window_actions inActionToExecute = mx_window_actions::ACTION_NONE);
@@ -246,6 +249,8 @@ void flc();
     // debug
     bool flagDebugTabIsOpen          = false; // v3.305.3
     bool flagFlightPlanningTabIsOpen = false; // v24.03.1
+    bool flag_force_select_description_tab = true; // v26.09.3 used to force display description tab on mission start.
+    ImGuiTabItemFlags desc_flags = ImGuiTabItemFlags_Leading | ImGuiTabItemFlags_NoReorder; // v26.09.3
 
     // inventory 24.12.2 register item move to plane
     bool     flagItemMoveWasPressedFromExternalInv{ false };
@@ -503,7 +508,7 @@ void flc();
     : uint8_t
   {
     ext_home = 0,
-    ext_db_fpln,
+    ext_flightplandatabase_fpln,
     ext_simbrief
   } mx_ext_fpln_screen;
 
@@ -782,7 +787,7 @@ private:
   static void         print_interpolated_ui_debug_info(); // v3.305.3
   void                print_messages_ui_debug_info(); // v3.305.4
   static void         add_ui_skip_abort_setup_checkbox(); // v3.305.3
-  static void         add_designer_mode_checkbox(); // v24.3.2
+  static void         add_ui_designer_mode_checkbox(); // v24.3.2
   void                add_ui_xp11_comp_checkbox(const bool& inStorePreference); // v24.12.2
   void                add_ui_simbrief_pilot_id(); // v25.03.3
   void                add_ui_flightplandb_key(bool isPopup); // v25.03.3

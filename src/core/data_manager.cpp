@@ -147,7 +147,7 @@ std::map<std::string, mx_aptdat_cached_info> data_manager::cachedNavInfo_map;
 
 bool data_manager::flag_apt_dat_optimization_is_running{ false };
 // Generate Mission Engine Thread flag
-bool data_manager::flag_generate_engine_is_running;
+// bool data_manager::flag_generate_engine_is_running;
 
 // VR Related
 XPLMDataRef data_manager::g_vr_dref;
@@ -909,7 +909,7 @@ missionx::structs::def_strct_acf_info data_manager::active_acf_info;
 // v25.09.1
 missionx::NavAidInfo                missionx::data_manager::shared_navaid_between_threads;
 std::string                         missionx::data_manager::post_optimization_outcome;
-missionx::base_thread::strct_thread_state missionx::data_manager::metar_thread_state;
+missionx::base_thread::strct_thread_state missionx::data_manager::fetch_metar_from_flcpre_thread_state;
 
 // -------------------------------------
 
@@ -1523,9 +1523,8 @@ void
 data_manager::clearMissionLoadedTextures()
 {
   // clear maps and images data
-  XPLMDebugString("\n\tReleasing mission textures."); // debug
+  XPLMDebugString("\n\t--- Releasing mission textures ---"); // debug
   mapCurrentMissionTexturePathLocator.clear();
-
   BitmapReader::destroy_textures(mapCurrentMissionTextures); // v26.09.3
   mapCurrentMissionTextures.clear();
 
@@ -1533,12 +1532,35 @@ data_manager::clearMissionLoadedTextures()
   BitmapReader::destroy_textures(xp_mapInvImages); // v26.09.3
   xp_mapInvImages.clear();
 
-
   XPLMDebugString("\n\tReleasing Message Story textures."); // debug
   releaseMessageStoryCachedTextures(); // v3.305.1
 
-  XPLMDebugString("\n\tReleasing Random Template textures."); // debug
+  XPLMDebugString("\n\t--- End Releasing mission textures ---"); // debug
+
+  // v26.09.3 deprecated and moved to "clear_pplugiin_textures"
+  // XPLMDebugString("\n\tReleasing Random Template textures."); // debug
+  // clearRandomTemplateTextures();
+}
+
+void
+data_manager::clear_plugin_textures()
+{
+
+  XPLMDebugString("\n\t--- Release core plugin textures ---"); // debug
+
+  XPLMDebugString("\n\tReleasing cached textures."); // debug
+  BitmapReader::destroy_textures(data_manager::mapCachedPluginTextures); // v26.09.3
+  data_manager::mapCachedPluginTextures.clear();
+
+  XPLMDebugString("\n\tReleasing mission list textures."); // debug
+  BitmapReader::destroy_textures(data_manager::xp_mapMissionIconImages); // v26.09.3
+  data_manager::xp_mapMissionIconImages.clear();
+
+  XPLMDebugString("\n\tReleasing template list textures."); // debug
   clearRandomTemplateTextures();
+
+  XPLMDebugString("\n\t--- End Release core plugin textures ---\n"); // debug
+
 }
 
 
@@ -1554,12 +1576,6 @@ data_manager::releaseMessageStoryCachedTextures()
     Message::vecStoryCurrentImages_p.emplace_back(nullptr);
 
   BitmapReader::destroy_textures(Message::mapStoryCachedImages); // v26.09.3
-  // for ( auto &img : Message::mapStoryCachedImages | std::views::values )
-  // {
-  //   if (img.gTexture != 0)
-  //     glDeleteTextures(1, reinterpret_cast<const GLuint *> ( &img.gTexture ) );
-  // }
-
   Message::mapStoryCachedImages.clear();
 }
 
@@ -1570,33 +1586,8 @@ data_manager::clearRandomTemplateTextures()
 {
 
   mapGenerateMissionTemplateFilesLocator.clear(); // clear locator for layer set
-  // OpenGL original code
-  // for (auto& img : mapGenerateMissionTemplateFiles)
-  // {
-  //   if (img.second.imageFile.gTexture != 0)
-  //     glDeleteTextures(1, reinterpret_cast<const GLuint *> (&img.second.imageFile.gTexture)); // v3.0.217.2
-  // }
-  // mapGenerateMissionTemplateFiles.clear();
-
-  // OpenGL and Panel graphics support code
   BitmapReader::destroy_textures(data_manager::mapTemplatesTextures);
 
-  // for (auto& [img_name, img] : missionx::data_manager::mapTemplatesTextures)
-  // {
-  //   if (img.gTexture != 0)
-  //   {
-  //     #ifdef IMGWINDOW_USE_PANEL_GRAPHICS
-  //     if (ImgPanelGraphics::IsAvailable())
-  //       ImgPanelGraphics::DestroyTexture(&img.gTexture);
-  //     #else
-  //     glDeleteTextures(1, reinterpret_cast<const GLuint *> (&img.gTexture));
-  //     #endif
-  //
-  //     #ifndef RELEASE
-  //     Log::logMsg(fmt::format("[{}] Deleted texture: {}.", __func__, img_name));
-  //     #endif
-  //   }
-  // }
   mapGenerateMissionTemplateFiles.clear();
   mapTemplatesTextures.clear(); // v26.09.3
 
@@ -4472,8 +4463,18 @@ data_manager::get_bearing_of_plane_to_instance_in_deg(const std::string& inInsta
 // -------------------------------------
 
 void
-data_manager::pluginStop()
+data_manager::stop_plugin()
 {
+  // v26.09.3 clear METAR thread
+  constexpr static int wait_time = 5;
+  data_manager::threadStateMetar.flagAbortThread = true;
+  if (data_manager::threadStateMetar.flagIsActive)
+  {
+    XPLMDebugString (fmt::format("\nmissionx: data_manager: [{}] Waiting for threadStateMetar.flagIsActive.\n Wait for {} seconds.", __func__, wait_time).c_str()); // debug
+    std::this_thread::sleep_for(std::chrono::seconds(wait_time));
+  }
+
+  // clear mission related textures, not plugin.
   clearMissionLoadedTextures();
 
   seqCueInfo = 0; // v3.0.202a
@@ -6360,10 +6361,10 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
     if (data_manager::xplm_version >= 400)
     {
       // test against the nearest navaid
-      data_manager::metar_thread_state.init ();
+      data_manager::fetch_metar_from_flcpre_thread_state.init ();
       data_manager::shared_navaid_between_threads.init ();
       data_manager::shared_navaid_between_threads.setID (nav.icao);
-      if (!missionx::data_manager::waitForPluginCallbackJob (&data_manager::metar_thread_state, missionx::mx_flc_pre_command::get_metar_for_airport, std::chrono::milliseconds (1000)))
+      if (!missionx::data_manager::waitForPluginCallbackJob (&data_manager::fetch_metar_from_flcpre_thread_state, missionx::mx_flc_pre_command::get_metar_for_airport, std::chrono::milliseconds (3000)))
         Log::logMsgThread (fmt::format ("[{}] Callback timeout for: '{}({})'.", __func__,  "get_metar_for_airport ", nav.icao ) );
       else
       {
@@ -6381,9 +6382,8 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
 
     if (!flag_got_metar)
     {
-      //long              httpStatus = 0;
       std::string       q          = "/weather/" + nav.icao; // we need to add the ICAO
-      const std::string full_url_s = mxUtils::trim (fmt::format ("https://{}:443{}", url_s, q));
+      const std::string full_url_s = mxUtils::trim (fmt::format ("https://{}{}", url_s, q));
       Log::logMsgThread ("url: " + full_url_s); // debug
 
       const std::string authKey_s  = Utils::getNodeText_type_6 (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY (), "");
@@ -6405,7 +6405,7 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
         request_data.login_pass = authKey_s;
 
         missionx::structs::strct_curl_result request_result = data_manager::get_curl_request_respond(request_data);
-        if (request_result.res_curl == CURLE_OK)
+        if (request_result.res_curl == CURLE_OK && request_result.request_err.empty())
         {
           result_s            = request_result.response_text;
           flag_http_success   = true;
@@ -6420,12 +6420,10 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
             Log::logMsgThread((*outStatusMessage) + "\n"); // debug
 
             std::this_thread::sleep_for(std::chrono::milliseconds(5000)); // sleep for 5 seconds
-            // goto CURL;
           }
         }
 
         #endif // MX_ENABLE_HTTP_REQUESTS
-
 
       } // end while loop
 
@@ -6462,7 +6460,7 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
           nlohmann::json js   = nlohmann::json::parse (result_s, nullptr, true);
           nav.sMetar          = Utils::getJsonValue (js, KEY_METAR, "");
           nav.sTaf            = Utils::getJsonValue (js, KEY_TAF, "");
-          (*outStatusMessage) = "Finished fetching METAR information for: " + nav.icao;
+          (*outStatusMessage) = fmt::format("Finished fetching METAR information for: {}. {}", nav.icao, ((nav.sMetar.empty())?"Weather info was not found." : "" )  );
         }
         catch (nlohmann::json::parse_error &ex)
         {

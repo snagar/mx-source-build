@@ -64,7 +64,7 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
 
   m_ui_conv_screen->add_designer_mode_checkbox = [this]()
   {
-    missionx::WinImguiBriefer::add_designer_mode_checkbox();
+    missionx::WinImguiBriefer::add_ui_designer_mode_checkbox();
   };
 
   m_ui_conv_screen->add_ui_checkbox_rerun_random_date_and_time = [this]()->bool
@@ -127,7 +127,7 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
 
   m_ui_nav_screen->add_designer_mode_checkbox = []()
   {
-    missionx::WinImguiBriefer::add_designer_mode_checkbox();
+    missionx::WinImguiBriefer::add_ui_designer_mode_checkbox();
   };
 
   m_ui_nav_screen->add_ui_checkbox_rerun_random_date_and_time = [this]()->bool
@@ -189,6 +189,17 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
   m_ui_nav_screen->add_ui_llm_options = [](const enums::llm_ui_options_enum in_options_flags)->void
   {
     missionx::WinImguiBriefer::add_ui_llm_options(in_options_flags);
+  };
+
+  // v26.09.3
+  m_ui_nav_screen->add_ui_abort_mission_creation_button = [this](const missionx::mx_window_actions inActionToExecute)->void
+  {
+    this->add_ui_abort_mission_creation_button(inActionToExecute);
+  };
+
+  m_ui_nav_screen->add_ui_no_inventories_checkbox = []()->void
+  {
+    add_ui_no_inventories_checkbox();
   };
 
 
@@ -361,7 +372,7 @@ WinImguiBriefer::calc_and_getNewFontScaledSize (float inNewSize)
 // -------------------------------------
 
 void
-WinImguiBriefer::add_abort_all_channels_debug ()
+WinImguiBriefer::add_ui_abort_all_channels_debug ()
 {
   mx_img_window::HelpMarker ("Abort all active channels.\nCan help when a message has a long background or comm mix running.");
   ImGui::SameLine ();
@@ -376,7 +387,7 @@ WinImguiBriefer::add_abort_all_channels_debug ()
 // -------------------------------------
 
 void
-WinImguiBriefer::add_pause_in_2d_mode ()
+WinImguiBriefer::add_ui_pause_in_2d_mode ()
 {
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_orange);
   if (ImGui::Checkbox ("Pause in 2D mode (ignored when popped out)", &missionx::strct_setup_layer.bPauseIn2D))
@@ -417,16 +428,28 @@ WinImguiBriefer::add_font_size_scale_buttons ()
 // -------------------------------------
 
 void
-WinImguiBriefer::add_skewed_marker_checkbox ()
+WinImguiBriefer::add_ui_skewed_marker_checkbox ()
 {
-  // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
   if (ImGui::Checkbox (std::string ("Place markers near targets and not above them (in +/-" + mxUtils::formatNumber<double> (mxconst::MAX_AWAY_SKEWED_DISTANCE_NM, 1) + "nm radius).").c_str (), &missionx::strct_setup_layer.bPlaceMarkersAwayFromTarget))
   {
-    // ADD set option value
+    // ADD setup option value
     missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET (), missionx::strct_setup_layer.bPlaceMarkersAwayFromTarget);
     missionx::system_actions::store_plugin_options ();
   }
 } // add_skewed_marker_checkbox
+
+// ------------ Add no inventories checkbox --------------
+void WinImguiBriefer::add_ui_no_inventories_checkbox(const ImVec4 inColor)
+{
+  ImGui::PushStyleColor(ImGuiCol_Text, inColor);
+  if (ImGui::Checkbox ("No Inventories.", &missionx::strct_setup_layer.bNoInventories))
+  {
+    // ADD setup option value
+    missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_SETUP_NO_INVENTORIES (), missionx::strct_setup_layer.bNoInventories);
+    missionx::system_actions::store_plugin_options ();
+  }
+  ImGui::PopStyleColor();
+}
 
 // ------------ Add start button --------------
 
@@ -441,7 +464,13 @@ WinImguiBriefer::add_ui_start_mission_button (missionx::mx_window_actions inActi
   ImGui::PushStyleColor (ImGuiCol_ButtonActive, missionx::color::color_vec4_azure);
   iStyle++;
   if (ImGui::Button (missionx::LBL_START_MISSION.c_str ()))
+  {
+    // specific layer action
+    strct_flight_leg_info.flag_force_select_description_tab = true;
+
+    // execute the action that will start the mission
     this->execAction (inActionToExecute); // should hide the window
+  }
   ImGui::PopStyleColor (iStyle);
 }
 
@@ -569,7 +598,7 @@ WinImguiBriefer::add_ui_ils_vfr_search_airports_button (missionx::mx_window_acti
 // ------------ add abort thread button --------------
 
 void
-WinImguiBriefer::add_ui_abort_mission_creation_button (missionx::mx_window_actions inActionToExecute)
+WinImguiBriefer::add_ui_abort_mission_creation_button (const missionx::mx_window_actions inActionToExecute)
 {
   int iStyle = 0;
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
@@ -944,9 +973,9 @@ WinImguiBriefer::add_debug_info ()
       {
         missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
         ImGui::TextColored (missionx::color::color_vec4_lime, "%s", "List of all messages. Make sure to un-pause. Standard messages are colored white.");
-        this->add_pause_in_2d_mode ();
+        this->add_ui_pause_in_2d_mode ();
         ImGui::SameLine (0.0f, 50.0f);
-        this->add_abort_all_channels_debug ();
+        this->add_ui_abort_all_channels_debug ();
         ImGui::Spacing ();
         ImGui::Separator ();
         missionx::WinImguiBriefer::mxUiReleaseLastFont ();
@@ -983,13 +1012,13 @@ WinImguiBriefer::add_flight_planning ()
   const auto     win_size_vec2          = missionx::WinImguiBriefer::mxUiGetWindowContentWxH ();
   constexpr auto multiLineSize_vec2_wpc = ImVec2 (0.0f, 40.0f); // child size for waypoints multi line
 
-  const bool bFetchInProcess = missionx::WinImguiBriefer::mxStartUiDisableState (this->strct_ext_layer.simbrief_fetch_state == missionx::mxFetchState_enum::fetch_in_process || missionx::data_manager::flag_generate_engine_is_running);
+  const bool bFetchInProcess = missionx::WinImguiBriefer::mxStartUiDisableState (this->strct_ext_layer.simbrief_fetch_state == missionx::mxFetchState_enum::fetch_in_process || missionx::data_manager::get_is_random_engine_running());
   ImGui::BeginGroup ();
   {
     // // v26.09.2
     // add_flight_planning Show briefer collapsing header
     // ------------------------
-    missionx::WinImguiBriefer::add_briefer_description_post_mission_creation(!missionx::data_manager::flag_generate_engine_is_running
+    missionx::WinImguiBriefer::add_briefer_description_post_mission_creation(!missionx::data_manager::get_is_random_engine_running()
                                                                               && missionx::data_manager::missionState < mx_mission_state_enum::mission_is_running);
     ImGui::Spacing();
 
@@ -1383,7 +1412,7 @@ WinImguiBriefer::add_flight_planning ()
     missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
     ImGui::Spacing ();
 
-    if (!missionx::RandomEngine::random_thread_state.flagIsActive)
+    if (!missionx::data_manager::random_thread_state.flagIsActive)
     {
       // -------------------
       // Generate Mission Popup Button - FPLN screen
@@ -1418,20 +1447,20 @@ WinImguiBriefer::add_flight_planning ()
           missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_FROM_ICAO (), this->strct_flight_leg_info.fpln.fromICAO_s);
           missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_TO_ICAO (), this->strct_flight_leg_info.fpln.toICAO_s);
 
-          ImGui::OpenPopup (GENERATE_QUESTION.c_str ());
+          ImGui::OpenPopup (GENERATE_EXTERNAL_FPLN_QUESTION.c_str ());
         }
       }
       ImGui::PopStyleColor (); // pop style color for "generate popup button"
 
       const ImVec2 center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f);
       ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
-      this->draw_popup_generate_mission_based_on_ext_fpln (GENERATE_QUESTION, this->strct_flight_leg_info.fpln, this->strct_flight_leg_info.fpln.internal_id);
+      this->draw_popup_generate_mission_based_on_ext_fpln (GENERATE_EXTERNAL_FPLN_QUESTION, this->strct_flight_leg_info.fpln, this->strct_flight_leg_info.fpln.internal_id);
 
       // -------------------
       // START BUTTON - FPLN
       // -------------------
       if (mxUtils::mx_between(data_manager::missionState, missionx::mx_mission_state_enum::mission_loaded_from_the_original_file, missionx::mx_mission_state_enum::mission_is_running, enums::mx_between_types::eqgt_min_less_max)
-        && !missionx::data_manager::flag_generate_engine_is_running)
+        && !missionx::data_manager::get_is_random_engine_running())
       {
         ImGui::SameLine (0.0f, 60.0f);
         this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
@@ -1535,6 +1564,13 @@ void WinImguiBriefer::add_other_settings_header(const bool in_plane_is_helo, con
     // Compatibility - Inventory XP11
     // ------------------------
     this->add_ui_xp11_comp_checkbox(false); // v24.12.2
+
+    // ------------------------
+    // No Inventories Creation
+    // ------------------------
+    ImGui::SameLine(0.0f, 30.0f);
+    WinImguiBriefer::add_ui_no_inventories_checkbox();
+
     ImGui::Separator();
 
     ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_white); // internal color
@@ -1813,10 +1849,10 @@ WinImguiBriefer::flc ()
 
   if (Timer::wasEnded (this->timer_message_line1, true)) // message stopper should be based on OS time, since briefer pauses X-Plane while OS time continue ticking. Solve message never fades.
   {
-    if (RandomEngine::random_thread_state.flagIsActive && !RandomEngine::random_thread_state.flagThreadDoneWork) // v3.0.223.1 display better progress information to simmer.
+    if (data_manager::random_thread_state.flagIsActive && !data_manager::random_thread_state.flagThreadDoneWork) // v3.0.223.1 display better progress information to simmer.
     {
       std::string time_s = missionx::Timer::get_current_time_and_date ();
-      this->set_bottom_message_line1 (fmt::format ("[{}] Mission generation in progress...{}sec", time_s, RandomEngine::random_thread_state.getDuration ()), 5);
+      this->set_bottom_message_line1 (fmt::format ("[{}] Mission generation in progress...{}sec", time_s, data_manager::random_thread_state.getDuration ()), 5);
     }
     else if (this->strct_ext_layer.fetch_state == missionx::mxFetchState_enum::fetch_in_process && this->strct_ext_layer.threadState.flagIsActive) // v24.06.1 add timer progress to external FPLN
     {
@@ -1843,7 +1879,7 @@ WinImguiBriefer::flc ()
   }
 
   // Check if there are messages from the Random Engine
-  if (RandomEngine::random_thread_state.flagIsActive && !RandomEngine::random_thread_state.flagThreadDoneWork )
+  if (data_manager::random_thread_state.flagIsActive && !data_manager::random_thread_state.flagThreadDoneWork )
   {
     if (!data_manager::strct_ui_share_data.ongoing_status_message_line2.empty())
     {
@@ -2084,7 +2120,7 @@ WinImguiBriefer::buildInterface ()
         ImGui::PopStyleColor (1);
       }
 
-      if (missionx::data_manager::flag_generate_engine_is_running) // v3.0.255.4
+      if (missionx::data_manager::get_is_random_engine_running()) // v3.0.255.4
       {
         if (!this->error_message_line3.empty()) // v26.04.4 use local string parameter
         {
@@ -2794,7 +2830,7 @@ WinImguiBriefer::add_ui_skip_abort_setup_checkbox ()
 // -------------------------------------------
 
 void
-WinImguiBriefer::add_designer_mode_checkbox ()
+WinImguiBriefer::add_ui_designer_mode_checkbox ()
 {
   // v24.03.2 Designer mode flag
   mx_img_window::HelpMarker ("Enable Designer mode from the setup screen instead from the XML file. The XML file has precedence over this setting, and it will update it when loading a mission.\nMakes the option flexiable during mission tests.\nIn debug binaries it is set to 'true' by default.\nUsage: Affects behaviour of 'force_leg_name' in the global_settings.");
@@ -3022,7 +3058,7 @@ void WinImguiBriefer::add_ui_fps()
 {
   ImGui::TextColored(missionx::color::color_vec4_orange, "%s", "FPS:");
   ImGui::SameLine();
-  ImGui::TextDisabled("%.2f", missionx::dataref_manager::get_fps_f());
+  ImGui::TextDisabled("%.0f", missionx::dataref_manager::get_fps_f());
 }
 
 // -------------------------------------------
@@ -3181,7 +3217,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
       // - v26.08.1 -------------
       // Show briefer description collapsing header
       // ------------------------
-      missionx::WinImguiBriefer::add_briefer_description_post_mission_creation(!(missionx::data_manager::flag_generate_engine_is_running)
+      missionx::WinImguiBriefer::add_briefer_description_post_mission_creation(!(missionx::data_manager::get_is_random_engine_running())
                                                           && missionx::data_manager::missionState < mx_mission_state_enum::mission_is_running);
 
       ImGui::Spacing();
@@ -3277,7 +3313,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
     missionx::WinImguiBriefer::mxUiSetFont(mxconst::get_TEXT_TYPE_TITLE_REG());
     {
 
-      if (missionx::data_manager::flag_generate_engine_is_running && data_manager::strct_ui_share_data.user_message_line1.empty())
+      if (missionx::data_manager::get_is_random_engine_running() && data_manager::strct_ui_share_data.user_message_line1.empty())
       {
         this->set_bottom_message_line1("Random Engine is running, please wait...");
       }
@@ -3285,7 +3321,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
       {
         this->set_bottom_message_line1("Can't Generate mission, apt data optimization is currently running. Please wait for it to finish first !!!");
       }
-      else if (!(missionx::data_manager::flag_generate_engine_is_running || missionx::data_manager::flag_apt_dat_optimization_is_running))
+      else if (!(missionx::data_manager::get_is_random_engine_running() || missionx::data_manager::flag_apt_dat_optimization_is_running))
       {
         // Regenerate Random Date Time // v3.303.10
         static bool bRerunRandomDateTime{false};
@@ -3390,7 +3426,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
         } // end [generate button]
 
       }
-      else if (missionx::RandomEngine::random_thread_state.flagIsActive)
+      else if (missionx::data_manager::random_thread_state.flagIsActive)
       {
         // -----------------------
         // DISPLAY [ABORT]
@@ -3401,7 +3437,7 @@ void WinImguiBriefer::add_ui_semi_act_phase_2_detail()
       }
 
       if (mxUtils::mx_between(data_manager::missionState, missionx::mx_mission_state_enum::mission_loaded_from_the_original_file, missionx::mx_mission_state_enum::mission_is_running, enums::mx_between_types::eqgt_min_less_max)
-        && !missionx::data_manager::flag_generate_engine_is_running)
+        && !missionx::data_manager::get_is_random_engine_running())
       {
         // -----------------------
         // DISPLAY [START] & [WARNING]
@@ -3491,7 +3527,7 @@ void WinImguiBriefer::add_ui_mission_description(const std::string& in_descripti
 
 void WinImguiBriefer::add_ui_llm_options(const missionx::enums::llm_ui_options_enum options_flags)
 {
-  const bool b_disable_llm_options = mxStartUiDisableState(missionx::data_manager::flag_generate_engine_is_running);
+  const bool b_disable_llm_options = mxStartUiDisableState(missionx::data_manager::get_is_random_engine_running());
   {
     mx_img_window::mxUiHelpMarker(missionx::color::color_vec4_beige, "Enabling the A.I functionality will affect the mission description.\n\nMake sure that your LLM settings are correct in the setup screen.\nDouble check the flight plan, after all it is still an AI ;-)");
     ImGui::SameLine();
@@ -4294,19 +4330,26 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
           ImGui::Checkbox ("Add default base weights.\n(Not advisable for planes > GAs)", &missionx::adv_settings_strct.flag_add_default_weight_settings);
           // v25.04.1
           ImGui::Spacing ();
+          const auto disable_inventories = mxStartUiDisableState(missionx::strct_setup_layer.bNoInventories);
           this->add_ui_pick_subcategories (missionx::mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]);
+          mxEndUiDisableState(disable_inventories);
           ImGui::Spacing ();
           // this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked);
           this->add_ui_advance_settings_random_date_time_weather_and_weight_button ();
           ImGui::Spacing (); // v24.03.2
-          add_designer_mode_checkbox (); // v24.03.2 Designer mode flag
+          add_ui_designer_mode_checkbox (); // v24.03.2 Designer mode flag
         }
         ImGui::EndChild ();
 
         ImGui::Separator ();
         // -------------------------
+        // v26.09.3 No Inventories
+        // -------------------------
+        add_ui_no_inventories_checkbox();
+        // -------------------------
         // v26.09.2 add LLM options
         // -------------------------
+        ImGui::SameLine(0.0f, 5.0f);
         constexpr enums::llm_ui_options_enum llm_options = enums::llm_ui_options_enum::llm_background_story | enums::llm_ui_options_enum::llm_suggest_payloads;
         add_ui_llm_options(llm_options);
 
@@ -4665,7 +4708,7 @@ WinImguiBriefer::draw_setup_layer ()
     ImGui::Spacing (); // v3.305.3 moved
 
 
-    this->add_pause_in_2d_mode ();
+    this->add_ui_pause_in_2d_mode ();
     ImGui::Separator ();
 
     bool bDesignerMode = Utils::readNodeNumericAttrib<int> (missionx::system_actions::pluginSetupOptions.node, mxconst::get_OPT_ENABLE_DESIGNER_MODE (), false); // 0 = false
@@ -4750,13 +4793,20 @@ WinImguiBriefer::draw_setup_layer ()
         // disable while running
         const bool bDisable = missionx::WinImguiBriefer::mxStartUiDisableState (missionx::data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running);
         {
-          ImGui::TextColored (missionx::color::color_vec4_yellow, "Inventory Layout:");
-          // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+          // v26.09.3
+          ImGui::TextColored (missionx::color::color_vec4_yellow, "Inventory Setup:");
+          mx_img_window::HelpMarker ("Do not generate \"External Inventories\" in each waypoint.");
+          ImGui::SameLine();
+          add_ui_no_inventories_checkbox(missionx::color::color_vec4_white);
+
           this->add_ui_xp11_comp_checkbox (true); // v24.12.2
         }
         missionx::WinImguiBriefer::mxEndUiDisableState (bDisable);
       }
 
+      ImGui::Separator (); // v3.305.1
+      // v26.09.3
+      ImGui::TextColored (missionx::color::color_vec4_yellow, "Messages:");
       this->add_ui_suppress_distance_messages_checkbox_ui (); // v25.02.1
 
       ImGui::Separator (); // v3.305.1
@@ -4773,43 +4823,43 @@ WinImguiBriefer::draw_setup_layer ()
       }
 
       ImGui::Separator ();
-
       ImGui::NewLine ();
 
-      const auto bDisableGeneralOptions = mx_img_window::mxStartUiDisableState(true);
-      {
-        ImGui::TextColored (missionx::color::color_vec4_yellow, "[DISABLED] Font Scale:");
-
-        mx_img_window::HelpMarker ("Font Scale will resize font based on software interpolation code.\nIt is not the same as picking a larger font pixel.");
-        ImGui::SameLine ();
-        ImGui::PushItemWidth (100.0f);
-        if (ImGui::SliderFloat ("Preferred Font Scale, Example:", &missionx::strct_setup_layer.fPreferredFontScale, missionx::strct_setup_layer.fFontMinScaleSize, missionx::strct_setup_layer.fFontMaxScaleSize, "scale %.1f"))
-        {
-          // ADD set option value
-          missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<float> (mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE (), missionx::strct_setup_layer.fPreferredFontScale);
-          this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
-        }
-        ImGui::PopItemWidth ();
-        ImGui::SameLine ();
-        ImGui::TextColored (missionx::color::color_vec4_aqua, "Mission-X v3.x");
-      }
-
-      ImGui::NewLine ();
-
-      // v25.06.1 deprecate the option
-      ImGui::TextColored (missionx::color::color_vec4_yellow, "Pause X-Plane when Mission-X is open in VR Mode:");
-      // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
-      if (ImGui::Checkbox ("(Deprecated, always on) Pause in VR mode", &missionx::strct_setup_layer.bPauseInVR))
-      {
-        missionx::strct_setup_layer.bPauseInVR = false;
-        // ADD set option value
-        // missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_OPT_AUTO_PAUSE_IN_VR (), missionx::strct_setup_layer.bPauseInVR);
-        // this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
-      }
-      missionx::WinImguiBriefer::mxEndUiDisableState (bDisableGeneralOptions);
-
-      ImGui::Separator ();
-      ImGui::NewLine ();
+      // const auto bDisableGeneralOptions = mx_img_window::mxStartUiDisableState(true);
+      // {
+      //   ImGui::TextColored (missionx::color::color_vec4_yellow, "[DISABLED] Font Scale:");
+      //
+      //   mx_img_window::HelpMarker ("Font Scale will resize font based on software interpolation code.\nIt is not the same as picking a larger font pixel.");
+      //   ImGui::SameLine ();
+      //   ImGui::PushItemWidth (100.0f);
+      //   if (ImGui::SliderFloat ("Preferred Font Scale, Example:", &missionx::strct_setup_layer.fPreferredFontScale, missionx::strct_setup_layer.fFontMinScaleSize, missionx::strct_setup_layer.fFontMaxScaleSize, "scale %.1f"))
+      //   {
+      //     // ADD set option value
+      //     missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<float> (mxconst::get_SETUP_SLIDER_FONT_SCALE_SIZE (), missionx::strct_setup_layer.fPreferredFontScale);
+      //     this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
+      //   }
+      //   ImGui::PopItemWidth ();
+      //   ImGui::SameLine ();
+      //   ImGui::TextColored (missionx::color::color_vec4_aqua, "Mission-X v3.x");
+      //
+      //
+      //   ImGui::NewLine ();
+      //
+      //   // v25.06.1 deprecate the option
+      //   ImGui::TextColored (missionx::color::color_vec4_yellow, "Pause X-Plane when Mission-X is open in VR Mode:");
+      //   // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+      //   if (ImGui::Checkbox ("(Deprecated, always on) Pause in VR mode", &missionx::strct_setup_layer.bPauseInVR))
+      //   {
+      //     missionx::strct_setup_layer.bPauseInVR = false;
+      //     // ADD set option value
+      //     // missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_OPT_AUTO_PAUSE_IN_VR (), missionx::strct_setup_layer.bPauseInVR);
+      //     // this->execAction (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
+      //   }
+      // }
+      // missionx::WinImguiBriefer::mxEndUiDisableState (bDisableGeneralOptions);
+      //
+      // ImGui::Separator ();
+      // ImGui::NewLine ();
 
       missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
@@ -5163,7 +5213,7 @@ WinImguiBriefer::draw_setup_layer ()
 
       ImGui::NewLine ();
 
-      add_skewed_marker_checkbox (); // v3.0.253.6
+      add_ui_skewed_marker_checkbox (); // v3.0.253.6
 
       ImGui::Separator (); // v3.305.1
       ImGui::NewLine (); // v3.305.1
@@ -5419,7 +5469,7 @@ WinImguiBriefer::draw_setup_layer ()
 
 
       // v24.03.2 Designer mode flag
-      add_designer_mode_checkbox ();
+      add_ui_designer_mode_checkbox ();
       // mx_img_window::HelpMarker("Enable Designer mode from the setup screen instead from the XML file. The XML file has precidence over this setting, and it will update it when loading a mission.\nMakes the option flexiable during mission tests.\nIn debug binaries it is set to 'true' by default.\nUsage: Affects behaviour of 'force_leg_name' in the global_settings.");
       // ImGui::SameLine();
       // ImGui::Checkbox("Enable \"Designer Mode\"", &missionx::data_manager::flag_setupEnableDesignerMode);
@@ -5665,7 +5715,7 @@ WinImguiBriefer::draw_home_layer ()
 
       // ------ Disable Decision
       bool disabled = false;
-      if (missionx::data_manager::flag_apt_dat_optimization_is_running || OptimizeAptDat::aptState.flagIsActive || missionx::data_manager::flag_generate_engine_is_running) // includes all except SETUP
+      if (missionx::data_manager::flag_apt_dat_optimization_is_running || OptimizeAptDat::aptState.flagIsActive || missionx::data_manager::get_is_random_engine_running()) // includes all except SETUP
       {
         if (btn.layer != missionx::uiLayer_enum::option_setup_layer) // disable all except "setup layer" and ILS, I would like to allow simmers to use the ILS to fetch info for ILS
           disabled = true;
@@ -5941,7 +5991,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
       //                  Topic 0 - Briefer description
       // Show briefer description collapsing header
       // ------------------------
-      missionx::WinImguiBriefer::add_briefer_description_post_mission_creation(!(missionx::data_manager::flag_generate_engine_is_running) && missionx::data_manager::missionState < mx_mission_state_enum::mission_is_running);
+      missionx::WinImguiBriefer::add_briefer_description_post_mission_creation(!(missionx::data_manager::get_is_random_engine_running()) && missionx::data_manager::missionState < mx_mission_state_enum::mission_is_running);
 
 
       //------------------------------------------------
@@ -6050,7 +6100,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
         // ------------------------
         if (bPickedMedevacMission) // v3.0.253.6
         {
-          add_skewed_marker_checkbox ();
+          add_ui_skewed_marker_checkbox ();
           ImGui::NewLine ();
         }
 
@@ -6201,7 +6251,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
             this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Prefer search from the web over local OSM database search.");
             if (strct_user_create_layer.flag_use_web_osm)
             {
-              if (missionx::data_manager::flag_generate_engine_is_running) // v3.0.255.4 fix bug where user exit the popup window and it crashes x-plane during mission creation in the background
+              if (missionx::data_manager::get_is_random_engine_running()) // v3.0.255.4 fix bug where user exit the popup window and it crashes x-plane during mission creation in the background
               {
                 ImGui::PushItemFlag (ImGuiItemFlags_Disabled, true);
                 ImGui::PushStyleVar (ImGuiStyleVar_Alpha, ImGui::GetStyle ().Alpha * 0.5f);
@@ -6214,7 +6264,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
               }
               this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Advance options to filter the data fetched");
 
-              if (missionx::data_manager::flag_generate_engine_is_running) // v3.0.255.4 fix bug where user exit the popup window and it crashes x-plane during mission creation in the background
+              if (missionx::data_manager::get_is_random_engine_running()) // v3.0.255.4 fix bug where user exit the popup window and it crashes x-plane during mission creation in the background
               {
                 ImGui::PopItemFlag ();
                 ImGui::PopStyleVar ();
@@ -6417,7 +6467,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
     ImGui::BeginGroup ();
     {
 
-      if (missionx::data_manager::flag_generate_engine_is_running && data_manager::strct_ui_share_data.user_message_line1.empty())
+      if (missionx::data_manager::get_is_random_engine_running() && data_manager::strct_ui_share_data.user_message_line1.empty())
       {
         this->set_bottom_message_line1 ("Random Engine is running, please wait...");
       }
@@ -6425,7 +6475,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
       {
         this->set_bottom_message_line1 ("Can't Generate mission, apt data optimization is currently running. Please wait for it to finish first !!!");
       }
-      else if (!(missionx::data_manager::flag_generate_engine_is_running || missionx::data_manager::flag_apt_dat_optimization_is_running))
+      else if (!(missionx::data_manager::get_is_random_engine_running() || missionx::data_manager::flag_apt_dat_optimization_is_running))
       {
         // Regenerate Random Date Time // v3.303.10
         static bool bRerunRandomDateTime{ false };
@@ -6454,7 +6504,7 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
 
         ImGui::PopStyleColor (3);
       }
-      else if (missionx::RandomEngine::random_thread_state.flagIsActive)
+      else if (missionx::data_manager::random_thread_state.flagIsActive)
       {
 
         mx_img_window::HelpMarker ("Abort the background process.");
@@ -6462,9 +6512,9 @@ WinImguiBriefer::draw_dynamic_mission_creation_screen_child_1 ()
         this->add_ui_abort_mission_creation_button (); // Add Abort Random Engine
       }
 
-      //if (!RandomEngine::random_thread_state.flagIsActive || !missionx::data_manager::flag_generate_engine_is_running)
+      //if (!data_manager::random_thread_state.flagIsActive || !missionx::data_manager::get_is_random_engine_running())
       if ( mxUtils::mx_between( data_manager::missionState, missionx::mx_mission_state_enum::mission_loaded_from_the_original_file, missionx::mx_mission_state_enum::mission_is_running, enums::mx_between_types::eqgt_min_less_max)
-          && !missionx::data_manager::flag_generate_engine_is_running)
+          && !missionx::data_manager::get_is_random_engine_running())
       {
         ImGui::SameLine ((mxUiGetContentWidth () * 0.40f) - (ImGui::CalcTextSize (missionx::LBL_START_MISSION.c_str ()).x * 0.5f));
         this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
@@ -6562,7 +6612,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
 
     ImGui::TextColored (missionx::color::color_vec4_yellow, "Please pick a template.");
     ImGui::SameLine (0.0f, 135.0f);
-    add_skewed_marker_checkbox (); // v3.0.253.6
+    add_ui_skewed_marker_checkbox (); // v3.0.253.6
 
     missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.303.14
 
@@ -6808,7 +6858,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
       ImGui::SameLine ();
 
       ///// Display Generate or Start buttons
-      if (!missionx::strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running)
+      if (!missionx::strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::get_is_random_engine_running())
       {
         missionx::flag_generatedRandomFile_success = false; // this will also assist in hiding the "start" button since we are generating
         ImGui::SameLine (region_width_arr[0] + 10.0f);
@@ -6838,7 +6888,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
             // this->add_ui_advance_settings_random_date_time_weather_and_weight_button (missionx::adv_settings_strct.iClockDayOfYearPicked, missionx::adv_settings_strct.iClockHourPicked, missionx::adv_settings_strct.iClockMinutesPicked); // v3.303.10 convert the random dateTime button to a self contain function
             this->add_ui_advance_settings_random_date_time_weather_and_weight_button (); // v3.303.10 convert the random dateTime button to a self contain function
             ImGui::Spacing ();
-            add_designer_mode_checkbox (); // v24.03.2 Designer mode flag
+            add_ui_designer_mode_checkbox (); // v24.03.2 Designer mode flag
 
             ImGui::NewLine ();
             ImGui::Separator ();
@@ -6922,7 +6972,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
         ImGui::PopStyleColor (); // black
         //////////////////////////////
       }
-      else if (missionx::RandomEngine::random_thread_state.flagIsActive)
+      else if (missionx::data_manager::random_thread_state.flagIsActive)
       {
         ImGui::SameLine (region_width_arr[0] + 10.0f);
         this->add_ui_abort_mission_creation_button (); // Add Abort Random Engine
@@ -6930,7 +6980,7 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
       else if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running
                && missionx::flag_generatedRandomFile_success
                && missionx::strct_generate_template_layer.selectedTemplateKey.empty ()
-               && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
+               && !missionx::data_manager::get_is_random_engine_running() /* make sure that thread is not running */) //
       {
         ImGui::SameLine (region_width_arr[0] + 10.0f); // pad to the right so the button will better aligned with above frame.
         this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
@@ -7180,8 +7230,8 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
 {
   const bool bDisableTabs = (missionx::data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running);
 
-  float                        child_w[]    = { 0.0f, 0.0f };
-  constexpr const static float fTitleHeight = 30.0f;
+  float                  child_w[]    = { 0.0f, 0.0f };
+  constexpr static float fTitleHeight = 30.0f;
 
   ImVec2 vec2Window = missionx::WinImguiBriefer::mxUiGetWindowContentWxH ();
 
@@ -7196,18 +7246,23 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
     child_w[1] = 0.0f; // full window width
   }
 
-  // // ImGui::SetWindowFontScale (missionx::strct_setup_layer.fPreferredFontScale);
 
   ImGuiTabBarFlags mainTab_bar_flags = ImGuiTabBarFlags_Reorderable; // ImGuiTabBarFlags_None;
   if (ImGui::BeginTabBar ("FlightLegInfo", mainTab_bar_flags))
   {
     ImGuiTabItemFlags itemTab_bar_flags = ImGuiTabItemFlags_Leading | ImGuiTabItemFlags_NoReorder; // ImGuiTabItemFlags_None;
 
+    // v26.09.3 Build flags for the Description tab
+    if (!strct_flight_leg_info.flag_force_select_description_tab)
+      strct_flight_leg_info.desc_flags = itemTab_bar_flags;
+
     if (!bDisableTabs)
     {
       // Display description tab for 2D mode
-      if (!this->IsInVR () && ImGui::BeginTabItem ("Description", nullptr, itemTab_bar_flags))
+      if (!this->IsInVR () && ImGui::BeginTabItem ("Description", nullptr, strct_flight_leg_info.desc_flags))
       {
+        strct_flight_leg_info.flag_force_select_description_tab = false; // Consume
+
         ImGui::BeginGroup ();
         ImGui::BeginChild ("child_draw_2D_flight_leg_info", ImVec2 (0.0f, ImGui::GetWindowHeight () - imvec2_flight_info_top_area_size.y - this->fTopToolbarPadding_f - this->fBottomToolbarPadding_f - fTitleHeight), ImGuiChildFlags_Borders);
         missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.303.14
@@ -7217,10 +7272,10 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
         ImGui::EndGroup ();
 
         ImGui::EndTabItem ();
-        //    }
       }
       else if (this->IsInVR () && ImGui::BeginTabItem ("Flight Leg", nullptr, itemTab_bar_flags)) // display the VR description
       {
+        strct_flight_leg_info.flag_force_select_description_tab = false; // Consume
         ImGui::PushID ("##SplitFlightLegInfo01");
 
         for (int i = 0; i < 2; ++i)
@@ -7366,7 +7421,7 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
     }
 
     this->strct_flight_leg_info.flagFlightPlanningTabIsOpen = false;
-    if (ImGui::BeginTabItem ("Flight Planning/Notes", NULL, ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoReorder))
+    if (ImGui::BeginTabItem ("Flight Planning/Notes", nullptr, ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoReorder))
     {
       this->strct_flight_leg_info.flagFlightPlanningTabIsOpen ^= 1;
       ImGui::BeginGroup ();
@@ -7383,7 +7438,11 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
     ImGui::EndTabBar ();
   }
 
-  // // ImGui::SetWindowFontScale (mxconst::DEFAULT_BASE_FONT_SCALE);
+  // v26.09.3 make sure that during "mission start" we force displaying the "description tab"
+  // We reset the strct_flight_leg_info.flag_force_select_description_tab inside the "tab item" itself.
+  if (strct_flight_leg_info.flag_force_select_description_tab)
+    strct_flight_leg_info.desc_flags |= ImGuiTabItemFlags_SetSelected;
+
 }
 
 
@@ -8425,7 +8484,7 @@ WinImguiBriefer::child_flight_leg_info_draw_end_summary ()
 
   // v3.0.255.1 add stats button
   ImGui::BeginGroup ();
-  if (ImGui::Button ((this->strct_flight_leg_info.bStatsPressed) ? "image" : "stats"))
+  if (ImGui::Button ((this->strct_flight_leg_info.bStatsPressed) ? "back" : "stats"))
   {
     this->strct_flight_leg_info.bStatsPressed = !this->strct_flight_leg_info.bStatsPressed;
     if (this->strct_flight_leg_info.bStatsPressed)
@@ -8883,7 +8942,7 @@ WinImguiBriefer::draw_external_fpln_screen ()
 
   switch (this->strct_ext_layer.ext_screen)
   {
-    case mx_ext_fpln_screen::ext_db_fpln:
+    case mx_ext_fpln_screen::ext_flightplandatabase_fpln:
     {
       draw_child_ext_fpln_db_site_screen ();
     }
@@ -8938,7 +8997,7 @@ WinImguiBriefer::draw_child_ext_fpln_home_screen ()
           this->strct_ext_layer.from_icao = std::string (this->strct_ext_layer.buf_from_icao);
         }
 
-        this->strct_ext_layer.ext_screen = mx_ext_fpln_screen::ext_db_fpln;
+        this->strct_ext_layer.ext_screen = mx_ext_fpln_screen::ext_flightplandatabase_fpln;
       } // end imageButton - flightplandb
       this->mx_add_tooltip (missionx::color::color_vec4_white, "Fetch flight plans based on flightplandatabase.com data.");
       // bottom title
@@ -9012,7 +9071,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
     // Briefer description
     // Show briefer description collapsing header
     // ------------------------
-    missionx::WinImguiBriefer::add_briefer_description_post_mission_creation(!(missionx::data_manager::flag_generate_engine_is_running) && missionx::data_manager::missionState < mx_mission_state_enum::mission_is_running);
+    missionx::WinImguiBriefer::add_briefer_description_post_mission_creation(!(missionx::data_manager::get_is_random_engine_running()) && missionx::data_manager::missionState < mx_mission_state_enum::mission_is_running);
 
 
     mx_img_window::HelpMarker ("FROM or TO fields needs to have a value");
@@ -9147,7 +9206,7 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
   const bool are_we_processing_the_fetch = mxUtils::mx_between <int>(static_cast<int>( this->strct_ext_layer.fetch_state ), static_cast<int>(missionx::mxFetchState_enum::fetch_in_process), static_cast<int>( missionx::mxFetchState_enum::fetch_guess_wp), missionx::enums::mx_between_types::both_can_be_equal);
 
   // v26.06.3 disable button instead of hiding it.
-  const auto bDisableFetchButton = missionx::WinImguiBriefer::mxStartUiDisableState(missionx::data_manager::flag_generate_engine_is_running || are_we_processing_the_fetch || (this->strct_ext_layer.from_icao.empty() && this->strct_ext_layer.to_icao.empty()));
+  const auto bDisableFetchButton = missionx::WinImguiBriefer::mxStartUiDisableState(missionx::data_manager::get_is_random_engine_running() || are_we_processing_the_fetch || (this->strct_ext_layer.from_icao.empty() && this->strct_ext_layer.to_icao.empty()));
   {
     missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
 
@@ -9293,12 +9352,12 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
               missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MAX_DISTANCE_SLIDER (), rowData.distnace_d); //, node_ptr, node_ptr.getName());
               missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_USE_OSM_CHECKBOX (), false); //, node_ptr, node_ptr.getName());
 
-              ImGui::OpenPopup (GENERATE_QUESTION.c_str ());
+              ImGui::OpenPopup (GENERATE_EXTERNAL_FPLN_QUESTION.c_str ());
             }
 
             ImVec2 center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f);
             ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
-            this->draw_popup_generate_mission_based_on_ext_fpln (GENERATE_QUESTION, rowData, picked_fpln_id_i);
+            this->draw_popup_generate_mission_based_on_ext_fpln (GENERATE_EXTERNAL_FPLN_QUESTION, rowData, picked_fpln_id_i);
           } // end loop over all vector
         } // end should we display table or not
 
@@ -9329,12 +9388,12 @@ WinImguiBriefer::draw_child_ext_fpln_db_site_screen ()
   // -- START BUTTON
   // ----------------------
 
-  // if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->strct_ext_layer.fetch_state == missionx::mxFetchState_enum::fetch_not_started && missionx::flag_generatedRandomFile_success && missionx::strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
+  // if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running && this->strct_ext_layer.fetch_state == missionx::mxFetchState_enum::fetch_not_started && missionx::flag_generatedRandomFile_success && missionx::strct_generate_template_layer.selectedTemplateKey.empty () && !missionx::data_manager::get_is_random_engine_running() /* make sure that thread is not running */) //
   if (data_manager::missionState < missionx::mx_mission_state_enum::mission_is_running
       && are_we_processing_the_fetch == false // v26.01.3
       && missionx::flag_generatedRandomFile_success
       && missionx::strct_generate_template_layer.selectedTemplateKey.empty ()
-      && !missionx::data_manager::flag_generate_engine_is_running /* make sure that thread is not running */) //
+      && !missionx::data_manager::get_is_random_engine_running() /* make sure that thread is not running */) //
   {
     missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
     this->add_ui_start_mission_button (missionx::mx_window_actions::ACTION_START_RANDOM_MISSION);
@@ -10183,7 +10242,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
     break;
     case missionx::mx_window_actions::ACTION_GENERATE_RANDOM_MISSION:
     {
-      if (missionx::data_manager::flag_generate_engine_is_running) //
+      if (missionx::data_manager::get_is_random_engine_running()) //
       {
         const std::string msg = "Random Engine is running. Please wait for it to finish first !!!";
         XPLMSpeakString (msg.c_str ());
@@ -10352,7 +10411,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
     break;
     case missionx::mx_window_actions::ACTION_START_MISSION:
     {
-        if (missionx::data_manager::flag_apt_dat_optimization_is_running || RandomEngine::random_thread_state.flagIsActive) // v3.0.219.12
+        if (missionx::data_manager::flag_apt_dat_optimization_is_running || data_manager::random_thread_state.flagIsActive) // v3.0.219.12
       {
         std::string msg = "Can't start mission while apt.dat optimization or Random Engine are running. Please wait for it to finish first !!!";
         XPLMSpeakString (msg.c_str ());
@@ -10561,7 +10620,7 @@ WinImguiBriefer::execAction (mx_window_actions actionCommand)
     break;
     case missionx::mx_window_actions::ACTION_ABORT_RANDOM_ENGINE_RUN:
     {
-      if (missionx::RandomEngine::random_thread_state.flagIsActive)
+      if (missionx::data_manager::random_thread_state.flagIsActive)
       {
         // Call savepoint action
         this->set_bottom_message_line1 ("Aborting, Please wait...", 5); // v3.0.160

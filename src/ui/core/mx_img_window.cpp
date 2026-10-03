@@ -16,11 +16,7 @@ mx_img_window::mx_img_window(const int left, const int top, const int right, con
                 const bool cursors)
       : ImgWindow(left, top, right, bottom, decoration, layer, cursors)
 {
-  #ifdef IMGWINDOW_USE_PANEL_GRAPHICS
-  if (ImgPanelGraphics::IsAvailable())
-    SetTextureBakeDelay(true, 4);
-  #endif
-
+  // prepare ImPlot context
   mImPlotContext = ImPlot::CreateContext();
 }
 
@@ -294,7 +290,7 @@ mx_img_window::CreateTexture(const mxTextureFile &in_texture)
     Log::log_xplm_debug_string(fmt::format("[{}] Calling ImgPanelGraphics::CreateTexture for: {}.\n", __func__, in_texture.fileName));
     #endif
     void* handle = ImgPanelGraphics::CreateTexture(in_texture.sImageData.pData, in_texture.sImageData.Width, in_texture.sImageData.Height);
-    return static_cast<ImTextureID>(reinterpret_cast<intptr_t>(handle));
+    return reinterpret_cast<ImTextureID>(handle);
   }
   #endif
 
@@ -312,7 +308,13 @@ mx_img_window::CreateTexture(const mxTextureFile &in_texture)
   const GLenum internalFormat = (in_texture.sImageData.Channels < 4) ? GL_RGB8 : GL_RGBA8;
   glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(internalFormat), in_texture.sImageData.Width, in_texture.sImageData.Height, 0, format, GL_UNSIGNED_BYTE, in_texture.sImageData.pData);
 
-  return static_cast<ImTextureID>(reinterpret_cast<intptr_t>((void*)(intptr_t)glTexNum));
+  // return reinterpret_cast<ImTextureID>(reinterpret_cast<void*>(static_cast<ImTextureID>(glTexNum)));
+  #ifndef RELEASE
+  auto debug_value1 = reinterpret_cast<ImTextureID>(reinterpret_cast<void*>(static_cast<ImTextureID>(glTexNum)));
+  auto debug_value2 = static_cast<ImTextureID>(glTexNum);
+  #endif
+  
+  return static_cast<ImTextureID>(glTexNum);
 }
 
 // -------------------------------------
@@ -323,17 +325,12 @@ void ui::wrap_imgui::Image(ImTextureRef tex_ref, const ImVec2& image_size, const
     ImGui::Image(tex_ref, image_size, uv0, uv1);
     return;
   }
-#ifndef RELEASE
-  else
-  {
-    static int seq_number = 1;
-    ImGui::Button(fmt::format("Image {}##fallbackImage", seq_number).c_str());
-    return;
-  }
-#endif // !RELEASE
+  #ifndef RELEASE
+  static int seq_number = 1;
+  ImGui::Button(fmt::format("Image {}##fallbackImage", seq_number).c_str());
+  #endif // !RELEASE
 
-  //Log::logMsgErr(fmt::format("[{}] Assertion Error. notify the developer.", __func__));
-
+  // Log::logMsgErr(fmt::format("[{}] Assertion Error. notify the developer.", __func__));
 }
 
 // -------------------------------------
@@ -343,12 +340,10 @@ bool ui::wrap_imgui::ImageButton(const char* str_id, ImTextureRef tex_ref, const
   if (str_id && tex_ref != 0)
     return ImGui::ImageButton(str_id, tex_ref, image_size, uv0, uv1, bg_col, tint_col );
   #ifndef RELEASE
-  else 
-    return ImGui::Button(str_id, image_size);
+  return ImGui::Button(str_id, image_size);
   #endif // !RELEASE
 
-
-  Log::logMsgErr(fmt::format("[{}] Assertion Error. notify the developer.", __func__));
+  // Log::logMsgErr(fmt::format("[{}] Assertion Error. notify the developer.", __func__));
 
   return false;
 }
@@ -361,7 +356,6 @@ void ui::wrap_imgui::ImageWithBg(ImTextureRef tex_ref, const ImVec2& image_size,
     ImGui::ImageWithBg(tex_ref, image_size, uv0, uv1, bg_col, tint_col );
   else
     Log::logMsgErr(fmt::format("[{}] Assertion Error. notify the developer.", __func__));
-
 }
 
 // -------------------------------------

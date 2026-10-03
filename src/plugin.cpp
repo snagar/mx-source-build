@@ -142,9 +142,9 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
   #endif
 
   // register callbacks
-  XPLMRegisterFlightLoopCallback (pluginCallback, -1.0f, nullptr);
+  XPLMRegisterFlightLoopCallback (pluginCallback, 1.0f, nullptr);
 
-  XPLMRegisterFlightLoopCallback (pluginCallback_draw, -1.0f, nullptr);
+  XPLMRegisterFlightLoopCallback (pluginCallback_draw, 1.0f, nullptr);
 
   const dataref_const dc;
   missionx::data_manager::xplane_using_modern_driver_b = XPLMGetDatai (dc.dref_xplane_using_modern_driver_b);
@@ -402,25 +402,40 @@ XPluginStop (void)
 
   try
   {
-
     missionx::QueueMessageManager::sound.release ();
     missionx::mission.stop_plugin (); // v3.0.149
 
+    // force delay texture clearing
+    missionx::WinImguiBriefer::Shutdown(); // v26.09.3 Calls ImgWindow clear delay textures
 
     if (missionx::Mission::uiImGuiMxpad)
       XPLMDestroyWindow (missionx::Mission::uiImGuiMxpad->mWindow); // v3.0.190
     if (missionx::Mission::uiImGuiOptions)
       XPLMDestroyWindow (missionx::Mission::uiImGuiOptions->mWindow); // v3.0.190
-
+    if (missionx::Mission::uiImGuiBriefer)
+      XPLMDestroyWindow (missionx::Mission::uiImGuiBriefer->mWindow); // // v26.09.3
 
 
     // v3.0.251.0
     // Cleanup the general stuff
     if (missionx::Mission::uiImGuiMxpad)
     {
-      // missionx::WinImguiMxpad::sFontAtlas.reset ();
+      missionx::Mission::uiImGuiMxpad.reset();
       missionx::Mission::uiImGuiMxpad = nullptr;
     }
+    // v26.09.3
+    if (missionx::Mission::uiImGuiOptions)
+    {
+      missionx::Mission::uiImGuiOptions.reset();
+      missionx::Mission::uiImGuiOptions = nullptr;
+    }
+    if (missionx::Mission::uiImGuiBriefer)
+    {
+      missionx::Mission::uiImGuiBriefer.reset();
+      missionx::Mission::uiImGuiBriefer = nullptr;
+    }
+
+    ImgWindow::sFontAtlas.reset(); // Safely teardown the shared atlas
 
     // v3.0.221.7 release shared data
     for (auto &[drefName, drefObject] : missionx::data_manager::mapSharedParams)
@@ -428,12 +443,11 @@ XPluginStop (void)
       if (XPLMUnshareData (drefName.c_str (), drefObject.getDataRefType (), MyDataChangedCallback, nullptr))
       {
         #ifndef RELEASE
-        Log::logMsgNone ("DataRef: " + drefName + " has been unshared.");
+        XPLMDebugString (fmt::format("\tmissionx: DataRef: {} has been unshared.\n", drefName).c_str());
         #endif
       }
     }
 
-    missionx::data_manager::pluginStop (); // clear all mission vecTextures in data_manager + font atlas + GL device
 
     // destroy instances
     for (auto &[objName, obj3dInstance] : missionx::data_manager::map3dInstances)
@@ -441,7 +455,7 @@ XPluginStop (void)
       if (obj3dInstance.g_instance_ref)
       {
         XPLMDestroyInstance (obj3dInstance.g_instance_ref);
-        XPLMDebugString ((std::string ("missionx: Destroyed Instance: ") + objName + mxconst::get_UNIX_EOL ()).c_str ()); // debug
+        XPLMDebugString (fmt::format("missionx: [{}] Destroyed Instance: {}\n", __func__, objName).c_str ()); // debug
       }
     }
     // unload 3d objects from map3dInstance
@@ -450,39 +464,16 @@ XPluginStop (void)
       if (obj3dInstance.g_object_ref)
       {
         XPLMUnloadObject (obj3dInstance.g_object_ref);
-        XPLMDebugString ((std::string ("missionx: Unload 3D file: ") + obj3dInstance.getName () + mxconst::get_UNIX_EOL ()).c_str ()); // debug
+        XPLMDebugString (fmt::format("missionx: [{}] Unload 3D file: {}\n", __func__, obj3dInstance.getName ()).c_str ()); // debug
       }
     }
-
-    XPLMDebugString ("\nClearing Logs"); // debug
-    // abort Log writeMessage
-    missionx::Log::stop_mission (); // v3.0.217.8
-
-    XPLMDebugString ("\nmissionx: Release static"); // debug
-    // release curl from data_manager
-    missionx::data_manager::release_static (); // v3.0.253.1
-
-    XPLMDebugString ("\nmissionx: Release RandomEngine::threadState.flagIsActive"); // debug
-    if (RandomEngine::random_thread_state.flagIsActive)
-    {
-      XPLMDebugString ("\nmissionx: sleep 1 sec - wait for Random");
-      std::this_thread::sleep_for (std::chrono::seconds (1));
-    }
-
-    if (missionx::data_manager::threadStateMetar.flagIsActive)
-    {
-      missionx::data_manager::threadStateMetar.flagAbortThread = true;
-      std::this_thread::sleep_for (std::chrono::seconds (1));
-    }
-
 
     XPLMDebugString ("\nmissionx: Close all databases"); // debug
     missionx::data_manager::db_close_all_databases (); // v3.0.241.10
 
-#ifndef MX_ENABLE_HTTP_REQUESTS
+    #ifndef MX_ENABLE_HTTP_REQUESTS
     curl_global_cleanup();
-#endif // !DISABLE_CURL
-
+    #endif // !DISABLE_CURL
 
     // v3.0.255.4.4 LR crash handling
     #if SUPPORT_BACKGROUND_THREADS
@@ -491,13 +482,14 @@ XPluginStop (void)
     s_background_thread.join ();
     #endif
 
+    XPLMDebugString ("\nmissionx: Waiting for 2 seconds."); // debug
+    std::this_thread::sleep_for (std::chrono::seconds (2));
     XPLMDebugString ("\nmissionx: Plug-in stopped");
 
     #ifndef LIN
     unregister_crash_handler ();
     #endif
   }
-
   catch (const std::exception &e)
   {
     const std::string s = std::string ("[Mission-X plugin stopped]") + e.what ();
@@ -512,8 +504,8 @@ XPluginEnable (void)
 {
   Log::logMsg ("Plug-in Enabling\n");
   // register callbacks
-  XPLMRegisterFlightLoopCallback (pluginCallback, -1, nullptr);
-  XPLMRegisterFlightLoopCallback (pluginCallback_draw, -1, nullptr);
+  XPLMRegisterFlightLoopCallback (pluginCallback, 1, nullptr);
+  XPLMRegisterFlightLoopCallback (pluginCallback_draw, 1, nullptr);
   if (missionx::data_manager::xplane_using_modern_driver_b)
   {
     XPLMRegisterDrawCallback (missionx::drawCallback_missionx, mission.getDrawingPhase (), 0, nullptr); // for XP12
@@ -530,14 +522,12 @@ XPluginEnable (void)
   // {
   //   createMapLayer(XPLM_MAP_USER_INTERFACE, nullptr);
   // }
-  // else
 
   if (missionx::data_manager::g_layer == nullptr && XPLMMapExists(XPLM_MAP_USER_INTERFACE))
     createMapLayer (XPLM_MAP_USER_INTERFACE, nullptr);
 
   // Listen for any new map objects that get created
   XPLMRegisterMapCreationHook (&createMapLayer, nullptr);
-
 
   return 1; // important so callback will continue
 }
@@ -548,7 +538,7 @@ PLUGIN_API void
 XPluginDisable (void)
 {
   // debug
-  Log::logMsg ("[Mission-X] Plug-in Disabling");
+  Log::log_xplm_debug_string ("[Mission-X] Plug-in Disabling\n");
   // unregister callbacks
   XPLMUnregisterFlightLoopCallback (pluginCallback_draw, nullptr);
   XPLMUnregisterFlightLoopCallback (pluginCallback, nullptr);
@@ -557,30 +547,28 @@ XPluginDisable (void)
   XPLMUnregisterDrawCallback (missionx::drawCallback_missionx, xplm_Phase_Modern3D, 0, nullptr); // v3.0.241.5 for xplane v1151xx + vulkan
   XPLMUnregisterDrawCallback (missionx::drawCallback_missionx, mission.getDrawingPhase (), 0, nullptr); // v3.303.8.3
 
+  missionx::QueueMessageManager::sound.release ();
+
   // abort Log writeMessage
+  XPLMDebugString ("\nmissionx: Clearing Logs"); // debug
   missionx::Log::stop_mission (); // v3.0.217.8
 
   // v25.06.1
   // Clean up our map layer: if we created it, we should be good citizens and destroy it before the plugin is unloaded
   if (missionx::data_manager::g_layer)
   {
-    // Triggers the will-be-deleted callback of the layer, causing g_layer to get set back to NULL
+    // Triggers will-be-deleted, callback of the layer, causing g_layer to get set back to NULL
     XPLMDestroyMapLayer (missionx::data_manager::g_layer);
     missionx::data_manager::g_layer = nullptr; // v25.10.1 hopefully will help solve CTD after plugin reload.
   }
 
   // debug
-  Log::logMsg ("[Mission-X] Plug-in Disabled");
+  XPLMDebugString ("[Mission-X] Plug-in Disabled.\n");
 }
 
 // -----------------------------------
 PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFromWho, const intptr_t inMessage, void* inParam)
 {
-  #ifdef DEBUG
-
-  // Log::logMsg ("[PluginMsg]Message Sent: " + Utils:: );
-  #endif
-
   switch (inMessage)
   {
     case XPLM_MSG_AIRPORT_LOADED:

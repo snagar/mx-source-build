@@ -283,6 +283,8 @@ set(FREETYPE_LIB_SRC
 
 if (WIN32)
   list(APPEND FREETYPE_LIB_SRC libs/freetype2/builds/windows/ftsystem.c)
+elseif (LIN)
+  list(APPEND FREETYPE_LIB_SRC libs/freetype2/builds/unix/ftsystem.c)
 else()
   list(APPEND FREETYPE_LIB_SRC libs/freetype2/src/base/ftsystem.c)
 endif()

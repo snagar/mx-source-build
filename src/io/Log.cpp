@@ -276,14 +276,6 @@ missionx::Log::stop_mission()
 }
 
 
-// void
-// Log::log_to_logtxt(const std::string& msg)
-// {
-// #ifndef RELEASE
-//   XPLMDebugString(msg.c_str());
-// #endif
-// }
-
 
 void
 Log::log_to_missionx_log(const std::string& msg)

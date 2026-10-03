@@ -106,31 +106,30 @@ missionx::BitmapReader::loadImageStb(std::string fileName, mxTextureFile::IMAGED
 
 
 
-int BitmapReader::bind_texture(mxTextureFile& inTextureFile)
+bool BitmapReader::bind_texture(mxTextureFile& inout_texture_file)
 {
-  if (!inTextureFile.sImageData.pData)
+  if (!inout_texture_file.sImageData.pData)
   {
-    Log::logDebugBO(fmt::format("[{}] Cannot bind texture: {}. Texture data is empty.\n", __func__, inTextureFile.getAbsoluteFileLocation()), false, true);
-    return 0;
+    Log::logDebugBO(fmt::format("[{}] Cannot bind texture: {}. Texture data is empty.\n", __func__, inout_texture_file.getAbsoluteFileLocation()), false, true);
+    return false;
   }
 
   const auto win = mx_img_window_weak_ptr.lock();
-  // Log::logDebugBO(fmt::format("[{}] mx_inv_window_weak_ptr: .", __func__), false, true);
   if (!win)
   {
-    Log::logDebugBO(fmt::format("[{}] Cannot bind texture: {}. Window Pointer expired or uninitialized.\n", __func__, inTextureFile.getAbsoluteFileLocation()), false, true);
+    Log::logDebugBO(fmt::format("[{}] Cannot bind texture: {}. Window Pointer expired or uninitialized.\n", __func__, inout_texture_file.getAbsoluteFileLocation()), false, true);
     return 0;
   }
 
   // Delegate creation entirely through the weak_ptr
-  // inTextureFile.gTexture = win->CreateTexture(inTextureFile.sImageData.pData, inTextureFile.sImageData.Width, inTextureFile.sImageData.Height, inTextureFile.sImageData.Channels);
-  inTextureFile.gTexture = static_cast<XPLMTextureID>( win->CreateTexture(inTextureFile) );
+  inout_texture_file.gTexture = win->CreateTexture(inout_texture_file);
 
   // Free CPU buffer
-  stbi_image_free(inTextureFile.sImageData.pData);
-  inTextureFile.sImageData.pData = nullptr;
+  stbi_image_free(inout_texture_file.sImageData.pData);
+  inout_texture_file.sImageData.pData = nullptr;
 
-  return (inTextureFile.gTexture != 0) ? 1 : 0;
+  //return (inout_texture_file.gTexture != 0) ? 1 : 0;
+  return (inout_texture_file.gTexture > 0);
 }
 
 

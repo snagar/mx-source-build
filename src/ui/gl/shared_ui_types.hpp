@@ -27,7 +27,7 @@ inline const std::string LBL_START_MISSION              = ">> Start Mission <<";
 inline const std::string LBL_LOAD_WARNINGS              = "!! Show Warnings !!"; // v26.1.1
 inline const std::string LBL_ABORT_THREAD_LABEL         = "!! Abort !!";
 inline const std::string FPLN_MORE_DETAILS              = "More Flight Plan Details";
-inline const std::string GENERATE_QUESTION              = "Generate Mission From Flight Plan";
+inline const std::string GENERATE_EXTERNAL_FPLN_QUESTION              = "Generate Mission From Flight Plan";
 inline const std::string GENERATE_ILS_QUESTION          = "Generate Mission From ILS data"; // v3.0.253.6
 inline const std::string GENERATE_TEMPLATE_QUESTION     = "Generate Mission From Template data"; // v25.06.1
 inline const std::string POPUP_FLIGHT_LEG_SETTINGS      = "Leg Detail Popup"; // v3.0.301
@@ -285,6 +285,7 @@ struct mx_setup_layer
 
 
     bool bPlaceMarkersAwayFromTarget{ false };
+    bool bNoInventories             { false }; // v26.09.3
     bool bOverideCustomExternalFPLN_folders{ false };
 
     bool                      is_first_time{ true };

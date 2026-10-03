@@ -75,6 +75,10 @@ public:
   std::function<void(const bool)> add_briefer_description_post_mission_creation;
   // v26.09.2 add ui LLM options
   std::function<void(const enums::llm_ui_options_enum)> add_ui_llm_options;
+  // v26.09.3 add abort button. Default action is: "mx_window_actions::ACTION_ABORT_RANDOM_ENGINE_RUN"
+  std::function<void(const missionx::mx_window_actions inActionToExecute)> add_ui_abort_mission_creation_button;
+  // v26.09.3 add add_ui_no_inventories_checkbox
+  std::function<void()> add_ui_no_inventories_checkbox;
 
 
   // -----------------------------------

@@ -12,6 +12,8 @@
 #include "../../io/Log.hpp"
 #include <XPLMGraphics.h>
 
+#include "imgui.h"
+
 namespace missionx
 {
 
@@ -47,7 +49,9 @@ public:
 
   };
 
-  XPLMTextureID gTexture;
+  // XPLMTextureID gTexture;
+  // intptr_t gTexture; // changed to unsigned 64 bit to be compatible with the panel graphic.
+  ImTextureID gTexture;
 
   // v25.08.1
   size_t      texture_hash_simple;

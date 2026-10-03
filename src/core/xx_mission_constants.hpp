@@ -31,7 +31,7 @@ namespace missionx
 
 inline constexpr const int MX_FEATURES_VERSION = 20260403; // Added min/max rw length to airports_vu // 20250501; //20241212; //20230917; // 330491; //302564;  // added SETUP_LOCK_OVERPASS_URL_TO_USER_PICK
 
-#define SPECIAL_BUILD "-back to school-"
+#define SPECIAL_BUILD "-Flight 1073-"
 
 inline constexpr auto PLUGIN_VER_MAJOR                  = "26"; // year
 inline constexpr auto PLUGIN_VER_MINOR                  = "09"; // month
@@ -922,6 +922,7 @@ typedef enum class _uiLayer
   option_external_fpln_layer,                    // v3.0.253.1
   option_ils_layer,                              // v3.0.253.6 ILS search layer
   option_conv_fpln_to_mission,                   // v3.0.301 convert FPLN to mission
+  OPTIONS_COUNT,
   flight_leg_info,
   flight_leg_info_map2d, // v3.0.200a2
   flight_leg_info_end_summary,

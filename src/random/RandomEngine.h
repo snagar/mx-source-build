@@ -197,7 +197,7 @@ public:
   // members
   ///// Thread members
   static std::thread  thread_ref;
-  static strct_thread_state random_thread_state;
+  // static missionx::base_thread::strct_thread_state random_thread_state;
 
   static std::map<XPLMNavRef, missionx::NavAidInfo> mapNavAidsFromMainThread; // v3.0.221.4 holds nav aid data from main plugin thread so thread will process it later in the background
 

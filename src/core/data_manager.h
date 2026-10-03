@@ -1035,7 +1035,10 @@ public:
   static missionx::TemplateFileInfo                        user_driven_template_info;              // v3.0.241.9 used in conjunction of the mission ui build layer
   static std::map<int, std::string>                        mapGenerateMissionTemplateFilesLocator; // v3.0.217.2 locator for template vecTextures. used in the briefer layer
 
+  // Should be called when mission ends.
   static void clearMissionLoadedTextures();
+  // Should be called on "stop plugin"
+  static void clear_plugin_textures();
   static void releaseMessageStoryCachedTextures(); // v3.305.1
   static void clearRandomTemplateTextures(); // v3.0.217.2
 
@@ -1094,7 +1097,7 @@ public:
   // General members
   static void clear();
   static void stopMission(); // clears data specific to active mission. Let than clear()
-  static void pluginStop();  // will be called when stop_plugin is called
+  static void stop_plugin();  // will be called when stop_plugin is called
   static void init();
   static void init_static();
   static void release_static();
@@ -1167,7 +1170,7 @@ public:
 
   // APT DAT OPTIMIZATION FLAGS
   static bool                                                   flag_apt_dat_optimization_is_running;
-  static bool                                                   flag_generate_engine_is_running;
+  // static bool                                                   flag_generate_engine_is_running; // v26.09.3 deprecated. Use: "data_manager::get_is_random_engine_running()"
   static std::map<std::string, missionx::mx_aptdat_cached_info> cachedNavInfo_map;
 
   // Commands handling // v3.0.221.9
@@ -1358,6 +1361,9 @@ public:
   //////////////////////////////////////////////////////////////////
   ///// SHARED functions and data with the UI screens
   //////////////////////////////////////////////////////////////////
+  // v26.09.3 the random_thread_state should have been here in the first place
+  inline static missionx::base_thread::strct_thread_state random_thread_state;
+  static bool get_is_random_engine_running() { return data_manager::random_thread_state.flagIsActive && !data_manager::random_thread_state.flagThreadDoneWork; }
 
   // v26.02.1 local time 
   static missionx::structs::mx_clock_time_strct shared_clock_time;
@@ -1603,7 +1609,7 @@ public:
   // For every function call we need to handle failure cases (false returned).
   // For every function call we need to use threadState.pipeProperties to set the attributes we want the main thread to handle.
   static bool waitForPluginCallbackJob(missionx::base_thread::strct_thread_state *out_state_ptr, missionx::mx_flc_pre_command inQueuedCommand, std::chrono::milliseconds inWaitTimeMilliseconds = std::chrono::milliseconds(500), int inLimitWaitCounter = 10);
-  static missionx::base_thread::strct_thread_state metar_thread_state;
+  static missionx::base_thread::strct_thread_state fetch_metar_from_flcpre_thread_state;
 
 
   static mx_return get_is_wet_at_point_thread_unsafe (const missionx::NavAidInfo &inNavAid, missionx::base_thread::strct_thread_state &inout_thread_state, structs::strct_shared_random_airport_info & inout_shared_navaid_info);

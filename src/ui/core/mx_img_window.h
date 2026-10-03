@@ -74,29 +74,30 @@ public:
 
   static bool mxUiButtonTooltip(const char* label, const char* tip = nullptr, ImVec4 colFg = ImVec4(1.0f, 1.0f, 1.0f, 1.0f), ImVec4 colBg = ImVec4(1.0f, 1.0f, 1.0f, 1.0f), const ImVec2& size = ImVec2(0, 0));
 
-  void destroy_textures(std::ranges::input_range auto& inout_textures_map)
-  {
-    for (auto& [file_path, texture_info] : inout_textures_map)
-    {
-      if (texture_info.gTexture)
-      {
-
-        #ifdef IMGWINDOW_USE_PANEL_GRAPHICS
-        if (ImgPanelGraphics::IsAvailable())
-          ImgPanelGraphics::DestroyTexture(&texture_info.gTexture);
-        else
-          #endif
-          // OpenGL
-        {
-          glDeleteTextures(1, reinterpret_cast<const GLuint *> (&texture_info.gTexture));
-        }
-      }
-
-      #ifndef RELEASE
-      Log::logMsg(fmt::format("[{}] Deleted texture: {}.", __func__, file_path));
-      #endif
-    }
-  }
+  // Using "Weak pointer" instead to the Briefer window.
+  // void destroy_textures(std::ranges::input_range auto& inout_textures_map)
+  // {
+  //   for (auto& [file_path, texture_info] : inout_textures_map)
+  //   {
+  //     if (texture_info.gTexture)
+  //     {
+  //
+  //       #ifdef IMGWINDOW_USE_PANEL_GRAPHICS
+  //       if (ImgPanelGraphics::IsAvailable())
+  //         ImgPanelGraphics::DestroyTexture(&texture_info.gTexture);
+  //       else
+  //         #endif
+  //         // OpenGL
+  //       {
+  //         glDeleteTextures(1, reinterpret_cast<const GLuint *> (&texture_info.gTexture));
+  //       }
+  //     }
+  //
+  //     #ifndef RELEASE
+  //     Log::logMsg(fmt::format("[{}] Deleted texture: {}.", __func__, file_path));
+  //     #endif
+  //   }
+  // }
 
   // v26.09.3
   // Creates a texture handle compatible with this window's active backend (Panel Graphics or OpenGL) 

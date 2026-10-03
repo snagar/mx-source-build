@@ -41,7 +41,7 @@ public:
   static bool load_textute_and_bind(mxTextureFile& inTextureFile, std::string &outErr, bool flipImage_b = true, bool is_bind_texture_thread_safe = true);
 
   static bool loadImageStb(std::string fileName, mxTextureFile::IMAGEDATA* ImageData, bool inFlipImage_b, std::string &outErr);
-  static int bind_texture(mxTextureFile &inout_texture);
+  static bool bind_texture(mxTextureFile &inout_texture_file);
 
   // v26.09.3
   inline static std::weak_ptr<mx_img_window> mx_img_window_weak_ptr;
@@ -55,14 +55,7 @@ public:
     {
       if (texture_info.gTexture)
       {
-         win->SafeDeleteTexture(texture_info.gTexture); // Safe 3-frame deferred destruction
-
-        //auto glTextureID = static_cast<GLuint>(static_cast<intptr_t>(texture_info.gTexture));
-        //if (ImgPanelGraphics::IsAvailable())
-        //  ImgPanelGraphics::DestroyTexture(&glTextureID);
-        //else
-        //  glDeleteTextures(1, &glTextureID);
-
+        ImgWindow::DestroyCustomTexture(texture_info.gTexture);
         texture_info.gTexture = 0;
       }
 

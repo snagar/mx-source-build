@@ -887,6 +887,7 @@ const static ^std::map<std::string, int>^ MAP_IGNORE_PROPS_DURING_IO            
 
 const static ^std::string^               SETUP_DISPLAY_TARGET_MARKERS                           ^ "setup_display_target_markers"; ^// v3.0.241.7 will assist in show/hide instanced objects that are flaged with attribute: "target_marker_b" attribute
 const static ^std::string^               SETUP_DISPLAY_TARGET_MARKERS_AWAY_FROM_TARGET          ^ "setup_display_target_markers_away_from_targets"; ^// v3.0.241.7 Random medevac missions will display the target marker ^3nm from target.
+const static ^std::string^               SETUP_NO_INVENTORIES                                   ^ "setup_no_inventories"; ^// v26.09.3 do not create inventories during User/External FPLN and NAV mission generation. Should not affect Templates.
 const static ^std::string^               OPT_OVERRIDE_RANDOM_TARGET_MIN_DISTANCE                ^ "opt_override_target_min_distance"; ^// v3.0.241.7 Random medevac missions will override target distance. This is a hint and not for all targets type. "allow_override_b" atttribute should be present.
 const static ^std::string^               SETUP_SLIDER_RANDOM_TARGET_MIN_DISTANCE                ^ "setup_slider_med_target_min_distance"; ^// v3.0.241.7 holds slider value of minimal expected distance
 const static ^std::string^               SETUP_SLIDER_FONT_SCALE_SIZE                           ^ "setup_slider_font_scale_size"; ^// v3.0.251.1 holds preferred font size by user

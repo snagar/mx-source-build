@@ -1776,7 +1776,7 @@ missionx::Mission::flc_threads()
 
   ///////////////////////////////
   //  Random Engine Thread
-  if (missionx::RandomEngine::random_thread_state.flagAbortThread && missionx::RandomEngine::random_thread_state.flagThreadDoneWork)
+  if (missionx::data_manager::random_thread_state.flagAbortThread && missionx::data_manager::random_thread_state.flagThreadDoneWork)
   {
     if (RandomEngine::thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
       RandomEngine::thread_ref.join();
@@ -1788,9 +1788,9 @@ missionx::Mission::flc_threads()
       Mission::uiImGuiBriefer->set_bottom_message_line1(missionx::RandomEngine::getErrorMsg(), 60);
       Mission::uiImGuiBriefer->error_message_line3.clear(); // v26.04.4
     }
-    RandomEngine::random_thread_state.init(); // init again to reset
+    data_manager::random_thread_state.init(); // init again to reset
 
-    missionx::data_manager::flag_generate_engine_is_running = false;
+    // missionx::data_manager::flag_generate_engine_is_running = false; // v26.09.3 deprecated, use: data_manager::get_is_random_engine_running()
 
     missionx::flag_generatedRandomFile_success = false; // we should remove this flag, and only use "missionx::data_manager::flag_generate_engine_is_running"
     missionx::strct_generate_template_layer.selectedTemplateKey.clear();              // reset and hide generate file button
@@ -1802,17 +1802,18 @@ missionx::Mission::flc_threads()
   }
   else
   {
-    if (RandomEngine::random_thread_state.flagIsActive && !RandomEngine::random_thread_state.flagThreadDoneWork)
+    // if (data_manager::random_thread_state.flagIsActive && !data_manager::random_thread_state.flagThreadDoneWork)
+    if (data_manager::get_is_random_engine_running())
     {
-      missionx::data_manager::flag_generate_engine_is_running   = true;
-      missionx::flag_generatedRandomFile_success = false; // we should remove this flag, and only use "missionx::data_manager::flag_generate_engine_is_running"
+      // missionx::data_manager::flag_generate_engine_is_running   = true; // TODO: deprecate this flag and only use: data_manager::get_is_random_engine_running()
+      missionx::flag_generatedRandomFile_success = false; // TODO: we should remove this flag, and only use "missionx::data_manager::flag_generate_engine_is_running"
 
       missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::disable_generator_menu);
     }
     else
     {
       // reset thread
-      if (RandomEngine::random_thread_state.flagThreadDoneWork)
+      if (data_manager::random_thread_state.flagThreadDoneWork)
       {
 
         missionx::data_manager::strct_ui_share_data.error_message_line3.clear();   // v3.0.255.4 clear the cURL error
@@ -1823,8 +1824,8 @@ missionx::Mission::flc_threads()
         if (RandomEngine::thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
           RandomEngine::thread_ref.join();
 
-        RandomEngine::random_thread_state.init();
-        missionx::data_manager::flag_generate_engine_is_running = false;
+        data_manager::random_thread_state.init();
+        // missionx::data_manager::flag_generate_engine_is_running = false; // v26.09.3 deprecated, use: data_manager::get_is_random_engine_running()
 
         Mission::uiImGuiBriefer->set_bottom_message_line1(fmt::format("Finished Generating mission file. [Destinations: {}] Based on \"{}\"", this->engine.get_num_of_flight_legs(), missionx::strct_generate_template_layer.selectedTemplateKey ),  8);
 
@@ -4287,8 +4288,11 @@ missionx::Mission::flcPRE()
             #endif
 
             // v26.09.3 Bind the textures
-            if ( BitmapReader::bind_texture(textureFile) == 0)
+            if ( BitmapReader::bind_texture(textureFile) == false)
+            {
+              textureFile.gTexture = 0; // reset texture handle
               Log::log_xplm_debug_string(fmt::format("[{}] Texture: {} failed to bind.\n", __func__, textureFile.getAbsoluteFileLocation()) );
+            }
 
             // TODO: Future implementation - postpone binding of next texture file, for next "flight loop"
             // // we will try to load the textures one by one in each loop and not all at the same time
@@ -4377,33 +4381,11 @@ missionx::Mission::flcPRE()
             {
               Log::logMsgErr("Failed Loading Template bitmap: " + data_manager::mapTemplatesTextures[template_file_info.full_path_to_image_file].getAbsoluteFileLocation()); // debug
             }
-            // if (template_file_info.imageFile.gTexture != 0)
-            // {
-            //   Log::logMsg("Loaded Template bitmap: " + template_file_info.imageFile.getAbsoluteFileLocation()); // debug
-            // }
-            // else
-            // {
-            //   Log::logMsgErr("Failed Loading Template bitmap: " + template_file_info.imageFile.getAbsoluteFileLocation()); // debug
-            // }
           }
         } // end read templates
 
+        // Call Step 3: Bind textures, but postpone binding, to the next flight loop callback.
         data_manager::set_texture_bind_for_flc_pre(enums::textures_type_enum::template_screen, mx_flc_pre_command::bind_textures);
-
-
-        // // 3. display random templates layer ?
-        // if (missionx::data_manager::mapGenerateMissionTemplateFiles.empty())
-        // {
-        //   Mission::uiImGuiBriefer->set_bottom_message_line1("No Mission Template File Found.");
-        //   Log::logDebugBO("No mission template file found");
-        // }
-        // else
-        // {
-        //
-        //   Mission::uiImGuiBriefer->set_bottom_message_line1("Templates were loaded....");
-        //   Mission::uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_POST_TEMPLATE_LOAD_DISPLAY_IMGUI_GENERATE_TEMPLATES_IMAGES); // v3.0.255.4 missing action, was in "reload_templates_data_and_images". After some tests all seem to
-        //                                                                                                                                 // function as expected so we deprecated: "reload_templates_data_and_images" case.
-        // }
       }
       break;
 
@@ -4411,7 +4393,7 @@ missionx::Mission::flcPRE()
       {
         // reload all templates and do nothing on the UI
         // Command will do the following:
-        // Do step 3 a fter texture bindings. if there are templates then set briefer layer and display it
+        // Do step 3 after texture bindings. if there are templates then set briefer layer and display it
 
         // 3. display random templates layer ?
         if (missionx::data_manager::mapGenerateMissionTemplateFiles.empty())
@@ -4421,7 +4403,10 @@ missionx::Mission::flcPRE()
         }
         else
         {
-          Mission::uiImGuiBriefer->set_bottom_message_line1("Templates were loaded....");
+          // v26.09.3 consume message if random engine is running
+          if (!missionx::data_manager::get_is_random_engine_running())
+            Mission::uiImGuiBriefer->set_bottom_message_line1("Templates were loaded....");
+
           Mission::uiImGuiBriefer->execAction(missionx::mx_window_actions::ACTION_POST_TEMPLATE_LOAD_DISPLAY_IMGUI_GENERATE_TEMPLATES_IMAGES); // v3.0.255.4 missing action, was in "reload_templates_data_and_images". After some tests all seem to// function as expected so we deprecated: "reload_templates_data_and_images" case.
         }
       }
@@ -4523,7 +4508,7 @@ missionx::Mission::flcPRE()
           if (engine.exec_generate_mission_thread(missionx::strct_generate_template_layer.selectedTemplateKey))
           {
             Mission::uiImGuiBriefer->set_bottom_message_line1("The mission is created in the background. Please wait until it finishes. file:'" + missionx::strct_generate_template_layer.selectedTemplateKey + "'", 20);
-            missionx::data_manager::flag_generate_engine_is_running = true;
+            // missionx::data_manager::flag_generate_engine_is_running = true; // v26.09.3 deprecated, use: data_manager::get_is_random_engine_running()
           }
           else
           {
@@ -5028,7 +5013,7 @@ missionx::Mission::flcPRE()
 
         nChilds = RandomEngine::shared_navaid_info.parentNode_ptr.nChildNode(mxconst::get_ELEMENT_ICAO().c_str());
 
-        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::data_manager::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
       case missionx::mx_flc_pre_command::guess_waypoints_from_external_fpln_site:
@@ -5058,7 +5043,7 @@ missionx::Mission::flcPRE()
         missionx::RandomEngine::shared_navaid_info.isWet = false;
         missionx::RandomEngine::shared_navaid_info.p.setElevationMt ( missionx::RandomEngine::shared_navaid_info.p.get_terrain_elev_mt_from_probe ());
 
-        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::data_manager::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
       case missionx::mx_flc_pre_command::get_is_point_wet:
@@ -5066,22 +5051,22 @@ missionx::Mission::flcPRE()
         missionx::RandomEngine::shared_navaid_info.isWet = false;
         missionx::RandomEngine::shared_navaid_info.isWet = missionx::Point::probeIsWet(missionx::RandomEngine::shared_navaid_info.p, missionx::RandomEngine::shared_navaid_info.p.probe_result);
 
-        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::data_manager::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
       case missionx::mx_flc_pre_command::calculate_slope_for_build_flight_leg_thread:
       {
         std::string err;
         NavAidInfo  navAidToCalcSlope;
-        navAidToCalcSlope.lat = missionx::RandomEngine::random_thread_state.pipeProperties.getAttribNumericValue<float>(mxconst::get_ATTRIB_LAT(), 0.0f);
-        navAidToCalcSlope.lon = missionx::RandomEngine::random_thread_state.pipeProperties.getAttribNumericValue<float>(mxconst::get_ATTRIB_LONG(), 0.0f);
+        navAidToCalcSlope.lat = missionx::data_manager::random_thread_state.pipeProperties.getAttribNumericValue<float>(mxconst::get_ATTRIB_LAT(), 0.0f);
+        navAidToCalcSlope.lon = missionx::data_manager::random_thread_state.pipeProperties.getAttribNumericValue<float>(mxconst::get_ATTRIB_LONG(), 0.0f);
         navAidToCalcSlope.p   = missionx::RandomEngine::shared_navaid_info.p; // v3.0.241.10 b3 replaced pipeProperties with Point p
         navAidToCalcSlope.syncPointToNav();
 
         const auto slope = static_cast<double> (missionx::RandomEngine::calc_slope_at_point_mainThread (navAidToCalcSlope));
 
-        missionx::RandomEngine::random_thread_state.pipeProperties.setNumberProperty(mxconst::get_ATTRIB_TERRAIN_SLOPE(), slope);
-        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::data_manager::random_thread_state.pipeProperties.setNumberProperty(mxconst::get_ATTRIB_TERRAIN_SLOPE(), slope);
+        missionx::data_manager::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
       case missionx::mx_flc_pre_command::gather_random_airport_mainThread:
@@ -5115,7 +5100,7 @@ missionx::Mission::flcPRE()
       //                       // &RandomEngine::shared_navaid_info.navAid.inRegion);
       //   }
       //
-      //   missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+      //   missionx::data_manager::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       //
       //
       //   #ifndef RELEASE
@@ -5150,7 +5135,7 @@ missionx::Mission::flcPRE()
                             // &RandomEngine::shared_navaid_info.navAid.inRegion);
         }
 
-        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::data_manager::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
 
 
         #ifndef RELEASE
@@ -5191,7 +5176,7 @@ missionx::Mission::flcPRE()
                             // &RandomEngine::shared_navaid_info.navAid.inRegion);
         }
 
-        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::data_manager::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
 
 
         #ifndef RELEASE
@@ -5208,7 +5193,7 @@ missionx::Mission::flcPRE()
         // use of shared_navaid_info.navAid to search if a plane is in an airport boundary.
         missionx::RandomEngine::shared_navaid_info.navAid = data_manager::get_plane_airport_or_nearest_icao(true, RandomEngine::shared_navaid_info.navAid.lat, RandomEngine::shared_navaid_info.navAid.lon, false);
 
-        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::data_manager::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
       case missionx::mx_flc_pre_command::get_nav_aid_info_mainThread: // v3.0.241.10 b2 use this option to see if for example: osm location is correct, especially for helipads
@@ -5219,7 +5204,7 @@ missionx::Mission::flcPRE()
 
         RandomEngine::shared_navaid_info.navAid = data_manager::get_icao_info_closest_to_plane(RandomEngine::shared_navaid_info.navAid.getID());
 
-        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::data_manager::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
 
 
         #ifndef RELEASE
@@ -5239,7 +5224,7 @@ missionx::Mission::flcPRE()
         #endif
 
         RandomEngine::shared_navaid_info.navAid = data_manager::get_and_guess_nav_info (RandomEngine::shared_navaid_info.navAid.getID (), RandomEngine::shared_navaid_info.navAid.p);
-        missionx::RandomEngine::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::data_manager::random_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
 
         #ifndef RELEASE
         const auto   endThreadClock = std::chrono::steady_clock::now();
@@ -5731,7 +5716,7 @@ missionx::Mission::flcPRE()
       case missionx::mx_flc_pre_command::get_current_weather_state_and_store_in_RandomEngine:
       {
         missionx::RandomEngine::current_weather_datarefs_s = missionx::data_manager::get_weather_state();
-        missionx::RandomEngine::random_thread_state.thread_wait_state         = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        missionx::data_manager::random_thread_state.thread_wait_state         = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
       }
       break;
       case missionx::mx_flc_pre_command::sound_abort_all_channels:
@@ -5900,11 +5885,17 @@ missionx::Mission::flcPRE()
             XPLMFixedString150_t strct_metar;
             getMetar_func( data_manager::shared_navaid_between_threads.ID, &strct_metar );
             data_manager::shared_navaid_between_threads.sMetar = mxUtils::trim ( std::string(strct_metar.buffer) );
+            #ifndef RELEASE
+            Log::logMsg(fmt::format("[{}] get_metar_for_airport: Metar info for: {}, is: {}", __func__, data_manager::shared_navaid_between_threads.ID, data_manager::shared_navaid_between_threads.sMetar));
+            #endif
           }
         }
-        // #endif
+        #ifndef RELEASE
+        else
+          Log::logMsg(fmt::format("[{}] get_metar_for_airport: XPLM version is lower than 400 ({})", __func__, data_manager::xplm_version));
+        #endif
 
-        data_manager::metar_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
+        data_manager::fetch_metar_from_flcpre_thread_state.thread_wait_state = missionx::mx_random_thread_wait_state_enum::finished_plugin_callback_job;
         #ifndef RELEASE
         auto debug_dummy = 1;
         debug_dummy = 2;
@@ -6381,6 +6372,12 @@ missionx::Mission::stop_plugin()
   missionx::RandomEngine::stop_plugin();    // v3.0.219.12
   missionx::QueueMessageManager::stopAllPoolChannels(); // v24.03.2
   missionx::writeLogThread::stop_plugin(); // v3.305.2
+
+  // will clear mission textures, if any is available.
+  data_manager::stop_plugin();
+
+  // delete core plugin textures
+  data_manager::clear_plugin_textures(); // v26.09.3
 }
 
 // -------------------------------------
