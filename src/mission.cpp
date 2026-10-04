@@ -67,7 +67,7 @@ configureImgWindow()
   // ImgWindow::sFontAtlas = new ImFontAtlas();
 
   // When calling: "ImFileOpen" we must have a context ready. This was not needed prior to ImGui v1.90
-  ImGui::CreateContext();  // v3.305.3
+  // ImGui::CreateContext();  // v3.305.3
 
 
   std::string IN_MEMORY_FONT_INI = R"(## Created by Mission-X Plugin
@@ -1062,27 +1062,26 @@ missionx::Mission::START_MISSION()
     missionx::system_actions::pluginSetupOptions.node.updateAttribute(mxUtils::formatNumber<int>(((missionx::data_manager::flag_setupEnableDesignerMode) ? 1 : 0)).c_str(), mxconst::get_OPT_ENABLE_DESIGNER_MODE().c_str(), mxconst::get_OPT_ENABLE_DESIGNER_MODE().c_str()); // v3.303.8.3
 
 
-
-    // v3.0.213.3 // v25.02.1 - one liner
-    const bool bStoreWeight = ( data_manager::mx_global_settings.xBaseWeight_ptr.isEmpty () )? false : true;
-
-    // v24.12.2
-    if (missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY)
-    {
-      std::string resetStations_s;
-      for (int i = 0; i < data_manager::dref_m_stations_kgs_f_arr.arraySize; ++i)
-      {
-        resetStations_s.append("0");
-        if (i < (data_manager::dref_m_stations_kgs_f_arr.arraySize - 1))
-          resetStations_s.append(",");
-      }
-      int iResult = data_manager::dref_m_stations_kgs_f_arr.setTargetArray<xplmType_FloatArray, float>(data_manager::dref_m_stations_kgs_f_arr.arraySize, resetStations_s, true, ",");
-    }
+    // // v24.12.2 // v26.09.3 Deprecated. Do not reset weights.
+    // if (missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY)
+    // {
+    //   std::string resetStations_s;
+    //   for (int i = 0; i < data_manager::dref_m_stations_kgs_f_arr.arraySize; ++i)
+    //   {
+    //     resetStations_s.append("0");
+    //     if (i < (data_manager::dref_m_stations_kgs_f_arr.arraySize - 1))
+    //       resetStations_s.append(",");
+    //   }
+    //   int iResult = data_manager::dref_m_stations_kgs_f_arr.setTargetArray<xplmType_FloatArray, float>(data_manager::dref_m_stations_kgs_f_arr.arraySize, resetStations_s, true, ",");
+    // }
 
     #ifndef RELEASE
     Log::logMsg (fmt::format ("Plane Inventory Node:\n{}", data_manager::mapInventories[mxconst::get_ELEMENT_PLANE()].get_node_as_text () ) );
     #endif
-    data_manager::internally_calculateAndStorePlaneWeight(data_manager::mapInventories[mxconst::get_ELEMENT_PLANE()], bStoreWeight, missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i); // v3.303.14.2 added store wait flag to solve weight injection even if there is no weight element in the mission file
+
+    // v3.0.213.3 // v26.09.3 bStoreWeight should check if we have at least one weight node available: plane inventory or global_settings weight subnode.
+    // const bool bStoreWeight = (!data_manager::mx_global_settings.xBaseWeight_ptr.isEmpty () || !data_manager::mapInventories[mxconst::get_ELEMENT_PLANE()].node.isEmpty());
+    data_manager::internally_calculateAndStorePlaneWeight(data_manager::mapInventories[mxconst::get_ELEMENT_PLANE()], true, missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i); // v3.303.14.2 added store wait flag to solve weight injection even if there is no weight element in the mission file
 
     // v3.0.215.1
     if (Mission::uiImGuiMxpad)
@@ -1229,6 +1228,7 @@ missionx::Mission::START_MISSION()
   else
   {
     missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::set_time); // v3.0219.7 Set Mission Time
+    // TODO: set weight from llm only if we asked for it.
     missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::set_llm_base_weights_at_mission_start); // v26.09.2
     missionx::data_manager::timelapse.flag_isActive = true; // v3.303.8
   }
@@ -2013,9 +2013,8 @@ missionx::Mission::flc_legs()
     data_manager::mapFlightLegs[data_manager::currentLegName].isFirstTime = false; // reset state
     data_manager::mapFlightLegs[data_manager::currentLegName].setNodeProperty<bool>(mxconst::get_PROP_IS_FIRST_TIME(), false);
 
-    // v3.303.14 Store/init stats
-    missionx::data_manager::gatherFlightLegStartStats();
-
+    // v26.09.3 Moved to the bottom // v3.303.14 Store/init stats
+    // missionx::data_manager::gatherFlightLegStartStats();
 
     if (!data_manager::mapFlightLegs[data_manager::currentLegName].getIsDummyLeg()) // v3.303.12
     {
@@ -2079,6 +2078,31 @@ missionx::Mission::flc_legs()
 
     // v3.303.12 apply weather
     missionx::data_manager::apply_datarefs_from_text_based_on_parent_node_and_tag_name(data_manager::mapFlightLegs[data_manager::currentLegName].node, mxconst::get_ELEMENT_WEATHER());
+
+    // v26.09.3 Add "<weight_mod_kg>
+    if (data_manager::mapFlightLegs[data_manager::currentLegName].mapFlightLeg_sub_nodes_ptr.contains(mxconst::get_ELEMENT_WEIGHT_MOD_KG()) )
+    {
+      const IXMLNode xWeightModKg_ptr = data_manager::mapFlightLegs[data_manager::currentLegName].mapFlightLeg_sub_nodes_ptr[mxconst::get_ELEMENT_WEIGHT_MOD_KG()];
+      if (!xWeightModKg_ptr.isEmpty())
+      {
+        const auto payload_kg = Utils::readNodeNumericAttrib<float>( xWeightModKg_ptr, mxconst::get_ATTRIB_PAYLOAD(),0.0f );
+        if (payload_kg != 0.0f)
+        {
+          missionx::dataref_param dref_m_fixed ( this->drefConst.dref_acf_m_fixed_f, "total payload weight"); // "sim/flightmodel/weight/m_fixed");
+          // make sure we do not have negative payload value
+          if (dref_m_fixed.getValue<float>() + payload_kg <= 0.0f)
+            dref_m_fixed.setValue<float>(0.0f);
+          else
+            dref_m_fixed.setValue<float>(dref_m_fixed.getValue<float>() + payload_kg);
+
+          dataref_param::set_dataref_values_into_xplane(dref_m_fixed);
+
+        }
+      }
+    }
+
+    // v3.303.14 Store/init stats
+    missionx::data_manager::gatherFlightLegStartStats();
 
   } // END if "flight leg" first time
 
@@ -4221,10 +4245,11 @@ missionx::Mission::flcPRE()
           //if (base_fuel_f > 0.0f)
           //  data_manager::SetFuelEquallyAcrossActiveTanks(base_fuel_f);
 
-          // Assign llm suggested weight
-          const auto storage_weight_f = Utils::readNodeNumericAttrib<float>( data_manager::mx_global_settings.xBaseWeight_ptr, mxconst::get_OPT_STORAGE_BASE_WEIGHT(), 0.0f);
-          if (data_manager::current_plane_payload_weight_f > 0.0f)
-            XPLMSetDataf(this->drefConst.dref_acf_m_fixed, data_manager::current_plane_payload_weight_f);
+          // v26.09.3 deprecated until we will figure out how to store and use the LLM weight.
+          // // Assign llm suggested weight
+          // const auto storage_weight_f = Utils::readNodeNumericAttrib<float>( data_manager::mx_global_settings.xBaseWeight_ptr, mxconst::get_OPT_STORAGE_BASE_WEIGHT(), 0.0f);
+          // if (data_manager::current_plane_payload_weight_f > 0.0f)
+          //   XPLMSetDataf(this->drefConst.dref_acf_m_fixed_f, data_manager::current_plane_payload_weight_f);
         }
       }
       break;

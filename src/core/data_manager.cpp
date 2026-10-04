@@ -3436,14 +3436,12 @@ data_manager::erase_empty_inventory_item_nodes(const IXMLNode& pNode, const int 
 float
 data_manager::calculatePlaneWeight(const Inventory& inSourceInventory, const bool& flag_apply_to_dataref, const int& inLayoutVersion)
 {
-  static std::string err;
-  static float       planePayloadWeight = 0.0f;
+  float              planePayloadWeight = 0.0f;
   float              passengersWeight, storedWeight;
-  planePayloadWeight = 0.0f;
   float pilotWeight = passengersWeight = storedWeight = 0.0f;
 
   // v24.03.2 Added compatibility attribute
-  pilotWeight      = static_cast<float> ( Utils::readNumericAttrib ( mx_global_settings.xBaseWeight_ptr, mxconst::get_OPT_PILOT_BASE_WEIGHT(), mxconst::get_OPT_PILOT(), mxconst::DEFAULT_PILOT_WEIGHT ) );
+  pilotWeight      = static_cast<float> ( Utils::readNumericAttrib ( mx_global_settings.xBaseWeight_ptr, mxconst::get_OPT_PILOT_BASE_WEIGHT(), mxconst::get_OPT_PILOT(), 0.0f ) ); // was mxconst::DEFAULT_PILOT_WEIGHT
   storedWeight     = static_cast<float> ( Utils::readNumericAttrib ( mx_global_settings.xBaseWeight_ptr, mxconst::get_OPT_STORAGE_BASE_WEIGHT(), mxconst::get_OPT_STORAGE(), 0.0f ) );
   passengersWeight = static_cast<float> ( Utils::readNumericAttrib ( mx_global_settings.xBaseWeight_ptr, mxconst::get_OPT_PASSENGERS_BASE_WEIGHT(), mxconst::get_OPT_PASSENGERS(), 0.0f ) );
 
@@ -3451,84 +3449,84 @@ data_manager::calculatePlaneWeight(const Inventory& inSourceInventory, const boo
   // v3.0.241.1 added weight configuration from Copied Plane Node
   const auto lmbda_calculate_items_weight = [&](const Inventory& inInventory, const int iLayoutVersion)
   {
-    double plane_inventory_weight = 0.0;
+    float plane_inventory_weight = 0.0f;
 
     if (inInventory.node.isEmpty())
-      return 0.0;
-    else
-    {
-      if (iLayoutVersion == XP11_COMPATIBILITY) // XP11 compatibility calculation
-      {
-        const auto invNode   = inInventory.node;
-        const int  nChilds_i = invNode.nChildNode (mxconst::get_ELEMENT_ITEM ().c_str ());
-        for (int i1 = 0; i1 < nChilds_i; ++i1)
-        {
-          const auto itemWeight   = Utils::readNumericAttrib(invNode.getChildNode(mxconst::get_ELEMENT_ITEM().c_str(), i1), mxconst::get_ATTRIB_WEIGHT_KG(), 0.0);
-          const auto itemQuantity = Utils::readNumericAttrib(invNode.getChildNode(mxconst::get_ELEMENT_ITEM().c_str(), i1), mxconst::get_ATTRIB_QUANTITY(), 0.0);
+      return 0.0f;
 
-          plane_inventory_weight += itemWeight * itemQuantity;
-        }
-      } // bXP11Layout
-      else
-      { // stations
-        for (const auto& acf_station : planeInventoryCopy.mapStations | std::views::values)
-        {
-          plane_inventory_weight += acf_station.total_weight_in_station_f;
-        }
+
+    // Calculate the weight of the plane inventory, If any.
+    if (iLayoutVersion == XP11_COMPATIBILITY) // XP11 compatibility calculation
+    {
+      const auto invNode   = inInventory.node;
+      const int  nChilds_i = invNode.nChildNode (mxconst::get_ELEMENT_ITEM ().c_str ());
+      for (int i1 = 0; i1 < nChilds_i; ++i1)
+      {
+        const auto itemWeight   = Utils::readNodeNumericAttrib<float>(invNode.getChildNode(mxconst::get_ELEMENT_ITEM().c_str(), i1), mxconst::get_ATTRIB_WEIGHT_KG(), 0.0f);
+        const auto itemQuantity = Utils::readNodeNumericAttrib<float>(invNode.getChildNode(mxconst::get_ELEMENT_ITEM().c_str(), i1), mxconst::get_ATTRIB_QUANTITY(), 0.0f);
+
+        plane_inventory_weight += (itemWeight * itemQuantity);
+      }
+    } // XP11 Layout
+    else
+    { // stations: XP12
+      for (const auto& acf_station : planeInventoryCopy.mapStations | std::views::values)
+      {
+        plane_inventory_weight += acf_station.total_weight_in_station_f;
       }
     }
+
 
     return plane_inventory_weight;
   };
 
-  // v24.12.2 extended lmbda_calculate_items_weight() function.
-  // missionx::Inventory dummy_ref_inventory;
-  // dummy_ref_inventory.node = inRefNode;
-
-  const auto planeInventoryWeight = static_cast<float>(lmbda_calculate_items_weight((inSourceInventory.node.isEmpty() ? mapInventories[mxconst::get_ELEMENT_PLANE()] : inSourceInventory), Inventory::opt_forceInventoryLayoutBasedOnVersion_i));
+  // calculate <plane> inventory
+  const auto planeInventoryWeight = lmbda_calculate_items_weight(inSourceInventory.node.isEmpty() ? mapInventories[mxconst::get_ELEMENT_PLANE()] : inSourceInventory, Inventory::opt_forceInventoryLayoutBasedOnVersion_i);
 
   planePayloadWeight = pilotWeight + storedWeight + passengersWeight + planeInventoryWeight;
 
   // store weight in Dataref
-  if ( flag_apply_to_dataref && ( inLayoutVersion == missionx::XP11_COMPATIBILITY ) )
+  if (planePayloadWeight > 0.0f && flag_apply_to_dataref)
   {
-    if ( planePayloadWeight > 0.0f )
-      dataref_manager::set_xplane_dataref_value("sim/flightmodel/weight/m_fixed", (double)planePayloadWeight);
-  }
-  else if (flag_apply_to_dataref)
-  {
-    // set station weight based on the plane inventory map_stations container.
-    if (dref_m_stations_kgs_f_arr.flag_paramReadyToBeUsed && dref_m_stations_kgs_f_arr.arraySize > 0)
+    if ( inLayoutVersion == missionx::XP11_COMPATIBILITY )
     {
-      // prepare a vector with the station weights
-      std::string       m_stations_s;
-      int               m_stations_size_i = 0;
-
-      if (auto vec_m_stations = mapInventories[mxconst::get_ELEMENT_PLANE()].get_inventory_station_weights_as_vector(dref_m_stations_kgs_f_arr.arraySize)
-          ; !vec_m_stations.empty())
-      {
-        std::stringstream ss;
-        // Inject pilot weight
-        if ( vec_m_stations.at ( 0 ) < mxconst::MINIMUM_EXPECTED_PILOT_WEIGHT_IN_STATION && pilotWeight > 0)
-          vec_m_stations.at(0) = pilotWeight;
-
-        m_stations_s.clear();
-        m_stations_size_i = 0;
-        std::ranges::for_each(vec_m_stations,
-                              [&](auto& fValue)
-                              {
-                                ss << (m_stations_size_i == 0 ? std::string() : std::string(",")) << fValue;
-                                m_stations_size_i++;
-                              });
-
-        m_stations_s = ss.str();
-      }
-
-      int iResult = dref_m_stations_kgs_f_arr.setTargetArray<xplmType_FloatArray, float>(m_stations_size_i, m_stations_s, true, ",");
+      dataref_manager::set_xplane_dataref_value("sim/flightmodel/weight/m_fixed", planePayloadWeight);
     }
-  }
+    else
+    { // XP12 Stations
+      // set station weight based on the plane inventory map_stations container.
+      if (dref_m_stations_kgs_f_arr.flag_paramReadyToBeUsed && dref_m_stations_kgs_f_arr.arraySize > 0)
+      {
+        // prepare a vector with the station weights
+        std::string       m_stations_s;
+        int               m_stations_size_i = 0;
 
+        if (auto vec_m_stations = mapInventories[mxconst::get_ELEMENT_PLANE()].get_inventory_station_weights_as_vector(dref_m_stations_kgs_f_arr.arraySize)
+            ; !vec_m_stations.empty())
+        {
+          std::stringstream ss;
+          // Inject pilot weight
+          if ( vec_m_stations.at ( 0 ) < mxconst::MINIMUM_EXPECTED_PILOT_WEIGHT_IN_STATION && pilotWeight > 0)
+            vec_m_stations.at(0) = pilotWeight;
 
+          m_stations_s.clear();
+          m_stations_size_i = 0;
+          std::ranges::for_each(vec_m_stations,
+                                [&](auto& fValue)
+                                {
+                                  ss << (m_stations_size_i == 0 ? std::string() : std::string(",")) << fValue;
+                                  m_stations_size_i++;
+                                });
+
+          m_stations_s = ss.str();
+        }
+
+        int iResult = dref_m_stations_kgs_f_arr.setTargetArray<xplmType_FloatArray, float>(m_stations_size_i, m_stations_s, true, ",");
+      }
+    } // end XP12 stations calculation
+  } // end if planePayloadWeight > 0.0f && flag_apply_to_dataref
+
+  // return the calculated plane weight based on the mission file values.
   return planePayloadWeight;
 }
 

@@ -76,15 +76,19 @@ typedef struct _dref_interpolation
 
   } mx_interpolation_strct;
 
-
+  bool flag_dref_initialized_in_constructor {false};
 public:
   dataref_param();
   explicit dataref_param (const std::string &inKey);
+  // v26.09.3 Send valid dataref and a unique name to act as the "key", it could be a valid key or a simple text.
+  // This should be used for short term, like setting a value into a known dataref
+  explicit dataref_param (const XPLMDataRef &in_dref_id, std::string in_name);
+
   //virtual ~dataref_param(void);
 
   //bool           flag_isInterpolatedDref{ false };
   std::string    key;
-  XPLMDataRef    dataRefId;
+  XPLMDataRef    dataRefId {nullptr};
   XPLMDataTypeID dataRefType;
 
   mx_interpolation_strct strctInterData; // v3.305.x

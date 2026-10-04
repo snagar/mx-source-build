@@ -55,7 +55,7 @@ public:
     {
       if (texture_info.gTexture)
       {
-        ImgWindow::DestroyCustomTexture(texture_info.gTexture);
+        ImgWindow::DeleteTexture(texture_info.gTexture);
         texture_info.gTexture = 0;
       }
 

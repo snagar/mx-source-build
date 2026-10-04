@@ -10,6 +10,7 @@
 #include "../../random/RandomEngine.h"
 
 #include "../../io/OptimizeAptDat.h"
+#include "freetype/freetype.h"
 
 
 // Image processing (for reading "imgui_demo.jpg"
@@ -3558,12 +3559,11 @@ void WinImguiBriefer::add_ui_llm_options(const missionx::enums::llm_ui_options_e
         ImGui::SameLine(0.0f, 10.0f);
         mx_img_window::mxUiHelpMarker(
             missionx::color::color_vec4_beige,
-            R"(The LLM can suggest Fuel and Payloads to your plane, based on the flight plan.
-Only the payload will be assigned during mission start.
-You can alter them afterwards.
+            R"(The LLM can suggest fuel and payload values for your aircraft based on the flight plan.
+Suggested values will not be assigned automatically.
+You can adjust the aircraft weights after the mission starts.
+)" );
 
-Use at your own risk ;-))"
-        );
         ImGui::SameLine();
         ImGui::Checkbox("Suggest payloads", &data_manager::strct_ui_share_data.flag_llm_add_fuel_and_weight_payloads);
       }
@@ -9584,21 +9584,22 @@ WinImguiBriefer::draw_about_layer ()
       ImGui::TextColored(missionx::color::color_vec4_aqua, "%s", "Library Used");
 
 
-      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_BOTTOM ());
+      WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_BOTTOM ());
       ImGui::Separator ();
       ImGui::TextUnformatted ("Uses the IMGUI library v" IMGUI_VERSION ", Copyright (c) 2014-2026 Omar Cornut.");
       ImGui::TextUnformatted ("Uses the ImPlot library v" IMPLOT_VERSION ", MIT License - Copyright (c) 2020 Evan Pezent.");
-      ImGui::TextUnformatted ("Uses the Public (Source) Components from XSquawkBox, Copyright (c) 2018-2020 Christopher Collins.");
-      ImGui::TextUnformatted ("Uses the Public (Source) ImgWindow Components from slgoldberg/ImgWindow in Github.");
-      ImGui::TextUnformatted ("Uses the CURL transfer library, Copyright (c) 1996 - 2020, Daniel Stenberg.");
+      // ImGui::TextUnformatted ("Uses the Public (Source) Components from XSquawkBox, Copyright (c) 2018-2020 Christopher Collins.");
+      ImGui::TextUnformatted ("Uses ImgWindow v" IMGWINDOW_VERSION " library. Public (Sources). \"slgoldberg/ImgWindow\" repository in Github." );
+      ImGui::TextUnformatted ("Uses the CURL v" LIBCURL_VERSION ". Transfer library, Copyright (c) 1996 - 2026, " LIBCURL_COPYRIGHT ".");
       ImGui::TextUnformatted ("Uses the IXMLParser library, Copyright (c) 2013, Frank Vanden Berghen - All rights reserved (AFPL License).");
-      ImGui::TextUnformatted ("Uses the Freetype2 library, Copyright 1996-2002, 2006 by David Turner, Robert Wilhelm, and Werner Lemberg (Freetype License).");
+      ImGui::TextUnformatted ( fmt::format("Uses the Freetype2 library v{}.{}.{}, Copyright 1996-2023, by David Turner, Robert Wilhelm, and Werner Lemberg (Freetype License).", std::to_string(FREETYPE_MAJOR), std::to_string(FREETYPE_MINOR), std::to_string(FREETYPE_PATCH)).c_str());
       ImGui::TextUnformatted ("Uses polyline-cpp, Copyright (c) 2016 Josh Baker.");
       ImGui::TextUnformatted ("Uses the SQLite library (v" SQLITE_VERSION "), Public Domain.");
       ImGui::TextUnformatted ("Uses the MY-BASIC library, Copyright (C) 2011 - 2020 Wang Renxin.");
-      ImGui::TextUnformatted ("Uses the FMOD library, Free Indie License.");
+      // ImGui::TextUnformatted ("Uses the FMOD library, Free Indie License.");
+      ImGui::TextUnformatted ( fmt::format("Uses the FMOD library, v{}, Free Indie License.", FMOD_VERSION).c_str() );
       ImGui::TextUnformatted ("Uses the STB public domain libraries, by Sean Barrett.");
-      ImGui::TextUnformatted ("Uses the FMT library, by Victor Zverovich, License MIT."); // v3.305.3
+      ImGui::TextUnformatted (fmt::format("Uses the FMT library, v{}, by Victor Zverovich, License MIT.", FMT_VERSION).c_str());
       ImGui::TextUnformatted (fmt::format ("Uses {}, v{}, {}, License MIT.", std::string (nlohmann::json::meta ()["name"]), std::string (nlohmann::json::meta ()["version"]["string"]), std::string (nlohmann::json::meta ()["copyright"])).c_str ()); // v3.305.3
       ImGui::Separator ();
 

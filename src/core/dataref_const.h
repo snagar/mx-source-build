@@ -23,7 +23,7 @@ public:
     dref_acf_m_empty_weight = XPLMFindDataRef("sim/aircraft/weight/acf_m_empty"); // plane empty weight // v3.0.213.3
     dref_acf_m_max_weight   = XPLMFindDataRef("sim/aircraft/weight/acf_m_max");   // plane max weight (payload + fuel) // v3.0.213.3
     dref_acf_m_fuel_tot_lbs     = XPLMFindDataRef("sim/aircraft/weight/acf_m_fuel_tot");  // read only, plane total fuel in tanks, in LBS.
-    dref_acf_m_fixed        = XPLMFindDataRef("sim/flightmodel/weight/m_fixed");  // plane payload, in kg.
+    dref_acf_m_fixed_f        = XPLMFindDataRef("sim/flightmodel/weight/m_fixed");  // plane payload, in kg.
 
     dref_acf_fuel_totalizer_init_kg        = XPLMFindDataRef("sim/cockpit2/fuel/fuel_totalizer_init_kg");  // writeable, plane total fuel in tanks (kg).
 
@@ -128,7 +128,7 @@ public:
   XPLMDataRef dref_acf_m_empty_weight ; // plane empty weight // v3.0.213.3
   XPLMDataRef dref_acf_m_max_weight   ; // plane max weight (payload + fuel) // v3.0.213.3
   XPLMDataRef dref_acf_m_fuel_tot_lbs     ; // plane max fuel payload // v26.09.2
-  XPLMDataRef dref_acf_m_fixed        ; // plane payload // v26.09.2
+  XPLMDataRef dref_acf_m_fixed_f        ; // plane payload // v26.09.2
   XPLMDataRef dref_acf_fuel_totalizer_init_kg     ; // plane total fuel tanks weight // v26.09.2
 
   XPLMDataRef dref_lat_d             ; // latitude

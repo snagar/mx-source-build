@@ -26,6 +26,15 @@ missionx::dataref_param::dataref_param (const std::string &inKey)
   this->setAndInitializeKey(inKey);
 }
 
+missionx::dataref_param::dataref_param
+  (const XPLMDataRef& in_dref_id, std::string  in_name) :
+  key(std::move(in_name)),
+  dataRefId( in_dref_id )
+{
+  flag_dref_initialized_in_constructor = true;
+  initDataRefInfo();
+}
+
 
 // -----------------------------------
 
@@ -142,9 +151,13 @@ bool
 missionx::dataref_param::initDataRefInfo()
 {
   bool initOk = true;
+  // v26.09.3 initialize only if "dataRefId" is empty
+  if (!this->dataRefId)
+    this->dataRefId = XPLMFindDataRef(key.c_str());
 
-  this->dataRefId = XPLMFindDataRef(key.c_str());
-  if (!this->dataRefId) // v3.0.223.2 Try to handle keys that might be arrays like: sim/weapons/total_weapon_mass_now[0] which is really a dataref "sim/weapons/total_weapon_mass_now" with array of 25 cells
+  // v3.0.223.2 Try to handle keys that might be arrays like: sim/weapons/total_weapon_mass_now[0] which is really a dataref "sim/weapons/total_weapon_mass_now" with array of 25 cells
+  // v26.09.3 added check against flag_dref_initialized_in_constructor
+  if (!this->dataRefId && !flag_dref_initialized_in_constructor)
   {
     const auto pos1 = key.find_first_of('[');
     const auto pos2 = key.find_first_of(']', pos1);
@@ -189,7 +202,7 @@ missionx::dataref_param::initDataRefInfo()
 
       case xplmType_Data: // Byte
       {
-        this->arraySize = XPLMGetDatab(this->dataRefId, NULL, 0, 0);
+        this->arraySize = XPLMGetDatab(this->dataRefId, nullptr, 0, 0);
         if (this->arraySize > 0)
         {
           target_CharArray = new char[arraySize];
@@ -201,7 +214,7 @@ missionx::dataref_param::initDataRefInfo()
       break;
       case xplmType_IntArray:
       {
-        this->arraySize = XPLMGetDatavi(this->dataRefId, NULL, 0, 0);
+        this->arraySize = XPLMGetDatavi(this->dataRefId, nullptr, 0, 0);
         if (this->arraySize > 0)
         {
           target_IntArray = new int[arraySize];
@@ -213,7 +226,7 @@ missionx::dataref_param::initDataRefInfo()
       break;
       case xplmType_FloatArray:
       {
-        this->arraySize = XPLMGetDatavf(this->dataRefId, NULL, 0, 0);
+        this->arraySize = XPLMGetDatavf(this->dataRefId, nullptr, 0, 0);
 
         if (this->arraySize > 0)
         {
@@ -240,11 +253,11 @@ missionx::dataref_param::initDataRefInfo()
   {
     initOk = false;
 
-    errReason = "[UserDataRef] dataref:" + key + ", was not added. Check spelling.";
-#ifdef DEBUG_LOGIC
-    sprintf(LOG_BUFF, "\n[UserDataRef] dataref: %s, was not added. Check spelling.", key.c_str());
-    XPLMDebugString(LOG_BUFF);
-#endif
+    // errReason = "[UserDataRef] dataref:" + key + ", was not added. Check spelling.";
+    errReason = fmt::format("\n[UserDataRef] dataref: {}, was not added. Check spelling or the DatarefID.", key.c_str());
+    #ifdef DEBUG_LOGIC
+    XPLMDebugString(errReason.c_str());
+    #endif
   }
 
   // From MxParam class
@@ -1092,8 +1105,9 @@ missionx::dataref_param::set_dataref_values_into_xplane(dataref_param& inDref, c
       case xplmType_Data: // v3.0.255.1
       {
         std::string       err;
-        const std::string val = inDref.getParamStringValue();
-        XPLMSetDatab(inDref.dataRefId, (void*)val.data(), 0, static_cast<int> (val.length ()));
+        std::string val = inDref.getParamStringValue();
+        // XPLMSetDatab(inDref.dataRefId, (void*)val.data(), 0, static_cast<int> (val.length ()));
+        XPLMSetDatab(inDref.dataRefId,  val.data(), 0, static_cast<int> (val.length ()));
       }
       break;
       case xplmType_Float:

@@ -482,8 +482,8 @@ XPluginStop (void)
     s_background_thread.join ();
     #endif
 
-    XPLMDebugString ("\nmissionx: Waiting for 2 seconds."); // debug
-    std::this_thread::sleep_for (std::chrono::seconds (2));
+    // XPLMDebugString ("\nmissionx: Waiting for 1 seconds."); // debug
+    // std::this_thread::sleep_for (std::chrono::seconds (1));
     XPLMDebugString ("\nmissionx: Plug-in stopped");
 
     #ifndef LIN

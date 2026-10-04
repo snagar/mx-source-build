@@ -289,8 +289,10 @@ mx_img_window::CreateTexture(const mxTextureFile &in_texture)
     #ifndef RELEASE
     Log::log_xplm_debug_string(fmt::format("[{}] Calling ImgPanelGraphics::CreateTexture for: {}.\n", __func__, in_texture.fileName));
     #endif
-    void* handle = ImgPanelGraphics::CreateTexture(in_texture.sImageData.pData, in_texture.sImageData.Width, in_texture.sImageData.Height);
-    return reinterpret_cast<ImTextureID>(handle);
+    // void* handle = ImgPanelGraphics::CreateTexture(in_texture.sImageData.pData, in_texture.sImageData.Width, in_texture.sImageData.Height);
+    // return reinterpret_cast<ImTextureID>(handle);
+    return ImgWindow::CreateTexture(in_texture.sImageData.pData, in_texture.sImageData.Width, in_texture.sImageData.Height);
+
   }
   #endif
 

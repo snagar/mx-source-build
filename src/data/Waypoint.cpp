@@ -146,11 +146,10 @@ missionx::Waypoint::parse_node()
   {
     std::string value = Utils::readAttrib(xPreLegScript, mxconst::get_ATTRIB_NAME(), "");
     if (!value.empty())
-      this->setNodeStringProperty(mxconst::get_ELEMENT_PRE_LEG_SCRIPT(), value); //, this->node, mxconst::get_ELEMENT_LEG());
+      this->setNodeStringProperty(mxconst::get_ELEMENT_PRE_LEG_SCRIPT(), value);
 
     Utils::addElementToMap(this->mapFlightLeg_sub_nodes_ptr, mxconst::get_ELEMENT_PRE_LEG_SCRIPT(), xPreLegScript);
   }
-
 
   xPostLegScript = this->node.getChildNode(mxconst::get_ELEMENT_POST_LEG_SCRIPT().c_str()); // v3.0.221.15rc5 add LEG support
 
@@ -198,6 +197,12 @@ missionx::Waypoint::parse_node()
 
     Utils::addElementToMap(this->mapFlightLeg_sub_nodes_ptr, mxconst::get_ELEMENT_METAR(), xMetar);
   }
+
+  // v26.09.3
+  IXMLNode xWeightModKg_ptr = this->node.getChildNode(mxconst::get_ELEMENT_WEIGHT_MOD_KG().c_str());
+  if (!xWeightModKg_ptr.isEmpty())
+    Utils::addElementToMap(this->mapFlightLeg_sub_nodes_ptr, mxconst::get_ELEMENT_WEIGHT_MOD_KG(), xWeightModKg_ptr);
+
 
 
   // v3.0.221.8 store the goal XML special element attribute or the goal element itself

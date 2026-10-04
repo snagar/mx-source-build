@@ -90,7 +90,7 @@ public:
   std::list<IXMLNode>      xml_listTriggers;              // key = value = trigger name
   std::vector<std::string> vecSentences;                  // v3.0.148 display in ui
 
-  std::map<std::string, IXMLNode> mapFlightLeg_sub_nodes_ptr; // v3.0.241.1 I hope not to use this map and stick to the <leg> element
+  std::map<std::string, IXMLNode> mapFlightLeg_sub_nodes_ptr; // v3.0.241.1
 
   void        init();
   std::string to_string();

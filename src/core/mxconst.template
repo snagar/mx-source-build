@@ -329,7 +329,9 @@ const static ^std::string ^ATTRIB_DISPLAY_AT_POST_LEG_B                    ^ "di
 
 const static ^std::string ^ATTRIB_NEXT_LEG                                 ^ "next_leg";
 const static ^std::string ^ATTRIB_NEXT_GOAL                                ^ "next_goal";
-const static ^std::string ^ELEMENT_DRAW_SCRIPT                             ^ "draw_script"; ^// v3.0.224.2 <draw_script name^"" /> allow embeded scripts to be executed in the draw callback.
+const static ^std::string ^ELEMENT_DRAW_SCRIPT                             ^ "draw_script"; ^// v3.0.224.2 <draw_script name^"" /> allow embedded scripts to be executed in the draw callback.
+const static ^std::string ^ELEMENT_WEIGHT_MOD_KG                           ^ "weight_mod_kg"; ^// v26.09.3 used as subnode to <leg> element.
+const static ^std::string ^ATTRIB_PAYLOAD                                  ^ "payload"; ^// v26.09.3
 const static ^std::string ^DYNAMIC_MESSAGE                                 ^ "dynamic_message"; ^// Leg Messages // v3.0.224.4
 const static ^std::string ^PREFIX_DYN_MESSAGE_NAME                         ^ "msg_4_dyn_message_"; ^// v3.0.224.4
 const static ^std::string ^PREFIX_TRIG_DYN_MESSAGE_NAME                    ^ "trig_dyn_message_"; ^// v3.0.224.4

@@ -4058,13 +4058,16 @@ missionx::Utils::prepare_static_XSD()
     <location_adjust lat="" long="" elev_ft="0" heading_psi="" pause_after_location_adjust="" starting_speed_mt_sec="" start_cold_and_dark="" />       
   </briefer>     
 
-  <leg name="" title="" next_leg="" >  
+  <leg name="" title="" next_leg="" >
+    <weight_mod_kg payload="" />
     <start_leg_message name="" />     
     <link_to_objective name="" /> 
     <desc/>     
     <post_leg_message name="" /> 
   </leg> 
-   
+
+  <weight_mod_kg payload="" />
+
   <objective name="" /> 
   <task name="" base_on_trigger="" base_on_script="" eval_success_for_n_sec="" mandatory="" force_evaluation=""/>         
  

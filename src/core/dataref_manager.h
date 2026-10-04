@@ -36,15 +36,12 @@ public:
 
   // get dataref value Template (for int, float, double only values )
   template<class N>
-  static N getDataRefValue(std::string full_name)
+  static N getDataRefValue(const std::string& full_name)
   {
-    XPLMDataRef    data_id;
-    XPLMDataTypeID type_id;
-
-    data_id = XPLMFindDataRef(full_name.c_str());
+    XPLMDataRef data_id = XPLMFindDataRef(full_name.c_str());
     if (data_id) // if exists
     {
-      type_id = XPLMGetDataRefTypes(data_id);
+      XPLMDataTypeID type_id = XPLMGetDataRefTypes(data_id);
       switch (type_id)
       {
         case xplmType_Int:
@@ -64,13 +61,49 @@ public:
         break;
         default:
         {
-          Log::logMsg("Can't get DataRef " + full_name);
+          Log::logMsg("Can't get DataRef: " + full_name);
         }
         break;
       } // end switch
     }   // end if
 
     return 0;
+  } // end template
+
+
+  // v26.09.3
+  template<class N>
+  static N getDataRefValue(const XPLMDataRef &data_id)
+  {
+    if (data_id) // if exists
+    {
+      XPLMDataTypeID type_id = XPLMGetDataRefTypes(data_id);
+      switch (type_id)
+      {
+        case xplmType_Int:
+        {
+          return static_cast<N>(XPLMGetDatai(data_id));
+        }
+        break;
+        case xplmType_Float:
+        {
+          return static_cast<N>(XPLMGetDataf(data_id));
+        }
+        break;
+        case (xplmType_Float | xplmType_Double):
+        {
+          return static_cast<N>(XPLMGetDatad(data_id));
+        }
+        break;
+        default:
+        {
+          Log::logMsg(fmt::format("[{}] Can't get DataRef {}", __func__, data_id) );
+        }
+        break;
+      } // end switch
+    }   // end if
+
+    return static_cast<N>(0);
   } // end template
 
 
