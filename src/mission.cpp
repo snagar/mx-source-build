@@ -49,9 +49,12 @@ add_icons_to_fonts(ImFontAtlas* inOutFontAtlas, const float inFontSize)
 
   ImFontGlyphRangesBuilder builder;
   // Add all icons that are actually used (they concatenate into one string)
-  builder.AddText(ICON_FA_ARROW_DOWN ICON_FA_ARROW_UP ICON_FA_PLAY ICON_FA_REPLY ICON_FA_SAVE ICON_FA_SIGN_OUT_ALT ICON_FA_FAST_FORWARD ICON_FA_STEP_FORWARD ICON_FA_PAUSE ICON_FA_TRASH ICON_FA_TRASH_ALT ICON_FA_SEARCH ICON_FA_EXTERNAL_LINK_SQUARE_ALT ICON_FA_WINDOW_MAXIMIZE ICON_FA_WINDOW_MINIMIZE ICON_FA_WINDOW_RESTORE ICON_FA_WINDOW_CLOSE
-                    ICON_FA_SYNC
-                    ICON_FA_REPLY ICON_FA_USER_LOCK);
+  builder.AddText(ICON_FA_ARROW_DOWN ICON_FA_ARROW_UP ICON_FA_PLAY ICON_FA_REPLY ICON_FA_SAVE ICON_FA_SIGN_OUT_ALT
+                    ICON_FA_FAST_FORWARD ICON_FA_STEP_FORWARD ICON_FA_PAUSE ICON_FA_TRASH ICON_FA_TRASH_ALT
+                    ICON_FA_SEARCH ICON_FA_EXTERNAL_LINK_SQUARE_ALT ICON_FA_WINDOW_MAXIMIZE ICON_FA_WINDOW_MINIMIZE
+                    ICON_FA_WINDOW_RESTORE ICON_FA_WINDOW_CLOSE
+                    ICON_FA_USER_CLOCK
+                    ICON_FA_USER_LOCK );
   builder.BuildRanges(&icon_ranges);
 
   // Merge the icon font with the text font
@@ -5060,7 +5063,7 @@ missionx::Mission::flcPRE()
           }
         }
 
-        Mission::uiImGuiBriefer->strct_ext_layer.fetch_state = missionx::mxFetchState_enum::fetch_guess_wp_ended;
+        missionx::strct_ext_layer.fetch_state = missionx::mxFetchState_enum::fetch_guess_wp_ended;
       }
       break;
       case missionx::mx_flc_pre_command::get_terrain_elev_in_point: // v25.06.1
@@ -5678,20 +5681,45 @@ missionx::Mission::flcPRE()
       case missionx::mx_flc_pre_command::inv_post_async_inv_image_binding:
       {      
        // ORIGINAL CODE
-       for (auto& [file, textureFile] : missionx::data_manager::xp_mapInvImages)
-       {
-         if (file.empty() || textureFile.getWidth() == 0 || textureFile.getHeight() == 0 || textureFile.sImageData.pData == nullptr || textureFile.texture_hash_simple == 0) // v3.0.303.7 hopefully will solve a bug if image file was not found
-           continue;
+       // for (auto& [file, textureFile] : missionx::data_manager::xp_mapInvImages)
+       // {
+       //   if (file.empty() || textureFile.getWidth() == 0 || textureFile.getHeight() == 0 || textureFile.sImageData.pData == nullptr || textureFile.texture_hash_simple == 0) // v3.0.303.7 hopefully will solve a bug if image file was not found
+       //     continue;
+       //
+       //   // v26.09.3 Bind the textures
+       //   if ( BitmapReader::bind_texture(textureFile) == 0)
+       //     Log::logMsg(fmt::format("[{}] Texture: {} failed to bind.", __func__, textureFile.getAbsoluteFileLocation()) );
+       //
+       //
+       //   // we will try to load the textures one by one in each loop and not all at the same time
+       //    data_manager::postFlcActions.push_back(mx_flc_pre_command::inv_post_async_inv_image_binding);
+       //    break; // force exit loop
+       // } // end loop over item files
+       // readd 2 att a time
+        int loop_counter = 0;
+        for (auto& [file, textureFile] : missionx::data_manager::xp_mapInvImages)
+        {
+          loop_counter+=1;
 
-         // v26.09.3 Bind the textures
-         if ( BitmapReader::bind_texture(textureFile) == 0)
-           Log::logMsg(fmt::format("[{}] Texture: {} failed to bind.", __func__, textureFile.getAbsoluteFileLocation()) );
+          if (file.empty() || textureFile.getWidth() == 0 || textureFile.getHeight() == 0 || textureFile.sImageData.pData == nullptr || textureFile.texture_hash_simple == 0) // v3.0.303.7 hopefully will solve a bug if image file was not found
+            continue;
 
-      
-         // we will try to load the textures one by one in each loop and not all at the same time
-          data_manager::postFlcActions.push_back(mx_flc_pre_command::inv_post_async_inv_image_binding);
-          break; // force exit loop
-       } // end loop over item files
+          // v26.09.3 Bind the textures
+          if ( BitmapReader::bind_texture(textureFile) == 0)
+            Log::logMsg(fmt::format("[{}] Texture: {} failed to bind.", __func__, textureFile.getAbsoluteFileLocation()) );
+
+
+
+          if (loop_counter%3 == 0)
+          {
+            // we will try to load the textures one by one in each loop and not all at the same time
+            data_manager::postFlcActions.push_back(mx_flc_pre_command::inv_post_async_inv_image_binding);
+
+            break; // force exit loop
+          }
+
+        } // end loop over item files
+
       }
       break;
       case missionx::mx_flc_pre_command::set_story_auto_pause_timer:

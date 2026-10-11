@@ -163,6 +163,12 @@ set(BASE_SRC src/core/coordinate/NavAidInfo.hpp
     src/plugin.cpp
     src/plugin.h
     src/core/mxconst.h
+    src/ui/gl/ui_dynamic_mission_screen.cpp
+    src/ui/gl/ui_dynamic_mission_screen.h
+    src/ui/gl/ui_external_dbflightplan_screen.cpp
+    src/ui/gl/ui_external_dbflightplan_screen.h
+    src/ui/gl/ui_setup_screen.cpp
+    src/ui/gl/ui_setup_screen.h
 )
 
 set(IMGUI_SQLITE_STB_POLY_LIB_SRC
@@ -305,7 +311,13 @@ if(NOT GIT_SHA)
   set(GIT_SHA "UNKNOWN")
 endif()
 file(WRITE "src/core/sha.hpp" "#ifndef SHA_HPP\n#define SHA_HPP\n#define GIT_SHA \"${GIT_SHA}\"\n#endif\n")
-set(DYNAMIC_SHA src/core/sha.hpp)
+set(DYNAMIC_SHA src/core/sha.hpp
+        src/ui/gl/ui_dynamic_mission_screen.cpp
+        src/ui/gl/ui_dynamic_mission_screen.h
+        src/ui/gl/ui_external_dbflightplan_screen.cpp
+        src/ui/gl/ui_external_dbflightplan_screen.h
+        src/ui/gl/ui_setup_screen.cpp
+        src/ui/gl/ui_setup_screen.h)
 
 # Target definition <== MUST come before target_include_directories because the modern CMake syntax
 #                       need to define a target object first on which it will define the needed metadata information
@@ -343,27 +355,6 @@ target_include_directories(minizip PRIVATE
         ${CMAKE_SOURCE_DIR}/libs/curl/include
 )
 
-#if (WIN32)
-#  add_library(minizip STATIC
-#    ${MINIZIP_LIB_SRC}
-#  )
-#
-#  target_include_directories(minizip PRIVATE
-#          ${CMAKE_SOURCE_DIR}/libs/minizip
-#          ${CMAKE_SOURCE_DIR}/libs/curl/include
-#  )
-#
-#else()
-#  add_library(minizip SHARED
-#    ${MINIZIP_LIB_SRC}
-#  )
-#
-#  target_include_directories(minizip PRIVATE
-#          ${CMAKE_SOURCE_DIR}/libs/minizip
-#          ${CMAKE_SOURCE_DIR}/libs/curl/include
-#  )
-#
-#endif()
 
 # Includes
 target_include_directories(${PROJECT_NAME} PRIVATE

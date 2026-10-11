@@ -115,8 +115,8 @@ missionx::writeLogThread::stop_plugin()
   writeLogThread::tState.flagAbortThread = true;
 
   // v26.09.3
-  XPLMDebugString ("\nmissionx: writeLogThread: Waiting for 1 seconds."); // debug
-  std::this_thread::sleep_for (std::chrono::seconds (1));
+  XPLMDebugString ("\nmissionx: writeLogThread: Waiting for 0.5 seconds."); // debug
+  std::this_thread::sleep_for (std::chrono::milliseconds (500));
 
   if (writeLogThread::thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
     writeLogThread::thread_ref.join();       // joining also solved our issue with crashing xplane. error: abort() was called from "win.xpl"

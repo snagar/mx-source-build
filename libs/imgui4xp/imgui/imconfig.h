@@ -135,8 +135,6 @@
 // Need to figure away to correctly fix it.
 #ifndef IMGWINDOW_USE_PANEL_GRAPHICS
 #define ImDrawIdx unsigned int
-// #else
-// typedef unsigned short ImDrawIdx;
 #endif
 
 

@@ -4002,7 +4002,14 @@ RandomEngine::gen_get_databaseflightplan_site_targets(missionx::base_thread::str
 
     // add briefer description
     const std::string from_to_s   = get_short_flight_description_from_to(fpln.fromName_s, fpln.fromICAO_s, fpln.toName_s, fpln.toICAO_s); //"fpln.fromName_s + "(" + fpln.fromICAO_s + ") to " + fpln.toName_s + "(" + fpln.toICAO_s + ")";
-    const std::string brieferDesc = "Hello pilot.\nYou have been assigned a flight generated from \"flightplandatabase.com\". Fly: " + from_to_s + ". Learn the route and fly it according to the flight plan or modify it if you so wish.\n\nBlue skys.";
+    // const std::string brieferDesc = fmt::format("Hello pilot.\nYou have been assigned a flight generated from \"flightplandatabase.com\".\nFly: {}. Review the route and fly it according to the flight plan, or modify it as you see fit.\n\nBlue skys.", from_to_s) ;
+    const std::string brieferDesc = fmt::format(R"(Hello pilot.
+You have been assigned a flight generated from "flightplandatabase.com" site.
+Flight Plan: {}.
+
+Review the route and fly it according to the flight plan, or modify it as you see fit.
+
+Blue skies.)", from_to_s) ;
     const std::string notes       = (fpln.notes_s.empty()) ? "" : "\n\nnotes:\n" + fpln.notes_s; // add notes if any from flight plan
 
     navaid_targets[0].fpln_expected_location_data.desc = brieferDesc + notes + "\n\n==== suggested waypoints ====\n" + ((fpln.formated_nav_points_with_guessed_names_s != "false") ? fpln.formated_nav_points_with_guessed_names_s : "");

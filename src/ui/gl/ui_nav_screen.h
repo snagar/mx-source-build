@@ -6,7 +6,6 @@
 #define MISSIONX_UI_NAV_SCREEN_H
 
 #include "shared_ui_types.hpp"
-// #include <ImgWindow/ImgWindow.h> // inside libs/imgui4xp
 #include "../core/mx_img_window.h" // v26.08.1 replaces ImgWindow
 
 namespace missionx {
@@ -92,11 +91,6 @@ public:
   int add_ui_two_option_buttons (bool &bOptA, bool &bOptB, const int &returnValueForA, const int &returnValueForB);
   void add_ui_ils_vfr_search_airports_button (missionx::mx_window_actions inActionToExecute);
   void callNavData (std::string_view inICAO, bool bNavigatingFromOtherLayer); // v24.03.1
-
-
-
-
-
 
 };
 

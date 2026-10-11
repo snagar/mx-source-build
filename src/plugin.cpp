@@ -200,10 +200,10 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
     int left, top, right, bottom;
     Utils::getWinCoords (left, top, right, bottom); // 1200, 450
     // Position widget at the center of the screen
-    left   = (int)(((right - left) / 2) - (missionx::WinImguiBriefer::WINDOW_MAX_WIDTH / 2));
-    right  = left + missionx::WinImguiBriefer::WINDOW_MAX_WIDTH;
-    top    = (int)(((top - bottom) / 2) + (missionx::WinImguiBriefer::WINDOWS_MAX_HEIGHT / 2));
-    bottom = top - missionx::WinImguiBriefer::WINDOWS_MAX_HEIGHT;
+    left   = (int)(((right - left) / 2) - (missionx::WINDOW_MAX_WIDTH / 2));
+    right  = left + missionx::WINDOW_MAX_WIDTH;
+    top    = (int)(((top - bottom) / 2) + (missionx::WINDOWS_MAX_HEIGHT / 2));
+    bottom = top - missionx::WINDOWS_MAX_HEIGHT;
 
     Mission::uiImGuiBriefer = std::make_shared<WinImguiBriefer> (left, top, right, bottom); // decoration and layer will use default values
     Mission::uiImGuiBriefer->SetWindowPositioningMode (xplm_WindowCenterOnMonitor);
@@ -577,7 +577,7 @@ PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFromWho, const intptr_t inM
       static bool first_load = true; // v26.04.4
       missionx::data_manager::strct_mx_xplane_metadata.set_flagSceneryOrAirportLoaded (true); // v3.305.1c
       missionx::data_manager::refresh_3d_objects_and_cues_after_location_transition ();
-      missionx::Mission::uiImGuiBriefer->strct_ext_layer.from_icao.clear ();
+      missionx::strct_ext_layer.from_icao.clear();
 
       if (first_load && data_manager::missionState == mx_mission_state_enum::mission_undefined)
       {
