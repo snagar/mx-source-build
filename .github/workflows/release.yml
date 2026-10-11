@@ -144,7 +144,7 @@ jobs:
         run: |
           printf "Extract XPSDK"
           cd libs
-          printf "Command: unzip -o XPSDK.zip"
+          printf "Command: unzip -o XPSDK.zip\n"
           printf "Current folder: %s\n" "$(pwd)"
           unzip -o XPSDK.zip
           printf "List folders:\n"
@@ -260,7 +260,7 @@ jobs:
       - name: Extract XPSDK
         shell: bash
         run: |
-          printf "Extract XPSDK"
+          printf "Extract XPSDK \n"
           cd libs
           printf "Command: ditto -x -k XPSDK.zip .\n"
           printf "Current folder: %s\n" "$(pwd)"
@@ -388,16 +388,22 @@ jobs:
         run: |
           "Extracting XPSDK"
           cd libs
-          Write-Host "Command: Expand-Archive XPSDK.zip -DestinationPath . -Force \n"
-          "Current folder: $(Get-Location)\n"
+          Write-Host "Command: Expand-Archive XPSDK.zip -DestinationPath . -Force"
+          "Current folder: $(Get-Location)"
           Remove-Item -Recurse -Force "SDK\Libraries\Mac" -ErrorAction SilentlyContinue
           Expand-Archive XPSDK.zip -DestinationPath . -Force -ErrorAction SilentlyContinue
           
-          Write-Host "List folders:\n"
+          Write-Host " "
+          Write-Host "List folders:"
           Get-ChildItem -Directory -Name
           
-          Write-Host "List SDK files recursively:\n"
+          Write-Host " "
+          cd SDK
+          Remove-Item -Recurse -Force "Libraries\Mac" -ErrorAction SilentlyContinue
+          Write-Host "List SDK files recursively:"
           Get-ChildItem -Directory -Name -Recurse
+          cd ..
+          
 
 
 #      - name: Stop workflow early
