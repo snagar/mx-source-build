@@ -17,12 +17,16 @@ callback and returns a pointer that remains valid for the duration of
 the host's use of the callback's result. This is the only sanctioned
 way for an XPLM callback whose return type is `const char *` to hand a
 string back to X-Plane: returning a stack buffer, a string literal, or
-any other pointer is a contract violation and may corrupt the result.
+any other pointer is a plugin error: X-Plane reports it and drops the
+result.
 
 The host pushes a return slot before invoking each `const char *`
 callback and pops it afterwards, so callbacks must call
 `XPLMReturnString` at most once per invocation and must not retain the
-returned pointer past the callback's return.
+returned pointer past the callback's return. Passing NULL is an error:
+`XPLMReturnString` reports it and returns NULL, so the callback's result
+is dropped. Calling `XPLMReturnString` outside a callback that returns a
+string is a fatal plugin error: X-Plane reports it and terminates.
 
 <div class="xplm-code" markdown="1">
 
@@ -110,6 +114,33 @@ sim version is localized to a certain language.
 | xplm_Language_Japanese | 9 |  |
 | xplm_Language_Chinese | 10 |  |
 | xplm_Language_Ukrainian | 11 |  |
+
+</div>
+
+</div>
+
+---
+
+<div class="sym-block sym-enum" data-name="XPLMProLicenseStatus" data-type="enum" markdown="1">
+
+<div class="sym-title-row" markdown="1">
+
+## XPLMProLicenseStatus { .symbol-title }
+
+<span class="sym-badge badge-enum">enum</span> <span class="sym-badge badge-version">XPLM440</span>
+
+</div>
+
+Whether this copy of X-Plane is running under a Professional-use license (a HASP Pro USB key or a
+valid Pro digital-download product key). Demo and Home installs both report xplm_ProLicense_NotLicensed.
+
+<div class="enum-table" markdown="1">
+
+| Name | Value | Description |
+|:--|:--|:--|
+| xplm_ProLicense_Unknown | 0 | X-Plane has not finished its license check yet. Wait for XPLM_MSG_PRO_LICENSE_CHANGED. |
+| xplm_ProLicense_NotLicensed | 1 | No Pro license is active. |
+| xplm_ProLicense_Licensed | 2 | A Pro license is active. |
 
 </div>
 
@@ -230,6 +261,40 @@ This routine returns the langauge the sim is running in.
 
 ```cpp
 XPLM_API XPLMLanguageCode XPLMGetLanguage(void);
+```
+
+</div>
+
+</div>
+
+---
+
+<div class="sym-block sym-function" data-name="XPLMGetProLicenseStatus" data-type="function" markdown="1">
+
+<div class="sym-title-row" markdown="1">
+
+## XPLMGetProLicenseStatus { .symbol-title }
+
+<span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLM440</span>
+
+</div>
+
+Returns whether X-Plane is currently running under a Professional-use license.
+
+X-Plane finishes its license check after global plugins have received XPluginStart and XPluginEnable,
+so from those callbacks a global plugin sees xplm_ProLicense_Unknown. Listen for
+XPLM_MSG_PRO_LICENSE_CHANGED: it is broadcast once the check completes and again whenever the status
+changes during the session (for example, the user enters a product key or a key expires). Aircraft
+plugins load after the check completes and see a settled value immediately. If you see a settled value
+in XPluginStart, do not wait for the message; the initial transition was broadcast before your plugin
+loaded.
+
+Call this only from the main thread.
+
+<div class="xplm-code" markdown="1">
+
+```cpp
+XPLM_API XPLMProLicenseStatus XPLMGetProLicenseStatus(void);
 ```
 
 </div>
