@@ -25,7 +25,7 @@ namespace missionx
     void encode(float coordinates[][2], int num_coords, char* output_str);
     //int decode(const char *str, float output[][2]);
     //int decode(const char* str, std::list<missionx::mxVec2f>& decodedCoords);
-    int decode(missionx::mx_ext_internet_fpln_strct & inFpln);
+    int decode(missionx::mx_external_fpln_strct & inFpln);
 
   private:
     int _precision = 5;

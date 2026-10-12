@@ -94,7 +94,7 @@ namespace missionx
   //  return i;
   //}
 
-  int SimplePolyline::decode(missionx::mx_ext_internet_fpln_strct& outFpln)
+  int SimplePolyline::decode(missionx::mx_external_fpln_strct& outFpln)
   {
     int32_t index = 0, shift = 0, result = 0;
     float latlng[2] = { 0.0f, 0.0f };
