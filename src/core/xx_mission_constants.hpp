@@ -1092,7 +1092,7 @@ typedef struct _stats_tmp_data
 } mx_stats_data;
 
 
-typedef struct _ext_internet_fpln_strct
+struct mx_external_fpln_strct
 {
   int         internal_id{ -1 };
   int         fpln_unique_id{ -1 }; // holds plan unique id from site
@@ -1149,10 +1149,16 @@ typedef struct _ext_internet_fpln_strct
 
   std::string simbrief_costindex; // v25.06.1
 
-  std::string simbrief_payload; // v25.06.1 <via_airway>
+  float       simbrief_cargo; // v25.09.03 <weights::cargo>
+  float       simbrief_payload; // v25.06.1 <weights::payload>
   std::string simbrief_takeoff_weight; // v25.06.1
   //std::string simbrief_zfw_weight; // v25.06.1
-  std::string simbrief_fuel_weight; // v25.06.1
+  // std::string simbrief_fuel_weight; // v25.06.1
+
+  int simbrief_passengers; // v25.09.03 <general:passengers> or <weights::pax_count_actual>
+  float simbrief_pasengers_weight; // v25.09.03 <weights::pax_count_actual * pax_weight> or (simbrief_payload - simbrief_cargo)
+
+
 
   std::string more_info; // v25.06.1 holds "payload, fuel and TOC data in one string
 
@@ -1211,7 +1217,9 @@ typedef struct _ext_internet_fpln_strct
     simbrief_toc_wind_ISA.clear();
     simbrief_toc_wind_OAT.clear();
     simbrief_toc_via_airway.clear();
-    simbrief_payload.clear();
+    simbrief_payload = 0.0f;
+    simbrief_cargo = 0.0f;
+    simbrief_passengers = 0;
     more_info.clear();
     // v26.04.1
     origin_info.clear();
@@ -1219,7 +1227,7 @@ typedef struct _ext_internet_fpln_strct
     destination_info.clear();
   }
 
-} mx_ext_internet_fpln_strct;
+};
 
 
 

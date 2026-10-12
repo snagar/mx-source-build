@@ -235,7 +235,6 @@ missionx::dataref_param::initDataRefInfo()
         }
         else
           target_FloatArray = nullptr;
-          //target_FloatArray = source_FloatArray = nullptr;
       }
       break;
       default:
@@ -245,7 +244,8 @@ missionx::dataref_param::initDataRefInfo()
 
     } // end switch
 
-    if (this->offset_array_defined_by_user > 0 && this->offset_array_defined_by_user > this->arraySize) // v3.303.12 if user defined an offset value than this->offset_array_defined_by_user will be larger than zero. We then need to make sure it is not larger than the arraySize itself
+    // v3.303.12 if user defined an offset value than this->offset_array_defined_by_user will be larger than zero. We then need to make sure it is not larger than the arraySize itself
+    if (this->offset_array_defined_by_user > 0 && this->offset_array_defined_by_user > this->arraySize)
       initOk = false;
 
   } // end if refID is valid
@@ -901,10 +901,10 @@ missionx::dataref_param::readArrayDatarefIntoLocalArray()
       break;
       case (xplmType_Data): // v3.0.255.1
       {
-        this->arraySize = XPLMGetDatab (this->dataRefId, NULL, 0, 0); // v25.09.2 find size of string
+        this->arraySize = XPLMGetDatab (this->dataRefId, nullptr, 0, 0); // v25.09.2 find size of string
         XPLMGetDatab (this->dataRefId, this->target_CharArray, 0, this->arraySize);
 
-        if (this->arraySize && target_CharArray != NULL)
+        if (this->arraySize && target_CharArray != nullptr)
           this->setStringProperty (this->getName (), std::string (this->target_CharArray));
       }
       break;

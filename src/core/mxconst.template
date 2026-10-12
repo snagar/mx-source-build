@@ -943,6 +943,8 @@ const static ^std::string^               PROP_TO_ICAO                           
 const static ^std::string^               PROP_LIMIT                                     ^ "limit"; ^// used with external fpln
 const static ^std::string^               PROP_SORT_FPLN_BY                              ^ "sort"; ^// used with external fpln
 const static ^std::string^               PROP_OSM_GEN_FILE                              ^ "osm_gen_file"; ^// v25.06.1 used in the missionx property file and the "surprise_me" logic in the RandomEngine.
+const static ^std::string^               PROP_USE_SIMBRIEF_FUEL_BLOCK                   ^ "use_simbrief_fuel_block"; ^// v26.09.3 use with Simbrief Fuel Block checkbox.
+const static ^std::string^               PROP_USE_SIMBRIEF_PAYLOAD                      ^ "use_simbrief_payload"; ^// v26.09.3 use with Simbrief payload checkbox. Payload = cargo + passengers weight.
 
 const static ^std::string^               RANDOM_TEMPLATE_BLANK_4_UI                     ^ "template_blank_4_ui.xml"; ^// template_blank_4_ui is the only template that is driven by UI so we should not load them.
 const static ^std::string^               COORDINATES_IN_THE_GPS_S                       ^ "Coordinates in GPS";

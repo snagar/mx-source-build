@@ -65,7 +65,7 @@ public:
   // v26.09.3 add add_ui_no_inventories_checkbox
   std::function<void(ImVec4 inColor)> add_ui_no_inventories_checkbox;
   // v26.09.3  draw_popup_generate_mission_based_on_ext_fpln
-  std::function<void(std::string_view inPopupWindowName, const missionx::mx_ext_internet_fpln_strct &rowData, const int &picked_fpln_id_i)> draw_popup_generate_mission_based_on_ext_fpln;
+  std::function<void(std::string_view inPopupWindowName, const missionx::mx_external_fpln_strct &rowData, const int &picked_fpln_id_i)> draw_popup_generate_mission_based_on_ext_fpln;
   // v26.09.3  call_nav_screen_callNavData
   std::function<void(std::string_view inICAO, bool bNavigatingFromOtherLayer)> call_nav_screen_callNavData;
   // v26.09.3  add_ui_pause_in_2d_mode

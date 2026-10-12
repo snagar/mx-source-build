@@ -22,7 +22,7 @@ missionx::structs::def_strct_plane_base_info missionx::dataref_manager::strct_pl
   float
   dataref_manager::getAirspeed()
   {
-    return XPLMGetDataf(missionx::drefConst.indicated_airspeed_f);
+    return XPLMGetDataf(missionx::drefConst.dref_indicated_airspeed_f);
   }
 
   float
@@ -150,7 +150,7 @@ missionx::structs::def_strct_plane_base_info missionx::dataref_manager::strct_pl
   { 
     dataref_manager::strct_plane_base_info.plane_max_gross_weight_f_and_p_kg = dataref_manager::get_acf_m_max_currentMaxPlaneAllowedWeightK(); // max total payload allowed
     dataref_manager::strct_plane_base_info.plane_empty_weight_kg             = XPLMGetDataf(missionx::drefConst.dref_acf_m_empty_weight); // current plane empty weight
-    dataref_manager::strct_plane_base_info.plane_max_fuel_weight_kg          = XPLMGetDataf(missionx::drefConst.dref_acf_m_fuel_tot_lbs) * lbs2kg; // max allowed fuel. converted from lbs to kg
+    dataref_manager::strct_plane_base_info.plane_max_fuel_weight_kg          = XPLMGetDataf(missionx::drefConst.dref_rw_acf_m_fuel_tot_lbs) * lbs2kg; // max allowed fuel. converted from lbs to kg
     dataref_manager::strct_plane_base_info.plane_max_speed_vno               = XPLMGetDataf(missionx::drefConst.dref_acf_vno_f); // max allowed cruise speed
 
     dataref_manager::strct_plane_base_info.plane_current_total_weight_kg = XPLMGetDataf(missionx::drefConst.dref_m_total_f); // current total weight: fuel+payload
@@ -170,7 +170,7 @@ float dataref_manager::CalculateEstimatedFuelTimeHours()
     XPLMDataRef clutchRef = XPLMFindDataRef("sim/aircraft/artstability/acf_has_clutch");
     XPLMDataRef fuelWeightRef = XPLMFindDataRef("sim/flightmodel/weight/m_fuel");
 
-    const auto totalFuelKg = XPLMGetDataf(missionx::drefConst.dref_acf_m_fuel_tot_lbs) * lbs2kg;
+    const auto totalFuelKg = XPLMGetDataf(missionx::drefConst.dref_rw_acf_m_fuel_tot_lbs) * lbs2kg;
 
     Log::logMsgThread(fmt::format("[{}] FFFF plane max fuel: {:.2f} FFFF\n", __func__, totalFuelKg));
 

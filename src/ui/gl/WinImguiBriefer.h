@@ -244,7 +244,7 @@ void flc();
   // ----- flight_leg_info Layer -----
   void setExternalInventoryName (const std::string &inName) { this->strct_flight_leg_info.externalInventoryName = inName; };
 
-  typedef struct _flight_leg_info_layer
+  struct mx_flight_leg_info_layer
   {
     constexpr static int WAYPOINT_MAX_WIDTH_I = 100;
 
@@ -280,9 +280,9 @@ void flc();
         iSliderItemQuantity                         = 1;
         iOriginalQuantity                           = Utils::readNodeNumericAttrib<int> (inNode, mxconst::get_ATTRIB_QUANTITY (), 0);
 
-#ifndef RELEASE
+        #ifndef RELEASE
         Log::log_to_missionx_log (Utils::xml_get_node_content_as_text (this->ptrNodePicked)); // debug
-#endif
+        #endif
       }
       else if (inSetupXP11Compatibility)
       {
@@ -321,13 +321,13 @@ void flc();
     std::string externalInventoryName;
 
     // v24.12.2
-    typedef struct _mx_header_state
+    struct mx_header_state
     {
       bool        bState{ false };
       std::string title{ "n/a" };
 
-      _mx_header_state () {};
-      _mx_header_state (std::string inVal_s, bool inBool)
+      mx_header_state () {};
+      mx_header_state (std::string inVal_s, bool inBool)
       {
         bState = inBool;
         title  = inVal_s;
@@ -343,10 +343,9 @@ void flc();
             ImGui::SetScrollHereY ();
         }
       }
-    } mx_header_state;
+    } ;
     std::map<int, mx_header_state> mapStationHeaders = {};
     // end v24.12.2
-
 
 
     ///// End Summary layer
@@ -369,7 +368,7 @@ void flc();
 
 
     // v3.305.1 Story mode
-    typedef struct _mx_story_mode_strct
+    struct mx_story_mode_strct
     {
       constexpr static float STORY_TEXT_AREA_HEIGHT_F = 70.0;
 
@@ -411,7 +410,7 @@ void flc();
 
       void setAutoSkipTimer (float inNewTime) { missionx::Timer::start (timerForAutoSkip, inNewTime, "AutoSkip"); }
 
-    } mx_story_mode_strct;
+    } ;
     mx_story_mode_strct strct_story_mode;
 
     constexpr const static size_t DEBUG_GLOBALS_BUFF_SIZE_RSIZET = 4096; // v3.305.3
@@ -425,17 +424,21 @@ void flc();
     constexpr static const int SHORT_FIELD_SIZE = 7;
     constexpr static const int LONG_FIELD_SIZE  = 500;
 
+    // v26.09.3
+    bool flag_check_use_simbrief_block_fuel {false};
+    bool flag_check_use_simbrief_payload {false}; // payload = passengers + cargo
+
     std::map<missionx::enums::mx_note_shortField_enum, char[SHORT_FIELD_SIZE]> mapNoteFieldShort;
     std::map<missionx::enums::mx_note_longField_enum, char[LONG_FIELD_SIZE]>   mapNoteFieldLong;
     constexpr const static auto                                                iMaxCharsInLongField = sizeof mapNoteFieldLong[missionx::enums::mx_note_longField_enum::takeoff_notes];
     // v26.04.1
     missionx::enums::mx_note_longField_enum fpln_picked_note {missionx::enums::mx_note_longField_enum::takeoff_notes};
 
-    mx_ext_internet_fpln_strct fpln; // v25.03.3
+    mx_external_fpln_strct fpln; // v25.03.3
 
     missionx::Timer tmPressedClearU, tmPressedClearD, tmPressedClearAll;
 
-    _flight_leg_info_layer()
+    mx_flight_leg_info_layer()
     {
       initNoteMaps();
       this->resetItemMove(); // v24.12.2
@@ -502,7 +505,7 @@ void flc();
 
     }
 
-  } mx_flight_leg_info_layer;
+  } ;
 
   mx_flight_leg_info_layer strct_flight_leg_info;
 
@@ -592,8 +595,8 @@ private:
 
 
   //// Keep track of Layer change
-  uiLayer_enum currentLayer{ missionx::uiLayer_enum::imgui_home_layer };
-  uiLayer_enum prevBrieferLayer{ missionx::uiLayer_enum::imgui_home_layer };
+  inline static uiLayer_enum currentLayer{ missionx::uiLayer_enum::imgui_home_layer };
+  inline static uiLayer_enum prevBrieferLayer{ missionx::uiLayer_enum::imgui_home_layer };
 
   const std::list<btn_info> listMainBtn = { 
     { 0, missionx::uiLayer_enum::option_setup_layer, mxconst::get_BITMAP_BTN_SETUP_24X18 (), "Setup", "Setup Screen" }, 
@@ -709,7 +712,7 @@ private:
   void popup_draw_load_warnings (std::string_view inPopupWindowName); // v26.1.1
   void popup_draw_quit_mission (std::string_view inPopupWindowName); // v3.303.8.3
   void draw_popup_extra_data_ext_fpln (std::string_view inPopupWindowName ); // v25.06.1
-  void draw_popup_generate_mission_based_on_ext_fpln (std::string_view inPopupWindowName, const missionx::mx_ext_internet_fpln_strct &rowData, const int &picked_fpln_id_i = 0); // v25.03.3
+  void draw_popup_generate_mission_based_on_ext_fpln (std::string_view inPopupWindowName, const missionx::mx_external_fpln_strct &rowData, const int &picked_fpln_id_i = 0); // v25.03.3
   void draw_globals_online_edit_popup (std::string_view inPopupWindowName, char inType, std::string inKey, std::string inVal); // v3.303.8.3
   void draw_script_online_edit_popup (std::string_view inPopupWindowName, bool &outSave); // v3.303.8.3
   // void draw_setup_layer (); // v26.09.3 deprecated, moved to "ui_setup_screen" class.

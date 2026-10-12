@@ -2571,9 +2571,9 @@ void RandomEngine::gen_set_llm_payloads(const structs::MissionPayloads& in_llm_p
 
 }
 
-
 // -----------------------------------
-
+// -----------------------------------
+// -----------------------------------
 // -----------------------------------
 
 #ifndef RELEASE_DEBUG
@@ -3157,6 +3157,37 @@ RandomEngine::writeTargetFile()
   // v26.09.2 apply ai payloads and override user preferences
   if (data_manager::strct_ui_share_data.strct_llm_suggested_payloads.is_valid())
     gen_set_llm_payloads(data_manager::strct_ui_share_data.strct_llm_suggested_payloads, this->xGlobalSettings);
+
+  // ---------------------------------------------------------------------
+  // -- Simbrief data if we generate from the "flight plan info" screen
+  // ---------------------------------------------------------------------
+
+  // v26.09.3 Simbrief Payload
+  if (missionx::data_manager::prop_userDefinedMission_ui.getBoolValue(mxconst::get_PROP_USE_SIMBRIEF_PAYLOAD(), false)
+    && data_manager::getGeneratedFromLayer() == uiLayer_enum::flight_leg_info  )
+  {
+    const auto strct_ex_fpln = data_manager::strct_ui_share_data.strct_last_simbrief_fpln;
+    auto xBaseWeights_ptr = Utils::xml_get_or_create_node_ptr( xGlobalSettings, mxconst::get_ELEMENT_BASE_WEIGHTS_KG());
+    if ( !xBaseWeights_ptr.isEmpty () && strct_ex_fpln.simbrief_payload > 0.0f)
+    {
+      // set the global_settings weight sub node
+      Utils::xml_set_attribute_in_node<float> ( xBaseWeights_ptr, mxconst::get_OPT_STORAGE_BASE_WEIGHT(), strct_ex_fpln.simbrief_cargo, xBaseWeights_ptr.getName() );
+      Utils::xml_set_attribute_in_node<float> ( xBaseWeights_ptr, mxconst::get_OPT_PASSENGERS_BASE_WEIGHT(), strct_ex_fpln.simbrief_pasengers_weight, xBaseWeights_ptr.getName() );
+    }
+  }
+
+  // Simbrief Fuel
+  if (missionx::data_manager::prop_userDefinedMission_ui.getBoolValue(mxconst::get_PROP_USE_SIMBRIEF_FUEL_BLOCK(), false)
+    && data_manager::getGeneratedFromLayer() == uiLayer_enum::flight_leg_info)
+  {
+    const auto strct_ex_fpln = data_manager::strct_ui_share_data.strct_last_simbrief_fpln;
+    auto xBaseWeights_ptr = Utils::xml_get_or_create_node_ptr( xGlobalSettings, mxconst::get_ELEMENT_BASE_WEIGHTS_KG());
+    if ( !xBaseWeights_ptr.isEmpty () && !strct_ex_fpln.simbrief_plan_ramp_block_fuel.empty())
+    {
+      // set the global_settings weight sub node
+      Utils::xml_set_attribute_in_node_asString ( xBaseWeights_ptr, mxconst::get_OPT_FUEL_BASE_WEIGHT(), strct_ex_fpln.simbrief_plan_ramp_block_fuel, xBaseWeights_ptr.getName() );
+    }
+  }
 
   // ---------------------------------------------------------------------
   // v3.0.255.3 test validity of 3D Objects. Inject warning into Briefer
@@ -3895,9 +3926,9 @@ RandomEngine::gen_get_databaseflightplan_site_targets(missionx::base_thread::str
   }
 
   // fetch the fpln struct to work with  // missionx::data_manager::tableExternalFPLN_vec
-  auto const lmbda_get_fpln = [](const int inPicked_id, const std::vector<missionx::mx_ext_internet_fpln_strct>& inFPLN_vec)
+  auto const lmbda_get_fpln = [](const int inPicked_id, const std::vector<missionx::mx_external_fpln_strct>& inFPLN_vec)
   {
-    missionx::mx_ext_internet_fpln_strct dummy;
+    missionx::mx_external_fpln_strct dummy;
     dummy.internal_id = -1;
     for (auto f : inFPLN_vec)
     {
@@ -4581,7 +4612,7 @@ RandomEngine::gen_get_user_fpln_or_simbrief_targets(missionx::base_thread::strct
                                                   , structs::strct_shared_random_airport_info&          inout_shared_navaid
                                                   , std::string&                               outErr)
 {
-  missionx::mx_ext_internet_fpln_strct fpln;
+  missionx::mx_external_fpln_strct fpln;
   std::map<int, NavAidInfo>            navaid_targets;
 
   outErr.clear();

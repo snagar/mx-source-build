@@ -280,7 +280,7 @@ void ui_external_dbflightplan_screen::draw_child_ext_fpln_db_site_screen() {
 
             // We directly sort the tableList: tableExternalFPLN_vec
             std::ranges::sort (data_manager::tableExternalFPLN_vec, // lambda function
-                               [colSpec] (const _ext_internet_fpln_strct &a, const _ext_internet_fpln_strct &b)
+                              [colSpec](const mx_external_fpln_strct& a, const mx_external_fpln_strct& b)
                                {
                                  int cmp = // less than 0 if a < b
                                    colSpec.ColumnIndex == 0   ? a.toICAO_s.compare (b.toICAO_s)

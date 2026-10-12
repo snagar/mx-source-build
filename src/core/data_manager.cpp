@@ -204,9 +204,9 @@ std::map<std::string, mxTextureFile> data_manager::xp_mapMissionIconImages; // v
 std::map<std::string, mxTextureFile> data_manager::xp_mapInvImages;         // v3.0.303.5
 
 //// External Flight plans
-std::vector<mx_ext_internet_fpln_strct>     data_manager::tableExternalFPLN_simbrief_vec; // v25.03.3
-std::vector<mx_ext_internet_fpln_strct>     data_manager::tableExternalFPLN_vec;
-std::map<int, mx_ext_internet_fpln_strct *> data_manager::indexPointer_forExternalFPLN_tableVector;
+std::vector<mx_external_fpln_strct>     data_manager::tableExternalFPLN_simbrief_vec; // v25.03.3
+std::vector<mx_external_fpln_strct>     data_manager::tableExternalFPLN_vec;
+std::map<int, mx_external_fpln_strct *> data_manager::indexPointer_forExternalFPLN_tableVector;
 std::vector<std::future<void>>              data_manager::mFetchFutures; //  holds async pointers
 IXMLNode                                    data_manager::jsonConvertedNode_xml;
 
@@ -3429,6 +3429,131 @@ data_manager::erase_empty_inventory_item_nodes(const IXMLNode& pNode, const int 
   #endif
 }
 
+// -------------------------------------
+
+void data_manager::set_plane_fuel()
+{
+  dataref_param local_dref_acf_tank_ratio_f_arr (dataref_const::dref_acf_tank_ratio_f, "sim/aircraft/overflow/acf_tank_rat");
+  dataref_param local_dref_m_fuel_f_arr (dataref_const::dref_m_fuel_f_arr, "sim/flightmodel/weight/m_fuel");
+
+  local_dref_acf_tank_ratio_f_arr.readArrayDatarefIntoLocalArray();
+  local_dref_m_fuel_f_arr.readArrayDatarefIntoLocalArray();
+
+
+  const auto mission_block_fuel = Utils::readNodeNumericAttrib <float>( mx_global_settings.xBaseWeight_ptr, mxconst::get_OPT_FUEL_BASE_WEIGHT(), 0.0f );
+  if (mission_block_fuel <= 0.0f)
+    return;
+
+
+  const auto& tank_ratios = local_dref_acf_tank_ratio_f_arr.out_vecArrayFloatValues;
+  auto& fuel_tanks        = local_dref_m_fuel_f_arr.out_vecArrayFloatValues;
+
+  // 1. Ensure target vector matches the available tanks
+  assert (tank_ratios.size() == fuel_tanks.size() && "'Fuel tank ratio array' is not equal to 'Fuel Tanks array'.");
+  // Zero all tanks
+  std::ranges::fill(fuel_tanks, 0.0f);
+
+  // 1. Fetch total aircraft fuel capacity (kg) to calculate each tank's physical max capacity.
+  // Dataref: "sim/aircraft/weight/acf_m_fuel_tot"
+  const float total_aircraft_fuel_capacity = missionx::dataref_manager::getDataRefValue<float>(dataref_const::dref_rw_acf_m_fuel_tot_lbs) * lbs2kg;
+
+  // 2. Identify active tanks and compute their maximum capacities
+  struct TankInfo {
+    size_t index;
+    float max_capacity;
+  };
+
+  std::vector<TankInfo> active_tanks;
+  for (size_t i = 0; i < tank_ratios.size(); ++i)
+  {
+    if (tank_ratios[i] > 0.0f)
+    {
+      float cap = tank_ratios[i] * total_aircraft_fuel_capacity;
+      active_tanks.push_back({ i, cap });
+    }
+  }
+
+  if (active_tanks.empty() || mission_block_fuel <= 0.0f)
+    return;
+
+  // 3. Water-filling distribution:
+  // Attempts to level fuel equally across all tanks.
+  // Lower-ratio (smaller capacity) tanks will hit their cap first.
+  // Once filled, the remaining fuel is divided equally between the higher-ratio tanks.
+  float remaining_fuel = mission_block_fuel;
+
+  while (!active_tanks.empty() && remaining_fuel > 0.001f)
+  {
+    float fair_share = remaining_fuel / static_cast<float>(active_tanks.size());
+    bool capped_any  = false;
+
+    std::vector<TankInfo> next_active;
+    next_active.reserve(active_tanks.size());
+
+    for (const auto& tank : active_tanks)
+    {
+      float room_left = tank.max_capacity - fuel_tanks[tank.index];
+
+      if (room_left <= fair_share)
+      {
+        // Lower-ratio / smaller tank fills completely first
+        fuel_tanks[tank.index] = tank.max_capacity;
+        remaining_fuel -= room_left;
+        capped_any = true;
+      }
+      else
+      {
+        next_active.push_back(tank);
+      }
+    }
+
+    if (!capped_any)
+    {
+      // All remaining tanks (the higher-ratio tanks) hold the fair share equally
+      for (const auto& tank : active_tanks)
+      {
+        fuel_tanks[tank.index] += fair_share;
+      }
+      remaining_fuel = 0.0f;
+      break;
+    }
+
+    active_tanks = std::move(next_active);
+  }
+
+  // 4. Overfill safeguard:
+  // If mission_block_fuel exceeds total aircraft capacity, spread remaining excess evenly
+
+  if (remaining_fuel > 0.001f)
+  {
+    float excess_per_tank = remaining_fuel / static_cast<float>(tank_ratios.size());
+    for (size_t i = 0; i < fuel_tanks.size(); ++i)
+    {
+      if (tank_ratios[i] > 0.0f)
+      {
+        fuel_tanks[i] += excess_per_tank;
+      }
+    }
+  } // if (remaining_fuel > 0.001f)
+
+  // write back to x-plane
+  int counter_fuel_tanks = 0;
+  std::string m_tanks_s;
+  std::stringstream ss;
+  //
+  std::ranges::for_each(fuel_tanks,
+                        [&](auto& fValue)
+                        {
+                          ss << (counter_fuel_tanks == 0 ? std::string() : std::string(",")) << fValue;
+                          counter_fuel_tanks++;
+                        });
+
+  m_tanks_s = ss.str();
+
+  int iResult = local_dref_m_fuel_f_arr.setTargetArray<xplmType_FloatArray, float>(static_cast<int>( counter_fuel_tanks ), m_tanks_s, true, ",");
+
+}
+
 
 // -------------------------------------
 
@@ -3436,7 +3561,7 @@ data_manager::erase_empty_inventory_item_nodes(const IXMLNode& pNode, const int 
 float
 data_manager::calculatePlaneWeight(const Inventory& inSourceInventory, const bool& flag_apply_to_dataref, const int& inLayoutVersion)
 {
-  float              planePayloadWeight = 0.0f;
+  // float              planePayloadWeight = 0.0f;
   float              passengersWeight, storedWeight;
   float pilotWeight = passengersWeight = storedWeight = 0.0f;
 
@@ -3444,6 +3569,11 @@ data_manager::calculatePlaneWeight(const Inventory& inSourceInventory, const boo
   pilotWeight      = static_cast<float> ( Utils::readNumericAttrib ( mx_global_settings.xBaseWeight_ptr, mxconst::get_OPT_PILOT_BASE_WEIGHT(), mxconst::get_OPT_PILOT(), 0.0f ) ); // was mxconst::DEFAULT_PILOT_WEIGHT
   storedWeight     = static_cast<float> ( Utils::readNumericAttrib ( mx_global_settings.xBaseWeight_ptr, mxconst::get_OPT_STORAGE_BASE_WEIGHT(), mxconst::get_OPT_STORAGE(), 0.0f ) );
   passengersWeight = static_cast<float> ( Utils::readNumericAttrib ( mx_global_settings.xBaseWeight_ptr, mxconst::get_OPT_PASSENGERS_BASE_WEIGHT(), mxconst::get_OPT_PASSENGERS(), 0.0f ) );
+
+  // v26.09.3 Added re-initialization before modifying it.
+  data_manager::dref_acf_station_max_kgs_f_arr.setAndInitializeKey("sim/aircraft/weight/acf_m_station_max");
+  data_manager::dref_m_stations_kgs_f_arr.setAndInitializeKey("sim/flightmodel/weight/m_stations");
+
 
   // add inventory
   // v3.0.241.1 added weight configuration from Copied Plane Node
@@ -3483,7 +3613,8 @@ data_manager::calculatePlaneWeight(const Inventory& inSourceInventory, const boo
   // calculate <plane> inventory
   const auto planeInventoryWeight = lmbda_calculate_items_weight(inSourceInventory.node.isEmpty() ? mapInventories[mxconst::get_ELEMENT_PLANE()] : inSourceInventory, Inventory::opt_forceInventoryLayoutBasedOnVersion_i);
 
-  planePayloadWeight = pilotWeight + storedWeight + passengersWeight + planeInventoryWeight;
+  const float payload_only_weight = storedWeight + passengersWeight + planeInventoryWeight;
+  const float planePayloadWeight = pilotWeight + payload_only_weight;
 
   // store weight in Dataref
   if (planePayloadWeight > 0.0f && flag_apply_to_dataref)
@@ -3495,33 +3626,58 @@ data_manager::calculatePlaneWeight(const Inventory& inSourceInventory, const boo
     else
     { // XP12 Stations
       // set station weight based on the plane inventory map_stations container.
-      if (dref_m_stations_kgs_f_arr.flag_paramReadyToBeUsed && dref_m_stations_kgs_f_arr.arraySize > 0)
+      if (dref_m_stations_kgs_f_arr.flag_paramReadyToBeUsed && dref_m_stations_kgs_f_arr.arraySize > 0 && dref_acf_station_max_kgs_f_arr.flag_paramReadyToBeUsed && dref_acf_station_max_kgs_f_arr.arraySize > 0)
       {
+        // calculate usable stations, if they have a value greater than 0 in them.
+        auto number_of_usable_stations = static_cast<int>(std::ranges::count_if(
+                                                            dref_acf_station_max_kgs_f_arr.out_vecArrayFloatValues,
+                                                                [](const float val) { return val > 0.0f; }
+                                                          ));
+
+
         // prepare a vector with the station weights
         std::string       m_stations_s;
-        int               m_stations_size_i = 0;
+        // int               m_stations_size_i = 0;
+        size_t counter_stations = 0;
 
-        if (auto vec_m_stations = mapInventories[mxconst::get_ELEMENT_PLANE()].get_inventory_station_weights_as_vector(dref_m_stations_kgs_f_arr.arraySize)
-            ; !vec_m_stations.empty())
+        // if (auto vec_m_stations = mapInventories[mxconst::get_ELEMENT_PLANE()].get_inventory_station_weights_as_vector(dref_m_stations_kgs_f_arr.arraySize)
+        //     ; !vec_m_stations.empty())
+        if (!dref_m_stations_kgs_f_arr.out_vecArrayFloatValues.empty() && dref_m_stations_kgs_f_arr.arraySize > 0)
         {
+          // calculate average weight per statiion, without the pilot weight
+          // const auto station_number_without_pilot = (vec_m_stations.size() - 1 > 0)? vec_m_stations.size() - 1 : 1;
+          const auto station_number_without_pilot = (number_of_usable_stations - 1 > 0)? number_of_usable_stations - 1 : 1;
+          const auto avg_weight_per_station_exclude_pilot = payload_only_weight / static_cast<float>(station_number_without_pilot);
+          auto weight_to_distribute = planePayloadWeight;
+
+
           std::stringstream ss;
-          // Inject pilot weight
-          if ( vec_m_stations.at ( 0 ) < mxconst::MINIMUM_EXPECTED_PILOT_WEIGHT_IN_STATION && pilotWeight > 0)
-            vec_m_stations.at(0) = pilotWeight;
+          // Inject weights
+          for (auto &station : dref_m_stations_kgs_f_arr.out_vecArrayFloatValues)
+          {
+            if (counter_stations == 0 && dref_m_stations_kgs_f_arr.out_vecArrayFloatValues.at ( 0 ) < mxconst::MINIMUM_EXPECTED_PILOT_WEIGHT_IN_STATION && pilotWeight > 0.0f)
+              dref_m_stations_kgs_f_arr.out_vecArrayFloatValues.at(counter_stations) = pilotWeight;
+
+            counter_stations++;
+            break; // exit after handling the pilot station
+          }
+
+          // distribute the rest of the weight
+           distribute_payload(dref_acf_station_max_kgs_f_arr.out_vecArrayFloatValues, dref_m_stations_kgs_f_arr.out_vecArrayFloatValues, planePayloadWeight);
 
           m_stations_s.clear();
-          m_stations_size_i = 0;
-          std::ranges::for_each(vec_m_stations,
+          counter_stations = 0;
+          std::ranges::for_each(dref_m_stations_kgs_f_arr.out_vecArrayFloatValues,
                                 [&](auto& fValue)
                                 {
-                                  ss << (m_stations_size_i == 0 ? std::string() : std::string(",")) << fValue;
-                                  m_stations_size_i++;
+                                  ss << (counter_stations == 0 ? std::string() : std::string(",")) << fValue;
+                                  counter_stations++;
                                 });
 
           m_stations_s = ss.str();
         }
 
-        int iResult = dref_m_stations_kgs_f_arr.setTargetArray<xplmType_FloatArray, float>(m_stations_size_i, m_stations_s, true, ",");
+        int iResult = dref_m_stations_kgs_f_arr.setTargetArray<xplmType_FloatArray, float>(static_cast<int>( counter_stations ), m_stations_s, true, ",");
       }
     } // end XP12 stations calculation
   } // end if planePayloadWeight > 0.0f && flag_apply_to_dataref
@@ -3529,6 +3685,85 @@ data_manager::calculatePlaneWeight(const Inventory& inSourceInventory, const boo
   // return the calculated plane weight based on the mission file values.
   return planePayloadWeight;
 }
+
+void data_manager::distribute_payload(const std::vector<float>& max_weights, std::vector<float>& target_weights, const float weight_to_distribute, const bool flag_reset_all_target_weights)
+{
+  assert (target_weights.size() == max_weights.size() && "The station max and actual weights array are not the equal in size.");
+  if (target_weights.size() < max_weights.size())
+      target_weights.resize(max_weights.size(), 0.0f);
+
+  // reset target weights
+  if (flag_reset_all_target_weights)
+    for (auto &weight : target_weights)
+      weight = 0.0f;
+
+  // 1. Zero out payload stations (index 0 is pilot - left untouched)
+  for (size_t i = 1; i < target_weights.size(); ++i)
+      target_weights[i] = 0.0f;
+
+  // 2. Collect all usable station indices (index >= 1 and capacity > 0)
+  std::vector<size_t> usable_stations;
+  for (size_t i = 1; i < max_weights.size(); ++i)
+      if (max_weights[i] > 0.0f)
+          usable_stations.push_back(i);
+
+    if (usable_stations.empty() || weight_to_distribute <= 0.0f)
+        return;
+
+    std::vector<size_t> active_stations = usable_stations;
+    float remaining_weight = weight_to_distribute;
+
+    // Phase 1: Distribute evenly, capping stations that reach max allowable weight
+    while (!active_stations.empty() && remaining_weight > 0.001f)
+    {
+        const float fair_share = remaining_weight / static_cast<float>(active_stations.size());
+        bool capped_any  = false;
+
+        std::vector<size_t> next_active;
+        next_active.reserve(active_stations.size());
+
+        for (size_t idx : active_stations)
+        {
+            float capacity_left = max_weights[idx] - target_weights[idx];
+
+            if (capacity_left <= fair_share)
+            {
+                // Station reaches/exceeds its limit: fill to capacity and lock it
+                target_weights[idx] = max_weights[idx];
+                remaining_weight -= capacity_left;
+                capped_any = true;
+            }
+            else
+            {
+                // Can still accept more weight in this pass
+                next_active.push_back(idx);
+            }
+        }
+
+        if (!capped_any)
+        {
+            // All remaining active stations comfortably hold their fair share
+            for (size_t idx : active_stations)
+                target_weights[idx] += fair_share;
+
+            remaining_weight = 0.0f;
+            break;
+        }
+
+        active_stations = std::move(next_active);
+    }
+
+    // Phase 2: Overweight fallback
+    // If every station reached its max capacity but weight still remains,
+    // distribute the remaining excess weight evenly across all usable stations.
+    if (remaining_weight > 0.001f)
+    {
+        const float excess_share = remaining_weight / static_cast<float>(usable_stations.size());
+        for (size_t idx : usable_stations)
+            target_weights[idx] += excess_share;
+    }
+}
+
 
 
 void
@@ -6561,7 +6796,7 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
     auto               xml_ofp = idom.parseString(simbrief_st_curl_result.response_text.c_str(), mxconst::get_ELEMENT_SIMBRIEF_ROOT_OFP().c_str(), &parse_result);
     if (parse_result.errorCode == IXMLError_None)
     {
-      mx_ext_internet_fpln_strct fpln;
+      mx_external_fpln_strct fpln;
       fpln.internal_id = 0;
 
       missionx::mx_base_node ofp_node;
@@ -6666,15 +6901,26 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
 
       if (!node_weights.isEmpty())
       {
+        auto pax_count_actual_node = Utils::xml_get_child_node(node_weights, "pax_count_actual");
+        auto cargo_node = Utils::xml_get_child_node(node_weights, "cargo");
         auto payload_node = Utils::xml_get_child_node(node_weights, "payload");
         auto est_tow_node = Utils::xml_get_child_node(node_weights, "est_tow"); // TOW estimation
 
-        fpln.simbrief_payload        = Utils::xml_get_text(payload_node);
+        fpln.simbrief_passengers     = mxUtils::stringToNumber<int>( Utils::xml_get_text(pax_count_actual_node) );
+        fpln.simbrief_cargo          = mxUtils::stringToNumber<float>(Utils::xml_get_text(cargo_node) );
+        fpln.simbrief_payload        = mxUtils::stringToNumber<float>( Utils::xml_get_text(payload_node) );
         fpln.simbrief_takeoff_weight = Utils::xml_get_text(est_tow_node);
+
+        fpln.simbrief_pasengers_weight = fpln.simbrief_payload - fpln.simbrief_cargo;
       }
 
+      // v26.09.3
+      const auto local_simbrief_fuel_block = mxUtils::stringToNumber<float>(fpln.simbrief_plan_ramp_block_fuel);
+      const auto fuel_block = (local_simbrief_fuel_block > 1000.0f)? (local_simbrief_fuel_block / 1000.0f) : local_simbrief_fuel_block;
+      const auto fuel_block_weight_type = (local_simbrief_fuel_block > 1000.0f) ? "ton" : "kg";
+
       fpln.more_info = fmt::format("General:\n\tAirline/FlightNo: {}/{}, Cost Index: {}, Alternate: {}\n\n"
-                                   "Weights:\n\t{:<10}: {:>8} kg\n\t{:<10}: {:>8} kg\n\t{:<10}: {:>8} ton\n\n"
+                                   "Weights:\n\t{:<10}: {:>8} kg\n\t{:<10}: {:>8} kg\n\t{:<10}: {:>8} {}\n\n"
                                    "Fuel:\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\n"
                                    "T O C:\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\t{:<10}: {:>8}\n\n"
                                    // <general>
@@ -6685,7 +6931,8 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
                                    // , "Alter"
                                  , fpln.simbrief_alternate_icao_s
                                    // Weights
-                                 , "Payload", fpln.simbrief_payload, "Est. TOW", fpln.simbrief_takeoff_weight, "Fuel", fmt::format("{:.1f}", mxUtils::stringToNumber<float>(fpln.simbrief_plan_ramp_block_fuel) / 1000.0f) // <weights>
+                                 // , "Payload", mxUtils::formatNumber(fpln.simbrief_payload), "Est. TOW", fpln.simbrief_takeoff_weight, "Fuel", fmt::format("{:.1f}", mxUtils::stringToNumber<float>(fpln.simbrief_plan_ramp_block_fuel) / 1000.0f) // <weights>
+                                 , "Payload", mxUtils::formatNumber(fpln.simbrief_payload), "Est. TOW", fpln.simbrief_takeoff_weight, "Fuel", fmt::format("{:.1f}", fuel_block), fuel_block_weight_type // <weights>
                                    // Fuel
                                  , "Block Fuel", fpln.simbrief_plan_ramp_block_fuel, "Trip", fpln.simbrief_enroute_burn, "Reserve", fpln.simbrief_reserve // <fuel>
                                    // T.O.C
@@ -6705,6 +6952,7 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
 
 
       data_manager::tableExternalFPLN_simbrief_vec.emplace_back(fpln);
+      data_manager::strct_ui_share_data.strct_last_simbrief_fpln = fpln;
     }
 
     #ifndef RELEASE
@@ -6912,7 +7160,7 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
       #ifndef RELEASE
       Log::logMsgThread(fmt::format("JSON size: {}\nJSON Line:\n{}\n", js.size(), js.dump()));
       #endif
-      mx_ext_internet_fpln_strct fpln;
+      mx_external_fpln_strct fpln;
 
       fpln.distnace_d        = Utils::getJsonValue<double>(js, mx_fplndb_json_keys.Z_KEY_distance, nlohmann::detail::value_t::number_float, 0.0);
       fpln.encode_polyline_s = Utils::getJsonValue(js, mx_fplndb_json_keys.Z_KEY_encodedPolyline, "");

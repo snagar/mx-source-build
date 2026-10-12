@@ -1173,7 +1173,7 @@ missionx::Mission::START_MISSION()
   {
     // v24.12.2 if-init-statement cLion
     if (const auto current_time_sec = Utils::readNodeNumericAttrib<float>( missionx::data_manager::mx_global_settings.node, mxconst::get_ATTRIB_LOCAL_TIME_SEC(), 0.0f); current_time_sec != 0.0f)
-      XPLMSetDataf(drefConst.dref_local_time_sec_f, current_time_sec);
+      XPLMSetDataf(missionx::dataref_const::dref_local_time_sec_f, current_time_sec);
 
     if (!active_choice_name.empty()) // v3.305.3 force display choice window if is active
       missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::display_choice_window);
@@ -1230,8 +1230,12 @@ missionx::Mission::START_MISSION()
   }
   else
   {
+    // set fuel from mission file
+    data_manager::set_plane_fuel();
+
     missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::set_time); // v3.0219.7 Set Mission Time
-    // TODO: set weight from llm only if we asked for it.
+
+    // set weight from llm only if we asked for it.
     missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::set_llm_base_weights_at_mission_start); // v26.09.2
     missionx::data_manager::timelapse.flag_isActive = true; // v3.303.8
   }

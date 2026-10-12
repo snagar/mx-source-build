@@ -1123,7 +1123,9 @@ public:
   static void  erase_empty_inventory_item_nodes(const IXMLNode& pNode, const int &inLevel = 0); // v24.12.2
 
   // should be called on mission start/transaction commit/plane change
+  static void set_plane_fuel();
   static float calculatePlaneWeight(const missionx::Inventory& inSourceInventory, const bool &flag_apply_to_dataref, const int &inLayoutVersion);
+  static void distribute_payload(const std::vector<float>& max_weights, std::vector<float>& target_weights, float weight_to_distribute, bool flag_reset_all_target_weights = false);
 
   // v24.12.2: Calculates plane weight, and store it in: data_manager::current_plane_payload_weight_f
   static void  internally_calculateAndStorePlaneWeight(const missionx::Inventory& inSourceInventory, const bool &flag_apply_to_dataref, const int &inLayoutVersion);
@@ -1278,9 +1280,9 @@ public:
   static void            db_close_database(dbase &inDB); // v3.303.8.3
 
   // External FlightPlan
-  static std::vector<missionx::mx_ext_internet_fpln_strct>    tableExternalFPLN_simbrief_vec; // v25.03.3
-  static std::vector<missionx::mx_ext_internet_fpln_strct>    tableExternalFPLN_vec;
-  static std::map<int, missionx::mx_ext_internet_fpln_strct*> indexPointer_forExternalFPLN_tableVector; // index pointer to the vector tableExternalFPLN_vec
+  static std::vector<missionx::mx_external_fpln_strct>    tableExternalFPLN_simbrief_vec; // v25.03.3
+  static std::vector<missionx::mx_external_fpln_strct>    tableExternalFPLN_vec;
+  static std::map<int, missionx::mx_external_fpln_strct*> indexPointer_forExternalFPLN_tableVector; // index pointer to the vector tableExternalFPLN_vec
 
   static void                           fetch_METAR (std::unordered_map<int, mx_nav_data_strct> *mapNavaidData, missionx::mxFetchState_enum *outState, std::string *outStatusMessage, std::string *outErrorMsg, const bool *lockThread);
   static IXMLNode                       jsonConvertedNode_xml; // holds the json converted data so we would use IXMLParser to read data safely
@@ -1405,7 +1407,8 @@ public:
     std::map<int, bool> map_ui_user_picks_overpass_urls; // v26.04.4. Will hold what user prefer to use.
 
     // v26.08.1 store the Briefer node copy of the last successful generated node. Used in User Generation Screen, and hopefully others.
-    IXMLNode                                     xml_last_generated_briefer_node; 
+    IXMLNode                          xml_last_generated_briefer_node;
+    missionx::mx_external_fpln_strct  strct_last_simbrief_fpln; // v26.09.3
 
     void disable_llm()
     {
@@ -1441,6 +1444,7 @@ public:
       map_llm_requests_messages.clear(); // v26.08.1
       this->strct_llm_suggested_payloads.reset(); // v26.09.2
       xml_last_generated_briefer_node = IXMLNode::emptyIXMLNode;
+      strct_last_simbrief_fpln.reset(); // v26.09.3
     }
   };
   inline static ui_shared_data_def_struct strct_ui_share_data;

@@ -38,7 +38,7 @@ private:
   //bool initDataRefInfo_array(void* inArray, size_t inArraySize);
 
 
-typedef struct _dref_interpolation
+  struct mx_interpolation_strct
   {
 
     bool   flagIsValid{ true };
@@ -56,11 +56,11 @@ typedef struct _dref_interpolation
     std::string sStartValues; // v3.305.3
     std::string sDelta; // v3.305.3
 
-#ifndef RELEASE
+    #ifndef RELEASE
     std::vector<float>      vec_targetValues_f{};
     std::vector<float>      vecStartingValues_f{};
     std::deque<std::string> dq_cycle_values_as_string{}; // will hold the values for each delta
-#endif // !RELEASE
+    #endif // !RELEASE
 
     
     std::vector<float> vecLastInterValues_f{};
@@ -74,7 +74,7 @@ typedef struct _dref_interpolation
       return sDelta;
     }
 
-  } mx_interpolation_strct;
+  } ;
 
   bool flag_dref_initialized_in_constructor {false};
 public:
@@ -168,62 +168,6 @@ public:
   std::string to_string_ui_info();
   std::string to_string_ui_info_value_only(); // v3.305.3
 
-  //// v3.303.12 - not yet implemented or used
-  //template<typename T>
-  //int readDatarefValuesIntoThePlugin_tmplt(const XPLMDataRef& dataRefId, const XPLMDataTypeID& dataRefType, T * outArray, std::vector<T> & outVector, std::string & outArrayAsString )
-  //{
-  //  int numOfValues = 0;
-  //  this->pStrArrayValue.clear();
-  //
-  //  switch (dataRefType)
-  //  {
-  //    case xplmType_Int:
-  //    {
-  //      this->setValue((double)XPLMGetDatai(dataRefId));        
-  //    }
-  //    break;
-  //    case xplmType_Float:
-  //    {
-  //      this->setValue((double)XPLMGetDataf(dataRefId));
-  //    }      
-  //    break;
-  //    case (xplmType_Double):
-  //    case (xplmType_Float | xplmType_Double):
-  //    {
-  //      this->setValue(XPLMGetDatad(dataRefId));
-  //    }
-  //    break;
-  //    case (xplmType_FloatArray):
-  //    {
-  //      if (this->flag_paramReadyToBeUsed )
-  //      {
-  //        XPLMGetDatavf(dataRefId, outArray, 0, this->arraySize); // fill local float array
-  //        this->fill_FloatArrayIntoVector(outArray, outVector, outArrayAsString );
-  //      }
-  //    }
-  //    break;
-  //    case (xplmType_IntArray):
-  //    {
-  //      if (this->flag_paramReadyToBeUsed )
-  //      {
-  //        XPLMGetDatavi(dataRefId, outArray, 0, this->arraySize); // fill local int Array
-  //
-  //      }
-  //    }
-  //    break;
-  //    case (xplmType_Data): 
-  //    {
-  //      if (flag_paramReadyToBeUsed)
-  //      {
-  //        XPLMGetDatab(this->dataRefId, outArray, 0, this->arraySize);
-  //        this->setStringProperty(this->getName(), std::string(target_CharArray));
-  //      }
-  //    }
-  //    break;
-  //  }
-  //
-  //  return numOfValues;
-  //}
 
   // setTargetArray "always" fills the array from the first cell.
   // later, when calling XPLMSetDatavi or XPLMSetDatavf we provide the offset for the target array (xplane) and how many variables to read from the source array: "target_IntArray" or "target_FloatArray"

@@ -684,7 +684,7 @@ void ui_nav_screen::child_draw_ils_search()
 
                 } // end loop over all plane types
 
-                ImGui::NewLine ();
+                ImGui::Separator(); // v26.09.3
                 ImGui::Checkbox ("Start from plane position", &missionx::strct_cross_layer_properties.flag_start_from_plane_position); // v3.0.253.11 // v3.0.253.12 reposition checkbox in the popup generate window
 
                 if (missionx::strct_ils_layer.iRadioPlaneType > mx_plane_types_enum::plane_type_helos &&  missionx::strct_ils_layer.iRadioPlaneType < mx_plane_types_enum::plane_type_jets)
@@ -693,18 +693,17 @@ void ui_nav_screen::child_draw_ils_search()
                   add_ui_is_amphibian();
                 }
 
-                ImGui::Spacing ();
-                ImGui::Checkbox ("Generate GPS waypoints.", &missionx::strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12
-                this->add_ui_auto_load_checkbox (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS); // v25.04.2
-                ImGui::Spacing (); // v3.303.14.2 added default weight to the generate screen
-                ImGui::Checkbox ("Add default base weights.\n(Not advisable for planes > GAs)", &missionx::adv_settings_strct.flag_add_default_weight_settings);
-                ImGui::Spacing ();
+                ImGui::Separator(); // v26.09.3
 
+                ImGui::Checkbox ("Generate GPS waypoints", &missionx::strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12
+                this->add_ui_auto_load_checkbox (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS); // v25.04.2
+                ImGui::Separator(); // v26.09.3
+                ImGui::Checkbox ("Add default base weights.\n(Not advisable for planes > GAs)", &missionx::adv_settings_strct.flag_add_default_weight_settings);
                 const auto disable_inventories = mxStartUiDisableState(missionx::strct_setup_layer.bNoInventories);
                 this->add_ui_pick_subcategories (missionx::mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]);
                 mxEndUiDisableState(disable_inventories);
 
-                ImGui::Spacing ();
+                ImGui::Separator(); // v26.09.3
                 // v26.08.1
                 this->add_ui_advance_settings_random_date_time_weather_and_weight_button (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.10 convert the random dateTime button to a self contain function
                 ImGui::Spacing ();

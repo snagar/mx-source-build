@@ -106,6 +106,40 @@ public:
     return static_cast<N>(0);
   } // end template
 
+  // --------------------------
+
+  template<class N>
+  static void setDataRefValue(const XPLMDataRef &data_id, const N &in_value)
+  {
+    if (data_id) // if exists
+    {
+      switch (const XPLMDataTypeID type_id = XPLMGetDataRefTypes(data_id))
+      {
+        case xplmType_Int:
+        {
+          XPLMSetDatai(data_id, static_cast<N>(in_value) );
+        }
+        break;
+        case xplmType_Float:
+        {
+          XPLMSetDataf(data_id, static_cast<N>(in_value) );
+        }
+        break;
+        case (xplmType_Float | xplmType_Double):
+        {
+          XPLMSetDatad(data_id, static_cast<N>(in_value) );
+        }
+        break;
+        default:
+        {
+          Log::logMsg(fmt::format("[{}] Can't set DataRef {}", __func__, data_id) );
+        }
+        break;
+      } // end switch
+    }   // end if
+
+  } // end template
+
 
 
   // special members

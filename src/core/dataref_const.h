@@ -22,7 +22,7 @@ public:
 
     dref_acf_m_empty_weight = XPLMFindDataRef("sim/aircraft/weight/acf_m_empty"); // plane empty weight // v3.0.213.3
     dref_acf_m_max_weight   = XPLMFindDataRef("sim/aircraft/weight/acf_m_max");   // plane max weight (payload + fuel) // v3.0.213.3
-    dref_acf_m_fuel_tot_lbs     = XPLMFindDataRef("sim/aircraft/weight/acf_m_fuel_tot");  // read only, plane total fuel in tanks, in LBS.
+    dref_rw_acf_m_fuel_tot_lbs     = XPLMFindDataRef("sim/aircraft/weight/acf_m_fuel_tot");  // writable, plane total fuel in tanks, in LBS.
     dref_acf_m_fixed_f        = XPLMFindDataRef("sim/flightmodel/weight/m_fixed");  // plane payload, in kg.
 
     dref_acf_fuel_totalizer_init_kg        = XPLMFindDataRef("sim/cockpit2/fuel/fuel_totalizer_init_kg");  // writeable, plane total fuel in tanks (kg).
@@ -39,6 +39,7 @@ public:
 
     dref_frame_rate_period = XPLMFindDataRef("sim/operation/misc/frame_rate_period"); // v3.0.207.1 // frame_rate_period - fps
 
+    dref_acf_tank_ratio_f                = XPLMFindDataRef("sim/aircraft/overflow/acf_tank_rat"); // percentage of fuel in each tank
     dref_acf_num_tanks_i                 = XPLMFindDataRef("sim/aircraft/overflow/acf_num_tanks"); // how many active fuel tanks
     dref_m_fuel_f_arr                    = XPLMFindDataRef("sim/flightmodel/weight/m_fuel"); // weight for each 9 tanks
     dref_m_fuel1_f                       = XPLMFindDataRef("sim/flightmodel/weight/m_fuel1");
@@ -47,7 +48,7 @@ public:
     dref_m_fuel_total_f                  = XPLMFindDataRef("sim/flightmodel/weight/m_fuel_total");         // read only, current fuel weight in Kg
     dref_m_total_f                       = XPLMFindDataRef("sim/flightmodel/weight/m_total");              // Current total payload + fuel weight in Kg
     dref_groundspeed_f                   = XPLMFindDataRef("sim/flightmodel2/position/groundspeed");       // Groundspeed meters/sec
-    indicated_airspeed_f                 = XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed"); // indicated_airspeed Kias
+    dref_indicated_airspeed_f                 = XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed"); // indicated_airspeed Kias
     dref_local_vz_f                      = XPLMFindDataRef("sim/flightmodel/position/local_vz");           // Velocity of aircraft in its own coordinate system meters/sec
     dref_local_vx_f                      = XPLMFindDataRef("sim/flightmodel/position/local_vx");           // Velocity of aircraft in its own coordinate system meters/sec
     dref_q                               = XPLMFindDataRef("sim/flightmodel/position/q");                  // quaternion - array of [4]
@@ -121,111 +122,113 @@ public:
     dref_acf_vno_f = XPLMFindDataRef("sim/time/framerate_period"); // v26.09.2 kias(“knots of indicated airspeed.” Knots are a unit of speed)
   }
 
-  XPLMDataRef dref_xplane_version_i             ;        // v3.0.241.5 xplane version number as integer
+  inline static XPLMDataRef dref_xplane_version_i             ;        // v3.0.241.5 xplane version number as integer
                                                 
-  XPLMDataRef dref_xplane_using_modern_driver_b ; // v3.0.241.5
+  inline static XPLMDataRef dref_xplane_using_modern_driver_b ; // v3.0.241.5
 
-  XPLMDataRef dref_acf_m_empty_weight ; // plane empty weight // v3.0.213.3
-  XPLMDataRef dref_acf_m_max_weight   ; // plane max weight (payload + fuel) // v3.0.213.3
-  XPLMDataRef dref_acf_m_fuel_tot_lbs     ; // plane max fuel payload // v26.09.2
-  XPLMDataRef dref_acf_m_fixed_f        ; // plane payload // v26.09.2
-  XPLMDataRef dref_acf_fuel_totalizer_init_kg     ; // plane total fuel tanks weight // v26.09.2
+  inline static XPLMDataRef dref_acf_m_empty_weight ; // plane empty weight // v3.0.213.3
+  inline static XPLMDataRef dref_acf_m_max_weight   ; // plane max weight (payload + fuel) // v3.0.213.3
+  inline static XPLMDataRef dref_rw_acf_m_fuel_tot_lbs     ; // plane max fuel payload // v26.09.2
+  inline static XPLMDataRef dref_acf_m_fixed_f        ; // plane payload // v26.09.2
+  inline static XPLMDataRef dref_acf_fuel_totalizer_init_kg     ; // plane total fuel tanks weight // v26.09.2
 
-  XPLMDataRef dref_lat_d             ; // latitude
-  XPLMDataRef dref_lon_d             ; // longitude
-  XPLMDataRef dref_elev_d            ; // elevation
-  XPLMDataRef dref_faxil_gear_f      ; // faxil_gear
-  XPLMDataRef dref_fnrml_gear_f      ; // sim/flightmodel/forces/fnrml_gear
-  XPLMDataRef dref_g_nrml_f          ; // sim/flightmodel/forces/g_nrml
-  XPLMDataRef dref_fnrml_total_f       ; // sim/flightmodel/forces/fnrml_total
-  XPLMDataRef dref_brake_Left_add_f  ; // l_brake_add - add Left brake
-  XPLMDataRef dref_brake_Right_add_f ; // r_brake_add - add Right brake
+  inline static XPLMDataRef dref_lat_d             ; // latitude
+  inline static XPLMDataRef dref_lon_d             ; // longitude
+  inline static XPLMDataRef dref_elev_d            ; // elevation
+  inline static XPLMDataRef dref_faxil_gear_f      ; // faxil_gear
+  inline static XPLMDataRef dref_fnrml_gear_f      ; // sim/flightmodel/forces/fnrml_gear
+  inline static XPLMDataRef dref_g_nrml_f          ; // sim/flightmodel/forces/g_nrml
+  inline static XPLMDataRef dref_fnrml_total_f       ; // sim/flightmodel/forces/fnrml_total
+  inline static XPLMDataRef dref_brake_Left_add_f  ; // l_brake_add - add Left brake
+  inline static XPLMDataRef dref_brake_Right_add_f ; // r_brake_add - add Right brake
 
-  XPLMDataRef dref_frame_rate_period ; // v3.0.207.1 // frame_rate_period - fps
+  inline static XPLMDataRef dref_frame_rate_period ; // v3.0.207.1 // frame_rate_period - fps
 
-  XPLMDataRef dref_acf_num_tanks_i    ;// how many active tanks in plane sim/aircraft/overflow/acf_num_tanks
-  XPLMDataRef dref_m_fuel_f_arr     ;// weight for each 9 tanks
-  XPLMDataRef dref_m_fuel1_f        ;
-  XPLMDataRef dref_m_fuel2_f        ;
-  XPLMDataRef dref_m_fuel3_f        ;
-  XPLMDataRef dref_m_fuel_total_f   ; // weight in Kg
-  XPLMDataRef dref_m_total_f        ; // Current payload + Fuel weight in kg
-  XPLMDataRef dref_groundspeed_f    ;  // Groundspeed meters/sec
-  XPLMDataRef indicated_airspeed_f  ; // indicated_airspeed Kias
-  XPLMDataRef dref_local_vz_f       ; // Velocity of aircraft in its own coordinate system meters/sec
-  XPLMDataRef dref_local_vx_f       ; // Velocity of aircraft in its own coordinate system meters/sec
-  XPLMDataRef dref_q                ;              // quaternion - array of [4]
-  XPLMDataRef dref_acf_h_eqlbm      ;              // equilibrium - height of plane body from ground // calc plane location when moving it
+  inline static XPLMDataRef dref_acf_num_tanks_i    ;// how many active tanks in plane sim/aircraft/overflow/acf_num_tanks
+  inline static XPLMDataRef dref_m_fuel_f_arr     ;// weight for each 9 tanks
+  inline static XPLMDataRef dref_m_fuel1_f        ;
+  inline static XPLMDataRef dref_m_fuel2_f        ;
+  inline static XPLMDataRef dref_m_fuel3_f        ;
+  inline static XPLMDataRef dref_m_fuel_total_f   ; // weight in Kg
+  inline static XPLMDataRef dref_m_total_f        ; // Current payload + Fuel weight in kg
+  inline static XPLMDataRef dref_groundspeed_f    ;  // Groundspeed meters/sec
+  inline static XPLMDataRef dref_indicated_airspeed_f  ; // indicated_airspeed Kias
+  inline static XPLMDataRef dref_local_vz_f       ; // Velocity of aircraft in its own coordinate system meters/sec
+  inline static XPLMDataRef dref_local_vx_f       ; // Velocity of aircraft in its own coordinate system meters/sec
+  inline static XPLMDataRef dref_q                ;              // quaternion - array of [4]
+  inline static XPLMDataRef dref_acf_h_eqlbm      ;              // equilibrium - height of plane body from ground // calc plane location when moving it
   // dataref for step statistics
-  XPLMDataRef dref_local_date_days_i ; // local_date_days - Day in year
-  XPLMDataRef dref_local_time_sec_f  ; // local_time_sec - how many milliseconds from midnight. When value between   greater 66600 or less 18000 it will mark as night
-  XPLMDataRef dref_local_time_hours_i; // local_time_sec - how many milliseconds from midnight. When value between   greater 66600 or less 18000 it will mark as night
-  XPLMDataRef dref_zulu_time_sec_f   ; // zulu_time_sec - how many milliseconds from ZULU midnight. When value between   greater 66600 or less 18000 it will mark as night
+  inline static XPLMDataRef dref_local_date_days_i ; // local_date_days - Day in year
+  inline static XPLMDataRef dref_local_time_sec_f  ; // local_time_sec - how many milliseconds from midnight. When value between   greater 66600 or less 18000 it will mark as night
+  inline static XPLMDataRef dref_local_time_hours_i; // local_time_sec - how many milliseconds from midnight. When value between   greater 66600 or less 18000 it will mark as night
+  inline static XPLMDataRef dref_zulu_time_sec_f   ; // zulu_time_sec - how many milliseconds from ZULU midnight. When value between   greater 66600 or less 18000 it will mark as night
 
-  XPLMDataRef dref_local_x_d ; // local_x
-  XPLMDataRef dref_local_y_d ; // local_y
-  XPLMDataRef dref_local_z_d ; // local_z
+  inline static XPLMDataRef dref_local_x_d ; // local_x
+  inline static XPLMDataRef dref_local_y_d ; // local_y
+  inline static XPLMDataRef dref_local_z_d ; // local_z
 
-  XPLMDataRef dref_pitch_f            ; // The pitch of the aircraft relative to the earth precisely below the aircraft
-  XPLMDataRef dref_roll_f             ; // The roll of the aircraft relative to the earth precisely below the aircraft
-  XPLMDataRef dref_heading_true_psi_f ; // The heading of the aircraft relative to the earth precisely below the aircraft - true degrees north, always
-  XPLMDataRef dref_heading_mag_psi_f  ; // The real magnetic heading of the aircraft - the old magpsi dataref was FUBAR
-  XPLMDataRef dref_heading_psi_f      ; // The true heading of the aircraft in degrees from the Z axis - OpenGL coordinates
+  inline static XPLMDataRef dref_pitch_f            ; // The pitch of the aircraft relative to the earth precisely below the aircraft
+  inline static XPLMDataRef dref_roll_f             ; // The roll of the aircraft relative to the earth precisely below the aircraft
+  inline static XPLMDataRef dref_heading_true_psi_f ; // The heading of the aircraft relative to the earth precisely below the aircraft - true degrees north, always
+  inline static XPLMDataRef dref_heading_mag_psi_f  ; // The real magnetic heading of the aircraft - the old magpsi dataref was FUBAR
+  inline static XPLMDataRef dref_heading_psi_f      ; // The true heading of the aircraft in degrees from the Z axis - OpenGL coordinates
 
-  XPLMDataRef dref_total_running_time_sec_f; // Total time the sim has been up
-  XPLMDataRef dref_vh_ind_f                ; // VVI - vertical velocity in meters per second
-  XPLMDataRef dref_gforce_normal_f         ; //
-  XPLMDataRef dref_gforce_axil_f           ; //
-  XPLMDataRef AoA_f                        ; // Angle of Attack degrees
-  XPLMDataRef dref_pause                   ; // is Sim in pause
-  XPLMDataRef dref_is_in_replay            ; // is Sim in Replay Mode
+  inline static XPLMDataRef dref_total_running_time_sec_f; // Total time the sim has been up
+  inline static XPLMDataRef dref_vh_ind_f                ; // VVI - vertical velocity in meters per second
+  inline static XPLMDataRef dref_gforce_normal_f         ; //
+  inline static XPLMDataRef dref_gforce_axil_f           ; //
+  inline static XPLMDataRef AoA_f                        ; // Angle of Attack degrees
+  inline static XPLMDataRef dref_pause                   ; // is Sim in pause
+  inline static XPLMDataRef dref_is_in_replay            ; // is Sim in Replay Mode
 
   // v3.0.138
-  XPLMDataRef dref_render_window_width  ; // v3.0.138
-  XPLMDataRef dref_render_window_height ; // v3.0.138
+  inline static XPLMDataRef dref_render_window_width  ; // v3.0.138
+  inline static XPLMDataRef dref_render_window_height ; // v3.0.138
 
   // v3.0.219.3
-  XPLMDataRef dref_camera_view_x_f; // v3.0.219.3
-  XPLMDataRef dref_camera_view_y_f; // v3.0.219.3
-  XPLMDataRef dref_camera_view_z_f; // v3.0.219.3
+  inline static XPLMDataRef dref_camera_view_x_f; // v3.0.219.3
+  inline static XPLMDataRef dref_camera_view_y_f; // v3.0.219.3
+  inline static XPLMDataRef dref_camera_view_z_f; // v3.0.219.3
 
   // v3.0.221.11 CUSTOM datarefs should not be XPLMDataRef const since they won't be available until plugin will finish initialization. Instead we will hold their "path"
   std::string dref_xpshared_target_status_i_str;  // v3.0.221.9  -1: fail, 0: waiting 1: success
   std::string dref_xpshared_target_listen_plugin_available_i_str;// v3.0.221.9  1=listen 0 =no one is listening
 
   // gather stats
-  XPLMDataRef dref_vvi_fpm_pilot_f;
+  inline static XPLMDataRef dref_vvi_fpm_pilot_f;
 
-  XPLMDataRef dref_vh_ind_fpm_f;            // v3.303.8.3 VVI (vertical velocity in feet per second)
-  XPLMDataRef dref_vh_ind_fpm2_f;           // v3.303.8.3 VVI (vertical velocity in feet per second)
-  XPLMDataRef dref_Qrad_f;                   // v3.303.8.3 The pitch rotation rates (relative to the flight)
-  XPLMDataRef dref_Q_f;                      // v3.303.8.3 The pitch rotation rates (relative to the flight)
-  XPLMDataRef dref_y_agl_f;                  // v3.303.8.3 AGL in meters (Above Ground Level)
-  XPLMDataRef dref_onground_any_i;           // v3.303.8.3 User Aircraft is on the ground when this is set to 1
-  XPLMDataRef dref_onground_all_i;           // v3.303.8.3 I think it is 1 when all wheels are touching ground
+  inline static XPLMDataRef dref_vh_ind_fpm_f;            // v3.303.8.3 VVI (vertical velocity in feet per second)
+  inline static XPLMDataRef dref_vh_ind_fpm2_f;           // v3.303.8.3 VVI (vertical velocity in feet per second)
+  inline static XPLMDataRef dref_Qrad_f;                   // v3.303.8.3 The pitch rotation rates (relative to the flight)
+  inline static XPLMDataRef dref_Q_f;                      // v3.303.8.3 The pitch rotation rates (relative to the flight)
+  inline static XPLMDataRef dref_y_agl_f;                  // v3.303.8.3 AGL in meters (Above Ground Level)
+  inline static XPLMDataRef dref_onground_any_i;           // v3.303.8.3 User Aircraft is on the ground when this is set to 1
+  inline static XPLMDataRef dref_onground_all_i;           // v3.303.8.3 I think it is 1 when all wheels are touching ground
 
 
-  XPLMDataRef dref_override_planepath_i_arr; // v3.0.301 B4
-  XPLMDataRef dref_projection_matrix_3d_arr; // v3.305.4 
-  XPLMDataRef dref_outside_air_temp_degc; // v24.03.1 sim/cockpit2/temperature/outside_air_temp_degc 
+  inline static XPLMDataRef dref_override_planepath_i_arr; // v3.0.301 B4
+  inline static XPLMDataRef dref_projection_matrix_3d_arr; // v3.305.4 
+  inline static XPLMDataRef dref_outside_air_temp_degc; // v24.03.1 sim/cockpit2/temperature/outside_air_temp_degc 
 
   // X-Plane 11 specific Datarefs
-  XPLMDataRef dref_flap_ratio_f; 
+  inline static XPLMDataRef dref_flap_ratio_f; 
 
 
   // X-Plane 12 specific Datarefs
-  XPLMDataRef dref_acf_m_station_max_kgs_f_arr; // 24.12.2 acf_m_station_max - N'th payload stations maximum weight, as specified by author.
-  XPLMDataRef dref_m_stations_kgs_f; // 24.12.2 Payload Weight per station, if airplane has stations
+  inline static XPLMDataRef dref_acf_m_station_max_kgs_f_arr; // 24.12.2 acf_m_station_max - N'th payload stations maximum weight, as specified by author.
+  inline static XPLMDataRef dref_m_stations_kgs_f; // 24.12.2 Payload Weight per station, if airplane has stations
 
-  XPLMDataRef dref_CG_indicator_f; // v25.03.3 center of gravity cg_offset_z_mac - meter sim/cockpit2/gauges/indicators/CG_indicator
-  XPLMDataRef dref_cg_offset_z_mac_f; // v25.03.3 center of gravity cg_offset_z_mac %
-  XPLMDataRef dref_cg_offset_z_f; // v25.03.3 center of gravity sim/flightmodel2/misc/cg_offset_z (meter)
+  inline static XPLMDataRef dref_CG_indicator_f; // v25.03.3 center of gravity cg_offset_z_mac - meter sim/cockpit2/gauges/indicators/CG_indicator
+  inline static XPLMDataRef dref_cg_offset_z_mac_f; // v25.03.3 center of gravity cg_offset_z_mac %
+  inline static XPLMDataRef dref_cg_offset_z_f; // v25.03.3 center of gravity sim/flightmodel2/misc/cg_offset_z (meter)
 
-  XPLMDataRef fps_f_dref; // v26.03.1 //fps_dref = XPLMFindDataRef("sim/time/framerate_period");
-  XPLMDataRef dref_acf_vno_f; // v26.092 sim/aircraft/view/acf_Vno Maximum structural cruising speed, not to be exceeded except in smooth air
+  inline static XPLMDataRef fps_f_dref; // v26.03.1 //fps_dref = XPLMFindDataRef("sim/time/framerate_period");
+  inline static XPLMDataRef dref_acf_vno_f; // v26.09.2 sim/aircraft/view/acf_Vno Maximum structural cruising speed, not to be exceeded except in smooth air
+
+  inline static XPLMDataRef dref_acf_tank_ratio_f; // v26.09.3 sim/aircraft/overflow/acf_tank_rat
 
 
-  // const XPLMDataRef dref_ {template}
+  // const inline static XPLMDataRef dref_ {template}
 };
 
 } // missionx
