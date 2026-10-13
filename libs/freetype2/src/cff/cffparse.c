@@ -4,7 +4,7 @@
  *
  *   CFF token stream parser (body)
  *
- * Copyright (C) 1996-2023 by
+ * Copyright (C) 1996-2026 by
  * David Turner, Robert Wilhelm, and Werner Lemberg.
  *
  * This file is part of the FreeType project, and may only be used,
@@ -499,6 +499,24 @@
   {
     if ( **d == 30 )
       return cff_parse_real( *d, parser->limit, scaling, NULL );
+    else if ( **d == 255 )
+    {
+      FT_Fixed val = (FT_Int32)( ( ( (FT_UInt32)*( d[0] + 1 ) << 24 ) |
+                                   ( (FT_UInt32)*( d[0] + 2 ) << 16 ) |
+                                   ( (FT_UInt32)*( d[0] + 3 ) <<  8 ) |
+                                     (FT_UInt32)*( d[0] + 4 )         ) );
+
+      if ( scaling )
+      {
+        if ( FT_ABS( val ) > power_ten_limits[scaling] )
+        {
+           FT_TRACE4(( "!!!OVERFLOW:!!!" ));
+           return val > 0 ? 0x7FFFFFFFL : -0x7FFFFFFFL;
+        }
+        val *= power_tens[scaling];
+      }
+      return val;
+    }
     else
     {
       FT_Long  val = cff_parse_integer( *d, parser->limit );
@@ -506,7 +524,7 @@
 
       if ( scaling )
       {
-        if ( FT_ABS( val ) > power_ten_limits[scaling] )
+        if ( ( FT_ABS( val ) << 16 ) > power_ten_limits[scaling] )
         {
           val = val > 0 ? 0x7FFFFFFFL : -0x7FFFFFFFL;
           goto Overflow;
@@ -536,7 +554,7 @@
 
 
   /* read a floating point number, either integer or real */
-  static FT_Fixed
+  FT_LOCAL_DEF( FT_Fixed )
   cff_parse_fixed( CFF_Parser  parser,
                    FT_Byte**   d )
   {
@@ -874,7 +892,7 @@
                    dict->cid_supplement ));
       error = FT_Err_Ok;
 
-      FT_TRACE4(( " %d %d %ld\n",
+      FT_TRACE4(( " %u %u %ld\n",
                   dict->cid_registry,
                   dict->cid_ordering,
                   dict->cid_supplement ));
@@ -911,7 +929,7 @@
 
     priv->vsindex = (FT_UInt)cff_parse_num( parser, data++ );
 
-    FT_TRACE4(( " %d\n", priv->vsindex ));
+    FT_TRACE4(( " %u\n", priv->vsindex ));
 
     error = FT_Err_Ok;
 
@@ -961,7 +979,7 @@
       goto Exit;
     }
 
-    FT_TRACE4(( "   %d value%s blended\n",
+    FT_TRACE4(( "   %u value%s blended\n",
                 numBlends,
                 numBlends == 1 ? "" : "s" ));
 
@@ -996,7 +1014,7 @@
     if ( dict->maxstack < CFF2_DEFAULT_STACK )
       dict->maxstack = CFF2_DEFAULT_STACK;
 
-    FT_TRACE4(( " %d\n", dict->maxstack ));
+    FT_TRACE4(( " %u\n", dict->maxstack ));
 
   Exit:
     return error;
@@ -1013,10 +1031,14 @@
           CFF_FIELD( code, name, id, cff_kind_string )
 #define CFF_FIELD_BOOL( code, name, id )             \
           CFF_FIELD( code, name, id, cff_kind_bool )
+#define CFF_FIELD_DELTA( code, name, max, id )                        \
+          CFF_FIELD_DELTA_KIND( code, name, max, id, cff_kind_delta )
+#define CFF_FIELD_DELTA_FIXED( code, name, max, id )                        \
+          CFF_FIELD_DELTA_KIND( code, name, max, id, cff_kind_delta_fixed )
 
 
 #undef  CFF_FIELD
-#undef  CFF_FIELD_DELTA
+#undef  CFF_FIELD_DELTA_KIND
 
 
 #ifndef FT_DEBUG_LEVEL_TRACE
@@ -1046,18 +1068,18 @@
             code | CFFCODE,               \
             FT_FIELD_OFFSET( name ),      \
             FT_FIELD_SIZE( name ),        \
-            0, 0, 0                       \
+            NULL, 0, 0                    \
           },
 
-#define CFF_FIELD_DELTA( code, name, max, id ) \
-          {                                    \
-            cff_kind_delta,                    \
-            code | CFFCODE,                    \
-            FT_FIELD_OFFSET( name ),           \
-            FT_FIELD_SIZE_DELTA( name ),       \
-            0,                                 \
-            max,                               \
-            FT_FIELD_OFFSET( num_ ## name )    \
+#define CFF_FIELD_DELTA_KIND( code, name, max, id, kind ) \
+          {                                               \
+            kind,                                         \
+            code | CFFCODE,                               \
+            FT_FIELD_OFFSET( name ),                      \
+            FT_FIELD_SIZE_DELTA( name ),                  \
+            NULL,                                         \
+            max,                                          \
+            FT_FIELD_OFFSET( num_ ## name )               \
           },
 
   static const CFF_Field_Handler  cff_field_handlers[] =
@@ -1065,7 +1087,7 @@
 
 #include "cfftoken.h"
 
-    { 0, 0, 0, 0, 0, 0, 0 }
+    { 0, 0, 0, 0, NULL, 0, 0 }
   };
 
 
@@ -1099,20 +1121,20 @@
             code | CFFCODE,               \
             FT_FIELD_OFFSET( name ),      \
             FT_FIELD_SIZE( name ),        \
-            0, 0, 0,                      \
+            NULL, 0, 0,                   \
             id                            \
           },
 
-#define CFF_FIELD_DELTA( code, name, max, id ) \
-          {                                    \
-            cff_kind_delta,                    \
-            code | CFFCODE,                    \
-            FT_FIELD_OFFSET( name ),           \
-            FT_FIELD_SIZE_DELTA( name ),       \
-            0,                                 \
-            max,                               \
-            FT_FIELD_OFFSET( num_ ## name ),   \
-            id                                 \
+#define CFF_FIELD_DELTA_KIND( code, name, max, id, kind ) \
+          {                                               \
+            kind,                                         \
+            code | CFFCODE,                               \
+            FT_FIELD_OFFSET( name ),                      \
+            FT_FIELD_SIZE_DELTA( name ),                  \
+            NULL,                                         \
+            max,                                          \
+            FT_FIELD_OFFSET( num_ ## name ),              \
+            id                                            \
           },
 
   static const CFF_Field_Handler  cff_field_handlers[] =
@@ -1120,7 +1142,7 @@
 
 #include "cfftoken.h"
 
-    { 0, 0, 0, 0, 0, 0, 0, 0 }
+    { 0, 0, 0, 0, NULL, 0, 0, NULL }
   };
 
 
@@ -1338,7 +1360,8 @@
 
             /* check that we have enough arguments -- except for */
             /* delta encoded arrays, which can be empty          */
-            if ( field->kind != cff_kind_delta && num_args < 1 )
+            if ( field->kind != cff_kind_delta                       &&
+                 field->kind != cff_kind_delta_fixed && num_args < 1 )
               goto Stack_Underflow;
 
             switch ( field->kind )
@@ -1444,6 +1467,38 @@
                   }
 
                   FT_TRACE4(( " %ld", val ));
+
+                  q += field->size;
+                  num_args--;
+                }
+
+                FT_TRACE4(( "]\n" ));
+              }
+              break;
+
+            case cff_kind_delta_fixed:
+              {
+                FT_Byte*   qcount = (FT_Byte*)parser->object +
+                                      field->count_offset;
+
+                FT_Byte**  data = parser->stack;
+
+
+                if ( num_args > field->array_max )
+                  num_args = field->array_max;
+
+                FT_TRACE4(( " [" ));
+
+                /* store count */
+                *qcount = (FT_Byte)num_args;
+
+                val = 0;
+                while ( num_args > 0 )
+                {
+                  val = ADD_LONG( val, cff_parse_fixed( parser, data++ ) );
+                  *(FT_Long*)q = val;
+
+                  FT_TRACE4(( " %f\n", (double)val / 65536 ));
 
                   q += field->size;
                   num_args--;

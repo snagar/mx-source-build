@@ -4,7 +4,7 @@
  *
  *   Unix-specific FreeType low-level system interface (body).
  *
- * Copyright (C) 1996-2023 by
+ * Copyright (C) 1996-2026 by
  * David Turner, Robert Wilhelm, and Werner Lemberg.
  *
  * This file is part of the FreeType project, and may only be used,
@@ -24,7 +24,6 @@
 #include <freetype/fterrors.h>
 #include <freetype/fttypes.h>
 #include <freetype/internal/ftstream.h>
-#include <fcntl.h> // saar missionx
 
   /* memory-mapping includes and definitions */
 #ifdef HAVE_UNISTD_H

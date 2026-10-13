@@ -4,7 +4,7 @@
  *
  *   FreeType font driver for Windows FNT/FON files
  *
- * Copyright (C) 1996-2023 by
+ * Copyright (C) 1996-2026 by
  * David Turner, Robert Wilhelm, and Werner Lemberg.
  * Copyright 2003 Huw D M Davies for Codeweavers
  * Copyright 2007 Dmitry Timoshkov for Codeweavers
@@ -359,8 +359,8 @@
           if ( type_id == 0x8008U )
           {
             font_count  = count;
-            font_offset = FT_STREAM_POS() + 4 +
-                          (FT_ULong)( stream->cursor - stream->limit );
+            font_offset = FT_STREAM_POS() + 4 -
+                          (FT_ULong)( stream->limit - stream->cursor );
             break;
           }
 
@@ -479,6 +479,13 @@
              FT_STREAM_READ_FIELDS( winpe_rsrc_dir_fields, &root_dir ) )
           goto Exit;
 
+        if ( root_dir.number_of_id_entries >
+               0xFFFF - root_dir.number_of_named_entries )
+        {
+          error = FT_THROW( Invalid_File_Format );
+          goto Exit;
+        }
+
         root_dir_offset = pe32_section.pointer_to_raw_data;
 
         for ( i = 0; i < root_dir.number_of_named_entries +
@@ -505,6 +512,13 @@
                FT_STREAM_READ_FIELDS( winpe_rsrc_dir_fields, &name_dir ) )
             goto Exit;
 
+          if ( name_dir.number_of_id_entries >
+                 0xFFFF - name_dir.number_of_named_entries )
+          {
+            error = FT_THROW( Invalid_File_Format );
+            goto Exit;
+          }
+
           for ( j = 0; j < name_dir.number_of_named_entries +
                              name_dir.number_of_id_entries; j++ )
           {
@@ -528,6 +542,13 @@
                                    dir_entry2.offset )                     ||
                  FT_STREAM_READ_FIELDS( winpe_rsrc_dir_fields, &lang_dir ) )
               goto Exit;
+
+            if ( lang_dir.number_of_id_entries >
+                   0xFFFF - lang_dir.number_of_named_entries )
+            {
+              error = FT_THROW( Invalid_File_Format );
+              goto Exit;
+            }
 
             for ( k = 0; k < lang_dir.number_of_named_entries +
                                lang_dir.number_of_id_entries; k++ )
@@ -1006,7 +1027,7 @@
                   FT_UInt       glyph_index,
                   FT_Int32      load_flags )
   {
-    FNT_Face    face   = (FNT_Face)FT_SIZE_FACE( size );
+    FNT_Face    face   = (FNT_Face)size->face;
     FNT_Font    font;
     FT_Error    error  = FT_Err_Ok;
     FT_Byte*    p;
@@ -1031,7 +1052,7 @@
       goto Exit;
     }
 
-    FT_TRACE1(( "FNT_Load_Glyph: glyph index %d\n", glyph_index ));
+    FT_TRACE1(( "FNT_Load_Glyph: glyph index %u\n", glyph_index ));
 
     if ( glyph_index > 0 )
       glyph_index--;                           /* revert to real index */
