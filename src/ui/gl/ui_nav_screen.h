@@ -78,6 +78,8 @@ public:
   std::function<void(const missionx::mx_window_actions inActionToExecute)> add_ui_abort_mission_creation_button;
   // v26.09.3 add add_ui_no_inventories_checkbox
   std::function<void()> add_ui_no_inventories_checkbox;
+  // v26.09.3 add default base weight widget. Empty text means "use default text".
+  std::function<void(const std::string & in_message)> add_ui_default_base_weight_checkbox;
 
 
   // -----------------------------------

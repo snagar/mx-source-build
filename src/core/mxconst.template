@@ -1133,3 +1133,5 @@ constexpr static ^std::string_view ^        BLANK_3D_OBJ   ^ "blank"^// v26.01.5
 
 constexpr static ^std::string_view ^        LLM_DESCRIPTION_FOOTNOTE   ^ "Generated using LLM"^// v26.09.3 used to identify that the flight plan was generated using LLM. It is used in the briefer description and when constructing the end node.
 
+static constexpr ^std::string_view ^ LLM_WEIGHTS_START_MARKER ^ "--llm_suggested_payloads--"; // v26.09.3 used with LLM payload. Mark start of suggested text
+static constexpr ^std::string_view ^ LLM_WEIGHTS_END_MARKER   ^ "--llm_end_suggested_payloads--"; // v26.09.3 used with llm payloads. Mark end of text.

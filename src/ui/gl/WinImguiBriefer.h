@@ -814,6 +814,7 @@ private:
 
   void                add_ui_medevac_surprise_me_warning ( ); // v26.04.1
   static void         add_ui_is_amphibian ();
+  static void         add_ui_default_base_weight_checkbox(const std::string & in_message = ""); // v26.09.3
   const dataref_const dc;
 
   // v26.08.1

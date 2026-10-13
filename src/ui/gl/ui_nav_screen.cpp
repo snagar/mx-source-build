@@ -698,7 +698,8 @@ void ui_nav_screen::child_draw_ils_search()
                 ImGui::Checkbox ("Generate GPS waypoints", &missionx::strct_cross_layer_properties.flag_generate_gps_waypoints); // v3.0.253.12
                 this->add_ui_auto_load_checkbox (missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS); // v25.04.2
                 ImGui::Separator(); // v26.09.3
-                ImGui::Checkbox ("Add default base weights.\n(Not advisable for planes > GAs)", &missionx::adv_settings_strct.flag_add_default_weight_settings);
+                // ImGui::Checkbox ("Add default base weights.\n(Not advisable for planes > GAs)", &missionx::adv_settings_strct.flag_add_default_weight_settings);
+                this->add_ui_default_base_weight_checkbox(""); // v26.09.3 sending empty string will use the default checkbox label.
                 const auto disable_inventories = mxStartUiDisableState(missionx::strct_setup_layer.bNoInventories);
                 this->add_ui_pick_subcategories (missionx::mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]);
                 mxEndUiDisableState(disable_inventories);
