@@ -17,6 +17,7 @@
 #include <list>
 #include <unordered_set>
 
+// #include "../../libs/freetype2.orig/src/gzip/zutil.h"
 #include "../../libs/polyline-cpp/src/SimplePolyline.h" // v3.303.14
 #include "../core/dataref_manager.h"                    // v3.305.2 moved from header
 #include "../io/OptimizeAptDat.h"                       // v3.303.14
@@ -1988,13 +1989,16 @@ data_manager::write_fpln_to_external_folder(const std::map<int, missionx::NavAid
       const auto lmbda_get_fms_navaid_info =[] (const std::map<int, missionx::NavAidInfo>& local_map_fms_entries)
       {
         // Due to duplicate FMS entries.
-        return extractNavaidInfoFromPlanesFMS ();
+        auto fms_entries = extractNavaidInfoFromPlanesFMS (); // will be empty if plane has FMS and not G1000/G530/G4xx
+        if (!fms_entries.empty())
+          return fms_entries;
 
+        std::map<int, missionx::NavAidInfo> gps_navaid_entries = local_map_fms_entries;
         if (local_map_fms_entries.empty())
-          return extractNavaidInfoFromPlanesFMS();
+          gps_navaid_entries = parse_gps_node(); // try to read GPS info from mission file, ignores navaid display restrictions.
 
         std::deque<NavAidInfo> fmsNavAids;
-        for (const auto &navAid : local_map_fms_entries | std::views::values)
+        for (const auto &navAid : gps_navaid_entries | std::views::values)
           fmsNavAids.push_back(navAid);
 
         return fmsNavAids;
@@ -2049,15 +2053,15 @@ data_manager::write_fpln_to_external_folder(const std::map<int, missionx::NavAid
               {
                 return ".gfp";
               }
-              else if (fpln_type == GNSRXP)
+              if (fpln_type == GNSRXP)
               {
                 return ".fpl";
               }
-              else if (fpln_type == LTLNAV)
+              if (fpln_type == LTLNAV)
               {
                 return ".lnmpln";
               }
-              else if (fpln_type == XPLN11)
+              if (fpln_type == XPLN11)
               {
                 return "_xp11.fms";
               }
@@ -3450,91 +3454,12 @@ void data_manager::set_plane_fuel()
 
   // 1. Ensure target vector matches the available tanks
   assert (tank_ratios.size() == fuel_tanks.size() && "'Fuel tank ratio array' is not equal to 'Fuel Tanks array'.");
-  // Zero all tanks
-  std::ranges::fill(fuel_tanks, 0.0f);
 
   // 1. Fetch total aircraft fuel capacity (kg) to calculate each tank's physical max capacity.
   // Dataref: "sim/aircraft/weight/acf_m_fuel_tot"
   const float total_aircraft_fuel_capacity = missionx::dataref_manager::getDataRefValue<float>(dataref_const::dref_rw_acf_m_fuel_tot_lbs) * lbs2kg;
 
-  // 2. Identify active tanks and compute their maximum capacities
-  struct TankInfo {
-    size_t index;
-    float max_capacity;
-  };
-
-  std::vector<TankInfo> active_tanks;
-  for (size_t i = 0; i < tank_ratios.size(); ++i)
-  {
-    if (tank_ratios[i] > 0.0f)
-    {
-      float cap = tank_ratios[i] * total_aircraft_fuel_capacity;
-      active_tanks.push_back({ i, cap });
-    }
-  }
-
-  if (active_tanks.empty() || mission_block_fuel <= 0.0f)
-    return;
-
-  // 3. Water-filling distribution:
-  // Attempts to level fuel equally across all tanks.
-  // Lower-ratio (smaller capacity) tanks will hit their cap first.
-  // Once filled, the remaining fuel is divided equally between the higher-ratio tanks.
-  float remaining_fuel = mission_block_fuel;
-
-  while (!active_tanks.empty() && remaining_fuel > 0.001f)
-  {
-    float fair_share = remaining_fuel / static_cast<float>(active_tanks.size());
-    bool capped_any  = false;
-
-    std::vector<TankInfo> next_active;
-    next_active.reserve(active_tanks.size());
-
-    for (const auto& tank : active_tanks)
-    {
-      float room_left = tank.max_capacity - fuel_tanks[tank.index];
-
-      if (room_left <= fair_share)
-      {
-        // Lower-ratio / smaller tank fills completely first
-        fuel_tanks[tank.index] = tank.max_capacity;
-        remaining_fuel -= room_left;
-        capped_any = true;
-      }
-      else
-      {
-        next_active.push_back(tank);
-      }
-    }
-
-    if (!capped_any)
-    {
-      // All remaining tanks (the higher-ratio tanks) hold the fair share equally
-      for (const auto& tank : active_tanks)
-      {
-        fuel_tanks[tank.index] += fair_share;
-      }
-      remaining_fuel = 0.0f;
-      break;
-    }
-
-    active_tanks = std::move(next_active);
-  }
-
-  // 4. Overfill safeguard:
-  // If mission_block_fuel exceeds total aircraft capacity, spread remaining excess evenly
-
-  if (remaining_fuel > 0.001f)
-  {
-    float excess_per_tank = remaining_fuel / static_cast<float>(tank_ratios.size());
-    for (size_t i = 0; i < fuel_tanks.size(); ++i)
-    {
-      if (tank_ratios[i] > 0.0f)
-      {
-        fuel_tanks[i] += excess_per_tank;
-      }
-    }
-  } // if (remaining_fuel > 0.001f)
+  distribute_weight(tank_ratios, fuel_tanks, mission_block_fuel, total_aircraft_fuel_capacity, true);
 
   // write back to x-plane
   int counter_fuel_tanks = 0;
@@ -3606,7 +3531,6 @@ data_manager::calculatePlaneWeight(const Inventory& inSourceInventory, const boo
       }
     }
 
-
     return plane_inventory_weight;
   };
 
@@ -3663,7 +3587,8 @@ data_manager::calculatePlaneWeight(const Inventory& inSourceInventory, const boo
           }
 
           // distribute the rest of the weight
-           distribute_payload(dref_acf_station_max_kgs_f_arr.out_vecArrayFloatValues, dref_m_stations_kgs_f_arr.out_vecArrayFloatValues, planePayloadWeight);
+          constexpr static float MAX_ALLOWED_PAYLOAD_WEIGHT = 0.0f;
+          distribute_weight(dref_acf_station_max_kgs_f_arr.out_vecArrayFloatValues, dref_m_stations_kgs_f_arr.out_vecArrayFloatValues, planePayloadWeight, MAX_ALLOWED_PAYLOAD_WEIGHT, false);
 
           m_stations_s.clear();
           counter_stations = 0;
@@ -3686,76 +3611,108 @@ data_manager::calculatePlaneWeight(const Inventory& inSourceInventory, const boo
   return planePayloadWeight;
 }
 
-void data_manager::distribute_payload(const std::vector<float>& max_weights, std::vector<float>& target_weights, const float weight_to_distribute, const bool flag_reset_all_target_weights)
+// -------------------------------------
+
+void data_manager::distribute_weight(const std::vector<float>& max_weights, std::vector<float>& target_weights, const float weight_to_distribute, const float max_allowed_weight, const bool flag_reset_all_target_weights)
 {
-  assert (target_weights.size() == max_weights.size() && "The station max and actual weights array are not the equal in size.");
-  if (target_weights.size() < max_weights.size())
-      target_weights.resize(max_weights.size(), 0.0f);
+if (target_weights.size() != max_weights.size())
+    {
+        target_weights.resize(max_weights.size(), 0.0f);
+    }
 
-  // reset target weights
-  if (flag_reset_all_target_weights)
-    for (auto &weight : target_weights)
-      weight = 0.0f;
+    // 1. Detect if max_weights represents ratios (all non-zero values <= 1.0f)
+    float max_val = 0.0f;
+    for (float val : max_weights)
+    {
+        if (val > max_val)
+            max_val = val;
+    }
 
-  // 1. Zero out payload stations (index 0 is pilot - left untouched)
-  for (size_t i = 1; i < target_weights.size(); ++i)
-      target_weights[i] = 0.0f;
+    const bool is_ratio = (max_val > 0.0f && max_val <= 1.0f);
 
-  // 2. Collect all usable station indices (index >= 1 and capacity > 0)
-  std::vector<size_t> usable_stations;
-  for (size_t i = 1; i < max_weights.size(); ++i)
-      if (max_weights[i] > 0.0f)
-          usable_stations.push_back(i);
+    if (is_ratio)
+    {
+        assert(max_allowed_weight > 0.0f && "max_allowed_weight must be > 0.0f when max_weights holds ratios (0..1).");
+        if (max_allowed_weight <= 0.0f)
+            return;
+    }
+
+    // 2. Reset targets and select start index:
+    // If flag_reset_all_target_weights is true (e.g., fuel tanks): reset all and start at index 0.
+    // If false (e.g., payload stations): keep index 0 (pilot) untouched and start at index 1.
+    const size_t start_index = flag_reset_all_target_weights ? 0 : 1;
+
+    if (flag_reset_all_target_weights)
+    {
+        // should be used with fuel
+        std::fill(target_weights.begin(), target_weights.end(), 0.0f);
+    }
+    else
+    {
+        // In the case of payload, we skip the first station, since it belongs to the pilot.
+        for (size_t i = start_index; i < target_weights.size(); ++i)
+            target_weights[i] = 0.0f;
+    }
+
+    // 3. Precompute capacities and collect usable stations
+    std::vector<float> capacities(max_weights.size(), 0.0f);
+    std::vector<size_t> usable_stations;
+    usable_stations.reserve(max_weights.size());
+
+    for (size_t i = start_index; i < max_weights.size(); ++i)
+    {
+        if (max_weights[i] > 0.0f)
+        {
+            capacities[i] = is_ratio ? (max_weights[i] * max_allowed_weight) : max_weights[i];
+            usable_stations.push_back(i);
+        }
+    }
 
     if (usable_stations.empty() || weight_to_distribute <= 0.0f)
         return;
 
-    std::vector<size_t> active_stations = usable_stations;
+    std::vector<size_t> active_elements_in_vector = usable_stations;
     float remaining_weight = weight_to_distribute;
 
-    // Phase 1: Distribute evenly, capping stations that reach max allowable weight
-    while (!active_stations.empty() && remaining_weight > 0.001f)
+    // Phase 1: Distribute evenly, capping stations that reach max allowable capacity
+    while (!active_elements_in_vector.empty() && remaining_weight > 0.001f)
     {
-        const float fair_share = remaining_weight / static_cast<float>(active_stations.size());
-        bool capped_any  = false;
+        const float fair_share = remaining_weight / static_cast<float>(active_elements_in_vector.size());
+        bool capped_any = false;
 
         std::vector<size_t> next_active;
-        next_active.reserve(active_stations.size());
+        next_active.reserve(active_elements_in_vector.size());
 
-        for (size_t idx : active_stations)
+        for (size_t idx : active_elements_in_vector)
         {
-            float capacity_left = max_weights[idx] - target_weights[idx];
+            const float capacity_left = capacities[idx] - target_weights[idx];
 
             if (capacity_left <= fair_share)
             {
-                // Station reaches/exceeds its limit: fill to capacity and lock it
-                target_weights[idx] = max_weights[idx];
+                target_weights[idx] = capacities[idx];
                 remaining_weight -= capacity_left;
                 capped_any = true;
             }
             else
             {
-                // Can still accept more weight in this pass
                 next_active.push_back(idx);
             }
         }
 
         if (!capped_any)
         {
-            // All remaining active stations comfortably hold their fair share
-            for (size_t idx : active_stations)
+            for (size_t idx : active_elements_in_vector)
                 target_weights[idx] += fair_share;
 
             remaining_weight = 0.0f;
             break;
         }
 
-        active_stations = std::move(next_active);
+        active_elements_in_vector = std::move(next_active);
     }
 
     // Phase 2: Overweight fallback
-    // If every station reached its max capacity but weight still remains,
-    // distribute the remaining excess weight evenly across all usable stations.
+    // If all usable stations reached capacity, share excess weight equally
     if (remaining_weight > 0.001f)
     {
         const float excess_share = remaining_weight / static_cast<float>(usable_stations.size());
@@ -3764,7 +3721,7 @@ void data_manager::distribute_payload(const std::vector<float>& max_weights, std
     }
 }
 
-
+// -------------------------------------
 
 void
 data_manager::internally_calculateAndStorePlaneWeight(const Inventory& inSourceInventory, const bool& flag_apply_to_dataref, const int& inLayoutVersion)
@@ -4464,8 +4421,6 @@ data_manager::setGPS()
 
   for (int i1 = 0; i1 < nChilds; ++i1)
   {
-    // flag_found = false;
-
     NavAidInfo navInfo;
     IXMLNode cNode_ptr = xFMS_ptr.getChildNode(mxconst::get_ELEMENT_POINT().c_str(), i1); // .deepCopy(); // v3.0.219.7 copy of GPS point
 
@@ -4517,17 +4472,8 @@ data_manager::setGPS()
 
     }
 
-
-    // v3.0.241.3 decide elevation based on icao info
-    const auto lmbda_get_elevation = [&]()
-    {
-      if (flag_icao_is_valid)
-        return static_cast<int> ( navInfo.height_mt );
-
-      return static_cast<int> ( elev_ft_f * feet2meter );
-    };
-
-    const auto elev_mt_i = lmbda_get_elevation();
+    const auto elev_mt_i = (flag_icao_is_valid)? static_cast<int> ( navInfo.height_mt )
+                                                  : static_cast<int> ( elev_ft_f * feet2meter );
 
 
     // v3.0.241.2 adding RealityXP ".gpf" flight plan format
@@ -4542,9 +4488,9 @@ data_manager::setGPS()
       }
     }
 
-    // v25.05.1
+    // v25.05.1 Adding lat/lon
     missionx::NavAidInfo nav (lat_f, lon_f, static_cast<float>(elev_mt_i) );
-    Utils::addElementToMap (map_fms_entries, valid_entries_counter, navInfo);
+    Utils::addElementToMap (map_fms_entries, valid_entries_counter, nav);
 
     XPLMSetFMSEntryLatLon(valid_entries_counter, lat_f, lon_f, elev_mt_i); // v3.0.241.3
 
@@ -4564,6 +4510,98 @@ data_manager::setGPS()
   // set FMS only if positive
   if (iCurrentGpsActiveEntry)
     XPLMSetDestinationFMSEntry(iCurrentGpsActiveEntry); // set GPS/FMS active entry
+
+  return map_fms_entries;
+}
+
+// -------------------------------------
+
+std::map<int, missionx::NavAidInfo> data_manager::parse_gps_node()
+{
+  const bool        bUseGPS         = (xmlLoadedFMS.isEmpty ()) ? true : false; // v25.04.2 decide if to use GPS or FMS, we will use the bool value to decide if to read the auto_load option or not.
+  const IXMLNode    xFMS_ptr        = (bUseGPS) ? xmlGPS : xmlLoadedFMS; // pick the FMS element or GPS dependent on availability in the mission/checkpoint file.
+  const std::string mission_state_s = Utils::readAttrib (mx_global_settings.node, mxconst::get_PROP_MISSION_STATE (), ""); // empty value means new mission and not loaded checkpoint
+  std::map<int, missionx::NavAidInfo> map_fms_entries; // v25.05.1
+
+  if (xFMS_ptr.isEmpty())
+    return map_fms_entries;
+
+
+  const auto nodeLocationAdjust_ptr = xMainNode.getChildNodeByPath ((mxconst::get_ELEMENT_BRIEFER () + "/" + mxconst::get_ELEMENT_LOCATION_ADJUST ()).c_str ());
+  const int nChilds = xFMS_ptr.nChildNode(mxconst::get_ELEMENT_POINT().c_str());
+
+  // These parameters represent the first and last waypoints. They must represent an airport and not a Nav/Vor/Fix/NDB
+  constexpr int first_waypoint = 0;
+  const int last_waypoint = (nChilds-1 > first_waypoint) ? (nChilds-1) : first_waypoint + 1;
+
+ int valid_entries_counter = 0;
+ for (int i1 = 0; i1 < nChilds; ++i1)
+  {
+    NavAidInfo navInfo;
+    IXMLNode cNode_ptr = xFMS_ptr.getChildNode(mxconst::get_ELEMENT_POINT().c_str(), i1); // .deepCopy(); // v3.0.219.7 copy of GPS point
+
+    auto              lat_f              = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LAT (), 0.0f);
+    auto              lon_f              = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LONG (), 0.0f);
+    const auto        elev_ft_f          = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_ELEV_FT (), 0.0f); // v3.0.241.3
+
+    navInfo.navRef    = Utils::readNodeNumericAttrib<int> (cNode_ptr, mxconst::get_ATTRIB_NAVREF (), XPLM_NAV_NOT_FOUND); // v25.05.1
+    navInfo.lat       = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LAT (), 0.0f);
+    navInfo.lon       = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LONG (), 0.0f);
+    navInfo.height_mt = (Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_ELEV_FT (), 0.0f) * missionx::feet2meter);
+    navInfo.setID (Utils::readAttrib (cNode_ptr, mxconst::get_ELEMENT_ICAO (), ""));
+    navInfo.navType = Utils::readNodeNumericAttrib<int> (cNode_ptr, mxconst::get_ATTRIB_NAV_TYPE (), xplm_Nav_Unknown);
+
+    // v25.05.1 decide which navtype to search
+    XPLMNavType nav_type = xplm_Nav_Airport; // xplm_Nav_Airport|xplm_Nav_Fix|xplm_Nav_VOR|xplm_Nav_NDB
+    if ( mxUtils::mx_between <int>(i1, first_waypoint, last_waypoint, missionx::enums::mx_between_types::gt_min_less_max))
+      nav_type = xplm_Nav_Airport|xplm_Nav_Fix|xplm_Nav_VOR|xplm_Nav_NDB;
+
+    bool flag_icao_is_valid = false; // will hold the icao string if it is valid one.
+    if (navInfo.navRef == XPLM_NAV_NOT_FOUND)
+    {
+      if (navInfo.getID ().empty () && lat_f * lon_f != 0.0)
+      {
+        navInfo.navRef = XPLMFindNavAid(nullptr, nullptr, &lat_f, &lon_f, nullptr, nav_type);
+      }
+      else if (!navInfo.getID ().empty () && lat_f * lon_f != 0.0)
+      {
+        if (navInfo.navType > xplm_Nav_Unknown)
+          navInfo.navRef = XPLMFindNavAid(nullptr, navInfo.getID ().data(), &lat_f, &lon_f, nullptr, navInfo.navType); // find ref based on point nav_type. We can add assert on navRef_fromNode_i
+        else
+          navInfo.navRef = XPLMFindNavAid(nullptr, navInfo.getID ().data(), &lat_f, &lon_f, nullptr, nav_type);
+      }
+    }
+
+    if (navInfo.navRef != XPLM_NAV_NOT_FOUND)
+    {
+      flag_icao_is_valid = true;
+      XPLMGetNavAidInfo (navInfo.navRef, &navInfo.navType, &navInfo.lat, &navInfo.lon, &navInfo.height_mt, &navInfo.freq, &navInfo.heading, navInfo.ID, navInfo.name, nullptr);
+      Utils::addElementToMap (map_fms_entries, valid_entries_counter, navInfo);
+      ++valid_entries_counter;
+    }
+
+
+    // v3.0.241.3 decide elevation based on icao info
+    const auto lmbda_get_elevation = [&]()
+    {
+      if (flag_icao_is_valid)
+        return static_cast<int> ( navInfo.height_mt );
+
+      return static_cast<int> ( elev_ft_f * feet2meter );
+    };
+
+    const auto elev_mt_i = lmbda_get_elevation();
+
+
+    // v3.0.241.2 adding RealityXP ".gpf" flight plan format
+    // v25.05.1
+    missionx::NavAidInfo nav (lat_f, lon_f, static_cast<float>(elev_mt_i) );
+    Utils::addElementToMap (map_fms_entries, valid_entries_counter, nav);
+
+    XPLMSetFMSEntryLatLon(valid_entries_counter, lat_f, lon_f, elev_mt_i); // v3.0.241.3
+
+    ++valid_entries_counter;
+  } // end loop over all child <point>s
 
   return map_fms_entries;
 }

@@ -1064,20 +1064,7 @@ missionx::Mission::START_MISSION()
     missionx::data_manager::flag_setupEnableDesignerMode = Utils::readBoolAttrib(data_manager::xMainNode, mxconst::get_ATTRIB_MISSION_DESIGNER_MODE(), missionx::data_manager::flag_setupEnableDesignerMode);                                                            // v3.0.241.1
     missionx::system_actions::pluginSetupOptions.node.updateAttribute(mxUtils::formatNumber<int>(((missionx::data_manager::flag_setupEnableDesignerMode) ? 1 : 0)).c_str(), mxconst::get_OPT_ENABLE_DESIGNER_MODE().c_str(), mxconst::get_OPT_ENABLE_DESIGNER_MODE().c_str()); // v3.303.8.3
 
-
-    // // v24.12.2 // v26.09.3 Deprecated. Do not reset weights.
-    // if (missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i != missionx::XP11_COMPATIBILITY)
-    // {
-    //   std::string resetStations_s;
-    //   for (int i = 0; i < data_manager::dref_m_stations_kgs_f_arr.arraySize; ++i)
-    //   {
-    //     resetStations_s.append("0");
-    //     if (i < (data_manager::dref_m_stations_kgs_f_arr.arraySize - 1))
-    //       resetStations_s.append(",");
-    //   }
-    //   int iResult = data_manager::dref_m_stations_kgs_f_arr.setTargetArray<xplmType_FloatArray, float>(data_manager::dref_m_stations_kgs_f_arr.arraySize, resetStations_s, true, ",");
-    // }
-
+    // Plane Weights and Inventories
     #ifndef RELEASE
     Log::logMsg (fmt::format ("Plane Inventory Node:\n{}", data_manager::mapInventories[mxconst::get_ELEMENT_PLANE()].get_node_as_text () ) );
     #endif

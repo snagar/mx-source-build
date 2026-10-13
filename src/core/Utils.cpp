@@ -3773,18 +3773,18 @@ Utils::clone_xml_vector (std::vector<IXMLNode> in_vec)
 std::optional<structs::MissionPayloads>
 Utils::extract_llm_payloads(std::string_view response_text)
 {
-  constexpr std::string_view start_marker = "--llm_suggest_payloads--";
-  constexpr std::string_view end_marker   = "--llm_end_suggested_payloads--";
+  // constexpr std::string_view start_marker = "--llm_suggest_payloads--";
+  // constexpr std::string_view end_marker   = "--llm_end_suggested_payloads--";
 
   // 1. Find block boundaries
-  auto start_pos = response_text.find(start_marker);
-  auto end_pos   = response_text.find(end_marker);
+  auto start_pos = response_text.find(mxconst::LLM_WEIGHTS_START_MARKER);
+  auto end_pos   = response_text.find(mxconst::LLM_WEIGHTS_END_MARKER);
 
   if (start_pos == std::string_view::npos || end_pos == std::string_view::npos || end_pos <= start_pos) {
     return std::nullopt;
   }
 
-  start_pos += start_marker.length();
+  start_pos += mxconst::LLM_WEIGHTS_START_MARKER.length();
   std::string_view block = response_text.substr(start_pos, end_pos - start_pos);
 
   structs::MissionPayloads result{};

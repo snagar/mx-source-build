@@ -183,6 +183,12 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
     add_ui_no_inventories_checkbox();
   };
 
+  // v26.09.3
+  m_ui_nav_screen->add_ui_default_base_weight_checkbox = [](const std::string & in_message = "")->void
+  {
+    add_ui_default_base_weight_checkbox(in_message);
+  };
+
 
 
   // -------------------------------------------
@@ -1124,7 +1130,7 @@ WinImguiBriefer::add_ui_default_weights ()
   // ------------------------
   // -- Default Weight
   // ------------------------
-  ImGui::Checkbox ("Add default base weights.\nThis will be added to the weight of any item you pick from an external inventory.\n(Not advisable for aircraft larger than General Aviation)", &missionx::adv_settings_strct.flag_add_default_weight_settings);
+  add_ui_default_base_weight_checkbox("Add default base weights.\nThis will be added to the weight of any item you pick from an external inventory.\n(Not advisable for aircraft larger than General Aviation)");
   if (missionx::adv_settings_strct.flag_add_default_weight_settings)
   {
     mx_img_window::HelpMarker ("Define Pilot Weight (0..200)");
@@ -3459,7 +3465,7 @@ WinImguiBriefer::add_ui_auto_load_checkbox (const missionx::mx_window_actions &i
   mx_img_window::HelpMarker ("!! not advisable for planes with FMS!!\n\nAutoload waypoints to the GPS, on mission start.\nThe setting will be saved into the preference file.", missionx::color::color_vec4_aqua);
   ImGui::SameLine ();
   //if (ImGui::Checkbox ("Auto Load Route.\n(not advisable for FMS)", &missionx::strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms)) // v25.04.2
-  if (ImGui::Checkbox ("Load Route", &missionx::strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms)) // v25.04.2
+  if (ImGui::Checkbox ("Load to GPS", &missionx::strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms)) // v25.04.2
   {
     // ADD set option value
     missionx::system_actions::pluginSetupOptions.set_node_text_type_1_5<bool> (mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), missionx::strct_cross_layer_properties.flag_auto_load_route_to_gps_or_fms);
@@ -3706,15 +3712,29 @@ void WinImguiBriefer::add_ui_is_amphibian()
 
 // -------------------------------------------
 
+void WinImguiBriefer::add_ui_default_base_weight_checkbox(const std::string & in_message)
+{
+  const std::string message = (in_message.empty())? "Add default base weights." : in_message;
+  mxUiHelpMarker(missionx::color::color_vec4_white, "!! Not recommended for aircraft larger than GA aircraft !!\n\nInclude pilot weight by default.\n\nWhen using the XP11 inventory style,\npassenger and cargo weights are included as well.");
+  ImGui::SameLine();
+  ImGui::Checkbox (message.c_str(), &missionx::adv_settings_strct.flag_add_default_weight_settings);
+
+}
+
+// -------------------------------------------
+
 void
 WinImguiBriefer::add_ui_ai_use_ai_checkbox()
 {
   // v26.08.1 part of the setup screen
-  mx_img_window::mxUiHelpMarker(missionx::color::color_vec4_beige, "Used only in the User Creation screen.");
+  mx_img_window::mxUiHelpMarker(missionx::color::color_vec4_beige, "Used in some of the mission Creation screen.");
   ImGui::SameLine();
   if (ImGui::Checkbox ("Use AI##ai_setup", &strct_setup_layer.b_use_ai) )
   {
-    data_manager::strct_ui_share_data.disable_llm(); // v26.09.2 reset all llm flags: flag_llm_use_llm_to_generate_a_mission and flag_llm_add_background_story
+    // reset llm flags if we disable the AI.
+    if (!strct_setup_layer.b_use_ai)
+      data_manager::strct_ui_share_data.disable_llm(); // v26.09.2 reset all llm flags: flag_llm_use_llm_to_generate_a_mission and flag_llm_add_background_story
+
     // data_manager::strct_ui_share_data.flag_llm_use_llm_to_generate_a_mission = false; // v26.09.1 reset ai generate mission flag
     system_actions::pluginSetupOptions.set_node_text_type_1_5<bool>(mxconst::get_OPT_AI_USE_AI(), strct_setup_layer.b_use_ai);
     this->execAction(mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS);
@@ -4421,7 +4441,14 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
           // v26.09.3 Simbrief Fuel and Payload
           if (!data_manager::tableExternalFPLN_simbrief_vec.empty() && WinImguiBriefer::currentLayer == uiLayer_enum::flight_leg_info)
           {
-            constexpr static auto warning = "Load Weights from Simbrief.\nPayload = Cargo + Baggage + Passengers Weight.\n\nMake sure you select the correct aircraft in X-Plane!\n\nIf your plane supports Simbrief, use it instead.";
+            constexpr static auto warning = R"(Load Weights from Simbrief.
+Payload = Cargo + Baggage + Passengers Weight.
+
+Pilot weight is not included in the passenger weight.
+
+Make sure you select the correct aircraft in X-Plane!
+
+If your plane supports Simbrief, use its functionality instead.)";
             mxUiHelpMarker(missionx::color::color_vec4_white, warning);
             ImGui::SameLine();
             ImGui::TextColored(missionx::color::color_vec4_yellow, "Simbrief: ");
@@ -4449,7 +4476,7 @@ WinImguiBriefer::draw_popup_generate_mission_based_on_ext_fpln (const std::strin
           }
 
           ImGui::Spacing (); // v3.303.14.2 added default weight to the generate screen
-          ImGui::Checkbox ("Add default base weights.\n(Not advisable for planes > GAs)", &missionx::adv_settings_strct.flag_add_default_weight_settings);
+          WinImguiBriefer::add_ui_default_base_weight_checkbox();
           // v25.04.1
           ImGui::Spacing ();
           const auto disable_inventories = mxStartUiDisableState(missionx::strct_setup_layer.bNoInventories);
@@ -5208,7 +5235,8 @@ WinImguiBriefer::draw_template_mission_generator_screen ()
             ImGui::Checkbox ("Generate GPS waypoints", &missionx::strct_cross_layer_properties.flag_generate_gps_waypoints);
             this->add_ui_auto_load_checkbox (); // v25.04.2
             ImGui::Separator(); // v26.09.3
-            ImGui::Checkbox ("Add default base weights.\n(Not advisable for planes > GAs)", &missionx::adv_settings_strct.flag_add_default_weight_settings);
+            // ImGui::Checkbox ("Add default base weights.\n(Not advisable for planes > GAs)", &missionx::adv_settings_strct.flag_add_default_weight_settings);
+            WinImguiBriefer::add_ui_default_base_weight_checkbox();
             ImGui::Spacing ();
 
             this->add_ui_advance_settings_random_date_time_weather_and_weight_button (); // v3.303.10 convert the random dateTime button to a self contain function

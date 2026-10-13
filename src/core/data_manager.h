@@ -1125,7 +1125,10 @@ public:
   // should be called on mission start/transaction commit/plane change
   static void set_plane_fuel();
   static float calculatePlaneWeight(const missionx::Inventory& inSourceInventory, const bool &flag_apply_to_dataref, const int &inLayoutVersion);
-  static void distribute_payload(const std::vector<float>& max_weights, std::vector<float>& target_weights, float weight_to_distribute, bool flag_reset_all_target_weights = false);
+  // calculate weight distribution for Payload and Fuel.
+  // In case of ratio calculation, like in the case of Fuel, we must define max_allowed_weight.
+  // In the case of Payload, we should keep the first station for pilot/crew weight, hence flag_reset_all_target_weights should be false
+  static void distribute_weight(const std::vector<float>& max_weights, std::vector<float>& target_weights, const float weight_to_distribute, const float max_allowed_weight = 0.0f, const bool flag_reset_all_target_weights = true);
 
   // v24.12.2: Calculates plane weight, and store it in: data_manager::current_plane_payload_weight_f
   static void  internally_calculateAndStorePlaneWeight(const missionx::Inventory& inSourceInventory, const bool &flag_apply_to_dataref, const int &inLayoutVersion);
@@ -1166,6 +1169,9 @@ public:
   // GPS / FMS
   static void clearFMSEntries();
   static std::map<int, missionx::NavAidInfo> setGPS(); // v3.0.215.7 // v25.05.1 added return container
+  // v26.09.3 The function will prepare all Navaid information that is inside the <GPS> or <FMS> nodes.
+  // It won't touch the plane GPS/FMS. What to do with the data should be decided later on by the mission preferences.
+  static std::map<int, missionx::NavAidInfo> parse_gps_node();
   // Add entry to GPS/FMS.
   // -1 = add to the end. This is the default behavior
   static void addLatLonEntryToGPS(Point& inPoint, const int& inEntry = -1); // v3.0.241.10 b3
