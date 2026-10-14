@@ -6171,11 +6171,11 @@ void RandomEngine::gen_briefer_phase_03_add_desc_ai(std::map<int, NavAidInfo>& i
 
 Do not add any text before or after the suggestion block.
 
---llm_suggest_payloads--
+{}
 fuel: <suggested fuel weight in kg>
 payload: <suggested carry payload excluding fuel in kg>
 combined fuel + payload: <fuel + payload in kg>
---llm_end_suggested_payloads--
+{}
 
 Use numeric values for all weights. Do not include units such as "kg" or "lbs" in the values.
 
@@ -6210,14 +6210,14 @@ Make sure that:
 - empty aircraft weight + fuel + payload does not exceed the maximum gross weight.
 - fuel does not exceed the maximum fuel weight.
 - all three suggested values are consistent with each other.
-)",
-            dataref_manager::strct_plane_base_info.plane_empty_weight_kg
-            , dataref_manager::strct_plane_base_info.plane_max_fuel_weight_kg
-            , dataref_manager::strct_plane_base_info.plane_estimated_fuel_endurance_hours
-            , dataref_manager::strct_plane_base_info.plane_max_speed_vno
-            , dataref_manager::strct_plane_base_info.plane_max_payload_kg - 10.0 // reduce 10 kg to be on the safe side.
-            , dataref_manager::strct_plane_base_info.plane_max_gross_weight_f_and_p_kg
-            
+)", mxconst::LLM_WEIGHTS_START_MARKER
+    , mxconst::LLM_WEIGHTS_END_MARKER
+    , dataref_manager::strct_plane_base_info.plane_empty_weight_kg
+    , dataref_manager::strct_plane_base_info.plane_max_fuel_weight_kg
+    , dataref_manager::strct_plane_base_info.plane_estimated_fuel_endurance_hours
+    , dataref_manager::strct_plane_base_info.plane_max_speed_vno
+    , dataref_manager::strct_plane_base_info.plane_max_payload_kg - 10.0 // reduce 10 kg to be on the safe side.
+    , dataref_manager::strct_plane_base_info.plane_max_gross_weight_f_and_p_kg
           ); // end payload instructions
         }
       }
@@ -6229,8 +6229,8 @@ Make sure that:
                                       "Generate a realistic mission description based on the user's outline. "
                                       "Return the description in a simple text format (ascii), and no more than 150 words."
                                       "You must not use \" in the text description."
-                                      "You must not provide prefix answers like: Okay, here’s a flight simulator mission brief based on your request"
-                                      "If you want to estimate flight time, you must check the waypoints provided. Their should be waypoint coordinates. Evaluate based on their data."
+                                      // "You must not provide prefix answers like: Okay, here’s a flight simulator mission brief based on your request"
+                                      "If you want to estimate flight time, you must have the distance and speed information to provide time estimation."
                                       "If no waypoint coordinates are present, provide a vague timeline, if any."
                                       ;
 
