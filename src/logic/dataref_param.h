@@ -104,6 +104,7 @@ public:
 
   // Read and assign dataref value, automatic resolving data type.  //You should call getValue() after this function.
   void readDatarefValue_into_missionx_plugin();
+  void readDatarefValue_into_missionx_plugin2();
   void readArrayDatarefIntoLocalArray(); // v3.303.12
 
   // ARRAYS

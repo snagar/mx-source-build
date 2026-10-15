@@ -793,6 +793,98 @@ missionx::dataref_param::readDatarefValue_into_missionx_plugin()
 {
   this->pStrArrayValue.clear();
 
+  if (!this->flag_paramReadyToBeUsed || this->dataRefId == nullptr)
+    return;
+
+  switch (this->dataRefType)
+  {
+    case xplmType_Int:
+    {
+      this->setValue(static_cast<double>(XPLMGetDatai(this->dataRefId)));
+      break;
+    }
+    case xplmType_Float:
+    {
+      this->setValue(static_cast<double>(XPLMGetDataf(this->dataRefId)));
+      break;
+    }
+    case xplmType_Double:
+    case (xplmType_Float | xplmType_Double):
+    {
+      this->setValue(XPLMGetDatad(this->dataRefId));
+      break;
+    }
+    case xplmType_IntArray:
+    {
+      Log::log_xplm_debug_string(fmt::format("[{}] inside switch: {}'", __func__, static_cast<int>(xplmType_IntArray)) );
+
+      if (this->flag_designerPickedOneElement)
+      {
+        // Guard: Ensure pointer exists, array has elements, and index is within bounds
+        if (this->target_IntArray != nullptr &&
+            this->arraySize > 0 &&
+            // this->arrayElementPickedTranslation >= 0 &&
+            this->arrayElementPickedTranslation < static_cast<unsigned int>(this->arraySize))
+        {
+          Log::log_xplm_debug_string(fmt::format("[{}] Trying to set INT array with translation. Using 'set_value()'", __func__) );
+          XPLMGetDatavi(this->dataRefId, this->target_IntArray, 0, this->arraySize);
+          this->setValue(static_cast<double>(this->target_IntArray[this->arrayElementPickedTranslation]));
+        }
+      }
+      else
+      {
+        Log::log_xplm_debug_string(fmt::format("[{}] Trying to set INT array using 'readArrayDatarefIntoLocalArray()'", __func__) );
+        this->readArrayDatarefIntoLocalArray();
+      }
+      break;
+    }
+    case xplmType_FloatArray:
+    {
+      Log::log_xplm_debug_string(fmt::format("[{}] inside switch: {}'", __func__, static_cast<int>(xplmType_FloatArray)) );
+      if (this->flag_designerPickedOneElement)
+      {
+        // Guard: Ensure pointer exists, array has elements, and index is within bounds
+        if (this->target_FloatArray != nullptr &&
+            this->arraySize > 0 &&
+            // this->arrayElementPickedTranslation >= 0 &&
+            this->arrayElementPickedTranslation < static_cast<unsigned int>(this->arraySize))
+        {
+          Log::log_xplm_debug_string(fmt::format("[{}] Trying to set FLOAT array with translation. Using 'set_value()'", __func__) );
+          XPLMGetDatavf(this->dataRefId, this->target_FloatArray, 0, this->arraySize);
+          this->setValue(static_cast<double>(this->target_FloatArray[this->arrayElementPickedTranslation]));
+        }
+      }
+      else
+      {
+        Log::log_xplm_debug_string(fmt::format("[{}] Trying to set FLOAT array using 'readArrayDatarefIntoLocalArray()'", __func__) );
+        this->readArrayDatarefIntoLocalArray();
+      }
+      break;
+    }
+    case xplmType_Data:
+    {
+      Log::log_xplm_debug_string(fmt::format("[{}] inside switch: {}'", __func__, static_cast<int>(xplmType_Data)) );
+      this->arraySize = XPLMGetDatab(this->dataRefId, nullptr, 0, 0);
+      if (this->arraySize > 0 && this->target_CharArray != nullptr)
+      {
+        XPLMGetDatab(this->dataRefId, this->target_CharArray, 0, this->arraySize);
+        // Explicitly construct with arraySize to prevent strlen() searching past the buffer
+        this->setParamStringValue(std::string(this->target_CharArray, this->arraySize));
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+// -----------------------------------
+
+void dataref_param::readDatarefValue_into_missionx_plugin2()
+{
+
+  this->pStrArrayValue.clear();
+
   if (this->flag_paramReadyToBeUsed)
   {
     // decide which kind of data need to fetch
@@ -851,7 +943,7 @@ missionx::dataref_param::readDatarefValue_into_missionx_plugin()
           XPLMGetDatab(this->dataRefId, target_CharArray, 0, this->arraySize);
 
           if (this->arraySize && target_CharArray != NULL )
-            this->setParamStringValue(std::string(target_CharArray));          
+            this->setParamStringValue(std::string(target_CharArray));
         }
       }
       break;
@@ -860,7 +952,8 @@ missionx::dataref_param::readDatarefValue_into_missionx_plugin()
 
     } // switch
   }
-} // readDatarefValue
+
+}
 
 // -----------------------------------
 
