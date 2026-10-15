@@ -2660,13 +2660,6 @@ data_manager::init_static()
 void
 data_manager::release_static()
 {
-  // v26.08.2 removed data_manage::curl global parameter
-  //#ifdef MX_ENABLE_HTTP_REQUESTS
-  //  if (curl)
-  //  {
-  //    curl_easy_cleanup(curl);
-  //  }
-  // #endif // !DISABLE_CURL
 
 }
 

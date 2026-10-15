@@ -18,7 +18,6 @@
 // #include <httplib.h>
 // #endif
 
-#define MX_ENABLE_HTTP_REQUESTS // v26.08.1 disable curl to test Error 127 root cause
 #ifdef MX_ENABLE_HTTP_REQUESTS
 #include "curl/curl.h"
 #endif

@@ -33,6 +33,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# v26.09.3 Hide symbols by default
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_C_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
+
 # Normalize build type string
 string(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_TYPE_LOWERCASE)
 
@@ -298,6 +303,15 @@ if(APPLE)
   list(APPEND FREETYPE_LIB_SRC libs/freetype2/src/base/ftmac.c)
 endif()
 
+
+if (LIN AND NOT APPLE)
+  target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+  target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
+  # v26.09.3 Tell the GNU linker on Linux not to re-export statically linked archives
+  target_link_options(missionx PRIVATE "-Wl,--exclude-libs,ALL")
+endif()
+
+
 # Git SHA generation
 find_package(Git QUIET)
 if(GIT_FOUND)
@@ -446,6 +460,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     ENABLE_EXPERIMENTAL_DISABLE MISSIONX_LIBRARY
     XPLM
     IMGWINDOW_USE_PANEL_GRAPHICS XPLM400=1 XPLM410=1 XPLM430=1
+    MX_ENABLE_HTTP_REQUESTS
 )
 
 # OS-specific definitions

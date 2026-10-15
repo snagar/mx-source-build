@@ -12,8 +12,6 @@
 // __asm__(".symver realpath,realpath@GLIBC_2.35");
 #endif
 
-#define MX_ENABLE_HTTP_REQUESTS
-
 namespace missionx
 {
 //// https://www.learncpp.com/cpp-tutorial/function-pointers1
@@ -86,9 +84,9 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
   XPLMEnableFeature ("XPLM_USE_NATIVE_PATHS", 1);
   XPLMEnableFeature ("XPLM_USE_NATIVE_WIDGET_WINDOWS", 1);
 
-#ifndef MX_ENABLE_HTTP_REQUESTS
+  #ifdef MX_ENABLE_HTTP_REQUESTS
   curl_global_init(CURL_GLOBAL_DEFAULT);
-#endif // !DISABLE_CURL
+  #endif // !DISABLE_CURL
 
 
   // v3.0.219.7
@@ -378,7 +376,6 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
   // v26.09.2 check if Custom Scenery/missionx/random folder exists. Create it if it doesn't.
   missionx::data_manager::ensure_missionx_random_folder_exists();
 
-
   const auto now = std::chrono::steady_clock::now();
   const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now-start_timer).count();
 
@@ -471,7 +468,7 @@ XPluginStop (void)
     XPLMDebugString ("\nmissionx: Close all databases"); // debug
     missionx::data_manager::db_close_all_databases (); // v3.0.241.10
 
-    #ifndef MX_ENABLE_HTTP_REQUESTS
+    #ifdef MX_ENABLE_HTTP_REQUESTS
     curl_global_cleanup();
     #endif // !DISABLE_CURL
 
@@ -489,6 +486,7 @@ XPluginStop (void)
     #ifndef LIN
     unregister_crash_handler ();
     #endif
+
   }
   catch (const std::exception &e)
   {
