@@ -174,68 +174,98 @@ public:
   // setTargetArray template needs <[xplmType_IntArray|xplmType_FloatArray], [float|int]>
   // <T> dataref type, <N> C datatype to split the vector to (int or float)
   template<int T, typename N>
-  int setTargetArray(const int inArraySize, std::string& inValuesAsStringDelimeted, const bool &inApplyToDataref, std::string inDelimiter = ",")
+  int setTargetArray(const int in_expected_array_size, std::string& inValuesAsStringDelimeted, const bool &inApplyToDataref, std::string inDelimiter = ",")
   {
     if (!(this->dataRefType == T))
     {
       Log::logMsgErr("Dataref: " + this->key + ", is not a valid Array... skipping");
-      return false;
+      return -1;
     }
 
     assert( (!(this->target_IntArray == nullptr && this->target_FloatArray == nullptr)) && std::string(__func__).append(", One of the array pointers must be initialized.").c_str() );
 
-    if ((xplmType_FloatArray == T && this->target_FloatArray == nullptr) || (xplmType_IntArray == T && this->target_IntArray == nullptr))
+    // 2. Compile-time validation of target buffer pointer
+    if constexpr (T == xplmType_FloatArray)
     {
-      Log::logMsgErr("Dataref: " + this->key + ", is not a valid Array, could not initialize its array object... skipping");
-      return false;
+      if (this->target_FloatArray == nullptr)
+      {
+        Log::logMsgErr("Dataref: " + this->key + ", float target array pointer is null... skipping");
+        return -1;
+      }
+    }
+    else if constexpr (T == xplmType_IntArray)
+    {
+      if (this->target_IntArray == nullptr)
+      {
+        Log::logMsgErr("Dataref: " + this->key + ", int target array pointer is null... skipping");
+        return -1;
+      }
+    }
+    else
+    {
+      Log::logMsgErr("Dataref: " + this->key + " is not a supported array type... skipping");
+      return -1;
     }
 
     this->offset_how_many_variables_to_read_from_the_array = 0;
-    if (this->flag_paramReadyToBeUsed && this->arraySize > 0 && this->arraySize >= inArraySize)
+
+    // 3. Validate state and bounds
+    if (this->flag_paramReadyToBeUsed && this->arraySize > 0 && in_expected_array_size > 0 && this->arraySize >= in_expected_array_size)
     {
-      std::vector<std::string> vecValues_s = mxUtils::split(inValuesAsStringDelimeted, ((inDelimiter.empty()) ? ',' : inDelimiter.front()), true);
-      std::string              delim_s     = "" + inDelimiter;
-      auto vecValues = Utils::splitStringToNumbers<N>(inValuesAsStringDelimeted, delim_s );
-      int  x         = 0;   // We fill the source array from the first cell
+
+      // 4. Parse numbers safely with exception handling
+      std::vector<N> vecValues;
+      try
+      {
+        const auto delim_s = inDelimiter.empty() ? "," : inDelimiter.substr(0,1);
+        vecValues = Utils::splitStringToNumbers<N>(inValuesAsStringDelimeted, delim_s);
+      }
+      catch (const std::exception& e)
+      {
+        Log::logMsgErr(fmt::format("[{}] {} failed to parse string values: {}. skipping", __func__, this->key, e.what()));
+        return 0;
+      }
+
+      // Safely bound writes by both the dataref arraySize and in_expected_array_size
+      const int max_safe_count = std::min(this->arraySize, in_expected_array_size);
+      int array_counter = 0;
       for (const auto& v : vecValues)
       {
-        if (x < this->arraySize) // "x" always have to be smaller than arraySize since we start counting from 0 (zero)
+        if (array_counter >= max_safe_count)
+          break;
+
+        if constexpr (T == xplmType_FloatArray)
         {
-          switch (T)
-          {
-            case xplmType_FloatArray:
-              this->target_FloatArray[x] = (float)v;
-              ++this->offset_how_many_variables_to_read_from_the_array;
-              break;
-            case xplmType_IntArray:
-              this->target_IntArray[x] = (int)v;
-              ++this->offset_how_many_variables_to_read_from_the_array;
-              break;
-            default:
-            {
-              this->flag_paramReadyToBeUsed = false;
-              Log::logMsgErr("Wrong type of array for dataref: " + this->key + "... skipping");
-              return this->offset_how_many_variables_to_read_from_the_array;
-            } // end default case          
-          } // end switch
+          this->target_FloatArray[array_counter] = static_cast<float>(v);
+          ++this->offset_how_many_variables_to_read_from_the_array;
         }
-        else
-          break; // exit the for loop
+        else if constexpr (T == xplmType_IntArray)
+        {
+          this->target_IntArray[array_counter] = static_cast<int>(v);
+          ++this->offset_how_many_variables_to_read_from_the_array;
+        }
 
-        ++x;
+        ++array_counter;
       }
-      //fill_IntArrayIntoVector(); // internal management
 
-      // set intention of how should we write the dataref values into X-Plane once the "set_dataref_value_into_xplane" will be called.
-      this->flag_individual_value_copy_inTheArray    = true;
-      this->flag_designerPickedOneElement            = false;
-      this->flag_designerPickedAllElement_inTheArray = false;
+      // 5. Only apply and set flags if at least one value was written
+      if (array_counter > 0)
+      {
+        this->flag_individual_value_copy_inTheArray    = true;
+        this->flag_designerPickedOneElement            = false;
+        this->flag_designerPickedAllElement_inTheArray = false;
+
+        if (inApplyToDataref)
+        {
+          missionx::dataref_param::set_dataref_values_into_xplane((*this), false);
+        }
+      }
     }
-    //else
-    //  return this->offset_how_many_variables_to_read_from_the_array;
-
-    if (inApplyToDataref)
-      missionx::dataref_param::set_dataref_values_into_xplane((*this), false); // False = pick data from "target array" and not the "out vector"
+    else
+    {
+      Log::logMsgErr(fmt::format("[{}] {} Array is not set correctly. Array size: {}, expected: {}. skipping",
+                                 __func__, this->key, this->arraySize, in_expected_array_size));
+    }
 
     return this->offset_how_many_variables_to_read_from_the_array;
   } // end setTargetArray template

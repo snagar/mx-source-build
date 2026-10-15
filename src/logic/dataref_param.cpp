@@ -1157,10 +1157,10 @@ missionx::dataref_param::set_dataref_values_into_xplane(dataref_param& inDref, c
           }
           else
           {
-#ifndef Release
+            #ifndef Release
             Log::logMsgErr("\n[write to dref] dref array: " + inDref.getName() + ", is out of bound. Max array size is: " + Utils::formatNumber<int>(inDref.arraySize) + " starting from 0.." +
                            Utils::formatNumber<int>((inDref.arraySize - 1 <= 0) ? 0 : inDref.arraySize - 1) + "  . Skipping writing.");
-#endif // !Release
+            #endif // !Release
           }
         }
       }

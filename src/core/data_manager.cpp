@@ -3437,11 +3437,16 @@ data_manager::erase_empty_inventory_item_nodes(const IXMLNode& pNode, const int 
 
 void data_manager::set_plane_fuel()
 {
+  Log::log_xplm_debug_string(fmt::format("[{}] Before dataref_param 1 initialization.", __func__) );
   dataref_param local_dref_acf_tank_ratio_f_arr (dataref_const::dref_acf_tank_ratio_f, "sim/aircraft/overflow/acf_tank_rat");
+  Log::log_xplm_debug_string(fmt::format("[{}] Before dataref_param 2 initialization.", __func__) );
   dataref_param local_dref_m_fuel_f_arr (dataref_const::dref_m_fuel_f_arr, "sim/flightmodel/weight/m_fuel");
 
+  Log::log_xplm_debug_string(fmt::format("[{}] Before readArrayDatarefIntoLocalArray 1 initialization.", __func__) );
   local_dref_acf_tank_ratio_f_arr.readArrayDatarefIntoLocalArray();
+  Log::log_xplm_debug_string(fmt::format("[{}] Before readArrayDatarefIntoLocalArray 2 initialization.", __func__) );
   local_dref_m_fuel_f_arr.readArrayDatarefIntoLocalArray();
+  Log::log_xplm_debug_string(fmt::format("[{}] After readArrayDatarefIntoLocalArray.", __func__) );
 
 
   const auto mission_block_fuel = Utils::readNodeNumericAttrib <float>( mx_global_settings.xBaseWeight_ptr, mxconst::get_OPT_FUEL_BASE_WEIGHT(), 0.0f );
@@ -3459,7 +3464,9 @@ void data_manager::set_plane_fuel()
   // Dataref: "sim/aircraft/weight/acf_m_fuel_tot"
   const float total_aircraft_fuel_capacity = missionx::dataref_manager::getDataRefValue<float>(dataref_const::dref_rw_acf_m_fuel_tot_lbs) * lbs2kg;
 
+  Log::log_xplm_debug_string(fmt::format("[{}] before distribute_weight().", __func__) );
   distribute_weight(tank_ratios, fuel_tanks, mission_block_fuel, total_aircraft_fuel_capacity, true);
+  Log::log_xplm_debug_string(fmt::format("[{}] After distribute_weight().", __func__) );
 
   // write back to x-plane
   int counter_fuel_tanks = 0;
@@ -3475,7 +3482,10 @@ void data_manager::set_plane_fuel()
 
   m_tanks_s = ss.str();
 
+
+  Log::log_xplm_debug_string(fmt::format("[{}] before setTargetArray: ", __func__, m_tanks_s) );
   int iResult = local_dref_m_fuel_f_arr.setTargetArray<xplmType_FloatArray, float>(static_cast<int>( counter_fuel_tanks ), m_tanks_s, true, ",");
+  Log::log_xplm_debug_string(fmt::format("[{}] after setTargetArray: ", __func__, m_tanks_s) );
 
 }
 
