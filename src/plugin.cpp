@@ -84,9 +84,9 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
   XPLMEnableFeature ("XPLM_USE_NATIVE_PATHS", 1);
   XPLMEnableFeature ("XPLM_USE_NATIVE_WIDGET_WINDOWS", 1);
 
-  #ifdef MX_ENABLE_HTTP_REQUESTS
+  // #ifdef MX_ENABLE_HTTP_REQUESTS
   curl_global_init(CURL_GLOBAL_DEFAULT);
-  #endif // !DISABLE_CURL
+  // #endif // !DISABLE_CURL
 
 
   // v3.0.219.7
@@ -468,9 +468,9 @@ XPluginStop (void)
     XPLMDebugString ("\nmissionx: Close all databases"); // debug
     missionx::data_manager::db_close_all_databases (); // v3.0.241.10
 
-    #ifdef MX_ENABLE_HTTP_REQUESTS
+    // #ifdef MX_ENABLE_HTTP_REQUESTS
     curl_global_cleanup();
-    #endif // !DISABLE_CURL
+    // #endif // !DISABLE_CURL
 
     // v3.0.255.4.4 LR crash handling
     #if SUPPORT_BACKGROUND_THREADS

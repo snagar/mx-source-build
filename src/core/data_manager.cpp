@@ -6671,7 +6671,7 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
       {
         iCurlTry++;
 
-        #ifdef MX_ENABLE_HTTP_REQUESTS
+        // #ifdef MX_ENABLE_HTTP_REQUESTS
 
         missionx::structs::curl_request_data request_data;
         request_data.timeout = 45L;
@@ -6697,7 +6697,7 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
           }
         }
 
-        #endif // MX_ENABLE_HTTP_REQUESTS
+        // #endif // MX_ENABLE_HTTP_REQUESTS
 
       } // end while loop
 
@@ -6795,16 +6795,16 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
     missionx::structs::curl_request_data strct_curl_data {.url_s = full_url_s};
     simbrief_st_curl_result = data_manager::get_curl_request_respond(strct_curl_data);
 
-    #ifdef MX_ENABLE_HTTP_REQUESTS
+    // #ifdef MX_ENABLE_HTTP_REQUESTS
     if (CURLE_OK != simbrief_st_curl_result.res_curl)
     {
       msg = fmt::format("[{}] cURL error code: {}\n", __func__, Utils::formatNumber<int>(simbrief_st_curl_result.res_curl));
       Log::logMsgThread(msg);
     }
-    #else 
-      simbrief_st_curl_result.res_curl    = -1;
-      simbrief_st_curl_result.request_err = "cURL is disabled in this build.";
-    #endif // !DISABLE_CURL
+    // #else
+    //   simbrief_st_curl_result.res_curl    = -1;
+    //   simbrief_st_curl_result.request_err = "cURL is disabled in this build.";
+    // #endif // !DISABLE_CURL
 
     if (!simbrief_st_curl_result.request_err.empty())
     {
@@ -7107,7 +7107,7 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
   {
     flag_http_success = false;
 
-#ifdef MX_ENABLE_HTTP_REQUESTS
+// #ifdef MX_ENABLE_HTTP_REQUESTS
 
     missionx::structs::curl_request_data request_data;
     request_data.timeout        = 45L;
@@ -7170,12 +7170,12 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
       msg               = "User ask to abort.";
     }
 
-#else 
-    msg = "cURL is disabled in this build.";
-    flag_http_success = false;
-    curl_result_s.clear();
-    loop_counter = max_loop + 1;
-#endif // !DISABLE_CURL
+// #else
+//     msg = "cURL is disabled in this build.";
+//     flag_http_success = false;
+//     curl_result_s.clear();
+//     loop_counter = max_loop + 1;
+// #endif // !DISABLE_CURL
 
 
   } // end while loop
@@ -7294,12 +7294,11 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
 missionx::structs::strct_curl_result
 data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_request_data, const int& in_call_id)
 {
-  //std::lock_guard<std::mutex> lock (mt_request_get_curl_request_respond_mutex); // v26.04.3 Special lock to solve racing issue in "osm_get_navaid_from_overpass()"
-  std::string curl = ""; // shadow the shared "data_manager::curl" pointer, so we won't be able to use it in this function.
-
-  const auto lmbda_extract_host = [] (const std::string& url)->std::string
+  const auto lmbda_extract_host = [](const std::string& url) -> std::string
   {
-#ifdef MX_ENABLE_HTTP_REQUESTS    
+    if (url.empty())
+      return {};
+
     CURLU* url_handle = curl_url();
     if (!url_handle)
       return {};
@@ -7311,174 +7310,353 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
     }
 
     char* host = nullptr;
-    if (curl_url_get(url_handle, CURLUPART_HOST, &host, 0) != CURLUE_OK)
+    std::string result;
+    if (curl_url_get(url_handle, CURLUPART_HOST, &host, 0) == CURLUE_OK && host != nullptr)
     {
-      curl_url_cleanup(url_handle);
-      return {};
+      result = host;
+      curl_free(host);
     }
 
-    std::string result(host);
-
-    curl_free(host);
     curl_url_cleanup(url_handle);
-#else 
-      std::string result(url); // don't do anything, just return the input url as a fallback if curl is disabled.
-#endif
-
     return result;
   };
 
-
   missionx::structs::strct_curl_result st_result;
+  st_result.reset();
+  st_result.res_curl = CURLE_FAILED_INIT;
+
+  if (in_request_data.url_s.empty())
+  {
+    st_result.request_err = fmt::format("Call ID: {}, URL is empty.", in_call_id);
+    return st_result;
+  }
 
   const std::string base_url = in_request_data.url_s.substr(0, in_request_data.url_s.find('?'));
-  const std::string q        = (in_request_data.url_s.find('?') != std::string::npos) ? in_request_data.url_s.substr(in_request_data.url_s.find('?') + 1) : "";
 
-  //// Fetch information
-  std::string err;
+  CURL* curl_func = curl_easy_init();
+  if (!curl_func)
+  {
+    st_result.request_err = fmt::format("Call ID: {}, curl_easy_init() failed.", in_call_id);
+    return st_result;
+  }
 
-    long httpStatus = 0;
+  // 1. Prepare HTTP headers once outside the retry loop
+  struct curl_slist* p_headers = nullptr;
+  for (const auto& header : in_request_data.headers)
+  {
+    p_headers = curl_slist_append(p_headers, header.c_str());
+  }
 
-#ifdef MX_ENABLE_HTTP_REQUESTS
+  // Error buffer scoped with curl_func to avoid dangling pointers
+  char errBuff[CURL_ERROR_SIZE] = {0};
 
-    // v26.04.3
-    if (auto curl_func = curl_easy_init())
-    {
-      struct curl_slist* p_headers = nullptr;
+  // 2. Set static options once
+  curl_easy_setopt(curl_func, CURLOPT_NOSIGNAL, 1L); // Essential for thread safety on Linux
+  curl_easy_setopt(curl_func, CURLOPT_URL, in_request_data.url_s.c_str());
+  curl_easy_setopt(curl_func, CURLOPT_USERAGENT, APP_NAME);
+  curl_easy_setopt(curl_func, CURLOPT_CONNECTTIMEOUT, in_request_data.connection_timeout);
+  curl_easy_setopt(curl_func, CURLOPT_TIMEOUT, in_request_data.timeout);
+  curl_easy_setopt(curl_func, CURLOPT_FOLLOWLOCATION, in_request_data.follow_location);
+  curl_easy_setopt(curl_func, CURLOPT_SSL_VERIFYPEER, in_request_data.ssl_verify_peer);
+  curl_easy_setopt(curl_func, CURLOPT_SSL_VERIFYHOST, in_request_data.ssl_verify_host);
+  curl_easy_setopt(curl_func, CURLOPT_NOPROGRESS, 1L);
+  curl_easy_setopt(curl_func, CURLOPT_ERRORBUFFER, errBuff);
+  curl_easy_setopt(curl_func, CURLOPT_WRITEFUNCTION, my_write);
+  curl_easy_setopt(curl_func, CURLOPT_WRITEDATA, &st_result.response_text);
 
-      for (int v_loop01 = 0; v_loop01 < in_request_data.how_many_tries && (CURLE_OK != st_result.res_curl); ++v_loop01)
-      {
-        st_result.reset();
+  // CA Certificate check using noexcept error codes
+  std::error_code error_code;
+  if (!data_manager::ca_path.empty() &&
+      std::filesystem::is_regular_file(data_manager::ca_path, error_code) && !error_code)
+  {
+    curl_easy_setopt(curl_func, CURLOPT_CAINFO, data_manager::ca_path.string().c_str());
+  }
 
-        // sleep before calling overpass
-        std::this_thread::sleep_for (std::chrono::seconds(2)); // v25.06.1 not overwhelm the overpass server
+  if (!in_request_data.login_pass.empty())
+  {
+    curl_easy_setopt(curl_func, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+    curl_easy_setopt(curl_func, CURLOPT_USERPWD, in_request_data.login_pass.c_str());
+  }
 
-        Log::logMsgThread(fmt::format("[{}] Call ID: {}\t url: \"{}\"", __func__, data_manager::curl_call_counter_i, in_request_data.url_s));
+  if (!in_request_data.post_request_field_s.empty())
+  {
+    curl_easy_setopt(curl_func, CURLOPT_POSTFIELDS, in_request_data.post_request_field_s.c_str());
+  }
 
-        char errBuff[CURL_ERROR_SIZE] = "\0"; // v3.305.3
+  if (p_headers)
+  {
+    curl_easy_setopt(curl_func, CURLOPT_HTTPHEADER, p_headers);
+  }
 
-        curl_easy_setopt(curl_func, CURLOPT_URL, in_request_data.url_s.c_str());
+  // 3. Retry loop
+  long httpStatus = 0;
+  const int max_tries = std::max(1, in_request_data.how_many_tries);
 
-        // https://curl.haxx.se/docs/sslcerts.html
-        if (std::filesystem::exists (data_manager::ca_path) && std::filesystem::is_regular_file(ca_path)) // v26.01.1
-          curl_easy_setopt(curl_func, CURLOPT_CAINFO, data_manager::ca_path.string().c_str());
-
-        curl_easy_setopt(curl_func, CURLOPT_USERAGENT, APP_NAME);
-        curl_easy_setopt(curl_func, CURLOPT_CONNECTTIMEOUT, in_request_data.connection_timeout); // Timeout for server responds to our request
-        curl_easy_setopt(curl_func, CURLOPT_TIMEOUT, in_request_data.timeout); // Time in seconds before session will be terminated and abort the request.
-
-        // set authorization key if present // v26.08.2
-        if (!in_request_data.login_pass.empty())
-        {
-          curl_easy_setopt(curl_func, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-          curl_easy_setopt(curl_func, CURLOPT_USERPWD, in_request_data.login_pass.c_str());
-        }
-
-        // ignore SSL - important for Windows
-        curl_easy_setopt(curl_func, CURLOPT_FOLLOWLOCATION, in_request_data.follow_location);
-        curl_easy_setopt(curl_func, CURLOPT_SSL_VERIFYPEER, in_request_data.ssl_verify_peer); // v26.01.1 fallback if SSL fails
-        curl_easy_setopt(curl_func, CURLOPT_SSL_VERIFYHOST, in_request_data.ssl_verify_host); // v26.01.1 fallback if SSL fails
-        curl_easy_setopt(curl_func, CURLOPT_NOPROGRESS, 0L);
-
-        curl_easy_setopt(curl_func, CURLOPT_ERRORBUFFER, errBuff);
-
-        curl_easy_setopt(curl_func, CURLOPT_WRITEFUNCTION, my_write); // <==== THIS IS WHERE WE HANDLE THE RESPONSE DATA
-        curl_easy_setopt(curl_func, CURLOPT_WRITEDATA, &st_result.response_text);
-        curl_easy_setopt(curl_func, CURLOPT_VERBOSE, 1L);
-
-        // v25.12.1
-        if (!in_request_data.post_request_field_s.empty())
-        {
-          // curl_easy_setopt (curl_func, CURLOPT_POST, 1L);
-          curl_easy_setopt (curl_func, CURLOPT_POSTFIELDS, in_request_data.post_request_field_s.c_str());
-        }
-
-        // v26.08.1
-        if (!in_request_data.headers.empty())
-        {
-          std::ranges::for_each(in_request_data.headers, [&p_headers](const std::string &header)
-          {p_headers = curl_slist_append(p_headers, header.c_str());}
-          );
-          // headers = curl_slist_append(headers, in_request_data.headers.c_str());
-          curl_easy_setopt(curl_func, CURLOPT_HTTPHEADER, p_headers);
-        }
-
-        // https://curl.haxx.se/docs/sslcerts.html
-        st_result.res_curl = curl_easy_perform(curl_func); // execute the REQUEST
-
-        if (CURLE_OK != st_result.res_curl)
-        {
-          Log::logMsgThread(fmt::format("[{}] Call ID: {}, CURL error code: {} {}\n", __func__, in_call_id, Utils::formatNumber<int>(st_result.res_curl), (in_request_data.how_many_tries > (v_loop01 + 1)) ? "Will retry..." : "No more retries.") );
-          // user progress message in the error line
-          if (in_request_data.how_many_tries > (v_loop01 + 1))
-            data_manager::strct_ui_share_data.error_message_line3 = fmt::format("Failed to fetch data from {}. Will try again.", base_url);
-        }
-
-        st_result.request_err = std::string(errBuff); // v3.305.3
-        curl_easy_getinfo(curl_func, CURLINFO_RESPONSE_CODE, &st_result.http_status);
-
-        httpStatus = st_result.http_status;
-        // if we have abnormal response code we will have to abort the loop. Example: site is not responding.
-        if (mxUtils::mx_between( st_result.res_curl, CURLE_OK, CURLE_COULDNT_CONNECT, enums::mx_between_types::gt_min_eqles_max) )
-        {
-          #ifndef RELEASE
-          Log::logMsgThread(fmt::format("[{}] Call ID: {}, Will force exit CURL loop, based on respond code: {}\n", __func__, in_call_id, static_cast<int>(st_result.res_curl) ) );
-          #endif
-          break;
-        }
-
-      } // end loop over curl calls
-
-      // add error insight based on error code.
-      if (httpStatus != 200 || !st_result.request_err.empty())
-      {
-        const std::string host_only_s = lmbda_extract_host(base_url);
-        st_result.request_err         = fmt::format("Call ID: {}, CURL HTTP status: {} : {} : ({})", in_call_id, httpStatus, st_result.request_err, host_only_s);
-
-        switch (httpStatus)
-        {
-          case 504: // "504 Gateway Time-out"
-            st_result.request_err.append( fmt::format(": Overpass Gateway Time-out.") );
-            break;
-          case 429: // "429 Too many requests"
-            st_result.request_err.append( fmt::format(": Too many requests.") );
-            break;
-          default:
-            break;
-        }
-
-        // v35.12.1 added warning to the missionx.log file
-        if (mxUtils::find_text (st_result.response_text, "Error", false) != std::string::npos)
-        {
-          Log::logMsgThread (fmt::format ("[{}]Call ID: {}, There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", __func__, in_call_id, in_request_data.url_s, in_request_data.post_request_field_s, st_result.response_text));
-          Log::logMsgThread(fmt::format("[{}]Call ID: {}, \tCurl error: \n\t{}\n", __func__, in_call_id, curl_easy_strerror(st_result.res_curl)));
-        }
-
-        #ifndef RELEASE
-        Log::logMsgThread(st_result.request_err); // debug
-        #endif
-      }
-      else
-      {
-        st_result.request_err.clear();
-      }
-
-      curl_easy_cleanup (curl_func);
-
-      // Free the header list after curl_easy_perform
-      curl_slist_free_all(p_headers);
-    } // end curl_func - handling cURL  // end CURL call
-#else 
+  for (int attempt = 0; attempt < max_tries; ++attempt)
+  {
     st_result.reset();
-    st_result.res_curl    = -1;
-    st_result.request_err = "CURL is disabled in this build. Please enable CURL to use this feature.";
-#endif // !DISABLE_CURL
+    errBuff[0] = '\0';
 
+    // Back off only on retries, avoiding latency on the first attempt
+    if (attempt > 0)
+    {
+      std::this_thread::sleep_for(std::chrono::seconds(2));
+    }
 
-  data_manager::strct_ui_share_data.error_message_line3 = st_result.request_err; // v3.0.255.4 error_message_line3 will get the error. This will clear the last error message error_message_line3 had.
+    Log::logMsgThread(fmt::format("[{}] Call ID: {} Attempt: {}/{} url: \"{}\"",
+                                  __func__, in_call_id, attempt + 1, max_tries, in_request_data.url_s));
+
+    st_result.res_curl = curl_easy_perform(curl_func);
+
+    curl_easy_getinfo(curl_func, CURLINFO_RESPONSE_CODE, &st_result.http_status);
+    httpStatus = st_result.http_status;
+    st_result.request_err = std::string(errBuff);
+
+    if (st_result.res_curl == CURLE_OK && httpStatus >= 200 && httpStatus < 300)
+    {
+      break; // Successful request
+    }
+
+    Log::logMsgThread(fmt::format("[{}] Call ID: {}, CURL code: {}, HTTP status: {}. {}",
+                                  __func__, in_call_id, static_cast<int>(st_result.res_curl), httpStatus,
+                                  (attempt + 1 < max_tries) ? "Retrying..." : "No retries left."));
+
+    // Fatal configuration errors that should never be retried
+    if (st_result.res_curl == CURLE_UNSUPPORTED_PROTOCOL ||
+        st_result.res_curl == CURLE_URL_MALFORMAT ||
+        st_result.res_curl == CURLE_NOT_BUILT_IN)
+    {
+      break;
+    }
+  }
+
+  // 4. Detailed error diagnostics
+  if (httpStatus != 200 || st_result.res_curl != CURLE_OK)
+  {
+    const std::string host_only_s = lmbda_extract_host(base_url);
+    st_result.request_err = fmt::format("Call ID: {}, HTTP: {}, Curl Code: {} ({}) - Host: {}",
+                                        in_call_id, httpStatus, static_cast<int>(st_result.res_curl),
+                                        st_result.request_err.empty() ? curl_easy_strerror(st_result.res_curl) : st_result.request_err,
+                                        host_only_s);
+
+    if (httpStatus == 504)
+      st_result.request_err.append(" : Gateway Timeout");
+    else if (httpStatus == 429)
+      st_result.request_err.append(" : Rate Limited / Too Many Requests");
+
+    if (mxUtils::find_text(st_result.response_text, "Error", false) != std::string::npos)
+    {
+      Log::logMsgThread(fmt::format("[{}] Call ID: {}, Response contains server error: {}",
+                                    __func__, in_call_id, st_result.response_text));
+    }
+  }
+  else
+  {
+    st_result.request_err.clear();
+  }
+
+  // 5. Cleanup libcurl resources
+  curl_easy_setopt(curl_func, CURLOPT_ERRORBUFFER, nullptr);
+  curl_easy_cleanup(curl_func);
+
+  if (p_headers)
+  {
+    curl_slist_free_all(p_headers);
+  }
 
   return st_result;
 }
+
+// -------------------------------------
+
+// missionx::structs::strct_curl_result
+// data_manager::get_curl_request_respond2 (missionx::structs::curl_request_data &in_request_data, const int &in_call_id)
+// {
+//   //std::lock_guard<std::mutex> lock (mt_request_get_curl_request_respond_mutex); // v26.04.3 Special lock to solve racing issue in "osm_get_navaid_from_overpass()"
+//   std::string curl = ""; // shadow the shared "data_manager::curl" pointer, so we won't be able to use it in this function.
+//
+//   const auto lmbda_extract_host = [] (const std::string& url)->std::string
+//   {
+// // #ifdef MX_ENABLE_HTTP_REQUESTS
+//     CURLU* url_handle = curl_url();
+//     if (!url_handle)
+//       return {};
+//
+//     if (curl_url_set(url_handle, CURLUPART_URL, url.c_str(), 0) != CURLUE_OK)
+//     {
+//       curl_url_cleanup(url_handle);
+//       return {};
+//     }
+//
+//     char* host = nullptr;
+//     if (curl_url_get(url_handle, CURLUPART_HOST, &host, 0) != CURLUE_OK)
+//     {
+//       curl_url_cleanup(url_handle);
+//       return {};
+//     }
+//
+//     std::string result(host);
+//
+//     curl_free(host);
+//     curl_url_cleanup(url_handle);
+// // #else
+// //       std::string result(url); // don't do anything, just return the input url as a fallback if curl is disabled.
+// // #endif
+//
+//     return result;
+//   };
+//
+//
+//   missionx::structs::strct_curl_result st_result;
+//
+//   const std::string base_url = in_request_data.url_s.substr(0, in_request_data.url_s.find('?'));
+//   const std::string q        = (in_request_data.url_s.find('?') != std::string::npos) ? in_request_data.url_s.substr(in_request_data.url_s.find('?') + 1) : "";
+//
+//   //// Fetch information
+//   std::string err;
+//
+//     long httpStatus = 0;
+//
+// // #ifdef MX_ENABLE_HTTP_REQUESTS
+//
+//     // v26.04.3
+//     if (auto curl_func = curl_easy_init())
+//     {
+//       struct curl_slist* p_headers = nullptr;
+//
+//       for (int v_loop01 = 0; v_loop01 < in_request_data.how_many_tries && (CURLE_OK != st_result.res_curl); ++v_loop01)
+//       {
+//         st_result.reset();
+//
+//         // sleep before calling overpass
+//         std::this_thread::sleep_for (std::chrono::seconds(2)); // v25.06.1 not overwhelm the overpass server
+//
+//         Log::logMsgThread(fmt::format("[{}] Call ID: {}\t url: \"{}\"", __func__, data_manager::curl_call_counter_i, in_request_data.url_s));
+//
+//         char errBuff[CURL_ERROR_SIZE] = "\0"; // v3.305.3
+//
+//         curl_easy_setopt(curl_func, CURLOPT_URL, in_request_data.url_s.c_str());
+//
+//         // https://curl.haxx.se/docs/sslcerts.html
+//         if (std::filesystem::exists (data_manager::ca_path) && std::filesystem::is_regular_file(ca_path)) // v26.01.1
+//           curl_easy_setopt(curl_func, CURLOPT_CAINFO, data_manager::ca_path.string().c_str());
+//
+//         curl_easy_setopt(curl_func, CURLOPT_USERAGENT, APP_NAME);
+//         curl_easy_setopt(curl_func, CURLOPT_CONNECTTIMEOUT, in_request_data.connection_timeout); // Timeout for server responds to our request
+//         curl_easy_setopt(curl_func, CURLOPT_TIMEOUT, in_request_data.timeout); // Time in seconds before session will be terminated and abort the request.
+//
+//         // set authorization key if present // v26.08.2
+//         if (!in_request_data.login_pass.empty())
+//         {
+//           curl_easy_setopt(curl_func, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+//           curl_easy_setopt(curl_func, CURLOPT_USERPWD, in_request_data.login_pass.c_str());
+//         }
+//
+//         // ignore SSL - important for Windows
+//         curl_easy_setopt(curl_func, CURLOPT_FOLLOWLOCATION, in_request_data.follow_location);
+//         curl_easy_setopt(curl_func, CURLOPT_SSL_VERIFYPEER, in_request_data.ssl_verify_peer); // v26.01.1 fallback if SSL fails
+//         curl_easy_setopt(curl_func, CURLOPT_SSL_VERIFYHOST, in_request_data.ssl_verify_host); // v26.01.1 fallback if SSL fails
+//         curl_easy_setopt(curl_func, CURLOPT_NOPROGRESS, 0L);
+//
+//         curl_easy_setopt(curl_func, CURLOPT_ERRORBUFFER, errBuff);
+//
+//         curl_easy_setopt(curl_func, CURLOPT_WRITEFUNCTION, my_write); // <==== THIS IS WHERE WE HANDLE THE RESPONSE DATA
+//         curl_easy_setopt(curl_func, CURLOPT_WRITEDATA, &st_result.response_text);
+//         curl_easy_setopt(curl_func, CURLOPT_VERBOSE, 1L);
+//
+//         // v25.12.1
+//         if (!in_request_data.post_request_field_s.empty())
+//         {
+//           // curl_easy_setopt (curl_func, CURLOPT_POST, 1L);
+//           curl_easy_setopt (curl_func, CURLOPT_POSTFIELDS, in_request_data.post_request_field_s.c_str());
+//         }
+//
+//         // v26.08.1
+//         if (!in_request_data.headers.empty())
+//         {
+//           std::ranges::for_each(in_request_data.headers, [&p_headers](const std::string &header)
+//           {p_headers = curl_slist_append(p_headers, header.c_str());}
+//           );
+//           // headers = curl_slist_append(headers, in_request_data.headers.c_str());
+//           curl_easy_setopt(curl_func, CURLOPT_HTTPHEADER, p_headers);
+//         }
+//
+//         // https://curl.haxx.se/docs/sslcerts.html
+//         st_result.res_curl = curl_easy_perform(curl_func); // execute the REQUEST
+//
+//         if (CURLE_OK != st_result.res_curl)
+//         {
+//           Log::logMsgThread(fmt::format("[{}] Call ID: {}, CURL error code: {} {}\n", __func__, in_call_id, Utils::formatNumber<int>(st_result.res_curl), (in_request_data.how_many_tries > (v_loop01 + 1)) ? "Will retry..." : "No more retries.") );
+//           // user progress message in the error line
+//           if (in_request_data.how_many_tries > (v_loop01 + 1))
+//             data_manager::strct_ui_share_data.error_message_line3 = fmt::format("Failed to fetch data from {}. Will try again.", base_url);
+//         }
+//
+//         st_result.request_err = std::string(errBuff); // v3.305.3
+//         curl_easy_getinfo(curl_func, CURLINFO_RESPONSE_CODE, &st_result.http_status);
+//
+//         httpStatus = st_result.http_status;
+//         // if we have abnormal response code we will have to abort the loop. Example: site is not responding.
+//         if (mxUtils::mx_between( st_result.res_curl, CURLE_OK, CURLE_COULDNT_CONNECT, enums::mx_between_types::gt_min_eqles_max) )
+//         {
+//           #ifndef RELEASE
+//           Log::logMsgThread(fmt::format("[{}] Call ID: {}, Will force exit CURL loop, based on respond code: {}\n", __func__, in_call_id, static_cast<int>(st_result.res_curl) ) );
+//           #endif
+//           break;
+//         }
+//
+//       } // end loop over curl calls
+//
+//       // add error insight based on error code.
+//       if (httpStatus != 200 || !st_result.request_err.empty())
+//       {
+//         const std::string host_only_s = lmbda_extract_host(base_url);
+//         st_result.request_err         = fmt::format("Call ID: {}, CURL HTTP status: {} : {} : ({})", in_call_id, httpStatus, st_result.request_err, host_only_s);
+//
+//         switch (httpStatus)
+//         {
+//           case 504: // "504 Gateway Time-out"
+//             st_result.request_err.append( fmt::format(": Overpass Gateway Time-out.") );
+//             break;
+//           case 429: // "429 Too many requests"
+//             st_result.request_err.append( fmt::format(": Too many requests.") );
+//             break;
+//           default:
+//             break;
+//         }
+//
+//         // v35.12.1 added warning to the missionx.log file
+//         if (mxUtils::find_text (st_result.response_text, "Error", false) != std::string::npos)
+//         {
+//           Log::logMsgThread (fmt::format ("[{}]Call ID: {}, There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", __func__, in_call_id, in_request_data.url_s, in_request_data.post_request_field_s, st_result.response_text));
+//           Log::logMsgThread(fmt::format("[{}]Call ID: {}, \tCurl error: \n\t{}\n", __func__, in_call_id, curl_easy_strerror(st_result.res_curl)));
+//         }
+//
+//         #ifndef RELEASE
+//         Log::logMsgThread(st_result.request_err); // debug
+//         #endif
+//       }
+//       else
+//       {
+//         st_result.request_err.clear();
+//       }
+//
+//       curl_easy_cleanup (curl_func);
+//
+//       // Free the header list after curl_easy_perform
+//       curl_slist_free_all(p_headers);
+//     } // end curl_func - handling cURL  // end CURL call
+// // #else
+// //     st_result.reset();
+// //     st_result.res_curl    = -1;
+// //     st_result.request_err = "CURL is disabled in this build. Please enable CURL to use this feature.";
+// // #endif // !DISABLE_CURL
+//
+//
+//   data_manager::strct_ui_share_data.error_message_line3 = st_result.request_err; // v3.0.255.4 error_message_line3 will get the error. This will clear the last error message error_message_line3 had.
+//
+//   return st_result;
+// }
 
 // -------------------------------------
 
@@ -9347,11 +9525,11 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
 
       q->osm_queries[mxUtils::get_mx_osm_region_trans (loc)] = filledQuery;
 
-#ifdef MX_ENABLE_HTTP_REQUESTS
+// #ifdef MX_ENABLE_HTTP_REQUESTS
       std::string fullQuery = fmt::format("data={}", curl_easy_escape(nullptr, filledQuery.c_str(), 0));
-#else 
-      std::string fullQuery = fmt::format("data={}", filledQuery.c_str());
-#endif // !DISABLE_CURL
+// #else
+//       std::string fullQuery = fmt::format("data={}", filledQuery.c_str());
+// #endif // !DISABLE_CURL
 
 
       q->sanitized_id   = mxUtils::sanitize_text (q->id, " ,'\"\t\n");
@@ -9442,9 +9620,9 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
 
           Log::logMsgThread(fmt::format("[{}] URL: {}", __func__, overpass_url));
 
-#ifndef MX_ENABLE_HTTP_REQUESTS
-          int CURLE_OK = 0;
-#endif // !DISABLE_CURL
+// #ifndef MX_ENABLE_HTTP_REQUESTS
+//           int CURLE_OK = 0;
+// #endif // !DISABLE_CURL
 
 
           if (CURLE_OK == strct_result.res_curl)
@@ -9456,9 +9634,9 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
           else
           {
             // res != CURLE_OK
-#ifdef MX_ENABLE_HTTP_REQUESTS
+// #ifdef MX_ENABLE_HTTP_REQUESTS
             Log::logMsgThread(fmt::format("[{}]\tCurl error: \n\t{}\n", __func__, curl_easy_strerror(strct_result.res_curl)));
-#endif // !DISABLE_CURL
+// #endif // !DISABLE_CURL
 
             std::this_thread::sleep_for(std::chrono::seconds(5)); // Sleep longer
           }
@@ -9744,7 +9922,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
   const size_t pos_all_bbox = filledQuery.find(q->ALL_BBOX_STR);
   const size_t pos_bbox = filledQuery.find(q->BBOX_STR);
 
-#ifdef MX_ENABLE_HTTP_REQUESTS
+// #ifdef MX_ENABLE_HTTP_REQUESTS
 
   if ((pos_bbox == std::string::npos) && (pos_all_bbox == std::string::npos) )
   {
@@ -10078,9 +10256,9 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
   } // end respond is not empty
   // end if we found the BBOX string
 
-#else 
-  (*outStatusMessage) = fmt::format("[{}] DISABLE_CURL is defined. Skipping Overpass query.\n", __func__);
-#endif // !DISABLE_CURL
+// #else
+//   (*outStatusMessage) = fmt::format("[{}] DISABLE_CURL is defined. Skipping Overpass query.\n", __func__);
+// #endif // !DISABLE_CURL
 
 
   q->end_time = std::chrono::steady_clock::now ();
@@ -10173,11 +10351,11 @@ mx_return missionx::data_manager::find_vector_between_two_osm_nodes(missionx::st
 
         // prepare the osm filter
         std::string next_filledQuery         = fmt::format("[out:xml][timeout:20][bbox:{}];node({});out body;", q->q_all_bbox, node_ref_id);
-#ifdef MX_ENABLE_HTTP_REQUESTS
+// #ifdef MX_ENABLE_HTTP_REQUESTS
         std::string s_curl_vector_node_query = fmt::format("data={}", curl_easy_escape(nullptr, next_filledQuery.c_str(), 0));
-#else
-        std::string s_curl_vector_node_query = fmt::format("data={}", next_filledQuery);
-#endif // !DISABLE_CURL
+// #else
+//         std::string s_curl_vector_node_query = fmt::format("data={}", next_filledQuery);
+// #endif // !DISABLE_CURL
 
         // -----------------------
         // call cURL

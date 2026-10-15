@@ -18,9 +18,9 @@
 // #include <httplib.h>
 // #endif
 
-#ifdef MX_ENABLE_HTTP_REQUESTS
+// #ifdef MX_ENABLE_HTTP_REQUESTS
 #include "curl/curl.h"
-#endif
+// #endif
 
 //#define USE_CPP_HTTPLIB // cpp-httplib https://github.com/yhirose/cpp-httplib
 //#ifdef USE_CPP_HTTPLIB
@@ -94,22 +94,22 @@ struct strct_shared_random_airport_info
 
   struct strct_curl_result
   {
-  #ifdef MX_ENABLE_HTTP_REQUESTS
+  // #ifdef MX_ENABLE_HTTP_REQUESTS
     ::CURLcode  res_curl = CURLE_FAILED_INIT;
-  #else 
-    int res_curl = 0; // v26.08.1 disable curl to test Error 127 root cause
-  #endif  
+  // #else
+  //   int res_curl = 0; // v26.08.1 disable curl to test Error 127 root cause
+  // #endif
     long        http_status = 0L;
     std::string response_text;
     std::string request_err;
 
     void reset() 
     {
-#ifdef MX_ENABLE_HTTP_REQUESTS
+// #ifdef MX_ENABLE_HTTP_REQUESTS
       res_curl = CURLE_FAILED_INIT;
-#else
-      res_curl = 0; // v26.08.1 disable curl to test Error 127 root cause
-#endif     
+// #else
+//       res_curl = 0; // v26.08.1 disable curl to test Error 127 root cause
+// #endif
       http_status = 0;
       response_text.clear();
       request_err.clear();
@@ -1308,6 +1308,7 @@ public:
   // in_call_id: unique thread number, so messages would be better distinguish when they are being called in parallel (more than one).
   // This function is part of the RandomEngine class call, which is threaded already.
   static missionx::structs::strct_curl_result get_curl_request_respond(missionx::structs::curl_request_data& in_request_data, const int& in_call_id = ++data_manager::curl_call_counter_i);
+  // static missionx::structs::strct_curl_result get_curl_request_respond2(missionx::structs::curl_request_data& in_request_data, const int& in_call_id = ++data_manager::curl_call_counter_i);
 
   // v25.06.1 Use the sqlite db information to find the nearest navaid
   static void fetch_nearest_osm_navaid_from_sqlite (missionx::NavAidInfo *inFrom_navaid, missionx::NavAidInfo *out_navaid);
@@ -1327,9 +1328,7 @@ public:
 
   // cURL  
   static missionx::mutex s_thread_sync_mutex;
-  #ifdef MX_ENABLE_HTTP_REQUESTS 
   //static CURL*       curl;
-  #endif 
   static std::string curl_result_s;
   static missionx::mutex mt_request_get_curl_request_respond_mutex; // v26.04.3 Used in get_curl_request_respond()
 
