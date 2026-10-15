@@ -733,6 +733,8 @@ elseif (UNIX)
   # v26.09.3 Tell the GNU linker on Linux not to re-export statically linked archives
   target_link_options( ${PROJECT_NAME} PRIVATE
           "-Wl,--exclude-libs,ALL"
+          "-Wl,-Bsymbolic"
+          "-Wl,-Bsymbolic-functions"
   )
 
   target_link_libraries(${PROJECT_NAME} PRIVATE
