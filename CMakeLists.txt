@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 # Sync folders - dry run (-n)
-# rsync -avc -n --exclude='mxconst_*' "/mnt/staff01/programming/xplane/missionx_v3/src/" "/mnt/staff01/programming/xplane/release/mx-source-build/src/"
+# rsync -avc -n --exclude='mxconst_*' "/mnt/staf/programming/xplane/missionx_v3/src/" "/mnt/staff01/programming/xplane/release/mx-source-build/src/"
 #
 # add "-- delete" to delete target files not present at source folder.
 
@@ -42,7 +42,7 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 string(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_TYPE_LOWERCASE)
 
 # Platform setup
-if (LINUX)
+if (UNIX AND NOT APPLE)
   set(CMAKE_PREFIX_PATH "/usr/bin")
 elseif (APPLE)
   set(CMAKE_OSX_ARCHITECTURES arm64;x86_64)
@@ -294,21 +294,13 @@ set(FREETYPE_LIB_SRC
 
 if (WIN32)
   list(APPEND FREETYPE_LIB_SRC libs/freetype2/builds/windows/ftsystem.c)
-elseif (LIN)
-  list(APPEND FREETYPE_LIB_SRC libs/freetype2/builds/unix/ftsystem.c)
+#elseif (UNIX)
+#  list(APPEND FREETYPE_LIB_SRC libs/freetype2/builds/unix/ftsystem.c) # cause a compilation error.
 else()
   list(APPEND FREETYPE_LIB_SRC libs/freetype2/src/base/ftsystem.c)
 endif()
 if(APPLE)
   list(APPEND FREETYPE_LIB_SRC libs/freetype2/src/base/ftmac.c)
-endif()
-
-
-if (LIN AND NOT APPLE)
-  target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
-  target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
-  # v26.09.3 Tell the GNU linker on Linux not to re-export statically linked archives
-  target_link_options(missionx PRIVATE "-Wl,--exclude-libs,ALL")
 endif()
 
 
@@ -435,16 +427,16 @@ endif ()
 
 
 
-if (LINUX)
-  target_include_directories(${PROJECT_NAME} PRIVATE
-      /usr/include/x86_64-linux-gnu
-      /usr/include/x86_64-linux-gnu/curl
-      /usr/include/x86_64-linux-gnu/openssl
-      ${CMAKE_SOURCE_DIR}/libs/curl/include
-  )
-else()
+#if (UNIX AND NOT APPLE)
+#  target_include_directories(${PROJECT_NAME} PRIVATE
+#      ${CMAKE_SOURCE_DIR}/libs/curl/include
+##      /usr/include/x86_64-linux-gnu
+##      /usr/include/x86_64-linux-gnu/curl
+##      /usr/include/x86_64-linux-gnu/openssl
+#  )
+#else()
   target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/libs/curl/include)
-endif()
+#endif()
 
 
 
@@ -498,6 +490,13 @@ else()
   if (NOT WIN32)
     target_compile_options(${PROJECT_NAME} PRIVATE -fPIC)
   endif()
+endif()
+
+
+if (UNIX AND NOT APPLE)
+  target_compile_options(${PROJECT_NAME} PRIVATE -mstackrealign)
+#  target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address -fno-omit-frame-pointer -mstackrealign)
+#  target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
 endif()
 
 
@@ -594,7 +593,7 @@ else()
   #
   # cURL is intentionally not discovered through the system here.  This makes
   # the Linux plugin use the exact static libraries shipped with the project.
-  if (LINUX)
+  if (UNIX AND NOT APPLE)
     set(CURL_STATIC_DIR "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/lin")
 
     foreach(STATIC_CURL_LIB libcurl.a libz.a libssl.a libcrypto.a libnghttp2.a)
@@ -731,21 +730,20 @@ elseif (APPLE)
       CURL::libcurl
   )
 elseif (UNIX)
-  target_link_libraries(${PROJECT_NAME} PRIVATE
-      "-Wl,--version-script=${CMAKE_SOURCE_DIR}/cmake_build/${PROJECT_NAME}.sym"
-      "-Wl,-rpath,./Resources/dlls/64"
-      "-Wl,-rpath,./Resources/dlls/64/gl"
-      "-Wl,-rpath,/usr/local/lib64"
-      "-Wl,-rpath,/usr/local/lib"
-      "-Wl,-rpath,/usr/lib64"
-      "-Wl,-rpath,/usr/lib"
-      "-Wl,-rpath,/lib64"
-      "-Wl,-rpath,/lib/x86_64-linux-gnu"
-      "-Wl,-rpath,/usr/lib/x86_64-linux-gnu"
-      "-Wl,-rpath,./Resources/plugins/missionx/libs/64"
-      FMOD::FMOD
-      CURL::libcurl
+  # v26.09.3 Tell the GNU linker on Linux not to re-export statically linked archives
+  target_link_options( ${PROJECT_NAME} PRIVATE
+          "-Wl,--exclude-libs,ALL"
   )
+
+  target_link_libraries(${PROJECT_NAME} PRIVATE
+  "-Wl,--version-script=${CMAKE_SOURCE_DIR}/cmake_build/${PROJECT_NAME}.sym"
+  "-Wl,-rpath,./Resources/dlls/64"
+  "-Wl,-rpath,./Resources/dlls/64/gl"
+  "-Wl,-rpath,./Resources/plugins/missionx/libs/64"
+  FMOD::FMOD
+  CURL::libcurl
+  )
+
 endif()
 
 # Debug info

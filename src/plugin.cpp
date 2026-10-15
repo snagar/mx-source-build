@@ -85,7 +85,7 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
   XPLMEnableFeature ("XPLM_USE_NATIVE_WIDGET_WINDOWS", 1);
 
   // #ifdef MX_ENABLE_HTTP_REQUESTS
-  curl_global_init(CURL_GLOBAL_DEFAULT);
+  curl_global_init(CURL_GLOBAL_ALL);
   // #endif // !DISABLE_CURL
 
 
