@@ -187,7 +187,7 @@ jobs:
           echo "Building static OpenSSL 3.0..."
           curl -sSL https://github.com/openssl/openssl/releases/download/openssl-3.0.15/openssl-3.0.15.tar.gz | tar -xz
           cd openssl-3.0.15
-          ./config no-shared no-tests no-docs -fPIC --libdir=lib --prefix="${INSTALL_PREFIX}" --openssldir="${INSTALL_PREFIX}/ssl"
+          ./config no-shared no-tests -fPIC --libdir=lib --prefix="${INSTALL_PREFIX}" --openssldir="${INSTALL_PREFIX}/ssl"
           make -j$(nproc)
           make install_sw
           cd ..
