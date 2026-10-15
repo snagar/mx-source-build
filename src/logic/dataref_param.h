@@ -223,7 +223,7 @@ public:
       }
       catch (const std::exception& e)
       {
-        Log::logMsgErr(fmt::format("[{}] {} failed to parse string values: {}. skipping", __func__, this->key, e.what()));
+        Log::logMsgErr(fmt::format("[{}] {} failed to parse string values: {}. skipping.\n", __func__, this->key, e.what()));
         return 0;
       }
 
@@ -264,7 +264,7 @@ public:
     }
     else
     {
-      Log::logMsgErr(fmt::format("[{}] {} Array is not set correctly. Array size: {}, expected: {}. skipping",
+      Log::logMsgErr(fmt::format("[{}] {} Array is not set correctly. Array size: {}, expected: {}. skipping.\n",
                                  __func__, this->key, this->arraySize, in_expected_array_size));
     }
 

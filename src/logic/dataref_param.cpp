@@ -816,7 +816,7 @@ missionx::dataref_param::readDatarefValue_into_missionx_plugin()
     }
     case xplmType_IntArray:
     {
-      Log::log_xplm_debug_string(fmt::format("[{}] inside switch: {}'", __func__, static_cast<int>(xplmType_IntArray)) );
+      Log::log_xplm_debug_string(fmt::format("[{}] inside switch: {}'\n", __func__, static_cast<int>(xplmType_IntArray)) );
 
       if (this->flag_designerPickedOneElement)
       {
@@ -826,21 +826,21 @@ missionx::dataref_param::readDatarefValue_into_missionx_plugin()
             // this->arrayElementPickedTranslation >= 0 &&
             this->arrayElementPickedTranslation < static_cast<unsigned int>(this->arraySize))
         {
-          Log::log_xplm_debug_string(fmt::format("[{}] Trying to set INT array with translation. Using 'set_value()'", __func__) );
+          Log::log_xplm_debug_string(fmt::format("[{}] Trying to set INT array with translation. Using 'set_value()'\n", __func__) );
           XPLMGetDatavi(this->dataRefId, this->target_IntArray, 0, this->arraySize);
           this->setValue(static_cast<double>(this->target_IntArray[this->arrayElementPickedTranslation]));
         }
       }
       else
       {
-        Log::log_xplm_debug_string(fmt::format("[{}] Trying to set INT array using 'readArrayDatarefIntoLocalArray()'", __func__) );
+        Log::log_xplm_debug_string(fmt::format("[{}] Trying to set INT array using 'readArrayDatarefIntoLocalArray()'\n", __func__) );
         this->readArrayDatarefIntoLocalArray();
       }
       break;
     }
     case xplmType_FloatArray:
     {
-      Log::log_xplm_debug_string(fmt::format("[{}] inside switch: {}'", __func__, static_cast<int>(xplmType_FloatArray)) );
+      Log::log_xplm_debug_string(fmt::format("[{}] inside switch: {}'\n", __func__, static_cast<int>(xplmType_FloatArray)) );
       if (this->flag_designerPickedOneElement)
       {
         // Guard: Ensure pointer exists, array has elements, and index is within bounds
@@ -849,21 +849,21 @@ missionx::dataref_param::readDatarefValue_into_missionx_plugin()
             // this->arrayElementPickedTranslation >= 0 &&
             this->arrayElementPickedTranslation < static_cast<unsigned int>(this->arraySize))
         {
-          Log::log_xplm_debug_string(fmt::format("[{}] Trying to set FLOAT array with translation. Using 'set_value()'", __func__) );
+          Log::log_xplm_debug_string(fmt::format("[{}] Trying to set FLOAT array with translation. Using 'set_value()'\n", __func__) );
           XPLMGetDatavf(this->dataRefId, this->target_FloatArray, 0, this->arraySize);
           this->setValue(static_cast<double>(this->target_FloatArray[this->arrayElementPickedTranslation]));
         }
       }
       else
       {
-        Log::log_xplm_debug_string(fmt::format("[{}] Trying to set FLOAT array using 'readArrayDatarefIntoLocalArray()'", __func__) );
+        Log::log_xplm_debug_string(fmt::format("[{}] Trying to set FLOAT array using 'readArrayDatarefIntoLocalArray()'\n", __func__) );
         this->readArrayDatarefIntoLocalArray();
       }
       break;
     }
     case xplmType_Data:
     {
-      Log::log_xplm_debug_string(fmt::format("[{}] inside switch: {}'", __func__, static_cast<int>(xplmType_Data)) );
+      Log::log_xplm_debug_string(fmt::format("[{}] inside switch: {}'\n", __func__, static_cast<int>(xplmType_Data)) );
       this->arraySize = XPLMGetDatab(this->dataRefId, nullptr, 0, 0);
       if (this->arraySize > 0 && this->target_CharArray != nullptr)
       {
