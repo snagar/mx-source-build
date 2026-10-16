@@ -366,6 +366,10 @@ target_include_directories(minizip PRIVATE
         ${CMAKE_SOURCE_DIR}/libs/curl/include
 )
 
+# Prevent zlib from trying to include unistd.h on Windows
+if (WIN32)
+  target_compile_definitions(minizip PRIVATE Z_HAVE_UNISTD_H=0 HAVE_UNISTD_H=0)
+endif()
 
 # Includes
 target_include_directories(${PROJECT_NAME} PRIVATE
