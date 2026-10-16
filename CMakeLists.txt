@@ -26,6 +26,11 @@ cmake_minimum_required(VERSION 3.20)
 
 
 project(missionx LANGUAGES C CXX VERSION 26.09 DESCRIPTION "Mission-X X-Plane plugin v26.x")
+# Limit allowed build configurations for single-config generators (like MSVC)
+if(MSVC)
+  set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Limited configurations" FORCE)
+endif()
+
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
