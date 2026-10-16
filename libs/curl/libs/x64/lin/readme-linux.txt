@@ -1,3 +1,159 @@
+sudo add-apt-repository -y universe
+sudo apt update
+
+sudo apt install -y build-essential autoconf automake libtool pkg-config perl cmake curl tar
+
+# Navigate to the folder you want to compile the libraries:
+cd /mnt/staff01/programming/ubuntu/ub24.04/ubuntu_static_libs
+
+
+1. Set Environment Variables and Folders
+
+export REPO_DIR="/mnt/staff01/programming/ubuntu/ub24.04/ubuntu_static_libs"
+export WORK_DIR="$REPO_DIR/work"
+export INSTALL_PREFIX="$REPO_DIR/dist"
+
+mkdir -p "$WORK_DIR" "$INSTALL_PREFIX" "$REPO_DIR/lib" "$REPO_DIR/include"
+
+
+
+2. Build Static zlib
+=====================
+cd "$WORK_DIR"
+curl -sSL https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz | tar -xz
+cd zlib-1.3.1
+
+CFLAGS="-fPIC -O3" ./configure --static --prefix="${INSTALL_PREFIX}"
+make -j$(nproc) install
+
+ll ../../dist/lib/
+
+
+3. Build Static OpenSSL 3.0 LTS
+===============================
+cd "$WORK_DIR"
+curl -sSL https://github.com/openssl/openssl/releases/download/openssl-3.0.15/openssl-3.0.15.tar.gz | tar -xz
+cd openssl-3.0.15
+
+./config no-shared no-tests -fPIC --libdir=lib --prefix="${INSTALL_PREFIX}" --openssldir="${INSTALL_PREFIX}/ssl"
+make -j$(nproc)
+make install_sw
+
+ll ../../dist/lib/
+
+
+4. Build Static nghttp2
+=======================
+cd "$WORK_DIR"
+curl -sSL https://github.com/nghttp2/nghttp2/releases/download/v1.63.0/nghttp2-1.63.0.tar.gz | tar -xz
+cd nghttp2-1.63.0
+
+./configure \
+  --prefix="${INSTALL_PREFIX}" \
+  --enable-lib-only \
+  --enable-static \
+  --disable-shared \
+  CFLAGS="-fPIC -O3"
+
+make -j$(nproc) install
+
+ll ../../dist/lib/
+
+
+
+5. Build Static cURL
+====================
+cd "$WORK_DIR"
+curl -sSL https://curl.se/download/curl-8.10.1.tar.gz | tar -xz
+cd curl-8.10.1
+
+./configure \
+  --prefix="${INSTALL_PREFIX}" \
+  --with-openssl="${INSTALL_PREFIX}" \
+  --with-zlib="${INSTALL_PREFIX}" \
+  --with-nghttp2="${INSTALL_PREFIX}" \
+  --enable-static \
+  --disable-shared \
+  --disable-ftp \
+  --disable-ldap \
+  --disable-ldaps \
+  --disable-rtsp \
+  --disable-dict \
+  --disable-telnet \
+  --disable-tftp \
+  --disable-pop3 \
+  --disable-imap \
+  --disable-smb \
+  --disable-gopher \
+  --disable-mqtt \
+  --without-nghttp3 \
+  --without-ngtcp2 \
+  --without-libssh2 \
+  --without-libpsl \
+  --without-libidn2 \
+  --without-brotli \
+  --without-zstd \
+  --disable-file \
+  --disable-ipfs \
+  --disable-smtp \
+  --disable-websockets \
+  CPPFLAGS="-DOPENSSL_NO_ENGINE -I${INSTALL_PREFIX}/include" \
+  LDFLAGS="-L${INSTALL_PREFIX}/lib -L${INSTALL_PREFIX}/lib64" \
+  CFLAGS="-fPIC -O2"
+
+make -j$(nproc) install
+
+ll ../../dist/lib/
+
+
+6. Update the repository: Copy Files to ubuntu_static_libs repository
+=====================================================================
+# Copy library archives
+cp -f "${INSTALL_PREFIX}"/lib*/libcurl.a    "${REPO_DIR}/lib/"
+cp -f "${INSTALL_PREFIX}"/lib*/libz.a       "${REPO_DIR}/lib/"
+cp -f "${INSTALL_PREFIX}"/lib*/libssl.a     "${REPO_DIR}/lib/"
+cp -f "${INSTALL_PREFIX}"/lib*/libcrypto.a  "${REPO_DIR}/lib/"
+cp -f "${INSTALL_PREFIX}"/lib*/libnghttp2.a  "${REPO_DIR}/lib/"
+
+# If libnghttp2 was not found, execute:
+NGHTTP2_FILE=$(find "${INSTALL_PREFIX}" -name "libnghttp2*.a" | head -n 1)
+cp -f "${NGHTTP2_FILE}" "${REPO_DIR}/lib/libnghttp2.a"
+
+# Copy headers
+cp -rf "${INSTALL_PREFIX}/include/curl"    "${REPO_DIR}/include/"
+cp -rf "${INSTALL_PREFIX}/include/openssl" "${REPO_DIR}/include/"
+cp -rf "${INSTALL_PREFIX}/include/nghttp2" "${REPO_DIR}/include/"
+cp -f  "${INSTALL_PREFIX}/include/zlib.h"  "${REPO_DIR}/include/"
+cp -f  "${INSTALL_PREFIX}/include/zconf.h" "${REPO_DIR}/include/"
+
+
+7. Inspect the Generated Archives
+=================================
+ls -lh "${REPO_DIR}/lib"
+file "${REPO_DIR}/lib/"*.a
+
+
+8. Test the binary that uses these libraries:
+=============================================
+# Verify no OpenSSL or cURL crypto symbols are leaked globally
+nm -D /path/to/missionx.xpl | grep -E "EVP_CipherInit|aesni_|curl_easy_init"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+####### CachyOS
 ####### As of v26.09.3 we link against statically cURL library ######
 Commands:
 
@@ -103,13 +259,13 @@ The Linux build should not use the OpenSSL libraries in this folder, instead use
 
 * Install key applications/libraries for X-Plane development
 > apt install plocate  (for quick search)
-> 
+>
 > apt install freeglut3-dev
-> 
+>
 > apt install g++
-> 
+>
 > apt install libopenal1
-> 
+>
 
 * Install cURL dev library
 
