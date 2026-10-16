@@ -3430,17 +3430,11 @@ data_manager::erase_empty_inventory_item_nodes(const IXMLNode& pNode, const int 
 
 void data_manager::set_plane_fuel()
 {
-  Log::log_xplm_debug_string(fmt::format("[{}] Before dataref_param 1 initialization.\n", __func__) );
   dataref_param local_dref_acf_tank_ratio_f_arr (dataref_const::dref_acf_tank_ratio_f, "sim/aircraft/overflow/acf_tank_rat");
-  Log::log_xplm_debug_string(fmt::format("[{}] Before dataref_param 2 initialization.\n", __func__) );
   dataref_param local_dref_m_fuel_f_arr (dataref_const::dref_m_fuel_f_arr, "sim/flightmodel/weight/m_fuel");
 
-  Log::log_xplm_debug_string(fmt::format("[{}] Before readArrayDatarefIntoLocalArray 1 initialization.\n", __func__) );
   local_dref_acf_tank_ratio_f_arr.readArrayDatarefIntoLocalArray();
-  Log::log_xplm_debug_string(fmt::format("[{}] Before readArrayDatarefIntoLocalArray 2 initialization.\n", __func__) );
   local_dref_m_fuel_f_arr.readArrayDatarefIntoLocalArray();
-  Log::log_xplm_debug_string(fmt::format("[{}] After readArrayDatarefIntoLocalArray.\n", __func__) );
-
 
   const auto mission_block_fuel = Utils::readNodeNumericAttrib <float>( mx_global_settings.xBaseWeight_ptr, mxconst::get_OPT_FUEL_BASE_WEIGHT(), 0.0f );
   if (mission_block_fuel <= 0.0f)
@@ -3457,9 +3451,7 @@ void data_manager::set_plane_fuel()
   // Dataref: "sim/aircraft/weight/acf_m_fuel_tot"
   const float total_aircraft_fuel_capacity = missionx::dataref_manager::getDataRefValue<float>(dataref_const::dref_rw_acf_m_fuel_tot_lbs) * lbs2kg;
 
-  Log::log_xplm_debug_string(fmt::format("[{}] before distribute_weight().\n", __func__) );
   distribute_weight(tank_ratios, fuel_tanks, mission_block_fuel, total_aircraft_fuel_capacity, true);
-  Log::log_xplm_debug_string(fmt::format("[{}] After distribute_weight().\n", __func__) );
 
   // write back to x-plane
   int counter_fuel_tanks = 0;
@@ -3476,9 +3468,7 @@ void data_manager::set_plane_fuel()
   m_tanks_s = ss.str();
 
 
-  Log::log_xplm_debug_string(fmt::format("[{}] before setTargetArray.\n", __func__, m_tanks_s) );
   int iResult = local_dref_m_fuel_f_arr.setTargetArray<xplmType_FloatArray, float>(static_cast<int>( counter_fuel_tanks ), m_tanks_s, true, ",");
-  Log::log_xplm_debug_string(fmt::format("[{}] after setTargetArray.\n", __func__, m_tanks_s) );
 
 }
 
@@ -7322,6 +7312,10 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
   };
 
   missionx::structs::strct_curl_result st_result;
+
+  // #ifdef MX_ENABLE_HTTP_REQUESTS
+
+
   st_result.reset();
   st_result.res_curl = CURLE_FAILED_INIT;
 
@@ -7346,6 +7340,8 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
   {
     p_headers = curl_slist_append(p_headers, header.c_str());
   }
+
+  Log::logMsgThread(fmt::format("[{}] Call ID: {}\t url: \"{}\"", __func__, data_manager::curl_call_counter_i, in_request_data.url_s));
 
   // Error buffer scoped with curl_func to avoid dangling pointers
   char errBuff[CURL_ERROR_SIZE] = {0};
@@ -7414,12 +7410,21 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
 
     if (st_result.res_curl == CURLE_OK && httpStatus >= 200 && httpStatus < 300)
     {
+      #ifndef RELEASE
+      Log::logMsgThread(fmt::format("[{}] Call ID: {}, Has success code. Will force exit CURL loop, based on respond code: {}\n", __func__, in_call_id, static_cast<int>(st_result.res_curl) ) );
+      #endif
+
       break; // Successful request
     }
 
     Log::logMsgThread(fmt::format("[{}] Call ID: {}, CURL code: {}, HTTP status: {}. {}",
                                   __func__, in_call_id, static_cast<int>(st_result.res_curl), httpStatus,
                                   (attempt + 1 < max_tries) ? "Retrying..." : "No retries left."));
+
+    // user progress message in the error line
+    if (in_request_data.how_many_tries > (attempt + 1))
+      data_manager::strct_ui_share_data.error_message_line3 = fmt::format("Failed to fetch data from {}. Will try again.", base_url);
+
 
     // Fatal configuration errors that should never be retried
     if (st_result.res_curl == CURLE_UNSUPPORTED_PROTOCOL ||
@@ -7428,7 +7433,7 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
     {
       break;
     }
-  }
+  } // end loop over curl calls
 
   // 4. Detailed error diagnostics
   if (httpStatus != 200 || st_result.res_curl != CURLE_OK)
@@ -7463,6 +7468,14 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
   {
     curl_slist_free_all(p_headers);
   }
+
+  data_manager::strct_ui_share_data.error_message_line3 = st_result.request_err; // v3.0.255.4 error_message_line3 will get the error. This will clear the last error message error_message_line3 had.
+
+  // #else
+  // st_result.reset();
+  // st_result.res_curl    = -1;
+  // st_result.request_err = "CURL is disabled in this build. Please enable CURL to use this feature.";
+  // #endif // !DISABLE_CURL
 
   return st_result;
 }

@@ -1328,7 +1328,6 @@ public:
 
   // cURL  
   static missionx::mutex s_thread_sync_mutex;
-  //static CURL*       curl;
   static std::string curl_result_s;
   static missionx::mutex mt_request_get_curl_request_respond_mutex; // v26.04.3 Used in get_curl_request_respond()
 

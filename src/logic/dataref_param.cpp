@@ -879,82 +879,82 @@ missionx::dataref_param::readDatarefValue_into_missionx_plugin()
 }
 
 // -----------------------------------
-
-void dataref_param::readDatarefValue_into_missionx_plugin2()
-{
-
-  this->pStrArrayValue.clear();
-
-  if (this->flag_paramReadyToBeUsed)
-  {
-    // decide which kind of data need to fetch
-    switch (dataRefType)
-    {
-      case xplmType_Int:
-      {
-        this->setValue(static_cast<double> (XPLMGetDatai (this->dataRefId)));
-      }
-      break;
-      case xplmType_Float:
-      {
-        this->setValue(static_cast<double> (XPLMGetDataf (this->dataRefId)));
-      }
-      break;
-      case (xplmType_Double):
-      case (xplmType_Float | xplmType_Double):
-      {
-        this->setValue(XPLMGetDatad(this->dataRefId));
-      }
-      break;
-      case (xplmType_IntArray):
-      {
-        if (flag_paramReadyToBeUsed && this->flag_designerPickedOneElement )
-        {
-          XPLMGetDatavi(this->dataRefId, target_IntArray, 0, this->arraySize);
-          this->setValue(static_cast<double> (target_IntArray[this->arrayElementPickedTranslation]));
-        }
-        else if (flag_paramReadyToBeUsed && !this->flag_designerPickedOneElement ) // if we picked array and it is not one element
-        {
-          this->readArrayDatarefIntoLocalArray();                       // v3.303.13 added missing initialize step
-        }
-      }
-      break;
-      case (xplmType_FloatArray):
-      {
-        if (flag_paramReadyToBeUsed && this->flag_designerPickedOneElement )
-        {
-          XPLMGetDatavf(this->dataRefId, target_FloatArray, 0, this->arraySize);
-          this->setValue(static_cast<double> (target_FloatArray[this->arrayElementPickedTranslation]));
-        }
-        else if (flag_paramReadyToBeUsed && !this->flag_designerPickedOneElement)
-        {
-          //XPLMGetDatavf(this->dataRefId, target_FloatArray, 0, this->arraySize); // v3.303.13 added missing initialize step
-
-          this->readArrayDatarefIntoLocalArray();  // v3.303.13 added missing initialize step
-
-        }
-      }
-      break;
-      case (xplmType_Data): // v3.0.255.1
-      {
-        if (flag_paramReadyToBeUsed)
-        {
-          this->arraySize = XPLMGetDatab (this->dataRefId, NULL, 0, 0); // v25.09.2 find size of string
-          XPLMGetDatab(this->dataRefId, target_CharArray, 0, this->arraySize);
-
-          if (this->arraySize && target_CharArray != NULL )
-            this->setParamStringValue(std::string(target_CharArray));
-        }
-      }
-      break;
-      default:
-        break;
-
-    } // switch
-  }
-
-}
-
+//
+// void dataref_param::readDatarefValue_into_missionx_plugin2()
+// {
+//
+//   this->pStrArrayValue.clear();
+//
+//   if (this->flag_paramReadyToBeUsed)
+//   {
+//     // decide which kind of data need to fetch
+//     switch (dataRefType)
+//     {
+//       case xplmType_Int:
+//       {
+//         this->setValue(static_cast<double> (XPLMGetDatai (this->dataRefId)));
+//       }
+//       break;
+//       case xplmType_Float:
+//       {
+//         this->setValue(static_cast<double> (XPLMGetDataf (this->dataRefId)));
+//       }
+//       break;
+//       case (xplmType_Double):
+//       case (xplmType_Float | xplmType_Double):
+//       {
+//         this->setValue(XPLMGetDatad(this->dataRefId));
+//       }
+//       break;
+//       case (xplmType_IntArray):
+//       {
+//         if (flag_paramReadyToBeUsed && this->flag_designerPickedOneElement )
+//         {
+//           XPLMGetDatavi(this->dataRefId, target_IntArray, 0, this->arraySize);
+//           this->setValue(static_cast<double> (target_IntArray[this->arrayElementPickedTranslation]));
+//         }
+//         else if (flag_paramReadyToBeUsed && !this->flag_designerPickedOneElement ) // if we picked array and it is not one element
+//         {
+//           this->readArrayDatarefIntoLocalArray();                       // v3.303.13 added missing initialize step
+//         }
+//       }
+//       break;
+//       case (xplmType_FloatArray):
+//       {
+//         if (flag_paramReadyToBeUsed && this->flag_designerPickedOneElement )
+//         {
+//           XPLMGetDatavf(this->dataRefId, target_FloatArray, 0, this->arraySize);
+//           this->setValue(static_cast<double> (target_FloatArray[this->arrayElementPickedTranslation]));
+//         }
+//         else if (flag_paramReadyToBeUsed && !this->flag_designerPickedOneElement)
+//         {
+//           //XPLMGetDatavf(this->dataRefId, target_FloatArray, 0, this->arraySize); // v3.303.13 added missing initialize step
+//
+//           this->readArrayDatarefIntoLocalArray();  // v3.303.13 added missing initialize step
+//
+//         }
+//       }
+//       break;
+//       case (xplmType_Data): // v3.0.255.1
+//       {
+//         if (flag_paramReadyToBeUsed)
+//         {
+//           this->arraySize = XPLMGetDatab (this->dataRefId, NULL, 0, 0); // v25.09.2 find size of string
+//           XPLMGetDatab(this->dataRefId, target_CharArray, 0, this->arraySize);
+//
+//           if (this->arraySize && target_CharArray != NULL )
+//             this->setParamStringValue(std::string(target_CharArray));
+//         }
+//       }
+//       break;
+//       default:
+//         break;
+//
+//     } // switch
+//   }
+//
+// }
+//
 // -----------------------------------
 
 void
