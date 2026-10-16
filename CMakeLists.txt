@@ -361,14 +361,22 @@ add_library(minizip STATIC
 # Enable -fPIC so static minizip can link directly into the missionx.xpl shared library
 set_target_properties(minizip PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-target_include_directories(minizip PRIVATE
-        ${CMAKE_SOURCE_DIR}/libs/minizip
-        ${CMAKE_SOURCE_DIR}/libs/curl/include
-)
-
-# Prevent zlib from trying to include unistd.h on Windows
 if (WIN32)
-  target_compile_definitions(minizip PRIVATE Z_HAVE_UNISTD_H=0 HAVE_UNISTD_H=0)
+  message("Using Windows Include folder")
+  target_include_directories(minizip PRIVATE
+          ${CMAKE_SOURCE_DIR}/libs/minizip
+          ${CMAKE_SOURCE_DIR}/libs/curl/include_win
+  )
+  # Prevent zlib from trying to include unistd.h on Windows
+  #  target_compile_definitions(minizip PRIVATE Z_HAVE_UNISTD_H=0 HAVE_UNISTD_H=0)
+
+else() # UNIX / OSX
+  message("Using Unix/OSX Include folder")
+  target_include_directories(minizip PRIVATE
+          ${CMAKE_SOURCE_DIR}/libs/minizip
+          ${CMAKE_SOURCE_DIR}/libs/curl/include
+  )
+
 endif()
 
 # Includes
