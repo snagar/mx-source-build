@@ -384,7 +384,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/XPLM
     ${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Widgets
     ${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Wrappers
-    ${CMAKE_SOURCE_DIR}/libs/curl/include
+#    ${CMAKE_SOURCE_DIR}/libs/curl/include
     ${CMAKE_SOURCE_DIR}/libs/fmod/inc
     ${CMAKE_SOURCE_DIR}/libs/fmod/studio/inc
     ${CMAKE_SOURCE_DIR}/libs/json/include
@@ -416,7 +416,7 @@ if (WIN32)
             "${CMAKE_SOURCE_DIR}/libs/curl/libs/win"
     )
     set(CUSTOM_ZLIB_INCLUDE_HINTS
-            "${CMAKE_SOURCE_DIR}/libs/curl/include"
+            "${CMAKE_SOURCE_DIR}/libs/curl/include_win"
             "${CMAKE_SOURCE_DIR}/libs/minizip/minizip"
     )
 
@@ -442,20 +442,11 @@ if (WIN32)
 
 endif ()
 
-
-
-#if (UNIX AND NOT APPLE)
-#  target_include_directories(${PROJECT_NAME} PRIVATE
-#      ${CMAKE_SOURCE_DIR}/libs/curl/include
-##      /usr/include/x86_64-linux-gnu
-##      /usr/include/x86_64-linux-gnu/curl
-##      /usr/include/x86_64-linux-gnu/openssl
-#  )
+#if (WIN32)
+#target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/libs/curl/include_win)
 #else()
-  target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/libs/curl/include)
+#target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/libs/curl/include)
 #endif()
-
-
 
 # Compiler features
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" OUTPUT_NAME "${PROJECT_NAME}" SUFFIX ".xpl")
@@ -565,7 +556,7 @@ if (WIN32)
   set_target_properties(ZLIB::ZLIB PROPERTIES
       IMPORTED_LOCATION_RELEASE "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/win/zs.lib"
       IMPORTED_LOCATION_DEBUG "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/win/debug/zsd.lib"
-      INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/curl/include"
+      INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/curl/include_win"
   )
 
   # Static cURL
@@ -573,7 +564,7 @@ if (WIN32)
   set_target_properties(CURL::libcurl PROPERTIES
       IMPORTED_LOCATION_RELEASE "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/win/libcurl.lib"
       IMPORTED_LOCATION_DEBUG "${CMAKE_SOURCE_DIR}/libs/curl/libs/x64/win/debug/libcurl-d.lib"
-      INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/curl/include"
+      INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/curl/include_win"
   )
 
   # Make cURL link against zlib
