@@ -78,9 +78,9 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-24.04]
-        #        build_type: [ Debug, Release ]
-        build_type: [ Debug ]
-        #        build_type: [ Release ]
+        # build_type: [ Debug, Release ]
+#        build_type: [ Debug ]
+        build_type: [ Release ]
         c_compiler: [gcc]
         #gcc_version: [11]
         include:
@@ -145,137 +145,6 @@ jobs:
       
       
       
-
-      # -------------------------------------------------------------
-      # Cache Linux Static Dependencies
-      # -------------------------------------------------------------
-      - name: Cache Linux Static Dependencies
-        id: cache-linux-deps
-        uses: actions/cache@v4
-        with:
-          path: |
-            libs/curl/libs/x64/lin
-            libs/curl/include/curl
-            libs/curl/include/openssl
-            libs/curl/include/nghttp2
-          key: linux-static-deps-curl-custom-autotools-openssl3.0.15-v1
-
-
-      # -------------------------------------------------------------
-      # Build static dependencies natively on Ubuntu
-      # -------------------------------------------------------------
-#      - name: Build Static Dependencies on Ubuntu
-#        if: steps.cache-linux-deps.outputs.cache-hit != 'true'
-#        shell: bash
-#        run: |
-#          set -e
-#
-#          WORK_DIR=$(mktemp -d)
-#          INSTALL_PREFIX="${WORK_DIR}/dist"
-#          mkdir -p "${INSTALL_PREFIX}"
-#          cd "${WORK_DIR}"
-#
-#          # 1. ZLIB (static with -fPIC)
-#          echo "Building static zlib..."
-#          curl -sSL https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz | tar -xz
-#          cd zlib-1.3.1
-#          CFLAGS="-fPIC -O3" ./configure --static --prefix="${INSTALL_PREFIX}"
-#          make -j2 install
-#          cd ..
-#
-#          # 2. OpenSSL 3.0 LTS (static with -fPIC, installing to lib/)
-#          echo "Building static OpenSSL 3.0..."
-#          curl -sSL https://github.com/openssl/openssl/releases/download/openssl-3.0.15/openssl-3.0.15.tar.gz | tar -xz
-#          cd openssl-3.0.15
-#          ./config no-shared no-tests -fPIC --libdir=lib --prefix="${INSTALL_PREFIX}" --openssldir="${INSTALL_PREFIX}/ssl"
-#          make -j2
-#          make install_sw
-#          cd ..
-#
-#          # 3. nghttp2 (static with -fPIC using autotools)
-#          echo "Building static nghttp2..."
-#          curl -sSL https://github.com/nghttp2/nghttp2/releases/download/v1.63.0/nghttp2-1.63.0.tar.gz | tar -xz
-#          cd nghttp2-1.63.0
-#          ./configure \
-#          --prefix="${INSTALL_PREFIX}" \
-#          --enable-lib-only \
-#          --enable-static \
-#          --disable-shared \
-#          CFLAGS="-fPIC -O3"
-#          make -j2 install
-#          cd ..
-#
-#          locate libnghttp2.a
-#          ls -lR "${INSTALL_PREFIX}"
-#          echo -e "\n\n after nghttp2 \n\n"
-#
-#          # 4. libcurl (Configured with your exact flags and disabled features)
-#          echo "Building static cURL with autotools..."
-#          curl -sSL https://curl.se/download/curl-8.10.1.tar.gz | tar -xz
-#          cd curl-8.10.1
-#
-#          ./configure \
-#            --prefix="${INSTALL_PREFIX}" \
-#            --with-openssl="${INSTALL_PREFIX}" \
-#            --with-zlib="${INSTALL_PREFIX}" \
-#            --with-nghttp2="${INSTALL_PREFIX}" \
-#            --enable-static \
-#            --disable-shared \
-#            --disable-ftp \
-#            --disable-ldap \
-#            --disable-ldaps \
-#            --disable-rtsp \
-#            --disable-dict \
-#            --disable-telnet \
-#            --disable-tftp \
-#            --disable-pop3 \
-#            --disable-imap \
-#            --disable-smb \
-#            --disable-gopher \
-#            --disable-mqtt \
-#            --without-nghttp3 \
-#            --without-ngtcp2 \
-#            --without-libssh2 \
-#            --without-libpsl \
-#            --without-libidn2 \
-#            --without-brotli \
-#            --without-zstd \
-#            --disable-file \
-#            --disable-ipfs \
-#            --disable-smtp \
-#            --disable-websockets \
-#            CPPFLAGS="-DOPENSSL_NO_ENGINE -I${INSTALL_PREFIX}/include" \
-#            LDFLAGS="-L${INSTALL_PREFIX}/lib" \
-#            CFLAGS="-fPIC -O2"
-#
-#          make -j2
-#          make install
-#          cd ..
-#
-#          # 5. Copy built static assets to repository tree
-#          TARGET_LIB_DIR="${GITHUB_WORKSPACE}/libs/curl/libs/x64/lin"
-#          TARGET_INC_DIR="${GITHUB_WORKSPACE}/libs/curl/include"
-#
-#          mkdir -p "${TARGET_LIB_DIR}"
-#          mkdir -p "${TARGET_INC_DIR}"
-#
-#          ls -lR "${INSTALL_PREFIX}
-#          locate libnghttp2.a
-#
-#          cp -f "${INSTALL_PREFIX}/lib/libcurl.a" "${TARGET_LIB_DIR}/libcurl.a"
-#          cp -f "${INSTALL_PREFIX}/lib/libz.a" "${TARGET_LIB_DIR}/libz.a"
-#          cp -f "${INSTALL_PREFIX}/lib/libnghttp2.a" "${TARGET_LIB_DIR}/libnghttp2.a"
-#          cp -f "${INSTALL_PREFIX}/lib/libssl.a" "${TARGET_LIB_DIR}/libssl.a"
-#          cp -f "${INSTALL_PREFIX}/lib/libcrypto.a" "${TARGET_LIB_DIR}/libcrypto.a"
-#
-#          cp -rf "${INSTALL_PREFIX}/include/curl" "${TARGET_INC_DIR}/"
-#          cp -rf "${INSTALL_PREFIX}/include/openssl" "${TARGET_INC_DIR}/"
-#          cp -rf "${INSTALL_PREFIX}/include/nghttp2" "${TARGET_INC_DIR}/"
-#
-#          echo "Static archives deployed to ${TARGET_LIB_DIR}:"
-#          ls -la "${TARGET_LIB_DIR}"
-#
-#
       #      - name: Debug: Stop workflow early
       #        run: |
       #          echo "Stopping here..."
