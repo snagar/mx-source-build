@@ -140,8 +140,15 @@ jobs:
           unzip -o XPSDK.zip
           printf "List folders:\n"
           ls -l
-          printf "List SDK files recursively:\n"
-          ls -lR SDK
+          
+          printf "Remove the old folder and rename the new xpsdk-master" to "xpsdk"
+          rm -rf xpsdk
+          mv xpsdk-master xpsdk
+          
+          printf "List folders after renaming:\n"
+          ls -l
+          printf "List xpsdk files recursively:\n"
+          ls -lR xpsdk
       
       
       
@@ -259,8 +266,15 @@ jobs:
           ditto -V -x -k XPSDK.zip .
           printf "List folders:\n"
           ls -la
-          printf "List SDK files recursively:\n"
-          ls -lR SDK
+          
+          printf "Remove the old folder and rename the new xpsdk-master" to "xpsdk"
+          rm -rf xpsdk
+          mv xpsdk-master xpsdk
+          
+          printf "List folders after renaming:\n"
+          ls -l
+          printf "List xpsdk files recursively:\n"
+          ls -lR xpsdk
       
 
       #      - name: Stop workflow early
@@ -368,17 +382,23 @@ jobs:
           cd libs
           Write-Host "Command: Expand-Archive XPSDK.zip -DestinationPath . -Force"
           "Current folder: $(Get-Location)"
-          Remove-Item -Recurse -Force "SDK\Libraries\Mac" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "xpsdk\Libraries\Mac" -ErrorAction SilentlyContinue
           Expand-Archive XPSDK.zip -DestinationPath . -Force -ErrorAction SilentlyContinue
           
           Write-Host " "
           Write-Host "List folders:"
           Get-ChildItem -Directory -Name
           
+          Remove-Item -Recurse -Force "xpsdk" -ErrorAction SilentlyContinue
+          Rename-Item -Path "xpsdk-master" -NewName "xpsdk"
+          
+          Write-Host "List folders after renaming xpsdk:"
+          Get-ChildItem -Directory -Name
+          
           Write-Host " "
-          cd SDK
+          cd xpsdk
           Remove-Item -Recurse -Force "Libraries\Mac" -ErrorAction SilentlyContinue
-          Write-Host "List SDK files recursively:"
+          Write-Host "List xpsdk files recursively:"
           Get-ChildItem -Directory -Name -Recurse
           cd ..
         

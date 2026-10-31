@@ -381,9 +381,9 @@ endif()
 
 # Includes
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/XPLM
-    ${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Widgets
-    ${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Wrappers
+    ${CMAKE_SOURCE_DIR}/libs/xpsdk/CHeaders/XPLM
+    ${CMAKE_SOURCE_DIR}/libs/xpsdk/CHeaders/Widgets
+    ${CMAKE_SOURCE_DIR}/libs/xpsdk/CHeaders/Wrappers
 #    ${CMAKE_SOURCE_DIR}/libs/curl/include
     ${CMAKE_SOURCE_DIR}/libs/fmod/inc
     ${CMAKE_SOURCE_DIR}/libs/fmod/studio/inc
@@ -663,46 +663,46 @@ endif()
 
 
 # ==========================
-# X-Plane SDK
+# X-Plane XPSDK
 # ==========================
 if (WIN32 OR APPLE)
   if (WIN32)
     add_library(XPLM::XPLM SHARED IMPORTED)
     set_target_properties(XPLM::XPLM PROPERTIES
-        IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Win/XPLM_64.lib"
-        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/XPLM"
+        IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/xpsdk/Libraries/Win/XPLM_64.lib"
+        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/xpsdk/CHeaders/XPLM"
     )
 
     add_library(XPLM::XPWidgets SHARED IMPORTED)
     set_target_properties(XPLM::XPWidgets PROPERTIES
-        IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Win/XPWidgets_64.lib"
-        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Widgets"
+        IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/xpsdk/Libraries/Win/XPWidgets_64.lib"
+        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/xpsdk/CHeaders/Widgets"
     )
   elseif(APPLE)
     # XPLM framework
     add_library(XPLM::XPLM INTERFACE IMPORTED)
     set_target_properties(XPLM::XPLM PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/XPLM"
-        INTERFACE_LINK_LIBRARIES "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Mac/XPLM.framework"
+        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/xpsdk/CHeaders/XPLM"
+        INTERFACE_LINK_LIBRARIES "${CMAKE_SOURCE_DIR}/libs/xpsdk/Libraries/Mac/XPLM.framework"
     )
 
     # XPWidgets framework
     add_library(XPLM::XPWidgets INTERFACE IMPORTED)
     set_target_properties(XPLM::XPWidgets PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Widgets"
-        INTERFACE_LINK_LIBRARIES "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Mac/XPWidgets.framework"
+        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/xpsdk/CHeaders/Widgets"
+        INTERFACE_LINK_LIBRARIES "${CMAKE_SOURCE_DIR}/libs/xpsdk/Libraries/Mac/XPWidgets.framework"
     )
   elseif (UNIX)
     add_library(XPLM::XPLM SHARED IMPORTED)
     set_target_properties(XPLM::XPLM PROPERTIES
-        IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Lin/XPLM_64.so"
-        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/XPLM"
+        IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/xpsdk/Libraries/Lin/XPLM_64.so"
+        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/xpsdk/CHeaders/XPLM"
     )
 
     add_library(XPLM::XPWidgets SHARED IMPORTED)
     set_target_properties(XPLM::XPWidgets PROPERTIES
-        IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/SDK/Libraries/Lin/XPWidgets_64.so"
-        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/SDK/CHeaders/Widgets"
+        IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/libs/xpsdk/Libraries/Lin/XPWidgets_64.so"
+        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/xpsdk/CHeaders/Widgets"
     )
   endif()  # end APPLE
 
@@ -736,14 +736,14 @@ elseif (APPLE)
       XPLM::XPWidgets
       FMOD::FMOD
       CURL::libcurl
-  )
-elseif (UNIX)
-  # v26.09.3 Tell the GNU linker on Linux not to re-export statically linked archives
+  )  # v26.09.3 Tell the GNU linker on Linux not to re-export statically linked archives
   target_link_options( ${PROJECT_NAME} PRIVATE
           "-Wl,--exclude-libs,ALL"
           "-Wl,-Bsymbolic"
           "-Wl,-Bsymbolic-functions"
   )
+elseif (UNIX)
+
 
   target_link_libraries(${PROJECT_NAME} PRIVATE
   "-Wl,--version-script=${CMAKE_SOURCE_DIR}/cmake_build/${PROJECT_NAME}.sym"
