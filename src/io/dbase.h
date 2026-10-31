@@ -23,9 +23,9 @@ Threading should be an option.
 
 
 //// SQLITE special FLAGS ////
-#define SQLITE_OMIT_DEPRECATED
-#define SQLITE_OMIT_PROGRESS_CALLBACK
-#define SQLITE_OMIT_SHARED_CACHE
+// #define SQLITE_OMIT_DEPRECATED
+// #define SQLITE_OMIT_PROGRESS_CALLBACK
+// #define SQLITE_OMIT_SHARED_CACHE
 
 #include "sqlite3.h"
 
@@ -133,6 +133,10 @@ public:
   void        set_db_path_and_file(std::string inValue) { this->absolute_path_to_db_file_s = inValue; }
   bool        open_database();
   bool        open_database_in_memory(); // v3.0.255.3
+
+  bool        open_database_read_only(); // v26.10.x OSM v2 databases. Never creates or writes the file.
+  static std::string get_column_text(sqlite3_stmt* inStmt, int inColumn); // v26.10.x NULL safe, returns "" for NULL
+
   bool        remove_database(std::string in_absolute_path);
   bool        close_database(); // finalize all statements and clode database
   bool        execute_stmt(std::string inStmt);
@@ -162,8 +166,9 @@ public:
 
   bool getIsStatement_withTheName_exists(const std::string& inStmtName);
 
-  bool attach_database(const std::string inDatabaseLocation, const std::string inName);
+  bool attach_database(const std::string &inDatabaseLocation, const std::string &inName);
   bool detach_database(const std::string inName = "dbAttached");
+
 
 private:
 };

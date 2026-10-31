@@ -1680,12 +1680,12 @@ data_manager::loadInventoryImages()
       texture = btnImage;
       texture.store_hash();
 
-      Log::logMsgThread(fmt::format("Loaded Inventory Texture: {}\n", texture.fileName)); // debug
+      Log::logMsg(fmt::format("Loaded Inventory Texture: {}\n", texture.fileName)); // debug
 
     } // end if loaded texture
     else
     {
-      Log::logMsgThread( fmt::format("Failed to load Inventory texture file: {}\nError: {}\n", file, errorMsg) );
+      Log::logMsg( fmt::format("Failed to load Inventory texture file: {}\nError: {}\n", file, errorMsg) );
     }
   }
 
@@ -1783,13 +1783,13 @@ data_manager::loadStoryImage(Message* msg, const std::string& inImageName_vu)
   if (Message::lineAction4ui.state == enum_mx_line_state::loading)
   {
     #ifndef RELEASE
-    Log::logMsgThread((!inImageName_vu.empty()) ? "Loading: " + inImageName_vu : "Release image.");
+    Log::logMsg((!inImageName_vu.empty()) ? "Loading: " + inImageName_vu : "Release image.");
     #endif // !RELEASE
 
     if (mxUtils::isElementExists(Message::mapStoryCachedImages, inImageName_vu))
     {
       #ifndef RELEASE
-      Log::logMsgThread("Found image in cache: " + inImageName_vu + ", Skipping load.");
+      Log::logMsg("Found image in cache: " + inImageName_vu + ", Skipping load.");
       #endif // !RELEASE
       Message::lineAction4ui.state = enum_mx_line_state::ready;
     }
@@ -1810,7 +1810,7 @@ data_manager::loadStoryImage(Message* msg, const std::string& inImageName_vu)
       }
 
       #ifndef RELEASE
-      Log::logMsgThread("Final image filename: " + btnImage.fileName);
+      Log::logMsg("Final image filename: " + btnImage.fileName);
       #endif // !RELEASE
 
       std::string errorMsg; // v24.06.1
@@ -1819,15 +1819,15 @@ data_manager::loadStoryImage(Message* msg, const std::string& inImageName_vu)
         Utils::addElementToMap(Message::mapStoryCachedImages, inImageName_vu, btnImage);
         Message::lineAction4ui.state = enum_mx_line_state::ready;
 
-        Log::logMsgThread("Loaded Story Texture: " + btnImage.fileName); // debug
+        Log::logMsg("Loaded Story Texture: " + btnImage.fileName); // debug
 
       } // end if loaded texture
       else
       {
         if (inImageName_vu.empty())
-          Log::logMsgThread("Releasing image in position: " + Message::lineAction4ui.vals[mxconst:: mxconst::get_STORY_IMAGE_POS()]); // debug
+          Log::logMsg("Releasing image in position: " + Message::lineAction4ui.vals[mxconst:: mxconst::get_STORY_IMAGE_POS()]); // debug
         else
-          Log::logMsgThread("Failed loading Story Texture: " + inImageName_vu); // debug
+          Log::logMsg("Failed loading Story Texture: " + inImageName_vu); // debug
 
       } // end if Texture loaded
     }   // end if Texture file name is not in the message cache
@@ -1981,7 +1981,7 @@ data_manager::write_fpln_to_external_folder(const std::map<int, missionx::NavAid
     if (!infs.is_open())
     {
       err = "[write_fpln_to_external_folder] Fail to open file: " + fpln_file_path + "\n";
-      Log::logAttention(err, false); // false = not thread message
+      Log::logAttention(err); // false = not thread message
     }
     else
     {
@@ -2079,12 +2079,12 @@ data_manager::write_fpln_to_external_folder(const std::map<int, missionx::NavAid
               if (outFPLN_file.fail())
               {
                 err = "[write_fpln_to_external_folder] Fail to create file: " + fpln_custom_missionx_path + "\n";
-                Log::logAttention(err, false); // false = not thread message
+                Log::logAttention(err); // false = not thread message
               }
               else
               {
                 #ifndef RELEASE
-                Log::logMsg("[write_fpln_to_external_folder] folder: " + fpln_custom_missionx_path, false); // false = not thread message
+                Log::logMsg("[write_fpln_to_external_folder] folder: " + fpln_custom_missionx_path); // false = not thread message
                 #endif
 
                 if (fpln_type == GTNRXP)
@@ -2198,11 +2198,11 @@ data_manager::prepare_flight_plan_for_GTN_RXP(std::deque<NavAidInfo>& inNavList)
       {
         // Handle xplm_Nav_LatLon but also add the coordinates for any NavAid at hand
         #ifndef RELEASE
-        Log::logMsgNoneCR("[lat] angle: " + mxUtils::formatNumber<float>(navInfo.lat, 6));
+        Log::logMsg("[lat] angle: " + mxUtils::formatNumber<float>(navInfo.lat, 6));
         #endif
         std::string lat_s = Utils::DegreesMinutesSecondsLat_XP((double)navInfo.lat);
         #ifndef RELEASE
-        Log::logMsgNoneCR(" after:" + lat_s + ", angle: " + mxUtils::formatNumber<float>(navInfo.lon, 6) + " ");
+        Log::logMsg(" after:" + lat_s + ", angle: " + mxUtils::formatNumber<float>(navInfo.lon, 6) + " ");
         #endif
         std::string lon_s = Utils::DegreesMinutesSecondsLon_XP((double)navInfo.lon);
         #ifndef RELEASE
@@ -3324,7 +3324,7 @@ data_manager::prepareInventoryCopies(const std::string& inInventoryName)
   planeInventoryCopy = mapInventories[mxconst::get_ELEMENT_PLANE()];
 
   #ifndef RELEASE
-  Log::log_to_missionx_log(fmt::format("==========>\nLocal inventory after Coping Plane Inventory:\n[{}\n].\n====> Source Inventory:\n[{}\n]\n<=========\n", Utils::xml_get_node_content_as_text(planeInventoryCopy.node), Utils::xml_get_node_content_as_text(mapInventories[mxconst::get_ELEMENT_PLANE()].node)));
+  Log::logMsg(fmt::format("==========>\nLocal inventory after Coping Plane Inventory:\n[{}\n].\n====> Source Inventory:\n[{}\n]\n<=========\n", Utils::xml_get_node_content_as_text(planeInventoryCopy.node), Utils::xml_get_node_content_as_text(mapInventories[mxconst::get_ELEMENT_PLANE()].node)));
   #endif
 
 
@@ -5556,7 +5556,7 @@ limit 1
     {
       query = mapQueries[stmt_uq_name];
       #ifndef RELEASE
-      Log::logMsgThread(fmt::format ("[{}] Picked query from sql.xml file.", __func__) );
+      Log::logMsg(fmt::format ("[{}] Picked query from sql.xml file.", __func__) );
       #endif
     }
 
@@ -5566,8 +5566,8 @@ limit 1
     query                              = mxUtils::format (query, mapArgs);
 
     #ifndef RELEASE
-    Log::logMsgThread (fmt::format ("[{}] Query:\n{}", __func__, query));
-    Log::logMsgThread (fmt::format ("[{}] Query lat/lon: {}\n", __func__, inFrom_navaid->get_latLon ())); // debug
+    Log::logMsg (fmt::format ("[{}] Query:\n{}", __func__, query));
+    Log::logMsg (fmt::format ("[{}] Query lat/lon: {}\n", __func__, inFrom_navaid->get_latLon ())); // debug
     #endif
 
     // add query to "global query" map if it does not exist
@@ -5667,7 +5667,7 @@ where 1 = 1
     {
       query = mapQueries[stmt_base_ils_search_query_name];
       #ifndef RELEASE
-      Log::logMsgThread("Picked query from sql.xml file.");
+      Log::logMsg("Picked query from sql.xml file.");
       #endif
     }
 
@@ -5681,8 +5681,8 @@ where 1 = 1
     query                              = mxUtils::format(query, mapArgs);
 
     #ifndef RELEASE
-    Log::logMsgThread("[ils layer] Query:\n" + query);                                    // debug
-    Log::logMsgThread("[ils layer] Query lat/lon:" + inFrom_navaid->get_latLon() + "\n"); // debug
+    Log::logMsg("[ils layer] Query:\n" + query);                                    // debug
+    Log::logMsg("[ils layer] Query lat/lon:" + inFrom_navaid->get_latLon() + "\n"); // debug
     #endif
 
     // prepare query statement
@@ -5785,7 +5785,7 @@ and icao = '{}' order by distance
     {
       query = mapQueries[stmt_uq_name];
       #ifndef RELEASE
-      Log::logMsgThread("Using fetch_nav_data_step1 from sql.xml file");
+      Log::logMsg("Using fetch_nav_data_step1 from sql.xml file");
       #endif
     }
     else
@@ -5795,7 +5795,7 @@ and icao = '{}' order by distance
     query                              = mxUtils::format(query, mapArgs);
 
     #ifndef RELEASE
-    Log::logMsgThread(fmt::format("Nav Data Query 1:\n{}", query));
+    Log::logMsg(fmt::format("Nav Data Query 1:\n{}", query));
     #endif // !RELEASE
 
     // prepare query statement
@@ -5858,7 +5858,7 @@ and icao_id = '{}'
           {
             query = mapQueries[stmt_uq_name];
             #ifndef RELEASE
-            Log::logMsgThread("Using fetch_rw_info_step2 from sql.xml file");
+            Log::logMsg("Using fetch_rw_info_step2 from sql.xml file");
             #endif
           }
           else
@@ -5869,7 +5869,7 @@ and icao_id = '{}'
 
 
           #ifndef RELEASE
-          Log::logMsgThread(fmt::format("Nav Data Query 2:\n{}", query));
+          Log::logMsg(fmt::format("Nav Data Query 2:\n{}", query));
           #endif // !RELEASE
 
 
@@ -5959,7 +5959,7 @@ ORDER BY distance
             {
               query = mapQueries[stmt_vor];
               #ifndef RELEASE
-              Log::logMsgThread("Using fetch_vor_ndb_dme_info_step3 from sql.xml file");
+              Log::logMsg("Using fetch_vor_ndb_dme_info_step3 from sql.xml file");
               #endif
             }
             else
@@ -5974,7 +5974,7 @@ ORDER BY distance
 
 
             #ifndef RELEASE
-            Log::logMsgThread(fmt::format("Nav Data Query 3:\n{}", query));
+            Log::logMsg(fmt::format("Nav Data Query 3:\n{}", query));
             #endif // !RELEASE
 
 
@@ -6034,7 +6034,7 @@ order by loc_type_code, loc_rw
             {
               query = mapQueries[stmt_loc];
               #ifndef RELEASE
-              Log::logMsgThread("Using fetch_loc_info_step4 from sql.xml file");
+              Log::logMsg("Using fetch_loc_info_step4 from sql.xml file");
               #endif
             }
             else
@@ -6046,7 +6046,7 @@ order by loc_type_code, loc_rw
 
 
             #ifndef RELEASE
-            Log::logMsgThread(fmt::format("Nav Data Query 4:\n{}", query));
+            Log::logMsg(fmt::format("Nav Data Query 4:\n{}", query));
             #endif // !RELEASE
 
 
@@ -6086,7 +6086,7 @@ where icao_id = {}
             {
               query = mapQueries[stmt_frq];
               #ifndef RELEASE
-              Log::logMsgThread("Using fetch_ap_frq_step5 from sql.xml file");
+              Log::logMsg("Using fetch_ap_frq_step5 from sql.xml file");
               #endif
             }
             else
@@ -6096,7 +6096,7 @@ where icao_id = {}
             query                              = mxUtils::format(query, map_args3);
 
             #ifndef RELEASE
-            Log::logMsgThread(fmt::format("Nav Data Query 5:\n{}", query));
+            Log::logMsg(fmt::format("Nav Data Query 5:\n{}", query));
             #endif // !RELEASE
 
 
@@ -6262,7 +6262,7 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
     const std::string stmt_uq_name3 = "query_min_max_stats_vu";
 
     #ifndef RELEASE
-    Log::logMsgThread("query min/max stats:" + query_min_max_stats);
+    Log::logMsg("query min/max stats:" + query_min_max_stats);
     #endif // !RELEASE
 
 
@@ -6629,11 +6629,11 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
       data_manager::shared_navaid_between_threads.init ();
       data_manager::shared_navaid_between_threads.setID (nav.icao);
       if (!missionx::data_manager::waitForPluginCallbackJob (&data_manager::fetch_metar_from_flcpre_thread_state, missionx::mx_flc_pre_command::get_metar_for_airport, std::chrono::milliseconds (3000)))
-        Log::logMsgThread (fmt::format ("[{}] Callback timeout for: '{}({})'.", __func__,  "get_metar_for_airport ", nav.icao ) );
+        Log::logMsg (fmt::format ("[{}] Callback timeout for: '{}({})'.", __func__,  "get_metar_for_airport ", nav.icao ) );
       else
       {
         if (data_manager::shared_navaid_between_threads.sMetar.empty ())
-          Log::logMsgThread (fmt::format ("[{}] Failed to find Metar info for ICAO: {} using: XPLMGetMETARForAirport() and 'get_metar_for_airport'.", __func__,  nav.icao ) );
+          Log::logMsg (fmt::format ("[{}] Failed to find Metar info for ICAO: {} using: XPLMGetMETARForAirport() and 'get_metar_for_airport'.", __func__,  nav.icao ) );
         else
         {
           flag_got_metar = true;
@@ -6648,7 +6648,7 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
     {
       std::string       q          = "/weather/" + nav.icao; // we need to add the ICAO
       const std::string full_url_s = mxUtils::trim (fmt::format ("https://{}{}", url_s, q));
-      Log::logMsgThread ("url: " + full_url_s); // debug
+      Log::logMsg ("url: " + full_url_s); // debug
 
       const std::string authKey_s  = Utils::getNodeText_type_6 (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY (), "");
       std::string       cert_loc_s = mx_folders_properties.getStringAttributeValue (mxconst::get_PROP_MISSIONX_PATH (), ""); // v24.03.1
@@ -6681,7 +6681,7 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
           if (request_result.http_status != 200 || !request_result.request_err.empty())
           {
             outStatusMessage->append(fmt::format("CURL HTTP status: {}. {}. {}:{}", std::to_string(request_result.http_status), request_result.request_err, ((iCurlTry < 3) ? "Will try again in 5 sec" : "No Luck"), iCurlTry)); // v24.03.1
-            Log::logMsgThread((*outStatusMessage) + "\n"); // debug
+            Log::logMsg((*outStatusMessage) + "\n"); // debug
 
             std::this_thread::sleep_for(std::chrono::milliseconds(5000)); // sleep for 5 seconds
           }
@@ -6704,7 +6704,7 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
         std::string            last_toName_s;
         std::map<size_t, bool> mapHashIcaoAndName;
 
-        Log::logMsgThread (result_s);
+        Log::logMsg (result_s);
         #endif // !RELEASE
 
         constexpr static auto KEY_METAR = "METAR";
@@ -6728,7 +6728,7 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
         }
         catch (nlohmann::json::parse_error &ex)
         {
-          Log::logMsgThread (fmt::format ("{}.\n== JSON: ==>\n{}\n<== END JSON ==", ex.what (), result_s));
+          Log::logMsg (fmt::format ("{}.\n== JSON: ==>\n{}\n<== END JSON ==", ex.what (), result_s));
           (*outErrorMsg) = ex.what ();
         }
       } // end if http success
@@ -6789,7 +6789,7 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
     if (CURLE_OK != simbrief_st_curl_result.res_curl)
     {
       msg = fmt::format("[{}] cURL error code: {}\n", __func__, Utils::formatNumber<int>(simbrief_st_curl_result.res_curl));
-      Log::logMsgThread(msg);
+      Log::logMsg(msg);
     }
     // #else
     //   simbrief_st_curl_result.res_curl    = -1;
@@ -6809,7 +6809,7 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
     if (!msg.empty())
       (*outStatusMessage) = fmt::format("Try {} of {}. {}", loop01 + 1, MAX_TRIES, msg);
 
-    Log::logMsgThread((*outStatusMessage)); // debug
+    Log::logMsg((*outStatusMessage)); // debug
 
     // Wait for 2 seconds
     std::this_thread::sleep_for(std::chrono::seconds(2)); // v26.01.1 wait for 2 seconds
@@ -6987,12 +6987,12 @@ data_manager::fetch_fpln_from_simbrief_site (missionx::base_thread::strct_thread
     }
 
     #ifndef RELEASE
-    Log::logMsgThread("Curl Result: " + simbrief_st_curl_result.response_text);
+    Log::logMsg("Curl Result: " + simbrief_st_curl_result.response_text);
     #endif
   }
   #ifndef RELEASE
-  Log::logMsgThread (fmt::format("\nSimbrief URL: {}\n", full_url_s) ); // debug
-  Log::logMsgThread (fmt::format("\ncacert path: {}\n", data_manager::ca_path.string()) ); // debug
+  Log::logMsg (fmt::format("\nSimbrief URL: {}\n", full_url_s) ); // debug
+  Log::logMsg (fmt::format("\ncacert path: {}\n", data_manager::ca_path.string()) ); // debug
   #endif
 
 
@@ -7083,7 +7083,7 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
 
   const std::string url_s      = "api.flightplandatabase.com";
   const std::string full_url_s = mxUtils::trim("https://" + url_s + ":443" + q);
-  Log::logMsgThread("flightplandatabase url: " + full_url_s); // debug
+  Log::logMsg("flightplandatabase url: " + full_url_s); // debug
 
   //// Fetch information
   std::string err;
@@ -7104,12 +7104,13 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
     request_data.url_s          = full_url_s;
     request_data.login_pass     = authKey_s;
     request_data.how_many_tries = 1;
+    request_data.headers = {mxconst::OVERPASS_POST_HEADER};
 
     (*outState)                                         = mxFetchState_enum::fetch_in_process;
     missionx::structs::strct_curl_result request_result = data_manager::get_curl_request_respond(request_data);
     if (CURLE_OK != request_result.res_curl)
     {
-      Log::logMsgThread("cURL error code: " + Utils::formatNumber<int>(request_result.res_curl) + "\n");
+      Log::logMsg("cURL error code: " + Utils::formatNumber<int>(request_result.res_curl) + "\n");
     }
 
     
@@ -7137,7 +7138,7 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
       result_s.clear();
 
       #ifndef RELEASE
-      Log::logMsgThread((*outStatusMessage)); // debug
+      Log::logMsg((*outStatusMessage)); // debug
       #endif
 
       std::this_thread::sleep_for(std::chrono::seconds(5));
@@ -7189,7 +7190,7 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
     for (auto& js : jSON)
     {
       #ifndef RELEASE
-      Log::logMsgThread(fmt::format("JSON size: {}\nJSON Line:\n{}\n", js.size(), js.dump()));
+      Log::logMsg(fmt::format("JSON size: {}\nJSON Line:\n{}\n", js.size(), js.dump()));
       #endif
       mx_external_fpln_strct fpln;
 
@@ -7252,7 +7253,7 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
       curl_result_s.clear();
 
     #ifndef RELEASE
-    Log::logMsgThread("Curl Result: " + curl_result_s);
+    Log::logMsg("Curl Result: " + curl_result_s);
     #endif
 
     // #endif //original #endif, moved after JSON to XML parsing.
@@ -7272,7 +7273,7 @@ data_manager::fetch_fpln_from_flightplandatabase_site(base_thread::strct_thread_
 
   (*outState) = mxFetchState_enum::fetch_ended; // once we change the state, the UI can show/hide the relevant layers/widgets
 
-  Log::logMsgThread (fmt::format("[{}] Finished curl job", __func__) ) ;
+  Log::logMsg (fmt::format("[{}] Finished curl job", __func__) ) ;
 
 }
 
@@ -7341,7 +7342,7 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
     p_headers = curl_slist_append(p_headers, header.c_str());
   }
 
-  Log::logMsgThread(fmt::format("[{}] Call ID: {}\t url: \"{}\"", __func__, data_manager::curl_call_counter_i, in_request_data.url_s));
+  Log::logMsg(fmt::format("[{}] Call ID: {}\t url: \"{}\"", __func__, data_manager::curl_call_counter_i, in_request_data.url_s));
 
   // Error buffer scoped with curl_func to avoid dangling pointers
   char errBuff[CURL_ERROR_SIZE] = {0};
@@ -7393,14 +7394,16 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
     st_result.reset();
     errBuff[0] = '\0';
 
-    // Back off only on retries, avoiding latency on the first attempt
-    if (attempt > 0)
-    {
-      std::this_thread::sleep_for(std::chrono::seconds(2));
-    }
 
-    Log::logMsgThread(fmt::format("[{}] Call ID: {} Attempt: {}/{} url: \"{}\"",
+    Log::logMsg(fmt::format("[{}] TRY. Call ID: {} Attempt: {}/{} url: \"{}\"",
                                   __func__, in_call_id, attempt + 1, max_tries, in_request_data.url_s));
+
+    // Back off only on retries, avoiding latency on the first attempt
+    // if (attempt > 0)
+    // {
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    // }
+
 
     st_result.res_curl = curl_easy_perform(curl_func);
 
@@ -7410,14 +7413,22 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
 
     if (st_result.res_curl == CURLE_OK && httpStatus >= 200 && httpStatus < 300)
     {
-      #ifndef RELEASE
-      Log::logMsgThread(fmt::format("[{}] Call ID: {}, Has success code. Will force exit CURL loop, based on respond code: {}\n", __func__, in_call_id, static_cast<int>(st_result.res_curl) ) );
-      #endif
+      // #ifndef RELEASE
+      Log::logMsg(fmt::format("[{}] SUCCESS: Call ID: {}, Has success code. Will force exit CURL loop, based on respond code: {}\nQuery: {}\n", __func__, in_call_id, static_cast<int>(st_result.res_curl), in_request_data.url_s ) );
+      // #endif
+      // v26.10.1 store base_url
+      if (data_manager::last_successfull_url_s != base_url)
+      {
+        data_manager::last_successfull_url_s = base_url;
+        Log::logMsg(fmt::format("[{}] NEW last successfully url: {}.\n", __func__, data_manager::last_successfull_url_s ) );
+      }
 
       break; // Successful request
     }
 
-    Log::logMsgThread(fmt::format("[{}] Call ID: {}, CURL code: {}, HTTP status: {}. {}",
+    data_manager::last_successfull_url_s.clear(); // v26.10.1
+
+    Log::logMsg(fmt::format("[{}] FAILURE. Call ID: {}, CURL code: {}, HTTP status: {}. {}",
                                   __func__, in_call_id, static_cast<int>(st_result.res_curl), httpStatus,
                                   (attempt + 1 < max_tries) ? "Retrying..." : "No retries left."));
 
@@ -7425,12 +7436,15 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
     if (in_request_data.how_many_tries > (attempt + 1))
       data_manager::strct_ui_share_data.error_message_line3 = fmt::format("Failed to fetch data from {}. Will try again.", base_url);
 
-
     // Fatal configuration errors that should never be retried
     if (st_result.res_curl == CURLE_UNSUPPORTED_PROTOCOL ||
         st_result.res_curl == CURLE_URL_MALFORMAT ||
         st_result.res_curl == CURLE_NOT_BUILT_IN)
     {
+      Log::logMsg(fmt::format("[{}] SERVER FAILURE. Call ID: {}, Has Server Failure code '{}'. Will force exit CURL loop. {}\n", __func__, in_call_id, static_cast<int>(st_result.res_curl), base_url ) );
+      #ifndef RELEASE
+      data_manager::strct_ui_share_data.error_message_line3 = fmt::format("Server error: {}, URL: {}. Will try again.", static_cast<int>(st_result.res_curl), base_url);
+      #endif
       break;
     }
   } // end loop over curl calls
@@ -7451,7 +7465,7 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
 
     if (mxUtils::find_text(st_result.response_text, "Error", false) != std::string::npos)
     {
-      Log::logMsgThread(fmt::format("[{}] Call ID: {}, Response contains server error: {}",
+      Log::logMsg(fmt::format("[{}] Call ID: {}, Response contains server error: {}",
                                     __func__, in_call_id, st_result.response_text));
     }
   }
@@ -7544,7 +7558,7 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
 //         // sleep before calling overpass
 //         std::this_thread::sleep_for (std::chrono::seconds(2)); // v25.06.1 not overwhelm the overpass server
 //
-//         Log::logMsgThread(fmt::format("[{}] Call ID: {}\t url: \"{}\"", __func__, data_manager::curl_call_counter_i, in_request_data.url_s));
+//         Log::logMsg(fmt::format("[{}] Call ID: {}\t url: \"{}\"", __func__, data_manager::curl_call_counter_i, in_request_data.url_s));
 //
 //         char errBuff[CURL_ERROR_SIZE] = "\0"; // v3.305.3
 //
@@ -7599,7 +7613,7 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
 //
 //         if (CURLE_OK != st_result.res_curl)
 //         {
-//           Log::logMsgThread(fmt::format("[{}] Call ID: {}, CURL error code: {} {}\n", __func__, in_call_id, Utils::formatNumber<int>(st_result.res_curl), (in_request_data.how_many_tries > (v_loop01 + 1)) ? "Will retry..." : "No more retries.") );
+//           Log::logMsg(fmt::format("[{}] Call ID: {}, CURL error code: {} {}\n", __func__, in_call_id, Utils::formatNumber<int>(st_result.res_curl), (in_request_data.how_many_tries > (v_loop01 + 1)) ? "Will retry..." : "No more retries.") );
 //           // user progress message in the error line
 //           if (in_request_data.how_many_tries > (v_loop01 + 1))
 //             data_manager::strct_ui_share_data.error_message_line3 = fmt::format("Failed to fetch data from {}. Will try again.", base_url);
@@ -7613,7 +7627,7 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
 //         if (mxUtils::mx_between( st_result.res_curl, CURLE_OK, CURLE_COULDNT_CONNECT, enums::mx_between_types::gt_min_eqles_max) )
 //         {
 //           #ifndef RELEASE
-//           Log::logMsgThread(fmt::format("[{}] Call ID: {}, Will force exit CURL loop, based on respond code: {}\n", __func__, in_call_id, static_cast<int>(st_result.res_curl) ) );
+//           Log::logMsg(fmt::format("[{}] Call ID: {}, Will force exit CURL loop, based on respond code: {}\n", __func__, in_call_id, static_cast<int>(st_result.res_curl) ) );
 //           #endif
 //           break;
 //         }
@@ -7641,12 +7655,12 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
 //         // v35.12.1 added warning to the missionx.log file
 //         if (mxUtils::find_text (st_result.response_text, "Error", false) != std::string::npos)
 //         {
-//           Log::logMsgThread (fmt::format ("[{}]Call ID: {}, There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", __func__, in_call_id, in_request_data.url_s, in_request_data.post_request_field_s, st_result.response_text));
-//           Log::logMsgThread(fmt::format("[{}]Call ID: {}, \tCurl error: \n\t{}\n", __func__, in_call_id, curl_easy_strerror(st_result.res_curl)));
+//           Log::logMsg (fmt::format ("[{}]Call ID: {}, There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", __func__, in_call_id, in_request_data.url_s, in_request_data.post_request_field_s, st_result.response_text));
+//           Log::logMsg(fmt::format("[{}]Call ID: {}, \tCurl error: \n\t{}\n", __func__, in_call_id, curl_easy_strerror(st_result.res_curl)));
 //         }
 //
 //         #ifndef RELEASE
-//         Log::logMsgThread(st_result.request_err); // debug
+//         Log::logMsg(st_result.request_err); // debug
 //         #endif
 //       }
 //       else
@@ -7724,7 +7738,7 @@ where is_plane_in_boundary = 1
 
 
   #ifndef RELEASE
-  Log::logMsgThread( fmt::format("{} Plane in airport boundary query:\n{}", __func__, query) );
+  Log::logMsg( fmt::format("{} Plane in airport boundary query:\n{}", __func__, query) );
   #endif // !RELEASE
 
 
@@ -7999,7 +8013,7 @@ data_manager::validate_display_object_file_existence(const std::string& inMissio
                 ++err_counter_i;
                 // err = fmt::format("[Validate 3D file] Not valid File: \"{}\", is not a valid virtual file. Copy the correct value from the library: EXPORT VIRTUAL PHYSICAL. See: https://developer.x-plane.com/article/library-library-txt-file-format-specification/", file_name);
                 err = fmt::format("File: \"{}\", is NOT a valid virtual file. Copy the correct value from the library.txt file", file_name);
-                Log::logMsgThread(err);
+                Log::logMsg(err);
               }
             }
             else if ( fs::path file = objectFile3D; !exists(file) || !fs::directory_entry(file).is_regular_file())
@@ -8012,11 +8026,11 @@ data_manager::validate_display_object_file_existence(const std::string& inMissio
               else
                 err = "Not a valid File: " + file.string () + " is of wrong type";
 
-              Log::logMsgThread ("[Validate 3D file] " + err);
+              Log::logMsg ("[Validate 3D file] " + err);
             }
 
             if (err.empty())
-              Log::logMsgThread("[Validate 3D file] Found " + ((is_virtual_file) ? "Virtual File: " + file_name : "File: " + objectFile3D));
+              Log::logMsg("[Validate 3D file] Found " + ((is_virtual_file) ? "Virtual File: " + file_name : "File: " + objectFile3D));
             else
               data_manager::lst_of_failed_3d_obj_to_load.emplace_back(err); // v26.1.1 add the error to the error list
 
@@ -8059,15 +8073,15 @@ data_manager::sqlite_test_db_validity(const dbase& inDB, const bool isThreaded)
     set_flag_rebuild_apt_dat(true);
 
     if (zErrMsg == nullptr)
-      Log::logMsgThread("[sqlite_test_db_validity] SQL error: " + inDB.last_err);
+      Log::logMsg("[sqlite_test_db_validity] SQL error: " + inDB.last_err);
     else
-      Log::logMsgThread("[sqlite_test_db_validity] SQL error: " + std::string(zErrMsg));
+      Log::logMsg("[sqlite_test_db_validity] SQL error: " + std::string(zErrMsg));
 
     sqlite3_free(zErrMsg);
   }
   else
   {
-    Log::logMsgThread("[sqlite_test_db_validity] Information was gathered.");
+    Log::logMsg("[sqlite_test_db_validity] Information was gathered.");
     for (auto &val : reasultTable | std::views::values)
     {
       const auto feature_version = mxUtils::stringToNumber<int>(val["feature_version"]);
@@ -8083,7 +8097,7 @@ data_manager::sqlite_test_db_validity(const dbase& inDB, const bool isThreaded)
 
       //data_manager::post_optimization_outcome = "Feature version:" + val["feature_version"] + ", Airports: " + val["count_xp_airports"] + ", Ramps: " + val["count_xp_ramps"] + ", Localizers: " + val["count_xp_loc"];
       data_manager::post_optimization_outcome = fmt::format("[{}:{} hh:min] Feature version: {}, Airports: {}, Ramps: {}, Localizers: {}", osClock.hour, osClock.minutes, val["feature_version"], val["count_xp_airports"], val["count_xp_ramps"], val["count_xp_loc"]);
-      Log::logMsgThread(data_manager::post_optimization_outcome );
+      Log::logMsg(data_manager::post_optimization_outcome );
     }
   }
 
@@ -8266,7 +8280,7 @@ data_manager::add_advanceSettingsDateTime_and_Weather_to_node(IXMLNode& xGlobalS
       const int  rndPickChangeMode   = (vecPickedChangeMode.empty ()) ? -1 : Utils::getRandomIntNumber (0, static_cast<int> (vecPickedChangeMode.size ()) - 1); // if vector is empty then no change mode was picked (-1)
 
       #ifndef RELEASE
-      Log::logMsgThread("[random weather] Picked from vector: " + mxUtils::formatNumber<int>(rndPick));
+      Log::logMsg("[random weather] Picked from vector: " + mxUtils::formatNumber<int>(rndPick));
       #endif // !RELEASE
 
       if (rndPick >= 0 && rndPick < static_cast<int> ( vecPicked.size () ) )
@@ -8277,7 +8291,7 @@ data_manager::add_advanceSettingsDateTime_and_Weather_to_node(IXMLNode& xGlobalS
         assert(ptr_mapWeatherPreDefinedStrct != nullptr && "random weather pointer can't be null"); // debug
 
         #ifndef RELEASE
-        Log::logMsgThread("[weather code] Picked: " + mxUtils::formatNumber<int>(iWeatherPicked));
+        Log::logMsg("[weather code] Picked: " + mxUtils::formatNumber<int>(iWeatherPicked));
         #endif // !RELEASE
         if (Utils::isElementExists((*ptr_mapWeatherPreDefinedStrct), iWeatherPicked))
         {
@@ -8293,7 +8307,7 @@ data_manager::add_advanceSettingsDateTime_and_Weather_to_node(IXMLNode& xGlobalS
               Utils::xml_set_text(xWeather, sWeatherDatarefAsText);
 
             #ifndef RELEASE
-            Log::logMsgThread("Weather Dataref Added as text:\n" + sWeatherDatarefAsText + "\n"); // debug
+            Log::logMsg("Weather Dataref Added as text:\n" + sWeatherDatarefAsText + "\n"); // debug
             #endif
           }
         } // end if key "iWeatherPicked" exists in map
@@ -8936,7 +8950,7 @@ data_manager::gather_custom_acf_datarefs_as_a_thread(const std::string& inAcfPat
           auto endCacheLoad = std::chrono::steady_clock::now();
           auto diff_cache   = endCacheLoad - startThreadClock2;
           auto duration     = std::chrono::duration<double, std::milli>(diff_cache).count();
-          Log::logMsgThread(">> parsed: " + file.path().string() + ", Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec) ");
+          Log::logMsg(">> parsed: " + file.path().string() + ", Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec) ");
           #endif
 
           objCustomDatarefs.insert(drefKeySetFromObjFile.cbegin(), drefKeySetFromObjFile.cend());
@@ -8967,7 +8981,7 @@ data_manager::gather_custom_acf_datarefs_as_a_thread(const std::string& inAcfPat
       // check open success
       if (fout.fail() || fout.bad())
       {
-        Log::logMsgThread("[Error] Fail to find/create target file: [" + cacheFile + "]. Skip operation !!!");
+        Log::logMsg("[Error] Fail to find/create target file: [" + cacheFile + "]. Skip operation !!!");
       }
       else
       {
@@ -8990,7 +9004,7 @@ data_manager::gather_custom_acf_datarefs_as_a_thread(const std::string& inAcfPat
   auto endCacheLoad = std::chrono::steady_clock::now();
   auto diff_cache   = endCacheLoad - startThreadClock;
   auto duration     = std::chrono::duration<double, std::milli>(diff_cache).count();
-  Log::logAttention("*** Finished [ gather_custom_acf_datarefs_as_a_thread() ]. Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec)  ****", true);
+  Log::logAttention("*** Finished [ gather_custom_acf_datarefs_as_a_thread() ]. Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec)  ****");
 
 
   (*bThreadIsRunning) = false;
@@ -9405,8 +9419,12 @@ data_manager::get_default_overpass_urls_as_vector (const IXMLNode &inNode)
 // -------------------------------------
 
 
-std::string missionx::data_manager::gen_get_next_overpass_url(const bool in_ignore_user_preference)
+std::string missionx::data_manager::gen_get_next_overpass_url(const std::string & in_last_successfull_url, const bool in_ignore_user_preference)
 {
+  // v26.10.1
+  if (!in_last_successfull_url.empty())
+    return in_last_successfull_url;
+
   static size_t last_index = 0;
   const bool    b_lock_to_preferred_url = missionx::system_actions::pluginSetupOptions.getNodeText_type_1_5<bool>(mxconst::get_SETUP_LOCK_OVERPASS_URL_TO_USER_PICK(), false);
   std::string   url        = gen_get_user_preferred_overpass_url();
@@ -9464,23 +9482,23 @@ data_manager::check_cache_folder (const std::string &in_cache_folder_name)
 
   // Check if the directory exists
   if (!std::filesystem::exists(cache_path)) {
-    Log::logMsgThread ( fmt::format( "Cache folder '{}' does not exist. Creating it...\n", in_cache_folder_name) );
+    Log::logMsg ( fmt::format( "Cache folder '{}' does not exist. Creating it...\n", in_cache_folder_name) );
     // Attempt to create the directory
     try {
       if (std::filesystem::create_directories(cache_path)) {
-        Log::logMsgThread ( fmt::format( "Cache folder created successfully.\n" ) );
+        Log::logMsg ( fmt::format( "Cache folder created successfully.\n" ) );
       } else {
         // This 'else' might be hit if create_directories returns false,
         // which can happen if a file with the same name exists,
         // or if there are permission issues, but no exception is thrown.
-        Log::logMsgThread ( fmt::format( "Failed to create cache folder (unknown reason, no exception).\n" ) );
+        Log::logMsg ( fmt::format( "Failed to create cache folder (unknown reason, no exception).\n" ) );
       }
     } catch (const std::filesystem::filesystem_error& e) {
       // Catch specific filesystem errors (e.g., permission denied)
-      Log::logMsgThread ( fmt::format( "Error creating cache folder: '{}'\n", e.what() ) );
+      Log::logMsg ( fmt::format( "Error creating cache folder: '{}'\n", e.what() ) );
     }
   } else {
-    Log::logMsgThread ( fmt::format( "Cache folder '{}' already exists.\n", in_cache_folder_name ) );
+    Log::logMsg ( fmt::format( "Cache folder '{}' already exists.\n", in_cache_folder_name ) );
   }
 }
 
@@ -9518,7 +9536,7 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
     // apply restriction. Skip areas not in the "set_areas_to_work_on"
     if ( ! in_search_bbox_area_list.contains (loc) )
     {
-      Log::logMsgThread( fmt::format("[{}] Skipping area: \"{}\". Not included in the search area.", __func__, Utils::get_mx_osm_region_trans(loc)));
+      Log::logMsg( fmt::format("[{}] Skipping area: \"{}\". Not included in the search area.", __func__, Utils::get_mx_osm_region_trans(loc)));
       continue;
     }
 
@@ -9551,7 +9569,7 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
       const std::string filename = fmt::format ("{}/cached_{}_{}.xml", q->cache_folder, q->sanitized_id, q->sanitized_bbox);
       structs::strct_curl_result strct_result;
 
-      bool useCache = false;
+      bool used_cached_file = false;
 
       try
       {
@@ -9569,21 +9587,21 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
             IXMLNode nodeCount = Utils::xml_get_node_from_node_tree_IXMLNode (root, "count", true);
             if (nodeCount.isEmpty ())
             {
-              useCache = false;
+              used_cached_file = false;
               try
               {
                 std::filesystem::remove (filename);
               }
               catch (const std::exception &ex)
               {
-                Log::logMsgThread (fmt::format ("[Exception during cache file removal]\n\t{}\n", ex.what ()));
-                Log::logMsgThread (fmt::format ("[Cache filename]\n\t{}\n", filename));
+                Log::logMsg (fmt::format ("[Exception during cache file removal]\n\t{}\n", ex.what ()));
+                Log::logMsg (fmt::format ("[Cache filename]\n\t{}\n", filename));
               }
             }
             else
             {
-              useCache = true;
-              Log::logMsgThread (fmt::format ("Using cache {}\n", filename));
+              used_cached_file = true;
+              Log::logMsg (fmt::format ("Using cache {}\n", filename));
             }
 
           }
@@ -9591,7 +9609,7 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
       }
       catch (const std::exception &ex)
       {
-        Log::logMsgThread (fmt::format ("[Exception during cache creation]\n\t{}\n", ex.what ()));
+        Log::logMsg (fmt::format ("[Exception during cache creation]\n\t{}\n", ex.what ()));
       }
 
       // check [abort]
@@ -9604,20 +9622,20 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
 
       std::string overpass_url;
 
-      if (!useCache)
+      if (!used_cached_file)
       {
         // Call OVERPASS using cURL and make sure we do not have ABORT request.
         // Randomize the URL calls so not all threads will use same overpass url.
-        std::vector<std::string> vec_active_urls;
-        for ( const auto &[key, v_bool] : data_manager::strct_ui_share_data.map_ui_user_picks_overpass_urls)
+        // std::vector<std::string> vec_active_urls;
+        // for ( const auto &[key, v_bool] : data_manager::strct_ui_share_data.map_ui_user_picks_overpass_urls)
+        // {
+        //   if (v_bool)
+        //     vec_active_urls.emplace_back( ((static_cast<size_t>(key) < data_manager::vecOverpassUrls.size())? data_manager::vecOverpassUrls[key] : mxconst::get_DEFAULT_OVERPASS_URL() ) );
+        // }
+        // const auto  vec_shuffled_index_of_selected_urls = Utils::getShuffledIndexVector_byType<size_t>(vec_active_urls.size());
+        // for (const auto& index_shuffle : vec_shuffled_index_of_selected_urls)
+        for (size_t loop1 = 0; loop1 < data_manager::strct_ui_share_data.map_ui_user_picks_overpass_urls.size() && !found_valid_count_node; ++loop1)
         {
-          if (v_bool)
-            vec_active_urls.emplace_back( ((static_cast<size_t>(key) < data_manager::vecOverpassUrls.size())? data_manager::vecOverpassUrls[key] : mxconst::get_DEFAULT_OVERPASS_URL() ) );
-        }
-        const auto  vec_shuffled_index_of_selected_urls = Utils::getShuffledIndexVector_byType<size_t>(vec_active_urls.size());
-        for (const auto& index_shuffle : vec_shuffled_index_of_selected_urls)
-        {
-
           // check [abort]
           if (inoutThreadState->flagAbortThread)
           {
@@ -9626,12 +9644,13 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
             return;
           }
 
-          overpass_url = (index_shuffle < vec_active_urls.size()) ? vec_active_urls.at(index_shuffle) : mxconst::get_DEFAULT_OVERPASS_URL();
+          // overpass_url = (index_shuffle < vec_active_urls.size()) ? vec_active_urls.at(index_shuffle) : mxconst::get_DEFAULT_OVERPASS_URL();
+          overpass_url = data_manager::gen_get_next_overpass_url(data_manager::last_successfull_url_s);
           // v26.08.1
-          missionx::structs::curl_request_data curl_conn_data = {.url_s = overpass_url, .post_request_field_s = fullQuery};
+          missionx::structs::curl_request_data curl_conn_data = {.url_s = overpass_url, .post_request_field_s = fullQuery, .headers = {mxconst::OVERPASS_POST_HEADER} };
           strct_result = get_curl_request_respond(curl_conn_data);
 
-          Log::logMsgThread(fmt::format("[{}] URL: {}", __func__, overpass_url));
+          Log::logMsg(fmt::format("[{}] URL: {}", __func__, overpass_url));
 
 // #ifndef MX_ENABLE_HTTP_REQUESTS
 //           int CURLE_OK = 0;
@@ -9640,21 +9659,24 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
 
           if (CURLE_OK == strct_result.res_curl)
           {
+            // v26.10.1
+            // if (data_manager::last_successfull_url_s != overpass_url)
+            //   data_manager::last_successfull_url_s = overpass_url;
             found_valid_count_node = true;
-            Log::logMsgThread(fmt::format("[{}] Query ID: [{}] BBOX: {}\n", __func__, q->id, q->q_bbox));
+            Log::logMsg(fmt::format("[{}] Query ID: [{}] BBOX: {}\nresult: {}\n", __func__, q->id, q->q_bbox, strct_result.response_text));
             std::this_thread::sleep_for(std::chrono::seconds(2)); // wait for 2 seconds before sending a new request
           }
           else
           {
             // res != CURLE_OK
-// #ifdef MX_ENABLE_HTTP_REQUESTS
-            Log::logMsgThread(fmt::format("[{}]\tCurl error: \n\t{}\n", __func__, curl_easy_strerror(strct_result.res_curl)));
-// #endif // !DISABLE_CURL
+            // #ifdef MX_ENABLE_HTTP_REQUESTS
+            Log::logMsg(fmt::format("[{}]\tCurl error: \n\t{}\n", __func__, curl_easy_strerror(strct_result.res_curl)));
+            // #endif // !DISABLE_CURL
 
             std::this_thread::sleep_for(std::chrono::seconds(5)); // Sleep longer
           }
 
-        } // End CURL call loop, over shuffled overpass url vectors
+        } // End CURL call loop, over overpass url
 
       } // end if "not to use cache"
 
@@ -9672,7 +9694,7 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
       // -------------
       // Handle response data
       // -------------
-      if ( found_valid_count_node + useCache )
+      if ( found_valid_count_node + used_cached_file )
       {
         IXMLDomParser xmlParser;
         auto          xml_count_node      = xmlParser.parseString (strct_result.response_text.c_str ()).deepCopy ();
@@ -9704,9 +9726,9 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
         }
         else
         {
-          Log::logMsgThread (fmt::format ("Overpass Url: {}", overpass_url));
-          Log::logMsgThread (fmt::format ("\tRegion: {}, has no <count>.\n Query:\n{}\nNode Element:\n\t{}\n", mxUtils::get_mx_osm_region_trans (loc), filledQuery, Utils::xml_get_node_content_as_text (nodeCount, "> Empty Node")));
-          Log::logMsgThread (fmt::format ("\tResponse: {}\n", strct_result.response_text.c_str ()));
+          Log::logMsg (fmt::format ("Overpass Url: {}", overpass_url));
+          Log::logMsg (fmt::format ("\tRegion: {}, has no <count>.\n Query:\n{}\nNode Element:\n\t{}\n", mxUtils::get_mx_osm_region_trans (loc), filledQuery, Utils::xml_get_node_content_as_text (nodeCount, "> Empty Node")));
+          Log::logMsg (fmt::format ("\tResponse: {}\n", strct_result.response_text.c_str ()));
         }
       }
     }
@@ -9788,14 +9810,14 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
 //               }
 //               catch (const std::exception &ex)
 //               {
-//                 Log::logMsgThread (fmt::format ("[Exception during cache file removal]\n\t{}\n", ex.what ()));
-//                 Log::logMsgThread (fmt::format ("[Cache filename]\n\t{}\n", filename));
+//                 Log::logMsg (fmt::format ("[Exception during cache file removal]\n\t{}\n", ex.what ()));
+//                 Log::logMsg (fmt::format ("[Cache filename]\n\t{}\n", filename));
 //               }
 //             }
 //             else
 //             {
 //               useCache = true;
-//               Log::logMsgThread (fmt::format ("Using cache {}\n", filename));
+//               Log::logMsg (fmt::format ("Using cache {}\n", filename));
 //             }
 //
 //           }
@@ -9803,7 +9825,7 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
 //       }
 //       catch (const std::exception &ex)
 //       {
-//         Log::logMsgThread (fmt::format ("[Exception during cache creation]\n\t{}\n", ex.what ()));
+//         Log::logMsg (fmt::format ("[Exception during cache creation]\n\t{}\n", ex.what ()));
 //       }
 //
 //       // check [abort]
@@ -9835,18 +9857,18 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
 //           overpass_url = (index_shuffle < data_manager::vecOverpassUrls.size()) ? data_manager::vecOverpassUrls.at(index_shuffle) : mxconst::get_DEFAULT_OVERPASS_URL();
 //           strct_result = get_curl_request_respond(overpass_url, fullQuery, 2);
 //
-//           Log::logMsgThread(fmt::format("[{}] URL: {}", __func__, overpass_url));
+//           Log::logMsg(fmt::format("[{}] URL: {}", __func__, overpass_url));
 //
 //           if (CURLE_OK == strct_result.res_curl)
 //           {
 //             found_valid_count_node = true;
-//             Log::logMsgThread(fmt::format("[{}] Query ID: [{}] BBOX: {}\n", __func__, q->id, q->q_bbox));
+//             Log::logMsg(fmt::format("[{}] Query ID: [{}] BBOX: {}\n", __func__, q->id, q->q_bbox));
 //             std::this_thread::sleep_for(std::chrono::seconds(2)); // wait for 2 seconds before sending a new request
 //           }
 //           else
 //           {
 //             // res != CURLE_OK
-//             Log::logMsgThread(fmt::format("[{}]\tCurl error: \n\t{}\n", __func__, curl_easy_strerror(strct_result.res_curl)));
+//             Log::logMsg(fmt::format("[{}]\tCurl error: \n\t{}\n", __func__, curl_easy_strerror(strct_result.res_curl)));
 //             std::this_thread::sleep_for(std::chrono::seconds(5)); // Sleep longer
 //           }
 //
@@ -9900,9 +9922,9 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
 //         }
 //         else
 //         {
-//           Log::logMsgThread (fmt::format ("Overpass Url: {}", overpass_url));
-//           Log::logMsgThread (fmt::format ("\tRegion: {}, has no <count>.\n Query:\n{}\nNode Element:\n\t{}\n", mxUtils::get_mx_osm_region_trans (loc), filledQuery, Utils::xml_get_node_content_as_text (nodeCount, "> Empty Node")));
-//           Log::logMsgThread (fmt::format ("\tResponse: {}\n", strct_result.response_text.c_str ()));
+//           Log::logMsg (fmt::format ("Overpass Url: {}", overpass_url));
+//           Log::logMsg (fmt::format ("\tRegion: {}, has no <count>.\n Query:\n{}\nNode Element:\n\t{}\n", mxUtils::get_mx_osm_region_trans (loc), filledQuery, Utils::xml_get_node_content_as_text (nodeCount, "> Empty Node")));
+//           Log::logMsg (fmt::format ("\tResponse: {}\n", strct_result.response_text.c_str ()));
 //         }
 //       }
 //     }
@@ -9939,7 +9961,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
 
   if ((pos_bbox == std::string::npos) && (pos_all_bbox == std::string::npos) )
   {
-    Log::logMsgThread (fmt::format ("[{}] No Valid BBOX filter was found. Aborting target search.\n", __func__) );
+    Log::logMsg (fmt::format ("[{}] No Valid BBOX filter was found. Aborting target search.\n", __func__) );
     q->end_time = std::chrono::steady_clock::now ();
     return;
   }
@@ -9950,10 +9972,14 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
   q->q_escaped_request = fmt::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
 
   // #ifndef RELEASE
-  Log::logMsgThread (fmt::format ("[{}] >>> 1. Pick a random <way> <<\n Query: {}\n", __func__, q->q_unescaped_request));
+  Log::logMsg (fmt::format ("[{}] >>> 1. Pick a random <way> <<\n Query: {}\n", __func__, q->q_unescaped_request));
   // #endif
 
   const std::string filename = fmt::format ("{}/cached_ways_{}_{}.xml", q->cache_folder, q->id, q->q_short_bbox_fmt);
+
+  // ------------------
+  // get <way> from CACHE
+  // ------------------
 
   try
   {
@@ -9970,11 +9996,11 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
         IXMLResults   parseResult;
         auto          xml_osm_node = xmlParser.parseString (response_text.c_str (), "osm", &parseResult).deepCopy ();
         // debug and validations
-        Log::logMsgThread (fmt::format ("Parse result: {} {}, Lines: {}", static_cast<int> (parseResult.errorCode), (static_cast<int> (parseResult.errorCode) == 0) ? "(ok)" : "", parseResult.nLine));
+        Log::logMsg (fmt::format ("Parse result: {} {}, Lines: {}", static_cast<int> (parseResult.errorCode), (static_cast<int> (parseResult.errorCode) == 0) ? "(ok)" : "", parseResult.nLine));
 
         if (parseResult.errorCode != IXMLError_None)
         {
-          Log::logMsgThread (fmt::format ("Returned XML Error Code: {}\nRaw Result XML: {}\n", IXMLDomParser::getErrorMessage (parseResult.errorCode), Utils::xml_get_node_content_as_text (xml_osm_node)));
+          Log::logMsg (fmt::format ("Returned XML Error Code: {}\nRaw Result XML: {}\n", IXMLDomParser::getErrorMessage (parseResult.errorCode), Utils::xml_get_node_content_as_text (xml_osm_node)));
           useCache = false;
           std::filesystem::remove (filename);
         }
@@ -9994,7 +10020,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
           {
             useCache                       = true;
             q->flag_data_respond_was_valid = true;
-            Log::logMsgThread (fmt::format ("Using cache {}\n", filename));
+            Log::logMsg (fmt::format ("Using cache {}\n", filename));
           }
         }
       }
@@ -10003,8 +10029,8 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
   catch (const std::exception &ex)
   {
     useCache = false;
-    Log::logMsgThread (fmt::format ("[Exception during cache creation]\n\t{}\n", ex.what ()));
-    Log::logMsgThread (fmt::format ("[Expected filename]: {}\n", filename));
+    Log::logMsg (fmt::format ("[Exception during cache creation]\n\t{}\n", ex.what ()));
+    Log::logMsg (fmt::format ("[Expected filename]: {}\n", filename));
   }
   // end reading cache file
 
@@ -10014,31 +10040,31 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
     q->flag_data_respond_was_valid = false;
     q->total_way_count             = 0;
     q->reset_osm_target_data_only();
-    // q->xml_target_nd_node          = IXMLNode::emptyIXMLNode;
-    // q->xml_target_way_element      = IXMLNode::emptyIXMLNode;
     return;
   }
 
 
+  // ------------------
+  // get <way> FROM OVERPASS if cache was not used
+  // ------------------
   if (!useCache)
   {
-    //CURLcode res                      = CURL_LAST;
     bool     flag_curl_results_are_ok = false;
     size_t   curl_call_counter_i_2       = 0;
 
     // Call Overpass up to "data_manager::vecOverpassUrls.size ()" times
     while (!flag_curl_results_are_ok && curl_call_counter_i_2 < data_manager::vecOverpassUrls.size ())
     {
-      std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for one second before sending a new request
+      std::this_thread::sleep_for (std::chrono::seconds (2)); // wait before sending a new request
 
       // Get overpass url
       // const auto &overpass_url = (curl_call_counter_i_2 < data_manager::vecOverpassUrls.size ()) ? data_manager::vecOverpassUrls.at (curl_call_counter_i_2)
       //                                                                                          : mxconst::get_DEFAULT_OVERPASS_URL ();
 
-      const auto &overpass_url = data_manager::gen_get_next_overpass_url();
+      const auto &overpass_url = data_manager::gen_get_next_overpass_url(data_manager::last_successfull_url_s);
 
       #ifndef RELEASE
-      Log::logMsgThread (fmt::format ("[{}] Fetching way data from overpass: {}.\nFilter:\n{}\n<---\n", __func__, overpass_url, q->q_unescaped_request));
+      Log::logMsg (fmt::format ("[{}] Fetching way data from overpass: {}.\nFilter:\n{}\n<---\n", __func__, overpass_url, q->q_unescaped_request));
       #endif
 
       response_text.clear ();
@@ -10049,7 +10075,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
       std::string errBuff_s;
       st_curl_result.reset(); // v26.03.1
       // v26.08.1
-      missionx::structs::curl_request_data curl_conn_data = {.url_s = overpass_url, .post_request_field_s = q->q_unescaped_request};
+      missionx::structs::curl_request_data curl_conn_data = {.url_s = overpass_url, .post_request_field_s = q->q_unescaped_request, .headers = {mxconst::OVERPASS_POST_HEADER} };
       st_curl_result = data_manager::get_curl_request_respond(curl_conn_data);
 
       response_text  = st_curl_result.response_text;
@@ -10061,7 +10087,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
       {
         if (mxUtils::find_text (response_text, "Error", false) != std::string::npos)
         {
-          Log::logMsgThread (fmt::format ("[{}] There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", __func__, overpass_url, filledQuery, response_text));
+          Log::logMsg (fmt::format ("[{}] There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", __func__, overpass_url, filledQuery, response_text));
           std::this_thread::sleep_for (std::chrono::seconds (2)); // wait for 2 seconds before sending a new request
         }
         else
@@ -10075,8 +10101,6 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
         q->flag_data_respond_was_valid = false;
         q->total_way_count             = 0;
         q->reset_osm_target_data_only();
-        // q->xml_target_nd_node          = IXMLNode::emptyIXMLNode;
-        // q->xml_target_way_element      = IXMLNode::emptyIXMLNode;
         return;
       }
 
@@ -10086,7 +10110,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
     if (st_curl_result.res_curl == CURLE_OK)
     {
       q->flag_data_respond_was_valid = true;
-      Log::logMsgThread (fmt::format ("[{}] Query ID: {} BBOX: {}\n", __func__, q->id, q->q_bbox));
+      Log::logMsg (fmt::format ("[{}] Query ID: {} BBOX: {}\n", __func__, q->id, q->q_bbox));
 
       // write to cache file
       if (std::ofstream outFile (filename);
@@ -10101,7 +10125,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
       // res != CURLE_OK
       response_text.clear ();
       q->flag_data_respond_was_valid = false;
-      Log::logMsgThread(fmt::format("[{}]\tCurl error: \n\t{}", __func__, curl_easy_strerror(st_curl_result.res_curl)));
+      Log::logMsg(fmt::format("[{}]\tCurl error: \n\t{}", __func__, curl_easy_strerror(st_curl_result.res_curl)));
     }
 
   } // End while loop
@@ -10119,7 +10143,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
     auto          xml_osm_node = xmlParser.parseString (response_text.c_str (), "osm", &parseResult).deepCopy ();
 
     #ifndef RELEASE
-    Log::logMsgThread (fmt::format ("[{}] (xml_osm_node) Parse result osm: {}, nLine: {}\n", __func__, static_cast<int> (parseResult.errorCode), parseResult.nLine));
+    Log::logMsg (fmt::format ("[{}] (xml_osm_node) Parse result osm: {}, nLine: {}\n", __func__, static_cast<int> (parseResult.errorCode), parseResult.nLine));
     #endif
 
     // Get <way> sub-nodes in <osm> root node.
@@ -10128,14 +10152,14 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
     if (q->total_way_count > 0)
     {
       // Get shuffled vector index
-      std::vector<int> vecShuffleWayNodes = Utils::getShuffledIndexVector_byType<int> (q->total_way_count);
+      const std::vector<int> vecShuffleWayNodes = Utils::getShuffledIndexVector_byType<int> (q->total_way_count);
 
       for (const auto &way_shuffled_index : vecShuffleWayNodes)
       {
         // store the target <way>
         q->xml_target_way_element = xml_osm_node.getChildNode(mxconst::get_ELEMENT_WAY_OSM().c_str(), way_shuffled_index).deepCopy();
         #ifndef RELEASE
-        Log::logMsgThread (fmt::format ("[{}] Picked <way>: {}\n", __func__, Utils::xml_get_node_content_as_text (q->xml_target_way_element)));
+        Log::logMsg (fmt::format ("[{}] Picked <way>: {}\n", __func__, Utils::xml_get_node_content_as_text (q->xml_target_way_element)));
         #endif
 
         const int nd_count = q->xml_target_way_element.nChildNode (mxconst::get_ELEMENT_ND_OSM().c_str());
@@ -10153,6 +10177,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
         NavAidInfo na;
         na.lat = Utils::readNodeNumericAttrib<float>(nd_node, mxconst::get_ATTRIB_LAT_OSM(), 0.0f);
         na.lon = Utils::readNodeNumericAttrib<float>(nd_node, mxconst::get_ATTRIB_LONG_OSM(), 0.0f);
+        // Sometimes the <nd> node might hold the "lat/lon" coordinate
         if (na.is_lat_lon_valid())
         {
           q->xml_target_nd_node = nd_node.deepCopy();
@@ -10172,26 +10197,25 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
         bool   flag_curl_results_are_ok = false;
         size_t url_node_loop_counter_i  = 0;
 
-        std::this_thread::sleep_for(std::chrono::seconds(1)); // wait for one second before sending a new request
+        std::this_thread::sleep_for(std::chrono::seconds(2)); // wait few seconds before sending a new request
 
         // Call Overpass to get the data for the picked <nd>.
         // We will loop over the "data_manager::vecOverpassUrls.size ()" if there is any error.
-        while (!flag_curl_results_are_ok && url_node_loop_counter_i < data_manager::vecOverpassUrls.size())
+        while (!flag_curl_results_are_ok && url_node_loop_counter_i < data_manager::vecOverpassUrls.size ())
         {
-
-          const auto& overpass_url = (url_node_loop_counter_i < data_manager::vecOverpassUrls.size()) ? data_manager::vecOverpassUrls.at(url_node_loop_counter_i) : mxconst::get_DEFAULT_OVERPASS_URL();
+          const auto& overpass_url = data_manager::gen_get_next_overpass_url(data_manager::last_successfull_url_s);
 
           // ---------------------------
           // Construct NODE search from "ref" attribute
           // ---------------------------
           response_text.clear();
           auto node_ref_id              = Utils::readAttrib(nd_node, "ref", "", "-1", true);
-          filledQuery                   = fmt::format("[out:xml][timeout:20][bbox:{}];node({});out body;", q->q_all_bbox, node_ref_id);
-          std::string s_curl_node_query = fmt::format("data={}", curl_easy_escape(nullptr, filledQuery.c_str(), 0));
+          filledQuery                   = fmt::format("[out:xml][timeout:20];node({})({});out body;", q->q_all_bbox, node_ref_id);
+          const std::string s_curl_node_query = fmt::format("data={}", curl_easy_escape(nullptr, filledQuery.c_str(), 0));
 
           // #ifndef RELEASE
           auto nd_ref_start_time = std::chrono::steady_clock::now();
-          Log::logMsgThread(fmt::format("[{}] >>> 2. Fetch Node ref: {} for way id: {} <<<\nFrom Overpass URL: {}\nFilter: {}\n<---\n", __func__, Utils::readAttrib(nd_node, mxconst::get_ATTRIB_REF_OSM(), "n/a ref"), Utils::readAttrib(q->xml_target_way_element, mxconst::get_ATTRIB_ID(), "n/a way"), overpass_url, filledQuery));
+          Log::logMsg(fmt::format("[{}] >>> 2. Fetch Node ref: {} for way id: {} <<<\nFrom Overpass URL: {}\nFilter: {}\n<---\n", __func__, Utils::readAttrib(nd_node, mxconst::get_ATTRIB_REF_OSM(), "n/a ref"), Utils::readAttrib(q->xml_target_way_element, mxconst::get_ATTRIB_ID(), "n/a way"), overpass_url, filledQuery));
           // #endif
 
           // ----------------------------------
@@ -10200,7 +10224,8 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
           std::string errBuff_s;
           st_curl_result.reset(); // v26.03.1
           // v26.08.1
-          missionx::structs::curl_request_data curl_conn_data = {.url_s = overpass_url, .post_request_field_s = s_curl_node_query};
+          missionx::structs::curl_request_data curl_conn_data = {.url_s = overpass_url, .post_request_field_s = s_curl_node_query, .headers = {mxconst::OVERPASS_POST_HEADER} };
+          // try 2 times to fetch <nd> information
           st_curl_result = data_manager::get_curl_request_respond(curl_conn_data);
           response_text  = st_curl_result.response_text;
           errBuff_s      = st_curl_result.request_err;
@@ -10210,26 +10235,29 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
           {
             if (mxUtils::find_text(response_text, "Error", false) != std::string::npos)
             {
-              Log::logMsgThread(fmt::format("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
-              Log::logMsgThread(fmt::format("\tCurl error: \n\t{}\n", curl_easy_strerror(st_curl_result.res_curl)));
-              std::this_thread::sleep_for(std::chrono::seconds(2)); // wait for one second before sending a new request
+              Log::logMsg(fmt::format("[{}] Found Error string in respond text from: {}.\n Query Text: {}\n\nResponse text: {}\n<-- end response --\n Will try another url", __func__, overpass_url, filledQuery, response_text));
+              Log::logMsg(fmt::format("[{}]\tCurl error: \n\t{}\n", __func__, curl_easy_strerror(st_curl_result.res_curl)));
+              std::this_thread::sleep_for(std::chrono::seconds(2)); // wait few seconds before sending a new request
             }
             else
+            {
               flag_curl_results_are_ok = true;
+              break;
+            }
           } // end internal test
           else
           {
             // respond code was not CURLE_OK
-            Log::logMsgThread(fmt::format("There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", overpass_url, filledQuery, response_text));
-            Log::logMsgThread(fmt::format("\tCurl error: \n\t{}\n", curl_easy_strerror(st_curl_result.res_curl)));
-            std::this_thread::sleep_for(std::chrono::seconds(3)); // wait for one second before sending a new request
+            Log::logMsg(fmt::format("[{}] There might be an issue with the retrieved data from: {}.\n Query Text: {}\n\nResponse text: {}\n<-- end response --\n Will try another url", __func__, overpass_url, filledQuery, response_text));
+            Log::logMsg(fmt::format("[{}]\tCurl error: \n\t{}\n", __func__, curl_easy_strerror(st_curl_result.res_curl)));
+            std::this_thread::sleep_for(std::chrono::seconds(3)); // wait few seconds before sending a new request
           }
 
           // #ifndef RELEASE
           auto nd_ref_end_time   = std::chrono::steady_clock::now();
           auto diff_nd_start_end = nd_ref_end_time - nd_ref_start_time;
           auto nd_duration       = std::chrono::duration<double, std::milli>(diff_nd_start_end).count();
-          Log::logMsgThread(fmt::format("[{}]\t\t >> Duration: {:.3f}ms ({:.2f}sec) - ref: {} <<\n\n", __func__, nd_duration, (nd_duration / 1000.0), Utils::readAttrib(nd_node, mxconst::get_ATTRIB_REF_OSM(), "n/a ref")));
+          Log::logMsg(fmt::format("[{}]\t\t >> Duration: {:.3f}ms ({:.2f}sec) - ref: {} <<\n\n", __func__, nd_duration, (nd_duration / 1000.0), Utils::readAttrib(nd_node, mxconst::get_ATTRIB_REF_OSM(), "n/a ref")));
           // #endif
 
           // check [abort]
@@ -10251,7 +10279,7 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
           IXMLDomParser local_xmlParser;
           auto          xml_ref_nd_node = local_xmlParser.parseString(response_text.c_str()).deepCopy();
           #ifndef RELEASE
-          Log::logMsgThread(fmt::format("--> [{}] <nd>: Target Node:\n{}", __func__, Utils::xml_get_node_content_as_text(xml_ref_nd_node))); // debug
+          Log::logMsg(fmt::format("--> [{}] <nd>: Target Node:\n{}", __func__, Utils::xml_get_node_content_as_text(xml_ref_nd_node))); // debug
           #endif
           q->xml_target_nd_node = xml_ref_nd_node.getChildNode("node").deepCopy();
           data_manager::find_vector_between_two_osm_nodes(q, rand_node_num);
@@ -10261,18 +10289,18 @@ data_manager::fetch_ways_and_target_node_from_overpass_thread (missionx::base_th
           // --- END Searching Vector between nodes -------
 
         } // end searching vector
-        else
-          Log::logMsgThread(fmt::format("\tReading Node Curl error: \n\t{}\n", curl_easy_strerror(st_curl_result.res_curl)));
+
+        Log::logMsg(fmt::format("\tReading Node Curl error: \n\t{}\n", curl_easy_strerror(st_curl_result.res_curl)));
       } // end loop "shuffle way nodes"
     } // end nodeCound > 0, meaning we have valid way nodes in the response
 
   } // end respond is not empty
   // end if we found the BBOX string
 
-// #else
-//   (*outStatusMessage) = fmt::format("[{}] DISABLE_CURL is defined. Skipping Overpass query.\n", __func__);
-// #endif // !DISABLE_CURL
-
+  if (!q->xml_target_nd_node.isEmpty())
+    Log::logMsg( fmt::format("[{}] FOUND target node: {}\n", __func__, Utils::xml_get_node_content_as_text(q->xml_target_nd_node) ) );
+  else
+    Log::logMsg( fmt::format("[{}] DID NOT FIND target node. Query: {}\n", __func__, filledQuery ) );
 
   q->end_time = std::chrono::steady_clock::now ();
 
@@ -10329,7 +10357,7 @@ mx_return missionx::data_manager::find_vector_between_two_osm_nodes(missionx::st
     return mxUtils::mxCalcBearingBetween2Points(lat1, lon1, lat2, lon2);
   };
 
-  Log::logMsgThread(fmt::format("[{}] >>> Try Fetching the Vector Between Nodes <<<", __func__));
+  Log::logMsg(fmt::format("[{}] >>> Try Fetching the Vector Between Nodes <<<", __func__));
   size_t trial_counter = 0L;
   missionx::structs::strct_curl_result st_curl_result_for_step3;
 
@@ -10374,19 +10402,20 @@ mx_return missionx::data_manager::find_vector_between_two_osm_nodes(missionx::st
         // call cURL
         // -----------------------
         // std::string result_text;
-        const auto& overpass_url_to_fetch_ref = (trial_counter < data_manager::vecOverpassUrls.size()) ? data_manager::vecOverpassUrls.at(trial_counter) : mxconst::get_DEFAULT_OVERPASS_URL();
+        // const auto& overpass_url_to_fetch_ref = (trial_counter < data_manager::vecOverpassUrls.size()) ? data_manager::vecOverpassUrls.at(trial_counter) : mxconst::get_DEFAULT_OVERPASS_URL();
+        const auto& overpass_url_s = data_manager::gen_get_next_overpass_url(data_manager::last_successfull_url_s);
 
         std::this_thread::sleep_for(std::chrono::seconds(2)); // wait for a few seconds
         // st_curl_result_for_step3 = data_manager::get_curl_request_respond(overpass_url_to_fetch_ref, s_curl_vector_node_query, 2);
         // v26.08.1
-        missionx::structs::curl_request_data curl_conn_data = {.url_s = overpass_url_to_fetch_ref, .post_request_field_s = s_curl_vector_node_query};
+        missionx::structs::curl_request_data curl_conn_data = {.url_s = overpass_url_s, .post_request_field_s = s_curl_vector_node_query, .headers= {mxconst::OVERPASS_POST_HEADER} };
         st_curl_result_for_step3 = data_manager::get_curl_request_respond(curl_conn_data);
 
         const std::string result_text = st_curl_result_for_step3.response_text;
 
         #ifndef RELEASE
         if (!st_curl_result_for_step3.request_err.empty())
-          Log::logMsgThread(fmt::format("[{}] Node fetch try no.:{}. Error:\n{}", __func__, trial_counter, st_curl_result_for_step3.request_err)); // debug
+          Log::logMsg(fmt::format("[{}] Node fetch try no.:{}. Error:\n{}", __func__, trial_counter, st_curl_result_for_step3.request_err)); // debug
         #endif
 
         if (st_curl_result_for_step3.request_err.empty())
@@ -10399,6 +10428,10 @@ mx_return missionx::data_manager::find_vector_between_two_osm_nodes(missionx::st
             q->xml_next_node_to_find_vector = xml_next_nd_node.deepCopy(); // store just in case we will need it
             q->target_node_estimate_vector  = lmbda_calc_vector(q->xml_target_nd_node, q->xml_next_node_to_find_vector);
             result.reset();
+            // v26.10.1
+            // if (data_manager::last_successfull_url_s != overpass_url_s)
+            //   data_manager::last_successfull_url_s = overpass_url_s;
+
             return (result = true);
           }
 
@@ -10435,7 +10468,7 @@ missionx::mx_return missionx::data_manager::gen_request_from_the_llm_server(miss
   missionx::mx_return result_llm = false;
 
 
-  Log::logMsgThread("url: " + in_curl_request_data.url_s); // debug
+  Log::logMsg("url: " + in_curl_request_data.url_s); // debug
 
   // Prepare cURL
   bool        flag_http_success = false;
@@ -10445,7 +10478,7 @@ missionx::mx_return missionx::data_manager::gen_request_from_the_llm_server(miss
   std::string response_data;
 
   #ifndef RELEASE
-    Log::logMsgThread(fmt::format("[{}] mission outline: {}", __func__, user_prompt));
+    Log::logMsg(fmt::format("[{}] mission outline: {}", __func__, user_prompt));
   #endif
 
   // const std::string system_prompt = "You will provide only the text for the flight description."
@@ -10484,9 +10517,10 @@ missionx::mx_return missionx::data_manager::gen_request_from_the_llm_server(miss
   // in_curl_request_data.headers = "Content-Type: application/json";
   in_curl_request_data.connection_timeout = 20L;
   // in_curl_request_data.timeout = 60L; // deprecated, we get the value from the setup screen.
+  in_curl_request_data.headers = {mxconst::OVERPASS_POST_HEADER};
 
   #ifndef RELEASE
-  Log::logMsgThread(fmt::format("[{}] {}", __func__, json_payload));
+  Log::logMsg(fmt::format("[{}] {}", __func__, json_payload));
   #endif
 
   // Call LLM server using cURL
@@ -10512,7 +10546,7 @@ missionx::data_manager::gen_request_mission_leg_from_llm (missionx::base_thread:
 
   missionx::mx_return result_llm = false;
 
-  Log::logMsgThread("url: " + in_curl_request_data.url_s); // debug
+  Log::logMsg("url: " + in_curl_request_data.url_s); // debug
 
   // Prepare cURL
   bool        flag_http_success = false;
@@ -10522,7 +10556,7 @@ missionx::data_manager::gen_request_mission_leg_from_llm (missionx::base_thread:
   std::string response_data;
 
 #ifndef RELEASE
-  Log::logMsgThread(fmt::format("[{}] mission outline: {}", __func__, mission_outline));
+  Log::logMsg(fmt::format("[{}] mission outline: {}", __func__, mission_outline));
 #endif
 
   const std::string system_prompt = "You will provide the airport information based on the format requested by the user."
@@ -10553,9 +10587,10 @@ missionx::data_manager::gen_request_mission_leg_from_llm (missionx::base_thread:
   // in_curl_request_data.headers = "Content-Type: application/json";
   in_curl_request_data.connection_timeout = 20L;
   in_curl_request_data.how_many_tries     = 1; // we force only one try
+  in_curl_request_data.headers = {mxconst::OVERPASS_POST_HEADER};
 
 #ifndef RELEASE
-  Log::logMsgThread(fmt::format("[{}] {}", __func__, json_payload));
+  Log::logMsg(fmt::format("[{}] {}", __func__, json_payload));
 #endif
 
   // Call LLM server using cURL
@@ -10943,7 +10978,7 @@ data_manager::addAndLoadTextureMapNodeToLeg(const std::string& inFileName, const
           Utils::addElementToMap(maps2d_to_display, strct_flight_leg_info_totalMapsCounter, mapCurrentMissionTextures[inFileName]);
         }
 
-        Log::logMsgThread(std::string(__func__) + "] leg: " + inLegName + ", Loaded Texture: " + inFileName); // debug
+        Log::logMsg(std::string(__func__) + "] leg: " + inLegName + ", Loaded Texture: " + inFileName); // debug
 
         return true;
       }
@@ -10974,7 +11009,7 @@ data_manager::loadImage(const std::string& inFileName, std::map<std::string, mxT
     return true; // success
   }
   else
-    Log::logMsgThread(fmt::format("[{}] failed to load Texture: {}{}\nError: ", __func__, fldMissionCustom_withSep, inFileName, errorMsg)); // debug
+    Log::logMsg(fmt::format("[{}] failed to load Texture: {}{}\nError: ", __func__, fldMissionCustom_withSep, inFileName, errorMsg)); // debug
 
   return false;
 }

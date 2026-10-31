@@ -199,3 +199,82 @@ where 1 = 1
 ]]></query>
 
 </ils_sqls>
+
+
+<!-- v26.10.x OSM database v2 (medevac schema). Files in {missionx}/db/osm. -->
+<!-- Aliases for designer filters: w = ways, c = way_class, r = ways_rtree, p = places. {designer_filter} is replaced with the "tag=" fragment. -->
+<!-- Bind numbers: ?1/?2 source lat/lon, ?3-?6 area in degrees (the way query converts them to the R-tree units, degrees*1e7), ?7/?8 min/max nm (?7 < 0 = no distance test), ?9 places kind list. -->
+<!-- Columns are read by their alias name, keep the aliases if you change a query. -->
+<osm_db2_sqls>
+<query name="db2_get_structure"><![CDATA[select (select count(*) from sqlite_master
+         where type = 'table' and name in ('meta', 'bounds', 'way_class', 'ways', 'ways_rtree', 'places')) = 6
+       and exists (select 1 from pragma_table_xinfo('ways')   where name = 'label')
+       and exists (select 1 from pragma_table_xinfo('places') where name = 'address') as is_valid
+     , (select value from meta where key = 'schema_version') as schema_version
+]]></query>
+
+<query name="db2_get_bounds"><![CDATA[select count(*) as bounds_rows
+     , ifnull(sum(case when b.max_lat >= ?1 and b.min_lat <= ?2 and b.max_lon >= ?3 and b.min_lon <= ?4 then 1 else 0 end), 0) as overlapping_rows
+     , min(b.min_lat) as min_lat, max(b.max_lat) as max_lat, min(b.min_lon) as min_lon, max(b.max_lon) as max_lon
+from bounds b
+]]></query>
+
+<query name="db2_get_way_random"><![CDATA[with picked as materialized (
+  -- one random way in the area that has at least one vertex in the distance range, and one random vertex of it ("lat,lon,bearing")
+  select v.*
+       , mx_way_pick_node(v.geom, v.nodes, ?1, ?2, ?7, ?8) as picked_node
+  from (
+    select w.id, w.label, w.name, w.ref, c.name as class_name, w.surface, w.sac_scale, w.mtb_scale, w.bicycle, w.foot
+         , w.nodes, w.geom
+         , mx_calc_distance(?1, ?2, w.clat, w.clon, 3440) as distance_nm
+    from ways_rtree r
+    join ways w      on w.id = r.id
+    join way_class c on c.id = w.class
+    where r.max_lat >= cast(round(?3 * 1e7) as int) and r.min_lat <= cast(round(?4 * 1e7) as int)
+      and r.max_lon >= cast(round(?5 * 1e7) as int) and r.min_lon <= cast(round(?6 * 1e7) as int)
+      {designer_filter}
+      and mx_way_node_in_range(w.geom, w.nodes, ?1, ?2, ?7, ?8) = 1
+    order by random()
+    limit 1
+  ) v
+),
+coords as (
+  -- split "lat,lon,bearing" into numbers
+  select p.*
+       , cast(substr(p.picked_node, 1, instr(p.picked_node, ',') - 1) as real) as picked_lat
+       , cast(substr(p.rest, 1, instr(p.rest, ',') - 1) as real)               as picked_lon
+       , cast(substr(p.rest, instr(p.rest, ',') + 1) as real)                  as picked_bearing
+  from (select picked.*, substr(picked.picked_node, instr(picked.picked_node, ',') + 1) as rest from picked) p
+)
+select k.id, k.label, k.name, k.ref, k.class_name, k.surface, k.sac_scale, k.mtb_scale, k.bicycle, k.foot, k.distance_nm
+     , k.picked_lat, k.picked_lon, k.picked_bearing
+     -- name to display: label (name and ref), then name, then the coordinate
+     , coalesce(nullif(k.label, ''), nullif(k.name, ''), printf('osmdb coordinate (%.5f/%.5f)', k.picked_lat, k.picked_lon)) as display_name
+     -- description, example: path (mountain_hiking, gravel, mtb scale 2)
+     , k.class_name || case when k.details <> '' then ' (' || k.details || ')' else '' end as display_desc
+from (
+  select coords.*
+       , ltrim(coalesce(', ' || nullif(coords.sac_scale, ''), '') || coalesce(', ' || nullif(coords.surface, ''), '') || coalesce(', mtb scale ' || nullif(coords.mtb_scale, ''), ''), ', ') as details
+  from coords
+) k
+]]></query>
+
+<query name="db2_get_place_random"><![CDATA[select p.id, p.kind, p.name, p.name_en, p.icao, p.faa, p.iata, p.ref, p.address, p.lat, p.lon
+     , mx_calc_distance(?1, ?2, p.lat, p.lon, 3440) as distance_nm
+     -- ICAO-like id: icao, then faa, then iata
+     , coalesce(nullif(p.icao, ''), nullif(p.faa, ''), nullif(p.iata, '')) as display_id
+     -- name to display: name, name_en, kind + ref (helipad 1), then the coordinate
+     , coalesce(nullif(p.name, ''), nullif(p.name_en, ''), p.kind || ' ' || nullif(p.ref, ''), printf('osmdb coordinate (%.5f/%.5f)', p.lat, p.lon)) as display_name
+     -- description, example: hospital, Heiligkreuz 25
+     , p.kind || coalesce(', ' || nullif(p.address, ''), '') as display_desc
+from places p
+where p.lat between ?3 and ?4
+  and p.lon between ?5 and ?6
+  and instr(',' || ?9 || ',', ',' || p.kind || ',') > 0
+  and ( ?7 < 0 or mx_calc_distance(?1, ?2, p.lat, p.lon, 3440) between ?7 and ?8 )
+  {designer_filter}
+order by random()
+limit 1
+]]></query>
+
+</osm_db2_sqls>

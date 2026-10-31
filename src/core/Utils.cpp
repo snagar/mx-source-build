@@ -1547,7 +1547,7 @@ missionx::Utils::xml_get_node_randomly_by_name_IXMLNode (const IXMLNode & rootNo
   }
   else
   {
-    Log::logMsgThread ( "[utils random pick] Failed to find tag: <" + inTagToSearch + "> to pick from root node: " + rootNode.getName() + ". Check your XML file." );
+    Log::logMsg ( "[utils random pick] Failed to find tag: <" + inTagToSearch + "> to pick from root node: " + rootNode.getName() + ". Check your XML file." );
     return IXMLNode::emptyIXMLNode;
   }
 
@@ -1625,7 +1625,7 @@ missionx::Utils::xml_get_node_randomly_by_name_and_distance_IXMLNode (const IXML
     }
 
     #ifndef RELEASE
-    Log::logMsgThread("[get node randomly] after filtering distance.");
+    Log::logMsg("[get node randomly] after filtering distance.");
     #endif
 
     if (const int vecSize = static_cast<int> (vecFilteredResults.size ())
@@ -1636,7 +1636,7 @@ missionx::Utils::xml_get_node_randomly_by_name_and_distance_IXMLNode (const IXML
       int random_i = Utils::getRandomIntNumber(0, vecSize - 1);
 
       #ifndef RELEASE
-      Log::logMsgThread("\t[get node randomly] Pick index: " + Utils::formatNumber<int>(random_i));
+      Log::logMsg("\t[get node randomly] Pick index: " + Utils::formatNumber<int>(random_i));
       #endif
       if (random_i >= vecSize)
         random_i = vecSize - 1;
@@ -2973,7 +2973,7 @@ missionx::Utils::DegreesMinutesSecondsLat_XP (const double ang, const unsigned i
 
   const bool flag_negative_angle = (lat[0] == '-') ? true : false;
   #ifndef RELEASE
-  missionx::Log::logMsgNoneCR(",  " + lat);
+  missionx::Log::logMsg(",  " + lat);
   #endif
   if (flag_negative_angle)
     lat.erase(0, 1);
@@ -3012,7 +3012,7 @@ missionx::Utils::DegreesMinutesSecondsLon_XP (const double ang, const unsigned i
   const bool flag_negative_angle = (lon[0] == '-') ? true : false;
 
 #ifndef RELEASE
-  missionx::Log::logMsgNoneCR("[lon] " + lon);
+  missionx::Log::logMsg("[lon] " + lon);
 #endif
 
   if (flag_negative_angle)
@@ -3389,7 +3389,7 @@ missionx::Utils::xml_print_node(const IXMLNode& inNode, const bool bThread)
     const auto   tag_name = inNode.getName ();
     IXMLRenderer xmlWriter;
     if (bThread) // v3.303.8 added thread support
-      Log::logMsgThread( fmt::format ("== {} ==\n{}", tag_name, xmlWriter.getString(inNode)) );
+      Log::logMsg( fmt::format ("== {} ==\n{}", tag_name, xmlWriter.getString(inNode)) );
     else
       Log::logMsg (fmt::format ("== {} ==\n{}", tag_name, xmlWriter.getString (inNode)));
 
@@ -3467,7 +3467,7 @@ missionx::Utils::xml_add_node_to_parent_with_duplicate_filter(IXMLNode& inOutPar
         ; attrib_value_child == attrib_value_new_node)
       {
         #ifndef RELEASE
-        Log::logMsgThread("[" + std::string(__func__) + "] Found duplicate node <" + inNode.getName() + "> with attribute: '" + inAttribNameHoldsFilterRule.data() + "' and value: " + attrib_value_new_node);
+        Log::logMsg("[" + std::string(__func__) + "] Found duplicate node <" + inNode.getName() + "> with attribute: '" + inAttribNameHoldsFilterRule.data() + "' and value: " + attrib_value_new_node);
         #endif // !RELEASE
 
         bFoundDuplicate = true;
@@ -4264,7 +4264,7 @@ missionx::Utils::get_nav_dat_cycle()
   std::cin.tie (nullptr);
 
 #ifndef RELEASE
-  missionx::Log::logMsgThread("[Utils Read ILS] Nav data file: " + earth_nav_dat_file);
+  missionx::Log::logMsg("[Utils Read ILS] Nav data file: " + earth_nav_dat_file);
 #endif // !RELEASE
 
   // iterate for five rows and try to find "cycle nnnn," string

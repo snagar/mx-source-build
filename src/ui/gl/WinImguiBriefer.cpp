@@ -152,7 +152,7 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
 
   m_ui_nav_screen->add_ui_pick_subcategories = [this](const std::vector<const char *>& in_vec_categories)
   {
-    this->add_ui_pick_subcategories(in_vec_categories);
+    missionx::WinImguiBriefer::add_ui_pick_subcategories(in_vec_categories);
   };
 
   m_ui_nav_screen->add_ui_is_amphibian = []()->void
@@ -254,7 +254,7 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
 
   m_ui_external_dbflightplan_screen->add_ui_pick_subcategories = [this](const std::vector<const char *>& in_vec_categories)
   {
-    this->add_ui_pick_subcategories(in_vec_categories);
+    missionx::WinImguiBriefer::add_ui_pick_subcategories(in_vec_categories);
   };
 
   m_ui_external_dbflightplan_screen->add_ui_is_amphibian = []()->void
@@ -362,7 +362,7 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
 
     m_ui_setup_screen->add_ui_pick_subcategories = [this](const std::vector<const char *>& in_vec_categories)
     {
-      this->add_ui_pick_subcategories(in_vec_categories);
+      missionx::WinImguiBriefer::add_ui_pick_subcategories(in_vec_categories);
     };
 
     m_ui_setup_screen->add_ui_is_amphibian = []()->void
@@ -523,7 +523,7 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
 
     m_ui_dynamic_mission_screen->add_ui_pick_subcategories = [this](const std::vector<const char *>& in_vec_categories)
     {
-      this->add_ui_pick_subcategories(in_vec_categories);
+      missionx::WinImguiBriefer::add_ui_pick_subcategories(in_vec_categories);
     };
 
     m_ui_dynamic_mission_screen->add_ui_is_amphibian = []()->void
@@ -2130,10 +2130,10 @@ void WinImguiBriefer::action_prepare_dynamic_mission_properties_and_call_generat
   // v3.0.253.6 no osm search for cargo missions
   if (strct_user_create_layer.iRadioMissionTypePicked != static_cast<int>(mx_ui_mission_type::medevac)) // USE OSM WEB or OSM DB only if it is not cargo type
   {
-    strct_user_create_layer.flag_use_osm     = false;
+    strct_user_create_layer.flag_use_osmdb   = false;
     strct_user_create_layer.flag_use_web_osm = false;
   }
-  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_USE_OSM_CHECKBOX(), strct_user_create_layer.flag_use_osm);
+  missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_USE_OSM_CHECKBOX(), strct_user_create_layer.flag_use_osmdb);
   missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool>(mxconst::get_PROP_USE_WEB_OSM_CHECKBOX(), strct_user_create_layer.flag_use_web_osm);
 
   // Add specific Helos properties based on user definitions and restrictions // v3.0.253.7 narrow helos ramp filtering,
@@ -4480,7 +4480,7 @@ If your plane supports Simbrief, use its functionality instead.)";
           // v25.04.1
           ImGui::Spacing ();
           const auto disable_inventories = mxStartUiDisableState(missionx::strct_setup_layer.bNoInventories);
-          this->add_ui_pick_subcategories (missionx::mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]);
+          missionx::WinImguiBriefer::add_ui_pick_subcategories (missionx::mapMissionCategories[static_cast<int> (missionx::mx_ui_mission_type::cargo)]);
           mxEndUiDisableState(disable_inventories);
           ImGui::Separator(); // v26.09.3
           this->add_ui_advance_settings_random_date_time_weather_and_weight_button ();
@@ -7546,7 +7546,7 @@ WinImguiBriefer::draw_about_layer ()
       ImGui::Separator ();
       ImGui::TextUnformatted ("Uses the IMGUI library v" IMGUI_VERSION ", Copyright (c) 2014-2026 Omar Cornut.");
       ImGui::TextUnformatted ("Uses the ImPlot library v" IMPLOT_VERSION ", MIT License - Copyright (c) 2020 Evan Pezent.");
-      // ImGui::TextUnformatted ("Uses the Public (Source) Components from XSquawkBox, Copyright (c) 2018-2020 Christopher Collins.");
+      ImGui::TextUnformatted (fmt::format("Uses Loguru logging library for C++, by Emil Ernerfeldt, v{}.{}.{}, Unlicense license (2026).", LOGURU_VERSION_MAJOR, LOGURU_VERSION_MINOR, LOGURU_VERSION_PATCH).c_str() );
       ImGui::TextUnformatted ("Uses ImgWindow v" IMGWINDOW_VERSION " library. Public (Sources). \"slgoldberg/ImgWindow\" repository in Github." );
       ImGui::TextUnformatted ("Uses the CURL v" LIBCURL_VERSION ". Transfer library, Copyright (c) 1996 - 2026, " LIBCURL_COPYRIGHT ".");
       ImGui::TextUnformatted ("Uses the IXMLParser library, Copyright (c) 2013, Frank Vanden Berghen - All rights reserved (AFPL License).");
@@ -8520,25 +8520,25 @@ WinImguiBriefer::execAction (const mx_window_actions actionCommand)
 
 
 #ifndef RELEASE
-        Log::log_to_missionx_log (fmt::format ("\n================> Before deleting items with zero quantity:\n{}\n\n{}", Utils::xml_get_node_content_as_text (data_manager::planeInventoryCopy.node), Utils::xml_get_node_content_as_text (data_manager::externalInventoryCopy.node)));
+        Log::logMsg (fmt::format ("\n================> Before deleting items with zero quantity:\n{}\n\n{}", Utils::xml_get_node_content_as_text (data_manager::planeInventoryCopy.node), Utils::xml_get_node_content_as_text (data_manager::externalInventoryCopy.node)));
 
         data_manager::erase_empty_inventory_item_nodes (data_manager::planeInventoryCopy.node);
         data_manager::erase_empty_inventory_item_nodes (data_manager::externalInventoryCopy.node);
 
-        Log::log_to_missionx_log (fmt::format ("\n================> After deleting items with zero quantity:\n{}\n\n{}", Utils::xml_get_node_content_as_text (data_manager::planeInventoryCopy.node), Utils::xml_get_node_content_as_text (data_manager::externalInventoryCopy.node)));
+        Log::logMsg (fmt::format ("\n================> After deleting items with zero quantity:\n{}\n\n{}", Utils::xml_get_node_content_as_text (data_manager::planeInventoryCopy.node), Utils::xml_get_node_content_as_text (data_manager::externalInventoryCopy.node)));
 
 #endif
 
         // copy xml back
-        missionx::Log::log_to_missionx_log ("Copying external inventory transaction: " + this->strct_flight_leg_info.externalInventoryName); // debug
+        missionx::Log::logMsg ("Copying external inventory transaction: " + this->strct_flight_leg_info.externalInventoryName); // debug
         missionx::data_manager::mapInventories[this->strct_flight_leg_info.externalInventoryName] = missionx::data_manager::externalInventoryCopy;
 
-        missionx::Log::log_to_missionx_log ("Copying plane transaction."); // debug
+        missionx::Log::logMsg ("Copying plane transaction."); // debug
         missionx::data_manager::mapInventories[mxconst::get_ELEMENT_PLANE ()] = missionx::data_manager::planeInventoryCopy;
 
 #ifndef RELEASE
-        Log::log_to_missionx_log (fmt::format ("\n================> New PLANE Inventory: [\n{}\n]", Utils::xml_get_node_content_as_text (data_manager::planeInventoryCopy.node))); // DEBUG
-        Log::log_to_missionx_log (fmt::format ("\n================> External Inventory: [\n{}\n]", Utils::xml_get_node_content_as_text (data_manager::externalInventoryCopy.node))); // DEBUG
+        Log::logMsg (fmt::format ("\n================> New PLANE Inventory: [\n{}\n]", Utils::xml_get_node_content_as_text (data_manager::planeInventoryCopy.node))); // DEBUG
+        Log::logMsg (fmt::format ("\n================> External Inventory: [\n{}\n]", Utils::xml_get_node_content_as_text (data_manager::externalInventoryCopy.node))); // DEBUG
 #endif
 
 

@@ -281,7 +281,7 @@ void flc();
         iOriginalQuantity                           = Utils::readNodeNumericAttrib<int> (inNode, mxconst::get_ATTRIB_QUANTITY (), 0);
 
         #ifndef RELEASE
-        Log::log_to_missionx_log (Utils::xml_get_node_content_as_text (this->ptrNodePicked)); // debug
+        Log::logMsg (Utils::xml_get_node_content_as_text (this->ptrNodePicked)); // debug
         #endif
       }
       else if (inSetupXP11Compatibility)
@@ -799,7 +799,7 @@ private:
   void                add_ui_xp11_comp_checkbox(const bool& inStorePreference); // v24.12.2
   void                add_ui_simbrief_pilot_id(); // v25.03.3
   void                add_ui_flightplandb_key(bool isPopup); // v25.03.3
-  void                add_ui_pick_subcategories(const std::vector<const char*>& vecToDisplay); // v25.04.1
+  static void                add_ui_pick_subcategories(const std::vector<const char*>& vecToDisplay); // v25.04.1
   void                add_ui_auto_load_checkbox(const missionx::mx_window_actions& inActionToExecute = missionx::mx_window_actions::ACTION_SAVE_USER_SETUP_OPTIONS); // v25.04.2
   int                 add_ui_dynamic_options_buttons(const int& inout_picked_lbl, std::map<int, std::string>& map_lbl_and_values);
   static void         add_ui_os_and_xp_clock_times(const float& in_x_pos);

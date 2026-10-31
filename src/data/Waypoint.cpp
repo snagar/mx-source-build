@@ -34,7 +34,7 @@ missionx::Waypoint::parse_node()
   std::string leg_nextLeg = Utils::readAttrib(this->node, mxconst::get_ATTRIB_NEXT_LEG(), mxconst::get_ATTRIB_NEXT_GOAL(), EMPTY_STRING, true);
   if (legName.empty()) // skip
   {
-    Log::logMsg("[FlightLeg]Found flight <leg> with no name. Check mission definition.", format_type::error, false);
+    Log::logMsgErr("[FlightLeg]Found flight <leg> with no name. Check mission definition.");
     Log::add_missionLoadError(errMsg);
     return false;
   }
@@ -66,7 +66,7 @@ missionx::Waypoint::parse_node()
     // check if there are any objectives link before reading goals attributes.
     if (nChilds2 == 0) // no objectives
     {
-      Log::logMsg("[FlightLeg] " + legName + ", has no Objectives linked to it. Please fix it. Skipping definitions.", format_type::error, false);
+      Log::logMsgErr("[FlightLeg] " + legName + ", has no Objectives linked to it. Please fix it. Skipping definitions.");
       return false;
     }
     else

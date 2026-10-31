@@ -110,7 +110,7 @@ void
 missionx::read_mission_file::readScriptElement(ITCXMLNode& xParent, std::map<std::string, missionx::base_script>& inMapScripts, std::string& inScriptFolder)
 {
   // v3.0.241.7 xParent = xScripts = <scripts> element instead of <MISSION>
-  Log::printHeaderToLog("Reading Embedded Scripts", false);
+  Log::printHeaderToLog("Reading Embedded Scripts");
 
   if (!xParent.isEmpty())
   {
@@ -320,7 +320,7 @@ missionx::read_mission_file::readScriptElement(ITCXMLNode& xParent, std::map<std
 
   } // end handling embedded scripts/scriptlets
 
-  Log::printHeaderToLog("END Reading External Scripts", false, missionx::format_type::footer);
+  Log::printHeaderToLog("END Reading External Scripts", missionx::format_type::footer);
 }
 
 // -----------------------------------
@@ -431,7 +431,7 @@ missionx::read_mission_file::readDatarefElement(ITCXMLNode& xParent)
         Log::logMsg(fmt::format("Added Dataref: \"{}\", Key: \"{}\" ", name, dref.key));        
       }
 
-      Log::printHeaderToLog("Start Reading <" + mxconst::get_ELEMENT_DATAREF() + "> Elements", false, missionx::format_type::footer);
+      Log::printHeaderToLog("Start Reading <" + mxconst::get_ELEMENT_DATAREF() + "> Elements", missionx::format_type::footer);
 
     }
 
@@ -486,7 +486,7 @@ missionx::read_mission_file::readObjectiveAndTaskElements(ITCXMLNode& xParent)
             xObj = xObjectives.getChildNode(mxconst::get_ELEMENT_OBJECTIVE().c_str(), i1);
             if (xObj.isEmpty()) // skip if empty element
             {
-              Log::logMsg("Found Empty Objective. Please check.", format_type::error, false);
+              Log::logMsgErr("Found Empty Objective. Please check.");
               continue;
             }
 
@@ -682,7 +682,7 @@ missionx::read_mission_file::readTriggers(ITCXMLNode& xParent)
 
   int nChilds1 = 0;
 
-  Log::printHeaderToLog("Start Reading Triggers", false);
+  Log::printHeaderToLog("Start Reading Triggers");
   //Log::logMsg("Valid trigger info will be displayed after validating Objectives", format_type::warning, false);
 
   // v3.0.221.15rc4 Enable multiple <triggers> in one mission file and not just one. The idea is to let the designer to split his/her list of triggers into goals to make it easier to follow (especially for long missions)
@@ -729,7 +729,7 @@ missionx::read_mission_file::readTriggers(ITCXMLNode& xParent)
 
   } // end loop over <triggers> elements
 
-   Log::printHeaderToLog("END Reading Triggers", false, missionx::format_type::footer);
+   Log::printHeaderToLog("END Reading Triggers", missionx::format_type::footer);
 }
 
 void
@@ -757,7 +757,7 @@ missionx::read_mission_file::readInventories ( const ITCXMLNode & xParent)
 
   int nChild1 = 0;
 
-  Log::printHeaderToLog("Start Reading Inventories", false, format_type::header);
+  Log::printHeaderToLog("Start Reading Inventories");
   Log::logMsg("Start reading Pre-Defined Items:");
 
   ITCXMLNode xInvs = xParent.getChildNode ( mxconst::get_ELEMENT_INVENTORIES().c_str () );
@@ -868,7 +868,7 @@ missionx::read_mission_file::readInventories ( const ITCXMLNode & xParent)
   }
   #endif
 
-  Log::printHeaderToLog(">> END INVENTORY <<<<<<<<<", false, format_type::footer);
+  Log::printHeaderToLog(">> END INVENTORY <<<<<<<<<", format_type::footer);
 }
 
 
@@ -878,7 +878,7 @@ missionx::read_mission_file::readInventories ( const ITCXMLNode & xParent)
 void
 missionx::read_mission_file::readMessages(ITCXMLNode& xParent)
 {
-  Log::printHeaderToLog("Start Reading Messages", false);
+  Log::printHeaderToLog("Start Reading Messages");
 
   int childs01 = 0;
 
@@ -917,7 +917,7 @@ missionx::read_mission_file::readMessages(ITCXMLNode& xParent)
     }     // end loop over <message_template>
   }       // end loop over all <message_templates>
 
-  Log::printHeaderToLog("END Reading Messages", false, missionx::format_type::footer);
+  Log::printHeaderToLog("END Reading Messages", missionx::format_type::footer);
 }
 
 // -----------------------------------
@@ -1353,8 +1353,7 @@ missionx::read_mission_file::load_mission_file(const std::string& inPathAndFileN
   }
   catch (std::exception& ex)
   {
-    Log::logMsg(std::string("[Exception In loading Mission File] ").append(ex.what()));
-    Log::logMsg(std::string("[Exception In loading Mission File] ").append(ex.what()), Log::LOG_ERROR, false);
+    Log::logMsgErr(std::string("[Exception In loading Mission File] ").append(ex.what()));
     addError("[Fatal Error][Exception In loading Mission File] Notify Developer.");
     initOK = false;
   }
@@ -1598,7 +1597,7 @@ For exact timing you will have to let the story mode play the full message seque
     {
       Log::logMsg(fmt::format("{}{:.<60}{}{:.2f} sec.", "Story Message: ", name, "Evaluate timing: ", timing));
     }
-    Log::printToLog("END Story Messages Time Evaluation", false, missionx::format_type::footer, true);
+    Log::printHeaderToLog("END Story Messages Time Evaluation", missionx::format_type::footer);
   }
 
   Message::lineAction4ui.init();
@@ -1958,7 +1957,7 @@ missionx::read_mission_file::loadSavePoint()
 
 
     // display any error/warning message
-    Log::logMsg("Summary of errors/warnings in mission file", format_type::header, false);
+    Log::printHeaderToLog ("Summary of errors/warnings in mission file");
 
     // for (auto e : read_mission_file::vecErrors)
     Log::logMsg(Log::print_deq_LoadMissionFileErrors(true));
@@ -2050,7 +2049,7 @@ missionx::read_mission_file::loadSavePoint()
         missionx::data_manager::mission_file_supported_versions = save_file_format_versions_s; // v25.03.1 set the global shared variable.
 
         //// print errors ////
-        Log::logMsg("Summary of errors/warnings of mission", format_type::header, false);
+        Log::printHeaderToLog("Summary of errors/warnings of mission");
         Log::logMsg(Log::print_deq_LoadMissionFileErrors(true));
 
         //if (!data_manager::loadErrors.empty())
@@ -2066,8 +2065,7 @@ missionx::read_mission_file::loadSavePoint()
   }
   catch (std::exception& ex)
   {
-    Log::logMsg(std::string("[Exception In loading Save File] ").append(ex.what()));
-    Log::logMsg(std::string("[Exception In loading Save File] ").append(ex.what()), Log::LOG_ERROR, false);
+    Log::logMsgErr(std::string("[Exception In loading Save File] ").append(ex.what()));
     addError("[Fatal Error][Exception In loading Mission File] Notify Developer.");
     initOK = false;
   }

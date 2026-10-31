@@ -229,6 +229,8 @@ public:
   static bool        compare (const std::string &inStr1, const std::string &inStr2, bool inCaseSensitive = true ); // v24.05.1
   static size_t      find_text (const std::string &in_source, const std::string &in_search_text, bool inCaseSensitive = true ); // v25.06.1 find text with ignore case
   static std::string format (const std::string & inText, std::map<int, std::string> & inArgs); // v24.05.2
+  static std::string format_sql_binds (const std::string &inSql, const std::map<int, std::string> &inArgs); // v26.10.x replace "?N" bind placeholders, for logging
+  static std::string sql_quote (const std::string &inText); // v26.10.x O'Hare -> 'O''Hare'
   static int         calc_minutes_from_seconds(const int &in_seconds_from_midnight); // v25.04.2
 
   static bool isStringBool(std::string inTestValue, bool& outStringEvalResult_asBool);
@@ -664,6 +666,9 @@ public:
   static std::string get_month_and_day(int day_of_year);
 
   // -------------------------------------------
+  // v26.10.x Decode "ways.geom" from the OSM v2 database into decimal degrees. in_nodes = ways.nodes. Returns false on a corrupt blob.
+  static bool decode_osm_geom(const void* in_blob, int in_size, int in_nodes, std::vector<missionx::mxVec2d>& outPoints);
+
 };
   // -------------------------------------------
   // -------------------------------------------

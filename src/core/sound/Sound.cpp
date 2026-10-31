@@ -143,7 +143,7 @@ missionx::MxSound::prepareStreamSoundFile(missionx::mx_message_state_enum& inMsg
   result = FMOD_ERR_FILE_BAD;
   if (inMsgState == missionx::mx_message_state_enum::msg_undefined)
   {
-    Log::logMsg("Message is undefined state. !!!\nSkipping sound file !!!", format_type::error, false);
+    Log::logMsg("Message is undefined state. !!!\nSkipping sound file !!!", format_type::error);
     return result;
   }
 

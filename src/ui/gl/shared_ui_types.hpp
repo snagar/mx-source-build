@@ -746,7 +746,7 @@ struct mx_setup_layer
     std::string dyn_slider2_lbl = "Max distance [" + Utils::formatNumber<float> (mxconst::SLIDER_MIN_RND_DIST * 1.2, 0) + "..." + Utils::formatNumber<float> (mxconst::SLIDER_MIN_RND_DIST * 5.0, 0) + "]";
 
     // OSM checkbox
-    bool flag_use_osm{ false };
+    bool flag_use_osmdb{ false };
     bool flag_use_web_osm{ false };
     bool flag_cross_country = { false };
 

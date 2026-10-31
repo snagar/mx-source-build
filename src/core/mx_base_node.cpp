@@ -150,7 +150,7 @@ missionx::mx_base_node::setNumberProperty(const std::string& inAttribName, const
   if (mxUtils::is_number(attribValue) && !inAttribName.empty ())
     this->setStringProperty(inAttribName, attribValue);
   else
-    Log::logMsg("NaN: Attribute: " + inAttribName + " has value: " + attribValue + " which is not identified as a number.", true);
+    Log::logMsg("NaN: Attribute: " + inAttribName + " has value: " + attribValue + " which is not identified as a number.");
 }
 
 // -----------------------------------
@@ -164,7 +164,7 @@ missionx::mx_base_node::setBoolProperty(const std::string& inAttribName, const s
     this->setStringProperty(inAttribName, attribValue);
   }
   else
-    Log::logMsgErr("Attribute: " + inAttribName + ", has non bool value: " + attribValue, true);
+    Log::logMsgErr("Attribute: " + inAttribName + ", has non bool value: " + attribValue);
 }
 
 // -----------------------------------

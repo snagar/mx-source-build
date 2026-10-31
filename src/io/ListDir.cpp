@@ -536,7 +536,7 @@ ListDir::read_template_file(const std::string& inPath, const std::string& fileNa
     if (const std::string attrib = Utils::readAttrib(xParent, "version", "0"); missionx::RANDOM_TEMPLATE_VER != attrib) // skip if not correct version
     {
       errMsg = fmt::format(R"(Template file: "{}", is not in the correct version - "{}", currently it is: "{}". Check documentation.)", file_path, missionx::RANDOM_TEMPLATE_VER, attrib);
-      Log::logMsgErr(errMsg, isThread);
+      Log::logMsgErr(errMsg);
       return errMsg;
     }
 
@@ -544,7 +544,7 @@ ListDir::read_template_file(const std::string& inPath, const std::string& fileNa
     if (xTemplateMissionInfoNode.isEmpty())
     {
       errMsg = "Fail to load template file: " + fileName + ". No <mission_info> element found. skipping...";
-      Log::logMsgErr(errMsg, isThread);
+      Log::logMsgErr(errMsg);
       // continue;
       return errMsg;
     }
@@ -611,7 +611,7 @@ ListDir::read_template_file_02(const std::string& inPath, const std::string& fil
     if (const std::string attrib = Utils::readAttrib(xParent, "version", "0"); missionx::RANDOM_TEMPLATE_VER != attrib) // skip if not correct version
     {
       errMsg = fmt::format(R"(Template file: "{}", is not in the correct version - "{}", currently it is: "{}". Check documentation.)", file_path, missionx::RANDOM_TEMPLATE_VER, attrib);
-      Log::logMsgErr(errMsg, isThread);
+      Log::logMsgErr(errMsg);
       return errMsg;
     }
 
@@ -619,7 +619,7 @@ ListDir::read_template_file_02(const std::string& inPath, const std::string& fil
     if (xTemplateMissionInfoNode.isEmpty())
     {
       errMsg = "Fail to load template file: " + fileName + ". No <mission_info> element found. skipping...";
-      Log::logMsgErr(errMsg, isThread);
+      Log::logMsgErr(errMsg);
       // continue;
       return errMsg;
     }

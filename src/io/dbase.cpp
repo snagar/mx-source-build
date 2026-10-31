@@ -69,7 +69,7 @@ dbase::open_database()
   if (this->absolute_path_to_db_file_s.empty())
   {
     this->last_err = "Bad database file path.\n";
-    Log::logMsgThread(last_err);
+    Log::logMsg(last_err);
     db_is_open_and_ready = false;
     return false;
   }
@@ -78,7 +78,7 @@ dbase::open_database()
   if (this->rc != SQLITE_OK)
   {
     this->last_err = "Failed to open / create database: '" + this->absolute_path_to_db_file_s + "'\nERROR: " + sqlite3_errmsg(this->db);
-    Log::logMsgThread(this->last_err + "\n");
+    Log::logMsg(this->last_err + "\n");
 
     db_is_open_and_ready = false;
     return false;
@@ -114,7 +114,7 @@ dbase::open_database_in_memory()
   if (this->rc != SQLITE_OK)
   {
     this->last_err = "Failed to create database in :memory:'\nERROR: " + std::string(sqlite3_errmsg(this->db));
-    Log::logMsgThread(this->last_err + "\n");
+    Log::logMsg(this->last_err + "\n");
 
     db_is_open_and_ready = false;
     return false;
@@ -128,6 +128,64 @@ dbase::open_database_in_memory()
   return true;
 }
 
+
+// ----------------------------------------------------
+
+bool
+dbase::open_database_read_only()
+{
+  this->last_err.clear();
+
+  if (db != nullptr)
+  {
+    this->db_is_open_and_ready = true;
+    return true;
+  }
+
+  if (this->absolute_path_to_db_file_s.empty())
+  {
+    this->last_err       = "Bad database file path.\n";
+    db_is_open_and_ready = false;
+    Log::logMsg(last_err);
+    return false;
+  }
+
+  // Read-only: never creates a file and never writes to it.
+  this->rc = sqlite3_open_v2(this->absolute_path_to_db_file_s.c_str(), &this->db, SQLITE_OPEN_READONLY, nullptr);
+  if (this->rc != SQLITE_OK)
+  {
+    this->last_err = "Failed to open database (read only): '" + this->absolute_path_to_db_file_s + "'\nERROR: " + ((this->db) ? sqlite3_errmsg(this->db) : "out of memory");
+    Log::logMsg(this->last_err + "\n");
+
+    if (this->db != nullptr) // sqlite3_open_v2() returns a handle even on failure, it must be closed.
+    {
+      sqlite3_close_v2(this->db);
+      this->db = nullptr;
+    }
+    db_is_open_and_ready = false;
+    return false;
+  }
+
+  db_is_open_and_ready = true;
+  mxRegisterExtensionFunctions(db); // mx_calc_distance() and the other "mx_" functions
+
+  return true;
+}
+// ----------------------------------------------------
+
+std::string
+dbase::get_column_text(sqlite3_stmt* inStmt, int inColumn)
+{
+  // sqlite3_column_text() returns nullptr for NULL values. std::string(nullptr) is undefined behavior (usually a crash).
+  const unsigned char* text = sqlite3_column_text(inStmt, inColumn);
+  if (text == nullptr)
+    return {};
+
+  return { reinterpret_cast<const char*>(text), static_cast<size_t>(sqlite3_column_bytes(inStmt, inColumn)) }; // call bytes() after text()
+
+}
+
+
 // ----------------------------------------------------
 
 bool
@@ -139,11 +197,11 @@ dbase::remove_database(std::string in_absolute_path)
   if (remove(in_absolute_path.c_str()) != 0) // try to remove old missionx stats database
   {
     this->last_err = "Fail to find and remove the file: " + in_absolute_path;
-    Log::logMsgWarn(this->last_err, true);
+    Log::logMsgWarn(this->last_err);
     return false;
   }
 
-  Log::logMsgThread(std::string("Deleted file: ") + in_absolute_path + ".  Preparing new one.!!!");
+  Log::logMsg(std::string("Deleted file: ") + in_absolute_path + ".  Preparing new one.!!!");
 
   return true;
 }
@@ -192,7 +250,7 @@ dbase::execute_stmt(std::string inStmt)
   if (rc != SQLITE_OK)
   {
     this->last_err = std::string("[DBASE - ERROR] STMT Error: ") + sqlite3_errmsg(this->db) + "\n" + sql + "\n";
-    Log::logMsgThread(this->last_err);
+    Log::logMsg(this->last_err);
     return false;
   }
 
@@ -217,7 +275,7 @@ dbase::execute_stmt(const char* inStmt)
   if (rc != SQLITE_OK)
   {
     this->last_err = std::string("[DBASE - ERROR] STMT Error: ") + sqlite3_errmsg(this->db) + "\n" + inStmt + "\n";
-    Log::logMsgThread(this->last_err);
+    Log::logMsg(this->last_err);
     return false;
   }
 
@@ -233,27 +291,27 @@ dbase::prepareNewStatement(std::string inName, std::string inSql)
   if (!db_is_open_and_ready)
   {
     this->last_err = "Database is not ready.";
-    Log::logMsgErr("[prepNewStmt] Fail creating new statment. " + this->last_err, true);
+    Log::logMsgErr("[prepNewStmt] Fail creating new statment. " + this->last_err);
     return false;
   }
 
   if (inName.empty())
   {
     this->last_err = "Statement by the name: '" + inName + "' might already be present or name is not valid.\n";
-    Log::logMsgErr("[prepNewStmt] " + this->last_err, true);
+    Log::logMsgErr("[prepNewStmt] " + this->last_err);
     return false;
   }
 
   if (Utils::isElementExists(this->mapStatements, inName))
   {
     this->last_err = "Statement by the name: '" + inName + "' is already present. Will override with new pointer.\n";
-    Log::logMsgWarn("[prepNewStmt] " + this->last_err, true);
+    Log::logMsgWarn("[prepNewStmt] " + this->last_err);
 
     sqlite3_clear_bindings(this->mapStatements[inName]);
     sqlite3_reset(this->mapStatements[inName]);
 
     // not duing "sqlite3_finalize(this->mapStatements[inName]);" since it will crash the plugin
-    this->mapStatements[inName] = NULL;
+    this->mapStatements[inName] = nullptr;
 
   }
 
@@ -263,7 +321,7 @@ dbase::prepareNewStatement(std::string inName, std::string inSql)
   if (rc != SQLITE_OK)
   {
     this->last_err = std::string("[prepNewStmt] Prepare statement failed. Error: ") + sqlite3_errmsg(this->db) + "\nStatement: " + inSql + "\n";
-    Log::logMsgErr(this->last_err, true);
+    Log::logMsgErr(this->last_err);
 
     this->mapStatements.erase(inName); // remove from container
 
@@ -288,7 +346,7 @@ dbase::start_transaction()
     return true;
 
   this->last_err = std::string("[DB] Error while begin transaction: ") + sqlite3_errmsg(this->db) + "\n";
-  Log::logMsg(this->last_err, true);
+  Log::logMsgErr(this->last_err);
   return false;
 }
 
@@ -304,7 +362,7 @@ dbase::end_transaction()
     return true;
 
   this->last_err = std::string("[DB] Error while commiting data: ") + sqlite3_errmsg(this->db) + "\n";
-  Log::logMsg(this->last_err, true);
+  Log::logMsgErr(this->last_err);
 
   return false;
 }
@@ -407,7 +465,7 @@ dbase::bind_to_stored_stmt(std::string stmt_key, missionx::db_types inType, int 
   }
   else
   {
-    Log::logMsgThread("[db bind_stmt] No prepared statement by the name: " + stmt_key + ", was found. Please notify the developer !!!");
+    Log::logMsg("[db bind_stmt] No prepared statement by the name: " + stmt_key + ", was found. Please notify the developer !!!");
   }
 
 
@@ -455,7 +513,7 @@ dbase::bind_and_execute_ins_stmt(const std::string& stmt_key, const std::string&
     const std::string sql         = "insert into " + in_table_name + inst_header + " values " + ins_body;
 
     #ifndef RELEASE
-    // Log::logMsgThread("\nSQL: " + sql + "\n\n");
+    // Log::logMsg("\nSQL: " + sql + "\n\n");
     #endif
     sqlite3_stmt* stmt;
     this->rc = sqlite3_prepare_v2(this->db, sql.c_str(), -1, &stmt, nullptr);
@@ -463,7 +521,7 @@ dbase::bind_and_execute_ins_stmt(const std::string& stmt_key, const std::string&
     {
       #ifndef RELEASE
       this->last_err = std::string("[DB] Error preparing sql: ") + sql + "\n\t" + sqlite3_errmsg(this->db) + "\n";
-      Log::logMsg(this->last_err, true);
+      Log::logMsgErr(this->last_err);
       #endif // !RELEASE
 
       return false;
@@ -537,7 +595,7 @@ dbase::bind_and_execute_ins_stmt(const std::string& stmt_key, const std::string&
         if (!(this->rc == SQLITE_OK))
         {
           this->last_err = std::string("[DB] Error binding col: ") + it->col_name + " with value: " + it->value_s + "\n\t" + sqlite3_errmsg(this->db) + "\n";
-          Log::logMsg(this->last_err, true);
+          Log::logMsgErr(this->last_err);
           return false;
         }
       } // end if stmt pointer is valid
@@ -547,21 +605,12 @@ dbase::bind_and_execute_ins_stmt(const std::string& stmt_key, const std::string&
     if (this->rc == SQLITE_OK && stmt_ptr)
     {
       rc = sqlite3_step(stmt_ptr); // execute the statement
-      //if (!(this->rc == SQLITE_OK))
-      //{
-      //  this->last_err = std::string("[DB] Error Executing stmt: ") + sqlite3_errmsg(this->db) + "\nsql: " + sql;
-      //  Log::logMsg(this->last_err, true);
-      //}
     }
 
     rc = sqlite3_clear_bindings(stmt_ptr); // clear binding
 
     if (sqlite3_reset(stmt_ptr) != SQLITE_OK) // reset stmt pointer
     {
-#ifndef RELEASE
-      // Log::logMsgThread(std::string("ERROR: [db exec error] reset: ") + sqlite3_errmsg(this->db) + "\t (" + debug_value_helper + ")\n");
-#endif // !RELEASE
-
       return false;
     }
 
@@ -600,14 +649,15 @@ dbase::step_and_write_rows_into_map(sqlite3_stmt* inStmt, std::map<int, std::str
 
   while (flagContinueIterateRows && inMaxRowsToFetch)
   {
-    auto rc = this->step(inStmt);
+    const auto rc = this->step(inStmt);
     if (rc == SQLITE_ROW)
     {
       for (const auto &[colNumber, colName] : inColumnMapping)
       {
-        row_data[colName] = std::string(reinterpret_cast<const char*>(sqlite3_column_text(inStmt, colNumber)));
+        // row_data[colName] = std::string(reinterpret_cast<const char*>(sqlite3_column_text(inStmt, colNumber)));
+        row_data[colName] = dbase::get_column_text(inStmt, colNumber); // v26.10.x NULL safe
       }
-      outRows[(int)outRows.size()] = row_data;
+      outRows[static_cast<int>(outRows.size())] = row_data;
       row_data.clear();
     }
     else // end of row iteration
@@ -636,14 +686,14 @@ dbase::clear_and_reset(sqlite3_stmt* inStmt)
   if (sqlite3_clear_bindings(inStmt) != SQLITE_OK)
   {
     this->last_err = std::string("[DB] Error while clearing bindings: ") + sqlite3_errmsg(this->db) + "\n";
-    Log::logMsg(this->last_err, true);
+    Log::logMsgErr(this->last_err);
   }
 
 
   if (sqlite3_reset(inStmt) != SQLITE_OK)
   {
     this->last_err = std::string("[DB] Error while reset statement: ") + sqlite3_errmsg(this->db) + "\n";
-    Log::logMsg(this->last_err, true);
+    Log::logMsgErr(this->last_err);
   }
 
   return true;
@@ -662,16 +712,16 @@ dbase::getIsStatement_withTheName_exists(const std::string& inStmtName)
 
 
 bool
-dbase::attach_database(const std::string inDatabaseLocation, const std::string inName)
+dbase::attach_database(const std::string& inDatabaseLocation, const std::string& inName)
 {
   char* error_msg{};
   if (this->db_is_open_and_ready && !inDatabaseLocation.empty() && !inName.empty())
   {
     std::string query = "ATTACH DATABASE '" + inDatabaseLocation + "' as " + inName;
-    if (sqlite3_exec(db, query.c_str(), 0, 0, &error_msg) != SQLITE_OK)
+    if (sqlite3_exec(db, query.c_str(), nullptr, nullptr, &error_msg) != SQLITE_OK)
     {
       this->last_err = std::string("[DBASE - ERROR] ATTACH Error: ") + sqlite3_errmsg(this->db) + "\n";
-      Log::logMsgThread(this->last_err);
+      Log::logMsg(this->last_err);
       return false;
     }
 
@@ -694,7 +744,7 @@ dbase::detach_database(const std::string inName)
     if (sqlite3_exec(db, query.c_str(), 0, 0, &error_msg) != SQLITE_OK)
     {
       this->last_err = std::string("[DBASE - ERROR] DETACH Error: ") + sqlite3_errmsg(this->db) + "\n";
-      Log::logMsgThread(this->last_err);
+      Log::logMsg(this->last_err);
       return false;
     }
 

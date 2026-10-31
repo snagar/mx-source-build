@@ -295,7 +295,7 @@ GatherStats::exec_gather_thread(strct_thread_state* xxthread_state)
 
   if (!db->getIsStatement_withTheName_exists(INS_SQL))
   {
-    Log::logMsgErr("[stats] Insert statement is not prepared, notify developer.", true);
+    Log::logMsgErr("[stats] Insert statement is not prepared, notify developer.");
     return false;
   }
 

@@ -97,7 +97,7 @@ missionx::Objective::initTaskDependencyInformation()
       mapTasks[taskName].setNodeStringProperty(mxconst::get_ATTRIB_DEPENDS_ON_TASK(), ""); // v3.0.241.1
       vecErrors.emplace_back("Task: " + taskName + ", Has dependency with same name."); // v3.305.3
 
-      Log::logMsg("[AUTOFIX]Found Task dependency with same name as task name: " + mxconst::get_QM() + taskName + mxconst::get_QM() + " clearing dependency. Check and fix mission file.", format_type::attention, false);
+      Log::logMsg("[AUTOFIX]Found Task dependency with same name as task name: " + mxconst::get_QM() + taskName + mxconst::get_QM() + " clearing dependency. Check and fix mission file.", format_type::attention);
     }
 
 
@@ -125,9 +125,9 @@ missionx::Objective::initTaskDependencyInformation()
         mapTasks[taskName].errReason = "Depends on a task which was flagged: undefined, meaning invalid. Parent task Name: " + dependsOnTask + mxconst::get_UNIX_EOL();
         vecErrors.emplace_back(this->errReason); // v3.305.3
 
-        mapTasks[taskName].setNodeProperty<int>(mxconst::get_ATTRIB_TYPE(), (int)missionx::mx_task_type::undefined_task);  // v3.0.241.1
+        mapTasks[taskName].setNodeProperty<int>(mxconst::get_ATTRIB_TYPE(), static_cast<int>(missionx::mx_task_type::undefined_task));  // v3.0.241.1
 
-        Log::logMsg(mapTasks[taskName].errReason, format_type::attention, false);
+        Log::logMsgWarn(mapTasks[taskName].errReason);
       }
       else // found dependent and adding current task name to parent
         this->mapTasks[dependsOnTask].vecDepOnMe.insert(taskName);
@@ -205,7 +205,7 @@ missionx::Objective::parse_node()
         {
           // debug output
           const std::string s = task.to_string();
-          Log::logMsg(s, format_type::none, false);
+          Log::logMsg(s, format_type::none);
         }
         else
         {

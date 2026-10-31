@@ -74,7 +74,7 @@ missionx::Briefer::parse_node()
 
 
   // Print debug info
-  Log::logMsg(this->to_string(), format_type::none, false);
+  Log::logMsg(this->to_string(), format_type::none);
 
   // validate Briefer
   const auto lmbda_validate_briefer = [&]() {
@@ -101,86 +101,86 @@ missionx::Briefer::parse_node()
 
 
 
-void
-missionx::Briefer::positionPlane2(const bool inflag_setupForcePlanePositioning, const bool inflag_setupChangeHeadingEvenIfPlaneIn_20meter_radius, const int inXplaneVersion_i)
-{
-  std::string err;
-  err.clear();
-
-  const std::string ICAO = Utils::readAttrib(this->node, mxconst::get_ATTRIB_STARTING_ICAO(), ""); // v3.0.241.1
-  const int position_pref_i = Utils::readNodeNumericAttrib<int>(this->node, mxconst::get_ATTRIB_POSITION_PREF(), 11); // v3.0.301 B4 if empty than default will be xp11
-
-  // reading mission briefer location information
-  const double lat1          = Utils::readNodeNumericAttrib<double>(this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str()), mxconst::get_ATTRIB_LAT(), 0.0);                   // v3.0.241.1
-  const double lon1          = Utils::readNodeNumericAttrib<double>(this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str()), mxconst::get_ATTRIB_LONG(), 0.0);                  // v3.0.241.1
-  const double elev_ft       = Utils::readNodeNumericAttrib<double>(this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str()), mxconst::get_ATTRIB_ELEV_FT(), 0.0);               // v3.0.241.1
-  const float  heading_psi_f = Utils::readNodeNumericAttrib<float>(this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str()), mxconst::get_ATTRIB_HEADING_PSI(), 0.0f);                // v3.0.241.1
-  const double startingSpeed = Utils::readNodeNumericAttrib<double>(this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str()), mxconst::get_ATTRIB_STARTING_SPEED_MT_SEC(), 0.0); // v3.0.241.1
-#ifdef IBM
-  const bool   force_heading_b = Utils::readBoolAttrib(this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str()), mxconst::get_ATTRIB_FORCE_HEADING_B(), false); // v3.0.301 B4
-#else
-  auto node_location_adjust = this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str());
-  const bool   force_heading_b = Utils::readBoolAttrib(node_location_adjust, mxconst::get_ATTRIB_FORCE_HEADING_B(), false); // v3.0.301 B4
-#endif
-
-
-  if (!ICAO.empty() || (lat1 != 0.0 && lon1 != 0.0)) // recognize the need to adjust location
-  {
-    missionx::Point p1;
-    // Prepare probing object
-     p1.resetData();
-     p1.setLat(lat1);
-     p1.setLon(lon1);
-     p1.setElevationFt(elev_ft); // in feet will be translated automatically to meters too
-     p1.setHeading(XPLMGetDataf(drefConst.dref_heading_psi_f)); // store current plane heading. this is not mission start heading
-     p1.calcSimLocalData();
-
-     const bool flag_is_plane_is_in_20Meter_from_starting_position = (missionx::dataref_manager::getCurrentPlanePointLocation().calcDistanceBetween2Points(p1, missionx::mx_units_of_measure::meter) > mxconst::TWNENTY_METERS_D);
-     const bool shouldWeForceHeading_b                             = inflag_setupChangeHeadingEvenIfPlaneIn_20meter_radius + force_heading_b + flag_is_plane_is_in_20Meter_from_starting_position;
-
-
-    // XPSDK300
-    if (position_pref_i == 11 ) //&& inXplaneVersion_i < missionx::XP12_VERSION_NO)
-    {
-      missionx::Point plane = missionx::dataref_manager::getCurrentPlanePointLocation();
-
-      if (!ICAO.empty())
-        Utils::position_plane_in_ICAO2(ICAO, static_cast<float> (p1.getLat ()), static_cast<float> (p1.getLon ()), static_cast<float> (plane.getLat ()), static_cast<float> (plane.getLon ()));
-
-      if ( lat1 * lon1 * (inflag_setupForcePlanePositioning + flag_is_plane_is_in_20Meter_from_starting_position) != 0) // if Zero then skip <location adjust>
-      {
-        if (p1.getElevationInMeters() == 0.0)
-        {
-          {
-            XPLMProbeResult       probeResult;
-            [[maybe_unused]] auto probedElevInWorldCoordinates_mt = missionx::Point::getTerrainElevInMeter_FromPoint(p1, probeResult); // the function "getTerrainElevInMeter_FromPoint()" already set p1 elevation value, so we don't need to reassign it
-          }
-        }
-
-        XPLMPlaceUserAtLocation(p1.getLat(), p1.getLon(), static_cast<float> (p1.getElevationInMeters ()), heading_psi_f, static_cast<float> (startingSpeed));
-      }
-    }
-    else
-      positionPlane_v10(p1, shouldWeForceHeading_b);
-
-    // reorienting plane if forced by the heading flag
-    if (shouldWeForceHeading_b)
-    {
-      setPlaneHeading(heading_psi_f);
-    }
-
-  }
-
-
-  // check if already in pause mode
-  // if not, then trigger pause command
-  if (!dataref_manager::isSimPause())
-  {
-    Briefer::need_to_pause_xplane = true;
-  }
-
-
-} // positionPlane2
+// void
+// missionx::Briefer::positionPlane2(const bool inflag_setupForcePlanePositioning, const bool inflag_setupChangeHeadingEvenIfPlaneIn_20meter_radius, const int inXplaneVersion_i)
+// {
+//   std::string err;
+//   err.clear();
+//
+//   const std::string ICAO = Utils::readAttrib(this->node, mxconst::get_ATTRIB_STARTING_ICAO(), ""); // v3.0.241.1
+//   const int position_pref_i = Utils::readNodeNumericAttrib<int>(this->node, mxconst::get_ATTRIB_POSITION_PREF(), 11); // v3.0.301 B4 if empty than default will be xp11
+//
+//   // reading mission briefer location information
+//   const double lat1          = Utils::readNodeNumericAttrib<double>(this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str()), mxconst::get_ATTRIB_LAT(), 0.0);                   // v3.0.241.1
+//   const double lon1          = Utils::readNodeNumericAttrib<double>(this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str()), mxconst::get_ATTRIB_LONG(), 0.0);                  // v3.0.241.1
+//   const double elev_ft       = Utils::readNodeNumericAttrib<double>(this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str()), mxconst::get_ATTRIB_ELEV_FT(), 0.0);               // v3.0.241.1
+//   const float  heading_psi_f = Utils::readNodeNumericAttrib<float>(this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str()), mxconst::get_ATTRIB_HEADING_PSI(), 0.0f);                // v3.0.241.1
+//   const double startingSpeed = Utils::readNodeNumericAttrib<double>(this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str()), mxconst::get_ATTRIB_STARTING_SPEED_MT_SEC(), 0.0); // v3.0.241.1
+// #ifdef IBM
+//   const bool   force_heading_b = Utils::readBoolAttrib(this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str()), mxconst::get_ATTRIB_FORCE_HEADING_B(), false); // v3.0.301 B4
+// #else
+//   auto node_location_adjust = this->node.getChildNode(mxconst::get_ELEMENT_LOCATION_ADJUST().c_str());
+//   const bool   force_heading_b = Utils::readBoolAttrib(node_location_adjust, mxconst::get_ATTRIB_FORCE_HEADING_B(), false); // v3.0.301 B4
+// #endif
+//
+//
+//   if (!ICAO.empty() || (lat1 != 0.0 && lon1 != 0.0)) // recognize the need to adjust location
+//   {
+//     missionx::Point p1;
+//     // Prepare probing object
+//      p1.resetData();
+//      p1.setLat(lat1);
+//      p1.setLon(lon1);
+//      p1.setElevationFt(elev_ft); // in feet will be translated automatically to meters too
+//      p1.setHeading(XPLMGetDataf(drefConst.dref_heading_psi_f)); // store current plane heading. this is not mission start heading
+//      p1.calcSimLocalData();
+//
+//      const bool flag_is_plane_is_in_20Meter_from_starting_position = (missionx::dataref_manager::getCurrentPlanePointLocation().calcDistanceBetween2Points(p1, missionx::mx_units_of_measure::meter) > mxconst::TWNENTY_METERS_D);
+//      const bool shouldWeForceHeading_b                             = inflag_setupChangeHeadingEvenIfPlaneIn_20meter_radius + force_heading_b + flag_is_plane_is_in_20Meter_from_starting_position;
+//
+//
+//     // XPSDK300
+//     if (position_pref_i == 11 ) //&& inXplaneVersion_i < missionx::XP12_VERSION_NO)
+//     {
+//       missionx::Point plane = missionx::dataref_manager::getCurrentPlanePointLocation();
+//
+//       if (!ICAO.empty())
+//         Utils::position_plane_in_ICAO2(ICAO, static_cast<float> (p1.getLat ()), static_cast<float> (p1.getLon ()), static_cast<float> (plane.getLat ()), static_cast<float> (plane.getLon ()));
+//
+//       if ( lat1 * lon1 * (inflag_setupForcePlanePositioning + flag_is_plane_is_in_20Meter_from_starting_position) != 0) // if Zero then skip <location adjust>
+//       {
+//         if (p1.getElevationInMeters() == 0.0)
+//         {
+//           {
+//             XPLMProbeResult       probeResult;
+//             [[maybe_unused]] auto probedElevInWorldCoordinates_mt = missionx::Point::getTerrainElevInMeter_FromPoint(p1, probeResult); // the function "getTerrainElevInMeter_FromPoint()" already set p1 elevation value, so we don't need to reassign it
+//           }
+//         }
+//
+//         XPLMPlaceUserAtLocation(p1.getLat(), p1.getLon(), static_cast<float> (p1.getElevationInMeters ()), heading_psi_f, static_cast<float> (startingSpeed));
+//       }
+//     }
+//     else
+//       positionPlane_v10(p1, shouldWeForceHeading_b);
+//
+//     // reorienting plane if forced by the heading flag
+//     if (shouldWeForceHeading_b)
+//     {
+//       setPlaneHeading(heading_psi_f);
+//     }
+//
+//   }
+//
+//
+//   // check if already in pause mode
+//   // if not, then trigger pause command
+//   if (!dataref_manager::isSimPause())
+//   {
+//     Briefer::need_to_pause_xplane = true;
+//   }
+//
+//
+// } // positionPlane2
 
 void
 missionx::Briefer::positionPlane(const bool in_flag_setupForcePlanePositioning, const bool in_flag_setupChangeHeadingEvenIfPlaneIn_20meter_radius)

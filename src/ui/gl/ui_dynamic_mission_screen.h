@@ -30,6 +30,8 @@ private:
 
   const mx_property_type_as_string_code mxcode;
 
+  inline const static std::string popupOverpassWindowName = "overpass filter popup"; // v26.10.1
+
 public:
   ui_dynamic_mission_screen(const int left, const int top, const int right, const int bot, const XPLMWindowDecoration decoration, const XPLMWindowLayer layer
               , const int &in_win_num
@@ -120,16 +122,19 @@ public:
   // -----------------------------------
   // Members
   // -----------------------------------
-  void                add_ui_semi_act_phase_1_pick (); // v26.04.1
-  void                add_ui_semi_act_phase_2_detail (); // v26.04.1
+  void                add_ui_semi_act_phase_1_pick ()const; // v26.04.1
+  void                add_ui_semi_act_phase_2_detail () const; // v26.04.1
 
-  void draw_dynamic_mission_creation_screen_child_1 ();
+  void draw_dynamic_mission_creation_screen_child_1 ()const;
   void draw_dynamic_mission_creation_screen_child_2 ();
 
   void draw_dynamic_mission_creation_screen();
 
-  void draw_dynamic_mission_creation_screen_home ();
+  void draw_dynamic_mission_creation_screen_home ()const;
 
+  // -------- shared ui widgets between screens -------------
+
+  void add_ui_pick_osmweb_or_osmdb_checkbox()const; // v26.10.1
 };
 
 } // missionx

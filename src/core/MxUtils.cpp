@@ -227,7 +227,7 @@ missionx::mxUtils::format (const std::string &inText, std::map<int, std::string>
         else if (std::ranges::all_of (pendingString, ::isdigit))
         {
           int key = std::stoi (pendingString);
-          if (mxUtils::isElementExists (inArgs, key))
+          if (inArgs.contains(key))
           {
             ss << inArgs[key];
           }
@@ -272,6 +272,106 @@ missionx::mxUtils::format (const std::string &inText, std::map<int, std::string>
   }
 
   return ss.str ();
+}
+
+// ----------------------------------------------
+// v26.10.x Replace "?N" bind placeholders in an SQL text with the values in inArgs (key = N). Values are inserted as-is (use sql_quote() for text).
+// Skips text inside '...' strings, "..." identifiers, -- line comments and /* */ comments. A "?N" with no value in the map, and a "?" without a number, are left unchanged.
+// Meant for logging and for copying a query into an SQL tool. Keep using sqlite3_bind_*() to run queries.
+std::string
+missionx::mxUtils::format_sql_binds(const std::string& inSql, const std::map<int, std::string>& inArgs)
+{
+  std::string result;
+  result.reserve(inSql.size() + inSql.size() / 4);
+
+  const size_t len = inSql.size();
+  size_t       i   = 0;
+  while (i < len)
+  {
+    const char c = inSql[i];
+
+    // Quoted text ('...') or quoted identifier ("..."): copy until the closing quote. A doubled quote ('' or "") is an escaped quote.
+    if (c == '\'' || c == '"')
+    {
+      result += c;
+      ++i;
+      while (i < len)
+      {
+        result += inSql[i];
+        if (inSql[i] == c)
+        {
+          if (i + 1 < len && inSql[i + 1] == c) // escaped quote
+          {
+            result += inSql[++i];
+          }
+          else
+          {
+            ++i;
+            break;
+          }
+        }
+        ++i;
+      }
+      continue;
+    }
+
+    // Line comment: copy until the end of the line
+    if (c == '-' && i + 1 < len && inSql[i + 1] == '-')
+    {
+      const size_t end  = inSql.find('\n', i);
+      const size_t stop = (end == std::string::npos) ? len : end;
+      result.append(inSql, i, stop - i);
+      i = stop;
+      continue;
+    }
+
+    // Block comment: copy until "*/"
+    if (c == '/' && i + 1 < len && inSql[i + 1] == '*')
+    {
+      const size_t end  = inSql.find("*/", i + 2);
+      const size_t stop = (end == std::string::npos) ? len : end + 2;
+      result.append(inSql, i, stop - i);
+      i = stop;
+      continue;
+    }
+
+    // "?N": read all the digits, so "?12" is 12 and not "?1" followed by "2"
+    if (c == '?' && i + 1 < len && std::isdigit(static_cast<unsigned char>(inSql[i + 1])))
+    {
+      size_t j = i + 1;
+      while (j < len && std::isdigit(static_cast<unsigned char>(inSql[j])) && j - i <= 9) // up to 9 digits, avoids int overflow
+        ++j;
+
+      const int key = std::stoi(inSql.substr(i + 1, j - i - 1));
+      if (const auto it = inArgs.find(key); it != inArgs.end())
+        result += it->second;
+      else
+        result.append(inSql, i, j - i); // no value: keep "?N"
+
+      i = j;
+      continue;
+    }
+
+    result += c;
+    ++i;
+  }
+
+  return result;
+}
+
+// ----------------------------------------------
+// v26.10.x Quote a text value for SQL: O'Hare -> 'O''Hare'
+std::string missionx::mxUtils::sql_quote(const std::string& inText)
+{
+  std::string quoted = "'";
+  for (const char c : inText)
+  {
+    if (c == '\'')
+      quoted += '\'';
+    quoted += c;
+  }
+  quoted += '\'';
+  return quoted;
 }
 
 // ----------------------------------------------
@@ -1294,6 +1394,68 @@ std::string missionx::mxUtils::get_month_and_day(int day_of_year)
   return ""; // Unreachable
 }
 
+// ----------------------------------------------
+// ----------------------------------------------
+// v26.10.x Decode the "ways.geom" blob of the OSM v2 database.
+// Format: per point, the change from the previous point (first point is relative to 0,0) as lat then lon,
+// in integer degrees * 1e7, each one a zigzag LEB128 varint. The number of points is not in the blob (ways.nodes).
+bool
+missionx::mxUtils::decode_osm_geom(const void* in_blob, int in_size, int in_nodes, std::vector<missionx::mxVec2d>& outPoints)
+{
+  outPoints.clear();
+  if (in_blob == nullptr || in_size <= 0 || in_nodes <= 0)
+    return false;
+
+  const auto*      ptr         = static_cast<const uint8_t*>(in_blob);
+  const uint8_t*   end         = ptr + in_size;
+  constexpr double COORD_SCALE = 1e-7;
+
+  const auto read_zigzag_varint = [&](int64_t& outValue) -> bool {
+    uint64_t result = 0;
+    int      shift  = 0;
+    while (ptr < end && shift <= 63)
+    {
+      const uint8_t byte = *ptr++;
+      result |= static_cast<uint64_t>(byte & 0x7F) << shift;
+      if ((byte & 0x80) == 0)
+      {
+        outValue = static_cast<int64_t>(result >> 1) ^ -static_cast<int64_t>(result & 1); // zigzag decode
+        return true;
+      }
+      shift += 7;
+    }
+    return false; // truncated or malformed
+  };
+
+  int64_t lat_i = 0;
+  int64_t lon_i = 0;
+  outPoints.reserve(static_cast<size_t>(in_nodes));
+  for (int i = 0; i < in_nodes; ++i)
+  {
+    int64_t dlat = 0;
+    int64_t dlon = 0;
+    if (!read_zigzag_varint(dlat) || !read_zigzag_varint(dlon))
+    {
+      outPoints.clear();
+      return false;
+    }
+
+    lat_i += dlat;
+    lon_i += dlon;
+
+    const double lat = static_cast<double>(lat_i) * COORD_SCALE;
+    const double lon = static_cast<double>(lon_i) * COORD_SCALE;
+    if (lat < -90.0 || lat > 90.0 || lon < -180.0 || lon > 180.0)
+    {
+      outPoints.clear();
+      return false;
+    }
+
+    outPoints.emplace_back(lat, lon);
+  }
+
+  return true;
+}
 
 // ----------------------------------------------
 // ----------------------------------------------

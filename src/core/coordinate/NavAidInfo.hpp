@@ -25,7 +25,7 @@ public:
   bool flag_is_skewed; // v3.0.241.8 we use this flag when we have skewdPointNode that is different than our "node" or "Point p"
   bool flag_is_brieferOrStartLocation; // v3.303.10
   bool flag_is_same_as_start_location; // v29.09.2 used when "location type" or "template" are equal "start".
-  bool flag_fetched_from_db; // v24.03.1
+  bool flag_fetched_from_db{false}; // v24.03.1
   bool flag_fetched_from_webosm{ false };
   bool flag_navDataFetchedFromXPLMGetNavAidInfo; // v24.03.1
   bool flag_picked_random_lat_long; // v3.0.219.14 used when we want to flag special case of random coordinate. Can help with deciding if a template is medevac or not, and if you need heli or not.
@@ -33,6 +33,7 @@ public:
   XPLMNavRef  navRef;                      // XPSDK type
   XPLMNavType navType{ xplm_Nav_Unknown }; // XPSDK type
   int         freq;
+  int64_t     osm_id;  // v26.10.3 holds the "way id" from osm or any "id" value needed, like node id or ref id.
   char        ID[64];
   char        name[256];
   // char        inRegion = 0;
@@ -151,6 +152,7 @@ public:
      navRef  = in_na.navRef;
      navType = in_na.navType;
      freq    = in_na.freq;
+     osm_id  = in_na.osm_id;
 
 
      degRelativeToSearchPoint = in_na.degRelativeToSearchPoint;
@@ -248,6 +250,7 @@ public:
     navType = xplm_Nav_Unknown;
     lat = lon = height_mt = heading = 0.0f;
     freq                            = 0; // not set
+    osm_id                          = -1; // not set
     ID[0]                           = '\0';
     name[0]                         = '\0';
     // inRegion                        = 0;
@@ -437,18 +440,21 @@ public:
   bool nav_aid_has_unique_name()
   {
     const bool has_coordinate_in_name = mxUtils::find_text(getNavAidName(), "coordinate", false) != std::string::npos;
+    const bool has_osm_in_name        = mxUtils::find_text(getNavAidName(), "osm", false) != std::string::npos;
     const bool has_leg_string_in_name = mxUtils::find_text(getNavAidName(), mxconst::get_ELEMENT_LEG(), false) != std::string::npos;
 
-    return !(this->getNavAidName().empty() + has_coordinate_in_name + has_leg_string_in_name); // Logical OR. Unique name means we do not have "coordinates" not "leg" in the navaid name.
+    return !(this->getNavAidName().empty() + has_coordinate_in_name + has_leg_string_in_name + has_osm_in_name); // Logical OR. Unique name means we do not have "coordinates" not "leg" in the navaid name.
   }
 
 
   std::string get_loc_desc_for_llm()
   {
+    static constexpr bool NOT_CASE_SENSITIVE = false;
+
     std::string llm_loc_desc;
     if (!this->getID().empty())
       llm_loc_desc = fmt::format("{} ", this->getID());
-    if (!this->getName().empty())
+    if (!this->getName().empty() && ! mxUtils::find_text(this->getName(), "osm", NOT_CASE_SENSITIVE) )
       llm_loc_desc += fmt::format("({}) ", this->getName());
     
     if (this->is_lat_lon_valid())
@@ -465,7 +471,7 @@ public:
      if ( (getID().empty() && getName().empty() ) || !flag_navaid_has_unique_name)
      {
        if (this->is_lat_lon_valid ())
-         this->loc_desc = fmt::format("{}: [{:.4f}, {:.4f}]", ((this->flag_fetched_from_webosm) ? "osmweb": "coordinates"), this->lat, this->lon);
+         this->loc_desc = fmt::format("{}: [{:.4f}, {:.4f}]", ((this->flag_fetched_from_webosm) ? "osmweb": (this->flag_fetched_from_db)? "osmdb" : "coordinates"), this->lat, this->lon);
        else
          this->loc_desc = "Navaid might be invalid.";
          // this->loc_desc = "Check the GPS for navigation guidance.";
@@ -492,11 +498,9 @@ public:
     if (this->getID ().empty() && (this->getName ().empty() || mxconst::get_COORDINATES_IN_THE_GPS_S() == name || !flag_navaid_has_unique_name))
     {
       if (this->loc_desc.empty() || !flag_navaid_has_unique_name) // v3.0.241.10 b3 extended to have better description
-        loc_desc_short = fmt::format("{}: [{:.4f}, {:.4f}]", ((this->flag_fetched_from_webosm) ? "osmweb": "coordinates"), this->lat, this->lon);
-        // loc_desc_short = ((this->flag_nav_from_webosm) ? "osmweb: (" : "XY: (") + Utils::formatNumber<float>(this->lat, 4) + ", " + Utils::formatNumber<float>(this->lon, 4) + ")"; // v3.0.253.6 added flag_nav_from_webosm check to better display origin of data
+        loc_desc_short = fmt::format("{}: [{:.4f}, {:.4f}]", ((this->flag_fetched_from_webosm) ? "osmweb": (this->flag_fetched_from_db)? "osmdb" : "coordinates"), this->lat, this->lon);
       else
         loc_desc_short = fmt::format("{} ({:.4f}, {:.4f})", this->loc_desc, this->lat, this->lon);
-        // loc_desc_short += " (" + Utils::formatNumber<float>(this->lat, 4) + ", " + Utils::formatNumber<float>(this->lon, 4) + ")";
 
 
     }
@@ -848,7 +852,7 @@ parse_expected_location (const IXMLNode &in_xml_leg_from_template, const std::st
         ; size_i == 1) // NO backwards compatibility.
       {
         std::string attribName = Utils::stringToLower (vecSplit.at (0));
-        Log::logMsgErr (fmt::format ("[{}] Found location Property without explicit formating: {}={}. Skipping this directive.", __func__, attribName, "{missing value}" ) , true);
+        Log::logMsgErr (fmt::format ("[{}] Found location Property without explicit formating: {}={}. Skipping this directive.", __func__, attribName, "{missing value}" ) );
       }
       else if (size_i > 1)
       {

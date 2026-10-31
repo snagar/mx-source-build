@@ -9,12 +9,12 @@
 namespace missionx {
 
 
- ui_dynamic_mission_screen::~ui_dynamic_mission_screen(){}
+ ui_dynamic_mission_screen::~ui_dynamic_mission_screen()= default;
 
 
 // -------------------------------------
 
-void ui_dynamic_mission_screen::add_ui_semi_act_phase_1_pick()
+void ui_dynamic_mission_screen::add_ui_semi_act_phase_1_pick() const
 {
   constexpr static auto TABLE_COLUMNS        = 4;
   static constexpr auto VEC2_BTN_SIZE        = ImVec2 (160.0f, 120.0f);
@@ -74,7 +74,7 @@ void ui_dynamic_mission_screen::add_ui_semi_act_phase_1_pick()
 
 // -------------------------------------
 
-void ui_dynamic_mission_screen::add_ui_semi_act_phase_2_detail()
+void ui_dynamic_mission_screen::add_ui_semi_act_phase_2_detail() const
 {
   static constexpr auto VEC2_IMAGE_BTN_SIZE = ImVec2(160.0f, 120.0f);
   static constexpr auto VEC2_MOD_CHILD      = ImVec2(0.0f, 150.0f);
@@ -83,12 +83,13 @@ void ui_dynamic_mission_screen::add_ui_semi_act_phase_2_detail()
   const auto win_width_f = mxUiGetContentWidth();
 
   // Initialize basic flags
-  const bool b_plane_is_helos                = strct_user_create_layer.user_semi_act_picked.activity < missionx::enums::mx_semi_activities_enum::act_props;
-  const bool b_plane_is_airline_type         = strct_user_create_layer.user_semi_act_picked.activity > missionx::enums::mx_semi_activities_enum::act_jets;
-  const bool bPickedMedevacMission           = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_accident || strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me);
-  const bool bPickedOilRigMission            = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_cargo_oilrig);
-  const bool bPickedGAMission                = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_props || strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_props_float);
-  const bool bPickedMedevacSurpriseMeMission = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me);
+  const bool b_plane_is_helos                         = strct_user_create_layer.user_semi_act_picked.activity < missionx::enums::mx_semi_activities_enum::act_props;
+  const bool b_plane_is_airline_type                  = strct_user_create_layer.user_semi_act_picked.activity > missionx::enums::mx_semi_activities_enum::act_jets;
+  const bool b_picked_oil_rig_mission                 = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_cargo_oilrig);
+  const bool b_picked_ga_mission                      = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_props || strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_props_float);
+  const bool b_picked_helos_accident_medevac_mission  = strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_accident;
+  const bool b_picked_medevac_surprise_me_mission     = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me);
+  const bool b_picked_helos_any_medevac_mission       = (strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_accident || strct_user_create_layer.user_semi_act_picked.activity == missionx::enums::mx_semi_activities_enum::act_helos_medevac_surprise_me);
 
   ImGui::BeginGroup();
   {
@@ -107,7 +108,7 @@ void ui_dynamic_mission_screen::add_ui_semi_act_phase_2_detail()
     ImGui::TextColored(missionx::color::color_vec4_yellow, "%s", "Description");
     mxUiReleaseLastFont();
 
-    const auto activity_does_not_have_description = (!bPickedOilRigMission && !bPickedGAMission && !bPickedMedevacSurpriseMeMission);
+    const auto activity_does_not_have_description = (!b_picked_oil_rig_mission && !b_picked_ga_mission && !b_picked_medevac_surprise_me_mission);
     constexpr auto table_flags                    = ImGuiTableFlags_SizingStretchProp;
 
     ImGui::BeginTable("mission_description#table_phase2_detail", 2, table_flags);
@@ -126,7 +127,7 @@ void ui_dynamic_mission_screen::add_ui_semi_act_phase_2_detail()
         mxUiReleaseLastFont();
 
         // Display special message for SurpriseMe missions
-        if (bPickedMedevacSurpriseMeMission)
+        if (b_picked_medevac_surprise_me_mission)
         {
           ImGui::Spacing();
           this->add_ui_medevac_surprise_me_warning();
@@ -154,7 +155,7 @@ void ui_dynamic_mission_screen::add_ui_semi_act_phase_2_detail()
       // Show AI options
       // ------------------------
       auto  llm_enum_options = enums::llm_ui_options_enum::llm_background_story;
-      if (!bPickedOilRigMission && !bPickedMedevacMission)
+      if (!b_picked_oil_rig_mission && !b_picked_helos_any_medevac_mission)
       {
         if (!b_plane_is_airline_type)
           llm_enum_options = llm_enum_options | enums::llm_ui_options_enum::llm_suggest_payloads;
@@ -175,14 +176,20 @@ void ui_dynamic_mission_screen::add_ui_semi_act_phase_2_detail()
       ImGui::Spacing();
 
       // Oil rig search area
-      if (bPickedOilRigMission)
+      if (b_picked_oil_rig_mission)
       {
         ImGui::Spacing();
         add_ui_oilrig_search_area_buttons();
         ImGui::Spacing();
         ImGui::Separator();
       }
-      else if (!bPickedOilRigMission && !bPickedMedevacSurpriseMeMission)
+      else if (b_picked_helos_accident_medevac_mission)
+      { // v26.10.1
+        this->add_ui_pick_osmweb_or_osmdb_checkbox();
+        ImGui::Spacing ();
+
+      }
+      else if (!b_picked_oil_rig_mission && !b_picked_medevac_surprise_me_mission)
       {
         ImGui::Checkbox ("Start from plane position", &missionx::strct_cross_layer_properties.flag_start_from_plane_position);
 
@@ -201,7 +208,7 @@ void ui_dynamic_mission_screen::add_ui_semi_act_phase_2_detail()
       missionx::strct_user_create_layer.mapSemiOptionsHeaders[missionx::strct_user_create_layer.headerIndex].setState((ImGui::CollapsingHeader(missionx::strct_user_create_layer.mapSemiOptionsHeaders[missionx::strct_user_create_layer.headerIndex].title.c_str())));
       if (missionx::strct_user_create_layer.mapSemiOptionsHeaders[missionx::strct_user_create_layer.headerIndex].bState)
       {
-        if (!bPickedOilRigMission && !bPickedMedevacSurpriseMeMission)
+        if (!b_picked_oil_rig_mission && !b_picked_medevac_surprise_me_mission)
         {
           // ------------------------
           // -- Restrict max distance
@@ -235,7 +242,7 @@ void ui_dynamic_mission_screen::add_ui_semi_act_phase_2_detail()
       ImGui::PushStyleColor (ImGuiCol_HeaderHovered, missionx::color::color_vec4_azure);
       ImGui::PushStyleColor (ImGuiCol_Header, missionx::color::color_vec4_coral);
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_navy); // Text
-      add_other_settings_header(b_plane_is_helos, bPickedMedevacMission, bPickedOilRigMission);
+      add_other_settings_header(b_plane_is_helos, b_picked_helos_any_medevac_mission, b_picked_oil_rig_mission);
       ImGui::PopStyleColor(3);
 
     }
@@ -409,9 +416,10 @@ void ui_dynamic_mission_screen::add_ui_semi_act_phase_2_detail()
 
 // -------------------------------------
 
-void ui_dynamic_mission_screen::draw_dynamic_mission_creation_screen_child_1()
+void ui_dynamic_mission_screen::draw_dynamic_mission_creation_screen_child_1() const
 {
   const auto win_size_vec2 = mxUiGetWindowContentWxH ();
+  constexpr static float arr_child_size_ratio[2] = {0.77f, 0.7f};
 
   if (missionx::strct_user_create_layer.layer_state == missionx::mx_layer_state_enum::success_can_draw)
   {
@@ -420,7 +428,7 @@ void ui_dynamic_mission_screen::draw_dynamic_mission_creation_screen_child_1()
 
     mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
 
-    ImGui::BeginChild ("draw_user_create_mission_layer_01", ImVec2 (0.0f, win_size_vec2.y * 0.77f), ImGuiChildFlags_Borders);
+    ImGui::BeginChild ("draw_user_create_mission_layer_01", ImVec2 (0.0f, win_size_vec2.y * (missionx::data_manager::get_is_random_engine_running()? arr_child_size_ratio[1]:arr_child_size_ratio[0])), ImGuiChildFlags_Borders);
     {
       ///////// Image ////////
       ImGui::BeginGroup ();
@@ -639,9 +647,6 @@ void ui_dynamic_mission_screen::draw_dynamic_mission_creation_screen_child_1()
         //------------------------------------------------
         //           Row 3 - sliders
         //------------------------------------------------
-        const static std::string popupOverpassWindowName = "overpass filter popup";
-
-
         if (bPickedOilRigMission)
         {
           add_ui_oilrig_search_area_buttons(); // v26.04.1
@@ -686,39 +691,11 @@ void ui_dynamic_mission_screen::draw_dynamic_mission_creation_screen_child_1()
 
             ImGui::NewLine ();
 
-            strct_user_create_layer.flag_use_web_osm = true;
-            ImGui::PushItemFlag (ImGuiItemFlags_Disabled, true);
-            ImGui::PushStyleVar (ImGuiStyleVar_Alpha, ImGui::GetStyle ().Alpha * 0.5f);
-            ImGui::Checkbox ("Use web OSM", &strct_user_create_layer.flag_use_web_osm);
-            ImGui::PopItemFlag ();
-            ImGui::PopStyleVar ();
-
-            this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Prefer search from the web over local OSM database search.");
-            if (strct_user_create_layer.flag_use_web_osm)
-            {
-              if (missionx::data_manager::get_is_random_engine_running()) // v3.0.255.4 fix bug where user exit the popup window and it crashes x-plane during mission creation in the background
-              {
-                ImGui::PushItemFlag (ImGuiItemFlags_Disabled, true);
-                ImGui::PushStyleVar (ImGuiStyleVar_Alpha, ImGui::GetStyle ().Alpha * 0.5f);
-              }
-
-              ImGui::SameLine (0.0f, 10.0f);
-              if (ImGui::Button ("filter ..."))
-              {
-                ImGui::OpenPopup (popupOverpassWindowName.c_str ());
-              }
-              this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Advance options to filter the data fetched");
-
-              if (missionx::data_manager::get_is_random_engine_running()) // v3.0.255.4 fix bug where user exit the popup window and it crashes x-plane during mission creation in the background
-              {
-                ImGui::PopItemFlag ();
-                ImGui::PopStyleVar ();
-              }
-            }
+            add_ui_pick_osmweb_or_osmdb_checkbox();
 
             ImGui::SameLine (0.0f, 150.0f);
 
-            ImGui::Checkbox ("Use local OSM db file", &strct_user_create_layer.flag_use_osm);
+            ImGui::Checkbox ("Use local OSM db file", &strct_user_create_layer.flag_use_osmdb);
             this->mx_add_tooltip (missionx::color::color_vec4_yellow, "If OSM database is available, then try to get data from it before the Web OSM.");
 
             //// OSM Web filter popup
@@ -1013,9 +990,12 @@ void ui_dynamic_mission_screen::draw_dynamic_mission_creation_screen_child_2()
 {
    // loop over all listMainBtn and display in buttons
    static constexpr float win_padding = 30.0f;
+   constexpr static float arr_child_size_ratio[2] = {0.83f, 0.80f}; // [0] = Random engine isn't running. [1] Random engine is running.
+   const auto             win_size_vec2 = mxUiGetWindowContentWxH ();
 
    ///////// Main Layer Buttons
-   ImGui::BeginChild ("draw_semi_auto_screen", ImVec2 (0.0f, ImGui::GetWindowHeight () - missionx::fBottomToolbarPadding_f - missionx::fTopToolbarPadding_f - win_padding));
+   // ImGui::BeginChild ("draw_semi_auto_screen", ImVec2 (0.0f, ImGui::GetWindowHeight () - missionx::fBottomToolbarPadding_f - missionx::fTopToolbarPadding_f - win_padding));
+   ImGui::BeginChild ("draw_semi_auto_screen", ImVec2 (0.0f, win_size_vec2.y * (missionx::data_manager::get_is_random_engine_running()? arr_child_size_ratio[1]:arr_child_size_ratio[0])));
    {
      switch (missionx::strct_user_create_layer.act_phase_enum)
      {
@@ -1061,7 +1041,7 @@ void ui_dynamic_mission_screen::draw_dynamic_mission_creation_screen()
 
 
 // -------------------------------------
-void ui_dynamic_mission_screen::draw_dynamic_mission_creation_screen_home()
+void ui_dynamic_mission_screen::draw_dynamic_mission_creation_screen_home() const
 {
   constexpr static auto btn_size_vec2 = ImVec2 (190.0f, 190.0f);
   const auto                  win_size_vec2 = mxUiGetWindowContentWxH ();
@@ -1114,6 +1094,33 @@ void ui_dynamic_mission_screen::draw_dynamic_mission_creation_screen_home()
     ImGui::EndTable ();
   } // end table
   mxUiReleaseLastFont ();
+}
+
+// -------------------------------------
+
+void ui_dynamic_mission_screen::add_ui_pick_osmweb_or_osmdb_checkbox() const
+{
+   strct_user_create_layer.flag_use_web_osm = (strct_user_create_layer.flag_use_osmdb)? strct_user_create_layer.flag_use_web_osm : true;
+   // start disable logic
+   const auto b_disable_osmweb = mxStartUiDisableState( !strct_user_create_layer.flag_use_osmdb );
+   ImGui::Checkbox ("Use web OSM", &strct_user_create_layer.flag_use_web_osm);
+   mxEndUiDisableState(b_disable_osmweb); // end disable logic
+
+   this->mx_add_tooltip (missionx::color::color_vec4_yellow, "There are benefits to using web-based OSM searches instead of searching a local OSM database.\nUse this option when the Overpass API is responding reliably.");
+   const auto b_disable_because_random_engine_is_running = mxStartUiDisableState( missionx::data_manager::get_is_random_engine_running() );
+   ImGui::SameLine (0.0f, 10.0f);
+   if (ImGui::Button ("filter ..."))
+   {
+     ImGui::OpenPopup (popupOverpassWindowName.c_str ());
+   }
+   this->mx_add_tooltip (missionx::color::color_vec4_yellow, "Advance options to filter the data fetched");
+   mxEndUiDisableState(b_disable_because_random_engine_is_running);
+
+   ImGui::SameLine (0.0f, 150.0f);
+
+   ImGui::Checkbox ("Use local OSM db file", &strct_user_create_layer.flag_use_osmdb);
+   this->mx_add_tooltip (missionx::color::color_vec4_yellow, "If OSM database is available, then try to get data from it before the Web OSM.");
+
 }
 
 // -------------------------------------

@@ -16,6 +16,7 @@ namespace fs = std::filesystem;
 // v3.303.14 Added explicitly since we removed mxconst::QMM from "read_mission_file" class
 #include "core/QueueMessageManager.h"
 #include "io/ListDir.h"
+// #include "io/writeLogThread.h"
 
 #include <fmt/chrono.h>
 
@@ -428,7 +429,7 @@ missionx::Mission::Mission()
 
   // initialize Mission-X Log file
   const bool bCycleLogFiles = Utils::getNodeText_type_1_5<bool>(system_actions::pluginSetupOptions.node, mxconst::get_OPT_CYCLE_LOG_FILES(), true); // v25.03.1
-  Log::set_logFile( Utils::getPluginDirectoryWithSep(missionx::PLUGIN_DIR_NAME) + "missionx.log", bCycleLogFiles ); // v24.12.2
+  Log::set_log_file( Utils::getPluginDirectoryWithSep(missionx::PLUGIN_DIR_NAME) + "missionx.log", bCycleLogFiles ); // v24.12.2
 
   // v3.0.0
   Log::log_xplm_debug_string(header_s);  // v3.305.2 will write to both Log and missionx log files.
@@ -1490,20 +1491,7 @@ missionx::Mission::flc()
 //  missionx::TimerFunc timerFunc(std::string(__FILE__), std::string(__func__), false);
 //#endif // TIMER_FUNC
 
-  int         countMsg = 0;
-  std::string msg;
   data_manager::smPropSeedValues.clear();
-
-  //// v3.0.221.4 flush 50 messages each mission.flc() iteration
-  while (!missionx::writeLogThread::qLogMessages_mainThread.empty() && (25 > countMsg))
-  {
-    msg = missionx::writeLogThread::qLogMessages_mainThread.front();
-    XPLMDebugString(msg.c_str());
-    missionx::writeLogThread::qLogMessages_mainThread.pop();
-
-    ++countMsg;
-  }
-
   missionx::Log::flc();
 
 
@@ -4290,7 +4278,7 @@ missionx::Mission::flcPRE()
 
 
         #ifndef RELEASE
-        missionx::Log::logMsg(fmt::format("[{}] >> Binding Textures type: {} <<\n", __func__,  enums::to_string (handling_textures_of_type) ) );
+        missionx::Log::logMsg(fmt::format("[{}] >> Binding Textures type: {} <<", __func__,  enums::to_string (handling_textures_of_type) ) );
         #endif
 
         if (texture_map_ptr)
@@ -4303,7 +4291,7 @@ missionx::Mission::flcPRE()
               continue;
 
             #ifndef RELEASE
-            missionx::Log::log_xplm_debug_string (fmt::format("[{}] >> Binding Texture: {}.\n", __func__,  textureFile.getAbsoluteFileLocation() ) );
+            missionx::Log::log_xplm_debug_string (fmt::format("[{}] >> Binding Texture: {}.", __func__,  textureFile.getAbsoluteFileLocation() ) );
             #endif
 
             // v26.09.3 Bind the textures
@@ -4313,11 +4301,6 @@ missionx::Mission::flcPRE()
               Log::log_xplm_debug_string(fmt::format("[{}] Texture: {} failed to bind.\n", __func__, textureFile.getAbsoluteFileLocation()) );
             }
 
-            // TODO: Future implementation - postpone binding of next texture file, for next "flight loop"
-            // // we will try to load the textures one by one in each loop and not all at the same time
-            // data_manager::postFlcActions.push_back(mx_flc_pre_command::bind_texture);
-            // break; // force exit loop
-            //
           } // end loop over texture file container
 
           // Cleanup and reset state of static variables
@@ -4338,7 +4321,7 @@ missionx::Mission::flcPRE()
         } // end if map_container_ptr is valid
 
         #ifndef RELEASE
-        missionx::Log::log_xplm_debug_string(fmt::format("[{}] >> Finished Binding Textures !!! <<\n", __func__) );
+        missionx::Log::log_xplm_debug_string(fmt::format("[{}] >> Finished Binding Textures !!! <<", __func__) );
         #endif
 
       } // end bind textures
@@ -5671,22 +5654,7 @@ missionx::Mission::flcPRE()
       break;
       case missionx::mx_flc_pre_command::inv_post_async_inv_image_binding:
       {      
-       // ORIGINAL CODE
-       // for (auto& [file, textureFile] : missionx::data_manager::xp_mapInvImages)
-       // {
-       //   if (file.empty() || textureFile.getWidth() == 0 || textureFile.getHeight() == 0 || textureFile.sImageData.pData == nullptr || textureFile.texture_hash_simple == 0) // v3.0.303.7 hopefully will solve a bug if image file was not found
-       //     continue;
-       //
-       //   // v26.09.3 Bind the textures
-       //   if ( BitmapReader::bind_texture(textureFile) == 0)
-       //     Log::logMsg(fmt::format("[{}] Texture: {} failed to bind.", __func__, textureFile.getAbsoluteFileLocation()) );
-       //
-       //
-       //   // we will try to load the textures one by one in each loop and not all at the same time
-       //    data_manager::postFlcActions.push_back(mx_flc_pre_command::inv_post_async_inv_image_binding);
-       //    break; // force exit loop
-       // } // end loop over item files
-       // readd 2 att a time
+       // read 3 textute images at a time
         int loop_counter = 0;
         for (auto& [file, textureFile] : missionx::data_manager::xp_mapInvImages)
         {
@@ -6157,9 +6125,9 @@ missionx::Mission::flc_check_success()
         else
         {
           // v3.0.219.9 adding another abort reason. If next_leg name is equal to currentGoalName
-          if (!(Utils::isElementExists(missionx::data_manager::mapFlightLegs, nextFlightLeg)) || (data_manager::currentLegName.compare(nextFlightLeg) == 0))
+          if (!(Utils::isElementExists(missionx::data_manager::mapFlightLegs, nextFlightLeg)) || (data_manager::currentLegName == nextFlightLeg))
           {
-            Log::logMsgErr("There is a problem with Flight Leg: " + mxconst::get_QM() + nextFlightLeg + mxconst::get_QM() + ". Check if it exists or if it repeat itself. Check your mission data file and notify developer if need. Aborting mission.", false);
+            Log::logMsgErr("There is a problem with Flight Leg: " + mxconst::get_QM() + nextFlightLeg + mxconst::get_QM() + ". Check if it exists or if it repeat itself. Check your mission data file and notify developer if need. Aborting mission.");
             data_manager::missionState = missionx::mx_mission_state_enum::mission_aborted;
 
 
@@ -6415,7 +6383,6 @@ missionx::Mission::stop_plugin()
   this->optAptDat.stop_plugin(); // v3.0.219.9
   missionx::RandomEngine::stop_plugin();    // v3.0.219.12
   missionx::QueueMessageManager::stopAllPoolChannels(); // v24.03.2
-  missionx::writeLogThread::stop_plugin(); // v3.305.2
 
   // will clear mission textures, if any is available.
   data_manager::stop_plugin();

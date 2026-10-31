@@ -155,7 +155,7 @@ missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(strct_thread_state* i
     infs.open(customIniFile.c_str(), std::ios::in); // can we read the file
     if (!infs.is_open())
     {
-      Log::logAttention((std::string("[parse Custom ini] Fail to open file: ") + customIniFile + "\n"), true);
+      Log::logAttention((std::string("[parse Custom ini] Fail to open file: ") + customIniFile + "\n"));
       return false;
     }
 
@@ -195,7 +195,7 @@ missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(strct_thread_state* i
         #endif
 
         #ifndef RELEASE
-        Log::logAttention(std::string("parsing: ") + relative_apt_dat_path, true);
+        Log::logAttention(std::string("parsing: ") + relative_apt_dat_path);
         const auto start = std::chrono::steady_clock::now();
         #endif
 
@@ -209,7 +209,7 @@ missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(strct_thread_state* i
         }
         else
         {
-          Log::logMsgThread("\t[File Not Found] \"apt.dat\" does not exist in [" + scenery_pack + "], skipping... !!!");
+          Log::logMsg("\t[File Not Found] \"apt.dat\" does not exist in [" + scenery_pack + "], skipping... !!!");
         }
 
         #ifndef RELEASE
@@ -217,7 +217,7 @@ missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(strct_thread_state* i
         auto diff = end - start;
         duration  = std::chrono::duration<double, std::milli>(diff).count();
         
-        Log::logAttention("Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec), for: " + relative_apt_dat_path, true);
+        Log::logAttention("Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec), for: " + relative_apt_dat_path);
         #endif // !RELEASE
       }
 
@@ -231,7 +231,7 @@ missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(strct_thread_state* i
     auto endCacheLoad = std::chrono::steady_clock::now();
     auto diff_cache   = endCacheLoad - startThreadClock;
     duration          = std::chrono::duration<double, std::milli>(diff_cache).count();
-    Log::logAttention("*** Finish Parsing APT.DAT files. Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec)  ****", true);
+    Log::logAttention("*** Finish Parsing APT.DAT files. Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec)  ****");
 
 
 
@@ -241,7 +241,7 @@ missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(strct_thread_state* i
 
     if (OptimizeAptDat::db_airports_cache_ptr != nullptr && !(inThreadState->flagAbortThread)) // v3.303.14 deprecated write_to_db_b - always true, always write to DB
     {
-      Log::logMsgThread(">>> Finished Database load <<<\n");
+      Log::logMsg(">>> Finished Database load <<<\n");
       upload_navdata_to_inMemory_db(inThreadState, *OptimizeAptDat::db_airports_cache_ptr);
 
 
@@ -294,7 +294,7 @@ missionx::OptimizeAptDat::read_and_parse_all_apt_dat_files(strct_thread_state* i
 
           if (OptimizeAptDat::db_airports_cache_ptr->detach_database(attachName))
           {
-            Log::logMsgThread("[opt copy target] Detached database: " + attachName);
+            Log::logMsg("[opt copy target] Detached database: " + attachName);
           }
 
 
@@ -380,7 +380,7 @@ where  xp_ap_metadata.icao not in (select t1.icao
       duration            = std::chrono::duration<double, std::milli>(diff).count();
 
       missionx::data_manager::sqlite_test_db_validity (missionx::data_manager::db_xp_airports, true); // v25.09.1
-      Log::logAttention("*** Finish Parsing and Loading APT.DAT + ILS data into the database. Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec)  ****", true);
+      Log::logAttention("*** Finish Parsing and Loading APT.DAT + ILS data into the database. Duration: " + Utils::formatNumber<double>(duration, 3) + "ms (" + Utils::formatNumber<double>((duration / 1000), 3) + "sec)  ****");
 
 
       // v26.04.4 Add scenery_pack.ini hash to the preference file
@@ -404,7 +404,7 @@ where  xp_ap_metadata.icao not in (select t1.icao
   else
   {
     // failed to find the custom scenery ini folder
-    Log::logAttention("[Parse Custom ini] Failed to open information folder: " + inThreadState->mapValues[mxconst::get_FLD_CUSTOM_SCENERY_FOLDER_PATH()], true);
+    Log::logAttention("[Parse Custom ini] Failed to open information folder: " + inThreadState->mapValues[mxconst::get_FLD_CUSTOM_SCENERY_FOLDER_PATH()]);
     result = false; // skip
   }
 
@@ -437,7 +437,7 @@ missionx::OptimizeAptDat::parse_aptdat(strct_thread_state* inThreadState, std::s
   file_aptDat.open(relative_apt_dat_path.c_str(), std::ios::in); // can we read the file
   if (!file_aptDat.is_open())
   {
-    Log::logAttention(std::string("[Fail parse aptdat] Fail to open file: ") + relative_apt_dat_path, true);
+    Log::logAttention(std::string("[Fail parse aptdat] Fail to open file: ") + relative_apt_dat_path);
 
     return false;
   }
@@ -685,7 +685,7 @@ missionx::OptimizeAptDat::parse_aptdat(strct_thread_state* inThreadState, std::s
         ////101 91.44 1 08  21.31186721 -157.91575685 26  21.31191433 -157.90103531
         //#ifndef RELEASE
         //        if (code.compare("101") == 0)
-        //          Log::logMsgThread("[[code 101]]\n"); // do we have seaports ?
+        //          Log::logMsg("[[code 101]]\n"); // do we have seaports ?
         //#endif
         std::getline(file_aptDat, line);
         vec_splitLineAfterCode = mxUtils::split(mxUtils::trim(line), ' ');
@@ -999,7 +999,7 @@ missionx::OptimizeAptDat::sqlite_post_tables_copy(missionx::dbase* inDB_ptr)
   inDB_ptr->start_transaction();
   if (!inDB_ptr->execute_stmt(deleteDuplicateICAOs))
   {
-    Log::logMsgThread("[opt] DELETE ERROR - Failed to clean duplicate ICAOs.");
+    Log::logMsg("[opt] DELETE ERROR - Failed to clean duplicate ICAOs.");
   }
   inDB_ptr->end_transaction();
 
@@ -1156,7 +1156,7 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(strct_thread_state* inThreadSt
               if (!db.bind_and_execute_ins_stmt(prep_stmt_key_s, " xp_airports ", list_of_fields))
               {
                 #ifndef RELEASE
-                Log::logMsgThread( fmt::format("\t Found duplicate airport: ({},{})!!!!",icao_code, scenery_pack_name) );
+                Log::logMsg( fmt::format("\t Found duplicate airport: ({},{})!!!!",icao_code, scenery_pack_name) );
                 #endif
                 return; // exit function due to duplication or failure in binding insert command
               }
@@ -1343,7 +1343,7 @@ missionx::OptimizeAptDat::parse_airport_to_sqlite(strct_thread_state* inThreadSt
   else
   {
     // Something is wrong with allocating DB memory
-    Log::logMsgThread("[optimize apt dat, airport :memory:] Failed allocation of db.");
+    Log::logMsg("[optimize apt dat, airport :memory:] Failed allocation of db.");
   }
 
   // OptimizeAptDat::db_airports_cache_ptr->detach_database(attachName);
@@ -1467,7 +1467,7 @@ missionx::OptimizeAptDat::upload_navdata_to_inMemory_db(strct_thread_state* inTh
   std::cin.tie(nullptr);
 
 #ifndef RELEASE
-  missionx::Log::logMsgThread("[Read ILS] Nav data file: " + earth_nav_dat_file);
+  missionx::Log::logMsg("[Read ILS] Nav data file: " + earth_nav_dat_file);
 #endif // !RELEASE
 
 
@@ -1606,7 +1606,7 @@ missionx::OptimizeAptDat::upload_navdata_to_inMemory_db(strct_thread_state* inTh
 
     } // end loop over all lines
 
-    Log::logMsgThread("\tLines processed in ILS: " + mxUtils::formatNumber<int>(line_processed)); // DEBUG
+    Log::logMsg("\tLines processed in ILS: " + mxUtils::formatNumber<int>(line_processed)); // DEBUG
 
   } // end if file is open
 

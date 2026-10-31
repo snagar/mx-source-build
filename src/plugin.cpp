@@ -88,7 +88,6 @@ XPluginStart (char *outName, char *outSig, char *outDesc)
   curl_global_init(CURL_GLOBAL_ALL);
   // #endif // !DISABLE_CURL
 
-
   // v3.0.219.7
   missionx::data_manager::g_vr_dref = XPLMFindDataRef ("sim/graphics/VR/enabled");
   missionx::data_manager::flc_vr_state ();

@@ -1592,7 +1592,7 @@ public:
   // v25.05.1
   static IXMLNode get_default_overpass_urls_node ();
   static std::vector<std::string> get_default_overpass_urls_as_vector (const IXMLNode& inNode);
-  static std::string              gen_get_next_overpass_url(bool in_ignore_user_preference = false);
+  static std::string              gen_get_next_overpass_url(const std::string & in_last_successfull_url, bool in_ignore_user_preference = false);
   static std::string              gen_get_user_preferred_overpass_url();
 
   // v25.06.1
@@ -1662,6 +1662,9 @@ public:
   inline static std::deque<missionx::enums::textures_type_enum> g_queue_texture_to_load;
   inline static bool g_flag_there_are_textures_waiting_in_queue_to_bind {false};
   static void set_texture_bind_for_flc_pre (missionx::enums::textures_type_enum in_texture_type, mx_flc_pre_command in_action_to_call);
+
+  // v26.10.1
+  inline static std::string last_successfull_url_s;
 
 }; // end class
 

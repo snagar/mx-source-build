@@ -16,7 +16,7 @@ bool BitmapReader::load_texture_no_bind(mxTextureFile& inTextureFile, std::strin
   bool bTextureLoad = false;
 
   #ifndef RELEASE
-  Log::logMsgThread(fmt::format( "[{}] Loading texture image: {}", __func__, inTextureFile.getAbsoluteFileLocation() ), format_type::none_cr); // don't add "\n"
+  Log::logMsg(fmt::format( "[{}] Loading texture image: {}", __func__, inTextureFile.getAbsoluteFileLocation() ), format_type::none_cr); // don't add "\n"
   #endif
 
   const std::filesystem::path texturePath = inTextureFile.getAbsoluteFileLocation();
@@ -33,7 +33,7 @@ bool BitmapReader::load_texture_no_bind(mxTextureFile& inTextureFile, std::strin
   }
 
   #ifndef RELEASE
-  Log::logMsgThread(" - loaded.\n");
+  Log::logMsg(" - loaded.\n");
   #endif
 
   return bTextureLoad;
@@ -41,7 +41,7 @@ bool BitmapReader::load_texture_no_bind(mxTextureFile& inTextureFile, std::strin
 
 
 bool
-missionx::BitmapReader::load_textute_and_bind(mxTextureFile& inTextureFile, std::string &outErr, bool flipImage_b, bool is_bind_texture_thread_safe)
+missionx::BitmapReader::load_textute_and_bind(mxTextureFile& inTextureFile, std::string &outErr, const bool flipImage_b, const bool is_bind_texture_thread_safe)
 {
   // int Status=FALSE;
   bool bTextureLoad = false;
@@ -72,7 +72,7 @@ missionx::BitmapReader::load_textute_and_bind(mxTextureFile& inTextureFile, std:
 
 
 bool
-missionx::BitmapReader::loadImageStb(std::string fileName, mxTextureFile::IMAGEDATA* ImageData, bool inFlipImage_b, std::string &outErr)
+missionx::BitmapReader::loadImageStb(const std::string fileName, mxTextureFile::IMAGEDATA* ImageData, bool inFlipImage_b, std::string &outErr)
 {
   int x, y, channels;
 
@@ -88,7 +88,7 @@ missionx::BitmapReader::loadImageStb(std::string fileName, mxTextureFile::IMAGED
 
   ImageData->pData = stbi_load(fileName.c_str(), &x, &y, &channels, desired_channels, &outErr); // v3.0.243.1 newer version + compatibility with imgui4xp
   if (!outErr.empty())
-    Log::logMsgThread(outErr);
+    Log::logMsg(outErr);
 
   // convert to xplane struct
   if (ImageData->pData)
@@ -96,7 +96,7 @@ missionx::BitmapReader::loadImageStb(std::string fileName, mxTextureFile::IMAGED
 
     ImageData->Width    = x;
     ImageData->Height   = y;
-    ImageData->Channels = (short)channels;
+    ImageData->Channels = static_cast<short>(channels);
 
     return true;
   }
@@ -110,15 +110,15 @@ bool BitmapReader::bind_texture(mxTextureFile& inout_texture_file)
 {
   if (!inout_texture_file.sImageData.pData)
   {
-    Log::logDebugBO(fmt::format("[{}] Cannot bind texture: {}. Texture data is empty.\n", __func__, inout_texture_file.getAbsoluteFileLocation()), false, true);
+    Log::logDebugBO(fmt::format("[{}] Cannot bind texture: {}. Texture data is empty.\n", __func__, inout_texture_file.getAbsoluteFileLocation()), true);
     return false;
   }
 
   const auto win = mx_img_window_weak_ptr.lock();
   if (!win)
   {
-    Log::logDebugBO(fmt::format("[{}] Cannot bind texture: {}. Window Pointer expired or uninitialized.\n", __func__, inout_texture_file.getAbsoluteFileLocation()), false, true);
-    return 0;
+    Log::logDebugBO(fmt::format("[{}] Cannot bind texture: {}. Window Pointer expired or uninitialized.\n", __func__, inout_texture_file.getAbsoluteFileLocation()), true);
+    return false;
   }
 
   // Delegate creation entirely through the weak_ptr

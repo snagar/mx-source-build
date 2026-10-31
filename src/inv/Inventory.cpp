@@ -303,7 +303,7 @@ Inventory::parse_node()
 
   // v24.12.2 Search for mandatory items and validate it.
   if (auto xResult = gather_and_validate_mandatory_items(this->node, 0); !xResult.result)
-    Log::log_to_missionx_log( xResult.getErrorsAsText() );
+    Log::logMsg( xResult.getErrorsAsText() );
 
   return true;
 }
@@ -453,7 +453,7 @@ Inventory::add_an_item_to_a_station(IXMLNode & inout_sourceItemNode, const int i
     return (this->mapStations[station_id].add_item(inout_sourceItemNode, inQuantity)).result;
   }
 
-  Log::log_to_missionx_log(fmt::format(R"(Received Station Index: "{}" might be invalid for current Inventory: "{}", check your code.)", inStationId, this->name));
+  Log::logMsg(fmt::format(R"(Received Station Index: "{}" might be invalid for current Inventory: "{}", check your code.)", inStationId, this->name));
   return false;
 }
 
@@ -670,7 +670,7 @@ Inventory::mergeTwoInventories (IXMLNode inTargetInventory, const IXMLNode &inSo
     // check acf has same station id
     if (source_station_node.isEmpty () || source_station_node.nChildNode (mxconst::get_ELEMENT_ITEM().c_str ()) <= 0)
     {
-      Log::log_to_missionx_log (fmt::format ("Station [{}], has an id: {} that is not in the 'acf' file. Will skip this station information.", station_name, station_id));
+      Log::logMsg (fmt::format ("Station [{}], has an id: {} that is not in the 'acf' file. Will skip this station information.", station_name, station_id));
       continue;
     }
 
@@ -868,7 +868,7 @@ Inventory::gather_acf_cargo_data (Inventory &inout_current_plane_inventory, cons
   auto new_acf_inventory = Inventory (mxconst::get_ELEMENT_PLANE(), mxconst::get_ELEMENT_PLANE());
 
   #ifndef RELEASE
-  Log::log_to_missionx_log (fmt::format ("Local inventory before reading [{}] file.\n==========>\n{}\n<=========", acf_file.string (), Utils::xml_get_node_content_as_text (new_acf_inventory.node)));
+  Log::logMsg (fmt::format ("Local inventory before reading [{}] file.\n==========>\n{}\n<=========", acf_file.string (), Utils::xml_get_node_content_as_text (new_acf_inventory.node)));
   #endif
 
   if (fs::exists (acf_file) && fs::is_regular_file (acf_file))
@@ -926,7 +926,7 @@ Inventory::gather_acf_cargo_data (Inventory &inout_current_plane_inventory, cons
   } // end evaluate file exists
 
   #ifndef RELEASE
-  Log::log_to_missionx_log (fmt::format ("ACF Inventory Information:\n=================>\n [{}]", new_acf_inventory.get_node_as_text ())); // debug v24.12.2
+  Log::logMsg (fmt::format ("ACF Inventory Information:\n=================>\n [{}]", new_acf_inventory.get_node_as_text ())); // debug v24.12.2
   #endif // !RELEASE
 
 
@@ -945,7 +945,7 @@ Inventory::gather_acf_cargo_data (Inventory &inout_current_plane_inventory, cons
 
 
   #ifndef RELEASE
-  Log::log_to_missionx_log (fmt::format ("Final Inventory Information:\n=================>\n [{}]", inout_current_plane_inventory.get_node_as_text ())); // debug v24.12.2
+  Log::logMsg (fmt::format ("Final Inventory Information:\n=================>\n [{}]", inout_current_plane_inventory.get_node_as_text ())); // debug v24.12.2
   #endif // !RELEASE
 
   auto endTimer   = std::chrono::steady_clock::now ();

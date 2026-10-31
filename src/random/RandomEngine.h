@@ -261,11 +261,11 @@ private:
                                               missionx::mx_base_node&             inProperties,
                                               NavAidInfo *prev_na_ptr); // v25.09.2
 
-static bool gen_target_base_on_xy_osm_or_osmweb_types2(NavAidInfo&                         outNewNavInfo,
-                                              mx_plane_types_enum                      in_plane_type_enum,
-                                              std::map<std::string, std::string>& inMapLocationSplitValues,
-                                              missionx::mx_base_node&             inProperties,
-                                              NavAidInfo *prev_na_ptr); // v25.09.2
+// static bool gen_target_base_on_xy_osm_or_osmweb_types2(NavAidInfo&                         outNewNavInfo,
+//                                               mx_plane_types_enum                      in_plane_type_enum,
+//                                               std::map<std::string, std::string>& inMapLocationSplitValues,
+//                                               missionx::mx_base_node&             inProperties,
+//                                               NavAidInfo *prev_na_ptr); // v25.09.2
 
   // v25.09.2 re-implement: "get_target_or_lastFlightLeg_base_on_XY_or_OSM()", search for airports based on XY information for all planes and for helos it can also be based on OSM data (depends on the location_type value - inLocationType)
   static bool gen_target_or_last_flight_leg_base_on_xy_or_osm(NavAidInfo&       outNewNavInfo,
@@ -300,16 +300,16 @@ static bool gen_target_base_on_xy_osm_or_osmweb_types2(NavAidInfo&              
                                double                              maxDistance_d = mxconst::SLIDER_MAX_RND_DIST,
                                double minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT );
 
-  static bool osm_get_navaid_from_osm2(NavAidInfo&                         outNavAid,
-                               std::map<std::string, std::string>& inMapLocationSplitValues,
-                               missionx::mx_base_node&             inProperties, // v3.305.1
-                               NavAidInfo*                         prev_navaid_ptr, // v25.10.1
-                               double                              min_lat,
-                               double                              max_lat,
-                               double                              min_lon,
-                               double                              max_lon,
-                               double                              maxDistance_d = mxconst::SLIDER_MAX_RND_DIST,
-                               double minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT );
+  // static bool osm_get_navaid_from_osm2(NavAidInfo&                         outNavAid,
+  //                              std::map<std::string, std::string>& inMapLocationSplitValues,
+  //                              missionx::mx_base_node&             inProperties, // v3.305.1
+  //                              NavAidInfo*                         prev_navaid_ptr, // v25.10.1
+  //                              double                              min_lat,
+  //                              double                              max_lat,
+  //                              double                              min_lon,
+  //                              double                              max_lon,
+  //                              double                              maxDistance_d = mxconst::SLIDER_MAX_RND_DIST,
+  //                              double minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT );
 
   static bool osm_get_navaid_from_overpass(NavAidInfo&                         outNavAid,
                                     std::map<std::string, std::string>& inMapLocationSplitValues,
@@ -320,19 +320,7 @@ static bool gen_target_base_on_xy_osm_or_osmweb_types2(NavAidInfo&              
                                     double                              maxDistance_d = mxconst::SLIDER_MAX_RND_DIST,
                                     double                              minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT);
 
-  static bool osm_get_navaid_from_overpass2(NavAidInfo&                         outNavAid,
-                                    std::map<std::string, std::string>& inMapLocationSplitValues,
-                                    missionx::mx_base_node&             inProperties, // v3.305.1
-                                    double                              sourceLat_d,
-                                    double                              sourceLon_d,
-                                    double                              min_lat,
-                                    double                              max_lat,
-                                    double                              min_lon,
-                                    double                              max_lon,
-                                    double                              maxDistance_d = mxconst::SLIDER_MAX_RND_DIST,
-                                    double                              minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT);
-
-  static bool osm_get_navaid_from_osm_database(NavAidInfo&                         outNavAid,
+    static bool osm_get_navaid_from_osm_database(NavAidInfo&                         outNavAid,
                                         std::map<std::string, std::string>& inMapLocationSplitValues,
                                         missionx::mx_base_node&             inProperties, // v3.305.1
                                         double                              sourceLat_d,
@@ -344,7 +332,9 @@ static bool gen_target_base_on_xy_osm_or_osmweb_types2(NavAidInfo&              
                                         double                              maxDistance_d = mxconst::SLIDER_MAX_RND_DIST,
                                         double                              minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT);
   
-  static bool osm_get_navaid_from_osm_database2(NavAidInfo&                         outNavAid,
+
+  // v26.10.x OSM database v2 (medevac schema)
+    static bool osm_get_navaid_from_osm_database2(NavAidInfo&                         outNavAid,
                                         std::map<std::string, std::string>& inMapLocationSplitValues,
                                         missionx::mx_base_node&             inProperties, // v3.305.1
                                         double                              sourceLat_d,
@@ -355,6 +345,23 @@ static bool gen_target_base_on_xy_osm_or_osmweb_types2(NavAidInfo&              
                                         double                              max_lon,
                                         double                              maxDistance_d = mxconst::SLIDER_MAX_RND_DIST,
                                         double                              minDistance_d = (double)mxconst::MIN_DISTANCE_TO_SEARCH_AIRPORT);
+
+
+  // static constexpr const char* OSM_DB2_SUB_FOLDER   = "osm";              // {missionx}/db/osm
+  // static constexpr const char* OSM_DB2_FILTER_TOKEN = "{designer_filter}"; // replaced with the "tag=" SQL fragment
+  // static constexpr const char* OSM_DB2_DEFAULT_NAME = "osm location";
+  // static constexpr double      OSM_DB2_COORD_SCALE  = 1e7;                 // R-tree and geom use degrees * 1e7
+  // static constexpr int         OSM_DB2_MAX_TRIALS   = 3;
+
+  static void        gather_all_osm_db2_files (std::list<std::string> &outListOfFiles);
+  static bool        osm_db2_is_valid_structure (missionx::dbase &in_db, std::string &out_schema_version);
+  static std::string osm_db2_get_designer_filter (std::map<std::string, std::string> &inMapLocationSplitValues);
+  static std::unordered_map<std::string, int> osm_db2_get_column_map (sqlite3_stmt *stmt);
+  // static bool osm_db2_fill_navaid_from_way_row (sqlite3_stmt *stmt, const std::unordered_map<std::string, int> &in_cols, NavAidInfo &outNavAid, double sourceLat_d, double sourceLon_d, bool flag_use_distance, double minDistance_d, double maxDistance_d, const std::string &keydesc_s, std::string &out_generated_desc);
+  static bool osm_db2_fill_navaid_from_way_row (sqlite3_stmt *stmt, const std::unordered_map<std::string, int> &in_cols, NavAidInfo &outNavAid, const std::string &keydesc_s, std::string &out_generated_desc);
+  static bool osm_db2_fill_navaid_from_place_row (sqlite3_stmt *stmt, const std::unordered_map<std::string, int> &in_cols, NavAidInfo &outNavAid, const std::string &keydesc_s, std::string &out_generated_desc);
+
+
 
   // initialize the sqlite queries we would use.
   static void initQueries();
@@ -368,7 +375,7 @@ static bool gen_target_base_on_xy_osm_or_osmweb_types2(NavAidInfo&              
   // v25.02.1
   static std::vector<IXMLNode>                                             gen_land_hover_display_objects (const double &inLat, const double &inLon, const int &inRadiusMT, const int &inHowManyObjects, int &inout_seq, const std::string &inFileName = "land_hover01.obj");
   static std::map<missionx::enums::mx_osm_region_enum, missionx::structs::strct_bbox> gen_quadrant_bboxes (double centerLat, double centerLon);
-  static std::map<missionx::enums::mx_osm_region_enum, missionx::structs::strct_bbox> gen_quadrant_bboxes (const double centerLat, const double centerLon, const double minDistNm, const double maxDistNm);
+  static std::map<missionx::enums::mx_osm_region_enum, missionx::structs::strct_bbox> gen_quadrant_bboxes (double centerLat, double centerLon, double minDistNm, double maxDistNm);
 
 
   int seq_triggers   = 0;

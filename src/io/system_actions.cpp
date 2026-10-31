@@ -488,12 +488,12 @@ missionx::system_actions::search_datarefs_in_obj_file (const fs::path& inFile)
     if (file_toRead.bad ())
     {
       // perror ("error while reading file");
-      Log::logMsgErr(fmt::format("[{}]error while reading file: '{}'", __func__, inFile.string() ), true);
+      Log::logMsgErr(fmt::format("[{}]error while reading file: '{}'", __func__, inFile.string() ));
     }
   }
   else // fail to open file
   {
-    Log::logAttention (fmt::format ("[{}] Fail to open file: {}", __func__, inFile.string ()), true);
+    Log::logAttention (fmt::format ("[{}] Fail to open file: {}", __func__, inFile.string ()));
   }
 
   return setDatarefs;
@@ -510,7 +510,7 @@ system_actions::purge_cache_files (const fs::path &directory_path, const bool is
   const auto age_limit = now - std::chrono::days(7);  // Files older than 7 days
 
   if (!fs::exists(directory_path) || !fs::is_directory(directory_path)) {
-    Log::logMsg (fmt::format ("Invalid directory: {}\n", directory_path.string ()), is_thread);
+    Log::logMsgErr (fmt::format ("Invalid directory: {}\n", directory_path.string ()));
     return;
   }
 
@@ -528,7 +528,7 @@ system_actions::purge_cache_files (const fs::path &directory_path, const bool is
       auto            ftime = fs::last_write_time (entry, ec);
       if (ec)
       {
-        Log::logMsg (fmt::format ("Error accessing file time for: {}\n", file_path.string ()), is_thread);
+        Log::logMsgErr (fmt::format ("Error accessing file time for: {}\n", file_path.string ()));
         continue;
       }
 
@@ -536,9 +536,9 @@ system_actions::purge_cache_files (const fs::path &directory_path, const bool is
       {
         fs::remove (file_path, ec);
         if (ec)
-          Log::logMsg (fmt::format ("Failed to delete: {} ({})\n", file_path.string (), ec.message ()), is_thread);
+          Log::logMsgErr (fmt::format ("Failed to delete: {} ({})\n", file_path.string (), ec.message ()));
         else
-          Log::logMsg (fmt::format ("Deleted: {}\n", file_path.string ()), is_thread);
+          Log::logMsg (fmt::format ("Deleted: {}\n", file_path.string ()));
       }
     }
   }

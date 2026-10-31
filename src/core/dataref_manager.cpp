@@ -172,7 +172,7 @@ float dataref_manager::CalculateEstimatedFuelTimeHours()
 
     const auto totalFuelKg = XPLMGetDataf(missionx::drefConst.dref_rw_acf_m_fuel_tot_lbs) * lbs2kg;
 
-    Log::logMsgThread(fmt::format("[{}] FFFF plane max fuel: {:.2f} FFFF\n", __func__, totalFuelKg));
+    Log::logMsg(fmt::format("[{}] FFFF plane max fuel: {:.2f} FFFF\n", __func__, totalFuelKg));
 
     if (!numEnginesRef || !fuelWeightRef) return 0.0f;
 

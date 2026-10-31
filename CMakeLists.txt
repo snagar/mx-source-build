@@ -181,6 +181,10 @@ set(BASE_SRC src/core/coordinate/NavAidInfo.hpp
     src/ui/gl/ui_setup_screen.h
 )
 
+set(LOGURU_SRC
+        libs/loguru/loguru.cpp
+)
+
 set(IMGUI_SQLITE_STB_POLY_LIB_SRC
     libs/imgui4xp/colors/mx_colors.hpp
     libs/imgui4xp/GL/glew.c
@@ -335,6 +339,7 @@ set(DYNAMIC_SHA src/core/sha.hpp
 #                       like the "target_include_directories" directive.
 add_library(${PROJECT_NAME} SHARED
     ${BASE_SRC}
+    ${LOGURU_SRC}
     ${IMGUI_SQLITE_STB_POLY_LIB_SRC}
     ${GLM_LIB_SRC}
     ${FREETYPE_LIB_SRC}
