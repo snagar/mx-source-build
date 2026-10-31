@@ -741,14 +741,14 @@ elseif (APPLE)
       XPLM::XPWidgets
       FMOD::FMOD
       CURL::libcurl
-  )  # v26.09.3 Tell the GNU linker on Linux not to re-export statically linked archives
+  )
+# v26.09.3 Tell the GNU linker on Linux not to re-export statically linked archives
+elseif (UNIX)
   target_link_options( ${PROJECT_NAME} PRIVATE
           "-Wl,--exclude-libs,ALL"
           "-Wl,-Bsymbolic"
           "-Wl,-Bsymbolic-functions"
   )
-elseif (UNIX)
-
 
   target_link_libraries(${PROJECT_NAME} PRIVATE
   "-Wl,--version-script=${CMAKE_SOURCE_DIR}/cmake_build/${PROJECT_NAME}.sym"
