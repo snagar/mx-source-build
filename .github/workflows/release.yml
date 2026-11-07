@@ -209,12 +209,12 @@ jobs:
 
   build-osx:
 #    if: ( 1 == 2 )
-    runs-on: macos-14
+    runs-on: macos-15-intel
     needs: [pre-build]
     strategy:
       fail-fast: true
       matrix:
-        os: [macos-14]
+        os: [macos-15-intel]
         build_type: [ Debug, Release ]
         #        build_type: [Debug]
         c_compiler: [clang]
