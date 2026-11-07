@@ -932,7 +932,7 @@ const static ^std::string^               PROP_PLANE_TYPE_S                      
 const static ^std::string^               PROP_NO_OF_LEGS                                ^ "no_of_legs"; ^// v3.0.241.9 UI info from user defined mission screen
 const static ^std::string^               PROP_MIN_DISTANCE_SLIDER                       ^ "min_distance_slider"; ^// v3.0.241.9 UI info from user defined mission screen
 const static ^std::string^               PROP_MAX_DISTANCE_SLIDER                       ^ "max_distance_slider"; ^// v3.0.241.9 UI info from user defined mission screen
-const static ^std::string^               PROP_USE_OSM_CHECKBOX                          ^ "random_use_osm_cb"; ^// Use OSM databases checkbox.
+const static ^std::string^               PROP_USE_OSMDB_CHECKBOX                        ^ "random_use_osm_cb"; ^// Use OSM databases checkbox.
 const static ^std::string^               PROP_USE_WEB_OSM_CHECKBOX                      ^ "random_use_web_osm_cb"; ^// Use WEB OSM databases checkbox.
 const static ^std::string^               PROP_NARROW_HELOS_RAMP_SEARCH                  ^ "narrow_helos_ramp_search"; ^// v3.0.253.7
 const static ^std::string^               PROP_ADD_COUNTDOWN                             ^ "add_countdown"; ^// v3.0.253.9.1 add countdown to most flight legs except the last one
@@ -967,6 +967,7 @@ const static ^std::string^               DB_FILE_EXTENSION                      
 const static ^std::string^               STATS_LANDING                                  ^ "landing"; ^// "L"; ^// "Landing" // v3.0.255.1
 const static ^std::string^               STATS_TAKEOFF                                  ^ "takeoff"; ^//"T"; ^// "takeoff"  // v3.0.255.1
 const static ^std::string^               STATS_TRANSITION                               ^ "transition"; ^//"T"; ^// "takeoff"  // v3.0.255.1
+const static ^std::string^               STATS_APPROACH                                 ^ "approach"; ^// v26.10.1 dense stats rows from 50m AGL until touchdown
 const static ^std::string^               DEFAULT_OVERPASS_URL                           ^ "https://overpass-api.de/api/interpreter"; ^ // "https://lz4.overpass-api.de/api/interpreter"; ^// v3.0.253.6 overpass default overpass URL
 const static ^std::string^               ATTRIB_OSM_KEY                                 ^ "k"; ^// v3.0.253.4 <way k^"" v^"">
 const static ^std::string^               ATTRIB_OSM_VALUE                               ^ "v"; ^// v3.0.253.4 <way k^"" v^"">
@@ -989,6 +990,26 @@ static const ^std::string^               ELEMENT_PITCH                          
 static const ^std::string^               ELEMENT_ROLL                                   ^ "roll"; ^// v3.303.8.3 scoring sub element.
 static const ^std::string^               ELEMENT_GFORCE                                 ^ "gforce"; ^// v3.303.8.3 scoring sub element.
 static const ^std::string^               ELEMENT_CENTER_LINE                            ^ "center_line"; ^// v3.303.8.3 scoring sub element.
+
+static const ^std::string^               ELEMENT_TD_FPM                                 ^ "td_fpm"; ^// v26.10.1 scoring sub element. |V/S| at touchdown (fpm)
+static const ^std::string^               ELEMENT_TD_BANK                                ^ "td_bank"; ^// v26.10.1 scoring sub element. |bank| at touchdown (degrees)
+static const ^std::string^               ELEMENT_TD_BOUNCE_PENALTY                      ^ "td_bounce_penalty"; ^// v26.10.1 scoring sub element. points taken off the landing score for a bounce, by the highest bounce (ft)
+static const ^std::string^               ATTRIB_BOUNCE_SMALL                            ^ "small"; ^// v26.10.1 <td_bounce_penalty> "min|max|points" for a small bounce
+static const ^std::string^               ATTRIB_BOUNCE_MEDIUM                           ^ "medium"; ^// v26.10.1 <td_bounce_penalty> "min|max|points" for a medium bounce
+static const ^std::string^               ATTRIB_BOUNCE_LARGE                            ^ "large"; ^// v26.10.1 <td_bounce_penalty> "min|max|points" for a large bounce
+static const ^std::string^               ATTRIB_BOUNCE_EXTRA                            ^ "extra_bounce"; ^// v26.10.1 <td_bounce_penalty> points for each bounce after the first
+static const ^std::string^               ELEMENT_LANDING_GRADE                          ^ "landing_grade"; ^// v26.10.1 scoring sub element. landing grade limits
+static const ^std::string^               ELEMENT_TD_GEAR_LOAD                           ^ "td_gear_load"; ^// v26.10.1 scoring sub element. extra gear load at touchdown, in plane weights (G after contact - G before contact)
+static const ^std::string^               ELEMENT_FINAL_GLIDE                            ^ "final_glide"; ^// v26.10.1 scoring sub element. max sink between 300ft and 50ft / sink of a 3 degree path at the same groundspeed
+static const ^std::string^               ATTRIB_GRADE_BUTTER                            ^ "butter"; ^// v26.10.1 <landing_grade> lowest score for "Butter"
+static const ^std::string^               ATTRIB_GRADE_SMOOTH                            ^ "smooth"; ^// v26.10.1 <landing_grade> lowest score for "Smooth"
+static const ^std::string^               ATTRIB_GRADE_ACCEPTABLE                        ^ "acceptable"; ^// v26.10.1 <landing_grade> lowest score for "Acceptable"
+static const ^std::string^               ATTRIB_GRADE_FIRM                              ^ "firm"; ^// v26.10.1 <landing_grade> lowest score for "Firm". Below it: "Hard"
+static const ^std::string^               ATTRIB_GRADE_DOCTOR_FPM                        ^ "doctor_fpm"; ^// v26.10.1 <landing_grade> touchdown fpm above it = "Call the Doctor"
+static const ^std::string^               ATTRIB_GRADE_DOCTOR_GEAR_LOAD                  ^ "doctor_gear_load"; ^// v26.10.1 <landing_grade> touchdown gear load above it = "Call the Doctor"
+static const ^std::string^               ATTRIB_SCORE_WEIGHT                            ^ "weight"; ^// v26.10.1 scoring element weight in the landing score. Default 1, 0 = measure not used
+
+
 static const ^std::string^               ATTRIB_ZULU_TIME_SEC                           ^ "begin_zuluTime_sec"; ^// attribs from fragment time // v3.0.253.7 zuluTime_sec used in <timer... > save checkpoint
 static const ^std::string^               ATTRIB_DAY_IN_YEAR                             ^ "day_in_year"; ^// v3.0.253.7 day_in_year used in <timer... > save checkpoint
 static const ^std::string^               ATTRIB_TOTAL_RUNNING_TIME_SEC_SINCE_SIM_START  ^ "total_running_time_sec_since_sim_start"; ^// v3.0.253.7 total_running_time_sec_since_sim_start used in <timer... > save checkpoint
@@ -1052,6 +1073,9 @@ const static ^std::string^               SQLITE_OILRIG_SQLS                     
 const static ^std::string^               SQLITE_OSM_SQLS                                ^ "osm_sqls";
 const static ^std::string^               SQLITE_NAVDATA_SQLS                            ^ "navdata_sqls";
 const static ^std::string^               SQLITE_ILS_SQLS                                ^ "ils_sqls";
+
+const static ^std::string^               SQLITE_STATS_SQLS                              ^ "stats_sqls"; ^// v26.10.1 <stats_sqls> in sql.xml
+
 const static ^std::string^               STORY_IMAGE_POS                                ^ "imgPos"; ^// v3.305.1 story mode constants// image position. ATTRIB_NAME
 const static ^std::string^               STORY_CHARACTER_CODE                           ^ "storyCharacterCode"; ^// Story Character Code to find in Message->mapCharacters
 const static ^std::string^               STORY_TEXT                                     ^ "storyText"; ^// Story Text
@@ -1117,14 +1141,13 @@ static const ^std::string^ ROUTE_DCT                  ^ "DCT"; ^// v25.04.2 Hold
 
 // OSM
 const static ^std::string^               ATTRIB_WEBOSM_OPTIMIZE              ^ "webosm_optimize"; ^// v3.0.253.4     <expected_location location_type~"webosm,near,xy" // location_value~"nm~25|tag~webosm_helipads|webosm_optimize~n|ramp~H|dbfile~osm-liechtenstein.db,nm~20,tag~start_location" force_template_distances_b~"yes" />
-// const static ^std::string^               DEFAULT_OVERPASS_WAYS_FILTER        ^ "[timeout:25];(way[highway~primary]({{bbox}});way[highway~secondary]({{bbox}});way[highway~tertiary]({{bbox}});way[highway~residential]({{bbox}});way[highway~service]({{bbox}});way[highway~living_street]({{bbox}});way[highway~track]({{bbox}}););out;"; ^// v3.0.253.9 added way and ";" since we changed the way designer provide filters. We do not fix their code. // v3.0.253.4 overpass ways filter
-const static ^std::string^               DEFAULT_OVERPASS_WAYS_FILTER        ^ "[timeout:25];way[\"highway\"~\"(primary|secondary|tertiary|residential|service|living_street|track)\"]({{bbox}});out geom;"; ^// v26.06.4 updated overpass accident filter
+const static ^std::string^               DEFAULT_OVERPASS_WAYS_FILTER        ^ "[timeout:25];way[\"highway\"~\"(primary|secondary|tertiary|residential|living_street|track)\"]({{bbox}});out geom;"; ^// v26.06.4 updated overpass accident filter
 static const ^std::string^               GPS_WP      ^ "wp";                 ^// v25.06.1 used with gen_wp_node()
 
 // MEDEVAC Sub Categories
 constexpr static ^std::string_view ^          CAT_ANY_LOCATION   ^ "Any Location - Rescue"; ^// v25.05.1 Used in medevac categories
 constexpr static ^std::string_view ^          CAT_ACCIDENT_OSM   ^ "Accident (OSM)"; ^// v25.05.1 Used in medevac categories
-constexpr static ^std::string_view ^          CAT_SURPRISE_ME    ^ "(WIP) Surprise Me (OSM)"; ^// v25.05.1 Used in medevac categories
+constexpr static ^std::string_view ^          CAT_SURPRISE_ME    ^ "(WIP) Surprise Me (OSM WEB)"; ^// v25.05.1 Used in medevac categories
 
 static const ^std::string^      ATTRIB_SURPRISE_ME_SUB_CAT_B      ^ "surprise_me_sub_cat_b"; ^// v25.05.1 Used in medevac categories parsing and random engine
 constexpr static ^bool^         DEFAULT_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B      ^true; ^// v25.05.1 default value for PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B if it does not exists in the property file.

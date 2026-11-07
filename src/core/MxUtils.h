@@ -485,6 +485,13 @@ public:
 
 
   // -------------------------------------------
+
+  // v26.10.1 Reduce a series for plotting to at most (2 * in_buckets + 2) points.
+  //          Each bucket keeps its min and max sample (in x order), so peaks are not lost.
+  //          The first and last samples are always kept. Small series are copied as is.
+  static void decimate_min_max(const std::vector<double>& in_x, const std::vector<double>& in_y, const size_t in_buckets, std::vector<double>& out_x, std::vector<double>& out_y);
+
+  // -------------------------------------------
   template<typename T>
   static void eval_min_max(const T& inVal, T& outMin, T& outMax)
   {

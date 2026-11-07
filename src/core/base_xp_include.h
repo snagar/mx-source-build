@@ -20,9 +20,5 @@
 #include "XPLMProcessing.h"
 #include "XPLMScenery.h"
 #include "XPLMUtilities.h"
-#include "XPStandardWidgets.h"
-#include "XPWidgetUtils.h"
-#include "XPWidgets.h"
-
 
 #endif // BASE_XP_INCLUDE_H_

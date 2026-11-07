@@ -511,25 +511,24 @@ missionx::Mission::init()
 
       missionx::system_actions::pluginSetupOptions.node.updateAttribute(ver_s.c_str(), mxconst::get_ATTRIB_MXFEATURE().c_str(), mxconst::get_ATTRIB_MXFEATURE().c_str());
 
-      // v3.303.14 remove FONT_LOCATION since we are using fonts.ini
-      if (!system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_FONT_LOCATION).isEmpty()) // if we have <setup_font_location> element
-        system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_FONT_LOCATION).deleteNodeContent();
-      if (!system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_FONT_PIXEL_SIZE).isEmpty()) // if we have <setup_font_pixel_size> element
-        system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_FONT_PIXEL_SIZE).deleteNodeContent();
-      if (!system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_WRITE_CACHE_TO_DB).isEmpty()) // if we have <setup_font_pixel_size> element
-        system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_WRITE_CACHE_TO_DB).deleteNodeContent();
-      if (!system_actions::pluginSetupOptions.node.getChildNode(mxconst::get_OPT_AUTO_PAUSE_IN_VR().c_str()).isEmpty()) // v25.06.1 if we have <auto_pause_in_vr> element
-        system_actions::pluginSetupOptions.node.getChildNode(mxconst::get_OPT_AUTO_PAUSE_IN_VR().c_str()).deleteNodeContent();
+      // // v3.303.14 remove FONT_LOCATION since we are using fonts.ini
+      // if (!system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_FONT_LOCATION).isEmpty()) // if we have <setup_font_location> element
+      //   system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_FONT_LOCATION).deleteNodeContent();
+      // if (!system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_FONT_PIXEL_SIZE).isEmpty()) // if we have <setup_font_pixel_size> element
+      //   system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_FONT_PIXEL_SIZE).deleteNodeContent();
+      // if (!system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_WRITE_CACHE_TO_DB).isEmpty()) // if we have <setup_font_pixel_size> element
+      //   system_actions::pluginSetupOptions.node.getChildNode(mxconst::SETUP_WRITE_CACHE_TO_DB).deleteNodeContent();
+      // if (!system_actions::pluginSetupOptions.node.getChildNode(mxconst::get_OPT_AUTO_PAUSE_IN_VR().c_str()).isEmpty()) // v25.06.1 if we have <auto_pause_in_vr> element
+      //   system_actions::pluginSetupOptions.node.getChildNode(mxconst::get_OPT_AUTO_PAUSE_IN_VR().c_str()).deleteNodeContent();
+      //
+      // // v25.05.1 replace overpass URLS
+      // const auto overpass_node = missionx::data_manager::get_default_overpass_urls_node ();
+      // auto setup_overpass_node = missionx::data_manager::xMissionxProperties_node.getChildNode (mxconst::get_ELEMENT_OVERPASS ().c_str ());
+      // if (!setup_overpass_node.isEmpty ())
+      //   setup_overpass_node.deleteNodeContent();
+      // missionx::data_manager::xMissionxProperties_node.addChild (overpass_node.deepCopy (), 0); // store new URLs
 
-      // v25.05.1 replace overpass URLS
-      const auto overpass_node = missionx::data_manager::get_default_overpass_urls_node ();
-      auto setup_overpass_node = missionx::data_manager::xMissionxProperties_node.getChildNode (mxconst::get_ELEMENT_OVERPASS ().c_str ());
-      if (!setup_overpass_node.isEmpty ())
-        setup_overpass_node.deleteNodeContent();
-
-      missionx::data_manager::xMissionxProperties_node.addChild (overpass_node.deepCopy (), 0); // store new URLs
-
-      // v26.04.3 override default accident overpass search filter
+      // v26.04.3 + v26.10.1 override default accident overpass search filter
       Utils::xml_search_and_set_node_text(system_actions::pluginSetupOptions.node, mxconst::get_OPT_OVERPASS_FILTER(), mxconst::get_DEFAULT_OVERPASS_WAYS_FILTER(), mxUtils::formatNumber<int>(static_cast<int> (missionx::mx_property_type::MX_STRING)), true); // "6" = string type
 
 
@@ -1079,14 +1078,13 @@ missionx::Mission::START_MISSION()
       Mission::uiImGuiMxpad->setWasHiddenByAutoHideOption(false);
 
 
-    data_manager::clearFMSEntries(); // v3.0.253.7
-
-    // then check global GPS
+    // check global GPS
     std::map<int, missionx::NavAidInfo> map_fms_entries; // v25.05.1
     if (Utils::getNodeText_type_1_5<bool>(system_actions::pluginSetupOptions.node, mxconst::get_OPT_GPS_IMMEDIATE_EXPOSURE(), true) == false &&
         mission_state_s.empty()) // if to reveal 1 by one then first check if there is GPS element in LEG if not then check global GPS
     {
-      // data_manager::clearFMSEntries(); // v3.0.253.7
+      data_manager::clearFMSEntries(); // v3.0.253.7
+
       if (
           (!data_manager::xmlGPS.isEmpty () && data_manager::xmlGPS.nChildNode (mxconst::get_ELEMENT_POINT ().c_str ()) > 1
             && data_manager::mapFlightLegs[data_manager::currentLegName].xGPS.isEmpty ()
@@ -1242,7 +1240,7 @@ missionx::Mission::START_MISSION()
   {
 
     data_manager::gather_stats.setDb(&data_manager::db_stats, mission_state_s);
-    this->plane_stats.reset();
+    this->strct_plane_stats.reset();
     if ( ! mission_state_s.empty() ) // if loaded from checkpoint
       data_manager::gather_stats.init_seq_from_checkpoint_stats();
 
@@ -3738,7 +3736,7 @@ missionx::Mission::drawCallback(const XPLMDrawingPhase& inPhase, const int inIsB
       }
     }
 
-    if ((data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running) * (missionx::dataref_manager::isSimRunning()) + (this->plane_stats.burstTimer.isRunning() * missionx::dataref_manager::isSimRunning())) // v3.303.14 added burstTimer condition// v3.303.8.1 Added condition if mission is in running state
+    if ((data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running) * (missionx::dataref_manager::isSimRunning()) + (this->strct_plane_stats.burstTimer.isRunning() * missionx::dataref_manager::isSimRunning())) // v3.303.14 added burstTimer condition// v3.303.8.1 Added condition if mission is in running state
     {
       this->gatherStats_identify_takeoff_and_landings(); // v3.0.255.1
     }
@@ -3787,33 +3785,33 @@ missionx::Mission::gatherStats_identify_takeoff_and_landings()
   {
     // Lambda - get plane phase
     const auto lmbda_get_plane_phase = [&]() {
-      switch (this->plane_stats.current_plane_state)
+      switch (this->strct_plane_stats.current_plane_state)
       {
-        case mx_plane_stats::mx_plane_status::decide_state:
+        case mx_plane_stats_struct::mx_plane_status::decide_state:
         {
-          if (this->plane_stats.current_faxil == 0.0f)
-            this->plane_stats.set_plane_state(mx_plane_stats::mx_plane_status::start_airborn);
+          if (this->strct_plane_stats.current_faxil == 0.0f)
+            this->strct_plane_stats.set_plane_state(mx_plane_stats_struct::mx_plane_status::start_airborn);
           else
-            this->plane_stats.set_plane_state(mx_plane_stats::mx_plane_status::start_on_ground);
+            this->strct_plane_stats.set_plane_state(mx_plane_stats_struct::mx_plane_status::start_on_ground);
         }
         break;
-        case mx_plane_stats::mx_plane_status::no_status:
+        case mx_plane_stats_struct::mx_plane_status::no_status:
         {
-          this->plane_stats.set_plane_state(mx_plane_stats::mx_plane_status::decide_state);
+          this->strct_plane_stats.set_plane_state(mx_plane_stats_struct::mx_plane_status::decide_state);
         }
         break;
         default:
         {
-          if (((this->plane_stats.current_plane_state == mx_plane_stats::mx_plane_status::start_airborn || this->plane_stats.current_plane_state == mx_plane_stats::mx_plane_status::enroute) && this->plane_stats.prev_faxil == 0.0f &&
-               this->plane_stats.current_faxil != 0.0f)) // Touchdown
+          if (((this->strct_plane_stats.current_plane_state == mx_plane_stats_struct::mx_plane_status::start_airborn || this->strct_plane_stats.current_plane_state == mx_plane_stats_struct::mx_plane_status::enroute) && this->strct_plane_stats.prev_faxil == 0.0f &&
+               this->strct_plane_stats.current_faxil != 0.0f)) // Touchdown
           {
-            this->plane_stats.set_plane_state(mx_plane_stats::mx_plane_status::plane_is_landing);
+            this->strct_plane_stats.set_plane_state(mx_plane_stats_struct::mx_plane_status::plane_is_landing);
             return mxconst::get_STATS_LANDING();
           }
-          else if (((this->plane_stats.current_plane_state == mx_plane_stats::mx_plane_status::start_on_ground || this->plane_stats.current_plane_state == mx_plane_stats::mx_plane_status::landed) && this->plane_stats.prev_faxil != 0.0f &&
-                    this->plane_stats.current_faxil == 0.0f)) // takeoff
+          else if (((this->strct_plane_stats.current_plane_state == mx_plane_stats_struct::mx_plane_status::start_on_ground || this->strct_plane_stats.current_plane_state == mx_plane_stats_struct::mx_plane_status::landed) && this->strct_plane_stats.prev_faxil != 0.0f &&
+                    this->strct_plane_stats.current_faxil == 0.0f)) // takeoff
           {
-            this->plane_stats.set_plane_state(mx_plane_stats::mx_plane_status::plane_is_taking_off);
+            this->strct_plane_stats.set_plane_state(mx_plane_stats_struct::mx_plane_status::plane_is_taking_off);
             return mxconst::get_STATS_TAKEOFF();
           }
         }
@@ -3827,10 +3825,10 @@ missionx::Mission::gatherStats_identify_takeoff_and_landings()
     const std::string planePhase = lmbda_get_plane_phase(); // returns: mxconst::get_STATS_LANDING() or mxconst::get_STATS_TAKEOFF()
 
 
-    if ( (this->plane_stats.current_plane_state == mx_plane_stats::mx_plane_status::plane_is_landing) + (this->plane_stats.current_plane_state == mx_plane_stats::mx_plane_status::plane_is_taking_off) )
+    if ( (this->strct_plane_stats.current_plane_state == mx_plane_stats_struct::mx_plane_status::plane_is_landing) + (this->strct_plane_stats.current_plane_state == mx_plane_stats_struct::mx_plane_status::plane_is_taking_off) )
     {
       // we need to pick the stats before gathering a new stats because the plugin found that the state is landing, meaning there was a touchdown
-      if (this->plane_stats.current_plane_state == mx_plane_stats::mx_plane_status::plane_is_landing)
+      if (this->strct_plane_stats.current_plane_state == mx_plane_stats_struct::mx_plane_status::plane_is_landing)
       {
         data_manager::strct_currentLegStats4UIDisplay.fTouchDown_landing_rate_vh_ind_fpm = missionx::data_manager::gather_stats.get_stats_object().vh_ind_fpm;
         data_manager::strct_currentLegStats4UIDisplay.fTouchDown_gforce_normal           = missionx::data_manager::gather_stats.get_stats_object().gforce_normal;
@@ -3845,6 +3843,9 @@ missionx::Mission::gatherStats_identify_takeoff_and_landings()
         std::ranges::for_each(std::as_const(data_manager::strct_currentLegStats4UIDisplay.vecgForce15Meters), [&fSum](const float& n) { fSum += n; });
         data_manager::strct_currentLegStats4UIDisplay.fLanding_gforce_normal_avg_15_meters = fSum / static_cast<float> (data_manager::strct_currentLegStats4UIDisplay.vecgForce15Meters.size ());
 
+        // v26.10.1 touchdown ends the approach mode
+        this->strct_plane_stats.approach_active = false;
+        this->strct_plane_stats.approach_capped = false;
 
         data_manager::gather_stats.gather_and_store_stats(planePhase);
       }
@@ -3852,46 +3853,113 @@ missionx::Mission::gatherStats_identify_takeoff_and_landings()
         data_manager::gather_stats.gather_and_store_stats(planePhase);
 
 
-      // start the burst record rows that is part of touchdown or takeoff activity and it records each frame data into the stats table for 2 seconds.
-      this->plane_stats.burstTimer.reset();
-      missionx::Timer::start(this->plane_stats.burstTimer, 2, "B-STOPPER"); // 2 seconds
+      // start the burst: record each frame into the stats table.
+      // v26.10.1 takeoff: BURST_TAKEOFF_SEC. Landing: up to BURST_LANDING_MAX_SEC, ends earlier once all wheels stay on the ground (see the burst branch below), so a bounce is recorded.
+      const bool  is_landing_burst = (this->strct_plane_stats.current_plane_state == mx_plane_stats_struct::mx_plane_status::plane_is_landing);
+      const float burst_sec        = (is_landing_burst) ? mx_plane_stats_struct::BURST_LANDING_MAX_SEC : mx_plane_stats_struct::BURST_TAKEOFF_SEC;
 
-      this->plane_stats.before_transition_state = this->plane_stats.current_plane_state;
-      this->plane_stats.set_plane_state(mx_plane_stats::mx_plane_status::transition); // change to transition so takeoff won't pick also landing
+      this->strct_plane_stats.burstTimer.reset();
+      missionx::Timer::start(this->strct_plane_stats.burstTimer, burst_sec, "B-STOPPER");
+      this->strct_plane_stats.all_wheels_down_since_sec = -1.0f; // v26.10.1
+
+      this->strct_plane_stats.before_transition_state = this->strct_plane_stats.current_plane_state;
+      this->strct_plane_stats.set_plane_state(mx_plane_stats_struct::mx_plane_status::transition); // change to transition so takeoff won't pick also landing
     }
-    else if (this->plane_stats.burstTimer.isRunning())
+    else if (this->strct_plane_stats.burstTimer.isRunning())
     {
       data_manager::gather_stats.gather_and_store_stats(mxconst::get_STATS_TRANSITION()); // v3.303.14 Added bursting stats too
+
+      // v26.10.1 landing burst: end it once all wheels stayed on the ground for BURST_ALL_WHEELS_DOWN_SEC.
+      //          Until then every frame is recorded, so the stats show any bounce (onground_any 1 -> 0 -> 1).
+      if (this->strct_plane_stats.before_transition_state == mx_plane_stats_struct::mx_plane_status::plane_is_landing)
+      {
+        const float now_sec         = dataref_manager::getTotalRunningTimeSec();
+        const bool  all_wheels_down = (XPLMGetDatai(missionx::dataref_const::dref_onground_all_i) == 1);
+
+        if (!all_wheels_down)
+          this->strct_plane_stats.all_wheels_down_since_sec = -1.0f; // in the air again, or the nose wheel is still up
+        else if (this->strct_plane_stats.all_wheels_down_since_sec < 0.0f)
+          this->strct_plane_stats.all_wheels_down_since_sec = now_sec; // all wheels just touched
+        else if (now_sec - this->strct_plane_stats.all_wheels_down_since_sec >= mx_plane_stats_struct::BURST_ALL_WHEELS_DOWN_SEC)
+          this->strct_plane_stats.burstTimer.setEnd(); // Timer::wasEnded() below handles the end of the burst
+      }
     }
-    else if (this->plane_stats.current_plane_state == mx_plane_stats::mx_plane_status::plane_is_taking_off)
+    else if (this->strct_plane_stats.current_plane_state == mx_plane_stats_struct::mx_plane_status::plane_is_taking_off)
     {
       // reset last 15m fpm average result and it vector
       data_manager::strct_currentLegStats4UIDisplay.reset_fpm_and_gForce_data();
     }
-
-    if (missionx::Timer::wasEnded(this->plane_stats.burstTimer))
+    // v26.10.1 airborne: approach mode writes dense rows until touchdown
+    else if (this->strct_plane_stats.current_faxil == 0.0f)
     {
-      this->plane_stats.burstTimer.stop(); // stopTimer();
+      const float agl_mt     = dataref_manager::getAGL();                     // meters
+      const float vh_ind_fpm = XPLMGetDataf(missionx::dataref_const::dref_vh_ind_fpm_f);     // negative = descending
+      const float now_sec    = dataref_manager::getTotalRunningTimeSec();     // sim time
 
-      switch (this->plane_stats.before_transition_state)
+      // 1. Above the exit height: leave approach mode (go-around) and re-arm it
+      if (agl_mt > mx_plane_stats_struct::APPROACH_EXIT_AGL_MT)
       {
-        case mx_plane_stats::mx_plane_status::plane_is_taking_off:
+        this->strct_plane_stats.approach_active = false;
+        this->strct_plane_stats.approach_capped = false;
+      }
+      // 2. Enter approach mode: below the start height, descending, and flying (not in takeoff/landing transition)
+      else if (!this->strct_plane_stats.approach_active && !this->strct_plane_stats.approach_capped
+               && agl_mt < mx_plane_stats_struct::APPROACH_START_AGL_MT
+               && vh_ind_fpm < mx_plane_stats_struct::APPROACH_ENTRY_SINK_FPM
+               && (this->strct_plane_stats.current_plane_state == mx_plane_stats_struct::mx_plane_status::enroute
+                   || this->strct_plane_stats.current_plane_state == mx_plane_stats_struct::mx_plane_status::start_airborn))
+      {
+        this->strct_plane_stats.approach_active          = true;
+        this->strct_plane_stats.approach_rows_written    = 0;
+        this->strct_plane_stats.approach_next_sample_sec = now_sec; // write the first row now
+      }
+
+      // 3. Write one row every APPROACH_INTERVAL_SEC. Once active, we keep writing until touchdown, even if the flare stops the descent.
+      if (this->strct_plane_stats.approach_active && now_sec >= this->strct_plane_stats.approach_next_sample_sec)
+      {
+        data_manager::gather_stats.gather_and_store_stats(mxconst::get_STATS_APPROACH());
+
+        this->strct_plane_stats.approach_rows_written++;
+        // from "now", so a slow frame won't cause catch-up rows
+        this->strct_plane_stats.approach_next_sample_sec = now_sec + mx_plane_stats_struct::APPROACH_INTERVAL_SEC;
+
+        // 4. Row limit reached: stop until touchdown or until we climb above the exit height
+        if (this->strct_plane_stats.approach_rows_written >= mx_plane_stats_struct::APPROACH_MAX_ROWS)
         {
-          this->plane_stats.current_plane_state = mx_plane_stats::mx_plane_status::enroute;
+          this->strct_plane_stats.approach_active = false;
+          this->strct_plane_stats.approach_capped = true;
         }
-        break;
-        case mx_plane_stats::mx_plane_status::plane_is_landing:
-        {
-          this->plane_stats.current_plane_state = mx_plane_stats::mx_plane_status::landed;
-        }
-        break;
-        default:
-          break;
       }
     }
 
-    this->plane_stats.prev_faxil = this->plane_stats.current_faxil;
-    plane_stats.current_faxil    = XPLMGetDataf(drefConst.dref_faxil_gear_f);
+    if (missionx::Timer::wasEnded(this->strct_plane_stats.burstTimer))
+    {
+      this->strct_plane_stats.burstTimer.stop(); // stopTimer();
+
+      switch (this->strct_plane_stats.before_transition_state)
+      {
+        case mx_plane_stats_struct::mx_plane_status::plane_is_taking_off:
+        {
+          this->strct_plane_stats.current_plane_state = mx_plane_stats_struct::mx_plane_status::enroute;
+        }
+        break;
+      case mx_plane_stats_struct::mx_plane_status::plane_is_landing:
+      {
+        // v26.10.1 still in the air when the burst ends (a long bounce or a go-around): "enroute", so the next touchdown is detected as a landing again.
+        //          Before, the state was "landed" and the next touchdown was not recorded at all.
+        if (this->strct_plane_stats.current_faxil == 0.0f)
+          this->strct_plane_stats.current_plane_state = mx_plane_stats_struct::mx_plane_status::enroute;
+        else
+          this->strct_plane_stats.current_plane_state = mx_plane_stats_struct::mx_plane_status::landed;
+      }
+      break;
+      default:
+        break;
+      }
+    }
+
+    this->strct_plane_stats.prev_faxil = this->strct_plane_stats.current_faxil;
+    strct_plane_stats.current_faxil    = XPLMGetDataf(drefConst.dref_faxil_gear_f);
   }
 }
 
@@ -4131,7 +4199,7 @@ missionx::Mission::loadCheckpoint()
     const std::string path_to_original_stats_db_s   = std::string(data_manager::mx_folders_properties.getAttribStringValue(mxconst::get_PROP_MISSIONX_PATH(), "", data_manager::errStr)) + "/" + mxconst::get_DB_FOLDER_NAME() + "/" + mxconst::get_DB_STATS_XP();
 
 
-    missionx::data_manager::db_close_database(data_manager::db_stats);
+    missionx::data_manager::close_stats_db(false); // v26.10.1 was: db_close_database(db_stats). Stops the writer before the file is replaced.
 
     data_manager::delete_db_file(path_to_original_stats_db_s);
 
@@ -4291,7 +4359,7 @@ missionx::Mission::flcPRE()
               continue;
 
             #ifndef RELEASE
-            missionx::Log::log_xplm_debug_string (fmt::format("[{}] >> Binding Texture: {}.", __func__,  textureFile.getAbsoluteFileLocation() ) );
+            missionx::Log::log_xplm_debug_string (fmt::format("[{}] >> Binding Texture: {}.\n", __func__,  textureFile.getAbsoluteFileLocation() ) );
             #endif
 
             // v26.09.3 Bind the textures
@@ -6125,7 +6193,7 @@ missionx::Mission::flc_check_success()
         else
         {
           // v3.0.219.9 adding another abort reason. If next_leg name is equal to currentGoalName
-          if (!(Utils::isElementExists(missionx::data_manager::mapFlightLegs, nextFlightLeg)) || (data_manager::currentLegName == nextFlightLeg))
+          if (!missionx::data_manager::mapFlightLegs.contains( nextFlightLeg) || (data_manager::currentLegName == nextFlightLeg))
           {
             Log::logMsgErr("There is a problem with Flight Leg: " + mxconst::get_QM() + nextFlightLeg + mxconst::get_QM() + ". Check if it exists or if it repeat itself. Check your mission data file and notify developer if need. Aborting mission.");
             data_manager::missionState = missionx::mx_mission_state_enum::mission_aborted;

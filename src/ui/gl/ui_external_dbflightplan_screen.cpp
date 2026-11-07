@@ -59,7 +59,7 @@ void ui_external_dbflightplan_screen::draw_child_ext_fpln_db_site_screen() {
     add_briefer_description_post_mission_creation(!(missionx::data_manager::get_is_random_engine_running()) && missionx::data_manager::missionState < mx_mission_state_enum::mission_is_running);
 
 
-    mx_img_window::HelpMarker ("FROM or TO fields needs to have a value");
+    mx_img_window::HelpMarker ("The FROM and TO fields must both have a value.");
     ImGui::SameLine ();
     {
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow);
@@ -89,6 +89,7 @@ void ui_external_dbflightplan_screen::draw_child_ext_fpln_db_site_screen() {
         if (!nNavAid.getID().empty())
         {
           mxUtils::copy_string_to_buffer(nNavAid.getID(), missionx::strct_ext_layer.buf_from_icao[0], sizeof(missionx::strct_ext_layer.buf_from_icao)); // v26.04.3
+          missionx::strct_ext_layer.flag_remove_duplicate_airport_names = true; // v26.10.1
         }
 
         missionx::strct_ext_layer.from_icao = std::string (missionx::strct_ext_layer.buf_from_icao); // first initialization
@@ -164,20 +165,28 @@ void ui_external_dbflightplan_screen::draw_child_ext_fpln_db_site_screen() {
     }
     ImGui::PopItemWidth ();
 
-    // v3.303.8.3
-    mx_img_window::HelpMarker ("Result should only contain one row per airport, remove duplications based on airport code and name.");
-    ImGui::SameLine ();
-    if (ImGui::Checkbox ("Remove duplicate airports", &missionx::strct_ext_layer.flag_remove_duplicate_airport_names))
+    if (!missionx::strct_ext_layer.from_icao.empty())
     {
-      missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_REMOVE_DUPLICATE_ICAO_ROWS (), missionx::strct_ext_layer.flag_remove_duplicate_airport_names);
-    }
-    if (missionx::strct_ext_layer.flag_remove_duplicate_airport_names)
-    {
-      ImGui::SameLine (0.0f, 30.0f);
-      if (ImGui::Checkbox ("Group By Waypoints", &missionx::strct_ext_layer.flag_group_by_waypoints))
+      // v3.303.8.3
+      mx_img_window::HelpMarker ("Result should only contain one row per airport, remove duplications based on airport code and name.");
+      ImGui::SameLine ();
+      if (ImGui::Checkbox ("Remove duplicate airports", &missionx::strct_ext_layer.flag_remove_duplicate_airport_names))
       {
-        missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_GROUP_DUPLICATES_BY_WAYPOINTS (), missionx::strct_ext_layer.flag_group_by_waypoints);
+        missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_REMOVE_DUPLICATE_ICAO_ROWS (), missionx::strct_ext_layer.flag_remove_duplicate_airport_names);
       }
+      if (missionx::strct_ext_layer.flag_remove_duplicate_airport_names)
+      {
+        ImGui::SameLine (0.0f, 30.0f);
+        if (ImGui::Checkbox ("Group By Waypoints", &missionx::strct_ext_layer.flag_group_by_waypoints))
+        {
+          missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_GROUP_DUPLICATES_BY_WAYPOINTS (), missionx::strct_ext_layer.flag_group_by_waypoints);
+        }
+      }
+    }
+    else
+    {
+      missionx::strct_ext_layer.flag_remove_duplicate_airport_names = false;
+      missionx::strct_ext_layer.flag_group_by_waypoints = false;
     }
   }
   ImGui::EndChild ();
@@ -207,7 +216,7 @@ void ui_external_dbflightplan_screen::draw_child_ext_fpln_db_site_screen() {
       missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_NO_OF_LEGS (), 0); // Ignore, set by the external site
       missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MIN_DISTANCE_SLIDER (), (missionx::strct_ext_layer.ga_range_max_slider_f-300.0f < 0.0f)? 0.0f : missionx::strct_ext_layer.ga_range_max_slider_f - 300.0f);
       missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MAX_DISTANCE_SLIDER (), missionx::strct_ext_layer.ga_range_max_slider_f);
-      missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_USE_OSM_CHECKBOX (), false); // not OSM but external site
+      missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_USE_OSMDB_CHECKBOX (), false); // not OSM but external site
 
       missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_FROM_ICAO (), std::string (missionx::strct_ext_layer.buf_from_icao));
       missionx::data_manager::prop_userDefinedMission_ui.setNodeStringProperty (mxconst::get_PROP_TO_ICAO (), missionx::strct_ext_layer.to_icao); // v3.0.253.3 // Ignore, set by the external site
@@ -336,7 +345,7 @@ void ui_external_dbflightplan_screen::draw_child_ext_fpln_db_site_screen() {
               missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<int> (mxconst::get_PROP_NO_OF_LEGS (), rowData.waypoints_i); //, node_ptr, node_ptr.getName());
               missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MIN_DISTANCE_SLIDER (), 0.0); //, node_ptr, node_ptr.getName());
               missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<double> (mxconst::get_PROP_MAX_DISTANCE_SLIDER (), rowData.distnace_d); //, node_ptr, node_ptr.getName());
-              missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_USE_OSM_CHECKBOX (), false); //, node_ptr, node_ptr.getName());
+              missionx::data_manager::prop_userDefinedMission_ui.setNodeProperty<bool> (mxconst::get_PROP_USE_OSMDB_CHECKBOX (), false); //, node_ptr, node_ptr.getName());
 
               ImGui::OpenPopup (GENERATE_EXTERNAL_FPLN_QUESTION.c_str ());
             }

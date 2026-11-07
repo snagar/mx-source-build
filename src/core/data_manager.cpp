@@ -1513,7 +1513,7 @@ void
 data_manager::clearFMSEntries()
 {
   // clear GPS
-  int entries = XPLMCountFMSEntries();
+  const int entries = XPLMCountFMSEntries();
   for (int i = (entries - 1); i >= 0; --i) // entries starts from 0..N-1
     XPLMClearFMSEntry(i);
 }
@@ -2592,7 +2592,7 @@ data_manager::stopMission()
   mapFailureTimers.clear();                // v3.0.253.7
   lowestFailTimerName_s.clear(); // v3.0.253.7
 
-  db_close_database(db_stats); // v3.303.8.3
+  close_stats_db(false); // v26.10.1 was: db_close_database(db_stats). Stops the writer thread first.
 
   mapInterpolDatarefs.clear(); // v3.303.13
 
@@ -3314,7 +3314,7 @@ data_manager::prepareInventoryCopies(const std::string& inInventoryName)
   assert(mxUtils::isElementExists(data_manager::mapInventories, mxconst::get_ELEMENT_PLANE()) && fmt::format("[{}] Plane inventory was not initialized.", __func__).c_str()); // v24.12.2
 
   externalInventoryCopy.init();
-  if (!inInventoryName.empty() && Utils::isElementExists(mapInventories, inInventoryName))
+  if (!inInventoryName.empty() && mapInventories.contains(inInventoryName))
     externalInventoryCopy = mapInventories[inInventoryName]; // v3.0.241.1
   else
     externalInventoryCopy.init();
@@ -4465,8 +4465,8 @@ data_manager::setGPS()
 
     }
 
-    const auto elev_mt_i = (flag_icao_is_valid)? static_cast<int> ( navInfo.height_mt )
-                                                  : static_cast<int> ( elev_ft_f * feet2meter );
+    const auto navaid_elev_in_feet_f = (flag_icao_is_valid)?  navInfo.get_elev_ft()
+                                                         :  elev_ft_f;
 
 
     // v3.0.241.2 adding RealityXP ".gpf" flight plan format
@@ -4481,11 +4481,11 @@ data_manager::setGPS()
       }
     }
 
-    // v25.05.1 Adding lat/lon
-    missionx::NavAidInfo nav (lat_f, lon_f, static_cast<float>(elev_mt_i) );
+    // v25.05.1 Adding lat/lon/height in meters
+    const missionx::NavAidInfo nav (lat_f, lon_f, (navaid_elev_in_feet_f * feet2meter) );
     Utils::addElementToMap (map_fms_entries, valid_entries_counter, nav);
 
-    XPLMSetFMSEntryLatLon(valid_entries_counter, lat_f, lon_f, elev_mt_i); // v3.0.241.3
+    XPLMSetFMSEntryLatLon(valid_entries_counter, lat_f, lon_f, navaid_elev_in_feet_f); // v3.0.241.3
 
     ++valid_entries_counter;
   } // end loop over all child <point>s
@@ -5475,17 +5475,42 @@ data_manager::delete_db_file(const std::string& inPathAndFile)
 
 // -------------------------------------
 
+std::string
+data_manager::get_stats_db_path()
+{
+  // v26.10.1 same string as before in init_stats_db(), now shared with the stats fetch
+  return mx_folders_properties.getAttribStringValue(mxconst::get_PROP_MISSIONX_PATH(), "", errStr) + mxconst::get_DB_FOLDER_NAME() + "/" + mxconst::get_DB_STATS_XP();
+}
+
+// -------------------------------------
+
 bool
 data_manager::init_stats_db()
 {
-  const std::string path_to_stats_db_s = mx_folders_properties.getAttribStringValue(mxconst::get_PROP_MISSIONX_PATH(), "", errStr) + mxconst::get_DB_FOLDER_NAME() + "/" + mxconst::get_DB_STATS_XP();
+  const std::string path_to_stats_db_s = get_stats_db_path(); // v26.10.1
   if (db_connect(db_stats, path_to_stats_db_s))
   {
-    Log::logMsg("[db] Connected to: " + path_to_stats_db_s);
+    Log::logMsg(fmt::format("[{}] Connected to: {}", __func__, path_to_stats_db_s) );
     return true;
   }
 
   return false;
+}
+
+// -------------------------------------
+
+void
+data_manager::close_stats_db(const bool in_flush_pending_rows)
+{
+  // v26.10.1 the writer thread uses db_stats. Stop it (and optionally write its last rows) before closing.
+  gather_stats.detach_db(in_flush_pending_rows);
+
+  if (db_stats.db && db_stats.db_is_open_and_ready)
+  {
+    db_stats.close_database();
+    Log::logMsg(fmt::format("[{}] Stats database closed.", __func__));
+
+  }
 }
 
 // -------------------------------------
@@ -5497,8 +5522,8 @@ data_manager::db_connect(dbase& db, const std::string& inPathToDbFile)
   db.set_db_path_and_file(inPathToDbFile);
   if (db.open_database())
     return true;
-  else
-    Log::logMsgErr("[data_manager] Failed to connect to database file: " + inPathToDbFile);
+
+  Log::logMsgErr(fmt::format("[{}] Failed to connect to database file: {}", __func__, inPathToDbFile) );
 
   return false;
 }
@@ -5509,7 +5534,7 @@ void
 data_manager::db_close_all_databases()
 {
   db_xp_airports.close_database();
-  db_stats.close_database(); // v3.0.255.1
+  close_stats_db(false); // v26.10.1 was: db_stats.close_database(). Stops the writer thread first.
   db_cache.close_database(); // v3.0.255.3
 }
 
@@ -6153,15 +6178,26 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
   outStatusMessage->clear();
   std::lock_guard<std::mutex> lock(s_thread_sync_mutex);
 
+  // v26.10.1 own read-only connection. stats_db is closed when the end screen is shown.
+  //          The dbase destructor closes it when the function returns.
+  missionx::dbase local_stats_db_ro;
+  local_stats_db_ro.set_db_path_and_file(get_stats_db_path());
+  if (!local_stats_db_ro.open_database_read_only())
+  {
+    (*outStatusMessage) = "Could not open the stats database.\n" + local_stats_db_ro.last_err;
+    (*outState)         = mxFetchState_enum::fetch_ended;
+    return;
+  }
+
   const std::string query_stats = "select elev, flap_ratio * 100 as flap_ratio, local_date_days, local_time_sec, case when airspeed < 0.0 then 0.0 else airspeed end as airspeed , groundspeed, faxil_gear, roll, IFNULL(activity,'') from stats order by line_id";
 
-  if (db_stats.db_is_open_and_ready)
+  if (local_stats_db_ro.db_is_open_and_ready)
   {
     const std::string stmt_uq_name = "fetch_plane_stats";
     // prepare query statement
-    if (db_stats.prepareNewStatement(stmt_uq_name, query_stats))
+    if (local_stats_db_ro.prepareNewStatement(stmt_uq_name, query_stats))
     {
-      assert(data_manager::db_stats.mapStatements[stmt_uq_name] != nullptr);
+      assert(local_stats_db_ro.mapStatements[stmt_uq_name] != nullptr && fmt::format("[{}] Failed to create stmt: {}", __func__, stmt_uq_name).data());
 
       int seq = 0;
       mission_stats_from_query.reset();
@@ -6170,7 +6206,7 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
       std::map<int, missionx::mx_row_stats_strct> map_activity_stats_rows;
       std::vector <std::string> vec_activity_pacing = {"takeoff", "landing"};
 
-      while (sqlite3_step(db_stats.mapStatements[stmt_uq_name]) == SQLITE_ROW)
+      while (sqlite3_step(local_stats_db_ro.mapStatements[stmt_uq_name]) == SQLITE_ROW)
       {
         missionx::mx_row_stats_strct row;
 
@@ -6178,7 +6214,7 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
         row.Seq_d = static_cast<double> ( seq );
         mission_stats_from_query.vecSeq_d.emplace_back( row.Seq_d ); // 0 column line_id (seq) we will use internal numbering so we always start from ZERO
 
-        const auto elev_mt = static_cast<double> ( sqlite3_column_int ( db_stats.mapStatements[stmt_uq_name], i ) );
+        const auto elev_mt = static_cast<double> ( sqlite3_column_int ( local_stats_db_ro.mapStatements[stmt_uq_name], i ) );
         i++; // column 1 elevation in meters
         const auto elev_ft = elev_mt * meter2feet;
         row.Elev_mt_d = elev_mt;
@@ -6191,38 +6227,48 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
         if (seq == 0)
           mission_stats_from_query.min_elev_ft = mission_stats_from_query.max_elev_ft = elev_ft;
 
-        row.Flaps_d = static_cast<double> ( sqlite3_column_int ( db_stats.mapStatements[stmt_uq_name], i ) );
+        row.Flaps_d = static_cast<double> ( sqlite3_column_int ( local_stats_db_ro.mapStatements[stmt_uq_name], i ) );
         mission_stats_from_query.vecFlaps_d.emplace_back( row.Flaps_d );
         i++; // 2 column flaps
-        row.DayInYear_d = static_cast<double> ( sqlite3_column_int ( db_stats.mapStatements[stmt_uq_name], i ) );
+        row.DayInYear_d = static_cast<double> ( sqlite3_column_int ( local_stats_db_ro.mapStatements[stmt_uq_name], i ) );
         mission_stats_from_query.vecDayInYear_d.emplace_back( row.DayInYear_d );
         i++; // 3 column day in year
-        row.LocalTime_sec_d = static_cast<double> ( sqlite3_column_int ( db_stats.mapStatements[stmt_uq_name], i ) );
+        row.LocalTime_sec_d = static_cast<double> ( sqlite3_column_int ( local_stats_db_ro.mapStatements[stmt_uq_name], i ) );
         mission_stats_from_query.vecLocalTime_sec_d.emplace_back(row.LocalTime_sec_d);
         i++; // 4 column local time in seconds
 
-        const auto air_speed = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name], i);
+        const auto air_speed = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name], i);
         i++; // 5 column Air speed
         row.AirSpeed_d = air_speed;
         mission_stats_from_query.vecAirSpeed_d.emplace_back(row.AirSpeed_d);
         // Min Max
         mxUtils::eval_min_max<double>(air_speed, mission_stats_from_query.min_airspeed, mission_stats_from_query.max_airspeed);
 
-        row.GroundSpeed_d = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name], i);
+        row.GroundSpeed_d = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name], i);
         mission_stats_from_query.vecGroundSpeed_d.emplace_back(row.GroundSpeed_d);
         i++; // 6 column ground speed
-        row.Faxil_d = static_cast<double> ( sqlite3_column_int ( db_stats.mapStatements[stmt_uq_name], i ) );
+        row.Faxil_d = static_cast<double> ( sqlite3_column_int ( local_stats_db_ro.mapStatements[stmt_uq_name], i ) );
         mission_stats_from_query.vecFaxil_d.emplace_back(row.Faxil_d);
         i++; // 7 column Faxil
-        row.Roll_d = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name], i);
+        row.Roll_d = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name], i);
         mission_stats_from_query.vecRoll_d.emplace_back(row.Roll_d);
         i++; // 8 column roll
-        row.Activity_s = std::string(reinterpret_cast<const char*>(sqlite3_column_text(db_stats.mapStatements[stmt_uq_name], i)));
+        row.Activity_s = std::string(reinterpret_cast<const char*>(sqlite3_column_text(local_stats_db_ro.mapStatements[stmt_uq_name], i)));
         mission_stats_from_query.vecActivity_s.emplace_back(row.Activity_s);
         i++; // 9. column Activity: takeoff / landing
 
         seq++;
       }
+
+      // v26.10.1 build the plot series once. ~2 points per bucket, so the graph stays far below 64K vertices
+      //          (16-bit ImDrawIdx when IMGWINDOW_USE_PANEL_GRAPHICS is defined) no matter how long the flight was.
+      constexpr size_t PLOT_BUCKETS = 1000;
+      // Decimate for elevation
+      mxUtils::decimate_min_max(mission_stats_from_query.vecSeq_d, mission_stats_from_query.vecElev_ft_d,  PLOT_BUCKETS,
+                                mission_stats_from_query.vecPlotElevSeq_d, mission_stats_from_query.vecPlotElev_ft_d);
+      // Decimate for speed
+      mxUtils::decimate_min_max(mission_stats_from_query.vecSeq_d, mission_stats_from_query.vecAirSpeed_d, PLOT_BUCKETS,
+                                mission_stats_from_query.vecPlotAirSeq_d,  mission_stats_from_query.vecPlotAirSpeed_d);
 
       if (seq == 0)
         (*outStatusMessage) = "!!! No Stats Rows Found !!!"; // success message
@@ -6238,14 +6284,14 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
     // query time based on stats
     // Sum the time we flew for each day in a year, in most cases we fly during same day hours but for longer flights it might take during evening of one day and the few hours from the other day.
     const std::string query_time_fly = "select sum ( active_time_in_sec_in_aday ) as total_mission_time_sec from ( select MAX(local_time_sec) - MIN(local_time_sec) as active_time_in_sec_in_aday from stats group by local_date_days) v1";
-    if (const std::string stmt_uq_name2 = "query_time_flew"; db_stats.prepareNewStatement(stmt_uq_name2, query_time_fly))
+    if (const std::string stmt_uq_name2 = "query_time_flew"; local_stats_db_ro.prepareNewStatement(stmt_uq_name2, query_time_fly))
     {
-      assert(data_manager::db_stats.mapStatements[stmt_uq_name2] != nullptr);
+      assert(local_stats_db_ro.mapStatements[stmt_uq_name2] != nullptr && fmt::format("[{}] Failed to create stmt2: {}", __func__, stmt_uq_name2).data());
 
       double cumulative_time_flew = 0.0;
-      while (sqlite3_step(db_stats.mapStatements[stmt_uq_name2]) == SQLITE_ROW)
+      while (sqlite3_step(local_stats_db_ro.mapStatements[stmt_uq_name2]) == SQLITE_ROW)
       {
-        const double active_time_in_sec_in_aday_d = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name2], 0);
+        const double active_time_in_sec_in_aday_d = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name2], 0);
         cumulative_time_flew += active_time_in_sec_in_aday_d;
       }
       mission_stats_from_query.time_flew_sec_d    = cumulative_time_flew;
@@ -6266,36 +6312,36 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
     #endif // !RELEASE
 
 
-    if (db_stats.prepareNewStatement(stmt_uq_name3, query_min_max_stats))
+    if (local_stats_db_ro.prepareNewStatement(stmt_uq_name3, query_min_max_stats))
     {
-      assert(data_manager::db_stats.mapStatements[stmt_uq_name3] != nullptr);
+      assert(local_stats_db_ro.mapStatements[stmt_uq_name3] != nullptr && fmt::format("[{}] Failed to create stmt3: {}", __func__, stmt_uq_name3).data());
 
-      if (db_stats.step(db_stats.mapStatements[stmt_uq_name3]) == SQLITE_ROW) // fetch 1 row
+      if (local_stats_db_ro.step(local_stats_db_ro.mapStatements[stmt_uq_name3]) == SQLITE_ROW) // fetch 1 row
       {
         int iCol                                        = 0;
-        mission_stats_from_query.minPitch = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name3], iCol);
+        mission_stats_from_query.minPitch = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.maxPitch = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name3], iCol);
+        mission_stats_from_query.maxPitch = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.minRoll = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name3], iCol);
+        mission_stats_from_query.minRoll = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.maxRoll = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name3], iCol);
+        mission_stats_from_query.maxRoll = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.minGforce = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name3], iCol);
+        mission_stats_from_query.minGforce = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.maxGforce = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name3], iCol);
+        mission_stats_from_query.maxGforce = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.minFaxilG = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name3], iCol);
+        mission_stats_from_query.minFaxilG = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.maxFaxilG = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name3], iCol);
+        mission_stats_from_query.maxFaxilG = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.minAirspeed = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name3], iCol);
+        mission_stats_from_query.minAirspeed = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.maxAirspeed = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name3], iCol);
+        mission_stats_from_query.maxAirspeed = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.minGroundSpeed = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name3], iCol);
+        mission_stats_from_query.minGroundSpeed = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.maxGroundspeed = sqlite3_column_double(db_stats.mapStatements[stmt_uq_name3], iCol);
+        mission_stats_from_query.maxGroundspeed = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
       }
 
@@ -6319,13 +6365,48 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
   }
   else
   {
-    (*outStatusMessage) = "Could not work on the stats database.\n" + db_stats.last_err;
+    (*outStatusMessage) = "Could not work on the stats database.\n" + local_stats_db_ro.last_err;
   }
 
 
 
   ///// v3.0.308.4.3
-  mission_stats_from_query.vecLandingStatsResults = get_landing_stats_as_vec(); // v3.303.8.3 will get landing information + center line score
+  mission_stats_from_query.vecLandingStatsResults = get_landing_stats_as_vec(local_stats_db_ro); // v26.10.1 will get landing information + center line score
+
+  // v26.10.1 landing analysis: height steps, touchdown summary, score, grade and notes
+  mission_stats_from_query.mapLandingAnalysis = fetch_landing_analysis(local_stats_db_ro);
+  if (!mission_stats_from_query.mapLandingAnalysis.empty())
+  {
+    IXMLNode xScoring = get_scoring_with_landing_defaults();
+    for (auto &[td_line_id, landing] : mission_stats_from_query.mapLandingAnalysis)
+    {
+      score_landing_analysis(landing, xScoring);
+      build_landing_findings(landing);
+    }
+
+    // #ifndef RELEASE
+    // v26.10.1 debug: print the landing analysis to missionx.log
+    for (const auto &[td_line_id, landing] : mission_stats_from_query.mapLandingAnalysis)
+    {
+      Log::logMsg(fmt::format("\n[{}] Landing line_id: {}, grade: {}, score: {:.1f}, weight: {:.0f}kg, td_fpm: {:.0f}, gear_load: {:.2f} (G {:.2f} - {:.2f}, peak {:.2f}), glide: {:.2f} ({:.0f} fpm), td_bank: {:.1f}, td_pitch: {:.1f}",
+                              __func__, td_line_id, landing.grade_s, landing.landing_score, landing.td_weight_kg, landing.td_fpm,
+                              landing.td_gear_load, landing.td_g_avg, landing.pre_td_g, landing.td_g_peak,
+                              landing.final_max_glide_ratio, landing.final_max_sink_fpm, landing.td_bank, landing.td_pitch));
+
+      for (const auto &row : landing.vecSteps)
+        Log::logMsg(fmt::format("  {:>6} {} agl:{:6.1f}ft ias:{:5.1f} gs:{:5.1f} vs:{:6.0f} pitch:{:5.1f} bank:{:5.1f} g:{:4.2f} flaps:{:4.2f} {:5.1f}s {:6.0f}m",
+                                row.step_label, (row.same_row_as_next ? "-" : " "), row.agl_ft, row.ias_kt, row.gs_kt, row.vs_fpm,
+                                row.pitch, row.roll, row.g, row.flap_ratio, row.sec_to_td, row.dist_to_td_mt));
+
+      Log::logMsg(fmt::format("  bounce: count {}, max {:.2f} ft, {:.2f} sec, re-contact {:.0f} fpm", landing.bounce_count, landing.max_bounce_agl_ft, landing.max_bounce_sec, landing.worst_recontact_fpm));
+      Log::logMsg(fmt::format("  score: base {:.1f}, bounce penalty {:.1f}, final {:.1f}", landing.base_score, landing.bounce_penalty, landing.landing_score));
+
+      for (const auto &note : landing.vecFindings)
+        Log::logMsg(fmt::format("  note: {}", note));
+    }
+    // #endif
+  }
+
 
   (*outState) = mxFetchState_enum::fetch_ended; // once we change the state, the UI can show/hide the relevant layers/widgets
 }
@@ -6335,27 +6416,13 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
 
 
 std::vector<mx_stats_data>
-data_manager::get_landing_stats_as_vec()
+data_manager::get_landing_stats_as_vec(missionx::dbase &in_stats_db)
 {
   std::vector<mx_stats_data> vecActivity; // store stmt01 data
-  // std::string                          icao_id_s;
 
   // Fetch time passes between activities. The first row will always be 0
   // The query will convert days into seconds to have a correct delta result between "current - previous" fields
   // columns return:  line_id, plane_lat, plane_lon, elev_mt, activity and time_passed (between activities)
-//   const std::string stmt01 = R"(select line_id, plane_lat, plane_lon, activity
-//            , case
-//                   when v1.local_date_days >= v1.prev_date_days then ( v1.local_date_days_in_seconds + v1.local_time_sec ) - ( v1.prev_local_date_days_in_seconds + v1.prev_local_time_sec) -- should pick 99.9% of cases
-//                   when v1.local_date_days < v1.prev_date_days  then ( (prev_local_date_days_in_seconds + 86400) + v1.local_time_sec ) - (v1.prev_local_date_days_in_seconds + v1.prev_local_time_sec) -- transition a year, very rare
-//              else 0 end time_passed
-// from (
-// select line_id, local_date_days, local_date_days*86400 as local_date_days_in_seconds, local_time_sec, lat as plane_lat, lon as plane_lon, elev as elev_mt, gforce_normal, gforce_axil, vvi_fpm_pilot, activity, lag(local_date_days) over (order by line_id) as prev_date_days, (lag(local_date_days) over (order by line_id) * 86400)  as prev_local_date_days_in_seconds, lag (local_time_sec) over (order by line_id) as prev_local_time_sec
-// from stats
-// where (stats.activity != "" and stats.activity is not null)
-// ) v1
-// )";
-
-
 
   // Gather pacing info
   const std::string stmt01 = R"(select line_id, lat as plane_lat, lon as plane_lon, activity
@@ -6377,8 +6444,6 @@ and activity in ('takeoff', 'landing')
 order by line_id
 )";
 
-
-
   #ifndef RELEASE
   Log::logMsg("\nstmt01: " + stmt01); // debug
   #endif // !RELEASE
@@ -6389,47 +6454,46 @@ order by line_id
 
 
   // Q1: gather activity data from stats db
-  if (db_stats.prepareNewStatement(unique_name_s01, stmt01))
+  if (in_stats_db.prepareNewStatement(unique_name_s01, stmt01, false))
   {
     std::map<int, mx_stats_data> map_landing_data;
-
 
     // Loop over all activities that are "landing" and gather airport and runway information (drill down)
     bool b_found_bounce = false;
     int index = 1;
-    while (db_stats.step(db_stats.mapStatements[unique_name_s01]) == SQLITE_ROW) // fetch 1 row))
+    while (in_stats_db.step(in_stats_db.mapStatements[unique_name_s01]) == SQLITE_ROW) // fetch 1 row))
     {
       mx_stats_data data;
       int           iCol01 = 0;
 
-      data.line_id = sqlite3_column_int(db_stats.mapStatements[unique_name_s01], iCol01);
+      data.line_id = sqlite3_column_int(in_stats_db.mapStatements[unique_name_s01], iCol01);
       iCol01++;
-      data.plane.lat = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      data.plane.lat = sqlite3_column_double(in_stats_db.mapStatements[unique_name_s01], iCol01);
       iCol01++;
-      data.plane.lon = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      data.plane.lon = sqlite3_column_double(in_stats_db.mapStatements[unique_name_s01], iCol01);
       iCol01++;
-      data.activity_s = mxUtils::stringToLower(std::string(reinterpret_cast<const char*>(sqlite3_column_text(db_stats.mapStatements[unique_name_s01], iCol01)))); // takeoff or landing
+      data.activity_s = mxUtils::stringToLower(std::string(reinterpret_cast<const char*>(sqlite3_column_text(in_stats_db.mapStatements[unique_name_s01], iCol01)))); // takeoff or landing
       iCol01++;
       // v25.09.2
-      data.local_date_days = sqlite3_column_int(db_stats.mapStatements[unique_name_s01], iCol01);
+      data.local_date_days = sqlite3_column_int(in_stats_db.mapStatements[unique_name_s01], iCol01);
       iCol01++;
-      data.local_time_sec = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      data.local_time_sec = sqlite3_column_double(in_stats_db.mapStatements[unique_name_s01], iCol01);
       iCol01++;
-      data.airspeed = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      data.airspeed = sqlite3_column_double(in_stats_db.mapStatements[unique_name_s01], iCol01);
       iCol01++;
-      data.groundspeed = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      data.groundspeed = sqlite3_column_double(in_stats_db.mapStatements[unique_name_s01], iCol01);
       iCol01++;
-      data.roll = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      data.roll = sqlite3_column_double(in_stats_db.mapStatements[unique_name_s01], iCol01);
       iCol01++;
-      data.diff_distance_meters = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      data.diff_distance_meters = sqlite3_column_double(in_stats_db.mapStatements[unique_name_s01], iCol01);
       iCol01++;
-      data.diff_time_sec = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      data.diff_time_sec = sqlite3_column_double(in_stats_db.mapStatements[unique_name_s01], iCol01);
       iCol01++;
-      data.os_date_fmt = mxUtils::stringToLower(std::string(reinterpret_cast<const char*>(sqlite3_column_text(db_stats.mapStatements[unique_name_s01], iCol01)))); // takeoff or landing
+      data.os_date_fmt = mxUtils::stringToLower(std::string(reinterpret_cast<const char*>(sqlite3_column_text(in_stats_db.mapStatements[unique_name_s01], iCol01)))); // takeoff or landing
       iCol01++;
-      data.os_date_fmt_time_pacing = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      data.os_date_fmt_time_pacing = sqlite3_column_double(in_stats_db.mapStatements[unique_name_s01], iCol01);
       iCol01++;
-      data.lead_os_date_time_pacing = sqlite3_column_double(db_stats.mapStatements[unique_name_s01], iCol01);
+      data.lead_os_date_time_pacing = sqlite3_column_double(in_stats_db.mapStatements[unique_name_s01], iCol01);
       iCol01++;
 
       data.bInitialized = true;
@@ -6560,6 +6624,341 @@ where is_plane_on_rw = 1
   return vecActivity; // landing_stats;
 }
 
+
+// -------------------------------------
+// v26.10.1 Height steps and touchdown summary of every landing in the stats database.
+//          Runs in the fetch thread on the read-only connection. Queries come from sql.xml <stats_sqls>.
+std::map<int, missionx::mx_landing_analysis>
+data_manager::fetch_landing_analysis(missionx::dbase &in_stats_db)
+{
+  std::map<int, missionx::mx_landing_analysis> mapResult; // key: td_line_id
+
+  // Read the queries into a local map. We are in the fetch thread, so we do not write into the shared data_manager::mapQueries.
+  std::map<std::string, std::string> mapStatsQueries;
+  Utils::read_external_sql_query_file(mapStatsQueries, mxconst::get_SQLITE_STATS_SQLS());
+
+  const std::string stmt_steps_name   = "landing_height_steps";
+  const std::string stmt_summary_name = "landing_touchdown_summary";
+
+  if (!mapStatsQueries.contains(stmt_steps_name) || !mapStatsQueries.contains(stmt_summary_name))
+  {
+    Log::logMsgErr(fmt::format(R"([{}] sql.xml <{}> does not have the "{}" and "{}" queries. Landing analysis skipped.)", __func__, mxconst::get_SQLITE_STATS_SQLS(), stmt_steps_name, stmt_summary_name));
+    return mapResult;
+  }
+
+  // ---- 1. height steps ----
+  if (in_stats_db.prepareNewStatement(stmt_steps_name, mapStatsQueries[stmt_steps_name]))
+  {
+    sqlite3_stmt *stmt    = in_stats_db.mapStatements[stmt_steps_name];
+    const auto    columns = dbase::get_column_indexes(stmt); // columns are read by their alias name
+
+    while (in_stats_db.step(stmt) == SQLITE_ROW)
+    {
+      const int td_line_id = dbase::read_column_int(stmt, columns, "td_line_id");
+
+      missionx::mx_landing_step_row row;
+      row.step_order    = dbase::read_column_int(stmt, columns, "step_order");
+      row.step_agl_ft   = dbase::read_column_double(stmt, columns, "step_agl_ft");
+      row.step_label    = dbase::read_column_text(stmt, columns, "step_label");
+      row.row_line_id   = dbase::read_column_int(stmt, columns, "row_line_id");
+      row.agl_ft        = dbase::read_column_double(stmt, columns, "agl_ft");
+      row.ias_kt        = dbase::read_column_double(stmt, columns, "ias_kt");
+      row.gs_kt         = dbase::read_column_double(stmt, columns, "gs_kt");
+      row.vs_fpm        = dbase::read_column_double(stmt, columns, "vs_fpm");
+      row.pitch         = dbase::read_column_double(stmt, columns, "pitch");
+      row.roll          = dbase::read_column_double(stmt, columns, "roll");
+      row.g             = dbase::read_column_double(stmt, columns, "g");
+      row.flap_ratio    = dbase::read_column_double(stmt, columns, "flap_ratio");
+      row.sec_to_td     = dbase::read_column_double(stmt, columns, "sec_to_td");
+      row.dist_to_td_mt = dbase::read_column_double(stmt, columns, "dist_to_td_mt");
+
+      mapResult[td_line_id].td_line_id = td_line_id;
+      mapResult[td_line_id].vecSteps.emplace_back(row);
+    }
+
+    // Mark a step that uses the same stats row as the step below it (no own sample at that height, mostly 1 Hz data).
+    // The lower step keeps the row, so "TD" always shows its values.
+    for (auto &[td_line_id, landing] : mapResult)
+    {
+      for (size_t i = 0; i + 1 < landing.vecSteps.size(); ++i)
+      {
+        if (landing.vecSteps[i].row_line_id == landing.vecSteps[i + 1].row_line_id)
+          landing.vecSteps[i].same_row_as_next = true;
+      }
+    }
+  }
+  else
+  {
+    Log::logMsgErr(fmt::format("[{}] Failed to prepare \"{}\": {}", __func__, stmt_steps_name, in_stats_db.last_err));
+  }
+
+
+  // ---- 2. touchdown summary ----
+  if (in_stats_db.prepareNewStatement(stmt_summary_name, mapStatsQueries[stmt_summary_name]))
+  {
+    sqlite3_stmt *stmt    = in_stats_db.mapStatements[stmt_summary_name];
+    const auto    columns = dbase::get_column_indexes(stmt); // columns are read by their alias name
+
+    while (in_stats_db.step(stmt) == SQLITE_ROW)
+    {
+      const int td_line_id = dbase::read_column_int(stmt, columns, "td_line_id");
+      auto     &landing    = mapResult[td_line_id];
+      landing.td_line_id   = td_line_id;
+
+      landing.has_summary  = true;
+      landing.td_fpm       = dbase::read_column_double(stmt, columns, "td_fpm");
+      landing.td_bank      = dbase::read_column_double(stmt, columns, "td_bank");
+      landing.td_pitch     = dbase::read_column_double(stmt, columns, "td_pitch");
+      landing.td_gs_kt     = dbase::read_column_double(stmt, columns, "td_gs_kt");
+      landing.td_weight_kg = dbase::read_column_double(stmt, columns, "td_weight_kg");
+
+      landing.td_g_avg      = dbase::read_column_double(stmt, columns, "td_g_avg");
+      landing.td_g_peak     = dbase::read_column_double(stmt, columns, "td_g_peak");
+      landing.pre_td_g      = dbase::read_column_double(stmt, columns, "pre_td_g");
+      landing.has_gear_load = !dbase::is_column_null(stmt, columns, "td_gear_load");
+      landing.td_gear_load  = dbase::read_column_double(stmt, columns, "td_gear_load");
+
+      landing.final_max_sink_fpm    = dbase::read_column_double(stmt, columns, "final_max_sink_fpm");
+      landing.has_final_glide       = !dbase::is_column_null(stmt, columns, "final_max_glide_ratio");
+      landing.final_max_glide_ratio = dbase::read_column_double(stmt, columns, "final_max_glide_ratio");
+      landing.final_max_bank        = dbase::read_column_double(stmt, columns, "final_max_bank");
+    }
+  }
+  else
+  {
+    Log::logMsgErr(fmt::format("[{}] Failed to prepare \"{}\": {}", __func__, stmt_summary_name, in_stats_db.last_err));
+  }
+
+  // ---- 3. bounces (v26.10.1, optional query) ----
+  const std::string stmt_bounce_name = "landing_bounces";
+  if (!mapStatsQueries.contains(stmt_bounce_name))
+  {
+    Log::logMsgWarn(fmt::format("[{}] sql.xml <{}> has no \"{}\" query. Bounces are not analysed.", __func__, mxconst::get_SQLITE_STATS_SQLS(), stmt_bounce_name));
+  }
+  else if (in_stats_db.prepareNewStatement(stmt_bounce_name, mapStatsQueries[stmt_bounce_name]))
+  {
+    sqlite3_stmt *stmt    = in_stats_db.mapStatements[stmt_bounce_name];
+    const auto    columns = dbase::get_column_indexes(stmt); // columns are read by their alias name
+
+    while (in_stats_db.step(stmt) == SQLITE_ROW)
+    {
+      const int td_line_id = dbase::read_column_int(stmt, columns, "td_line_id");
+      if (!mapResult.contains(td_line_id))
+        continue; // no steps/summary for this touchdown
+
+      auto &landing               = mapResult[td_line_id];
+      landing.has_bounce_data     = true;
+      landing.bounce_count        = dbase::read_column_int(stmt, columns, "bounce_count", 0);
+      landing.max_bounce_agl_ft   = dbase::read_column_double(stmt, columns, "max_bounce_agl_ft");   // NULL -> 0 when no bounce
+      landing.max_bounce_sec      = dbase::read_column_double(stmt, columns, "max_bounce_sec");
+      landing.worst_recontact_fpm = dbase::read_column_double(stmt, columns, "worst_recontact_fpm");
+    }
+  }
+  else
+  {
+    Log::logMsgErr(fmt::format("[{}] Failed to prepare \"{}\": {}", __func__, stmt_bounce_name, in_stats_db.last_err));
+  }
+
+  return mapResult;
+}
+
+// -------------------------------------
+// v26.10.1 Copy of the mission <scoring>. Every landing element the mission does not define is copied from the default <scoring> (Utils XSD map).
+//          We work on a copy, so the mission settings are not changed (this runs in the fetch thread).
+IXMLNode
+data_manager::get_scoring_with_landing_defaults()
+{
+  IXMLNode xDefaultScoring = Utils::xml_get_node_from_XSD_map_as_a_copy(mxconst::get_ELEMENT_SCORING());
+
+  IXMLNode xScoring;
+  if (mx_global_settings.xScoring_ptr.isEmpty())
+    xScoring = xDefaultScoring.deepCopy();
+  else
+    xScoring = mx_global_settings.xScoring_ptr.deepCopy();
+
+  const std::vector<std::string> vecLandingElements = { mxconst::get_ELEMENT_TD_FPM(),
+                                                        mxconst::get_ELEMENT_TD_GEAR_LOAD(),
+                                                        mxconst::get_ELEMENT_FINAL_GLIDE(),
+                                                        mxconst::get_ELEMENT_TD_BANK(),
+                                                        mxconst::get_ELEMENT_TD_BOUNCE_PENALTY(), // v26.10.1
+                                                        mxconst::get_ELEMENT_LANDING_GRADE() };
+
+  for (const auto &element_name : vecLandingElements)
+  {
+    if (xScoring.getChildNode(element_name.c_str()).isEmpty())
+      xScoring.addChild(Utils::xml_get_or_create_node(xDefaultScoring, element_name, true)); // true = return a copy of the default element
+  }
+
+  return xScoring;
+}
+
+
+// -------------------------------------
+// v26.10.1 Landing score (0-100) and grade.
+//   base score = sum of (measure score * weight) / sum of (best score * weight) * 100.
+//     A measure without a value, without a valid <scoring> definition, or with weight="0" is not part of the score.
+//   bounce penalty = <td_bounce_penalty> points for the highest bounce, plus "extra_bounce" for each bounce after the first.
+//   final score = max(0, base score + bounce penalty). The grade comes from the final score.
+//   "Call the Doctor" when the touchdown fpm or gear load, or the re-contact fpm after a bounce, is above the <landing_grade> limits, whatever the score.
+void
+data_manager::score_landing_analysis(missionx::mx_landing_analysis &inout_landing, IXMLNode in_xScoring)
+{
+  float score_sum      = 0.0f; // the weighted scores the landing got
+  float best_score_sum = 0.0f; // the highest weighted scores possible
+
+  const auto lmbda_add_measure = [&](const std::string &in_element_name, const bool in_has_value, const double in_value)
+  {
+    const auto vecScores = Utils::xml_extract_scoring_subElements(in_xScoring, in_element_name);
+    if (!in_has_value || vecScores.empty())
+      return;
+
+    IXMLNode    xElement = in_xScoring.getChildNode(in_element_name.c_str());
+    const float weight   = Utils::readNodeNumericAttrib<float>(xElement, mxconst::get_ATTRIB_SCORE_WEIGHT(), 1.0f);
+    if (weight <= 0.0f)
+      return; // measure turned off
+
+    float best_score = 0.0f;
+    for (const auto &score_range : vecScores)
+      best_score = std::max(best_score, score_range.score);
+
+    best_score_sum += best_score * weight;
+    score_sum += Utils::getScoreForValue(vecScores, in_value) * weight;
+  };
+
+  lmbda_add_measure(mxconst::get_ELEMENT_TD_FPM(),       inout_landing.has_summary,     inout_landing.td_fpm);
+  lmbda_add_measure(mxconst::get_ELEMENT_TD_GEAR_LOAD(), inout_landing.has_gear_load,   inout_landing.td_gear_load);
+  lmbda_add_measure(mxconst::get_ELEMENT_FINAL_GLIDE(),  inout_landing.has_final_glide, inout_landing.final_max_glide_ratio);
+  lmbda_add_measure(mxconst::get_ELEMENT_TD_BANK(),      inout_landing.has_summary,     inout_landing.td_bank);
+
+  if (best_score_sum <= 0.0f)
+  {
+    inout_landing.base_score     = 0.0f;
+    inout_landing.bounce_penalty = 0.0f;
+    inout_landing.landing_score  = 0.0f;
+    inout_landing.grade_s        = "N/A";
+    return;
+  }
+
+  inout_landing.base_score = (score_sum / best_score_sum) * 100.0f;
+
+  // ---- bounce penalty ----
+  inout_landing.bounce_penalty = 0.0f;
+  if (inout_landing.has_bounce_data && inout_landing.bounce_count > 0)
+  {
+    const std::vector<std::string> vecPenaltyAttributes = { mxconst::get_ATTRIB_BOUNCE_SMALL(), mxconst::get_ATTRIB_BOUNCE_MEDIUM(), mxconst::get_ATTRIB_BOUNCE_LARGE() };
+    const auto vecPenalty = Utils::xml_extract_scoring_subElements(in_xScoring, mxconst::get_ELEMENT_TD_BOUNCE_PENALTY(), vecPenaltyAttributes);
+
+    IXMLNode    xPenalty           = in_xScoring.getChildNode(mxconst::get_ELEMENT_TD_BOUNCE_PENALTY().c_str());
+    const float extra_bounce_point = Utils::readNodeNumericAttrib<float>(xPenalty, mxconst::get_ATTRIB_BOUNCE_EXTRA(), -3.0f);
+
+    float penalty = 0.0f;
+    if (!vecPenalty.empty())
+      penalty = std::fabs(Utils::getScoreForValue(vecPenalty, inout_landing.max_bounce_agl_ft)); // highest bounce
+
+    penalty += std::fabs(extra_bounce_point) * static_cast<float>(inout_landing.bounce_count - 1); // each bounce after the first
+
+    inout_landing.bounce_penalty = -penalty; // always takes points off
+  }
+
+  inout_landing.landing_score = std::max(0.0f, inout_landing.base_score + inout_landing.bounce_penalty);
+
+  // ---- grade ----
+  IXMLNode    xGrade           = in_xScoring.getChildNode(mxconst::get_ELEMENT_LANDING_GRADE().c_str());
+  const float butter_min       = Utils::readNodeNumericAttrib<float>(xGrade, mxconst::get_ATTRIB_GRADE_BUTTER(), 90.0f);
+  const float smooth_min       = Utils::readNodeNumericAttrib<float>(xGrade, mxconst::get_ATTRIB_GRADE_SMOOTH(), 75.0f);
+  const float accept_min       = Utils::readNodeNumericAttrib<float>(xGrade, mxconst::get_ATTRIB_GRADE_ACCEPTABLE(), 55.0f);
+  const float firm_min         = Utils::readNodeNumericAttrib<float>(xGrade, mxconst::get_ATTRIB_GRADE_FIRM(), 35.0f);
+  const float doctor_fpm       = Utils::readNodeNumericAttrib<float>(xGrade, mxconst::get_ATTRIB_GRADE_DOCTOR_FPM(), 600.0f);
+  const float doctor_gear_load = Utils::readNodeNumericAttrib<float>(xGrade, mxconst::get_ATTRIB_GRADE_DOCTOR_GEAR_LOAD(), 1.5f);
+
+  const bool is_hard_fpm       = inout_landing.has_summary && (inout_landing.td_fpm > doctor_fpm);
+  const bool is_hard_gear_load = inout_landing.has_gear_load && (inout_landing.td_gear_load > doctor_gear_load);
+  const bool is_hard_recontact = inout_landing.has_bounce_data && (inout_landing.bounce_count > 0) && (inout_landing.worst_recontact_fpm > doctor_fpm); // v26.10.1
+
+  inout_landing.is_doctor           = (is_hard_fpm || is_hard_gear_load || is_hard_recontact);
+  inout_landing.is_doctor_recontact = (is_hard_recontact && !is_hard_fpm && !is_hard_gear_load); // only the re-contact was too hard
+
+  if (inout_landing.is_doctor)
+    inout_landing.grade_s = "Call the Doctor";
+  else if (inout_landing.landing_score >= butter_min)
+    inout_landing.grade_s = "Butter";
+  else if (inout_landing.landing_score >= smooth_min)
+    inout_landing.grade_s = "Smooth";
+  else if (inout_landing.landing_score >= accept_min)
+    inout_landing.grade_s = "Acceptable";
+  else if (inout_landing.landing_score >= firm_min)
+    inout_landing.grade_s = "Firm";
+  else
+    inout_landing.grade_s = "Hard";
+}
+
+
+// -------------------------------------
+// v26.10.1 Notes displayed under the landing table. The limits here are for the notes only, they are not part of the score.
+void
+data_manager::build_landing_findings(missionx::mx_landing_analysis &inout_landing)
+{
+  constexpr double FLARE_STEP_FT           = 50.0;  // the flare is judged from this step down to touchdown
+  constexpr double NO_FLARE_TD_RATIO       = 0.6;   // touchdown sink still above 60% of the 50ft sink = little or no flare
+  constexpr double NO_FLARE_MIN_TD_FPM     = 300.0; // ...only when the touchdown was firmer than this
+  constexpr double LONG_FLOAT_SEC          = 7.0;   // time from 50ft to touchdown
+  constexpr double STEEP_FINAL_GLIDE_RATIO = 1.7;   // max sink above 1.7x the sink of a 3 degree path, between 300ft and 50ft
+  constexpr double FINAL_BANK_LIMIT_DEG    = 10.0;  // between 300ft and touchdown
+  constexpr double TD_BANK_LIMIT_DEG       = 5.0;   // at touchdown
+
+  inout_landing.vecFindings.clear();
+
+  // the 50ft step row (nullptr if the descent did not have it)
+  const missionx::mx_landing_step_row *step_flare = nullptr;
+  for (const auto &row : inout_landing.vecSteps)
+  {
+    if (row.step_agl_ft == FLARE_STEP_FT)
+      step_flare = &row;
+  }
+
+  if (inout_landing.is_doctor_recontact) // v26.10.1 the first touchdown was fine, the re-contact after the bounce was not
+  {
+    inout_landing.vecFindings.emplace_back(fmt::format("Hard re-contact after a bounce: {:.0f} fpm. Call the Doctor.", inout_landing.worst_recontact_fpm));
+  }
+  else if (inout_landing.is_doctor)
+  {
+    if (inout_landing.has_gear_load)
+      inout_landing.vecFindings.emplace_back(fmt::format("Hard landing: {:.0f} fpm at touchdown, extra gear load {:.2f}x the plane weight. Call the Doctor.", inout_landing.td_fpm, inout_landing.td_gear_load));
+    else
+      inout_landing.vecFindings.emplace_back(fmt::format("Hard landing: {:.0f} fpm at touchdown. Call the Doctor.", inout_landing.td_fpm));
+  }
+
+  if (inout_landing.bounce_count > 0) // v26.10.1
+    inout_landing.vecFindings.emplace_back(fmt::format("Bounced {}x: up to {:.1f} ft and {:.1f} sec in the air, re-contact at {:.0f} fpm ({:.0f} points).",
+                                                       inout_landing.bounce_count, inout_landing.max_bounce_agl_ft, inout_landing.max_bounce_sec,
+                                                       inout_landing.worst_recontact_fpm, inout_landing.bounce_penalty));
+
+  if (step_flare != nullptr && inout_landing.has_summary)
+  {
+    const double sink_at_flare_step = std::abs(step_flare->vs_fpm);
+    if (inout_landing.td_fpm > NO_FLARE_MIN_TD_FPM && inout_landing.td_fpm > sink_at_flare_step * NO_FLARE_TD_RATIO)
+      inout_landing.vecFindings.emplace_back(fmt::format("Little or no flare: {:.0f} fpm at 50 ft, {:.0f} fpm at touchdown.", sink_at_flare_step, inout_landing.td_fpm));
+
+    if (step_flare->sec_to_td > LONG_FLOAT_SEC)
+      inout_landing.vecFindings.emplace_back(fmt::format("Long float: {:.1f} sec and {:.0f} m from 50 ft to touchdown.", step_flare->sec_to_td, step_flare->dist_to_td_mt));
+  }
+
+  if (inout_landing.has_final_glide && inout_landing.final_max_glide_ratio > STEEP_FINAL_GLIDE_RATIO)
+    inout_landing.vecFindings.emplace_back(fmt::format("Steep final: sink rate up to {:.0f} fpm between 300 ft and 50 ft, about {:.1f}x a 3 deg glide path at your groundspeed.", inout_landing.final_max_sink_fpm, inout_landing.final_max_glide_ratio));
+
+  if (inout_landing.final_max_bank > FINAL_BANK_LIMIT_DEG)
+    inout_landing.vecFindings.emplace_back(fmt::format("Bank up to {:.0f} deg below 300 ft.", inout_landing.final_max_bank));
+
+  if (inout_landing.has_summary && inout_landing.td_bank > TD_BANK_LIMIT_DEG)
+    inout_landing.vecFindings.emplace_back(fmt::format("Bank {:.1f} deg at touchdown: wing strike risk.", inout_landing.td_bank));
+
+  if (inout_landing.has_summary && inout_landing.td_pitch < 0.0)
+    inout_landing.vecFindings.emplace_back(fmt::format("Nose low touchdown (pitch {:.1f} deg): the nose wheel may touch first.", inout_landing.td_pitch));
+
+  if (inout_landing.vecFindings.empty())
+    inout_landing.vecFindings.emplace_back("Stable approach and touchdown.");
+}
+
 // -------------------------------------
 
 void
@@ -6588,19 +6987,19 @@ data_manager::deleteCueFromListCueInfoToDisplayInFlightLeg(const std::string& na
   }
 } // deleteCueFromlistCueInfoToDisplayInFlightLeg
 
-
-// -------------------------------------
 // -------------------------------------
 
+// -------------------------------------
+// v26.11.1 fetch_METAR() - sources are tried in order, each one only fills what is still missing:
+//   1. X-Plane (XPLM 400+)       - METAR only
+//   2. aviationweather.gov       - raw text, no key, METAR + TAF
+//   3. flightplandatabase.com    - JSON, METAR + TAF
+// -------------------------------------
 
 void
 data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidData, mxFetchState_enum* outState, std::string* outStatusMessage, std::string* outErrorMsg, const bool* lockThread)
 {
-  // We will need to loop over all navaids in the "mapNavaidData" and fetch their METAR.
-
-  constexpr static const char* url_s = "api.flightplandatabase.com";
-  (*outState)                        = mxFetchState_enum::fetch_in_process;
-
+  (*outState) = mxFetchState_enum::fetch_in_process;
   outStatusMessage->clear();
 
   if (threadStateMetar.flagAbortThread)
@@ -6612,127 +7011,149 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
   threadStateMetar.flagIsActive       = true;
   threadStateMetar.flagThreadDoneWork = false;
 
-  if ((*lockThread)) // when called from other thread, do not try to lock
-    std::lock_guard<std::mutex> lock(s_thread_sync_mutex);
+  // v26.11.1 the old "if (*lockThread) std::lock_guard..." released the lock immediately. Hold it for the whole function.
+  std::unique_lock lock(s_thread_sync_mutex, std::defer_lock);
+  if (*lockThread)
+    lock.lock();
 
-  bool flag_http_success = false;
-  bool flag_got_metar = false;
 
-    // Loop over all Nav Aids and fetch their metar
+  ////////////////////////////
+  ////// Helper lambdas //////
+
+  // HTTP GET. Returns the response body, or an empty string on failure / "no content" (HTTP 204).
+  const auto lmbda_http_get = [](const std::string& in_url, const std::string& in_login_pass = "") -> std::string
+  {
+    missionx::structs::curl_request_data request_data;
+    request_data.url_s          = in_url;
+    request_data.timeout        = 45L;
+    request_data.login_pass     = in_login_pass;
+    request_data.how_many_tries = 2;
+
+    const auto request_result = data_manager::get_curl_request_respond(request_data);
+    if (request_result.res_curl == CURLE_OK && request_result.http_status == 200)
+      return request_result.response_text;
+
+    Log::logMsg(fmt::format("[fetch_METAR] No data from: {}. HTTP status: {}. {}", in_url, request_result.http_status, request_result.request_err));
+    return "";
+  };
+
+  // Join multi-line reports (TAF change groups) into one line. Returns empty if the text does not mention the ICAO.
+  const auto lmbda_clean_report = [](const std::string& in_text, const std::string& in_icao) -> std::string
+  {
+    std::string report;
+    for (const auto& token : mxUtils::split_v2(in_text, " \t\r\n", false))
+      report += (report.empty() ? "" : " ") + token;
+
+    return (mxUtils::find_text(report, in_icao, false) == std::string::npos) ? "" : report;
+  };
+
+
+  ////////////////////////////
+  ////// Weather sources //////
+
+  // 1. X-Plane - ask the flight loop callback to call XPLMGetMETARForAirport()
+  const auto lmbda_fetch_from_xplane = [](mx_nav_data_strct& nav)
+  {
+    data_manager::fetch_metar_from_flcpre_thread_state.init();
+    data_manager::shared_navaid_between_threads.init();
+    data_manager::shared_navaid_between_threads.setID(nav.icao);
+
+    if (!missionx::data_manager::waitForPluginCallbackJob(&data_manager::fetch_metar_from_flcpre_thread_state, missionx::mx_flc_pre_command::get_metar_for_airport, std::chrono::milliseconds(3000)))
+      Log::logMsg(fmt::format("[fetch_METAR] Callback timeout for: '{}({})'.", "get_metar_for_airport ", nav.icao));
+    else if (data_manager::shared_navaid_between_threads.sMetar.empty())
+      Log::logMsg(fmt::format("[fetch_METAR] Failed to find Metar info for ICAO: {} using: XPLMGetMETARForAirport() and 'get_metar_for_airport'.", nav.icao));
+    else
+      nav.sMetar =  fmt::format("{}\n(X-Plane)", data_manager::shared_navaid_between_threads.sMetar);
+  };
+
+  // 2. aviationweather.gov (NOAA) - raw text, no key
+  const auto lmbda_fetch_from_aviationweather = [&](mx_nav_data_strct& nav)
+  {
+    constexpr static const char* base_url_s = "https://aviationweather.gov/api/data";
+
+    if (nav.sMetar.empty())
+      nav.sMetar = fmt::format("{}\n(aviationweather.gov)", lmbda_clean_report(lmbda_http_get(fmt::format("{}/metar?ids={}&format=raw", base_url_s, nav.icao)), nav.icao) );
+
+    if (nav.sTaf.empty() && !threadStateMetar.flagAbortThread)
+      nav.sTaf = lmbda_clean_report(lmbda_http_get(fmt::format("{}/taf?ids={}&format=raw", base_url_s, nav.icao)), nav.icao);
+  };
+
+  // 3. flightplandatabase.com - JSON with "METAR" and "TAF" keys
+  const auto lmbda_fetch_from_flightplandatabase = [&](mx_nav_data_strct& nav)
+  {
+    const std::string url_s     = fmt::format("https://api.flightplandatabase.com/weather/{}", nav.icao);
+    const std::string authKey_s = Utils::getNodeText_type_6(system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY(), "");
+
+    std::string result_s = lmbda_http_get(url_s, authKey_s);
+    if (result_s.empty())
+      return;
+
+    #ifndef RELEASE
+    Log::logMsg(result_s);
+    #endif
+
+    try
+    {
+      // if the respond holds more than one object, use the last one
+      if (std::ranges::count(result_s, '{') > 1)
+        result_s = result_s.substr(result_s.rfind('{'));
+
+      const nlohmann::json js = nlohmann::json::parse(result_s, nullptr, true);
+      if (nav.sMetar.empty())
+        nav.sMetar = fmt::format("{}\n(fplndb)", Utils::getJsonValue(js, "METAR", "") );
+      if (nav.sTaf.empty())
+        nav.sTaf = Utils::getJsonValue(js, "TAF", "");
+    }
+    catch (nlohmann::json::parse_error& ex)
+    {
+      Log::logMsg(fmt::format("{}.\n== JSON: ==>\n{}\n<== END JSON ==", ex.what(), result_s));
+      (*outErrorMsg) = ex.what();
+    }
+  };
+
+
+  /////////////////////////////////////////
+  ////// Loop over all Nav Aids //////
+
   for (auto& nav : *mapNavaidData | std::views::values)
   {
+    if (threadStateMetar.flagAbortThread)
+      break;
+
+    nav.sMetar.clear();
+    nav.sTaf.clear();
+
+    std::string metar_from_s;
+    std::string taf_from_s;
+
+    // Run one source, unless we already have both reports. Remember who gave us what.
+    const auto lmbda_try_source = [&](const std::string& in_source_name, const auto& in_fetch_func)
+    {
+      if (threadStateMetar.flagAbortThread || !nav.sMetar.empty() )
+      {
+        // Log::logMsg(fmt::format("[{}] {}", __func__, (threadStateMetar.flagAbortThread)? "User request abort.": fmt::format("Metar found: {}", nav.sMetar ) ));
+        return;
+      }
+
+      in_fetch_func(nav);
+
+      if (metar_from_s.empty() && !nav.sMetar.empty())
+        metar_from_s = in_source_name;
+      if (taf_from_s.empty() && !nav.sTaf.empty())
+        taf_from_s = in_source_name;
+    };
 
     if (data_manager::xplm_version >= 400)
-    {
-      // test against the nearest navaid
-      data_manager::fetch_metar_from_flcpre_thread_state.init ();
-      data_manager::shared_navaid_between_threads.init ();
-      data_manager::shared_navaid_between_threads.setID (nav.icao);
-      if (!missionx::data_manager::waitForPluginCallbackJob (&data_manager::fetch_metar_from_flcpre_thread_state, missionx::mx_flc_pre_command::get_metar_for_airport, std::chrono::milliseconds (3000)))
-        Log::logMsg (fmt::format ("[{}] Callback timeout for: '{}({})'.", __func__,  "get_metar_for_airport ", nav.icao ) );
-      else
-      {
-        if (data_manager::shared_navaid_between_threads.sMetar.empty ())
-          Log::logMsg (fmt::format ("[{}] Failed to find Metar info for ICAO: {} using: XPLMGetMETARForAirport() and 'get_metar_for_airport'.", __func__,  nav.icao ) );
-        else
-        {
-          flag_got_metar = true;
-          nav.sMetar = data_manager::shared_navaid_between_threads.sMetar;
-          (*outStatusMessage) = fmt::format( "Finished fetching METAR information for: {} from X-Plane.", nav.icao);
-        }
-      } // end fetch metar from main flight callback
+      lmbda_try_source("X-Plane", lmbda_fetch_from_xplane);
+    if (!metar_from_s.empty())
+      lmbda_try_source("aviationweather.gov", lmbda_fetch_from_aviationweather);
+    if (!metar_from_s.empty())
+      lmbda_try_source("flightplandatabase.com", lmbda_fetch_from_flightplandatabase);
 
-    } // end if SDK >= 400
-
-    if (!flag_got_metar)
-    {
-      std::string       q          = "/weather/" + nav.icao; // we need to add the ICAO
-      const std::string full_url_s = mxUtils::trim (fmt::format ("https://{}{}", url_s, q));
-      Log::logMsg ("url: " + full_url_s); // debug
-
-      const std::string authKey_s  = Utils::getNodeText_type_6 (system_actions::pluginSetupOptions.node, mxconst::get_SETUP_AUTHORIZATION_KEY (), "");
-      std::string       cert_loc_s = mx_folders_properties.getStringAttributeValue (mxconst::get_PROP_MISSIONX_PATH (), ""); // v24.03.1
-      std::string       result_s;
-
-      // Prepare cURL
-      int iCurlTry      = 0;
-      flag_http_success = false;
-      while ((iCurlTry < 3) && !(flag_http_success) && !threadStateMetar.flagAbortThread)
-      {
-        iCurlTry++;
-
-        // #ifdef MX_ENABLE_HTTP_REQUESTS
-
-        missionx::structs::curl_request_data request_data;
-        request_data.timeout = 45L;
-        request_data.url_s   = full_url_s;
-        request_data.login_pass = authKey_s;
-
-        missionx::structs::strct_curl_result request_result = data_manager::get_curl_request_respond(request_data);
-        if (request_result.res_curl == CURLE_OK && request_result.request_err.empty())
-        {
-          result_s            = request_result.response_text;
-          flag_http_success   = true;
-          (*outStatusMessage) = "cURL fetched JSON METAR.";
-        }
-        else
-        {
-          flag_http_success = false;          
-          if (request_result.http_status != 200 || !request_result.request_err.empty())
-          {
-            outStatusMessage->append(fmt::format("CURL HTTP status: {}. {}. {}:{}", std::to_string(request_result.http_status), request_result.request_err, ((iCurlTry < 3) ? "Will try again in 5 sec" : "No Luck"), iCurlTry)); // v24.03.1
-            Log::logMsg((*outStatusMessage) + "\n"); // debug
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(5000)); // sleep for 5 seconds
-          }
-        }
-
-        // #endif // MX_ENABLE_HTTP_REQUESTS
-
-      } // end while loop
-
-      /////////////////////////////
-      ////// Handle Success //////
-
-      if (flag_http_success)
-      {
-        // int              counter = 0;
-        std::set<size_t> setHashIcaoName;
-
-        #ifndef RELEASE
-        std::string            last_toICAO_s;
-        std::string            last_toName_s;
-        std::map<size_t, bool> mapHashIcaoAndName;
-
-        Log::logMsg (result_s);
-        #endif // !RELEASE
-
-        constexpr static auto KEY_METAR = "METAR";
-        constexpr static auto KEY_TAF   = "TAF";
-
-        try
-        {
-          size_t open_brace_count = std::ranges::count(result_s, '{');
-          if (open_brace_count > 1)
-          {
-            // Find the last occurrence of '{'
-            if (std::size_t pos = result_s.rfind('{')
-              ;pos != std::string::npos)
-              result_s = result_s.substr(pos);
-          }
-
-          nlohmann::json js   = nlohmann::json::parse (result_s, nullptr, true);
-          nav.sMetar          = Utils::getJsonValue (js, KEY_METAR, "");
-          nav.sTaf            = Utils::getJsonValue (js, KEY_TAF, "");
-          (*outStatusMessage) = fmt::format("Finished fetching METAR information for: {}. {}", nav.icao, ((nav.sMetar.empty())?"Weather info was not found." : "" )  );
-        }
-        catch (nlohmann::json::parse_error &ex)
-        {
-          Log::logMsg (fmt::format ("{}.\n== JSON: ==>\n{}\n<== END JSON ==", ex.what (), result_s));
-          (*outErrorMsg) = ex.what ();
-        }
-      } // end if http success
-    }
+    (*outStatusMessage) = fmt::format("Finished fetching METAR information for: {}. METAR: {}, TAF: {}.", nav.icao,
+                                      mxUtils::eval_text(!metar_from_s.empty(), metar_from_s, "not found"),
+                                      mxUtils::eval_text(!taf_from_s.empty(), taf_from_s, "not found"));
+    Log::logMsg((*outStatusMessage));
 
   } // end loop over all Nav Aids
 
@@ -6742,8 +7163,9 @@ data_manager::fetch_METAR(std::unordered_map<int, mx_nav_data_strct>* mapNavaidD
   threadStateMetar.flagThreadDoneWork = true;
   threadStateMetar.flagIsActive       = false;
   threadStateMetar.flagAbortThread    = false;
-  ( *outState )                       = mxFetchState_enum::fetch_ended;
+  (*outState)                         = mxFetchState_enum::fetch_ended;
 }
+
 
 // -------------------------------------
 

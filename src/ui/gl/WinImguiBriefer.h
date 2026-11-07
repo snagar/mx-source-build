@@ -600,13 +600,13 @@ private:
 
   const std::list<btn_info> listMainBtn = { 
     { 0, missionx::uiLayer_enum::option_setup_layer, mxconst::get_BITMAP_BTN_SETUP_24X18 (), "Setup", "Setup Screen" }, 
-    { 1, missionx::uiLayer_enum::option_user_generates_a_mission_layer, mxconst::get_BITMAP_BTN_LAB_24X18 (), "Create", "Generate random mission" }, 
+    { 1, missionx::uiLayer_enum::option_user_generates_a_mission_layer, mxconst::get_BITMAP_BTN_LAB_24X18 (), "Generate", "Generate a random mission in the X-Plane world based on user-defined parameters." },
     { 2, missionx::uiLayer_enum::option_generate_mission_from_a_template_layer, mxconst::get_BITMAP_BTN_PREPARE_MISSION_24X18 (), "Templates", "Generate a Mission based on predefined custom templates" }, 
-    { 3, missionx::uiLayer_enum::option_mission_list, mxconst::get_BITMAP_LOAD_MISSION (), "Load Mission", "Load a mission and fly it" }, 
-    { 4, missionx::uiLayer_enum::flight_leg_info, mxconst::get_BITMAP_BTN_FLY_MISSION_24X18 (), "Flight planning /\nFlight Progress", "Displays flight leg info when mission is active.\nPlan your Flight Plan (Can fetch data from Simbrief)" }, 
+    { 3, missionx::uiLayer_enum::option_mission_list, mxconst::get_BITMAP_LOAD_MISSION (), "Load a Mission", "Load a mission and fly it" },
+    { 4, missionx::uiLayer_enum::flight_leg_info, mxconst::get_BITMAP_BTN_FLY_MISSION_24X18 (), "* Flight planning\n* Flight Progress", "Displays flight leg info when mission is active.\nPlan your Flight Plan (Can fetch data from Simbrief)" },
     { 5, missionx::uiLayer_enum::option_external_fpln_layer, mxconst::get_BITMAP_BTN_WORLD_PATH_24X18 (), "External FPLN", "Build mission based on external flight plan\nUsing: flightplandatabase.com and Simbrief" }, 
     { 6, missionx::uiLayer_enum::option_ils_layer, mxconst::get_BITMAP_BTN_NAV_24x18 (), "* VFR/ILS Approaches \n* NAV data", "Search for airports around you\nthat have ILS approaches\n or search for nav data." }, 
-    { 7, missionx::uiLayer_enum::option_conv_fpln_to_mission, mxconst::get_BITMAP_BTN_CONVERT_FPLN_TO_MISSION_24X18 (), "Conv. FPLN", "Convert LittleNavMap FPLN to mission file." }
+    { 7, missionx::uiLayer_enum::option_conv_fpln_to_mission, mxconst::get_BITMAP_BTN_CONVERT_FPLN_TO_MISSION_24X18 (), "Conv. LNMPLN", "Convert LittleNavMap FPLN to mission file." }
 
   };
 
@@ -741,6 +741,7 @@ private:
   // void child_draw_nav_search (); // v24.02.5
   void draw_about_layer ();
   void add_landing_rate_ui (const missionx::mx_enrout_stats_strct &inStats); // v3.303.14  landing rate performance row
+  static void add_ui_landing_analysis (float in_acf_m_max_kg); // v26.10.1
   void add_ui_stats_child (bool isEmbedded = false); // v3.303.14  isEmbedded means that we don't want the BeginChild definition inside the function we will use and external BeginChild
 
 

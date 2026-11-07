@@ -28,15 +28,15 @@ void ui_conv_screen::draw_conv_popup_datarefs(IXMLNode& inXpData)
   const ImVec2 modal_center (modal_w * 0.5f, modal_h * 0.5f);
   const ImVec2 vec2_multiLine_dim = ImVec2 (win_size_vec2.x - 25.0f, 120.0f);
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+  missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
   ImGui::TextColored (missionx::color::color_vec4_yellow, R"(In this screen you can add datarefs to the <xpdata> main element.
 You have to enter correct XML elements. Example:
 <dataref name="gearForce" key="sim/flightmodel/forces/faxil_gear"/>
 Other option is to add this information after generating the mission file, if you so prefer.)");
-  this->mxUiReleaseLastFont ();
+  missionx::mx_img_window::mxUiReleaseLastFont ();
 
   // close window button
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+  missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
   ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_azure);
@@ -48,18 +48,18 @@ Other option is to add this information after generating the mission file, if yo
 
   ImGui::BeginGroup ();
   ImGui::BeginChild ("MultiLineTextEdit", ImVec2 (0.0f, vec2_multiLine_dim.y + 10.0f));
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.303.14
+  missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ()); // v3.303.14
   ImGui::InputTextMultiline ("##xpdataMultiLine", this->strct_conv_layer.buff_dataref, sizeof (this->strct_conv_layer.buff_dataref), vec2_multiLine_dim);
-  this->mxUiReleaseLastFont ();
+  missionx::mx_img_window::mxUiReleaseLastFont ();
   ImGui::EndChild ();
   ImGui::EndGroup ();
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+  missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
   ImGui::TextColored (missionx::color::color_vec4_beige, "%zu of %zu", std::string (this->strct_conv_layer.buff_dataref).length (), sizeof (this->strct_conv_layer.buff_dataref));
 
   // Parse and store button
   ImGui::SameLine(0.0f, 50.0f); // v26.08.1
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+  missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
   ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_azure);
@@ -96,8 +96,8 @@ Other option is to add this information after generating the mission file, if yo
   }
   ImGui::PopStyleColor (3);
 
-  this->mxUiResetAllFontsToDefault (); // v3.303.14
-  this->mx_add_tooltip (missionx::color::color_vec4_yellow, "The XML string you entered must be valid or it won't be stored");
+  missionx::mx_img_window::mxUiResetAllFontsToDefault (); // v3.303.14
+  missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_yellow, "The XML string you entered must be valid or it won't be stored");
 
   // v3.305.1
   this->add_message_text ();
@@ -119,15 +119,15 @@ void ui_conv_screen::draw_conv_popup_globalSettings(IXMLNode& inOutGlobalSetting
   const float  text_width_px      = ImGui::CalcTextSize (this->strct_conv_layer.buff_globalSettings).x;
   const ImVec2 vec2_multiLine_dim = ImVec2 (((text_width_px + 2000.0f) < min_multiLineWidth_px) ? min_multiLineWidth_px : text_width_px + min_multiLineWidth_px, 200.0f);
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+  missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
   ImGui::TextColored (missionx::color::color_vec4_yellow, R"(In this screen you can edit the <global_settings> main element.
 You have to enter correct XML elements.
 Other option is to add this information after generating the mission file, if you so prefer.)");
-  this->mxUiReleaseLastFont ();
+  missionx::mx_img_window::mxUiReleaseLastFont ();
 
 
   // close window button
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+  missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
   ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_azure);
@@ -136,7 +136,7 @@ Other option is to add this information after generating the mission file, if yo
   if (ImGui::Button ("Close", ImVec2 (70.0f, 0.0f)))
     ImGui::CloseCurrentPopup ();
   ImGui::PopStyleColor (3);
-  this->mxUiReleaseLastFont ();
+  missionx::mx_img_window::mxUiReleaseLastFont ();
 
 
   ///// Draw multi line
@@ -147,20 +147,20 @@ Other option is to add this information after generating the mission file, if yo
 
   ImGui::BeginChild ("MultiLineTextEdit", ImVec2 (0.0f, vec2_multiLine_dim.y + 10.0f), ImGuiChildFlags_None, ImGuiWindowFlags_AlwaysHorizontalScrollbar);
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+  missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
   ImGui::InputTextMultiline ("##texDataMultiLine", this->strct_conv_layer.buff_globalSettings, sizeof (this->strct_conv_layer.buff_globalSettings), vec2_multiLine_dim);
-  this->mxUiReleaseLastFont ();
+  missionx::mx_img_window::mxUiReleaseLastFont ();
 
   ImGui::EndChild ();
   ImGui::EndGroup ();
   ///// End draw multi line
 
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+  missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
   ImGui::TextColored (missionx::color::color_vec4_beige, "%zu of %zu", std::string (this->strct_conv_layer.buff_globalSettings).length (), sizeof (this->strct_conv_layer.buff_globalSettings));
 
   // Parse and store button
   ImGui::SameLine(0.0f, 50.0f); // v26.08.1
-  this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+  missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
   ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
   ImGui::PushStyleColor (ImGuiCol_ButtonHovered, missionx::color::color_vec4_azure);
@@ -197,8 +197,8 @@ Other option is to add this information after generating the mission file, if yo
   }
   ImGui::PopStyleColor (3);
 
-  this->mxUiResetAllFontsToDefault (); // v3.303.14
-  this->mx_add_tooltip (missionx::color::color_vec4_yellow, "The XML string you entered must be valid or it won't be stored.");
+  missionx::mx_img_window::mxUiResetAllFontsToDefault (); // v3.303.14
+  missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_yellow, "The XML string you entered must be valid or it won't be stored.");
 
   this->add_message_text ();
 }
@@ -216,7 +216,7 @@ void ui_conv_screen::draw_conv_popup_flight_leg_detail(missionx::mx_local_fpln_s
   // draw only the picked row data and not for every row
   if (this->strct_conv_layer.way_row_picked_i == inLegData.indx)
   {
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+    missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
     // close window button
     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
     ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
@@ -235,7 +235,7 @@ void ui_conv_screen::draw_conv_popup_flight_leg_detail(missionx::mx_local_fpln_s
     ImGui::TextColored (missionx::color::color_vec4_beige, "Enter information when en-route to: %s. Try not to overdo with information.", inLegData.getName ().c_str ());
     ImGui::TextColored (missionx::color::color_vec4_yellow, "En-Route Description:");
 
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
+    missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_purple);
     // ImGui::PushStyleColor (ImGuiCol_FrameBg, missionx::color::color_vec4_beige);
     ImGui::PushStyleColor (ImGuiCol_FrameBg, missionx::color::color_vec4_grey);
@@ -253,10 +253,10 @@ void ui_conv_screen::draw_conv_popup_flight_leg_detail(missionx::mx_local_fpln_s
     ImGui::PushStyleColor (ImGuiCol_HeaderActive, missionx::color::color_vec4_orangered);
     {
       ++ii; // 1 - 4
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
+      missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
       if (ImGui::CollapsingHeader ("Actions at the start/end of the Flight Leg"))
       {
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
+        missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
 
         // START
         ImGui::TextColored (missionx::color::color_vec4_yellow, "[optional] Send message at the start of the Flight Leg: ");
@@ -342,11 +342,11 @@ void ui_conv_screen::draw_conv_popup_flight_leg_detail(missionx::mx_local_fpln_s
 
       // Waypoint Radius, Elevation & 3D Marker Settings
       ii = 5; // we start counting from 0
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
+      missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
       if (ImGui::CollapsingHeader ("Waypoint Radius, Elevation & 3D Marker settings when reaching the waypoint"))
       {
         static const std::vector<const char *> vecElevOptions = { "Ignore (plane in physical area)", "On Ground", "Restrict to min/max elevation", "lower than...", "above than...", "Highest allowed elev above ground", "Lowest allowed elev above ground" };
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
+        missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
 
         //// Trigger Area Radius ////
         ImGui::TextColored (missionx::color::color_vec4_greenyellow, "Pick Waypoint radius of effect (in meters): ");
@@ -495,10 +495,10 @@ void ui_conv_screen::draw_conv_popup_flight_leg_detail(missionx::mx_local_fpln_s
       // Triggers
       ii = 5;
       {
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
+        missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
         if (ImGui::CollapsingHeader ("Triggers / Events during en-route"))
         {
-          this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
+          missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
           subDraw_ui_xTrigger_main (inLegData, this->strct_conv_layer.flag_refreshTriggerListFrom_xNode, inLegData.indx, this->strct_conv_layer.mapOfGlobalTriggers, this->strct_conv_layer.vecGlobalTriggers_names);
         }
       }
@@ -506,7 +506,7 @@ void ui_conv_screen::draw_conv_popup_flight_leg_detail(missionx::mx_local_fpln_s
     } // end pushStyle
     ImGui::PopStyleColor (3);
 
-    this->mxUiResetAllFontsToDefault (); // v3.303.14
+    missionx::mx_img_window::mxUiResetAllFontsToDefault (); // v3.303.14
   }
 }
 
@@ -522,7 +522,7 @@ void ui_conv_screen::draw_conv_popup_briefer(missionx::mx_local_fpln_strct& inLe
     // int ii = 0;
     inLegData.iCurrentBuf = 0;
 
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+    missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
     // close window button
     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
     ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
@@ -544,7 +544,7 @@ void ui_conv_screen::draw_conv_popup_briefer(missionx::mx_local_fpln_strct& inLe
     ImGui::PushStyleColor (ImGuiCol_HeaderHovered, missionx::color::color_vec4_tomato);
     ImGui::PushStyleColor (ImGuiCol_HeaderActive, missionx::color::color_vec4_orangered);
     {
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
+      missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
       if (ImGui::CollapsingHeader ("< Mission Info >"))
       {
         int style_counter_02 = 0;
@@ -552,7 +552,7 @@ void ui_conv_screen::draw_conv_popup_briefer(missionx::mx_local_fpln_strct& inLe
         ImGui::PushStyleColor(ImGuiCol_TextDisabled, missionx::color::color_vec4_mx_dimblack); ++style_counter_02;
         ImGui::PushStyleColor (ImGuiCol_FrameBg, missionx::color::color_vec4_teal); ++style_counter_02;
         {
-          this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
+          missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
           ImGui::TextColored (missionx::color::color_vec4_yellow, "Written By: ");
           ImGui::SameLine ();
           if (ImGui::InputTextWithHint ("###WrittenBy", "== your name ==", inLegData.buff_arr[inLegData.iCurrentBuf], sizeof (inLegData.buff_arr[inLegData.iCurrentBuf]), ImGuiInputTextFlags_None))
@@ -596,11 +596,11 @@ void ui_conv_screen::draw_conv_popup_briefer(missionx::mx_local_fpln_strct& inLe
         ImGui::NewLine ();
       } // < Mission Info >
 
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
+      missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
       inLegData.iCurrentBuf = 4; // we ned this since when the "collapse header" is closed, the code won't run so the numbering will start in 0 and not in the correct buffer
       if (ImGui::CollapsingHeader ("< briefer > and Starting location"))
       {
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
+        missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
         // inLegData.iCurrentBuf is used through the next few widgets
         // ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_purple);
         // ImGui::PushStyleColor (ImGuiCol_FrameBg, missionx::color::color_vec4_beige);
@@ -631,7 +631,7 @@ void ui_conv_screen::draw_conv_popup_briefer(missionx::mx_local_fpln_strct& inLe
           {
             lmbda_getAndSetHeading (missionx::drefConst.dref_heading_true_psi_f);
           }
-          this->mx_add_tooltip (missionx::color::color_vec4_white, "Get Plane Heading.");
+          missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_white, "Get Plane Heading.");
           ImGui::SameLine (0.0f, 5.0f);
           if (ImGui::Button ("C"))
           {
@@ -639,7 +639,7 @@ void ui_conv_screen::draw_conv_popup_briefer(missionx::mx_local_fpln_strct& inLe
 
             lmbda_getAndSetHeading (dref);
           }
-          this->mx_add_tooltip (missionx::color::color_vec4_white, "Get Camera Heading.");
+          missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_white, "Get Camera Heading.");
           ImGui::PopStyleColor ();
           // end of same inLegData.iCurrentBuf
 
@@ -662,7 +662,7 @@ void ui_conv_screen::draw_conv_popup_briefer(missionx::mx_local_fpln_strct& inLe
     }
     ImGui::PopStyleColor (3);
 
-    this->mxUiResetAllFontsToDefault ();
+    missionx::mx_img_window::mxUiResetAllFontsToDefault ();
   }
 
 }
@@ -746,11 +746,11 @@ void ui_conv_screen::subDraw_popup_outcome(mx_trig_strct_& inout_trig, IXMLNode&
     // first input text, represent keyName or value (if index < 2 than it represent keyName)
     ImGui::InputText (attrib_label_cc.c_str (), inout_trig.buffArray[inout_trig.iCurrentBuf], sizeof (inout_trig.buffArray[inout_trig.iCurrentBuf]));
     if (attrib_picked_i < 2)
-      this->mx_add_tooltip (missionx::color::color_vec4_beige, "Enter an alias to the message"); // TODO maybe create the keyName internaly so simmer will only focus on the text
+      missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_beige, "Enter an alias to the message"); // TODO maybe create the keyName internaly so simmer will only focus on the text
     else if (attrib_picked_i < 4)
-      this->mx_add_tooltip (missionx::color::color_vec4_beige, "Enter an alias to the script you will create later / or the  script exists"); // TODO maybe create the keyName internaly so simmer will only focus on the text
+      missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_beige, "Enter an alias to the script you will create later / or the  script exists"); // TODO maybe create the keyName internaly so simmer will only focus on the text
     else
-      this->mx_add_tooltip (missionx::color::color_vec4_beige, "Enter text that represent the option you picked (command or dataref list divided by comma (\",\")");
+      missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_beige, "Enter text that represent the option you picked (command or dataref list divided by comma (\",\")");
 
     // second input text only if outcome is message
     if (attrib_picked_i < 2) // create message for options 0,1 in combo
@@ -758,7 +758,7 @@ void ui_conv_screen::subDraw_popup_outcome(mx_trig_strct_& inout_trig, IXMLNode&
       ++inout_trig.iCurrentBuf;
       ImGui::SetNextItemWidth (300.0f);
       ImGui::InputText ("Enter Message Text##outcomeText", inout_trig.buffArray[inout_trig.iCurrentBuf], sizeof (inout_trig.buffArray[inout_trig.iCurrentBuf]));
-      this->mx_add_tooltip (missionx::color::color_vec4_beige, "Enter message text"); // TODO maybe create the keyName internaly so simmer will only focus on the text
+      missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_beige, "Enter message text"); // TODO maybe create the keyName internaly so simmer will only focus on the text
     }
 
     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
@@ -820,7 +820,7 @@ void ui_conv_screen::subDraw_popup_outcome(mx_trig_strct_& inout_trig, IXMLNode&
     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_white);
     ImGui::InputTextMultiline ("##trigOutcomeMultiLine", buf, sizeof (buf), ImVec2 (ImGui::GetContentRegionAvail ().x, 30.0f), ImGuiInputTextFlags_ReadOnly);
     ImGui::PopStyleColor ();
-    this->mx_add_tooltip (missionx::color::color_vec4_yellow, "You can copy the <outcome> text.");
+    missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_yellow, "You can copy the <outcome> text.");
   }
 }
 
@@ -915,7 +915,7 @@ void ui_conv_screen::subDraw_fpln_table(IXMLNode& inMainNode, std::map<int, miss
           if (ImGui::Checkbox(buf, &legData.flag_isLeg))
             this->strct_conv_layer.flag_refresh_table_from_file = true;
 
-          this->mx_add_tooltip(missionx::color::color_vec4_yellow, "Is this waypoint a location you must reach ?\nIf not then it will be a waypoint in your GPS (optional).\nTip: In most cases first two rows are probably briefer and starting locations.");
+          missionx::mx_img_window::mx_add_tooltip(missionx::color::color_vec4_yellow, "Is this waypoint a location you must reach ?\nIf not then it will be a waypoint in your GPS (optional).\nTip: In most cases first two rows are probably briefer and starting locations.");
         }
 
         ++i1;
@@ -926,7 +926,7 @@ void ui_conv_screen::subDraw_fpln_table(IXMLNode& inMainNode, std::map<int, miss
           snprintf(buf, sizeof (buf) - 1, "###onGroundOrAirborne%i", legData.indx);
           if (ImGui::Checkbox(buf, &legData.target_trig_strct.flag_on_ground))
             legData.target_trig_strct.elev_rule_s = (legData.target_trig_strct.flag_on_ground) ? "true" : "false";
-          this->mx_add_tooltip(missionx::color::color_vec4_yellow, "On Ground");
+          missionx::mx_img_window::mx_add_tooltip(missionx::color::color_vec4_yellow, "On Ground");
         }
 
         if (this->strct_conv_layer.flag_foundBriefer_index0 == false) // convert to briefer Hide Show Column
@@ -940,7 +940,7 @@ void ui_conv_screen::subDraw_fpln_table(IXMLNode& inMainNode, std::map<int, miss
             if (ImGui::Checkbox(buf, &legData.flag_convertToBriefer))
               this->strct_conv_layer.flag_refresh_table_from_file = true;
 
-            this->mx_add_tooltip(missionx::color::color_vec4_yellow, "Convert Leg to Briefer");
+            missionx::mx_img_window::mx_add_tooltip(missionx::color::color_vec4_yellow, "Convert Leg to Briefer");
           }
         }
 
@@ -1007,7 +1007,7 @@ void ui_conv_screen::subDraw_fpln_table(IXMLNode& inMainNode, std::map<int, miss
           snprintf(buf, sizeof (buf) - 1, "###add3DMarker%i", legData.indx);
 
           ImGui::Checkbox(buf, &legData.flag_add_marker);
-          this->mx_add_tooltip(missionx::color::color_vec4_yellow, "Place 3D marker at leg location.");
+          missionx::mx_img_window::mx_add_tooltip(missionx::color::color_vec4_yellow, "Place 3D marker at leg location.");
         }
 
 
@@ -1019,7 +1019,7 @@ void ui_conv_screen::subDraw_fpln_table(IXMLNode& inMainNode, std::map<int, miss
           snprintf(buf, sizeof (buf) - 1, "###ignoreWaypoint%i", legData.indx);
 
           ImGui::Checkbox(buf, &legData.flag_ignore_leg);
-          this->mx_add_tooltip(missionx::color::color_vec4_yellow, "Ignore this waypoint when building the mission file?");
+          missionx::mx_img_window::mx_add_tooltip(missionx::color::color_vec4_yellow, "Ignore this waypoint when building the mission file?");
         }
         //// End of table columns
 
@@ -1414,7 +1414,7 @@ ui_conv_screen::subDraw_ui_xTrigger_detail (mx_trig_strct_ &inTrig_ptr, bool &in
       {
         inTrig_ptr.setBuff (inTrig_ptr.iCurrentBuf, missionx::data_manager::getPoint_as_stringFromPlaneCamera ("sim/flightmodel/position/latitude", "sim/flightmodel/position/longitude"));
       }
-      this->mx_add_tooltip (missionx::color::color_vec4_darkorange, "plane position");
+      missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_darkorange, "plane position");
 
       ImGui::SameLine ();
       if (ImGui::Button ("C##cTrig"))
@@ -1422,7 +1422,7 @@ ui_conv_screen::subDraw_ui_xTrigger_detail (mx_trig_strct_ &inTrig_ptr, bool &in
         inTrig_ptr.setBuff (inTrig_ptr.iCurrentBuf, missionx::data_manager::getPoint_as_stringFromPlaneCamera ("sim/graphics/view/view_x", "sim/graphics/view/view_y", 'c')); // camera pos
       }
       ImGui::SameLine (0.0f, 5.0f);
-      this->mx_add_tooltip (missionx::color::color_vec4_darkorange, "camera position");
+      missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_darkorange, "camera position");
 
       ImGui::SameLine ();
       if (ImGui::Button ("U##uTrig"))
@@ -1430,7 +1430,7 @@ ui_conv_screen::subDraw_ui_xTrigger_detail (mx_trig_strct_ &inTrig_ptr, bool &in
         ImGui::OpenPopup (POPUP_USER_LAT_LON.c_str ());
       }
       ImGui::SameLine (0.0f, 5.0f);
-      this->mx_add_tooltip (missionx::color::color_vec4_darkorange, "User defined position");
+      missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_darkorange, "User defined position");
 
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
       ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgrey);
@@ -1672,7 +1672,7 @@ void ui_conv_screen::subDraw_ui_xRadius(IXMLNode& node, int pad_x_i)
     node.updateAttribute (val_s.c_str (), mxconst::get_ATTRIB_LENGTH_MT ().c_str (), mxconst::get_ATTRIB_LENGTH_MT ().c_str ());
   }
 
-  this->mx_add_tooltip (missionx::color::color_vec4_darkorange, mxUtils::formatNumber<float> ((static_cast<float> (val_i) * missionx::meter2nm), 2) + " nm");
+  missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_darkorange, mxUtils::formatNumber<float> ((static_cast<float> (val_i) * missionx::meter2nm), 2) + " nm");
 
   ImGui::SameLine (0.0f, 3.0f);
   ImGui::TextColored (missionx::color::color_vec4_cyan, "meters");
@@ -1743,12 +1743,12 @@ void ui_conv_screen::subDraw_ui_xPolyBox(IXMLNode& pNode, mx_trig_strct_& inTrig
       inTrig_ptr.node_ptr.updateAttribute (inTrig_ptr.pos.getLon_s ().c_str (), mxconst::get_ATTRIB_LONG ().c_str (), mxconst::get_ATTRIB_LONG ().c_str ());
     }
   }
-  this->mx_add_tooltip (missionx::color::color_vec4_white, "Get Camera position.");
+  missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_white, "Get Camera position.");
 
   // heading
 
   ImGui::TextColored (missionx::color::color_vec4_orange, "First Vector Heading:");
-  this->mx_add_tooltip (missionx::color::color_vec4_yellow, "The plugin will calculate the box as Heading and Heading + 90 deg vectors");
+  missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_yellow, "The plugin will calculate the box as Heading and Heading + 90 deg vectors");
   ImGui::SameLine ();
   ImGui::SetNextItemWidth (110.0f);
   if (ImGui::InputFloat ("###trigBoxVectorHeading", &heading_f))
@@ -1766,7 +1766,7 @@ void ui_conv_screen::subDraw_ui_xPolyBox(IXMLNode& pNode, mx_trig_strct_& inTrig
     heading_f              = XPLMGetDataf (dref);
     inTrig_ptr.setBuff (inTrig_ptr.iCurrentBuf, mxUtils::formatNumber<float> (heading_f, 2));
   }
-  this->mx_add_tooltip (missionx::color::color_vec4_white, "Get Camera Heading.");
+  missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_white, "Get Camera Heading.");
   ImGui::SameLine (0.0f, 10.0f);
   ImGui::TextColored (missionx::color::color_vec4_white, "Second vector heading = +90deg = %.2fdeg", (heading_f + 90.0f > 359.0f) ? heading_f + 90.0f - 360.0f : heading_f + 90.0f);
 
@@ -1785,9 +1785,9 @@ void ui_conv_screen::subDraw_ui_xPolyBox(IXMLNode& pNode, mx_trig_strct_& inTrig
       iMetersVector1 = 90000;
   }
   if (inTrig_ptr.flag_first_point_is_center_cbox) // v3.0.301 B4
-    this->mx_add_tooltip (missionx::color::color_vec4_darkorange, "Length = 2 * " + mxUtils::formatNumber<float> ((static_cast<float> (iMetersVector1) * missionx::meter2nm), 2) + " nm");
+    missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_darkorange, "Length = 2 * " + mxUtils::formatNumber<float> ((static_cast<float> (iMetersVector1) * missionx::meter2nm), 2) + " nm");
   else
-    this->mx_add_tooltip (missionx::color::color_vec4_darkorange, mxUtils::formatNumber<float> ((static_cast<float> (iMetersVector1) * missionx::meter2nm), 2) + " nm");
+    missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_darkorange, mxUtils::formatNumber<float> ((static_cast<float> (iMetersVector1) * missionx::meter2nm), 2) + " nm");
 
   ImGui::SameLine (0.0f, 10.0f);
 
@@ -1801,7 +1801,7 @@ void ui_conv_screen::subDraw_ui_xPolyBox(IXMLNode& pNode, mx_trig_strct_& inTrig
     if (iMetersVector2 > 90000)
       iMetersVector2 = 90000;
   }
-  this->mx_add_tooltip (missionx::color::color_vec4_darkorange, mxUtils::formatNumber<float> ((static_cast<float> (iMetersVector2) * missionx::meter2nm), 2) + " nm");
+  missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_darkorange, mxUtils::formatNumber<float> ((static_cast<float> (iMetersVector2) * missionx::meter2nm), 2) + " nm");
 
   ImGui::SameLine (0.0f, 10.0f);
   if (ImGui::Button ("C##distanceRelativeToPlane"))
@@ -1816,7 +1816,7 @@ void ui_conv_screen::subDraw_ui_xPolyBox(IXMLNode& pNode, mx_trig_strct_& inTrig
       iMetersVector2 = static_cast<int> (plane.calcDistanceBetween2Points (inTrig_ptr.pos, missionx::mx_units_of_measure::meter));
     }
   }
-  this->mx_add_tooltip (missionx::color::color_vec4_darkorange, "Calculate Second vector distance relative to camera location (camera.pos - start.pos)\nUse camera in plane for easier positioning using the map.");
+  missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_darkorange, "Calculate Second vector distance relative to camera location (camera.pos - start.pos)\nUse camera in plane for easier positioning using the map.");
 
   // display original vector lengths
   if (iVectorLengthBT_StoredInTrigger)
@@ -2023,7 +2023,7 @@ void ui_conv_screen::subDraw_ui_xScriptlet(IXMLNode& pNode, mxTrig_ui_mode_enm& 
 
 
   ImGui::TextColored (missionx::color::color_vec4_yellow, "%s", ((inScriptInputLabel.empty ()) ? "Enter <scriptlet> Code:" : inScriptInputLabel.c_str ()));
-  this->mx_add_tooltip (missionx::color::color_vec4_white, "The script must handle when to fire the trigger.\nIt can also manage messages and other supported commands.\nIt is up to you to decide the complexity of the code.\nBest practice: use \"Trigger Outcome\" to handle messages and post fire staff.\n\nCheck \"Designer Guide\" for more explanations.");
+  missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_white, "The script must handle when to fire the trigger.\nIt can also manage messages and other supported commands.\nIt is up to you to decide the complexity of the code.\nBest practice: use \"Trigger Outcome\" to handle messages and post fire staff.\n\nCheck \"Designer Guide\" for more explanations.");
 
   if (ImGui::InputTextMultiline ("##scriptletUi", working_buff, missionx::LOG_BUFF_SIZE, ImVec2 (ImGui::GetContentRegionAvail ().x - 10.0f, 60.0f), ImGuiInputTextFlags_AllowTabInput))
   {
@@ -2064,18 +2064,20 @@ void ui_conv_screen::draw_conv_main_fpln_to_mission_window()
   }
 
 
-  constexpr static std::string_view welcome_str_vu             = R"(Welcome to flight plan conversion screen. This screen should be used only in 2D mode and not in VR.
-In this screen you will pick a flight plan based on LittleNavMap (".lnmpln") from X-Plane FPLN folder ("Output/FMS plans").
+  constexpr static std::string_view welcome_str_vu             = R"(# Flight Plan Conversion
+Convert a Little Navmap flight plan ('.lnmpln') into a basic Mission-X mission file.
+
+Place your '.lnmpln' file in X-Plane's FPLN folder: '{xp}/Output/FMS plans'.
+Select the file to convert it. You can then edit the mission manually. Copy it to your own mission folder before making changes.
 )";
-  constexpr static std::string_view design_mission_fpln_str_vu = R"(Design the mission Flight Plan based on the parsed LittleNavMap file.
-1. Your briefer waypoint is your starting location (usually line 0. If it is absent, you can convert line 1 to be a briefer "BR")
-2. Pick waypoints that are mandatory to pass, you must have at least one. Fill the information of that flight leg using the respective button in the "details column".
-3. Once you [Generate] the mission, you can load it from "Load Mission" screen (Pick the Random image - the first one, in that screen).
+  constexpr static std::string_view design_mission_fpln_str_vu = R"(Design the mission flight plan based on the parsed Little Navmap file.
+1. Your briefer waypoint represents your starting location (usually line 0). If it is missing, you can convert line 1 into a briefer waypoint ("BR").
+2. Select the waypoints that the aircraft must pass through. You must select at least one. Use the corresponding button in the "Details" column to fill in the information for each flight leg.
+3. Once you click [Generate], you can load the mission from the "Load Mission" screen by selecting the Random image (the first one on that screen).
 )";
 
-  constexpr static std::string_view triggers_fpln_str_vu = R"(The "Trigger or Event screen" allows you to define different ways to interact with the simmer.
-You can define: "Radius, Polygonal, Script or even Camera" based areas of effect, depends on your needs.
-Each trigger must have a unique name in all the mission file.
+  constexpr static std::string_view triggers_fpln_str_vu = R"(The "Trigger or Event" screen lets you define mission interactions using Radius, Polygonal, Script, or Camera-based triggers.
+Each trigger must have a unique name across the mission file.
 )";
 
   constexpr static std::string_view features_not_implemented_str_vu = R"(The list of features that were not implemented:
@@ -2091,11 +2093,11 @@ There are other options that are best handle manually inside an editor and not i
   // Display Welcome text //
   ImGui::BeginGroup ();
   {
-    this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+    missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
     ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_aquamarine);
     ImGui::TextWrapped ("%s", (this->strct_conv_layer.conv_sub_ui == mx_conv_sub_ui::conv_pick_fpln) ? welcome_str_vu.data () : (this->strct_conv_layer.conv_sub_ui == mx_conv_sub_ui::conv_design_fpln) ? design_mission_fpln_str_vu.data () : triggers_fpln_str_vu.data ());
     ImGui::PopStyleColor ();
-    this->mxUiReleaseLastFont (); // v3.303.14
+    missionx::mx_img_window::mxUiReleaseLastFont (); // v3.303.14
   }
   ImGui::Separator ();
 
@@ -2112,7 +2114,7 @@ There are other options that are best handle manually inside an editor and not i
       {
         mx_img_window::HelpMarker (features_not_implemented_str_vu.data ()); // v3.0.301 B4 added unsupported features example
 
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+        missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
 
         ImGui::TextColored (missionx::color::color_vec4_yellow, "Pick a file from the list:");
 
@@ -2128,12 +2130,12 @@ There are other options that are best handle manually inside an editor and not i
         }
         ImGui::PopStyleColor (3);
 
-        this->mxUiReleaseLastFont (); // v3.303.14
+        missionx::mx_img_window::mxUiReleaseLastFont (); // v3.303.14
 
-        this->mx_add_tooltip (missionx::color::color_vec4_yellowgreen, "Only loads last conversion 'saved state' file - if exists.");
+        missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_yellowgreen, "Only loads last conversion 'saved state' file - if exists.");
 
 
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
+        missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_SMALL ()); // v3.303.14
         if (ImGui::BeginListBox ("##ListOfFlightPlanFiles"))
         {
           for (int n = 0; n < static_cast<int> (this->strct_conv_layer.vecFileList_char.size ()); n++)
@@ -2148,10 +2150,10 @@ There are other options that are best handle manually inside an editor and not i
           }
           ImGui::EndListBox ();
         }
-        this->mxUiReleaseLastFont (); // v3.303.14
+        missionx::mx_img_window::mxUiReleaseLastFont (); // v3.303.14
 
         // bottom buttons
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+        missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
         if (ImGui::Button (" Refresh File List "))
         {
           this->strct_conv_layer.flag_first_time = true; // will cause the file information to be refreshed in the next run
@@ -2294,7 +2296,7 @@ There are other options that are best handle manually inside an editor and not i
             } // end else if map table holds values
           } // end pressed "read lnvmap flight plan"
         }
-        this->mxUiReleaseLastFont (); // v3.303.14
+        missionx::mx_img_window::mxUiReleaseLastFont (); // v3.303.14
       }
       ImGui::EndGroup ();
       // v3.0.301 B4
@@ -2314,7 +2316,7 @@ There are other options that are best handle manually inside an editor and not i
       ImGui::BeginGroup ();
       ImGui::BeginChild ("TableOfLNM_Waypoints", child_size_vec2, ImGuiChildFlags_Borders);
       {
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+        missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
 
 
         ImGui::TextColored (missionx::color::color_vec4_bisque, "Picked File: ");
@@ -2328,7 +2330,7 @@ There are other options that are best handle manually inside an editor and not i
         {
           ImGui::TextColored (missionx::color::color_vec4_green, "%s", mxconst::get_CONVERTER_FILE ().c_str ());
         }
-        this->mxUiReleaseLastFont ();
+        missionx::mx_img_window::mxUiReleaseLastFont ();
 
 
         //// -- v26.09.3 ------------
@@ -2340,7 +2342,7 @@ There are other options that are best handle manually inside an editor and not i
 
 
         /////// BUTTONS //////
-        this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+        missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
 
         ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
         ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
@@ -2378,7 +2380,7 @@ There are other options that are best handle manually inside an editor and not i
         ImGui::SameLine (); // draw button from right
         ImGui::Checkbox ("Store State##conversionScreen", &this->strct_conv_layer.flag_store_state);
 
-        this->mxUiReleaseLastFont ();
+        missionx::mx_img_window::mxUiReleaseLastFont ();
 
         // ------------ Little Nav Map Table -----------------------
 
@@ -2396,7 +2398,7 @@ There are other options that are best handle manually inside an editor and not i
 
       // ------------ Bottom Table Buttons -----------------------
 
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
+      missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ()); // v3.303.14
 
       ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_black);
       ImGui::PushStyleColor (ImGuiCol_Button, missionx::color::color_vec4_lightgray);
@@ -2420,7 +2422,7 @@ There are other options that are best handle manually inside an editor and not i
 
       ImGui::PopStyleColor (3);
 
-      this->mxUiReleaseLastFont ();
+      missionx::mx_img_window::mxUiReleaseLastFont ();
 
       // v3.303.14 add the advance window that hold: date and weather settings
       ImGui::SameLine (0.0f, 50.0f);
@@ -2662,19 +2664,19 @@ void ui_conv_screen::draw_conv_popup_which_global_settings_to_save(std::string_v
       ImGui::PushStyleColor (ImGuiCol_::ImGuiCol_TextSelectedBg, missionx::color::color_vec4_black);
       iStyle++;
 
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_POPUP ());
+      missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_POPUP ());
       ImGui::TextColored (missionx::color::color_vec4_yellow, "Pick which Global Settings you would like to save:\n---------------------------------------------------------\n1. The one you loaded from the converter save file, \tor\n2. Generate a new one based on the Advanced Settings.\n");
 
       // ImGui::NewLine();
       ImGui::Separator ();
 
-      this->mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+      missionx::mx_img_window::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
       if (ImGui::Button ("Use existing Global Settings", ImVec2 (210, 0)))
       {
         flagSave                                                                  = true;
         this->strct_conv_layer.flag_use_loaded_globalSetting_from_conversion_file = true;
       }
-      this->mx_add_tooltip (missionx::color::color_vec4_white, "The plugin will use the <global_settings> loaded from the \"converter.sav\" file.");
+      missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_white, "The plugin will use the <global_settings> loaded from the \"converter.sav\" file.");
 
       ImGui::SameLine (0.0f, 20.0f);
       ImGui::SetItemDefaultFocus ();
@@ -2683,7 +2685,7 @@ void ui_conv_screen::draw_conv_popup_which_global_settings_to_save(std::string_v
         flagSave                                                                  = true;
         this->strct_conv_layer.flag_use_loaded_globalSetting_from_conversion_file = false;
       }
-      this->mx_add_tooltip (missionx::color::color_vec4_white, "The plugin will use the Advanced Settings information to generate a new <global_settings> element.\nThis includes weather/time and weight");
+      missionx::mx_img_window::mx_add_tooltip (missionx::color::color_vec4_white, "The plugin will use the Advanced Settings information to generate a new <global_settings> element.\nThis includes weather/time and weight");
 
       ImGui::SameLine (0.0f, 20.0f);
       ImGui::SetItemDefaultFocus ();
@@ -2695,7 +2697,7 @@ void ui_conv_screen::draw_conv_popup_which_global_settings_to_save(std::string_v
 
       ImGui::PopStyleColor (iStyle); // pop out before EndPopup
 
-      this->mxUiReleaseLastFont (2);
+      missionx::mx_img_window::mxUiReleaseLastFont (2);
 
       if (flagSave)
       {

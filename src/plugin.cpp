@@ -65,7 +65,6 @@ static void draw_markings (XPLMMapLayerID layer, const float *inMapBoundsLeftTop
 static void will_be_deleted (XPLMMapLayerID layer, void *inRefcon);
 void        createMapLayer (const char *mapIdentifier, void *refcon); // v3.305.4
 
-// v3.0.213.7 Datarefs to hold current plane location // TODO: replace with plane location already implemented.
 XPLMDataRef gHeadingPsiRef = nullptr; // heading - true north
 
 // v3.0.221.7 shared param dummy function for now. This callback is called whenever our shared data is changed. */

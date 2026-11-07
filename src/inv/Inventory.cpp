@@ -26,35 +26,6 @@ int  missionx::Inventory::opt_forceInventoryLayoutBasedOnVersion_i {0}; // v24.1
 //}
 
 
-Inventory::Inventory()
-  : Trigger()
-{
-  init();
-}
-
-
-Inventory::Inventory(const std::string &inTagName, const std::string& inName) : Inventory()
-{
-  mx_base_node::initBaseNode();
-  this->node.updateName(inTagName.c_str());
-
-  this->setName(inName);
-  this->setStringProperty(mxconst::get_ATTRIB_NAME(), inName);
-}
-
-
-Inventory::Inventory(const ITCXMLNode& inNode)
-{
-  this->node = inNode.deepCopy();
-  init();
-}
-
-
-Inventory::Inventory(const missionx::Inventory& inInventory) {
-  this->clone(inInventory);
-}
-
-
 void
 Inventory::clone(const missionx::Inventory& inInventory)
 {
@@ -114,41 +85,32 @@ Inventory::read_xp11_style_inventory_items()
 }
 
 
-bool
-Inventory::parse_item_node(IXMLNode& inNode)
+Inventory::Inventory()
+  : Trigger()
 {
-  assert(!inNode.isEmpty()); // abort if node was not set
-
-  if (inNode.isEmpty())
-    return false;
-
-  const std::string barcode_s = Utils::readAttrib(inNode, mxconst::get_ATTRIB_BARCODE(), "");
-  if (barcode_s.empty())
-  {
-    Log::logMsgErr("[parse item] Found item with no Barcode. please fix");
-    return false;
-  }
-
-  std::string name_s      = Utils::readAttrib(inNode, mxconst::get_ATTRIB_NAME(), barcode_s); // v24.12.2 replaced default value with barcode text.
-  const int   quantity_i  = static_cast<int>(Utils::readNumericAttrib(inNode, mxconst::get_ATTRIB_QUANTITY(), 0.0));
-  const float weight_kg_f = static_cast<float>(Utils::readNumericAttrib(inNode, mxconst::get_ATTRIB_WEIGHT_KG(), 0.0));
-
-  name_s = (name_s.empty()) ? barcode_s : name_s;
-
-  Utils::xml_set_attribute_in_node_asString (inNode, mxconst::get_ATTRIB_NAME(), name_s);
-  Utils::xml_set_attribute_in_node_asString (inNode, mxconst::get_ATTRIB_BARCODE(), barcode_s);
-  Utils::xml_set_attribute_in_node <int>(inNode, mxconst::get_ATTRIB_QUANTITY(), quantity_i);
-  Utils::xml_set_attribute_in_node <float>(inNode, mxconst::get_ATTRIB_WEIGHT_KG(), weight_kg_f);
-
-  return true;
+  init();
 }
 
 
-bool
-Inventory::parse_node(const IXMLNode& inNode)
+Inventory::Inventory(const std::string &inTagName, const std::string& inName) : Inventory()
+{
+  mx_base_node::initBaseNode();
+  this->node.updateName(inTagName.c_str());
+
+  this->setName(inName);
+  this->setStringProperty(mxconst::get_ATTRIB_NAME(), inName);
+}
+
+
+Inventory::Inventory(const ITCXMLNode& inNode)
 {
   this->node = inNode.deepCopy();
-  return this->parse_node();
+  init();
+}
+
+
+Inventory::Inventory(const missionx::Inventory& inInventory)  : Trigger(inInventory) {
+  this->clone(inInventory);
 }
 
 
@@ -304,6 +266,44 @@ Inventory::parse_node()
   // v24.12.2 Search for mandatory items and validate it.
   if (auto xResult = gather_and_validate_mandatory_items(this->node, 0); !xResult.result)
     Log::logMsg( xResult.getErrorsAsText() );
+
+  return true;
+}
+
+
+bool
+Inventory::parse_node(const IXMLNode& inNode)
+{
+  this->node = inNode.deepCopy();
+  return this->parse_node();
+}
+
+
+bool
+Inventory::parse_item_node(IXMLNode& inNode)
+{
+  assert(!inNode.isEmpty()); // abort if node was not set
+
+  if (inNode.isEmpty())
+    return false;
+
+  const std::string barcode_s = Utils::readAttrib(inNode, mxconst::get_ATTRIB_BARCODE(), "");
+  if (barcode_s.empty())
+  {
+    Log::logMsgErr("[parse item] Found item with no Barcode. please fix");
+    return false;
+  }
+
+  std::string name_s      = Utils::readAttrib(inNode, mxconst::get_ATTRIB_NAME(), barcode_s); // v24.12.2 replaced default value with barcode text.
+  const int   quantity_i  = static_cast<int>(Utils::readNumericAttrib(inNode, mxconst::get_ATTRIB_QUANTITY(), 0.0));
+  const float weight_kg_f = static_cast<float>(Utils::readNumericAttrib(inNode, mxconst::get_ATTRIB_WEIGHT_KG(), 0.0));
+
+  name_s = (name_s.empty()) ? barcode_s : name_s;
+
+  Utils::xml_set_attribute_in_node_asString (inNode, mxconst::get_ATTRIB_NAME(), name_s);
+  Utils::xml_set_attribute_in_node_asString (inNode, mxconst::get_ATTRIB_BARCODE(), barcode_s);
+  Utils::xml_set_attribute_in_node <int>(inNode, mxconst::get_ATTRIB_QUANTITY(), quantity_i);
+  Utils::xml_set_attribute_in_node <float>(inNode, mxconst::get_ATTRIB_WEIGHT_KG(), weight_kg_f);
 
   return true;
 }

@@ -292,7 +292,7 @@ private:
   static missionx::structs::strct_bbox calculate_bbox_coordinates(float inRefLat, float inRefLon, double inMaxRadius_d); // v26.04.4
   static void gather_all_osm_db_files_names_and_path(std::list<std::string>& outListOfFiles);
 
-  static bool osm_get_navaid_from_osm(NavAidInfo&                         outNavAid,
+  static bool get_navaid_from_osmdb_or_osmweb(NavAidInfo&                         outNavAid,
                                std::map<std::string, std::string>& inMapLocationSplitValues,
                                missionx::mx_base_node&             inProperties, // v3.305.1
                                NavAidInfo*                         prev_navaid_ptr, // v25.10.1
@@ -447,8 +447,9 @@ private:
   // v25.09.1
   static std::map<int, missionx::NavAidInfo> gen_oilrig_targets (missionx::base_thread::strct_thread_state *inoutThreadState, const IXMLNode &in_mapping_root_node, IXMLNode &inout_meta_data_node, structs::strct_shared_random_airport_info &inout_shared_navaid, std::string &outErr);
 
+  // v26.10.1 deprecated, use NavAidInfo::parse_expected_location();
   // returns error message. Empty message means code is good.
-  static missionx::structs::strct_expected_location_data parse_expected_location (const IXMLNode &in_xml_leg_from_template, const std::string &custom_error_message, bool is_last_leg = false);
+  // static missionx::structs::strct_expected_location_data parse_expected_location (const IXMLNode &in_xml_leg_from_template, const std::string &custom_error_message, bool is_last_leg = false);
 
   // v25.09.2
   // Will only parse the template "leg" from a template file.

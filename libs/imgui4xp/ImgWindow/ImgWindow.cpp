@@ -39,8 +39,18 @@
 #include <XPLMDataAccess.h>
 #include <XPLMDisplay.h>
 #include <XPLMGraphics.h>
+#include <XPLMPlugin.h>
 
 #include "imgui_internal.h"
+
+#if defined(__APPLE__) || defined(__MACH__)
+#include <ApplicationServices/ApplicationServices.h>
+#elif defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#endif
 
 /* ImGui version checks and refactor macros.
  * IMGUI_V190_REFACTOR defined for ImGui v1.90.0 and above (keyboard API refactor).
@@ -90,12 +100,43 @@ static ImGuiKey vpXPLMKeyToImGuiKey(int inVirtualKey) {
         case XPLM_VK_NUMPAD7: return ImGuiKey_Keypad7;
         case XPLM_VK_NUMPAD8: return ImGuiKey_Keypad8;
         case XPLM_VK_NUMPAD9: return ImGuiKey_Keypad9;
+        case XPLM_VK_MULTIPLY: return ImGuiKey_KeypadMultiply;
+        case XPLM_VK_ADD: return ImGuiKey_KeypadAdd;
+        case XPLM_VK_SEPARATOR: return ImGuiKey_KeypadDecimal;
+        case XPLM_VK_SUBTRACT: return ImGuiKey_KeypadSubtract;
+        case XPLM_VK_DECIMAL: return ImGuiKey_KeypadDecimal;
+        case XPLM_VK_DIVIDE: return ImGuiKey_KeypadDivide;
+        case XPLM_VK_NUMPAD_ENT: return ImGuiKey_KeypadEnter;
+
+        // Letters A-Z
         case XPLM_VK_A: return ImGuiKey_A;
+        case XPLM_VK_B: return ImGuiKey_B;
         case XPLM_VK_C: return ImGuiKey_C;
+        case XPLM_VK_D: return ImGuiKey_D;
+        case XPLM_VK_E: return ImGuiKey_E;
+        case XPLM_VK_F: return ImGuiKey_F;
+        case XPLM_VK_G: return ImGuiKey_G;
+        case XPLM_VK_H: return ImGuiKey_H;
+        case XPLM_VK_I: return ImGuiKey_I;
+        case XPLM_VK_J: return ImGuiKey_J;
+        case XPLM_VK_K: return ImGuiKey_K;
+        case XPLM_VK_L: return ImGuiKey_L;
+        case XPLM_VK_M: return ImGuiKey_M;
+        case XPLM_VK_N: return ImGuiKey_N;
+        case XPLM_VK_O: return ImGuiKey_O;
+        case XPLM_VK_P: return ImGuiKey_P;
+        case XPLM_VK_Q: return ImGuiKey_Q;
+        case XPLM_VK_R: return ImGuiKey_R;
+        case XPLM_VK_S: return ImGuiKey_S;
+        case XPLM_VK_T: return ImGuiKey_T;
+        case XPLM_VK_U: return ImGuiKey_U;
         case XPLM_VK_V: return ImGuiKey_V;
+        case XPLM_VK_W: return ImGuiKey_W;
         case XPLM_VK_X: return ImGuiKey_X;
         case XPLM_VK_Y: return ImGuiKey_Y;
         case XPLM_VK_Z: return ImGuiKey_Z;
+
+        // Numbers 0-9
         case XPLM_VK_0: return ImGuiKey_0;
         case XPLM_VK_1: return ImGuiKey_1;
         case XPLM_VK_2: return ImGuiKey_2;
@@ -106,6 +147,33 @@ static ImGuiKey vpXPLMKeyToImGuiKey(int inVirtualKey) {
         case XPLM_VK_7: return ImGuiKey_7;
         case XPLM_VK_8: return ImGuiKey_8;
         case XPLM_VK_9: return ImGuiKey_9;
+
+        // Punctuation and Symbols
+        case XPLM_VK_EQUAL: return ImGuiKey_Equal;
+        case XPLM_VK_MINUS: return ImGuiKey_Minus;
+        case XPLM_VK_PERIOD: return ImGuiKey_Period;
+        case XPLM_VK_COMMA: return ImGuiKey_Comma;
+        case XPLM_VK_SLASH: return ImGuiKey_Slash;
+        case XPLM_VK_SEMICOLON: return ImGuiKey_Semicolon;
+        case XPLM_VK_QUOTE: return ImGuiKey_Apostrophe;
+        case XPLM_VK_BACKSLASH: return ImGuiKey_Backslash;
+        case XPLM_VK_LBRACE: return ImGuiKey_LeftBracket;
+        case XPLM_VK_RBRACE: return ImGuiKey_RightBracket;
+        case XPLM_VK_BACKQUOTE: return ImGuiKey_GraveAccent;
+
+        // Function Keys F1-F12
+        case XPLM_VK_F1: return ImGuiKey_F1;
+        case XPLM_VK_F2: return ImGuiKey_F2;
+        case XPLM_VK_F3: return ImGuiKey_F3;
+        case XPLM_VK_F4: return ImGuiKey_F4;
+        case XPLM_VK_F5: return ImGuiKey_F5;
+        case XPLM_VK_F6: return ImGuiKey_F6;
+        case XPLM_VK_F7: return ImGuiKey_F7;
+        case XPLM_VK_F8: return ImGuiKey_F8;
+        case XPLM_VK_F9: return ImGuiKey_F9;
+        case XPLM_VK_F10: return ImGuiKey_F10;
+        case XPLM_VK_F11: return ImGuiKey_F11;
+        case XPLM_VK_F12: return ImGuiKey_F12;
     }
     return ImGuiKey_None;
 }
@@ -127,6 +195,7 @@ static XPLMDataRef gFrameRatePeriodRef  = nullptr;
 #endif
 
 std::shared_ptr<ImgFontAtlas> ImgWindow::sFontAtlas;
+ImgWindow* ImgWindow::s_CurrentBuildingWindow = nullptr;
 int ImgWindow::sBlankoutUntilCycle = 0;
 
 // Tracks textures pending destruction and the cycle they were queued
@@ -490,6 +559,15 @@ ImgWindow::ImgWindow(
         };
         mWindowID = XPLMCreateWindowEx(&windowParams);
     }
+
+#if defined(XPLM301)
+    // Initialize VR window geometry with the window's initial aspect ratio:
+    int winW = right - left;
+    int winH = top - bottom;
+    if (mWindowID && winW > 0 && winH > 0) {
+        XPLMSetWindowGeometryVR(mWindowID, winW, winH);
+    }
+#endif
 }
 
 ImgWindow::~ImgWindow()
@@ -523,6 +601,96 @@ ImgWindow::~ImgWindow()
     }
     ImGui::DestroyContext(mImGuiContext);
     XPLMDestroyWindow(mWindowID);
+}
+
+WindowGeometry
+WindowGeometry::Centered(int width, int height)
+{
+    int sLeft = 0, sTop = 0, sRight = 0, sBottom = 0;
+    XPLMGetScreenBoundsGlobal(&sLeft, &sTop, &sRight, &sBottom);
+    int sWidth  = sRight - sLeft;
+    int sHeight = sTop - sBottom;
+
+    int l = sLeft + (sWidth - width) / 2;
+    int b = sBottom + (sHeight - height) / 2;
+    return WindowGeometry(l, b + height, l + width, b);
+}
+
+WindowGeometry
+WindowGeometry::Sanitize(
+    int l, int t, int r, int b,
+    int defaultW, int defaultH,
+    int minVisibleMargin,
+    WindowSanitizeMode mode)
+{
+    if (mode == WindowSanitizeMode::None) {
+        return WindowGeometry(l, t, r, b);
+    }
+
+    XPLMDataRef vrRef = XPLMFindDataRef("sim/graphics/VR/enabled");
+    if (vrRef && XPLMGetDatai(vrRef)) {
+        int w = r - l;
+        int h = t - b;
+        if (w <= 0) w = defaultW;
+        if (h <= 0) h = defaultH;
+        return WindowGeometry(0, h, w, 0);
+    }
+
+    int w = r - l;
+    int h = t - b;
+    if (w <= 0 || h <= 0) {
+        return Centered(defaultW > 0 ? defaultW : 640, defaultH > 0 ? defaultH : 480);
+    }
+
+    int sLeft = 0, sTop = 0, sRight = 0, sBottom = 0;
+    XPLMGetScreenBoundsGlobal(&sLeft, &sTop, &sRight, &sBottom);
+
+    int interLeft   = (std::max)(l, sLeft);
+    int interRight  = (std::min)(r, sRight);
+    int interBottom = (std::max)(b, sBottom);
+    int interTop    = (std::min)(t, sTop);
+
+    int interW = interRight - interLeft;
+    int interH = interTop - interBottom;
+
+    if (interW <= 0 || interH <= 0) {
+        return Centered(w > 0 ? w : defaultW, h > 0 ? h : defaultH);
+    }
+
+    if (mode == WindowSanitizeMode::SnapToCenter) {
+        if (interW < w || interH < h) {
+            return Centered(w, h);
+        }
+        return WindowGeometry(l, t, r, b);
+    }
+
+    if (interW >= minVisibleMargin && interH >= minVisibleMargin && t <= sTop) {
+        return WindowGeometry(l, t, r, b);
+    }
+
+    int newL = l, newT = t, newR = r, newB = b;
+    if (newR < sLeft + minVisibleMargin) {
+        newL = sLeft + minVisibleMargin - w;
+        newR = sLeft + minVisibleMargin;
+    }
+    if (newL > sRight - minVisibleMargin) {
+        newL = sRight - minVisibleMargin;
+        newR = newL + w;
+    }
+    if (newT < sBottom + minVisibleMargin) {
+        newB = sBottom + minVisibleMargin - h;
+        newT = sBottom + minVisibleMargin;
+    }
+    if (newB > sTop - minVisibleMargin) {
+        newB = sTop - minVisibleMargin;
+        newT = newB + h;
+    }
+    if (newT > sTop) {
+        newT = sTop;
+        newB = newT - h;
+    }
+
+    return WindowGeometry(newL, newT, newR, newB);
 }
 
 void
@@ -581,6 +749,34 @@ ImgWindow::boxelsToNative(int x, int y, int &outX, int &outY)
     outY = static_cast<int>((ndc[1] * 0.5f + 0.5f) * mViewport[3] + mViewport[1]);
 }
 
+static void LogBackendOnce(bool isPanelGraphics, const char* reason = nullptr)
+{
+    static bool s_logged = false;
+    if (s_logged) return;
+    s_logged = true;
+
+    char pluginName[256] = {0};
+    XPLMPluginID myID = XPLMGetMyID();
+    if (myID != XPLM_NO_PLUGIN_ID) {
+        XPLMGetPluginInfo(myID, pluginName, nullptr, nullptr, nullptr);
+    }
+
+    char buf[512];
+    const char* namePrefix = (pluginName[0] != '\0') ? pluginName : "Unknown Plugin";
+
+    if (isPanelGraphics) {
+        snprintf(buf, sizeof(buf), "ImgWindow v%s: [%s] using Panel Graphics for ImGui rendering.\n",
+                 IMGWINDOW_VERSION, namePrefix);
+    } else if (reason && reason[0] != '\0') {
+        snprintf(buf, sizeof(buf), "ImgWindow v%s: [%s] using OpenGL for ImGui rendering (%s).\n",
+                 IMGWINDOW_VERSION, namePrefix, reason);
+    } else {
+        snprintf(buf, sizeof(buf), "ImgWindow v%s: [%s] using OpenGL for ImGui rendering.\n",
+                 IMGWINDOW_VERSION, namePrefix);
+    }
+    XPLMDebugString(buf);
+}
+
 void
 ImgWindow::RenderImGui(ImDrawData *draw_data)
 {
@@ -598,11 +794,7 @@ ImgWindow::RenderImGui(ImDrawData *draw_data)
 
 #if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
     if (ImgPanelGraphics::IsAvailable()) {
-        static bool s_logged_backend = false;
-        if (!s_logged_backend) {
-            XPLMDebugString("ImgWindow: Rendering via XPLM v4.4 Panel Graphics\n");
-            s_logged_backend = true;
-        }
+        LogBackendOnce(true);
 
         if (mFontTexture == (ImTextureID)0 || draw_data->CmdListsCount == 0)
             return;
@@ -673,9 +865,12 @@ ImgWindow::RenderImGui(ImDrawData *draw_data)
         }
         
         ImgPanelGraphics::TransformPop();
-    } else
-#endif
+    } else {
+        LogBackendOnce(false, ImgPanelGraphics::GetFallbackReason());
+#else
     {
+        LogBackendOnce(false);
+#endif
     updateMatrices();
 
     // We are using the OpenGL fixed pipeline because messing with the
@@ -806,6 +1001,75 @@ ImgWindow::updateImgui()
     // in boxels, we're always scale 1, 1.
     io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 
+    // Audit mouse cursor position and invalidate if cursor has left the window content area.
+    // This prevents "phantom stuck cursors" when the mouse exits into the sim, and cleanly
+    // invalidates hover states on blur or Alt-Tab.
+    if (!IsInVR()) {
+        int mouseX = 0, mouseY = 0;
+#if defined(XPLM300)
+        XPLMGetMouseLocationGlobal(&mouseX, &mouseY);
+#else
+        XPLMGetMouseLocation(&mouseX, &mouseY);
+#endif
+
+        const bool isMouseInside = (mouseX >= mLeft && mouseX <= mRight &&
+                                    mouseY >= mBottom && mouseY <= mTop);
+
+        const bool isInsideContent = isMouseInside &&
+            !(IsInsideSim() && bHandleWndResize &&
+              (mouseX < (mLeft + WND_RESIZE_LEFT_WIDTH) ||
+               mouseX > (mRight - WND_RESIZE_RIGHT_WIDTH) ||
+               mouseY > (mTop - WND_RESIZE_TOP_WIDTH) ||
+               mouseY < (mBottom + WND_RESIZE_BOTTOM_WIDTH)));
+
+        if (!isInsideContent) {
+            if (bUseImgCursors) {
+                io.MouseDrawCursor = false;
+            }
+#ifdef IMGUI_V190_REFACTOR
+            io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+#endif
+            io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
+        }
+    }
+
+    // Sync modifier key state with physical hardware state every frame.
+    // In X-Plane SDK, handleKeyFunc is only called when a virtual key is pressed or released,
+    // NEVER when a modifier key (Shift, Ctrl, Alt, Command) is pressed or released alone.
+    // Syncing with OS hardware state prevents "sticky Shift" / "sticky Ctrl" from corrupting
+    // mouse clicks into text edit fields (e.g. accidental range selection via Shift+Click).
+#if defined(__APPLE__) || defined(__MACH__)
+    CGEventFlags modFlags = CGEventSourceFlagsState(kCGEventSourceStateCombinedSessionState);
+    bool realShift = (modFlags & kCGEventFlagMaskShift) != 0;
+    bool realAlt   = (modFlags & kCGEventFlagMaskAlternate) != 0;
+    bool realCtrl  = (modFlags & kCGEventFlagMaskControl) != 0;
+    bool realSuper = (modFlags & kCGEventFlagMaskCommand) != 0;
+
+#ifdef IMGUI_V190_REFACTOR
+    io.AddKeyEvent(ImGuiMod_Shift, realShift);
+    io.AddKeyEvent(ImGuiMod_Alt,   realAlt);
+    io.AddKeyEvent(ImGuiMod_Super, realSuper || realCtrl);
+    io.AddKeyEvent(ImGuiMod_Ctrl,  false);
+#endif
+    io.KeyShift = realShift;
+    io.KeyAlt   = realAlt;
+    io.KeySuper = realSuper || realCtrl;
+    io.KeyCtrl  = false;
+#elif defined(_WIN32)
+    bool realShift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+    bool realCtrl  = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+    bool realAlt   = (GetKeyState(VK_MENU) & 0x8000) != 0;
+
+#ifdef IMGUI_V190_REFACTOR
+    io.AddKeyEvent(ImGuiMod_Shift, realShift);
+    io.AddKeyEvent(ImGuiMod_Ctrl,  realCtrl);
+    io.AddKeyEvent(ImGuiMod_Alt,   realAlt);
+#endif
+    io.KeyShift = realShift;
+    io.KeyCtrl  = realCtrl;
+    io.KeyAlt   = realAlt;
+#endif
+
 #ifdef IMGUI_V192_REFACTOR
     // Just-in-time rebuild:
     // If the ImGui client code added a font or scaled text since the last frame, the atlas will be "dirty".
@@ -839,6 +1103,21 @@ ImgWindow::updateImgui()
 
     ImGui::NewFrame();
 
+    // 1-Click Toolbar Buttons over Active InputText:
+    // If an InputText currently holds g.ActiveId and the user clicked outside its bounding rect,
+    // clear ActiveId early. In Dear ImGui, toolbars rendered before multiline text inputs in the
+    // frame sequence are blocked on the first click because ItemHoverable() rejects clicks while
+    // g.ActiveId belongs to the InputText. Clearing ActiveId early allows toolbar buttons (H1, B,
+    // tags, etc.) to trigger on the very first click without requiring a double-click.
+    ClearActiveInputTextIfClickedOutside();
+
+    // If mouse was clicked outside this window, release active mouse focus
+    if ((io.MouseClicked[0] || io.MouseClicked[1]) && bHasMouseFocus) {
+        if (io.MousePos.x < 0.0f || io.MousePos.x > win_width || io.MousePos.y < 0.0f || io.MousePos.y > win_height) {
+            bHasMouseFocus = false;
+        }
+    }
+
     ImGui::SetNextWindowPos(ImVec2((float) 0.0, (float) 0.0), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(win_width, win_height), ImGuiCond_Always);
 
@@ -846,7 +1125,12 @@ ImgWindow::updateImgui()
     ImGuiWindowFlags_ userFlags = beforeBegin();
     bCanMove = !(userFlags & ImGuiWindowFlags_NoMove);
     ImGui::Begin(mWindowTitle.c_str(), nullptr, userFlags | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+    
+    // Set the static context hook before building so extensions can query this window
+    s_CurrentBuildingWindow = this;
     buildInterface();
+    s_CurrentBuildingWindow = nullptr;
+    
     ImGui::End();
 
     // finally, handle window focus.
@@ -859,10 +1143,11 @@ ImgWindow::updateImgui()
     }
 #endif /* IMGUI_V190_REFACTOR */
 
-    if (io.WantTextInput && !hasKeyboardFocus) {
+    bool wantFocus = io.WantTextInput || bExplicitKeyboardFocus || (bCaptureKeyboardOnMouseFocus && bHasMouseFocus);
+    if (wantFocus && !hasKeyboardFocus) {
         XPLMTakeKeyboardFocus(mWindowID);
     }
-    else if (!io.WantTextInput && hasKeyboardFocus) {
+    else if (!wantFocus && hasKeyboardFocus) {
         XPLMTakeKeyboardFocus(nullptr);
         // reset keysdown otherwise we'll think any keys used to defocus the keyboard are still down!
 #ifndef IMGUI_V190_REFACTOR
@@ -925,8 +1210,11 @@ ImgWindow::HandleMouseClickGeneric(int x, int y, XPLMMouseStatus inMouse, int bu
     ImGui::SetCurrentContext(mImGuiContext);
     ImGuiIO& io = ImGui::GetIO();
 
-    // Tell ImGui the mous position relative to the window
+    // Tell ImGui the mouse position relative to the window
     translateToImguiSpace(x, y, io.MousePos.x, io.MousePos.y);
+#ifdef IMGUI_V190_REFACTOR
+    io.AddMousePosEvent(io.MousePos.x, io.MousePos.y);
+#endif
     const int loc_x = int(io.MousePos.x);       // local x, relative to top/left corner
     const int loc_y = int(io.MousePos.y);
     const int dx = x - lastMouseDragX;          // dragged how far since last down/drag event?
@@ -983,6 +1271,9 @@ ImgWindow::HandleMouseClickGeneric(int x, int y, XPLMMouseStatus inMouse, int bu
                 SetWindowGeometry(mLeft, mTop, mRight, mBottom);
                 // now that the window has moved under the mouse we need to update relative mouse pos
                 translateToImguiSpace(x, y, io.MousePos.x, io.MousePos.y);
+#ifdef IMGUI_V190_REFACTOR
+                io.AddMousePosEvent(io.MousePos.x, io.MousePos.y);
+#endif
                 // Update the last handled position
                 lastMouseDragX = x;
                 lastMouseDragY = y;
@@ -990,6 +1281,10 @@ ImgWindow::HandleMouseClickGeneric(int x, int y, XPLMMouseStatus inMouse, int bu
             break;
 
         case xplm_MouseDown:
+            bHasMouseFocus = true;
+#ifdef IMGUI_V190_REFACTOR
+            io.AddMouseButtonEvent(button, true);
+#endif
             io.MouseDown[button] = true;
 
             // Which part of the window would we drag, if any?
@@ -1022,6 +1317,9 @@ ImgWindow::HandleMouseClickGeneric(int x, int y, XPLMMouseStatus inMouse, int bu
             break;
 
         case xplm_MouseUp:
+#ifdef IMGUI_V190_REFACTOR
+            io.AddMouseButtonEvent(button, false);
+#endif
             io.MouseDown[button] = false;
             lastMouseDragX = lastMouseDragY = -1;
             dragWhat.clear();
@@ -1051,9 +1349,16 @@ ImgWindow::HandleKeyFuncCB(
     // Loosing focus? That's not exactly something ImGui allows us to do...
     // we try convincing ImGui to let it go by sending an [Esc] key for the legacy version, or by sending a focus-lost event for the modern version.
     if (blosingFocus) {
+        thisWindow->bHasMouseFocus = false;
+        thisWindow->bExplicitKeyboardFocus = false;
+        if (thisWindow->bUseImgCursors) {
+            io.MouseDrawCursor = false;
+        }
 #ifdef IMGUI_V190_REFACTOR
+        io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
         io.AddFocusEvent(false); // tell ImGui it lost focus
 #endif /* IMGUI_V190_REFACTOR */
+        io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
         if (ImGui::GetCurrentContext()) {
             // Clear any active ID, to prevent ImGui from thinking it still has focus:
             ImGui::ClearActiveID();
@@ -1062,7 +1367,8 @@ ImgWindow::HandleKeyFuncCB(
         return;  // don't process any further key events if we're losing focus
     }
 
-    if (io.WantCaptureKeyboard) {
+    int hasKeyboardFocus = XPLMHasKeyboardFocus(thisWindow->mWindowID);
+    if (io.WantCaptureKeyboard || hasKeyboardFocus || thisWindow->bExplicitKeyboardFocus || (thisWindow->bCaptureKeyboardOnMouseFocus && thisWindow->bHasMouseFocus)) {
         // Hack for the Backspace key in VR:
         // Apparently, the virtual VR keyboard sends both the Up and the Down
         // event within the same drawing cycle, which would overwrite
@@ -1140,6 +1446,13 @@ ImgWindow::HandleKeyFuncCB(
             io.AddKeyEvent(key, isDown); // send the actual key
         }
 
+        // Escape outside an active text input releases keyboard focus back to the sim
+        if (inVirtualKey == XPLM_VK_ESCAPE && !io.WantTextInput && isDown) {
+            thisWindow->bHasMouseFocus = false;
+            thisWindow->bExplicitKeyboardFocus = false;
+            XPLMTakeKeyboardFocus(nullptr);
+        }
+
         // Filter out and only show any true input characters after the key events (i.e., don't send 'v' with "ctrl+v" since we added the shortcut event above instead).
         bool isAnyModifierActive = ctrl || alt || io.KeySuper || io.KeyCtrl;  // (don't check Shift!)
         if (isDown && (unsigned char)inKey >= 32 && !isAnyModifierActive)
@@ -1167,18 +1480,43 @@ ImgWindow::HandleCursorFuncCB(
     ImGuiIO& io = ImGui::GetIO();
     float outX, outY;
     thisWindow->translateToImguiSpace(x, y, outX, outY);
+
+    // If coordinates fall outside the window's client bounds, invalidate mouse and release cursor:
+    if (outX == -FLT_MAX || outY == -FLT_MAX) {
+        if (thisWindow->bUseImgCursors) {
+            io.MouseDrawCursor = false;
+        }
+#ifdef IMGUI_V190_REFACTOR
+        io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+#endif
+        io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
+        return xplm_CursorDefault;
+    }
+
+#ifdef IMGUI_V190_REFACTOR
+    io.AddMousePosEvent(outX, outY);
+#endif
     io.MousePos = ImVec2(outX, outY);
     
     // Don't use ImGui mouse cursor handling if disabled, or if cursor is
     // within special XPLM self-styled resize handling regions.
-    if (!thisWindow->bUseImgCursors ||
-        (thisWindow->IsInsideSim() && thisWindow->bHandleWndResize &&
-         (x < (thisWindow->mLeft + WND_RESIZE_LEFT_WIDTH) ||
-          x > (thisWindow->mRight - WND_RESIZE_RIGHT_WIDTH) ||
-          y > (thisWindow->mTop - WND_RESIZE_TOP_WIDTH) ||
-          y < (thisWindow->mBottom + WND_RESIZE_BOTTOM_WIDTH))))
+    if (thisWindow->IsInsideSim() && thisWindow->bHandleWndResize &&
+        (x < (thisWindow->mLeft + WND_RESIZE_LEFT_WIDTH) ||
+         x > (thisWindow->mRight - WND_RESIZE_RIGHT_WIDTH) ||
+         y > (thisWindow->mTop - WND_RESIZE_TOP_WIDTH) ||
+         y < (thisWindow->mBottom + WND_RESIZE_BOTTOM_WIDTH)))
     {
-        // Defer to XPLM's hand cursor if disabled, or when inside the XPLM-managed resize grab regions:
+        // Defer to XPLM's resize cursor when inside the XPLM-managed resize grab regions:
+        io.MouseDrawCursor = false;
+#ifdef IMGUI_V190_REFACTOR
+        io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+#endif
+        io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
+        return xplm_CursorDefault;
+    }
+
+    if (!thisWindow->bUseImgCursors) {
+        // Defer to XPLM's default hardware cursor if dynamic ImGui cursors are not enabled:
         io.MouseDrawCursor = false;
         return xplm_CursorDefault;
     }
@@ -1209,6 +1547,9 @@ ImgWindow::HandleMouseWheelFuncCB(
 
     float outX, outY;
     thisWindow->translateToImguiSpace(x, y, outX, outY);
+#ifdef IMGUI_V190_REFACTOR
+    io.AddMousePosEvent(outX, outY);
+#endif
     io.MousePos = ImVec2(outX, outY);
     switch (wheel) {
     case 0:
@@ -1260,6 +1601,17 @@ ImgWindow::SetVisible(bool inIsVisible)
             // chance to early abort.
             return;
         }
+    } else {
+        // Invalidate mouse cursor and position when hiding window
+        ImGui::SetCurrentContext(mImGuiContext);
+        ImGuiIO& io = ImGui::GetIO();
+        if (bUseImgCursors) {
+            io.MouseDrawCursor = false;
+        }
+#ifdef IMGUI_V190_REFACTOR
+        io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+#endif
+        io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
     }
     XPLMSetWindowIsVisible(mWindowID, inIsVisible);
 }
@@ -1415,6 +1767,59 @@ void ImgWindow::Shutdown() {
     s_TexturesPendingDestruction.clear();
 }
 
+bool
+ImgWindow::ClearActiveInputTextIfClickedOutside()
+{
+    ImGuiContext* ctx = ImGui::GetCurrentContext();
+    if (!ctx)
+        return false;
+    ImGuiContext& g = *ctx;
+    ImGuiIO& io = ImGui::GetIO();
+
+    if (g.ActiveId != 0 && g.InputTextState.ID != 0 && g.ActiveId == g.InputTextState.ID)
+    {
+        if (io.MouseClicked[0] || io.MouseClicked[1])
+        {
+            ImGuiWindow* activeWindow = g.ActiveIdWindow ? g.ActiveIdWindow : g.NavWindow;
+            if (activeWindow != nullptr)
+            {
+                int layer = (g.NavLayer >= 0 && g.NavLayer < ImGuiNavLayer_COUNT) ? g.NavLayer : 0;
+                const ImRect& relRect = activeWindow->NavRectRel[layer];
+                if (!relRect.IsInverted())
+                {
+                    ImRect absRect = ImGui::WindowRectRelToAbs(activeWindow, relRect);
+                    absRect.ClipWith(activeWindow->ClipRect);
+                    if (!absRect.Contains(io.MousePos))
+                    {
+                        ImGui::ClearActiveID();
+#ifdef IMGUI_V190_REFACTOR
+                        ImGui::SetKeyOwner(ImGuiKey_MouseLeft, ImGuiKeyOwner_NoOwner);
+#endif
+                        return true;
+                    }
+                }
+                else
+                {
+                    ImGui::ClearActiveID();
+#ifdef IMGUI_V190_REFACTOR
+                    ImGui::SetKeyOwner(ImGuiKey_MouseLeft, ImGuiKeyOwner_NoOwner);
+#endif
+                    return true;
+                }
+            }
+            else
+            {
+                ImGui::ClearActiveID();
+#ifdef IMGUI_V190_REFACTOR
+                ImGui::SetKeyOwner(ImGuiKey_MouseLeft, ImGuiKeyOwner_NoOwner);
+#endif
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 std::queue<ImgWindow *>  ImgWindow::sPendingDestruction;
 XPLMFlightLoopID         ImgWindow::sSelfDestructHandler = nullptr;
 
@@ -1453,6 +1858,7 @@ namespace ImgPanelGraphics {
 
     static bool s_initialized = false;
     static bool s_available = false;
+    static const char* s_fallbackReason = nullptr;
 
     static void InitDynamic() {
         if (s_initialized) return;
@@ -1481,18 +1887,25 @@ namespace ImgPanelGraphics {
             if (hasSafePanelGraphicsVersion) {
                 // Fully safe to use Panel Graphics!
                 s_available = true;
+                s_fallbackReason = nullptr;
             } else {
-                // SDK v4.4b1/b2 detected: unsafe destruction deferral; force OpenGL fallback with special log entry to alert the user.
-                //FIXME: Consider throwing a fatal error here (or an assert) if XPLM440+ is required by the build configuration. (In that case, we should probably honor the contract to *only* use Panel Graphics, and not fall back to OpenGL.)
-                XPLMDebugString("ImgWindow WARNING: X-Plane Panel Graphics API detected, but requires X-Plane 12.4.4b3 or later. Falling back to legacy OpenGL to prevent instability.\n");
                 s_available = false;
+                s_fallbackReason = "requires X-Plane 12.4.4b3+ for Panel Graphics";
             }
+        } else {
+            s_available = false;
+            s_fallbackReason = "would need XPLM v4.4 for Panel Graphics rendering";
         }
     }
 
     bool IsAvailable() {
         InitDynamic();
         return s_available;
+    }
+
+    const char* GetFallbackReason() {
+        InitDynamic();
+        return s_fallbackReason;
     }
 
     void* CreateTexture(const unsigned char* rgba_image, int width, int height) {

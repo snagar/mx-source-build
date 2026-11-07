@@ -95,6 +95,9 @@ public:
   // -----------------------------------
   // Members
   // -----------------------------------
+
+  static void         add_ui_ignore_stats_checkbox(); // v26.10.1 designer option
+
   void draw_setup_layer();
 
 };

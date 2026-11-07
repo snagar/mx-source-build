@@ -757,25 +757,6 @@ missionx::Utils::splitStringAndGetShuffledIndexVector (const std::string &inStri
 
 // -------------------------------------------
 
-//
-//std::vector<int>
-//missionx::Utils::getShuffledIndexVector (const int &in_how_many_values_in_vector)
-//{
-//  // init random seed
-//  std::random_device rd;
-//  std::mt19937       g (rd ()); // Mersenne Twister engine seeded by random_device
-//
-//  std::vector<int> shuffled_indx_vec (in_how_many_values_in_vector);
-//  std::iota(shuffled_indx_vec.begin(), shuffled_indx_vec.end(), 0);
-//
-//  // Shuffle Vector
-//  std::ranges::shuffle (shuffled_indx_vec, g);
-//
-//  return shuffled_indx_vec;
-//}
-
-// -------------------------------------------
-
 
 std::string Utils::get_one_shuffled_value_from_string_value(const std::string& in_value_to_split)
 {
@@ -2682,12 +2663,48 @@ missionx::Utils::xml_get_or_create_node_ptr(IXMLNode& pNode, const std::string &
 
 // -------------------------------------------
 
+// IXMLNode
+// missionx::Utils::xml_get_or_create_node(IXMLNode pNode, const std::string &tagChildNodeName_s, const bool& in_flag_return_copy)
+// {
+//   assert(!pNode.isEmpty()); // crash if node is empty
+//
+//   IXMLNode node = pNode.getChildNode(tagChildNodeName_s.c_str());
+//   if (node.isEmpty())
+//     node = pNode.addChild(tagChildNodeName_s.c_str());
+//
+//   assert(!node.isEmpty()); // crash if node is empty
+//
+//   if (in_flag_return_copy)
+//     return node.deepCopy();
+//
+//   return node; // pointer
+// }
+
+
 IXMLNode
-missionx::Utils::xml_get_or_create_node(IXMLNode pNode, const std::string &tagChildNodeName_s, const bool& in_flag_return_copy)
+missionx::Utils::xml_get_or_create_node(IXMLNode pNode, const std::string &tagChildNodeName_s, const bool& in_flag_return_copy, const bool& in_flag_drill, const std::string& in_expected_in_tag)
 {
   assert(!pNode.isEmpty()); // crash if node is empty
 
   IXMLNode node = pNode.getChildNode(tagChildNodeName_s.c_str());
+
+  // v26.10.1 not a direct child: search the deeper levels
+  if (node.isEmpty() && in_flag_drill)
+  {
+    // 1. look first inside the expected parent tag (for example "scoring")
+    if (!in_expected_in_tag.empty())
+    {
+      IXMLNode xExpectedParent = Utils::xml_drill_for_child_node(pNode, in_expected_in_tag);
+      if (!xExpectedParent.isEmpty())
+        node = xExpectedParent.getChildNode(tagChildNodeName_s.c_str());
+    }
+
+    // 2. search all levels under pNode
+    if (node.isEmpty())
+      node = Utils::xml_drill_for_child_node(pNode, tagChildNodeName_s);
+  }
+
+  // not found: create it as a direct child of pNode (original behavior)
   if (node.isEmpty())
     node = pNode.addChild(tagChildNodeName_s.c_str());
 
@@ -2698,6 +2715,35 @@ missionx::Utils::xml_get_or_create_node(IXMLNode pNode, const std::string &tagCh
 
   return node; // pointer
 }
+
+// -------------------------------------------
+// v26.10.1 Search all levels under pNode for the first node with the tag name.
+//          Breadth first: all nodes of one level are tested before going one level deeper, so the nearest match wins.
+IXMLNode
+missionx::Utils::xml_drill_for_child_node(const IXMLNode& pNode, const std::string& tagChildNodeName_s)
+{
+  std::deque<IXMLNode> nodesToVisit;
+  nodesToVisit.push_back(pNode);
+
+  while (!nodesToVisit.empty())
+  {
+    IXMLNode parent = nodesToVisit.front();
+    nodesToVisit.pop_front();
+
+    for (int i = 0; i < parent.nChildNode(); ++i)
+    {
+      IXMLNode    child      = parent.getChildNode(i);
+      const char* child_name = child.getName();
+      if (child_name != nullptr && tagChildNodeName_s == child_name)
+        return child;
+
+      nodesToVisit.push_back(child); // test its children in the next level
+    }
+  }
+
+  return IXMLNode::emptyIXMLNode;
+}
+
 
 // -------------------------------------------
 
@@ -3484,9 +3530,8 @@ missionx::Utils::xml_add_node_to_parent_with_duplicate_filter(IXMLNode& inOutPar
 
 
 std::vector<mx_score_strct>
-missionx::Utils::xml_extract_scoring_subElements (const IXMLNode & pNode, const std::string& inSubElement)
+missionx::Utils::xml_extract_scoring_subElements (const IXMLNode & pNode, const std::string& inSubElement, const std::vector<std::string>& inVecAttributes)
 {
-  const std::vector<std::string>   vecAttributes = { "best", "good", "average" };
   std::vector<mx_score_strct> result;
   if (pNode.isEmpty() || pNode.getChildNode(inSubElement.c_str()).isEmpty())
   {
@@ -3495,7 +3540,7 @@ missionx::Utils::xml_extract_scoring_subElements (const IXMLNode & pNode, const 
   else
   {
     auto node = pNode.getChildNode(inSubElement.c_str());
-    for ( const auto &attribName : vecAttributes )
+    for ( const auto &attribName : inVecAttributes )
     {
       if (const std::string attrib_value_s = Utils::readAttrib (node, attribName, "")
         ; attrib_value_s.empty())
@@ -3565,6 +3610,21 @@ missionx::Utils::getScoreAfterAnalyzeMinMax(const std::vector<mx_score_strct>& i
 
 
   return result;
+}
+
+// -------------------------------------------
+// v26.10.1 Score of a single value: the first range that contains it, in the order best, good, average.
+//          The ranges may overlap (best="0|180" good="0|300"), the first match wins. Returns 0 if no range contains the value.
+float
+missionx::Utils::getScoreForValue(const std::vector<mx_score_strct>& inVecParsedScores, const double& inValue)
+{
+  for (const auto &[min, max, score] : inVecParsedScores)
+  {
+    if (inValue >= min && inValue <= max)
+      return score;
+  }
+
+  return 0.0f;
 }
 
 // -------------------------------------------
@@ -4206,12 +4266,22 @@ missionx::Utils::prepare_static_XSD()
     <fail_sound sound_file="" sound_vol=""/>
   </end_mission>
 
-  <scoring>
-    <pitch best="-10|15|0.5" good="-15|18|0.4" average="-20|20|0.25" />
-    <roll best="-25|25|0.5" good="-30|30|0.4" average="-35|35|0.25" />
-    <gforce best="-0.5|1.55|0.5" good="1.55|1.82|0.4" average="1.82|1.95|0.25" />
-    <center_line best="-1.3|1.3|0.5" good="-1.8|1.8|0.35" average="-2.3|2.3|0.25" />
-  </scoring>  
+    <scoring>
+      <pitch best="-10|15|0.5" good="-15|18|0.4" average="-20|20|0.25" />
+      <roll best="-25|25|0.5" good="-30|30|0.4" average="-35|35|0.25" />
+      <gforce best="-0.5|1.55|0.5" good="1.55|1.82|0.4" average="1.82|1.95|0.25" />
+      <center_line best="-1.3|1.3|0.5" good="-1.8|1.8|0.35" average="-2.3|2.3|0.25" />
+      <!-- v26.10.1 landing score. "weight" = how much the measure counts (default 1, 0 = not used). The first range that contains the value gives its score -->
+      <td_fpm       weight="2" best="0|180|0.5" good="0|300|0.4" average="0|500|0.25" />  <!-- |V/S| at touchdown, fpm -->
+      <td_gear_load weight="1" best="0|0.5|0.5" good="0|0.8|0.4" average="0|1.2|0.25" />  <!-- extra gear load at touchdown, in plane weights -->
+      <final_glide  weight="1" best="0|1.4|0.5" good="0|1.7|0.4" average="0|2.2|0.25" />  <!-- max sink / 3 degree path sink, 300-50 ft -->
+      <td_bank      weight="1" best="0|3|0.5"   good="0|5|0.4"   average="0|8|0.25" />    <!-- |bank| at touchdown, degrees -->
+      <!-- v26.10.1 points taken off the landing score for a bounce. "min|max|points" by the highest bounce in ft, the first range that contains it is used.
+      extra_bounce = points for each bounce after the first. Points are always taken off (negative), whatever the sign written here -->
+      <td_bounce_penalty small="0|2|-5" medium="0|4|-10" large="0|999|-20" extra_bounce="-3" />
+      <!-- grade by landing score (0-100). "Call the Doctor" when td_fpm > doctor_fpm or td_gear_load > doctor_gear_load, whatever the score -->
+      <landing_grade butter="90" smooth="75" acceptable="55" firm="35" doctor_fpm="600" doctor_gear_load="1.5" />
+    </scoring>
 
 </MAPPING>
 )";

@@ -1280,6 +1280,9 @@ public:
   static bool            init_in_memory_xp_airport_db();
   static bool            delete_db_file(const std::string & inPathAndFile); // v3.303.8.3
   static bool            init_stats_db(); // v3.0.255.1
+  static std::string     get_stats_db_path(); // v26.10.1 one place for the stats file path
+  static void            close_stats_db(bool in_flush_pending_rows); // v26.10.1 stop the writer, then close db_stats
+
   static bool            db_connect(missionx::dbase& db, const std::string& inPathToDbFile);
   static void            db_close_all_databases();
   static void            db_close_database(dbase &inDB); // v3.303.8.3
@@ -1321,8 +1324,13 @@ public:
   static std::map<int, missionx::mx_ils_airport_row_strct*> indexPointer_for_ILS_rows_tableVector;                                                          // index pointer to the vector table_ILS_rows_vec
   static void                                               fetch_last_mission_stats(missionx::mxFetchState_enum* outState, std::string* outStatusMessage); // the query is a constant one on same table "stats"
   static missionx::mx_mission_stats_strct                   mission_stats_from_query;
-  static std::vector<missionx::mx_stats_data>               get_landing_stats_as_vec(); // v3.303.8.3
+  // static std::vector<missionx::mx_stats_data>               get_landing_stats_as_vec(); // v3.303.8.3
+  static std::vector<missionx::mx_stats_data>               get_landing_stats_as_vec(missionx::dbase &in_stats_db); // v3.303.8.3 // v26.10.1 connection passed in
   static missionx::GatherStats                              gather_stats;               // v3.0.255.1
+  static std::map<int, missionx::mx_landing_analysis>       fetch_landing_analysis(missionx::dbase &in_stats_db); // v26.10.1 height steps + touchdown summary per landing (key: landing line_id). Queries from sql.xml <stats_sqls>
+  static IXMLNode                                           get_scoring_with_landing_defaults(); // v26.10.1 copy of the mission <scoring>, missing landing elements are copied from the default <scoring>
+  static void                                               score_landing_analysis(missionx::mx_landing_analysis &inout_landing, IXMLNode in_xScoring); // v26.10.1 landing score (0-100) and grade
+  static void                                               build_landing_findings(missionx::mx_landing_analysis &inout_landing); // v26.10.1 notes displayed under the landing table
 
   static void reset_runway_search_filter();
 

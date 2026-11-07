@@ -904,7 +904,9 @@ static T get_random_number_by_type (const T inMin, const T inMax)
   static IXMLNode xml_get_or_create_node_ptr(IXMLNode& pNode, const std::string &tagChildNodeName_s, const std::string &with_attrib_name = "", const std::string &with_attrib_value = "");
 
   // Search for a child node. If it does not exist create a node and return a copy or a pointer to the node. Default is to return a copy.
-  static IXMLNode xml_get_or_create_node(IXMLNode pNode, const std::string &tagChildNodeName_s, const bool& in_flag_return_copy = true); // v3.0.241.10 b3 added return a copy of the Node or a pointer.
+  // static IXMLNode xml_get_or_create_node(IXMLNode pNode, const std::string &tagChildNodeName_s, const bool& in_flag_return_copy = true); // v3.0.241.10 b3 added return a copy of the Node or a pointer.
+  static IXMLNode xml_get_or_create_node(IXMLNode pNode, const std::string &tagChildNodeName_s, const bool& in_flag_return_copy = true, const bool& in_flag_drill = false, const std::string& in_expected_in_tag = ""); // v3.0.241.10 b3 added return a copy of the Node or a pointer. v26.10.1 added drill search: if not a direct child, search the deeper levels. "in_expected_in_tag" is the parent tag to look in first.
+  static IXMLNode xml_drill_for_child_node(const IXMLNode& pNode, const std::string& tagChildNodeName_s); // v26.10.1 search all levels under pNode, nearest level first. Returns an empty node if not found.
 
   // -------------------------------------------
   // static std::string xml_read_cdata_node (const ITCXMLNode &inNode, const std::string &default_value);
@@ -1082,8 +1084,9 @@ static T get_random_number_by_type (const T inMin, const T inMax)
   // -------------------------------------------
   static void xml_add_node_to_parent_with_duplicate_filter(IXMLNode& inOutParentNode, const IXMLNode & inNode, std::string_view inChildTagNameToFilter, std::string_view inAttribNameHoldsFilterRule = mxconst::get_ATTRIB_NAME()); // this is the main function that will call xml_get_all_child_nodes_recurs_with_tagName
   // -------------------------------------------
-  static std::vector<mx_score_strct> xml_extract_scoring_subElements (const IXMLNode & pNode, const std::string& inSubElement); // v3.303.8.3
+  static std::vector<mx_score_strct> xml_extract_scoring_subElements (const IXMLNode & pNode, const std::string& inSubElement, const std::vector<std::string>& inVecAttributes = { "best", "good", "average" }); // v3.303.8.3 v26.10.1 added inAttributes: the attributes to read, in this order
   static float                       getScoreAfterAnalyzeMinMax(const std::vector<mx_score_strct>& inVecParsedScores, const double& inMin, const double& inMax); // v3.303.8.3
+  static float                       getScoreForValue(const std::vector<mx_score_strct>& inVecParsedScores, const double& inValue); // v26.10.1 score of a single value: the first range (best, good, average) that contains it. 0 if none does.
   // -------------------------------------------
 
   static std::string getAndFixStartingDayValue(const std::string& inStarting_day);

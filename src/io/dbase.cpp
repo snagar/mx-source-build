@@ -83,11 +83,9 @@ dbase::open_database()
     db_is_open_and_ready = false;
     return false;
   }
-  else
-  {
-    db_is_open_and_ready = true;
-    mxRegisterExtensionFunctions(db); // v3.0.241.10 added the extension function to the SQLite engine so we can use all the mathematical "gooddies" function in our query, instead of coding them in C++
-  }
+
+  db_is_open_and_ready = true;
+  mxRegisterExtensionFunctions(db); // v3.0.241.10 added the extension function to the SQLite engine so we can use all the mathematical "goodies" function in our query, instead of coding them in C++
 
   #ifndef RELEASE
   assert (this->db != nullptr && fmt::format ("[{}] Database pointer is empty.", __func__).c_str () ); // v25.06.1 debug
@@ -185,7 +183,72 @@ dbase::get_column_text(sqlite3_stmt* inStmt, int inColumn)
 
 }
 
+// ----------------------------------------------------
+// v26.10.1 alias name -> column index of a prepared statement
+std::map<std::string, int>
+dbase::get_column_indexes(sqlite3_stmt* inStmt)
+{
+  std::map<std::string, int> mapColumns;
+  if (inStmt == nullptr)
+    return mapColumns;
 
+  for (int i = 0; i < sqlite3_column_count(inStmt); ++i)
+  {
+    const char* column_name = sqlite3_column_name(inStmt, i);
+    if (column_name != nullptr)
+      mapColumns[column_name] = i;
+  }
+
+  return mapColumns;
+}
+
+// ----------------------------------------------------
+// v26.10.1 true if the column value is NULL, or the alias is not in the query
+bool
+dbase::is_column_null(sqlite3_stmt* inStmt, const std::map<std::string, int>& inColumns, const std::string& inName)
+{
+  const auto it = inColumns.find(inName);
+  if (it == inColumns.end())
+    return true;
+
+  return (sqlite3_column_type(inStmt, it->second) == SQLITE_NULL);
+}
+
+// ----------------------------------------------------
+// v26.10.1
+int
+dbase::read_column_int(sqlite3_stmt* inStmt, const std::map<std::string, int>& inColumns, const std::string& inName, const int inDefault)
+{
+  const auto it = inColumns.find(inName);
+  if (it == inColumns.end())
+    return inDefault;
+
+  return sqlite3_column_int(inStmt, it->second);
+}
+
+// ----------------------------------------------------
+// v26.10.1
+double
+dbase::read_column_double(sqlite3_stmt* inStmt, const std::map<std::string, int>& inColumns, const std::string& inName, const double inDefault)
+{
+  const auto it = inColumns.find(inName);
+  if (it == inColumns.end())
+    return inDefault;
+
+  return sqlite3_column_double(inStmt, it->second);
+}
+
+// ----------------------------------------------------
+// v26.10.1 NULL safe (uses get_column_text)
+std::string
+dbase::read_column_text(sqlite3_stmt* inStmt, const std::map<std::string, int>& inColumns, const std::string& inName, const std::string& inDefault)
+{
+  const auto it = inColumns.find(inName);
+  if (it == inColumns.end())
+    return inDefault;
+
+  return dbase::get_column_text(inStmt, it->second);
+}
 // ----------------------------------------------------
 
 bool
@@ -285,34 +348,38 @@ dbase::execute_stmt(const char* inStmt)
 // ----------------------------------------------------
 
 bool
-dbase::prepareNewStatement(std::string inName, std::string inSql)
+dbase::prepareNewStatement(std::string inName, std::string inSql, const bool in_force_sql_rebind_if_exists)
 {
   this->last_err.clear();
   if (!db_is_open_and_ready)
   {
     this->last_err = "Database is not ready.";
-    Log::logMsgErr("[prepNewStmt] Fail creating new statment. " + this->last_err);
+    Log::logMsgErr(fmt::format("[{}] Fail creating new statment.\n{}", __func__, this->last_err) );
     return false;
   }
 
   if (inName.empty())
   {
     this->last_err = "Statement by the name: '" + inName + "' might already be present or name is not valid.\n";
-    Log::logMsgErr("[prepNewStmt] " + this->last_err);
+    Log::logMsgErr(fmt::format("[{}] {}", __func__, this->last_err) );
+
     return false;
   }
 
-  if (Utils::isElementExists(this->mapStatements, inName))
+  if (this->mapStatements.contains( inName ) && in_force_sql_rebind_if_exists)
   {
     this->last_err = "Statement by the name: '" + inName + "' is already present. Will override with new pointer.\n";
-    Log::logMsgWarn("[prepNewStmt] " + this->last_err);
+    Log::logMsgWarn(fmt::format("[{}] {}", __func__, this->last_err) );
 
     sqlite3_clear_bindings(this->mapStatements[inName]);
     sqlite3_reset(this->mapStatements[inName]);
 
     // not duing "sqlite3_finalize(this->mapStatements[inName]);" since it will crash the plugin
     this->mapStatements[inName] = nullptr;
-
+  }
+  else
+  {
+    Log::logMsg(fmt::format("[{}] Statement by the name: {} might be new, or in_force_sql_rebind_if_exists is: {}.", __func__, inName, ((in_force_sql_rebind_if_exists)? "true" : "false")) );
   }
 
   // Prepare the new statement and store it in mapStatements[] if all is well
@@ -320,17 +387,15 @@ dbase::prepareNewStatement(std::string inName, std::string inSql)
   rc = sqlite3_prepare_v2(this->db, inSql.c_str(), (int)inSql.size(), &newStmt_ptr, &zTail_ins_stats);
   if (rc != SQLITE_OK)
   {
-    this->last_err = std::string("[prepNewStmt] Prepare statement failed. Error: ") + sqlite3_errmsg(this->db) + "\nStatement: " + inSql + "\n";
+    this->last_err = fmt::format("[{}] Prepare statement failed. Error: {}\nStatement: {}\n", __func__, sqlite3_errmsg(this->db), inSql );
     Log::logMsgErr(this->last_err);
 
     this->mapStatements.erase(inName); // remove from container
 
     return false;
   }
-  else
-  {
-    this->mapStatements[inName] = newStmt_ptr;
-  }
+
+  this->mapStatements[inName] = newStmt_ptr;
 
   return true;
 }

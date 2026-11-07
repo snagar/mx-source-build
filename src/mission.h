@@ -70,12 +70,29 @@ private:
   void add_GPS_data(int optionalPointIndex = -1);
 
   // stats information // v3.0.255.1
-  typedef struct _mx_plane_stats
+  struct mx_plane_stats_struct
   {
 
     Timer burstTimer;
     float prev_faxil{ 0.0f };    // v3.0.255.1
     float current_faxil{ 0.0f }; // v3.0.255.1
+
+    // v26.10.1 approach mode: write dense stats rows from 50m AGL until touchdown
+    static constexpr float APPROACH_START_AGL_MT   = 50.0f;   // enter approach mode below this height (meters)
+    static constexpr float APPROACH_EXIT_AGL_MT    = 70.0f;   // leave approach mode above this height (go-around). Also re-arms after the row limit
+    static constexpr float APPROACH_ENTRY_SINK_FPM = -100.0f; // enter only while descending faster than this
+    static constexpr float APPROACH_INTERVAL_SEC   = 0.05f;   // write one row every 0.05 sec (20 rows per second)
+    static constexpr int   APPROACH_MAX_ROWS       = 600;     // 30 sec of rows. Stops a hovering helicopter or a low level flight from filling the table
+    // v26.10.1 burst after takeoff/touchdown (every frame)
+    static constexpr float BURST_TAKEOFF_SEC         = 2.0f; // takeoff burst, as before
+    static constexpr float BURST_LANDING_MAX_SEC     = 8.0f; // landing burst limit. It ends earlier once all wheels stay on the ground
+    static constexpr float BURST_ALL_WHEELS_DOWN_SEC = 0.5f; // all wheels on the ground this long = end of the landing burst
+
+    bool  approach_active{ false };          // v26.10.1 true while we write approach rows
+    bool  approach_capped{ false };          // v26.10.1 true after APPROACH_MAX_ROWS rows. Cleared at touchdown or above APPROACH_EXIT_AGL_MT
+    int   approach_rows_written{ 0 };        // v26.10.1 rows written since approach mode started
+    float approach_next_sample_sec{ 0.0f };  // v26.10.1 sim time (total_running_time_sec) of the next approach row
+    float all_wheels_down_since_sec{ -1.0f }; // v26.10.1 sim time when all wheels touched in the landing burst. -1 = not all wheels down
 
     enum class mx_plane_status
     {
@@ -99,6 +116,13 @@ private:
       burstTimer.reset();
       prev_faxil          = 0.0f; //
       current_faxil       = 0.0f; //
+
+      approach_active          = false; // v26.10.1
+      approach_capped          = false; // v26.10.1
+      approach_rows_written    = 0;     // v26.10.1
+      approach_next_sample_sec = 0.0f;  // v26.10.1
+      all_wheels_down_since_sec = -1.0f; // v26.10.1
+
       current_plane_state = prev_plane_state = before_transition_state = mx_plane_status::no_status;
     }
 
@@ -108,8 +132,8 @@ private:
       current_plane_state = inVal;
     }
 
-  } mx_plane_stats;
-  mx_plane_stats plane_stats; // v3.0.255.1
+  } ;
+  mx_plane_stats_struct strct_plane_stats; // v3.0.255.1
 
   int delay_camera_position_change{ 0 }; // when positioning camera, we want to automaticaly move to free view. We need few cycles before doing so
 

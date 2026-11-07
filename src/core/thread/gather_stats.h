@@ -17,48 +17,26 @@ namespace missionx
 
 class GatherStats : public base_thread
 {
-private:
-  const std::string INS_SQL = "ins_sql";
-
-  const dataref_const dref_const;
-
 public:
-  GatherStats();
-  virtual ~GatherStats();
+  inline static bool   flag_ignore_stats_setup {false}; // v26.10.1
 
-  void init();
-
-  strct_thread_state xxthread_state;
-
-  void flc();
-
-  void setDb(dbase* inDb, const std::string &missionState_s);
-
-
-  // stop plugin
-  void stop_plugin();
-  void stop_gather();
-
-  void initTotalRunningTimeInSec();
-  void gather_stats_data(); // v3.0.255.1
-
-  typedef struct _stats_gather_
+  struct mx_struct_stats_gather
   {
     // The following information will be initiated every flight loopback
-    int    local_date_days;
-    int    onground_any_i, onground_all_i; // v3.303.8.3
-    float  groundspeed, airspeed, heading_no_mag, heading_mag, pitch, roll, faxil_gear, brake_L, brake_R;
-    float  vh_ind_fpm, Qrad, Q; // v3.303.8.3  // v3.303.14 removedd y_agl since we use agl column
-    float  vvi /*vertical velocity mt/s */, gforce_normal, gforce_axil, fnrml_total, AoA /*degrees*/;
-    float  prev_total_running_time_sec, total_running_time_sec;
-    float  local_time_sec, vvi_fpm_pilot, flap_ratio;
+    int    local_date_days{};
+    int    onground_any_i{}, onground_all_i{}; // v3.303.8.3
+    float  groundspeed{}, airspeed{}, heading_no_mag{}, heading_mag{}, pitch{}, roll{}, faxil_gear{}, brake_L{}, brake_R{};
+    float  vh_ind_fpm{}, Qrad{}, Q{}; // v3.303.8.3  // v3.303.14 removedd y_agl since we use agl column
+    float  vvi{} /*vertical velocity mt/s */, gforce_normal{}, gforce_axil{}, fnrml_total{}, AoA{} /*degrees*/;
+    float  prev_total_running_time_sec{}, total_running_time_sec{};
+    float  local_time_sec{}, vvi_fpm_pilot{}, flap_ratio{};
     float  fAGL{ 0.0 }; // v3.303.14
     float  m_total{ 0.0 }; // v3.303.14 current total weight = payload + fuel
 
     // v3.303.14 add cumulative distance
     float  fCumulativeDistance_nm{ 0.0f };
 
-    double lat, lon, elev; // , local_x, local_y, local_z;
+    double lat{}, lon{}, elev{}; // , local_x, local_y, local_z;
 
     std::string activity; // manly used when injecting information
 
@@ -66,7 +44,7 @@ public:
     std::string step_name;
     std::map<std::string, unsigned int> mapStepCounter; // key: step name, value: counter
 
-    _stats_gather_() { init_(); }
+    mx_struct_stats_gather() { init_(); }
 
     void init_()
     {
@@ -88,7 +66,7 @@ public:
       mapStepCounter.clear();
     }
 
-    void clone(_stats_gather_* inStats)
+    void clone(const mx_struct_stats_gather* inStats)
     {
 
       init_();
@@ -128,37 +106,20 @@ public:
       vh_ind_fpm = inStats->vh_ind_fpm;
       Qrad        = inStats->Qrad;
       Q           = inStats->Q;
-      //y_agl       = inStats->y_agl;      
-      onground_all_i = inStats->onground_all_i;     
-      onground_any_i = inStats->onground_any_i; 
+      //y_agl       = inStats->y_agl;
+      onground_all_i = inStats->onground_all_i;
+      onground_any_i = inStats->onground_any_i;
 
       fCumulativeDistance_nm = inStats->fCumulativeDistance_nm; // v3.303.14
 
     }
 
-  } mx_struct_stats_gather;
-
-  void         gather_and_store_stats(const std::string &inActivity); 
-  void         set_activity_type(const std::string &inActivity) { this->stats.activity = inActivity; }
-  void         store_stats();
-  const dbase* get_db_ptr() { return this->db; }
-
-  void reset()
-  {
-    this->prev_stats.init_();
-    this->stats.init_();
   };
 
-  void init_seq_from_checkpoint_stats(); // v3.303.8.3
+private:
+  const std::string INS_SQL = "ins_sql";
 
-  mx_struct_stats_gather get_stats_object() {return stats; }
-
-  // Inject stats into Queue
-  void addInjectedPlaneStat(_stats_gather_ &inStat);
-
-  void copyLastStatsToUiStruct(missionx::mx_enrout_stats_strct& inoutStats);
-
- private:
+  const dataref_const dref_const;
   dbase* db; // points to Mission db.
   // Plane *plane; // we will use it to get Dataref and ongoing information
   // Step *step; // current objective
@@ -185,6 +146,53 @@ public:
 
   ///// Injecting Queue Container /////
   std::queue<mx_struct_stats_gather> qInjectPlaneStats;
+  void clear_queue(); // v26.10.1 empty qInjectPlaneStats under the mutex
+
+public:
+  GatherStats();
+  ~GatherStats() override;
+
+  void init();
+
+  strct_thread_state xxthread_state;
+
+  void flc();
+
+  void setDb(dbase* inDb, const std::string &missionState_s);
+
+
+  // stop plugin
+  void stop_plugin();
+  void stop_gather();
+  // v26.10.1 stats database lifecycle
+  void wait_for_writer();                    // join the running writer thread (no abort, its rows are written)
+  void detach_db(bool in_flush_pending_rows); // stop writing and forget the connection. true: write the queued rows first
+
+  void initTotalRunningTimeInSec();
+  void gather_stats_data(); // v3.0.255.1
+
+  void         gather_and_store_stats(const std::string &inActivity);
+  void         set_activity_type(const std::string &inActivity) { this->stats.activity = inActivity; }
+  void         store_stats();
+  const dbase* get_db_ptr() { return this->db; }
+
+  void reset()
+  {
+    this->prev_stats.init_();
+    this->stats.init_();
+    this->clear_queue(); // v26.10.1
+  };
+
+  void init_seq_from_checkpoint_stats(); // v3.303.8.3
+
+  mx_struct_stats_gather get_stats_object() {return stats; }
+
+  // Inject stats into Queue
+  void addInjectedPlaneStat(mx_struct_stats_gather &inStat);
+
+  void copyLastStatsToUiStruct(missionx::mx_enrout_stats_strct& inoutStats);
+
+
 };
 
 } /* namespace missionx */

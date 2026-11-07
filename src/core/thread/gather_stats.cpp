@@ -46,12 +46,11 @@ GatherStats::flc()
     // we should not call the thread if it is active
     if (!xxthread_state.flagIsActive)
     {
-      // place stats inside the queue.
-      std::lock_guard<std::mutex> lock(missionx::mutexGatherStats);
-      this->addInjectedPlaneStat(this->stats); // we standardize data storage inside a queue container. This way our GATHER_STATS_INTERVAL_SEC stats will be injected with the Draw Loopback calls.
+      // place stats inside the queue. v26.10.1 addInjectedPlaneStat() locks the queue itself.
+      this->addInjectedPlaneStat(this->stats);
 
-      // Call Thread to flush data into SQLite
-      if (!xxthread_state.flagIsActive && this->db != nullptr )
+      // Call Thread to flush data into SQLite // v26.10.1
+      if (!xxthread_state.flagIsActive && this->db != nullptr && !GatherStats::flag_ignore_stats_setup)
       {
         xxthread_state.init();
         if (thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
@@ -76,9 +75,9 @@ GatherStats::setDb(dbase* inDb, const std::string &missionState_s)
     // clear stats DB
     std::string sqlStmt = "DROP TABLE if exists stats ";
 
-    if (missionState_s.empty())
+    // v26.10.1 skip table creation if flag_ignore_stats_setup is set.
+    if (missionState_s.empty() && !GatherStats::flag_ignore_stats_setup)
     {
-
 
       db->execute_stmt(sqlStmt);
 
@@ -135,8 +134,10 @@ CREATE VIEW stats_summary AS
       }
     } // end if missionState_s is empty - rebuild objects
 
+    if (GatherStats::flag_ignore_stats_setup) // v26.10.1
+      Log::logMsgWarn(fmt::format("[{}] 'Ignore stats' is set: the existing stats table is kept and no rows will be written.", __func__) );
+
     // v3.303.8.3 This prepared statement always need to be executed.
-        
     // Create the "insert" statement to the stats table
     sqlStmt = "insert into stats "
               "(line_id, vvi_fpm_pilot, flap_ratio, local_date_days, local_time_sec, lat, " // 6
@@ -304,10 +305,18 @@ GatherStats::exec_gather_thread(strct_thread_state* xxthread_state)
   int i                            = 1; // field index
   int row_counter                  = 0; // for debug
 
+  // v26.10.1 take all queued rows in one step. The draw callback can keep pushing into the (now empty) member queue
+  //          while we write, so the queue is never used by two threads at the same time.
+  std::queue<mx_struct_stats_gather> local;
+  {
+    std::lock_guard<std::mutex> lock(missionx::mutexGatherStats);
+    std::swap(local, this->qInjectPlaneStats);
+  }
+
   // start transaction
   db->start_transaction();
 
-  while (!qInjectPlaneStats.empty() && !(xxthread_state->flagAbortThread))
+  while (!local.empty() && !(xxthread_state->flagAbortThread))
   {
     i = 1;         // in sqlite c++ api, column numbering start with 1. Reset i if Queue has more than 1 value. This wil solve trying to place data outside of field index.
     row_counter++; // for debug
@@ -316,7 +325,7 @@ GatherStats::exec_gather_thread(strct_thread_state* xxthread_state)
     // Utils::logMsg("Thread exec_gather_thread(): " + mxUtils::formatNumber<int>(line_seq) + ", Loop iteration : " + mxUtils::formatNumber<int>(row_counter), ture ); // debug
 
     // get queue data for insertion
-    auto q = qInjectPlaneStats.front();
+    auto q = local.front();
 
     db->bind_to_stored_stmt(INS_SQL, missionx::db_types::int_typ, i, mxUtils::formatNumber<int>(line_seq));
     i++; // line_seq
@@ -367,7 +376,7 @@ GatherStats::exec_gather_thread(strct_thread_state* xxthread_state)
     // v3.303.14 insert NULL and not just empty string
     if (q.activity.empty())
       db->bind_to_stored_stmt(INS_SQL, missionx::db_types::null_typ, i, q.activity);
-    else 
+    else
       db->bind_to_stored_stmt(INS_SQL, missionx::db_types::text_typ, i, q.activity);
     i++;
     // v3.303.8.3
@@ -393,7 +402,7 @@ GatherStats::exec_gather_thread(strct_thread_state* xxthread_state)
     db->clear_and_reset(db->mapStatements[INS_SQL]);
     // Log::logMsgThread("After clear_reset");
 
-    qInjectPlaneStats.pop(); // erase oldest member in queue
+    local.pop(); // erase oldest member in queue
 
   } // end loop over vector
 
@@ -407,7 +416,7 @@ GatherStats::exec_gather_thread(strct_thread_state* xxthread_state)
 
 // ----------------------------------------------------
 void
-GatherStats::addInjectedPlaneStat(_stats_gather_ &inStat)
+GatherStats::addInjectedPlaneStat(mx_struct_stats_gather &inStat)
 {
   // calculate cumulative distance relative to previous
   if ((this->prev_stats.lat != 0.0) * (this->prev_stats.lon != 0.0) > 0)
@@ -419,6 +428,11 @@ GatherStats::addInjectedPlaneStat(_stats_gather_ &inStat)
     inStat.fCumulativeDistance_nm += fDelta;
   }
 
+  // v26.10.1 gathered (distance above is updated) but not queued for writing
+  if (GatherStats::flag_ignore_stats_setup)
+    return;
+
+  std::lock_guard<std::mutex> lock(missionx::mutexGatherStats); // v26.10.1 the writer thread takes rows from this queue
   this->qInjectPlaneStats.push(inStat);
 }
 
@@ -446,6 +460,53 @@ GatherStats::copyLastStatsToUiStruct(missionx::mx_enrout_stats_strct& inoutStats
 
 // ----------------------------------------------------
 // ----------------------------------------------------
+// v26.10.1 Wait until the running writer thread finished. Its transaction is committed, nothing is aborted.
+void
+GatherStats::wait_for_writer()
+{
+  if (this->thread_ref.joinable())
+    this->thread_ref.join();
 
+  if (this->xxthread_state.flagThreadDoneWork)
+    this->xxthread_state.init();
+}
+
+// ----------------------------------------------------
+// v26.10.1 Stop using the stats database. Call it before the database is closed.
+//   in_flush_pending_rows = true : wait for the writer, then write the rows still in the queue (end of mission).
+//   in_flush_pending_rows = false: abort the writer and drop the queue (stop mission, load checkpoint, plugin stop).
+void
+GatherStats::detach_db(const bool in_flush_pending_rows)
+{
+  if (in_flush_pending_rows)
+  {
+    this->wait_for_writer();
+
+    // write the last samples (for example the landing burst) on this thread. No writer thread is running now.
+    if (this->db != nullptr && this->db->db_is_open_and_ready && !GatherStats::flag_ignore_stats_setup) // v26.10.1
+    {
+      this->xxthread_state.init();
+      this->exec_gather_thread(&this->xxthread_state);
+    }
+  }
+  else
+  {
+    this->stop_gather(); // abort + join
+  }
+
+  this->clear_queue();
+  this->db = nullptr; // flc(), the draw callback and exec_gather_thread() all check for nullptr
+}
+
+// ----------------------------------------------------
+void
+GatherStats::clear_queue()
+{
+  std::lock_guard<std::mutex> lock(missionx::mutexGatherStats);
+  std::queue<mx_struct_stats_gather>().swap(this->qInjectPlaneStats);
+}
+
+// ----------------------------------------------------
+// ----------------------------------------------------
 
 } // missionx namespace

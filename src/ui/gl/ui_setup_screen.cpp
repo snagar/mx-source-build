@@ -14,6 +14,25 @@ namespace missionx {
 
 ui_setup_screen::~ui_setup_screen() {}
 
+void
+ui_setup_screen::add_ui_ignore_stats_checkbox()
+{
+  // v26.10.1 Designer option, not saved. Used to debug stats db files.
+  mx_img_window::HelpMarker ("Gather the flight stats, but do not write them to the stats database.\n"
+                             "The existing \"stats\" table is kept when a mission starts (it is not dropped and recreated),\n"
+                             "so you can place another flight's stats database file and debug the end \"stats\" screen with it.\n"
+                             "The end \"stats\" screen still reads the database file.\n"
+                             "Not saved: resets when the plugin reloads.");
+  ImGui::SameLine ();
+  ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_aqua);
+  ImGui::Checkbox ("Ignore stats - do not write flight stats to the database", &missionx::GatherStats::flag_ignore_stats_setup);
+  ImGui::PopStyleColor ();
+}
+
+// -------------------------------------------
+// -------------------------------------------
+// -------------------------------------------
+
 void ui_setup_screen::draw_setup_layer()
 {
   const static std::string IMAGE          = mxconst::get_BITMAP_BTN_SETUP_24X18 ();
@@ -900,6 +919,9 @@ Use at your own risk!!!
       mx_img_window::HelpMarker ("Force the positioning of the plane even if it is near or at the starting location - will call XPLMPlaceUserAtLocation() function.");
       ImGui::SameLine ();
       ImGui::Checkbox ("Force plane positioning at mission start", &missionx::data_manager::flag_setupForcePlanePositioningAtMissionStart);
+
+      // v26.10.1 Ignore stats: gather, but do not write to the stats database. Used to debug stats db files.
+      missionx::ui_setup_screen::add_ui_ignore_stats_checkbox();
 
       ImGui::Separator (); // v3.305.1
       // v24.03.2

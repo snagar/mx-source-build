@@ -21,6 +21,25 @@ class NavAidInfo : public missionx::mx_base_node
 private:
 
 public:
+
+  ~NavAidInfo() {}
+
+  NavAidInfo() { init(); }
+  NavAidInfo(const float &inLat, const float &inLon, const float inElevMt)
+  {
+    init();
+    this->lat  = inLat;
+    this->lon       = inLon;
+    this->height_mt = inElevMt;
+  }
+
+  NavAidInfo(const missionx::NavAidInfo &in_na) : mx_base_node(in_na)
+  {
+    this->clone(in_na);
+    this->synchToPoint ();
+  }
+
+
   bool flag_fpln_generated_by_llm{false}; // v26.09.1
   bool flag_is_skewed; // v3.0.241.8 we use this flag when we have skewdPointNode that is different than our "node" or "Point p"
   bool flag_is_brieferOrStartLocation; // v3.303.10
@@ -34,8 +53,8 @@ public:
   XPLMNavType navType{ xplm_Nav_Unknown }; // XPSDK type
   int         freq;
   int64_t     osm_id;  // v26.10.3 holds the "way id" from osm or any "id" value needed, like node id or ref id.
-  char        ID[64];
-  char        name[256];
+  char        ID[64]{""};
+  char        name[256]{""};
   // char        inRegion = 0;
 
   float degRelativeToSearchPoint; // degrees // bearingRelativeToSearchPoint;
@@ -224,20 +243,6 @@ public:
      this->synchToPoint ();
    }
 
-  ~NavAidInfo() {}
-
-  NavAidInfo() { init(); }
-  NavAidInfo(const float &inLat, const float &inLon, const float inElevMt)
-  {
-    this->lat  = inLat;
-    this->lon       = inLon;
-    this->height_mt = inElevMt;
-  }
-  NavAidInfo(const missionx::NavAidInfo &in_na) : mx_base_node(in_na)
-   {
-     this->clone(in_na);
-     this->synchToPoint ();
-   }
 
   void init()
   {
@@ -388,6 +393,8 @@ public:
 
   std::string getLon() { return Utils::formatNumber<float>(this->lon, 9); }
 
+  float get_elev_ft() const { return this->height_mt * meter2feet; }
+
   std::string get_latLon() { return fmt::format("{:.8f},{:.8f}", lat, lon); }
 
   std::string get_latLon_short() { return fmt::format("{:.5f},{:.5f}", lat, lon); }
@@ -483,7 +490,7 @@ public:
 
      if (this->height_mt != 0.0f)
      {
-       const float height_ft = height_mt * missionx::meter2feet;
+       const float height_ft = get_elev_ft();
        this->loc_desc.append ( fmt::format (" (elevation: ~{}ft)", Utils::formatNumber<float> (height_ft, 0) ) );
      }
   }
@@ -718,8 +725,10 @@ public:
     this->init_locDesc ();
   }
 
+// static missionx::structs::strct_expected_location_data
+// parse_expected_location (const IXMLNode &in_xml_leg_from_template, const std::string &custom_error_message, const bool is_last_leg)
 static missionx::structs::strct_expected_location_data
-parse_expected_location (const IXMLNode &in_xml_leg_from_template, const std::string &custom_error_message, const bool is_last_leg)
+parse_expected_location (const IXMLNode &in_xml_leg_from_template, const std::string &custom_error_message)
 {
   missionx::structs::strct_expected_location_data data;
 
@@ -906,8 +915,8 @@ parse_expected_location (const IXMLNode &in_xml_leg_from_template, const std::st
 
   }
 
-  Log::logDebugBO ("[DEBUG pick template <leg> type] type picked: " + data.location_type, true);
-  Log::logDebugBO ("[DEBUG random location info] location_value_nm_s=" + data.location_properties_s, true);
+  Log::logDebugBO (fmt::format ("[{}] <leg> type picked: {}", __func__, data.location_type), true) ;
+  Log::logDebugBO (fmt::format("[{}] location_value_nm_s={}", __func__, data.location_properties_s), true);
 
   return data;
 }

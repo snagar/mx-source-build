@@ -135,13 +135,23 @@ public:
   bool        open_database_in_memory(); // v3.0.255.3
 
   bool        open_database_read_only(); // v26.10.x OSM v2 databases. Never creates or writes the file.
-  static std::string get_column_text(sqlite3_stmt* inStmt, int inColumn); // v26.10.x NULL safe, returns "" for NULL
+  // v26.10.1 Read columns by their alias name, so a query can change its column order without breaking the code.
+  //          Call get_column_indexes() once after prepareNewStatement(), then pass the map to the read functions.
+  //          A missing alias returns the default value (is_column_null() returns true).
+
+  // v26.10.x NULL safe, returns "" for NULL
+  static std::string get_column_text(sqlite3_stmt* inStmt, int inColumn);
+  static std::map<std::string, int> get_column_indexes(sqlite3_stmt* inStmt);
+  static bool        is_column_null(sqlite3_stmt* inStmt, const std::map<std::string, int>& inColumns, const std::string& inName);
+  static int         read_column_int(sqlite3_stmt* inStmt, const std::map<std::string, int>& inColumns, const std::string& inName, const int inDefault = -1);
+  static double      read_column_double(sqlite3_stmt* inStmt, const std::map<std::string, int>& inColumns, const std::string& inName, const double inDefault = 0.0);
+  static std::string read_column_text(sqlite3_stmt* inStmt, const std::map<std::string, int>& inColumns, const std::string& inName, const std::string& inDefault = "");
 
   bool        remove_database(std::string in_absolute_path);
   bool        close_database(); // finalize all statements and clode database
   bool        execute_stmt(std::string inStmt);
   bool        execute_stmt(const char* inStmt);
-  bool        prepareNewStatement(std::string inName, std::string inSql);
+  bool        prepareNewStatement(std::string inName, std::string inSql, bool in_force_sql_rebind_if_exists = true);
 
   
   bool start_transaction(); // begin

@@ -858,6 +858,59 @@ missionx::mxUtils::nmToDegLon (const double nm, const double latDegrees)
 // ----------------------------------------------
 
 void
+missionx::mxUtils::decimate_min_max(const std::vector<double>& in_x, const std::vector<double>& in_y, const size_t in_buckets, std::vector<double>& out_x, std::vector<double>& out_y)
+{
+  out_x.clear();
+  out_y.clear();
+
+  const size_t n = std::min(in_x.size(), in_y.size());
+  if (n == 0 || in_buckets == 0)
+    return;
+
+  if (n <= in_buckets * 2)
+  {
+    out_x.assign(in_x.begin(), in_x.begin() + static_cast<std::ptrdiff_t>(n));
+    out_y.assign(in_y.begin(), in_y.begin() + static_cast<std::ptrdiff_t>(n));
+    return;
+  }
+
+  out_x.reserve(in_buckets * 2 + 2);
+  out_y.reserve(in_buckets * 2 + 2);
+
+  auto add = [&](const size_t i)
+  {
+    if (!out_x.empty() && out_x.back() == in_x[i])
+      return; // same sample already added
+    out_x.push_back(in_x[i]);
+    out_y.push_back(in_y[i]);
+  };
+
+  add(0); // first sample
+
+  for (size_t b = 0; b < in_buckets; ++b)
+  {
+    const size_t start = b * n / in_buckets;
+    const size_t end   = (b + 1) * n / in_buckets; // exclusive
+    if (start >= end)
+      continue;
+
+    size_t i_min = start, i_max = start;
+    for (size_t i = start + 1; i < end; ++i)
+    {
+      if (in_y[i] < in_y[i_min]) i_min = i;
+      if (in_y[i] > in_y[i_max]) i_max = i;
+    }
+
+    add(std::min(i_min, i_max)); // keep time order
+    add(std::max(i_min, i_max));
+  }
+
+  add(n - 1); // last sample, so the line reaches the end of the flight
+}
+
+// ----------------------------------------------
+
+void
 missionx::mxUtils::mxCalcPointBasedOnDistanceInMetersAndBearing_2DPlane(double& outLat, double& outLon, const double inLat, const double inLon, const float inHdg_deg, const double inDistance_meters, const double planet_great_circle_in_meters)
 {
   double epsilon = 0.000001; // # threshold for floating-point equality

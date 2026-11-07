@@ -29,7 +29,7 @@ namespace missionx
 
 #define ENABLE_GATHER_RANDOM_AIRPORTS_FROM_MAIN_THREAD_CALL 0
 
-inline constexpr const int MX_FEATURES_VERSION = 20260403; // Added min/max rw length to airports_vu // 20250501; //20241212; //20230917; // 330491; //302564;  // added SETUP_LOCK_OVERPASS_URL_TO_USER_PICK
+inline constexpr const int MX_FEATURES_VERSION = 20261001; // Added min/max rw length to airports_vu // 20250501; //20241212; //20230917; // 330491; //302564;  // added SETUP_LOCK_OVERPASS_URL_TO_USER_PICK
 
 #define SPECIAL_BUILD "- overpass -"
 
@@ -486,11 +486,11 @@ typedef struct _wp_guess_result
 	} mx_linux_distro;
 #endif
 
-typedef struct _mx_score_strct
+struct mx_score_strct
 {
   float min{ 0.0f }, max{ 0.0f };
   float score{ 0.5f };
-} mx_score_strct;
+};
 
 
 typedef enum class _mx_btn_colors
@@ -1341,8 +1341,72 @@ typedef struct mx_row_stats_strct_header // v3.0.255.1
 
 } mx_row_stats_strct;
 
+// v26.10.1 one row of the landing height-step table (sql.xml: landing_height_steps)
+struct mx_landing_step_row
+{
+  int         step_order{ 0 };
+  double      step_agl_ft{ 0.0 };        // the step height: 300 .. 5, and 0 for "TD"
+  std::string step_label;                // "300 ft" .. "5 ft", "TD"
+  int         row_line_id{ -1 };         // stats row used for this step
+  bool        same_row_as_next{ false }; // true: the step below uses the same stats row (no own sample at this height, 1 Hz data). The UI shows "-"
 
-typedef struct _mission_stats_strct // v3.0.255.1
+  double agl_ft{ 0.0 };
+  double ias_kt{ 0.0 };
+  double gs_kt{ 0.0 };
+  double vs_fpm{ 0.0 };
+  double pitch{ 0.0 };
+  double roll{ 0.0 };
+  double g{ 0.0 };
+  double flap_ratio{ 0.0 };
+  double sec_to_td{ 0.0 };
+  double dist_to_td_mt{ 0.0 };
+};
+
+// v26.10.1 analysis of one touchdown (sql.xml: landing_height_steps + landing_touchdown_summary)
+struct mx_landing_analysis
+{
+  int td_line_id{ -1 }; // "landing" row line_id. Same value as mx_stats_data::line_id
+
+  std::vector<mx_landing_step_row> vecSteps; // ordered by step_order. The last row is "TD"
+
+  // touchdown summary. The "has_" flags are false when the query had no value (NULL)
+  bool   has_summary{ false };
+  double td_fpm{ 0.0 };        // |V/S| at touchdown
+  double td_bank{ 0.0 };       // |bank| at touchdown
+  double td_pitch{ 0.0 };      // pitch at touchdown
+  double td_gs_kt{ 0.0 };      // groundspeed at touchdown
+  double td_weight_kg{ 0.0 };  // plane weight (m_total) at touchdown
+
+  double td_g_avg{ 0.0 };      // average G, first 0.25 sec after touchdown (display)
+  double td_g_peak{ 0.0 };     // highest G, same window (display)
+  double pre_td_g{ 0.0 };      // average G, last 2 sec airborne (display)
+  bool   has_gear_load{ false };
+  double td_gear_load{ 0.0 };  // td_g_avg - pre_td_g: extra load on the gear, in plane weights
+
+  double final_max_sink_fpm{ 0.0 };    // max |V/S| between 300ft and 50ft (display)
+  bool   has_final_glide{ false };
+  double final_max_glide_ratio{ 0.0 }; // max sink / sink of a 3 degree path at the same groundspeed, 300ft-50ft. 1.0 = on a 3 degree path
+  double final_max_bank{ 0.0 };        // max |bank| between 300ft and touchdown
+
+  // v26.10.1 bounce (sql.xml: landing_bounces)
+  bool   has_bounce_data{ false };      // the bounce query returned a row for this landing
+  int    bounce_count{ 0 };             // hops of at least 0.2 sec or 1 ft, with a re-contact in the first 10 sec
+  double max_bounce_agl_ft{ 0.0 };      // highest hop
+  double max_bounce_sec{ 0.0 };         // longest hop
+  double worst_recontact_fpm{ 0.0 };    // highest |V/S| when the wheels came back down
+
+  // score
+  float                    base_score{ 0.0f };           // v26.10.1 0..100 from the touchdown measures
+  float                    bounce_penalty{ 0.0f };       // v26.10.1 0 or negative: points taken off for bounces
+  float                    landing_score{ 0.0f };        // final score: max(0, base_score + bounce_penalty)
+  bool                     is_doctor{ false };           // touchdown or re-contact above the hard landing limits
+  bool                     is_doctor_recontact{ false }; // v26.10.1 "Call the Doctor" because of the re-contact after a bounce (the first touchdown was below the limits)
+  std::string              grade_s{ "N/A" };             // Butter, Smooth, Acceptable, Firm, Hard, Call the Doctor
+  std::vector<std::string> vecFindings;                  // notes displayed under the table
+};
+
+
+struct mx_mission_stats_strct // v3.0.255.1
 {
   std::vector<double>      vecSeq_d; // line_id used by the plugin to distinguish between the rows
   std::vector<double>      vecElev_mt_d;
@@ -1357,6 +1421,11 @@ typedef struct _mission_stats_strct // v3.0.255.1
   std::vector<std::string> vecActivity_s;      // takeoff and landing, in most cases the value is empty
   std::vector<double> vec_dist_diff;      // v25.09.2 distance diff
   std::vector<double> vec_time_diff;      // v25.09.2 distance diff
+
+  // v26.10.1 decimated copies used only by the ImPlot graph (keeps the draw list under 64K vertices)
+  std::vector<double>      vecPlotElevSeq_d, vecPlotElev_ft_d;
+  std::vector<double>      vecPlotAirSeq_d,  vecPlotAirSpeed_d;
+
 
   std::map<int, std::string> map_flight_pacing; // v25.09.2
 
@@ -1375,12 +1444,13 @@ typedef struct _mission_stats_strct // v3.0.255.1
 
   std::string time_flew_format_s{ "" };
 
-  std::vector<missionx::mx_stats_data> vecLandingStatsResults;  // v3.303.8.3
   float                                pitchScore{ 0.0f }; // v3.303.8.3
   float                                rollScore{ 0.0f };  // v3.303.8.3
   float                                gForceScore{ 0.0f }; // v3.303.8.3
+  std::vector<missionx::mx_stats_data> vecLandingStatsResults;  // v3.303.8.3
+  std::map<int, missionx::mx_landing_analysis> mapLandingAnalysis; // v26.10.1 key: td_line_id (the "landing" row line_id)
 
-  _mission_stats_strct() { reset(); }
+  mx_mission_stats_strct() { reset(); }
 
   void reset()
   {
@@ -1398,6 +1468,9 @@ typedef struct _mission_stats_strct // v3.0.255.1
     vec_dist_diff.clear();
     vec_time_diff.clear();
 
+    vecPlotElevSeq_d.clear(); vecPlotElev_ft_d.clear();   // v26.10.1
+    vecPlotAirSeq_d.clear();  vecPlotAirSpeed_d.clear();  // v26.10.1
+
     min_elev_ft = max_elev_ft = -4000.0;
     min_airspeed = max_airspeed = 0.0;
 
@@ -1405,11 +1478,12 @@ typedef struct _mission_stats_strct // v3.0.255.1
     time_flew_format_s.clear();
 
     vecLandingStatsResults.clear();
+    mapLandingAnalysis.clear(); // v26.10.1
 
     pitchScore = rollScore = gForceScore = 0.0f;
   }
 
-} mx_mission_stats_strct;
+};
 
 typedef struct _mx_clock_time
 {

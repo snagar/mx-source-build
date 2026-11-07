@@ -201,15 +201,19 @@ where 1 = 1
 </ils_sqls>
 
 
-<!-- v26.10.x OSM database v2 (medevac schema). Files in {missionx}/db/osm. -->
-<!-- Aliases for designer filters: w = ways, c = way_class, r = ways_rtree, p = places. {designer_filter} is replaced with the "tag=" fragment. -->
-<!-- Bind numbers: ?1/?2 source lat/lon, ?3-?6 area in degrees (the way query converts them to the R-tree units, degrees*1e7), ?7/?8 min/max nm (?7 < 0 = no distance test), ?9 places kind list. -->
-<!-- Columns are read by their alias name, keep the aliases if you change a query. -->
+<!-- v26.10.x OSM database v2 (medevac schema 11). Files in {missionx}/db/osm. -->
+<!-- osm_type: road (or way) = ways table, trail = trails table (paths, footways, cycleways, climbing routes, ski pistes), icao / hospital = places table. -->
+<!-- Aliases for designer filters. road: w = ways, c = way_class, r = ways_rtree. trail: t = trails, c = way_class, r = trails_rtree, pt = piste_type, pd = piste_difficulty. places: p = places. -->
+<!-- {designer_filter} is replaced with the "tag=" fragment. -->
+<!-- Bind numbers: ?1/?2 source lat/lon, ?3-?6 area in degrees (the line queries convert them to the R-tree units, degrees*1e7), ?7/?8 min/max nm (?7 < 0 = no distance test), ?9 places kind list. -->
+<!-- Columns are read by their alias name, keep the aliases if you change a query. Keep "materialized": it makes mx_way_pick_node() run once. -->
 <osm_db2_sqls>
 <query name="db2_get_structure"><![CDATA[select (select count(*) from sqlite_master
-         where type = 'table' and name in ('meta', 'bounds', 'way_class', 'ways', 'ways_rtree', 'places')) = 6
+         where type = 'table'
+           and name in ('meta', 'bounds', 'way_class', 'ways', 'ways_rtree', 'trails', 'trails_rtree', 'piste_type', 'piste_difficulty', 'places')) = 10
        and exists (select 1 from pragma_table_xinfo('ways')   where name = 'label')
-       and exists (select 1 from pragma_table_xinfo('places') where name = 'address') as is_valid
+       and exists (select 1 from pragma_table_xinfo('trails') where name = 'piste')
+       and exists (select 1 from pragma_table_xinfo('places') where name = 'emergency_room') as is_valid
      , (select value from meta where key = 'schema_version') as schema_version
 ]]></query>
 
@@ -219,12 +223,12 @@ where 1 = 1
 from bounds b
 ]]></query>
 
-<query name="db2_get_way_random"><![CDATA[with picked as materialized (
-  -- one random way in the area that has at least one vertex in the distance range, and one random vertex of it ("lat,lon,bearing")
+<query name="db2_get_road_random"><![CDATA[with picked as materialized (
+  -- one random road in the area with at least one vertex in the distance range, and one random vertex of it ("lat,lon,bearing")
   select v.*
        , mx_way_pick_node(v.geom, v.nodes, ?1, ?2, ?7, ?8) as picked_node
   from (
-    select w.id, w.label, w.name, w.ref, c.name as class_name, w.surface, w.sac_scale, w.mtb_scale, w.bicycle, w.foot
+    select w.id, w.label, w.name, w.ref, c.name as class_name, w.surface, w.length_m
          , w.nodes, w.geom
          , mx_calc_distance(?1, ?2, w.clat, w.clon, 3440) as distance_nm
     from ways_rtree r
@@ -246,27 +250,75 @@ coords as (
        , cast(substr(p.rest, instr(p.rest, ',') + 1) as real)                  as picked_bearing
   from (select picked.*, substr(picked.picked_node, instr(picked.picked_node, ',') + 1) as rest from picked) p
 )
-select k.id, k.label, k.name, k.ref, k.class_name, k.surface, k.sac_scale, k.mtb_scale, k.bicycle, k.foot, k.distance_nm
+select k.id, k.label, k.name, k.ref, k.class_name, k.surface, k.length_m, k.distance_nm
      , k.picked_lat, k.picked_lon, k.picked_bearing
      -- name to display: label (name and ref), then name, then the coordinate
      , coalesce(nullif(k.label, ''), nullif(k.name, ''), printf('osmdb coordinate (%.5f/%.5f)', k.picked_lat, k.picked_lon)) as display_name
-     -- description, example: path (mountain_hiking, gravel, mtb scale 2)
-     , k.class_name || case when k.details <> '' then ' (' || k.details || ')' else '' end as display_desc
+     -- description, example: residential (asphalt)
+     , k.class_name || coalesce(' (' || nullif(k.surface, '') || ')', '') as display_desc
+from coords k
+]]></query>
+
+<query name="db2_get_trail_random"><![CDATA[with picked as materialized (
+  -- one random trail or piste in the area with at least one vertex in the distance range, and one random vertex of it ("lat,lon,bearing")
+  select v.*
+       , mx_way_pick_node(v.geom, v.nodes, ?1, ?2, ?7, ?8) as picked_node
+  from (
+    select t.id, t.label, t.name, t.ref, c.name as class_name, t.surface, t.sac_scale, t.mtb_scale, t.bicycle, t.foot, t.length_m
+         , t.piste, pt.name as piste_type_name, pd.name as piste_difficulty_name
+         , t.nodes, t.geom
+         , mx_calc_distance(?1, ?2, t.clat, t.clon, 3440) as distance_nm
+    from trails_rtree r
+    join trails t                 on t.id = r.id
+    join way_class c              on c.id = t.class
+    left join piste_type pt       on pt.id = t.piste_type
+    left join piste_difficulty pd on pd.id = t.piste_difficulty
+    where r.max_lat >= cast(round(?3 * 1e7) as int) and r.min_lat <= cast(round(?4 * 1e7) as int)
+      and r.max_lon >= cast(round(?5 * 1e7) as int) and r.min_lon <= cast(round(?6 * 1e7) as int)
+      {designer_filter}
+      and mx_way_node_in_range(t.geom, t.nodes, ?1, ?2, ?7, ?8) = 1
+    order by random()
+    limit 1
+  ) v
+),
+coords as (
+  -- split "lat,lon,bearing" into numbers
+  select p.*
+       , cast(substr(p.picked_node, 1, instr(p.picked_node, ',') - 1) as real) as picked_lat
+       , cast(substr(p.rest, 1, instr(p.rest, ',') - 1) as real)               as picked_lon
+       , cast(substr(p.rest, instr(p.rest, ',') + 1) as real)                  as picked_bearing
+  from (select picked.*, substr(picked.picked_node, instr(picked.picked_node, ',') + 1) as rest from picked) p
+)
+select k.id, k.label, k.name, k.ref, k.class_name, k.surface, k.sac_scale, k.mtb_scale, k.bicycle, k.foot, k.length_m
+     , k.piste, k.piste_type_name, k.piste_difficulty_name, k.distance_nm
+     , k.picked_lat, k.picked_lon, k.picked_bearing
+     -- name to display: label (name and ref), then name, then the coordinate
+     , coalesce(nullif(k.label, ''), nullif(k.name, ''), printf('osmdb coordinate (%.5f/%.5f)', k.picked_lat, k.picked_lon)) as display_name
+     -- description, examples: path (mountain_hiking, gravel, mtb scale 2) / ski piste downhill (intermediate)
+     , case when k.piste then 'ski piste' || coalesce(' ' || nullif(k.piste_type_name, ''), '') else k.class_name end
+       || case when k.details <> '' then ' (' || k.details || ')' else '' end as display_desc
 from (
   select coords.*
-       , ltrim(coalesce(', ' || nullif(coords.sac_scale, ''), '') || coalesce(', ' || nullif(coords.surface, ''), '') || coalesce(', mtb scale ' || nullif(coords.mtb_scale, ''), ''), ', ') as details
+       , case when coords.piste
+              then coalesce(nullif(coords.piste_difficulty_name, ''), '')
+              else ltrim(coalesce(', ' || nullif(coords.sac_scale, ''), '') || coalesce(', ' || nullif(coords.surface, ''), '') || coalesce(', mtb scale ' || nullif(coords.mtb_scale, ''), ''), ', ')
+         end as details
   from coords
 ) k
 ]]></query>
 
-<query name="db2_get_place_random"><![CDATA[select p.id, p.kind, p.name, p.name_en, p.icao, p.faa, p.iata, p.ref, p.address, p.lat, p.lon
+<query name="db2_get_place_random"><![CDATA[select p.id, p.kind, p.name, p.name_en, p.icao, p.faa, p.iata, p.ref, p.address, p.emergency_room, p.helipad_near, p.lat, p.lon
      , mx_calc_distance(?1, ?2, p.lat, p.lon, 3440) as distance_nm
      -- ICAO-like id: icao, then faa, then iata
      , coalesce(nullif(p.icao, ''), nullif(p.faa, ''), nullif(p.iata, '')) as display_id
      -- name to display: name, name_en, kind + ref (helipad 1), then the coordinate
      , coalesce(nullif(p.name, ''), nullif(p.name_en, ''), p.kind || ' ' || nullif(p.ref, ''), printf('osmdb coordinate (%.5f/%.5f)', p.lat, p.lon)) as display_name
-     -- description, example: hospital, Heiligkreuz 25
-     , p.kind || coalesce(', ' || nullif(p.address, ''), '') as display_desc
+     -- description, example: hospital, Heiligkreuz 25 (emergency room, helipad)
+     , p.kind || coalesce(', ' || nullif(p.address, ''), '')
+       || case when p.emergency_room and p.helipad_near then ' (emergency room, helipad)'
+               when p.emergency_room                    then ' (emergency room)'
+               when p.helipad_near                      then ' (helipad)'
+               else '' end as display_desc
 from places p
 where p.lat between ?3 and ?4
   and p.lon between ?5 and ?6
@@ -278,3 +330,177 @@ limit 1
 ]]></query>
 
 </osm_db2_sqls>
+
+        <!-- v26.10.1 stats database queries (end of mission). Heights are in feet (agl column is meters * 3.28084). -->
+        <!-- td_line_id is the "landing" row line_id, the same value as mx_stats_data.line_id from get_landing_stats_as_vec(). -->
+        <!-- Columns are read by their alias name, keep the aliases if you change a query. -->
+<stats_sqls>
+<query name="landing_height_steps"><![CDATA[WITH act AS MATERIALIZED (
+  -- one row per takeoff/landing, with the previous activity row and the time of the previous landing
+  SELECT line_id, activity, local_date_days * 86400.0 + local_time_sec AS t, lat, lon,
+         IFNULL(lag(line_id) OVER w, 0) AS prev_act_line_id,
+         max(CASE WHEN activity = 'landing' THEN local_date_days * 86400.0 + local_time_sec END) OVER (ORDER BY line_id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prev_landing_t
+  FROM stats
+  WHERE activity IN ('takeoff', 'landing')
+  WINDOW w AS (ORDER BY line_id)
+),
+td AS MATERIALIZED (
+  -- v26.10.1 skip bounce landings: a "landing" less than 10 sec after the previous landing belongs to that landing
+  SELECT line_id AS td_line_id, t AS td_t, lat AS td_lat, lon AS td_lon, prev_act_line_id, activity
+  FROM act
+  WHERE NOT (activity = 'landing' AND IFNULL(t - prev_landing_t, 999.0) <= 10.0)
+),
+descent AS MATERIALIZED (
+  -- rows from the previous activity up to the touchdown, with the highest AGL (feet) still ahead of each row
+  SELECT td.td_line_id, s.line_id,
+         max(s.agl) OVER (PARTITION BY td.td_line_id ORDER BY s.line_id ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) * 3.28084 AS max_agl_ft_ahead
+  FROM td
+  JOIN stats s ON s.line_id > td.prev_act_line_id AND s.line_id <= td.td_line_id
+  WHERE td.activity = 'landing'
+),
+steps(step_order, step_agl_ft) AS (
+  VALUES (1, 300.0), (2, 200.0), (3, 100.0), (4, 50.0), (5, 30.0), (6, 20.0), (7, 10.0), (8, 5.0)
+),
+crossing AS (
+  -- final crossing of a step = first row after which the plane never climbs above it again
+  SELECT d.td_line_id, st.step_order, st.step_agl_ft, min(d.line_id) AS row_line_id
+  FROM descent d JOIN steps st ON d.max_agl_ft_ahead <= st.step_agl_ft
+  GROUP BY d.td_line_id, st.step_order
+  UNION ALL
+  SELECT td_line_id, 99, 0.0, td_line_id FROM descent GROUP BY td_line_id -- the touchdown row
+)
+SELECT x.td_line_id, x.step_order, x.step_agl_ft,
+       CASE WHEN x.step_order = 99 THEN 'TD' ELSE printf('%d ft', x.step_agl_ft) END AS step_label,
+       x.row_line_id,
+       s.agl * 3.28084 AS agl_ft, s.airspeed AS ias_kt, s.groundspeed * 1.94384 AS gs_kt, s.vh_ind_fpm AS vs_fpm,
+       s.pitch, s.roll, s.gforce_normal AS g, s.flap_ratio,
+       td.td_t - (s.local_date_days * 86400.0 + s.local_time_sec) AS sec_to_td,
+       mx_calc_distance(s.lat, s.lon, td.td_lat, td.td_lon, 6370880) AS dist_to_td_mt
+FROM crossing x
+JOIN td      ON td.td_line_id = x.td_line_id
+JOIN stats s ON s.line_id = x.row_line_id
+ORDER BY x.td_line_id, x.step_order
+]]></query>
+
+<query name="landing_touchdown_summary"><![CDATA[WITH act AS MATERIALIZED (
+  SELECT line_id, activity, local_date_days * 86400.0 + local_time_sec AS t,
+         vh_ind_fpm, roll, pitch, groundspeed, m_total,
+         IFNULL(lag(line_id) OVER w, 0) AS prev_act_line_id,
+         max(CASE WHEN activity = 'landing' THEN local_date_days * 86400.0 + local_time_sec END) OVER (ORDER BY line_id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prev_landing_t
+  FROM stats
+  WHERE activity IN ('takeoff', 'landing')
+  WINDOW w AS (ORDER BY line_id)
+),
+td AS MATERIALIZED (
+  -- v26.10.1 skip bounce landings (same rule as landing_height_steps)
+  SELECT line_id AS td_line_id, t AS td_t,
+         vh_ind_fpm AS td_fpm, roll AS td_bank, pitch AS td_pitch,
+         groundspeed * 1.94384 AS td_gs_kt, m_total AS td_weight_kg, activity, prev_act_line_id
+  FROM act
+  WHERE NOT (activity = 'landing' AND IFNULL(t - prev_landing_t, 999.0) <= 10.0)
+),
+final_rows AS MATERIALIZED (
+  -- airborne rows before the touchdown, with the highest AGL (feet) still ahead of each row
+  SELECT td.td_line_id, s.vh_ind_fpm, s.roll, s.groundspeed * 1.94384 AS gs_kt, s.agl * 3.28084 AS agl_ft,
+         max(s.agl) OVER (PARTITION BY td.td_line_id ORDER BY s.line_id ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) * 3.28084 AS max_agl_ft_ahead
+  FROM td
+  JOIN stats s ON s.line_id > td.prev_act_line_id AND s.line_id < td.td_line_id
+  WHERE td.activity = 'landing'
+),
+final_sum AS (
+  -- the final descent below 300 ft
+  SELECT td_line_id,
+         max(CASE WHEN agl_ft >= 50.0 THEN abs(vh_ind_fpm) END) AS final_max_sink_fpm,                                     -- 300 ft .. 50 ft
+         max(CASE WHEN agl_ft >= 50.0 AND gs_kt > 20.0 THEN abs(vh_ind_fpm) / (gs_kt * 5.3) END) AS final_max_glide_ratio, -- 1.0 = 3 degree path
+         max(abs(roll)) AS final_max_bank                                                                                  -- 300 ft .. touchdown
+  FROM final_rows
+  WHERE max_agl_ft_ahead <= 300.0
+  GROUP BY td_line_id
+),
+pre_td AS (
+  -- last 2 sec airborne: G while the wings carry the weight
+  SELECT td.td_line_id, avg(s.gforce_normal) AS pre_td_g
+  FROM td
+  JOIN stats s ON s.line_id > td.prev_act_line_id AND s.line_id < td.td_line_id
+              AND s.onground_any = 0
+              AND td.td_t - (s.local_date_days * 86400.0 + s.local_time_sec) BETWEEN 0.0 AND 2.0
+  WHERE td.activity = 'landing'
+  GROUP BY td.td_line_id
+),
+impact AS (
+  -- first 0.25 sec after contact. The average filters the gear-spring spike, the peak is kept for display
+  SELECT td.td_line_id, avg(s.gforce_normal) AS td_g_avg, max(s.gforce_normal) AS td_g_peak
+  FROM td
+  JOIN stats s ON s.line_id >= td.td_line_id
+              AND (s.local_date_days * 86400.0 + s.local_time_sec) - td.td_t BETWEEN 0.0 AND 0.25
+  WHERE td.activity = 'landing'
+  GROUP BY td.td_line_id
+)
+SELECT td.td_line_id, abs(td.td_fpm) AS td_fpm, impact.td_g_avg, impact.td_g_peak, pre_td.pre_td_g,
+       impact.td_g_avg - pre_td.pre_td_g AS td_gear_load,
+       abs(td.td_bank) AS td_bank, td.td_pitch, td.td_gs_kt, td.td_weight_kg,
+       final_sum.final_max_sink_fpm, final_sum.final_max_glide_ratio, final_sum.final_max_bank
+FROM td
+LEFT JOIN impact    USING (td_line_id)
+LEFT JOIN pre_td    USING (td_line_id)
+LEFT JOIN final_sum USING (td_line_id)
+WHERE td.activity = 'landing'
+ORDER BY td.td_line_id
+]]></query>
+
+<query name="landing_bounces"><![CDATA[WITH act AS MATERIALIZED (
+  -- takeoff/landing rows, with the time of the previous landing
+  SELECT line_id, activity, local_date_days * 86400.0 + local_time_sec AS t,
+         max(CASE WHEN activity = 'landing' THEN local_date_days * 86400.0 + local_time_sec END) OVER (ORDER BY line_id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prev_landing_t
+  FROM stats
+  WHERE activity IN ('takeoff', 'landing')
+),
+real_td AS MATERIALIZED (
+  -- real touchdowns: a "landing" less than 10 sec after the previous landing is a bounce of that landing
+  SELECT line_id AS td_line_id, t AS td_t
+  FROM act
+  WHERE activity = 'landing'
+    AND IFNULL(t - prev_landing_t, 999.0) > 10.0 -- not a bounce: no other landing in the previous 10 sec
+),
+win AS MATERIALIZED (
+  -- first 10 sec after each real touchdown, split into on-ground / airborne islands (grp)
+  SELECT r.td_line_id, s.line_id, s.onground_any,
+         s.local_date_days * 86400.0 + s.local_time_sec AS t,
+         s.agl * 3.28084 AS agl_ft,
+         lead(s.onground_any) OVER (PARTITION BY r.td_line_id ORDER BY s.line_id) AS next_onground_any,
+         lead(s.vh_ind_fpm)   OVER (PARTITION BY r.td_line_id ORDER BY s.line_id) AS next_vs_fpm,
+         row_number() OVER (PARTITION BY r.td_line_id ORDER BY s.line_id)
+       - row_number() OVER (PARTITION BY r.td_line_id, s.onground_any ORDER BY s.line_id) AS grp
+  FROM real_td r
+  JOIN stats s ON s.line_id >= r.td_line_id
+              AND (s.local_date_days * 86400.0 + s.local_time_sec) - r.td_t BETWEEN 0.0 AND 10.0
+),
+air AS (
+  -- one row per airborne island
+  SELECT td_line_id, grp,
+         max(t) - min(t) AS air_sec,
+         max(agl_ft)     AS max_agl_ft,
+         max(CASE WHEN next_onground_any = 1 THEN abs(next_vs_fpm) END) AS recontact_fpm -- NULL = no re-contact in the window (touch-and-go / go-around)
+  FROM win
+  WHERE onground_any = 0
+  GROUP BY td_line_id, grp
+),
+bounce AS (
+  -- a bounce: back on the ground in the window, and not a gear flicker (at least 0.2 sec or 1 ft)
+  SELECT * FROM air
+  WHERE recontact_fpm IS NOT NULL
+    AND (air_sec >= 0.2 OR max_agl_ft >= 1.0)
+)
+SELECT r.td_line_id,
+       count(b.grp)       AS bounce_count,
+       max(b.max_agl_ft)  AS max_bounce_agl_ft,
+       max(b.air_sec)     AS max_bounce_sec,
+       max(b.recontact_fpm) AS worst_recontact_fpm
+FROM real_td r
+LEFT JOIN bounce b USING (td_line_id)
+GROUP BY r.td_line_id
+ORDER BY r.td_line_id
+]]></query>
+
+
+</stats_sqls>

@@ -48,7 +48,7 @@ public:
     dref_m_fuel_total_f                  = XPLMFindDataRef("sim/flightmodel/weight/m_fuel_total");         // read only, current fuel weight in Kg
     dref_m_total_f                       = XPLMFindDataRef("sim/flightmodel/weight/m_total");              // Current total payload + fuel weight in Kg
     dref_groundspeed_f                   = XPLMFindDataRef("sim/flightmodel2/position/groundspeed");       // Groundspeed meters/sec
-    dref_indicated_airspeed_f                 = XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed"); // indicated_airspeed Kias
+    dref_indicated_airspeed_f            = XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed"); // indicated_airspeed Kias
     dref_local_vz_f                      = XPLMFindDataRef("sim/flightmodel/position/local_vz");           // Velocity of aircraft in its own coordinate system meters/sec
     dref_local_vx_f                      = XPLMFindDataRef("sim/flightmodel/position/local_vx");           // Velocity of aircraft in its own coordinate system meters/sec
     dref_q                               = XPLMFindDataRef("sim/flightmodel/position/q");                  // quaternion - array of [4]

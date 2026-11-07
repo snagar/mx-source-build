@@ -37,8 +37,8 @@
 
 // Version format: MmmPP (Major, 2-digit Minor, 2-digit Patch)
 // e.g., v2.0.0 becomes 20000. v1.12.3 becomes 11203.
-#define IMGWINDOW_VERSION       "2.1.0"
-#define IMGWINDOW_VERSION_NUM   20100
+#define IMGWINDOW_VERSION       "2.3.0"
+#define IMGWINDOW_VERSION_NUM   20300
 
 #include "SystemGL.h"
 
@@ -85,6 +85,50 @@
  *     be trivially adapted from this one by adjusting the way the space is
  *     translated and mapped in the DrawWindowCB and constructor.
  */
+/** WindowSanitizeMode controls how off-screen or out-of-bounds window coordinates
+ * are handled when restoring saved geometry from disk.
+ */
+enum class WindowSanitizeMode {
+    None,              // O.G. style: Do not touch coordinates, leave exactly as passed
+    KeepVisibleMargin, // "Poor-Man's Docking": If partially off-screen, keep at least N boxels visible; if 100% lost, snap to center
+    SnapToCenter       // Strict: If lost or off-screen, forcibly re-center on the primary monitor
+};
+
+/** WindowGeometry is a lightweight parameter object for window bounds.
+ * It eliminates inverted-Y boxel math and provides safe coordinate sanitization.
+ */
+struct WindowGeometry {
+    int left   = 0;
+    int top    = 0;
+    int right  = 0;
+    int bottom = 0;
+
+    int Width()  const { return right - left; }
+    int Height() const { return top - bottom; }
+
+    // 1. Default (empty)
+    WindowGeometry() = default;
+
+    // 2. Direct boxels (left, top, right, bottom)
+    WindowGeometry(int l, int t, int r, int b)
+        : left(l), top(t), right(r), bottom(b) {}
+
+    // 3. Top-left origin (x, y) + (width, height)
+    static WindowGeometry FromTopLeft(int x, int y, int width, int height) {
+        return WindowGeometry(x, y, x + width, y - height);
+    }
+
+    // 4. Auto-centered on main monitor
+    static WindowGeometry Centered(int width, int height);
+
+    // 5. Smart Auditing & Sanitization
+    static WindowGeometry Sanitize(
+        int l, int t, int r, int b,
+        int defaultW = 640, int defaultH = 480,
+        int minVisibleMargin = 40,
+        WindowSanitizeMode mode = WindowSanitizeMode::KeepVisibleMargin);
+};
+
 class
 ImgWindow {
 public:
@@ -95,6 +139,21 @@ public:
      * over to the contexts as they're created.
      */
     static std::shared_ptr<ImgFontAtlas> sFontAtlas;
+
+    /** Tracks the window currently executing buildInterface() so that global
+     * ImGui:: extensions (like Tooltips or Markdown) can fetch plugin-specific
+     * window metadata (like scale multipliers or focus state) natively without
+     * polluting their API signatures.
+     */
+    static ImgWindow* s_CurrentBuildingWindow;
+    static ImgWindow* GetCurrentBuildingWindow() { return s_CurrentBuildingWindow; }
+
+    /** Returns the custom layout scale factor for this window. Subclasses
+     * should override this to return their combined text zoom multiplier 
+     * (e.g., _fontAdjust * gSeniorCitizenRatio) so extensions can scale 
+     * geometry proportionally to match the text.
+     */
+    virtual float GetExtensionScaleFactor() const { return 1.0f; }
 
     /** sBlankoutUntilCycle is a global XPLM cycle number until which all
      * windows will skip rendering.  This is useful for plugins that want to
@@ -174,6 +233,9 @@ public:
     /** Is Window in front of Z-order? */
     bool IsWindowInFront () const { return XPLMIsWindowInFront(mWindowID) != 0; }
     
+    /** Is the window actively being moved or resized by the user? */
+    bool IsWindowMoving() const { return (bool)dragWhat; }
+    
     /** @brief Define Window drag area, ie. an area in which dragging with the mouse
      * moves the entire window.
      * @details Useful for windows without decoration.
@@ -216,6 +278,18 @@ public:
      */
     static ImTextureID CreateTexture(const unsigned char* pixels, int width, int height);
     static void DeleteTexture(ImTextureID textureID);
+
+    /** Clear ActiveID early if an InputText currently holds focus and the user clicked outside its bounding rect.
+     *  Automatically invoked every frame in updateImgui() right after ImGui::NewFrame().
+     *  Can also be called manually by custom event loops or toolbar renderers.
+     *  @return true if ActiveId was cleared, false otherwise. */
+    static bool ClearActiveInputTextIfClickedOutside();
+
+    /** Keyboard focus management methods */
+    void SetExplicitKeyboardFocus(bool req) { bExplicitKeyboardFocus = req; }
+    bool GetExplicitKeyboardFocus() const { return bExplicitKeyboardFocus; }
+    void SetCaptureKeyboardOnMouseFocus(bool enable) { bCaptureKeyboardOnMouseFocus = enable; }
+    bool GetCaptureKeyboardOnMouseFocus() const { return bCaptureKeyboardOnMouseFocus; }
 
     // -----------------------------------------------------------------------
     // DEPRECATED ALIASES (Retained for API backwards compatibility for now)
@@ -278,6 +352,38 @@ protected:
         XPLMWindowDecoration decoration = xplm_WindowDecorationRoundRectangle,
         XPLMWindowLayer layer = xplm_WindowLayerFloatingWindows,
         bool cursors = false);
+
+    /** Construct a window using a WindowGeometry parameter object.
+     *
+     * @param geometry WindowGeometry parameter object containing boxel coordinates.
+     * @param decoration The decoration style to use.
+     * @param layer The preferred layer to present this window in.
+     * @param cursors Switch to ImGui mouse cursors inside window.
+     */
+    ImgWindow(
+        const WindowGeometry& geometry,
+        XPLMWindowDecoration decoration = xplm_WindowDecorationRoundRectangle,
+        XPLMWindowLayer layer = xplm_WindowLayerFloatingWindows,
+        bool cursors = false)
+        : ImgWindow(geometry.left, geometry.top, geometry.right, geometry.bottom, decoration, layer, cursors)
+    {}
+
+    /** Construct a window auto-centered on the main monitor by width and height.
+     *
+     * @param width Desired window width in boxels.
+     * @param height Desired window height in boxels.
+     * @param decoration The decoration style to use.
+     * @param layer The preferred layer to present this window in.
+     * @param cursors Switch to ImGui mouse cursors inside window.
+     */
+    ImgWindow(
+        int width,
+        int height,
+        XPLMWindowDecoration decoration = xplm_WindowDecorationRoundRectangle,
+        XPLMWindowLayer layer = xplm_WindowLayerFloatingWindows,
+        bool cursors = false)
+        : ImgWindow(WindowGeometry::Centered(width, height), decoration, layer, cursors)
+    {}
     
     /** An ImgWindow object must not be copied!
      */
@@ -337,6 +443,10 @@ protected:
     /** Enables/disables ImGui handling of all mouse cursors inside window. */
     inline void SetImgCursorHandling (bool inIsEnabled)
     { bUseImgCursors = inIsEnabled; }
+
+    /** Returns whether ImGui handling of mouse cursors is enabled for this window. */
+    inline bool GetImgCursorHandling () const
+    { return bUseImgCursors; }
 
 private:
     std::shared_ptr<ImgFontAtlas> mFontAtlas;
@@ -455,6 +565,10 @@ private:
 #endif /* IMGUI_V190_REFACTOR */
 
 protected:
+    bool bExplicitKeyboardFocus = false;
+    bool bCaptureKeyboardOnMouseFocus = false;
+    bool bHasMouseFocus = false;
+
     /** What are we dragging right now? */
     struct DragTy {
         bool wnd    : 1;
