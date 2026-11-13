@@ -196,6 +196,11 @@ set(IMGUI_SQLITE_STB_POLY_LIB_SRC
     libs/imgui4xp/imgui/implot/implot.h
     libs/imgui4xp/imgui/implot/implot_internal.h
     libs/imgui4xp/imgui/implot/implot_items.cpp
+    libs/imgui4xp/imgui/implot3d/implot3d.cpp
+    libs/imgui4xp/imgui/implot3d/implot3d.h
+    libs/imgui4xp/imgui/implot3d/implot3d_internal.h
+    libs/imgui4xp/imgui/implot3d/implot3d_items.cpp
+    libs/imgui4xp/imgui/implot3d/implot3d_meshes.cpp
     libs/imgui4xp/imgui/misc/cpp/imgui_stdlib.cpp
     libs/imgui4xp/imgui/misc/cpp/imgui_stdlib.h
     libs/imgui4xp/imgui/misc/freetype/imgui_freetype.cpp
