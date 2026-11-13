@@ -66,7 +66,8 @@ public:
   //static bool save_acf_datarefs_with_savepoint(std::string inFileAndPath, std::string inTargetFileAndPath, std::string& outError); // v3.303.9.1
 
   // read missions checkpoint dataref file and apply in x-plane
-  static bool read_saved_mission_dataref_file(const std::string& inFileAndPath, std::string& outError, const bool bIsCustomDataref=false);
+  // v26.10.2 in_flag_same_plane: false = the savepoint was created with another plane, plane specific "sim/" datarefs are skipped.
+  static bool read_saved_mission_dataref_file(const std::string& inFileAndPath, std::string& outError, const bool bIsCustomDataref=false, const bool in_flag_same_plane = true);
 
   // get full path and options file
   static std::string getOptionFileAndPath();
@@ -85,6 +86,10 @@ public:
   static void purge_cache_files (const fs::path& directory_path, bool is_thread = false); // v25.06.1
 
 private:
+  // v26.10.2 savepoint "sim/" dataref filter, shared by save and load.
+  enum class mx_savepoint_dref_scope { not_saved, any_plane, same_plane_only };
+  static mx_savepoint_dref_scope get_savepoint_dataref_scope_cai(const std::string& in_dataref_key);
+
   static constexpr const int MX_LOAD_KEY_POS_IN_VEC   = 0;
   static constexpr const int MX_LOAD_VALUE_POS_IN_VEC = 3;
 

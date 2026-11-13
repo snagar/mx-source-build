@@ -5,17 +5,6 @@
 namespace missionx
 {
 
-
-
-// auto dbase::make_sqlite3_handle(char const* db_name)
-//{
-//  sqlite3* p;
-//  int rc = sqlite3_open(db_name, &p);
-//  sqlite3_handle h{ p };
-//  if (rc) h.reset();
-//  return h;
-//}
-
 int
 dbase::callback(void*, int argc, char** argv, char** col_names)
 {
@@ -24,7 +13,6 @@ dbase::callback(void*, int argc, char** argv, char** col_names)
   // cout << endl;
   return 0;
 }
-// ----------------------------------------------------
 // ----------------------------------------------------
 // ----------------------------------------------------
 

@@ -87,12 +87,15 @@ private:
     static constexpr float BURST_TAKEOFF_SEC         = 2.0f; // takeoff burst, as before
     static constexpr float BURST_LANDING_MAX_SEC     = 8.0f; // landing burst limit. It ends earlier once all wheels stay on the ground
     static constexpr float BURST_ALL_WHEELS_DOWN_SEC = 0.5f; // all wheels on the ground this long = end of the landing burst
+    // v26.10.2 takeoff: no gear force and no wheel on the ground, for this long. A nose wheel unload or a hop on the runway is shorter
+    static constexpr float TAKEOFF_CONFIRM_SEC = 2.0f;
 
     bool  approach_active{ false };          // v26.10.1 true while we write approach rows
     bool  approach_capped{ false };          // v26.10.1 true after APPROACH_MAX_ROWS rows. Cleared at touchdown or above APPROACH_EXIT_AGL_MT
     int   approach_rows_written{ 0 };        // v26.10.1 rows written since approach mode started
     float approach_next_sample_sec{ 0.0f };  // v26.10.1 sim time (total_running_time_sec) of the next approach row
     float all_wheels_down_since_sec{ -1.0f }; // v26.10.1 sim time when all wheels touched in the landing burst. -1 = not all wheels down
+    float all_wheels_off_since_sec{ -1.0f };  // v26.10.2 sim time when the last wheel left the ground (takeoff check). -1 = a wheel is on the ground
 
     enum class mx_plane_status
     {
@@ -122,6 +125,7 @@ private:
       approach_rows_written    = 0;     // v26.10.1
       approach_next_sample_sec = 0.0f;  // v26.10.1
       all_wheels_down_since_sec = -1.0f; // v26.10.1
+      all_wheels_off_since_sec  = -1.0f; // v26.10.2
 
       current_plane_state = prev_plane_state = before_transition_state = mx_plane_status::no_status;
     }
@@ -173,8 +177,8 @@ public:
     MENU_OPTIONS_TOGGLE_OPTIONS,
     //MENU_RELOAD_PLUGINS, // v3.305.2
     MENU_DUMMY_OPTIONS_PLACE_HOLDER,
-    MENU_DUMMY_TOOLS_PLACE_HOLDER,                                
-    MENU_TOOLS_UPDATE_POINT_IN_FILE_WITH_TEMPLATE_BASED_ON_PROBE, 
+    MENU_DUMMY_TOOLS_PLACE_HOLDER,
+    MENU_TOOLS_UPDATE_POINT_IN_FILE_WITH_TEMPLATE_BASED_ON_PROBE,
     MENU_TOOLS_CREATE_EXTERNAL_FPLN_BASED_ON_GPS, // v3.0.255.4.4
     MENU_TOOLS_WRITE_PLANE_POSITION_TO_LOG, // v3.303.14
     MENU_TOOLS_WRITE_CAMERA_POSITION_TO_LOG, // v3.303.14

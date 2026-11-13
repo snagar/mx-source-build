@@ -14,6 +14,7 @@
 #include "ui_external_dbflightplan_screen.h"
 #include "ui_setup_screen.h"
 #include "ui_dynamic_mission_screen.h"
+#include "ui_stats_screen.h" // v26.10.2
 
 namespace missionx
 {
@@ -61,6 +62,7 @@ public:
   std::unique_ptr<ui_external_dbflightplan_screen> m_ui_external_dbflightplan_screen;
   std::unique_ptr<ui_setup_screen> m_ui_setup_screen;
   std::unique_ptr<ui_dynamic_mission_screen> m_ui_dynamic_mission_screen;
+  std::unique_ptr<ui_stats_screen> m_ui_stats_screen; // v26.10.2
 
   void  setLayer (missionx::uiLayer_enum inLayer);
   float calc_and_getNewFontScaledSize (float inNewSize); // value should be +0.N or -0.N
@@ -241,6 +243,17 @@ void flc();
   } mx_pick_layer;
   mx_pick_layer strct_pick_layer;
 
+  // v26.10.2 "Load Savepoint" popup: is the current plane the one the savepoint was created with ?
+  struct mx_savepoint_plane_check
+  {
+    std::string saved_acf_file;   // empty = older savepoint, the plane was not stored
+    std::string current_acf_file;
+    bool        flag_plane_differs{ false };
+  };
+  mx_savepoint_plane_check strct_savepoint_plane_check;
+  void check_savepoint_plane_cai (); // v26.10.2 read the .sav file once, when the popup opens
+
+
   // ----- flight_leg_info Layer -----
   void setExternalInventoryName (const std::string &inName) { this->strct_flight_leg_info.externalInventoryName = inName; };
 
@@ -254,6 +267,7 @@ void flc();
     // debug
     bool flagDebugTabIsOpen          = false; // v3.305.3
     bool flagFlightPlanningTabIsOpen = false; // v24.03.1
+    bool flagStatsTabIsOpen          = false; // v26.10.2 like the debug and notes tabs: a shorter top area, more room for the stats
     bool flag_force_select_description_tab = true; // v26.09.3 used to force display description tab on mission start.
     ImGuiTabItemFlags desc_flags = ImGuiTabItemFlags_Leading | ImGuiTabItemFlags_NoReorder; // v26.09.3
 
@@ -606,7 +620,8 @@ private:
     { 4, missionx::uiLayer_enum::flight_leg_info, mxconst::get_BITMAP_BTN_FLY_MISSION_24X18 (), "* Flight planning\n* Flight Progress", "Displays flight leg info when mission is active.\nPlan your Flight Plan (Can fetch data from Simbrief)" },
     { 5, missionx::uiLayer_enum::option_external_fpln_layer, mxconst::get_BITMAP_BTN_WORLD_PATH_24X18 (), "External FPLN", "Build mission based on external flight plan\nUsing: flightplandatabase.com and Simbrief" }, 
     { 6, missionx::uiLayer_enum::option_ils_layer, mxconst::get_BITMAP_BTN_NAV_24x18 (), "* VFR/ILS Approaches \n* NAV data", "Search for airports around you\nthat have ILS approaches\n or search for nav data." }, 
-    { 7, missionx::uiLayer_enum::option_conv_fpln_to_mission, mxconst::get_BITMAP_BTN_CONVERT_FPLN_TO_MISSION_24X18 (), "Conv. LNMPLN", "Convert LittleNavMap FPLN to mission file." }
+    // { 7, missionx::uiLayer_enum::option_conv_fpln_to_mission, mxconst::get_BITMAP_BTN_CONVERT_FPLN_TO_MISSION_24X18 (), "Conv. LNMPLN", "Convert LittleNavMap FPLN to mission file." } // v26.10.2 moved into the "Generate" screen
+    { .id = 7, .layer = missionx::uiLayer_enum::option_stats_layer, .imgName = mxconst::get_BITMAP_BTN_STATS_24X18 (), .label = "Stats", .tip = "Your last flights: scores, landings and legs.\nCompare two flights side by side." } // v26.10.2
 
   };
 
@@ -616,7 +631,7 @@ private:
   ////// v3.303.10 random calendar
   typedef struct _radio_calendar_dateTime_type_strct
   {
-    missionx::mx_ui_random_date_time_type type{ missionx::mx_ui_random_date_time_type::xplane_day_and_time };
+    missionx::mx_ui_random_date_time_type type{ mx_ui_random_date_time_type::xplane_day_and_time };
     std::string                           label;
     std::string                           toolTip;
   } radio_calender_dateTime_type;
@@ -741,8 +756,8 @@ private:
   // void child_draw_nav_search (); // v24.02.5
   void draw_about_layer ();
   void add_landing_rate_ui (const missionx::mx_enrout_stats_strct &inStats); // v3.303.14  landing rate performance row
-  static void add_ui_landing_analysis (float in_acf_m_max_kg); // v26.10.1
-  void add_ui_stats_child (bool isEmbedded = false); // v3.303.14  isEmbedded means that we don't want the BeginChild definition inside the function we will use and external BeginChild
+  // static void add_ui_landing_analysis (...); // v26.10.1 // v26.10.2 moved to ui_stats_screen::draw_landing_analysis()
+  void add_ui_stats_child (bool isEmbedded = false, const std::vector<missionx::mx_enrout_stats_strct> *in_vec_finished_legs = nullptr); // v3.303.14  isEmbedded means that we don't want the BeginChild definition inside the function we will use and external BeginChild. v26.10.2 in_vec_finished_legs: nullptr = the legs of the running mission
 
 
   void gather_semi_act_phase1_data_based_on_picked_activity (mx_user_create_mission_layer &in_usr_layer_strct, bool in_is_first_time);

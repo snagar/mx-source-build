@@ -1,5 +1,7 @@
 #include "gather_stats.h"
 #include "../dataref_manager.h"
+#include <chrono>     // v26.10.2 in-flight stats copy time
+#include <filesystem> // v26.10.2
 
 namespace missionx
 {
@@ -56,7 +58,7 @@ GatherStats::flc()
         if (thread_ref.joinable()) // "join" previous thread before creating new thread. This should be very fast since the threaded function must have finished before reaching this line.
           thread_ref.join();       // joining also solved our issue with crashing xplane. error: abort() was called from "win.xpl"
 
-        thread_ref = std::thread(&GatherStats::exec_gather_thread, this, &xxthread_state);
+        thread_ref = std::thread(&GatherStats::exec_gather_thread, this, &xxthread_state, true); // v26.10.2 true: the writer thread may make the in-flight stats copy
       }
 
       fTotalSecBetweenLoopBackCall = 0.0f;
@@ -80,6 +82,7 @@ GatherStats::setDb(dbase* inDb, const std::string &missionState_s)
     {
 
       db->execute_stmt(sqlStmt);
+      this->line_seq = 1; // v26.10.2 new table: the numbering starts again (the first row is 2). Was only reset when the class was created, so a second mission continued the numbering
 
       // sqlStmt = "CREATE TABLE if not exists stats "
       //           "( line_id INTEGER, vvi_fpm_pilot FLOAT, flap_ratio FLOAT, local_date_days INT, local_time_sec FLOAT, lat DOUBLE, "
@@ -132,7 +135,17 @@ CREATE VIEW stats_summary AS
       {
         Log::logMsgErr("[Stats] Failed to create 'stats' table: " + db->last_err);
       }
+
+      // v26.10.2 flight metadata tables. New mission: drop them here, create_meta_tables_cai() below creates them empty.
+      db->execute_stmt(fmt::format("DROP TABLE if exists {}", mxconst::get_DB_TABLE_FLIGHT_INFO()).c_str());
+      db->execute_stmt(fmt::format("DROP TABLE if exists {}", mxconst::get_DB_TABLE_PLANE_META()).c_str());
+      db->execute_stmt(fmt::format("DROP TABLE if exists {}", mxconst::get_DB_TABLE_LEG_STATS()).c_str()); // v26.10.2
     } // end if missionState_s is empty - rebuild objects
+
+    // v26.10.2 Checkpoint: the metadata tables came back with the saved stats DB, "if not exists" keeps them.
+    //          A checkpoint saved before v26.10.2 has no metadata tables, they are created empty here.
+    if (!GatherStats::flag_ignore_stats_setup)
+      this->create_meta_tables_cai();
 
     if (GatherStats::flag_ignore_stats_setup) // v26.10.1
       Log::logMsgWarn(fmt::format("[{}] 'Ignore stats' is set: the existing stats table is kept and no rows will be written.", __func__) );
@@ -157,6 +170,87 @@ CREATE VIEW stats_summary AS
   } // end if db is not nullptr
 }
 
+
+// ----------------------------------------------------
+// v26.10.2 Create the flight metadata tables if they do not exist. Rows are written by data_manager::stats_meta_xxx_cai() functions.
+//          flight_info: one row (id = 1).
+//          plane_meta : one row for each plane flown. line_id = last stats row written before the plane was loaded (0 = mission start).
+//          leg_stats  : one row for each finished flight leg, in the order flown (leg_seq 1, 2, 3...).
+//          Times use the same UTC format as stats.date_time.
+//          Uses execute_stmt(const char*): execute_stmt(std::string) copies into a 1024 char buffer.
+void
+GatherStats::create_meta_tables_cai() const
+{
+  if (db == nullptr || !db->db_is_open_and_ready)
+    return;
+
+  const std::string sql_flight_info = fmt::format(R"(CREATE TABLE if not exists {} (
+  id             INTEGER PRIMARY KEY CHECK (id = 1),
+  flight_id      TEXT,
+  schema_version INT,
+  plugin_version TEXT,
+  xp_version     INT,
+  mission_key    TEXT,
+  mission_title  TEXT,
+  os_start_time  TEXT DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+  os_end_time    TEXT,
+  outcome        TEXT,
+  outcome_reason TEXT,
+  crashed        INT DEFAULT 0,
+  crash_source   TEXT,
+  route_s        TEXT,
+  scoring_xml    TEXT,
+  archived       INT DEFAULT 0 ))",
+                                                  mxconst::get_DB_TABLE_FLIGHT_INFO());
+
+  const std::string sql_plane_meta = fmt::format(R"(CREATE TABLE if not exists {} (
+  line_id       INTEGER,
+  date_time     TEXT DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+  acf_file      TEXT,
+  acf_path      TEXT,
+  acf_icao      TEXT,
+  acf_desc      TEXT,
+  acf_author    TEXT,
+  category      TEXT,
+  is_helicopter INT,
+  empty_kg      FLOAT,
+  max_kg        FLOAT,
+  max_fuel_kg   FLOAT,
+  vno_kias      FLOAT,
+  num_engines   INT ))",
+                                                 mxconst::get_DB_TABLE_PLANE_META());
+
+  // leg_seq is the rowid: 1 for the first leg flown. Fuel and payload are kg (m_fuel_total, m_fixed). Times are OS time (UTC).
+  // The row is added when the leg starts (status "running") and updated when it ends ("completed"), at a checkpoint save (progress, still "running"),
+  // or at the end of the flight when the leg did not end (status = the flight outcome: failure, aborted, stopped).
+  const std::string sql_leg_stats = fmt::format(R"(CREATE TABLE if not exists {} (
+  leg_seq            INTEGER PRIMARY KEY,
+  leg_name           TEXT,
+  status             TEXT,
+  start_line_id      INTEGER,
+  end_line_id        INTEGER,
+  start_time         TEXT DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+  end_time           TEXT,
+  distance_before_nm FLOAT,
+  distance_nm        FLOAT,
+  start_fuel_kg      FLOAT,
+  end_fuel_kg        FLOAT,
+  start_payload_kg   FLOAT,
+  end_payload_kg     FLOAT ))",
+                                                mxconst::get_DB_TABLE_LEG_STATS());
+
+  if (!db->execute_stmt(sql_flight_info.c_str()))
+    Log::logMsgErr(fmt::format("[{}] Failed to create '{}' table: {}", __func__, mxconst::get_DB_TABLE_FLIGHT_INFO(), db->last_err));
+
+  if (!db->execute_stmt(sql_plane_meta.c_str()))
+    Log::logMsgErr(fmt::format("[{}] Failed to create '{}' table: {}", __func__, mxconst::get_DB_TABLE_PLANE_META(), db->last_err));
+
+  if (!db->execute_stmt(sql_leg_stats.c_str()))
+    Log::logMsgErr(fmt::format("[{}] Failed to create '{}' table: {}", __func__, mxconst::get_DB_TABLE_LEG_STATS(), db->last_err));
+
+  if (!db->execute_stmt(fmt::format("PRAGMA user_version = {}", mxconst::STATS_SCHEMA_VERSION).c_str()))
+    Log::logMsgErr(fmt::format("[{}] Failed to set the stats schema version: {}", __func__, db->last_err));
+}
 
 // ----------------------------------------------------
 void
@@ -289,7 +383,7 @@ GatherStats::init_seq_from_checkpoint_stats()
 
 // ----------------------------------------------------
 bool
-GatherStats::exec_gather_thread(strct_thread_state* xxthread_state)
+GatherStats::exec_gather_thread(strct_thread_state* inout_thread_state_ptr, const bool in_flag_allow_copy)
 {
   if (!db->db_is_open_and_ready)
     return false;
@@ -300,8 +394,8 @@ GatherStats::exec_gather_thread(strct_thread_state* xxthread_state)
     return false;
   }
 
-  xxthread_state->flagIsActive        = true;
-  xxthread_state->flagThreadDoneWork = false;
+  inout_thread_state_ptr->flagIsActive        = true;
+  inout_thread_state_ptr->flagThreadDoneWork = false;
   int i                            = 1; // field index
   int row_counter                  = 0; // for debug
 
@@ -316,7 +410,7 @@ GatherStats::exec_gather_thread(strct_thread_state* xxthread_state)
   // start transaction
   db->start_transaction();
 
-  while (!local.empty() && !(xxthread_state->flagAbortThread))
+  while (!local.empty() && !(inout_thread_state_ptr->flagAbortThread))
   {
     i = 1;         // in sqlite c++ api, column numbering start with 1. Reset i if Queue has more than 1 value. This wil solve trying to place data outside of field index.
     row_counter++; // for debug
@@ -408,8 +502,12 @@ GatherStats::exec_gather_thread(strct_thread_state* xxthread_state)
 
   db->end_transaction();
 
-  xxthread_state->flagIsActive        = false;
-  xxthread_state->flagThreadDoneWork = true;
+  // v26.10.2 the in-flight stats copy: right after the commit, on this thread, only when the stats tab asked for it
+  if (in_flag_allow_copy && !inout_thread_state_ptr->flagAbortThread && this->copy_state.load() == missionx::mx_stats_copy_state::requested)
+    this->make_copy_cai();
+
+  inout_thread_state_ptr->flagIsActive        = false;
+  inout_thread_state_ptr->flagThreadDoneWork = true;
 
   return true;
 }
@@ -480,14 +578,7 @@ GatherStats::detach_db(const bool in_flush_pending_rows)
 {
   if (in_flush_pending_rows)
   {
-    this->wait_for_writer();
-
-    // write the last samples (for example the landing burst) on this thread. No writer thread is running now.
-    if (this->db != nullptr && this->db->db_is_open_and_ready && !GatherStats::flag_ignore_stats_setup) // v26.10.1
-    {
-      this->xxthread_state.init();
-      this->exec_gather_thread(&this->xxthread_state);
-    }
+    this->flush_pending_rows_cai(); // v26.10.2 was inline here: wait for the writer, then write the last samples (for example the landing burst)
   }
   else
   {
@@ -496,6 +587,116 @@ GatherStats::detach_db(const bool in_flush_pending_rows)
 
   this->clear_queue();
   this->db = nullptr; // flc(), the draw callback and exec_gather_thread() all check for nullptr
+}
+
+// ----------------------------------------------------
+// v26.10.2 Write every queued row now, on the calling thread (main thread). Used by detach_db(true) and before a plane_meta row is added,
+//          so that get_last_line_id_cai() is the last row sampled with the previous plane. The connection stays attached and flc() continues as usual.
+void
+GatherStats::flush_pending_rows_cai()
+{
+  this->wait_for_writer();
+
+  // No writer thread is running now.
+  if (this->db != nullptr && this->db->db_is_open_and_ready && !GatherStats::flag_ignore_stats_setup) // v26.10.1
+  {
+    this->xxthread_state.init();
+    this->exec_gather_thread(&this->xxthread_state, false); // v26.10.2 false: main thread, no in-flight stats copy here
+  }
+}
+
+// ----------------------------------------------------
+// v26.10.2 Ask for the in-flight stats copy (main thread). The next writer thread makes it after its commit (make_copy_cai()).
+//          While the sim is paused no writer runs, so the copy waits until the sim runs again.
+bool
+GatherStats::request_copy_cai(const std::string &in_file_path)
+{
+  if (this->copy_state.load() != missionx::mx_stats_copy_state::idle)
+    return false;
+
+  this->copy_file_path = in_file_path; // written before the state changes: the writer reads it only after it sees "requested"
+  this->copy_error.clear();
+  this->flag_abort_copy.store(false);
+  this->copy_state.store(missionx::mx_stats_copy_state::requested);
+  return true;
+}
+
+// ----------------------------------------------------
+// v26.10.2 Back to "idle" (main thread). Safe when no writer runs, or when the copy is "ready" or "failed" (the writer does not touch it then).
+void
+GatherStats::reset_copy_cai()
+{
+  this->copy_state.store(missionx::mx_stats_copy_state::idle);
+}
+
+// ----------------------------------------------------
+// v26.10.2 Drop the in-flight stats copy (main thread): the mission is not running any more.
+//          "requested": the writer will not start it. "copying": sqlite3_interrupt() stops the VACUUM INTO (safe from another thread,
+//          a no-op when no statement runs), and the writer deletes the part it wrote. "ready"/"failed": the writer does not touch it, back to idle.
+void
+GatherStats::abort_copy_cai()
+{
+  this->flag_abort_copy.store(true);
+
+  auto expected_state = missionx::mx_stats_copy_state::requested;
+  if (this->copy_state.compare_exchange_strong(expected_state, missionx::mx_stats_copy_state::idle))
+    return; // not started
+
+  if (expected_state == missionx::mx_stats_copy_state::copying)
+  {
+    if (this->db != nullptr && this->db->db != nullptr)
+      sqlite3_interrupt(this->db->db);
+    return; // the writer sets "idle" when it sees the abort
+  }
+
+  if (expected_state == missionx::mx_stats_copy_state::ready || expected_state == missionx::mx_stats_copy_state::failed)
+    this->copy_state.store(missionx::mx_stats_copy_state::idle);
+}
+
+// ----------------------------------------------------
+// v26.10.2 The in-flight stats copy. Writer thread only, right after its commit: no other code uses the connection now
+//          (the main thread waits for the writer before it writes its own rows), so the live file is not read while it is written.
+//          "VACUUM INTO" does not overwrite a file, the old copy is deleted first.
+void
+GatherStats::make_copy_cai()
+{
+  auto expected_state = missionx::mx_stats_copy_state::requested;
+  if (!this->copy_state.compare_exchange_strong(expected_state, missionx::mx_stats_copy_state::copying))
+    return;
+
+  if (this->flag_abort_copy.load()) // aborted between the request and now
+  {
+    this->copy_state.store(missionx::mx_stats_copy_state::idle);
+    return;
+  }
+
+  const auto start_time = std::chrono::steady_clock::now();
+
+  std::error_code ec;
+  std::filesystem::remove(this->copy_file_path, ec); // no file is not an error
+
+  char     *err_msg = nullptr;
+  const int rc      = sqlite3_exec(this->db->db, ("VACUUM INTO " + mxUtils::sql_quote(this->copy_file_path)).c_str(), nullptr, nullptr, &err_msg);
+
+  const auto copy_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count();
+  if (rc == SQLITE_INTERRUPT || this->flag_abort_copy.load()) // the mission is not running any more: the copy is not needed
+  {
+    std::filesystem::remove(this->copy_file_path, ec);
+    Log::logMsg(fmt::format("[{}] In-flight stats copy aborted after {} ms: the mission is not running.", __func__, copy_ms));
+    this->copy_state.store(missionx::mx_stats_copy_state::idle);
+  }
+  else if (rc == SQLITE_OK)
+  {
+    Log::logMsg(fmt::format("[{}] In-flight stats copy ready: '{}' ({} ms, last line_id {}).", __func__, this->copy_file_path, copy_ms, this->line_seq));
+    this->copy_state.store(missionx::mx_stats_copy_state::ready);
+  }
+  else
+  {
+    this->copy_error = (err_msg != nullptr) ? err_msg : "unknown error";
+    Log::logMsgErr(fmt::format("[{}] In-flight stats copy failed after {} ms: {}", __func__, copy_ms, this->copy_error));
+    this->copy_state.store(missionx::mx_stats_copy_state::failed);
+  }
+  sqlite3_free(err_msg);
 }
 
 // ----------------------------------------------------

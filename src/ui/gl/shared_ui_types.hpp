@@ -8,6 +8,9 @@
 #ifndef MISSIONX_SHARED_UI_TYPES_H
 #define MISSIONX_SHARED_UI_TYPES_H
 
+#include <array> // v26.10.2
+#include <map>    // v26.10.2
+#include <memory> // v26.10.2
 #include "../../core/xx_mission_constants.hpp"
 #include "../../core/data_manager.h"
 #include "../../core/dataref_manager.h"
@@ -829,6 +832,119 @@ struct mx_setup_layer
   // -- STATIC STRUCTS
   // ----------------------------------------------
 
+  // ----------------------------------------------
+  // -- v26.10.2 Stats screen (ui_stats_screen)
+  // ----------------------------------------------
+  enum class mx_stats_screen_enum : uint8_t
+  {
+    history_list = 0, // the saved flights
+    one_flight,       // the stats of one flight (slot A)
+    compare_flights   // two flights side by side (slots A and B)
+  };
+
+  // v26.10.2 Flight path plots (2D/3D) of one flight: the waypoint list, what is picked, and the fetched sections.
+  //          One instance for each place that draws a flight: the end screen, stats slot A and slot B.
+  struct mx_flight_path_cache_entry
+  {
+    missionx::mxFetchState_enum   fetch_state{ missionx::mxFetchState_enum::fetch_not_started };
+    std::string                   fetch_msg;
+    missionx::mx_flight_path_data path;
+    // horizontal plot units (nm), made once on the main thread after the fetch
+    std::vector<double> vecEast_nm;
+    std::vector<double> vecNorth_nm;
+  };
+
+  // v26.10.2 How a 3D plot is looked at. ImPlot3D mouse input is off: left drag and the buttons change these values.
+  struct mx_plot_camera
+  {
+    static constexpr double DEFAULT_ELEVATION_DEG = 30.0;
+    static constexpr double DEFAULT_AZIMUTH_DEG   = -60.0;
+
+    double elevation_deg{ DEFAULT_ELEVATION_DEG };
+    double azimuth_deg{ DEFAULT_AZIMUTH_DEG };
+    double zoom{ 1.0 };                 // > 1 = closer, towards the touchdown/takeoff
+    double pan_east_nm{ 0.0 };          // pan buttons: the view center moves by this
+    double pan_north_nm{ 0.0 };
+    double last_view_span_nm{ 1.0 };    // width of the last drawn view, the pan step is a part of it
+    bool   flag_auto_azimuth{ true };   // turn the box so the route is seen from the side (until the user rotates)
+
+    void reset () { *this = mx_plot_camera (); }
+  };
+
+  struct mx_flight_path_view_state
+  {
+    std::string                            flight_key;           // stats file + flight_id: the sections below belong to it
+    std::vector<missionx::mx_path_section> vecSections;
+    int                                    selected_section{ 0 };
+    missionx::mx_path_range_enum           range{ missionx::mx_path_range_enum::up_to_5nm };
+    bool                                   flag_show_3d{ true };
+    bool                                   flag_focus_view{ false }; // the plot fills the screen (end screen, one-flight screen)
+    mx_plot_camera                         camera;
+    int                                    last_ready_cache_key{ -1 }; // the last section drawn: shown while the next one is read, so the page keeps its height (no scroll jump)
+
+    // key: section index * 10 + range. shared_ptr: the background fetch keeps its entry alive, even when the map is cleared
+    std::map<int, std::shared_ptr<mx_flight_path_cache_entry>> mapCache;
+
+    [[nodiscard]] int get_cache_key_cai () const { return selected_section * 10 + static_cast<int> (range); }
+    void              reset ()
+    {
+      flight_key.clear ();
+      vecSections.clear ();
+      selected_section   = 0;
+      range              = missionx::mx_path_range_enum::up_to_5nm;
+      flag_focus_view    = false;
+      last_ready_cache_key = -1;
+      camera.reset ();
+      mapCache.clear ();
+    }
+  };
+
+  // One flight loaded by the stats screen (one history file).
+  // The background fetch writes view_data only while fetch_state is "fetch_in_process"; the UI reads it after "fetch_ended".
+  struct mx_stats_flight_slot
+  {
+    std::string                     file_path;
+    missionx::mx_stats_history_row  row;         // the list row of that flight (header text)
+    missionx::mxFetchState_enum     fetch_state{ missionx::mxFetchState_enum::fetch_not_started };
+    std::string                     fetch_msg;
+    missionx::mx_stats_view_data    view_data;
+    std::vector<double>             vecGraphElevX_pct; // compare graph: the elevation series X as 0..100 % of the flight time. Made once, after the fetch
+    std::vector<double>             vecGraphAirX_pct;  // compare graph: the airspeed series X as 0..100 % of the flight time
+    mx_flight_path_view_state       path_view;         // v26.10.2 flight path plots of this flight
+  };
+
+  // The state of the stats layer (global instance: strct_stats_layer).
+  struct mx_stats_layer_state
+  {
+    mx_stats_screen_enum screen{ mx_stats_screen_enum::history_list };
+    bool                 flag_refresh_needed{ true };
+
+    // the list of saved flights. The background scan writes vecRows only while list_fetch_state is "fetch_in_process"
+    missionx::mxFetchState_enum                    list_fetch_state{ missionx::mxFetchState_enum::fetch_not_started };
+    std::string                                    list_fetch_msg;
+    std::vector<missionx::mx_stats_history_row>    vecRows;          // newest first
+    std::vector<std::string>                       vecSelectedFiles; // file paths, in the order picked (A, B). Up to 2
+
+    // the flights on screen: [0] = A (also the one-flight screen), [1] = B
+    std::array<mx_stats_flight_slot, 2> flight_slots;
+
+    // compare screen
+    int                   compare_graph_x_axis{ 0 };          // 0 = flight time in minutes, 1 = % of the flight
+    bool                  flag_compare_graph_airspeed{ true }; // show the airspeed lines
+    int                   compare_landings_layout{ 0 };       // 0 = landing by landing (stacked), 1 = side by side
+    bool                  flag_compare_link_scroll{ true };   // side by side: scrolling one column scrolls the other
+    ImVec2                compare_shared_scroll{ 0.0f, 0.0f }; // side by side: the scroll position both columns follow
+    std::array<ImVec2, 2> compare_last_scroll{};              // side by side: the scroll each column had after the last frame (detects which one the user moved)
+
+    // v26.10.2 compare screen, flight path plots
+    bool           flag_compare_paths_focus{ false };         // the plots fill the screen
+    bool           flag_compare_paths_merged_inline{ false }; // small plots: A and B side by side (false) or one plot (true)
+    bool           flag_compare_paths_merged_focus{ true };   // focus view: one plot with both routes (true) or side by side (false)
+    mx_plot_camera merged_camera;                             // the camera of both compare plots (split and merged): A and B are always seen from the same side
+    bool           flag_compare_show_3d{ true };              // both compare plots: 3D or 2D
+    bool           flag_compare_same_waypoint{ true };        // merged: B shows the same waypoint as A (the range is always the same)
+  };
+
   // Setup screen
   inline mx_setup_layer strct_setup_layer;
 
@@ -848,6 +964,24 @@ struct mx_setup_layer
 
   // v26.09.3
   inline mx_external_routes_layer strct_ext_layer;
+
+  // v26.10.2 stats screen: the saved flights list and the flight on screen
+  inline mx_stats_layer_state strct_stats_layer;
+
+  // v26.10.2 The in-flight "stats" tab: the stats so far, read from tmp_stats.db (a copy made by the stats writer thread).
+  //          The request flag is data_manager::flag_is_stats_request_is_active. Main thread only.
+  struct mx_in_flight_stats_state
+  {
+    mx_stats_flight_slot slot;                                  // the stats read from the copy
+    int                  reset_seq{ -1 };                       // data_manager::in_flight_stats_reset_seq when this state was last synced
+    int                  slot_reset_seq{ -1 };                  // the reset_seq of the data in slot. Another value = the data is from an older flight
+    bool                 flag_reading{ false };                 // this request reads the copy (fetch thread)
+    bool                 flag_stats_tab_was_selected{ false };  // the "stats" tab was the selected tab when the tab bar was last drawn. Hiding the window does not change it
+    std::string          message;                               // why there is nothing to show (stats not written, copy failed)
+    std::string          copy_local_time_s;                     // OS local time of the copy: "Stats up to 14:32:05"
+  };
+  inline mx_in_flight_stats_state strct_in_flight_stats;
+  inline mx_flight_path_view_state strct_end_screen_path_view; // v26.10.2 flight path plots of the end screen (the live stats file)
 
 // ----------------------------------------------
 // -- STATIC WinImguiBriefer Parameters

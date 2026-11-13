@@ -123,18 +123,42 @@ ImgFontAtlas::bindTexture()
 
 #if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
     if (ImgPanelGraphics::IsAvailable()) {
+#ifndef IMGUI_V192_REFACTOR
+        unsigned char *pixels = nullptr;
+        int width = 0, height = 0;
+        mOurAtlas->GetTexDataAsRGBA32(&pixels, &width, &height);
+        if (pixels && width > 0 && height > 0) {
+            std::vector<unsigned char> lin_pixels(pixels, pixels + (width * height * 4));
+            // Force RGB to pure white (255) so the texture acts strictly as a pure opacity mask,
+            // preventing black edge bleeding, and preserve linear alpha coverage without crushing:
+            for (int i = 0; i < width * height; i++) {
+                unsigned char* p = &lin_pixels[i * 4];
+                p[0] = 255;
+                p[1] = 255;
+                p[2] = 255;
+            }
+            mTextureID = (ImTextureID)(intptr_t)ImgPanelGraphics::CreateTexture(lin_pixels.data(), width, height);
+            mOurAtlas->SetTexID(mTextureID);
+            mTextureBound = (mTextureID != (ImTextureID)0);
+        }
+#else
         strct_texture_info outInfo;
         GetCustomAtlasTextureData(mOurAtlas, outInfo);
         
         if (outInfo.pixels && outInfo.width > 0 && outInfo.height > 0) {
             std::vector<unsigned char> lin_pixels(outInfo.pixels, outInfo.pixels + (outInfo.width * outInfo.height * 4));
+            // Force RGB to pure white (255) so the texture acts strictly as a pure opacity mask,
+            // preventing black edge bleeding, and preserve linear alpha coverage without crushing:
             for (int i = 0; i < outInfo.width * outInfo.height; i++) {
                 unsigned char* p = &lin_pixels[i * 4];
-                p[3] = (unsigned char)(powf(p[3] / 255.0f, 2.2f) * 255.0f + 0.5f);
+                p[0] = 255;
+                p[1] = 255;
+                p[2] = 255;
             }
             mTextureID = (ImTextureID)(intptr_t)ImgPanelGraphics::CreateTexture(lin_pixels.data(), outInfo.width, outInfo.height);
             mOurAtlas->TexData->SetTexID(mTextureID);
         }
+#endif
     } else {
         int gl_tex = 0;
         XPLMGenerateTextureNumbers(&gl_tex, 1);
@@ -155,7 +179,7 @@ ImgFontAtlas::bindTexture()
 
 #ifndef IMGUI_V192_REFACTOR
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixData);
-        mOurAtlas->SetTexID((void *)((intptr_t)gl_tex));
+        mOurAtlas->SetTexID((ImTextureID)(intptr_t)gl_tex);
 #else
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, outInfo.width, outInfo.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, outInfo.pixels);
         mOurAtlas->TexData->SetTexID((ImTextureID)(intptr_t)gl_tex);
@@ -182,7 +206,7 @@ ImgFontAtlas::bindTexture()
 
 #ifndef IMGUI_V192_REFACTOR
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixData);
-    mOurAtlas->SetTexID((void *)((intptr_t)gl_tex));
+    mOurAtlas->SetTexID((ImTextureID)(intptr_t)gl_tex);
 #else
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, outInfo.width, outInfo.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, outInfo.pixels);
     mOurAtlas->TexData->SetTexID((ImTextureID)(intptr_t)gl_tex);
@@ -224,3 +248,56 @@ void ImgFontAtlas::updateTextureTracking(ImTextureID textureID)
     mTextureBound = (textureID != (ImTextureID)0);
 }
 #endif /* IMGUI_V192_REFACTOR */
+
+#if defined(IMGWINDOW_ENABLE_FONTAWESOME)
+#if defined(__has_include)
+    #if __has_include("sample-code/fonts/fa-solid-900.inc")
+        #include "sample-code/fonts/fa-solid-900.inc"
+        #include "sample-code/fonts/IconsFontAwesome5.h"
+    #elif __has_include("fonts/fa-solid-900.inc")
+        #include "fonts/fa-solid-900.inc"
+        #include "fonts/IconsFontAwesome5.h"
+    #endif
+#else
+    #include "sample-code/fonts/fa-solid-900.inc"
+    #include "sample-code/fonts/IconsFontAwesome5.h"
+#endif
+
+ImFont* ImgFontAtlas::MergeFontAwesome(ImFont* base_font,
+                                       float size_pixels,
+                                       const ImWchar* custom_ranges,
+                                       float size_offset)
+{
+    if (!mOurAtlas) return nullptr;
+
+    if (!base_font && !mOurAtlas->Fonts.empty()) {
+        base_font = mOurAtlas->Fonts.back();
+    }
+
+    float font_size = size_pixels;
+    if (font_size <= 0.0f) {
+#if defined(IMGUI_VERSION_NUM) && (IMGUI_VERSION_NUM >= 19200)
+        float base_sz = base_font ? base_font->LegacySize : 14.0f;
+#else
+        float base_sz = base_font ? base_font->FontSize : 14.0f;
+#endif
+        font_size = std::max(8.0f, base_sz + size_offset);
+    }
+
+    ImFontConfig config;
+    config.MergeMode = true;
+    config.PixelSnapH = true;
+    config.GlyphMinAdvanceX = font_size;
+
+    static const ImWchar default_fa_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+    const ImWchar* ranges = custom_ranges ? custom_ranges : default_fa_ranges;
+
+    return mOurAtlas->AddFontFromMemoryCompressedTTF(
+        (void*)fa_solid_900_compressed_data,
+        fa_solid_900_compressed_size,
+        font_size,
+        &config,
+        ranges
+    );
+}
+#endif // IMGWINDOW_ENABLE_FONTAWESOME

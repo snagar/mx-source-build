@@ -37,8 +37,8 @@
 
 // Version format: MmmPP (Major, 2-digit Minor, 2-digit Patch)
 // e.g., v2.0.0 becomes 20000. v1.12.3 becomes 11203.
-#define IMGWINDOW_VERSION       "2.3.0"
-#define IMGWINDOW_VERSION_NUM   20300
+#define IMGWINDOW_VERSION       "2.4.0"
+#define IMGWINDOW_VERSION_NUM   20400
 
 #include "SystemGL.h"
 
@@ -55,11 +55,6 @@
 #include <queue>
 
 #include "ImgFontAtlas.h"
-
-// Enforce constraint that IMGWINDOW_USE_PANEL_GRAPHICS requires IMGUI_V192_REFACTOR (modern dynamic font atlas support).
-#if defined(IMGWINDOW_USE_PANEL_GRAPHICS) && !defined(IMGUI_V192_REFACTOR)
-    #error "IMGWINDOW_USE_PANEL_GRAPHICS requires IMGUI_V192_REFACTOR (modern dynamic font atlas support)."
-#endif
 
 /** ImgWindow is a Window for creating dear imgui widgets within.
  *
@@ -119,14 +114,15 @@ struct WindowGeometry {
     }
 
     // 4. Auto-centered on main monitor
-    static WindowGeometry Centered(int width, int height);
+    static WindowGeometry Centered(int width, int height, XPLMWindowDecoration decoration = xplm_WindowDecorationRoundRectangle);
 
     // 5. Smart Auditing & Sanitization
     static WindowGeometry Sanitize(
         int l, int t, int r, int b,
         int defaultW = 640, int defaultH = 480,
         int minVisibleMargin = 40,
-        WindowSanitizeMode mode = WindowSanitizeMode::KeepVisibleMargin);
+        WindowSanitizeMode mode = WindowSanitizeMode::KeepVisibleMargin,
+        XPLMWindowDecoration decoration = xplm_WindowDecorationRoundRectangle);
 };
 
 class
@@ -148,12 +144,60 @@ public:
     static ImgWindow* s_CurrentBuildingWindow;
     static ImgWindow* GetCurrentBuildingWindow() { return s_CurrentBuildingWindow; }
 
-    /** Returns the custom layout scale factor for this window. Subclasses
-     * should override this to return their combined text zoom multiplier 
-     * (e.g., _fontAdjust * gSeniorCitizenRatio) so extensions can scale 
-     * geometry proportionally to match the text.
+    /** Default safety inset in boxels from the top of the X-Plane main screen to keep
+     *  the window clear of the X-Plane system menu bar trigger zone. */
+    static constexpr int kDefaultTopMenuBarMargin = 30;
+
+    /** Estimated height in boxels of X-Plane's native round-rectangle window title bar
+     *  which is rendered ABOVE the window's top content coordinate. */
+    static constexpr int kDefaultSystemTitleBarHeight = 25;
+
+    /** Gets the active base top menu bar margin in boxels (default: 30) */
+    static int GetTopMenuBarMargin() { return sTopMenuBarMargin; }
+
+    /** Sets the base top menu bar margin in boxels */
+    static void SetTopMenuBarMargin(int margin) { sTopMenuBarMargin = margin; }
+
+    /** Gets the estimated native system title bar height in boxels (default: 25) */
+    static int GetSystemTitleBarHeight() { return sSystemTitleBarHeight; }
+
+    /** Sets the estimated native system title bar height in boxels */
+    static void SetSystemTitleBarHeight(int height) { sSystemTitleBarHeight = height; }
+
+    /** Computes the total required top clearance for a given decoration style:
+     *  - Standard decorated (xplm_WindowDecorationRoundRectangle): menu margin + title bar (~55 boxels)
+     *  - Self-decorated or None: menu margin (~30 boxels)
      */
-    virtual float GetExtensionScaleFactor() const { return 1.0f; }
+    static int GetTopMargin(XPLMWindowDecoration decoration) {
+        bool hasSysDec = (decoration == xplm_WindowDecorationRoundRectangle);
+        return sTopMenuBarMargin + (hasSysDec ? sSystemTitleBarHeight : 0);
+    }
+
+    static constexpr float kDefaultBaselineFontSize = 14.0f;
+
+    /** Returns the baseline font size in pixels (e.g. 14.0f for Roboto 14px).
+     * Subclasses can override this if their base typography uses a different pixel size. */
+    virtual float getBaselineFontSize() const { return kDefaultBaselineFontSize; }
+
+    /** Returns the font adjust scale factor for this window (e.g. _fontAdjust).
+     * Defaults to 1.0f. Subclasses can override this to report their text zoom multiplier. */
+    virtual float getFontAdjust() const { return 1.0f; }
+
+    /** Returns the custom layout scale factor for this window.
+     * Computes the scale from explicit overrides, getFontAdjust(), or the active
+     * ImGui font size relative to getBaselineFontSize(). Non-virtual so the formula
+     * remains canonical and protected across all derived window classes.
+     */
+    float GetExtensionScaleFactor() const {
+        if (mCustomExtensionScale > 0.0f) return mCustomExtensionScale;
+        float adj = getFontAdjust();
+        if (adj != 1.0f) return adj;
+        float base = getBaselineFontSize();
+        if (base <= 0.0f) base = kDefaultBaselineFontSize;
+        float fontSize = ImGui::GetCurrentContext() ? ImGui::GetFontSize() : base;
+        return (fontSize > 0.0f) ? (fontSize / base) : 1.0f;
+    }
+    void SetExtensionScaleFactor(float factor) { mCustomExtensionScale = factor; }
 
     /** sBlankoutUntilCycle is a global XPLM cycle number until which all
      * windows will skip rendering.  This is useful for plugins that want to
@@ -195,6 +239,51 @@ public:
     /** Set resize limits. If set this way then the window object knows. */
     void SetWindowResizingLimits (int minW, int minH, int maxW, int maxH);
 
+    /** Sets the 1.0x baseline reference dimensions for ResizeToScale().
+     *  Initialized automatically to the window's initial construction dimensions. */
+    void SetBaselineWindowSize (int width, int height) { mBaselineWidth = width; mBaselineHeight = height; }
+
+    /** Gets the 1.0x baseline reference dimensions */
+    void GetBaselineWindowSize (int& width, int& height) const { width = mBaselineWidth; height = mBaselineHeight; }
+
+    /** Sets invariant, unscaled chrome dimensions (e.g. fixed headers, footers, or sidebars)
+     *  that should not be multiplied by font scale ratio during proportional window resizing. */
+    void SetUnscaledChrome (int fixed_width, int fixed_height) {
+        mChromeWidth  = (fixed_width > 0) ? fixed_width : 0;
+        mChromeHeight = (fixed_height > 0) ? fixed_height : 0;
+    }
+
+    /** Gets invariant, unscaled chrome dimensions */
+    void GetUnscaledChrome (int& fixed_width, int& fixed_height) const {
+        fixed_width  = mChromeWidth;
+        fixed_height = mChromeHeight;
+    }
+    int  GetUnscaledChromeWidth () const  { return mChromeWidth; }
+    int  GetUnscaledChromeHeight () const { return mChromeHeight; }
+
+    /** Pure math converter: scales (cur_w, cur_h) proportionally from from_scale to to_scale,
+     *  optionally accounting for invariant unscaled chrome dimensions. */
+    static void ConvertSizeForScale (int cur_w, int cur_h, float from_scale, float to_scale, int& out_w, int& out_h,
+                                     int chrome_w = 0, int chrome_h = 0);
+
+    /** Proportionally scales current window dimensions from from_scale to to_scale,
+     *  anchoring the top-left corner and clamping to min/max window limits and screen bounds.
+     *  Mode-aware: handles in-sim 2D, OS popped-out, and VR windows seamlessly.
+     *  @param avoidMenuBarConflict If true (default), prevents window top from colliding with system menu bar. */
+    bool ScaleWindowGeometry (float from_scale, float to_scale, bool avoidMenuBarConflict = true);
+
+    /** Resizes window proportionally to target_scale based on 1.0x baseline reference dimensions.
+     *  If baseline_scale != 1.0f, scales relative to baseline_scale instead.
+     *  @param avoidMenuBarConflict If true (default), prevents window top from colliding with system menu bar. */
+    bool ResizeToScale (float target_scale, float baseline_scale = 1.0f, bool avoidMenuBarConflict = true);
+
+    /** Clamps window geometry (l, t, r, b) to stay completely within legal screen boundaries,
+     *  honoring top menu bar safety margins and min/max limits without mutating aspect ratio.
+     *  If top_margin is < 0, defaults to GetTopMargin(xplm_WindowDecorationRoundRectangle). */
+    static void ClampGeometryToScreen(int& in_out_l, int& in_out_t, int& in_out_r, int& in_out_b,
+                                      int min_w = 0, int min_h = 0, int max_w = 0, int max_h = 0,
+                                      int top_margin = -1);
+
     /** SetVisible() makes the window visible after making the onShow() call.
      * It is also at this time that the window will be relocated onto the VR
      * display if the VR headset is in use.
@@ -217,6 +306,34 @@ public:
     
     /** Is Window inside the sim? */
     bool IsInsideSim () const { return !IsPoppedOut() && !IsInVR(); }
+
+    /** Returns true if the simulator itself is running in full-screen mode on any monitor.
+     *  In windowed desktop mode, in-sim top menu bar conflicts do not exist. */
+    static bool IsSimulatorFullScreen();
+
+    /** Gets the decoration style specified at creation */
+    XPLMWindowDecoration GetWindowDecoration() const { return mDecoration; }
+
+    /** Returns true if window uses system window decorations (e.g. round rectangle) */
+    bool HasSystemDecoration() const {
+        return mDecoration == xplm_WindowDecorationRoundRectangle;
+    }
+
+    /** Returns true if window is self-decorated or undecorated (no system title bar) */
+    bool IsSelfDecorated() const {
+        return mDecoration == xplm_WindowDecorationSelfDecorated ||
+               mDecoration == xplm_WindowDecorationSelfDecoratedResizable ||
+               mDecoration == xplm_WindowDecorationNone;
+    }
+
+    /** Calculates the effective top clearance margin for this window instance,
+     *  accounting for both the system menu bar trigger zone and any native window title bar.
+     *  Returns 0 if the window is popped out, in VR, or if the simulator is running in windowed mode. */
+    int GetEffectiveTopMargin() const {
+        if (!IsInsideSim() || !IsSimulatorFullScreen())
+            return 0;
+        return GetTopMargin(mDecoration);
+    }
     
     /** Is Window using XPLM v4.4+'s Panel Graphics API instead of OpenGL? */
     bool IsUsingPanelGraphics () const;
@@ -278,6 +395,73 @@ public:
      */
     static ImTextureID CreateTexture(const unsigned char* pixels, int width, int height);
     static void DeleteTexture(ImTextureID textureID);
+
+    /** In-Memory Named Texture Registry:
+     *  Registers a raw 4-channel RGBA pixel buffer into the named texture registry.
+     *  Creates the underlying GPU texture via CreateTexture() and manages its lifecycle.
+     *  Automatically deleted on Shutdown().
+     *  @param name Unique identifier string (e.g. "company_logo" or "icon_warning")
+     *  @param rgba_pixels Pointer to raw 4-channel RGBA pixel data
+     *  @param width Image width in pixels
+     *  @param height Image height in pixels
+     *  @return The created ImTextureID, or (ImTextureID)0 on failure. */
+    static ImTextureID RegisterNamedTexture(const std::string& name, const unsigned char* rgba_pixels, int width, int height);
+
+    /** Registers an existing GPU ImTextureID with specified dimensions (and optional sprite UVs / tint / border)
+     *  into the named texture registry. The texture resource is non-owning (will not be deleted by ImgWindow on Shutdown). */
+    static ImTextureID RegisterNamedTexture(const std::string& name, ImTextureID textureID, ImVec2 size = ImVec2(0.0f, 0.0f),
+                                            ImVec2 uv0 = ImVec2(0.0f, 0.0f), ImVec2 uv1 = ImVec2(1.0f, 1.0f),
+                                            ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f), ImVec4 border_col = ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+
+    /** Looks up a named texture registered via RegisterNamedTexture (or RegisterMemoryImage).
+     *  @param name The texture identifier
+     *  @param outSize Optional pointer to receive the native dimensions of the texture
+     *  @return The ImTextureID, or (ImTextureID)0 if not found. */
+    static ImTextureID GetNamedTexture(const std::string& name, ImVec2* outSize = nullptr);
+
+    /** Extended lookup overload also retrieving optional sprite UVs, tint, and border color. */
+    static ImTextureID GetNamedTexture(const std::string& name, ImVec2* outSize, ImVec2* outUv0, ImVec2* outUv1,
+                                       ImVec4* outTintCol = nullptr, ImVec4* outBorderCol = nullptr);
+
+    /** Unregisters a named texture and frees its GPU texture resource (if owned). */
+    static void UnregisterNamedTexture(const std::string& name);
+
+    // Backward-compatibility aliases:
+    static inline void UnregisterMemoryImage(const std::string& name) { UnregisterNamedTexture(name); }
+    static inline ImTextureID RegisterMarkdownNamedTexture(const std::string& name, ImTextureID id, ImVec2 size = ImVec2(0.0f, 0.0f),
+                                                           ImVec2 uv0 = ImVec2(0.0f, 0.0f), ImVec2 uv1 = ImVec2(1.0f, 1.0f),
+                                                           ImVec4 tint_col = ImVec4(1,1,1,1), ImVec4 border_col = ImVec4(0,0,0,0)) {
+        return RegisterNamedTexture(name, id, size, uv0, uv1, tint_col, border_col);
+    }
+    static inline void UnregisterMarkdownNamedTexture(const std::string& name) { UnregisterNamedTexture(name); }
+
+    /** Image decoding hook types for compressed in-memory formats (PNG, JPG, etc.).
+     *  Allows third-party or host decoders (such as stb_image) to plug in dynamically. */
+    typedef unsigned char* (*MemoryImageDecodeFn)(const void* data, size_t len, int* outW, int* outH);
+    typedef void (*MemoryImageFreeFn)(void* pixels);
+
+    /** Registers a custom image decoder and deallocator for RegisterMemoryImage.
+     *  Auto-wired by contrib/ImGee when present, or configurable by host applications. */
+    static void SetMemoryImageDecoder(MemoryImageDecodeFn decodeFn, MemoryImageFreeFn freeFn);
+
+    /** In-Memory Compressed Image Service:
+     *  Decodes in-memory compressed images (PNG, JPG, BMP, etc.) via the active decoder hook,
+     *  creates the underlying GPU texture via CreateTexture(), and registers it by name.
+     *  Cleaned up automatically on Shutdown().
+     *  @param name Unique identifier string
+     *  @param data Pointer to raw compressed image data in memory
+     *  @param lengthBytes Size of data in bytes
+     *  @param outWidth Optional pointer to receive decoded width in pixels
+     *  @param outHeight Optional pointer to receive decoded height in pixels
+     *  @return The created ImTextureID, or (ImTextureID)0 on failure. */
+    static ImTextureID RegisterMemoryImage(const std::string& name, const void* data, size_t lengthBytes, int* outWidth = nullptr, int* outHeight = nullptr);
+
+    /** Shutdown listener callback type */
+    typedef void (*ShutdownHandlerFn)();
+
+    /** Registers a shutdown handler invoked during ImgWindow::Shutdown().
+     *  Allows decoupled subsystems (e.g. Markdown image cache) to flush VRAM safely. */
+    static void AddShutdownHandler(ShutdownHandlerFn fn);
 
     /** Clear ActiveID early if an InputText currently holds focus and the user clicked outside its bounding rect.
      *  Automatically invoked every frame in updateImgui() right after ImGui::NewFrame().
@@ -382,7 +566,7 @@ protected:
         XPLMWindowDecoration decoration = xplm_WindowDecorationRoundRectangle,
         XPLMWindowLayer layer = xplm_WindowLayerFloatingWindows,
         bool cursors = false)
-        : ImgWindow(WindowGeometry::Centered(width, height), decoration, layer, cursors)
+        : ImgWindow(WindowGeometry::Centered(width, height, decoration), decoration, layer, cursors)
     {}
     
     /** An ImgWindow object must not be copied!
@@ -401,6 +585,11 @@ protected:
      * preferred layer or the VR layer depending on if the headset is in use.
      */
     void moveForVR();
+
+    /** Converts target boxel dimensions to OS pixels using the live (OS pixel / boxel) ratio,
+     *  clamps to resizing limits and the containing OS monitor via XPLMGetAllMonitorBoundsOS(),
+     *  and preserves Y-up (macOS) vs. Y-down (Windows/Linux) OS coordinate conventions. */
+    bool ApplyBoxelSizeToPoppedOutOS (int target_boxel_w, int target_boxel_h);
     
     /** A hook called right before ImGui::Begin in case you want to set up something
      * before interface building begins
@@ -538,6 +727,7 @@ private:
      *  @see https://developer.x-plane.com/sdk/XPLMHandleMouseClick_f/ */
     const bool bHandleWndResize;
 
+    XPLMWindowDecoration mDecoration = xplm_WindowDecorationRoundRectangle;
     XPLMWindowLayer mPreferredLayer;
 
     /** Shall window allow ImGui to manage the mouse cursor inside windows? */
@@ -548,6 +738,20 @@ private:
     int minHeight   = 100;
     int maxWidth    = INT_MAX;
     int maxHeight   = INT_MAX;
+
+    /** 1.0x baseline reference dimensions for ResizeToScale() */
+    int mBaselineWidth  = 0;
+    int mBaselineHeight = 0;
+
+    /** Invariant unscaled chrome dimensions (fixed headers, footers, sidebars) */
+    int mChromeWidth    = 0;
+    int mChromeHeight   = 0;
+
+    /** Active top menu bar margin in boxels */
+    static int sTopMenuBarMargin;
+
+    /** Estimated native system title bar height in boxels */
+    static int sSystemTitleBarHeight;
 
     /** Window drag area in ImGui coordinates (0,0 is top/left corner) */
     int dragLeft    = -1;
@@ -568,6 +772,7 @@ protected:
     bool bExplicitKeyboardFocus = false;
     bool bCaptureKeyboardOnMouseFocus = false;
     bool bHasMouseFocus = false;
+    float mCustomExtensionScale = 0.0f;
 
     /** What are we dragging right now? */
     struct DragTy {
@@ -582,5 +787,32 @@ protected:
         operator bool() const { return wnd || left || top || right || bottom; }
     } dragWhat;
 };
+
+namespace ImGui {
+#ifndef IMGUI_NAMED_TEXTURE_RESOLVER_DEFINED
+#define IMGUI_NAMED_TEXTURE_RESOLVER_DEFINED
+    namespace Detail {
+        typedef ImTextureID (*NamedTextureResolverFn)(const char* name, ImVec2* outSize);
+        inline NamedTextureResolverFn& GetNamedTextureResolver() {
+            static NamedTextureResolverFn s_Resolver = nullptr;
+            return s_Resolver;
+        }
+    }
+#endif
+#ifndef IMGUI_SET_NAMED_TEXTURE_RESOLVER_DEFINED
+#define IMGUI_SET_NAMED_TEXTURE_RESOLVER_DEFINED
+    inline void SetNamedTextureResolver(Detail::NamedTextureResolverFn fn) {
+        Detail::GetNamedTextureResolver() = fn;
+    }
+#endif
+
+#ifndef IMGUI_IMAGE_NAMED_DECLARED
+#define IMGUI_IMAGE_NAMED_DECLARED
+    /** Renders an image registered by name via ImgWindow::RegisterMemoryImage or ImgWindow::RegisterMarkdownNamedTexture.
+     *  If size is {0, 0}, automatically renders at the texture's native 1:1 pixel dimensions.
+     *  If one dimension is 0, automatically scales the other dimension while preserving aspect ratio. */
+    IMGUI_API void ImageNamed(const char* name, const ImVec2& size = ImVec2(0.0f, 0.0f), const ImVec2& uv0 = ImVec2(0.0f, 0.0f), const ImVec2& uv1 = ImVec2(1.0f, 1.0f), const ImVec4& tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f), const ImVec4& border_col = ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+#endif
+}
  
 #endif // #ifndef IMGWINDOW_H

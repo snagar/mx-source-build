@@ -35,7 +35,7 @@ inline constexpr const int MX_FEATURES_VERSION = 20261001; // Added min/max rw l
 
 inline constexpr auto PLUGIN_VER_MAJOR                  = "26"; // year
 inline constexpr auto PLUGIN_VER_MINOR                  = "10"; // month
-inline constexpr auto PLUGIN_VER_SUB                    = "1"; // sub-version
+inline constexpr auto PLUGIN_VER_SUB                    = "2"; // sub-version
 inline constexpr auto PLUGIN_VER_BUILD_DETAILS = SPECIAL_BUILD " (" GIT_SHA ")"; // sub-version with revision
 inline constexpr auto PLUGIN_REVISION                   = PLUGIN_VER_SUB;
 
@@ -921,7 +921,8 @@ typedef enum class _uiLayer
   option_generate_mission_from_a_template_layer, // v3.0.217.1
   option_external_fpln_layer,                    // v3.0.253.1
   option_ils_layer,                              // v3.0.253.6 ILS search layer
-  option_conv_fpln_to_mission,                   // v3.0.301 convert FPLN to mission
+  option_conv_fpln_to_mission,                   // v3.0.301 convert FPLN to mission. v26.10.2 opened from the "Generate" screen
+  option_stats_layer,                            // v26.10.2 flight stats: the history of the last flights
   OPTIONS_COUNT,
   flight_leg_info,
   flight_leg_info_map2d, // v3.0.200a2
@@ -1059,6 +1060,32 @@ typedef struct _latLonDouble
 } mxVec2d;
 
 
+// v26.10.2 one runway from the airports database (xp_rw): the center of both ends. A landing on it is measured from the end it landed from.
+struct mx_runway_geometry
+{
+  bool        is_valid{ false };
+  std::string end_1_name;               // rw_no_1, example "17"
+  std::string end_2_name;               // rw_no_2, example "35"
+  double      end_1_lat{ 0.0 };
+  double      end_1_lon{ 0.0 };
+  double      end_2_lat{ 0.0 };
+  double      end_2_lon{ 0.0 };
+  double      end_1_displaced_m{ 0.0 }; // displaced threshold of end 1: you can roll on it but not land on it
+  double      end_2_displaced_m{ 0.0 };
+  double      width_m{ 0.0 };
+};
+
+// v26.10.2 one stats row after a touchdown (sql.xml: landing_rollout)
+struct mx_rollout_row
+{
+  int    line_id{ -1 };
+  double lat{ 0.0 };
+  double lon{ 0.0 };
+  double gs_kt{ 0.0 };
+  double heading_true{ 0.0 };
+  bool   is_on_ground{ false };
+};
+
 typedef struct _stats_tmp_data
 {
   bool   bInitialized{ false };
@@ -1087,6 +1114,7 @@ typedef struct _stats_tmp_data
   std::string activity_s; // takeoff landing
   std::string icao{ "N/A" };
   std::string runway_s{ "N/A" };
+  missionx::mx_runway_geometry runway; // v26.10.2 the runway of a landing (both ends). is_valid = false: not on a runway
 
   std::string data_description_s; // v25.09.2
 } mx_stats_data;
@@ -1122,7 +1150,7 @@ struct mx_external_fpln_strct
   std::string simbrief_route; // v25.03.3
   std::string simbrief_route_ifps; // v25.03.3
   std::string simbrief_route_navigraph; // v25.03.3
-  
+
   std::string simbrief_sid; // v25.03.3
   std::string simbrief_star; // v25.03.3
 
@@ -1280,6 +1308,10 @@ typedef struct _leg_enrout_stats_strct
   float       fEndPayload{ 0.0f };
   float       fStartingFuel{ 0.0f };
   float       fEndFuel{ 0.0f };
+  int         iStartLineId{ 0 }; // v26.10.2 last stats line_id when the leg started (leg_stats.start_line_id)
+  int         iEndLineId{ 0 };   // v26.10.2 last stats line_id when the leg ended (leg_stats.end_line_id)
+  int         iLegSeq{ 0 };      // v26.10.2 leg_stats.leg_seq of this leg. 0 = no row (the stats database was not open)
+  std::string sStatus;           // v26.10.2 leg_stats.status: running, completed, skipped, or the flight outcome when the leg did not end
 
   float fMaxG{ 0.0f };
   float fMinG{ 0.0f };
@@ -1299,6 +1331,9 @@ typedef struct _leg_enrout_stats_strct
     fDistanceFlew = fCumulativeDistanceFlew_beforeCurrentLeg = 0.0f;
     fStartingPayload = fEndPayload = 0.0f;
     fStartingFuel = fEndFuel = 0.0f;
+    iStartLineId = iEndLineId = 0; // v26.10.2
+    iLegSeq = 0;                   // v26.10.2
+    sStatus.clear();               // v26.10.2
     fTouchDownWeight = 0.0f;
     fTouchDown_acf_m_max     = 0.0f;
     fMaxG = fMinG = 0.0f;
@@ -1387,13 +1422,32 @@ struct mx_landing_analysis
   bool   has_final_glide{ false };
   double final_max_glide_ratio{ 0.0 }; // max sink / sink of a 3 degree path at the same groundspeed, 300ft-50ft. 1.0 = on a 3 degree path
   double final_max_bank{ 0.0 };        // max |bank| between 300ft and touchdown
+  double final_steep_sink_fpm{ 0.0 };  // v26.10.2 sink at the steepest moment of the final (the row of final_max_glide_ratio)
+  double final_steep_normal_fpm{ 0.0 }; // v26.10.2 sink of a 3 degree path at the groundspeed of that row ("normal ~400 fpm")
 
   // v26.10.1 bounce (sql.xml: landing_bounces)
   bool   has_bounce_data{ false };      // the bounce query returned a row for this landing
-  int    bounce_count{ 0 };             // hops of at least 0.2 sec or 1 ft, with a re-contact in the first 10 sec
+  int    bounce_count{ 0 };             // hops of at least STATS_BOUNCE_MIN_SEC or STATS_BOUNCE_MIN_AGL_FT, with a re-contact in the first STATS_BOUNCE_WINDOW_SEC
   double max_bounce_agl_ft{ 0.0 };      // highest hop
   double max_bounce_sec{ 0.0 };         // longest hop
   double worst_recontact_fpm{ 0.0 };    // highest |V/S| when the wheels came back down
+
+  // v26.10.2 position on the runway (sql.xml: landing_rollout + the runway from xp_rw). Distances in meters.
+  bool        has_runway_data{ false };       // the touchdown was on a runway of the airports database
+  std::string landing_runway_s;               // the end the plane landed from, example "17"
+  double      runway_length_m{ 0.0 };         // end to end
+  double      runway_width_m{ 0.0 };
+  double      landing_distance_m{ 0.0 };      // from the (displaced) threshold to the far end
+  double      td_from_threshold_m{ 0.0 };     // touchdown distance after the threshold. Negative: before it (on the displaced part)
+  double      td_lateral_m{ 0.0 };            // touchdown distance from the center line. Negative = left of it
+  double      runway_left_m{ 0.0 };           // runway ahead of the touchdown
+  bool        is_overrun{ false };            // passed the far end (more than STATS_RUNWAY_END_MARGIN_M) before slowing below STATS_RUNWAY_ROLLOUT_END_KT
+  double      overrun_gs_kt{ 0.0 };           // groundspeed when it passed the end
+  double      overrun_max_m{ 0.0 };           // furthest point past the end, until the plane stopped
+  bool        has_stopped{ false };           // the plane slowed below STATS_PATH_STOPPED_GS_MS during the rollout window
+  bool        is_excursion{ false };          // left the side of the runway (center more than width/2 + STATS_RUNWAY_SIDE_MARGIN_M) above STATS_RUNWAY_SIDE_EXIT_MIN_KT
+  double      excursion_gs_kt{ 0.0 };         // groundspeed when it left the side
+  double      excursion_max_m{ 0.0 };         // furthest point past the runway edge, while above STATS_RUNWAY_SIDE_EXIT_MIN_KT
 
   // score
   float                    base_score{ 0.0f };           // v26.10.1 0..100 from the touchdown measures
@@ -1401,7 +1455,10 @@ struct mx_landing_analysis
   float                    landing_score{ 0.0f };        // final score: max(0, base_score + bounce_penalty)
   bool                     is_doctor{ false };           // touchdown or re-contact above the hard landing limits
   bool                     is_doctor_recontact{ false }; // v26.10.1 "Call the Doctor" because of the re-contact after a bounce (the first touchdown was below the limits)
-  std::string              grade_s{ "N/A" };             // Butter, Smooth, Acceptable, Firm, Hard, Call the Doctor
+  bool                     is_impact{ false };           // v26.10.2 touchdown or re-contact above the <landing_grade> impact limits
+  bool                     is_impact_recontact{ false }; // v26.10.2 "Impact" because of the re-contact after a bounce (the first touchdown was below the impact limits)
+  bool                     is_crash{ false };            // v26.10.2 X-Plane reported a crash (a "crash" stats row) up to STATS_CRASH_AFTER_LANDING_SEC after the touchdown, before the next takeoff (sql.xml: landing_crash). Not graded
+  std::string              grade_s{ "N/A" };             // Butter, Smooth, Acceptable, Firm, Hard, Call the Doctor, Impact (v26.10.2), Crash (v26.10.2), Runway overrun (v26.10.2), Runway excursion (v26.10.2)
   std::vector<std::string> vecFindings;                  // notes displayed under the table
 };
 
@@ -1425,6 +1482,12 @@ struct mx_mission_stats_strct // v3.0.255.1
   // v26.10.1 decimated copies used only by the ImPlot graph (keeps the draw list under 64K vertices)
   std::vector<double>      vecPlotElevSeq_d, vecPlotElev_ft_d;
   std::vector<double>      vecPlotAirSeq_d,  vecPlotAirSpeed_d;
+  // v26.10.2 flight clock: minutes from the first row, without gaps (pause, time change). Same rule as "time flew".
+  //          The graphs use it as X: rows are written faster around takeoffs and landings, so the row number is not time.
+  std::vector<double>      vecElapsedMin_d;    // one value for each stats row (index = seq)
+  std::vector<double>      vecPlotElevMin_d;   // X of vecPlotElev_ft_d (the minute of each plotted point)
+  std::vector<double>      vecPlotAirMin_d;    // X of vecPlotAirSpeed_d
+  double                   total_elapsed_min{ 0.0 };
 
 
   std::map<int, std::string> map_flight_pacing; // v25.09.2
@@ -1470,6 +1533,8 @@ struct mx_mission_stats_strct // v3.0.255.1
 
     vecPlotElevSeq_d.clear(); vecPlotElev_ft_d.clear();   // v26.10.1
     vecPlotAirSeq_d.clear();  vecPlotAirSpeed_d.clear();  // v26.10.1
+    vecElapsedMin_d.clear(); vecPlotElevMin_d.clear(); vecPlotAirMin_d.clear(); // v26.10.2
+    total_elapsed_min = 0.0;                                                     // v26.10.2
 
     min_elev_ft = max_elev_ft = -4000.0;
     min_airspeed = max_airspeed = 0.0;
@@ -1483,6 +1548,175 @@ struct mx_mission_stats_strct // v3.0.255.1
     pitchScore = rollScore = gForceScore = 0.0f;
   }
 
+};
+
+// -------------------------------------
+// v26.10.2 The flight_info row of a stats database (id = 1).
+//          has_row = false: the database was written before v26.10.2, or the table is empty.
+struct mx_stats_flight_info
+{
+  bool        has_row{ false };
+  int         schema_version{ 0 }; // PRAGMA user_version of the file (1 = no leg_stats table)
+  std::string flight_id;           // yyyymmdd_hhmmss, OS local time at mission start
+  std::string plugin_version;
+  std::string mission_key;
+  std::string mission_title;
+  std::string os_start_time;       // UTC
+  std::string os_end_time;         // UTC
+  std::string outcome;             // running, success, failure, aborted, stopped, interrupted
+  std::string outcome_reason;
+  bool        crashed{ false };
+  std::string crash_source;
+  std::string route_s;
+  std::string scoring_xml;         // the <scoring> the flight was graded with
+
+  void reset() { *this = mx_stats_flight_info(); }
+};
+
+// -------------------------------------
+// v26.10.2 One plane_meta row: a plane flown during the flight.
+//          line_id = last stats row written before this plane was loaded (0 = mission start).
+struct mx_stats_plane_info
+{
+  int         line_id{ 0 };
+  std::string acf_file;
+  std::string acf_icao;
+  std::string acf_desc;
+  std::string category;
+  bool        is_helicopter{ false };
+  float       empty_kg{ 0.0f };
+  float       max_kg{ 0.0f };
+  float       max_fuel_kg{ 0.0f };
+};
+
+// -------------------------------------
+// v26.10.2 Everything the stats screens display for one flight (one stats database file).
+//          Filled by data_manager::fetch_mission_stats_cai() in a background thread. The UI reads it only after the fetch state is "fetch_ended".
+//          Each screen owns its own instance: the end screen, and later the history screen (one or two flights).
+struct mx_stats_view_data
+{
+  std::string                                  stats_db_path;
+  bool                                         flag_scoring_missing{ false }; // no <scoring> found, the scores are 0
+  missionx::mx_mission_stats_strct             stats;
+  missionx::mx_stats_flight_info               flight_info;
+  std::vector<missionx::mx_stats_plane_info>   vecPlanes; // the order flown (plane_meta.line_id ascending)
+  std::vector<missionx::mx_enrout_stats_strct> vecLegs;   // newest leg first, same order as data_manager::vecPreviousLegStats4UIDisplay. Empty before schema 2
+
+  void reset()
+  {
+    stats_db_path.clear();
+    flag_scoring_missing = false;
+    stats.reset();
+    flight_info.reset();
+    vecPlanes.clear();
+    vecLegs.clear();
+  }
+
+  // The plane flown at stats row in_line_id: the last plane_meta row with a smaller line_id. nullptr when there are no plane rows.
+  [[nodiscard]] const missionx::mx_stats_plane_info* get_plane_at_line_id_cai(const int in_line_id) const
+  {
+    const missionx::mx_stats_plane_info* plane_found = nullptr;
+    for (const auto& plane : vecPlanes)
+    {
+      if (plane.line_id < in_line_id)
+        plane_found = &plane;
+    }
+    return plane_found;
+  }
+
+  // The max weight (kg) of the plane flown at stats row in_line_id. 0 when unknown.
+  [[nodiscard]] float get_max_weight_kg_at_line_id_cai(const int in_line_id) const
+  {
+    const auto* plane = get_plane_at_line_id_cai(in_line_id);
+    return (plane == nullptr) ? 0.0f : plane->max_kg;
+  }
+};
+
+// -------------------------------------
+// v26.10.2 One saved flight in the stats screen list (one history file). Filled by data_manager::fetch_stats_history_list_cai().
+struct mx_stats_history_row
+{
+  std::string file_path;
+  std::string file_name;
+  std::string saved_local_time_s; // "yyyy-mm-dd hh:mm", from the file name (OS local time of the save)
+  std::string mission_title;
+  std::string route_s;
+  std::string outcome;            // success, failure, aborted. Empty: an older file without flight_info
+  bool        crashed{ false };
+  std::string plane_s;            // the first plane flown (acf_desc, else the acf file name)
+  std::string plane_icao_s;
+  int         planes_count{ 0 };
+  int         landings_count{ 0 };
+  double      time_flew_sec{ 0.0 };
+  int         schema_version{ 0 };
+  bool        is_readable{ false };
+  std::string error_s;            // why the file can not be read
+};
+
+// -------------------------------------
+// v26.10.2 Flight path (2D/3D plots): one part of a flight, picked by waypoint and range.
+
+// How much of a waypoint to show. Distance is measured along the flown path.
+enum class mx_path_range_enum : uint8_t
+{
+  up_to_5nm,  // arrival: the last 5nm before the landing (final and the turn to it), departure: the first 5nm after the takeoff
+  up_to_20nm,
+  whole_leg   // the leg from the previous waypoint (not offered for the departure)
+};
+
+// One entry of the waypoint list. Built by data_manager::build_flight_path_sections_cai() from mx_stats_view_data.
+struct mx_path_section
+{
+  enum class type_enum : uint8_t { departure, leg, full_flight };
+
+  type_enum   type{ type_enum::full_flight };
+  std::string label;             // "Departure - KSEA", "Leg 1 - W16", "Full flight"
+  int         leg_seq{ 0 };      // leg_stats.leg_seq, 0 for departure and full flight
+  std::string leg_status;        // running, completed, skipped...
+  int         start_line_id{ 0 };
+  int         end_line_id{ 0 };  // 0 = the last stats row (running leg, crash, departure, full flight)
+
+  [[nodiscard]] bool is_skipped_cai() const { return leg_status == "skipped"; }
+};
+
+// One stats row, the columns the flight path needs.
+struct mx_flight_path_row
+{
+  int         line_id{ 0 };
+  double      lat{ 0.0 };
+  double      lon{ 0.0 };
+  double      elev_mt{ 0.0 };
+  double      agl_mt{ 0.0 };
+  double      airspeed_kt{ 0.0 };
+  double      groundspeed_ms{ 0.0 };
+  double      clock_sec{ 0.0 }; // local_date_days * 86400 + local_time_sec
+  std::string activity;         // takeoff, landing, approach...
+};
+
+// The plot data of one (section, range). Filled in a background thread by data_manager::fetch_flight_path_section_cai().
+struct mx_flight_path_data
+{
+  // all vectors have the same size: one value for each plotted point (thinned, at most STATS_PATH_MAX_POINTS)
+  std::vector<double> vecEast_ft;      // X: east of the anchor
+  std::vector<double> vecNorth_ft;     // Y: north of the anchor
+  std::vector<double> vecAlt_ft;       // Z: altitude MSL
+  std::vector<double> vecAgl_ft;
+  std::vector<double> vecAirspeed_kt;
+  std::vector<double> vecDist_nm;      // along the path, from the anchor (negative = before it)
+  std::vector<double> vecMinutes;      // flight clock from the first point, without gaps
+  std::vector<size_t> vecSegmentStart; // index of the first point of each drawn segment. A new segment starts after a reposition (jump)
+
+  int         anchor_index{ -1 };       // the landing (arrival) or the takeoff (departure) point. -1: no anchor in this section
+  double      origin_lat{ 0.0 };        // the point east/north are measured from: the anchor, else the first point
+  double      origin_lon{ 0.0 };
+  double      origin_alt_ft{ 0.0 };     // altitude MSL of that point (merged plots of two airports: height above it)
+  int         anchor_line_id{ 0 };
+  double      shown_nm{ 0.0 };          // path length shown before (arrival) or after (departure) the anchor
+  bool        flag_range_clipped{ false }; // the section is shorter than the range asked for
+  int         rows_read{ 0 };
+  std::string range_label;              // "up to 5 nm", "up to 20 nm (leg is 9.6 nm)", "whole leg"
+
+  [[nodiscard]] bool empty_cai() const { return vecEast_ft.empty(); }
 };
 
 typedef struct _mx_clock_time
@@ -1544,7 +1778,7 @@ inline constexpr std::string_view activity_number_picked       = "activity_numbe
   // v25.06.1 add structs namespace
   namespace structs
   {
-    struct curl_request_data 
+    struct curl_request_data
     {
       // bool flag_use_post = false; // if true, use post_request_field_s
 
@@ -1566,8 +1800,8 @@ inline constexpr std::string_view activity_number_picked       = "activity_numbe
       std::string login_pass = "";
 
 
-      void init() 
-      { 
+      void init()
+      {
         call_id = 0;
         how_many_tries = 2;
         timeout        = 25L;
@@ -1584,8 +1818,8 @@ inline constexpr std::string_view activity_number_picked       = "activity_numbe
         login_pass.clear();
       }
 
-      void reset() 
-      { 
+      void reset()
+      {
         init();
       }
 
@@ -1667,7 +1901,7 @@ inline constexpr std::string_view activity_number_picked       = "activity_numbe
       }
 
       static void reset()
-      { 
+      {
         strct_expected_location_data();
       }
 
@@ -1694,12 +1928,12 @@ inline constexpr std::string_view activity_number_picked       = "activity_numbe
       std::string prev_acf = "";
 
       void reset()
-      { 
+      {
         prev_acf.clear();
         active_acf.clear();
         active_acf_path.clear();
         active_acf_icao.clear();
-      }      
+      }
     };
 
   struct MissionPayloads {

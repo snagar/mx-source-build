@@ -35,8 +35,8 @@ Here are the major additions to the framework since it was forked:
   
     _**N.B.:** We did this so your code shouldn't have to change at all. We intentionally hide ImGui's new per-window atlas management (which would needlessly complicate 98% of X-Plane plugins). ImgWindow just auto-detects your ImGui version at compile time and does the heavy lifting for you._
 
-+ **A dynamic "Panel Graphics Bridge":**<br>
-  If you're using ImGui v1.92+, you can finally take advantage of the modern X-Plane 12.4.4+ **Panel Graphics API** (Vulkan/Metal) _without_ forcing your plugin to require `XPLM440=1`!
++ **A universal, dynamic "Panel Graphics Bridge":**<br>
+  Across **all** supported Dear ImGui versions (legacy v1.7x/v1.8x, interim v1.90 -- v1.91, and modern v1.92+), you can take full advantage of the modern X-Plane 12.4.4+ **Panel Graphics API** (Vulkan/Metal) _without_ forcing your plugin to require `XPLM440=1` or upgrading your bundled ImGui dependency!
   
 > [!NOTE]
 > This is a **critical build choice!**
@@ -86,13 +86,20 @@ installed (compatible with Dear ImGui v1.78 WIP through v1.92+, with native supp
   - **Top-Left Origin**: `WindowGeometry::FromTopLeft(x, y, w, h)` provides natural 2D desktop origin coordinates.
   - **Safe Out-of-Bounds Recovery**: `WindowGeometry::Sanitize(...)` audits saved window coordinates on startup, recovering windows from disconnected monitors or resolution shifts while preserving "poor-man's docking" margins.
   - **VR-Ready**: Automatically initializes VR window geometry and aspect ratio via `XPLMSetWindowGeometryVR`.
-* **`contrib/` UI Suite** - Bundled flight-deck-grade Dear ImGui extensions and immediate-mode widgets (see [`contrib/README.md`](contrib/README.md)):
-  - **`TimedTooltip`**: Polite, hover-delayed stationary tooltips that lock in place and auto-dismiss after reading.
-  - **`Markdown` (`ImGui::Markdown` & `ImGui::MD`)**: Rich CommonMark parsing and rendering with dynamic font scaling, token lookahead, hanging bullet indents, thematic breaks, responsive fenced code blocks, and custom styling tags.
+  - **Proportional Window & Font Scaling**: `ScaleWindowGeometry(from_scale, to_scale)`, `ResizeToScale(target_scale)`, and `ConvertSizeForScale(...)` resize the X-Plane window proportionally to font zoom changes with top-left anchoring, maintaining cockpit bounds and VR/OS window contracts. Supports `SetUnscaledChrome(fixed_w, fixed_h)` so composite windows with fixed headers, footers, or sidebars scale their content canvas without distorting invariant UI chrome.
+  - **Dynamic Decoration-Aware Top Menu Bar Clearance**: Automatically adjusts top screen clamping (`GetTopMargin()`) based on window decoration style (`RoundRectangle` vs. `SelfDecorated`), ensuring title bars and drag handles never get trapped under the X-Plane top menu bar trigger zone.
+* **ImGee UI Toolkit (`contrib/ImGee`, v1.0.0)** & **Community Container (`contrib/`)** - `ImgWindow/contrib/` is an open container for community third-party add-ons, anchored by **ImGee** -- a standalone-ready, single-header Dear ImGui UI toolkit that transforms debug-style windows into polished desktop and cockpit panels (see [ImGee User Guide](docs/ImGee_User_Guide.md), [ImGee UX Design Manifesto](docs/ImGee_UX_Design_Manifesto.md), and [`contrib/ImGee/README.md`](contrib/ImGee/README.md)):
+  - **`TimedTooltip`**: Polite, hover-delayed stationary tooltips that lock in place, clamp to viewport boundaries, scale cleanly with window zoom, and auto-dismiss after reading.
+  - **`Markdown` (`ImGui::Markdown` & `ImGui::MD`)**: Rich CommonMark parsing and rendering with dynamic font scaling, token lookahead, hanging bullet indents, thematic breaks, responsive fenced code blocks, custom styling tags, **continuous vertical baseline alignment in `<pill>`/`<badge>`/`<kbd>`**, **centering primitives (`<center>` and `-> text <-`)**, **interactive tristate column sorting**, **column divider & total width resizing**, **multi-cycle A/B toggle memory**, **two-tier metadata comment persistence (`<!-- table-preset: ... -->` / `<!-- table-state: ... -->`)** with turnkey serialization (`ApplyTableStateToMarkdown`), and **3-tier image services** (named memory textures, local disk images, zero-stall **Tier 3 asynchronous remote web image loading** with background decoding, auto-constraints to viewport width, Pandoc/HTML sizing syntax, border treatments, and VRAM texture cache deduplication).
+  - **Named Texture & In-Memory Image Service**: Register raw RGBA pixel buffers or decode PNG/JPG byte arrays directly into GPU textures with zero disk/network I/O (`ImgWindow::RegisterNamedTexture`, `ImgWindow::RegisterMemoryImage`, `UnregisterNamedTexture`, `GetNamedTexture`, `ImGui::ImageNamed`). Automatically aliased into Markdown (`![Alt](name)`), `StyledText` (`<img name="name" width=... />`), and native icon capsules.
+  - **Typography Registry & Inline `StyledText` Engine**: Semantic 9-slot hierarchy (`ImFontRole::Regular`, `Title`, `Small`, `Bold`, `BoldLarge`, `Monospace`, `Italic`, `MonospaceMedium`, `BoldItalic`) with 4-tier fallback and commutative scoped stack (`ScopedFontRole`). Rich inline text flows (`<b>`, `<i>`, `<mono>`, `<color>`, `<pill>`, `<badge>`, `<kbd>`, `<img name=...>`) with continuous baseline alignment.
+  - **Badges, Pills & Unary Annunciators**: Native icon capsules (`<pill icon=... color=...>`, `<badge icon=...>`), standalone unary annunciators (`<pill icon=... />`), and direct C++ APIs (`ImGui::PillNamed`, `ImGui::BadgeNamed`).
+  - **Procedural Vector Icon Engine & Icon Buttons (`imgui_icons.h`)**: Zero-texture, zero-font procedural vector icon engine rendering antialiased geometry directly to `ImDrawList` (`undo`, `redo`, `caret-up`, `caret-down`, `check`, `gear`, `plane`, etc.). Fully eliminates missing-glyph diamond boxes (`?`). Integrates into `ButtonMD` (rendering vector icons directly on button faces with hand cursor and rich Markdown tooltips), dedicated `IconButton` / `ButtonIcon` immediate-mode push-buttons, Markdown `<icon ...>`, emoji shortcodes (`:gear:`), link macros (`#[^](ICON_CARET_UP)`), and automatic raw Unicode glyph rescue (`▲`, `▼`, `↺`, `✓`, `⚙`).
+  - **Directional Popups, Item Anchoring & SelectPulldown**: Font-scale invariant item-relative popups (`OpenPopupAtItem`, `BeginAnchoredPopup`) with sub-pixel alignment, muscle-memory toggle protection, headroom reporting (`GetLastPopupHeight`), and 1-line dataref selectors (`SelectPulldown`) with closed scroll pass-through and open wheel cycling.
   - **`CopyButton` Suite**: Standalone and chaser copy buttons (`CopyButton`, `CopyLastItemButton`, `CopyBufferButton`, `CopyTextFieldButton`) with procedural vector icons, anti-twitch fixed width layouts, and automatic chaser extraction from preceding `InputText` fields.
-  - **Widgets**: Animated toggle switches (`ToggleButton`), mouse-wheel sliders/combos (`MouseWheelSlider`), 1-click resets with undo history, clickable web/doc links (`ButtonLink`, `TextLink`), status badges/pills (`Badge`, `Pill`, `<kbd>`), and activity spinners (`Spinner`, `CountdownTimer`).
+  - **Widgets & Themes**: Animated toggle switches (`ToggleButton`), mouse-wheel sliders/combos (`MouseWheelSlider`, `ComboWithReset`), 1-click resets with undo history (`↺`/`↻`), clickable web/doc links (`ButtonLink`, `TextLink`), status badges/pills (`Badge`, `Pill`, `<kbd>`), rotary avionics knobs (`Knob`, `DimmerKnob`), non-blocking file pickers (`FilePickerCombo`, `OpenFileDialog`, `SaveFileDialog`), activity spinners (`Spinner`, `CountdownTimer`), and curated themes (`StyleColorsCharcoal`, `StyleColorsRusty`).
   - **Mouse-Wheel Scroll-Defeat**: Automatic protection on scrollable viewports preventing inadvertent slider, toggle, or combobox adjustment when scrolling through content.
-  - **Turnkey Inclusion**: `#include "contrib.h"` activates the entire suite in one line, with 3-tier namespacing (sub-namespaces, root `ImGui::` shorthands, or opt-in global namespaces).
+  - **Turnkey Inclusion**: `#include "contrib/imgee.h"` activates strictly the ImGee toolkit in one line (or `#include "contrib.h"` for `ImgWindow`'s full community umbrella header), with 3-tier namespacing (sub-namespaces, root `ImGui::` shorthands, or opt-in global namespaces).
 
 ## No longer supported (see original repository):
 
@@ -114,10 +121,10 @@ If you maintain an existing plugin that uses `ImgWindow`, you can safely drop in
 ## 🗺️ How-To Guides ("TripTiks")
 
 For quick, scenario-based walkthroughs with copy-pasteable CMake snippets and code:
-* 🚀 **[TripTik 1: Get Started With ImgWindow](docs/how-to/Get-Started-With-ImgWindow.md)** — The 6-step starter guide for creating your first window, command-first dispatching, and choosing your build mode.
-* 🛠️ **[TripTik 2: Support Panel Graphics](docs/how-to/Support-Panel-Graphics.md)** — The 10-minute migration checklist for updating existing v1 plugins.
-* 🖼️ **[TripTik 3: Render Custom Textures](docs/how-to/Render-Custom-Textures.md)** — Using `ImgWindow::CreateTexture()` to draw images without raw OpenGL pipeline code.
-* 🎓 **[Ground School](docs/how-to/Ground-School.md)** — Fundamental Dear ImGui immediate-mode principles in X-Plane.
+* 🚀 **[TripTik 1: Get Started With ImgWindow](docs/how-to/Get-Started-With-ImgWindow.md)** -- The 6-step starter guide for creating your first window, command-first dispatching, and choosing your build mode.
+* 🛠️ **[TripTik 2: Support Panel Graphics](docs/how-to/Support-Panel-Graphics.md)** -- The 10-minute migration checklist for updating existing v1 plugins.
+* 🖼️ **[TripTik 3: Render Custom Textures](docs/how-to/Render-Custom-Textures.md)** -- Using `ImgWindow::CreateTexture()` to draw images without raw OpenGL pipeline code.
+* 🎓 **[Ground School](docs/how-to/Ground-School.md)** -- Fundamental Dear ImGui immediate-mode principles in X-Plane.
 
 ---
 
@@ -127,7 +134,7 @@ If you are new to the framework or building a plugin from scratch, understanding
 
 At a high level, using the framework requires only two core components:
 1. **`ImgFontAtlas`**: A shared class that manages your fonts and safely bakes the texture to the GPU. You instantiate this once for your entire plugin.
-2. **`ImgWindow`**: The base class you must subclass. By overriding the `buildInterface()` method, you define your standard ImGui UI layout. The framework handles the rest—intercepting mouse/keyboard events and generating the draw lists for X-Plane.
+2. **`ImgWindow`**: The base class you must subclass. By overriding the `buildInterface()` method, you define your standard ImGui UI layout. The framework handles the rest -- intercepting mouse/keyboard events and generating the draw lists for X-Plane.
 
 👉 **[Read the Basic Usage Guide](docs/Basic-Usage-Guide.md)** for a complete walkthrough of the architecture, code examples for creating your windows, and details on managing the shared font atlas.
 
@@ -260,4 +267,4 @@ Once you have a final, working set of changes to `ImgWindow`:
 
 If anything is wrong or missing from this README, please either fix it and send us a PR, or let us know.
 
-This file was last updated in *October, 2026* by Steven L. Goldberg.
+This file was last updated in *November, 2026* by Steven L. Goldberg.

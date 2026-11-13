@@ -22,7 +22,7 @@ public:
 
     dref_acf_m_empty_weight = XPLMFindDataRef("sim/aircraft/weight/acf_m_empty"); // plane empty weight // v3.0.213.3
     dref_acf_m_max_weight   = XPLMFindDataRef("sim/aircraft/weight/acf_m_max");   // plane max weight (payload + fuel) // v3.0.213.3
-    dref_rw_acf_m_fuel_tot_lbs     = XPLMFindDataRef("sim/aircraft/weight/acf_m_fuel_tot");  // writable, plane total fuel in tanks, in LBS.
+    dref_rw_acf_m_fuel_tot_kg      = XPLMFindDataRef("sim/aircraft/weight/acf_m_fuel_tot");  // writable, plane total fuel capacity. v26.10.2 the values are kg (DataRefs.txt says "appears to be in lbs")
     dref_acf_m_fixed_f        = XPLMFindDataRef("sim/flightmodel/weight/m_fixed");  // plane payload, in kg.
 
     dref_acf_fuel_totalizer_init_kg        = XPLMFindDataRef("sim/cockpit2/fuel/fuel_totalizer_init_kg");  // writeable, plane total fuel in tanks (kg).
@@ -102,10 +102,10 @@ public:
 
     if ( XPLMGetDatai( dref_xplane_version_i) < 120000) // missionx::XP12_VERSION_NO
       dref_flap_ratio_f = XPLMFindDataRef("sim/cockpit2/controls/flap_ratio");
-    else 
+    else
       dref_flap_ratio_f = XPLMFindDataRef("sim/cockpit2/controls/flap_system_deploy_ratio"); // v3.0.303.8 xp12 compatibility
-      
-    
+
+
     dref_projection_matrix_3d_arr = XPLMFindDataRef("sim/graphics/view/projection_matrix_3d"); // v3.305.4
     dref_outside_air_temp_degc    = XPLMFindDataRef("sim/cockpit2/temperature/outside_air_temp_degc"); // v24.03.1
 
@@ -119,16 +119,16 @@ public:
 
     fps_f_dref = XPLMFindDataRef("sim/time/framerate_period"); // v26.03.1
 
-    dref_acf_vno_f = XPLMFindDataRef("sim/time/framerate_period"); // v26.09.2 kias(“knots of indicated airspeed.” Knots are a unit of speed)
+    dref_acf_vno_f = XPLMFindDataRef("sim/aircraft/view/acf_Vno"); // v26.10.2 fixed, was "sim/time/framerate_period" // v26.09.2 kias(“knots of indicated airspeed.” Knots are a unit of speed)
   }
 
   inline static XPLMDataRef dref_xplane_version_i             ;        // v3.0.241.5 xplane version number as integer
-                                                
+
   inline static XPLMDataRef dref_xplane_using_modern_driver_b ; // v3.0.241.5
 
   inline static XPLMDataRef dref_acf_m_empty_weight ; // plane empty weight // v3.0.213.3
   inline static XPLMDataRef dref_acf_m_max_weight   ; // plane max weight (payload + fuel) // v3.0.213.3
-  inline static XPLMDataRef dref_rw_acf_m_fuel_tot_lbs     ; // plane max fuel payload // v26.09.2
+  inline static XPLMDataRef dref_rw_acf_m_fuel_tot_kg      ; // plane max fuel payload (kg) // v26.10.2 renamed from dref_rw_acf_m_fuel_tot_lbs // v26.09.2
   inline static XPLMDataRef dref_acf_m_fixed_f        ; // plane payload // v26.09.2
   inline static XPLMDataRef dref_acf_fuel_totalizer_init_kg     ; // plane total fuel tanks weight // v26.09.2
 
@@ -207,11 +207,11 @@ public:
 
 
   inline static XPLMDataRef dref_override_planepath_i_arr; // v3.0.301 B4
-  inline static XPLMDataRef dref_projection_matrix_3d_arr; // v3.305.4 
-  inline static XPLMDataRef dref_outside_air_temp_degc; // v24.03.1 sim/cockpit2/temperature/outside_air_temp_degc 
+  inline static XPLMDataRef dref_projection_matrix_3d_arr; // v3.305.4
+  inline static XPLMDataRef dref_outside_air_temp_degc; // v24.03.1 sim/cockpit2/temperature/outside_air_temp_degc
 
   // X-Plane 11 specific Datarefs
-  inline static XPLMDataRef dref_flap_ratio_f; 
+  inline static XPLMDataRef dref_flap_ratio_f;
 
 
   // X-Plane 12 specific Datarefs

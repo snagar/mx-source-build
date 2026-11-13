@@ -3,6 +3,8 @@
 // =============
 // General purpose string tokenizer (C++ string version)
 //
+// http://www.songho.ca/misc/tokenizer/tokenizer.html
+//
 // The default delimiters are space(" "), tab(\t, \v), newline(\n),
 // carriage return(\r), and form feed(\f).
 // If you want to use different delimiters, then use setDelimiter() to override
@@ -196,43 +198,5 @@ Tokenizer::splitByStringDelimeter()
 
   return this->listTokens;
 }
-
-
-/***
-http://www.songho.ca/misc/tokenizer/tokenizer.html
-
-#include "Tokenizer.h"
-#include <iostream>
-#include <string>
-using namespace std;
-
-int main(int argc, char* argv[])
-{
-// instanciate Tokenizer class
-Tokenizer str("This is a very long string.");
-string token;
-
-// Tokenizer::next() returns a next available token from source string
-// If it reaches EOS, it returns zero-length string, "".
-while((token = str.next()) != "")
-{
-cout << token << endl;
-}
-return 0;
-}
-
-
-The output should be like this:
-===============================
-This
-is
-a
-very
-long
-string.
-
-
-***/
-
 
 }

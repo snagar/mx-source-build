@@ -578,6 +578,7 @@ const static ^std::string ^PROP_MISSION_CURRENT_LEG                        ^ "mi
 const static ^std::string ^PROP_MISSION_STATE                              ^ "mission_state"; ^// MISSION // savepoint
 const static ^std::string ^PROP_MISSION_ABORT_REASON                       ^ "mission_abort_reason"; ^// MISSION // savepoint
 const static ^std::string ^SAVEPOINT_PLANE_LATITUDE                        ^ "savepoint_latitude"; ^// MISSION // savepoint // Mission Savepoint plane location
+const static ^std::string ^SAVEPOINT_PLANE_ACF_FILE                        ^ "savepoint_plane_acf_file"; ^// v26.10.2 MISSION // savepoint // user plane .acf file name (no path) when the savepoint was created. Compared when loading a savepoint
 const static ^std::string ^SAVEPOINT_PLANE_LONGITUDE                       ^ "savepoint_longitude"; ^// MISSION // savepoint
 const static ^std::string ^SAVEPOINT_PLANE_ELEVATION                       ^ "savepoint_elevation"; ^// MISSION // savepoint
 const static ^std::string ^SAVEPOINT_PLANE_SPEED                           ^ "savepoint_speed"; ^// MISSION // savepoint // groundspeed
@@ -638,6 +639,7 @@ const static ^std::string^                OPT_AI_SERVER_URL                     
 const static ^std::string^                OPT_AI_AUTH_KEY                                        ^ "ai_auth_key"; ^// v26.08.1
 const static ^std::string^                OPT_AI_DEFAULT_AUTH_KEY                                ^ "missionx_no_auth"; ^// v26.08.1 This represent the fallback api key value the plugin will send.
 const static ^std::string^                OPT_AI_LLM_SERVER_TIMEOUT                              ^ "llm_server_timeout"; ^// v26.08.1
+const static ^std::string^                OPT_STATS_HISTORY_MAX_FILES                            ^ "stats_history_max_files"; ^// v26.10.2 int, how many flights to keep in {missionx}/db/history. 0 = do not save
 //const static ^std::string^                OPT_SEMI_ACTIVITY_PICKED_BY_THE_USER                   ^ "semi_activity_picked_by_the_user"; ^// v26.09.1 Used with the user semi activity screen.
 //const static ^std::string^                OPT_AI_USE_LLM_TO_GENERATE_MISSION                     ^ "use_llm_to_generate_mission"; ^// v26.09.1 Used with the user semi activity screen.
 //const static ^std::string^                OPT_AI_USE_LLM_TO_SUGGEST_WAYPOINTS                    ^ "use_llm_to_suggest_waypoints"; ^// v26.09.2 Used with the user semi activity screen.
@@ -739,7 +741,9 @@ const static ^std::string^                BITMAP_BTN_WORLD_PATH_24X18           
 const static ^std::string^                BITMAP_BTN_PREPARE_MISSION_24X18                       ^ "btn_prepare_mission_240x180.png"; ^// v3.0.251.1
 const static ^std::string^                BITMAP_BTN_FLY_MISSION_24X18                           ^ "btn_fly_mission_240x180.png"; ^// v3.0.251.1
 const static ^std::string^                BITMAP_BTN_SETUP_24X18                                 ^ "btn_setup_240x180.png"; ^// v3.0.251.1
-const static ^std::string^                BITMAP_BTN_CONVERT_FPLN_TO_MISSION_24X18               ^ "btn_fpln_convert_to_mission_240x180.png"; ^// v3.0.301
+// const static ^std::string^               BITMAP_BTN_CONVERT_FPLN_TO_MISSION_24X18               ^ "btn_fpln_convert_to_mission_240x180.png"; ^// v3.0.301
+const static ^std::string^                BITMAP_BTN_CONVERT_FPLN_TO_MISSION_15X15               ^ "btn_fpln_convert_to_mission_150x150.jpg"; ^// v3.0.301
+const static ^std::string^                BITMAP_BTN_STATS_24X18                                 ^ "btn_stats_240x180.png"; ^// v26.10.2 home screen "Stats" button
 const static ^std::string^                BITMAP_BTN_TOOLBAR_SETUP_64x64                         ^ "btn_setup_icon_64x64.png"; ^// v3.0.251.1
 const static ^std::string^                BITMAP_BTN_QUIT_48x48                                  ^ "btn_quit_48x48.png"; ^// v3.0.251.1
 const static ^std::string^                BITMAP_BTN_SAVE_48x48                                  ^ "btn_save_48x48.png"; ^// v3.0.251.1
@@ -968,6 +972,44 @@ const static ^std::string^               STATS_LANDING                          
 const static ^std::string^               STATS_TAKEOFF                                  ^ "takeoff"; ^//"T"; ^// "takeoff"  // v3.0.255.1
 const static ^std::string^               STATS_TRANSITION                               ^ "transition"; ^//"T"; ^// "takeoff"  // v3.0.255.1
 const static ^std::string^               STATS_APPROACH                                 ^ "approach"; ^// v26.10.1 dense stats rows from 50m AGL until touchdown
+const static ^std::string^               DB_TABLE_FLIGHT_INFO                           ^ "flight_info"; ^// v26.10.2 stats db table: one row with the flight metadata (mission, version, outcome, route)
+const static ^std::string^               DB_TABLE_PLANE_META                            ^ "plane_meta"; ^// v26.10.2 stats db table: one row for each plane flown. line_id = last stats row before the plane was loaded (0 = mission start)
+const static ^std::string^               DB_TABLE_LEG_STATS                             ^ "leg_stats"; ^// v26.10.2 stats db table: one row for each finished flight leg (distance, fuel, payload)
+const static ^std::string^               STATS_CRASH                                    ^ "crash"; ^// v26.10.2 stats row written when X-Plane reports a crash (XPLM_MSG_PLANE_CRASHED)
+const static ^std::string^               FLIGHT_OUTCOME_RUNNING                         ^ "running"; ^// v26.10.2 flight_info.outcome value until the flight ends
+const static ^std::string^               FLIGHT_OUTCOME_SUCCESS                         ^ "success"; ^// v26.10.2 flight_info.outcome: mission completed
+const static ^std::string^               FLIGHT_OUTCOME_FAILURE                         ^ "failure"; ^// v26.10.2 flight_info.outcome: mission failed
+const static ^std::string^               FLIGHT_OUTCOME_ABORTED                         ^ "aborted"; ^// v26.10.2 flight_info.outcome: mission aborted (crash, fail timer, script)
+const static ^std::string^               FLIGHT_OUTCOME_STOPPED                         ^ "stopped"; ^// v26.10.2 flight_info.outcome: the user stopped the mission
+const static ^std::string^               FLIGHT_OUTCOME_INTERRUPTED                     ^ "interrupted"; ^// v26.10.2 flight_info.outcome: X-Plane or the plugin stopped while the mission was running
+const static ^std::string^               LEG_STATUS_COMPLETED                           ^ "completed"; ^// v26.10.2 leg_stats.status: the leg ended normally. While flying: "running". A leg that did not end: the flight outcome (failure, aborted, stopped)
+const static ^std::string^               LEG_STATUS_SKIPPED                             ^ "skipped"; ^// v26.10.2 leg_stats.status: a new leg started before this one ended
+const static ^std::string^               CRASH_SOURCE_SIM_MESSAGE                       ^ "sim_message"; ^// v26.10.2 flight_info.crash_source: XPLM_MSG_PLANE_CRASHED (a "crash" stats row exists)
+const static ^std::string^               CRASH_SOURCE_DATAREF                           ^ "dataref"; ^// v26.10.2 flight_info.crash_source: sim/flightmodel2/misc/has_crashed
+static constexpr ^float ^STATS_BOUNCE_WINDOW_SEC ^ 10.0f; ^// v26.10.2 a "landing" row less than this after the previous landing is a bounce of it. Same value as the 10.0 in the <stats_sqls> queries (sql.xml)
+static constexpr ^float ^STATS_CRASH_AFTER_LANDING_SEC ^ 60.0f; ^// v26.10.2 a crash up to this long after a landing (and before the next takeoff) belongs to that landing: it is not graded
+static constexpr ^float ^STATS_MAX_TIME_GAP_SEC ^ 5.0f; ^// v26.10.2 "Time Flew": a gap between two stats rows above this (pause, time change) is not flight time
+static constexpr ^int ^STATS_PATH_MAX_POINTS ^ 1500; ^// v26.10.2 flight path plots (2D/3D): most points drawn for one section
+static constexpr ^double ^STATS_PATH_REPOSITION_NM ^ 0.5; ^// v26.10.2 flight path: a jump between two stats rows longer than this is a reposition, not flown distance
+static constexpr ^double ^STATS_PATH_TAKEOFF_ROLL_NM ^ 1.0; ^// v26.10.2 flight path, departure: the most path shown before the takeoff row (the takeoff roll)
+static constexpr ^double ^STATS_PATH_STOPPED_GS_MS ^ 3.0; ^// v26.10.2 flight path: groundspeed (m/s) under it is "stopped" (start of the takeoff roll)
+static constexpr ^double ^STATS_PATH_ROLLOUT_END_GS_MS ^ 10.0; ^// v26.10.2 flight path, arrival: the rollout ends when the groundspeed (m/s) drops under it (~19 knots)
+static constexpr ^double ^STATS_PATH_SAME_PLACE_NM ^ 5.0; ^// v26.10.2 merged flight path plots: two anchors closer than this are drawn at their real positions, else touchdown on touchdown
+static constexpr ^float ^STATS_BOUNCE_MIN_SEC ^ 0.5f; ^// v26.10.2 a hop after touchdown is a bounce when it is at least this long in the air, or at least STATS_BOUNCE_MIN_AGL_FT high. Shorter and lower = a wheel skip (sql.xml {bounce_min_sec})
+static constexpr ^float ^STATS_BOUNCE_MIN_AGL_FT ^ 1.0f; ^// v26.10.2 a hop after touchdown is a bounce when it is at least this high (ft), or at least STATS_BOUNCE_MIN_SEC long (sql.xml {bounce_min_agl_ft})
+static constexpr ^float ^STATS_RUNWAY_ROLLOUT_MAX_SEC ^ 120.0f; ^// v26.10.2 landing runway check: the rows read after a touchdown (sql.xml {rollout_max_sec}). The check stops earlier when the plane stops
+static constexpr ^double ^STATS_RUNWAY_ROLLOUT_END_KT ^ 10.0; ^// v26.10.2 landing runway check: the rollout ends when the groundspeed (knots) drops under it. Passing the runway end before that = overrun
+static constexpr ^double ^STATS_RUNWAY_END_MARGIN_M ^ 5.0; ^// v26.10.2 landing runway check: meters past the runway end before it is an overrun (the runway end position is the center of the end line)
+static constexpr ^double ^STATS_RUNWAY_SIDE_MARGIN_M ^ 3.0; ^// v26.10.2 landing runway check: meters past the runway edge (plane center) before it is a runway excursion
+static constexpr ^double ^STATS_RUNWAY_SIDE_EXIT_MIN_KT ^ 25.0; ^// v26.10.2 landing runway check: leaving the side of the runway slower than this (knots) is a turn off, not an excursion
+static constexpr ^double ^STATS_RUNWAY_LONG_LANDING_RATIO ^ 0.33; ^// v26.10.2 landing note: touchdown after this part of the landing distance (threshold to the far end) = "Long landing"
+const static ^std::string^               STATS_HISTORY_FOLDER_NAME                      ^ "history"; ^// v26.10.2 sub folder of the stats database folder ({missionx}/db/history)
+const static ^std::string^               STATS_IN_FLIGHT_FILE_NAME                      ^ "tmp_stats.db"; ^// v26.10.2 the in-flight "stats" tab reads this copy of the live stats file (same folder). Deleted at mission start and end
+static constexpr ^int ^STATS_HISTORY_DEFAULT_FILES ^ 20; ^// v26.10.2 default of OPT_STATS_HISTORY_MAX_FILES
+static constexpr ^int ^STATS_HISTORY_MAX_FILES_LIMIT ^ 100; ^// v26.10.2 highest value accepted for OPT_STATS_HISTORY_MAX_FILES
+static constexpr ^double ^GPS_AIRPORT_MATCH_RADIUS_NM ^ 1.2; ^// v26.10.2 new missions: a GPS point closer than this to an airport reference point is replaced by the airport ICAO
+static constexpr ^double ^GPS_NAVAID_MATCH_RADIUS_NM ^ 0.2; ^// v26.10.2 new missions: an in-between, none target GPS point closer than this to a VOR/NDB/Fix is replaced by the navaid. Also used when restoring a saved <fms> entry
+static constexpr ^int ^STATS_SCHEMA_VERSION ^ 2; ^// v26.10.2 (2 = leg_stats table) stats db schema version. Stored in flight_info.schema_version and in "PRAGMA user_version"
 const static ^std::string^               DEFAULT_OVERPASS_URL                           ^ "https://overpass-api.de/api/interpreter"; ^ // "https://lz4.overpass-api.de/api/interpreter"; ^// v3.0.253.6 overpass default overpass URL
 const static ^std::string^               ATTRIB_OSM_KEY                                 ^ "k"; ^// v3.0.253.4 <way k^"" v^"">
 const static ^std::string^               ATTRIB_OSM_VALUE                               ^ "v"; ^// v3.0.253.4 <way k^"" v^"">
@@ -1007,6 +1049,8 @@ static const ^std::string^               ATTRIB_GRADE_ACCEPTABLE                
 static const ^std::string^               ATTRIB_GRADE_FIRM                              ^ "firm"; ^// v26.10.1 <landing_grade> lowest score for "Firm". Below it: "Hard"
 static const ^std::string^               ATTRIB_GRADE_DOCTOR_FPM                        ^ "doctor_fpm"; ^// v26.10.1 <landing_grade> touchdown fpm above it = "Call the Doctor"
 static const ^std::string^               ATTRIB_GRADE_DOCTOR_GEAR_LOAD                  ^ "doctor_gear_load"; ^// v26.10.1 <landing_grade> touchdown gear load above it = "Call the Doctor"
+static const ^std::string^               ATTRIB_GRADE_IMPACT_FPM                        ^ "impact_fpm"; ^// v26.10.2 <landing_grade> touchdown or re-contact fpm above it = "Impact"
+static const ^std::string^               ATTRIB_GRADE_IMPACT_GEAR_LOAD                  ^ "impact_gear_load"; ^// v26.10.2 <landing_grade> touchdown gear load above it = "Impact"
 static const ^std::string^               ATTRIB_SCORE_WEIGHT                            ^ "weight"; ^// v26.10.1 scoring element weight in the landing score. Default 1, 0 = measure not used
 
 

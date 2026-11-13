@@ -609,6 +609,7 @@ PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFromWho, const intptr_t inM
       if (data_manager::missionState == mx_mission_state_enum::mission_is_running)
       {
         const std::string msg = "Plane crashed, aborting mission.";
+        data_manager::gather_stats.gather_and_store_stats (mxconst::get_STATS_CRASH ()); // v26.10.2 crash row in the stats table. Written with the other queued rows when the end screen opens
         data_manager::setAbortMission (msg);
         missionx::Log::logMsg ("[XPluginReceiveMessage] " + msg); // debug
       }
@@ -1342,7 +1343,6 @@ MyKeySniffer (char inChar, XPLMKeyFlags inFlags, char inVirtualKey, void *inRefc
   return 1;
 }
 
-// -----------------------------------
 // -----------------------------------
 // -----------------------------------
 // -----------------------------------

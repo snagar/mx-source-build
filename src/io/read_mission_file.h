@@ -89,6 +89,7 @@ public:
   static void post_load_calc_story_message_timings(IXMLNode xMainNode);
 
   static bool loadSavePoint();
+  static std::string read_savepoint_plane_acf_file_cai(const std::string& in_savepoint_file_path); // v26.10.2 plane .acf name stored in <global_settings>. Empty for older savepoints or a missing file.
 
   static std::string getErrMsg() { return errMsg; } // v3.0.152
 

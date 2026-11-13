@@ -804,15 +804,6 @@ missionx::QueueMessageManager::prepareMessageStory(Message* msg)
 void
 missionx::QueueMessageManager::prepareMessageText(Message* msg, bool flag_message_has_comm_sf)
 {
-  // #ifndef RELEASE
-  // int iDebug = 0;
-  // if (iDebug) // we need to change the iDebug value using the debugger
-  // {
-  //   XPLMDebugString(Utils::xml_get_node_content_as_text(msg->node).c_str() );
-  // }
-  // #endif
-
-
   // broadcast TEXT after calculating message text timer
   std::string messageText = msg->getMessage();
   messageText             = Utils::replaceChar1WithChar2_v2(messageText, ';', mxconst::get_SPACE());

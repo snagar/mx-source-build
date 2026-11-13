@@ -1043,7 +1043,7 @@ void ui_dynamic_mission_screen::draw_dynamic_mission_creation_screen()
 // -------------------------------------
 void ui_dynamic_mission_screen::draw_dynamic_mission_creation_screen_home() const
 {
-  constexpr static auto btn_size_vec2 = ImVec2 (190.0f, 190.0f);
+  constexpr static auto btn_size_vec2 = ImVec2 (180.0f, 180.0f); // v26.10.2 was 190x190: three options in a row now
   const auto                  win_size_vec2 = mxUiGetWindowContentWxH ();
 
   ImGui::Spacing ();
@@ -1054,11 +1054,20 @@ void ui_dynamic_mission_screen::draw_dynamic_mission_creation_screen_home() cons
 
 
   mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
+
+  // v26.10.2 during a mission only "Convert LNM" is available: the other options create a new mission
+  const bool flag_mission_is_running = (missionx::data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running);
+  if (flag_mission_is_running)
+    ImGui::TextColored (missionx::color::color_vec4_orange, "%s", "A mission is running. Only \"Convert LNM\" is available.");
+  else
+    ImGui::Spacing ();
+
   ImGui::Spacing ();
   ImGui::Spacing ();
-  ImGui::Spacing ();
-  if (ImGui::BeginTable ("Dynamic Creation Options", 2))
+  if (ImGui::BeginTable ("Dynamic Creation Options", 3)) // v26.10.2 3 columns: "Convert LNM" added
   {
+    const bool flag_disable_create_options = mxStartUiDisableState (flag_mission_is_running); // v26.10.2 "Full Control" and "Some Control"
+
     ImGui::TableNextColumn ();
     {
       if (ui::wrap_imgui::ImageButton ("Full Control", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_FULL_CONTROL ()].gTexture, btn_size_vec2))
@@ -1075,7 +1084,7 @@ void ui_dynamic_mission_screen::draw_dynamic_mission_creation_screen_home() cons
       } // end imageButton - flightplandb
       this->mx_add_tooltip (missionx::color::color_vec4_white, "Configure a random mission.");
       // bottom title
-      ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "%s", "Configure every aspect of the generated flight." );
+      ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "%s", "Configure every aspect\nof the generated flight." );
 
     } // end full configuration button
 
@@ -1088,9 +1097,27 @@ void ui_dynamic_mission_screen::draw_dynamic_mission_creation_screen_home() cons
       }
       this->mx_add_tooltip (missionx::color::color_vec4_white, "Pick the type to generate.");
       // bottom title
-      ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "%s", "Pick the type of flight you would like to fly,\nwith minimal setup.");
+      ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "%s", "Pick the type of flight-\nyou would like to fly,\nwith minimal setup.");
 
     } // end Some Control
+
+    mxEndUiDisableState (flag_disable_create_options); // v26.10.2
+
+    // v26.10.2 the conversion screen moved here from the home screen
+    ImGui::TableNextColumn ();
+    {
+      // constexpr static auto convert_btn_size_vec2 = ImVec2 (150.0f, 113.0f); // the image is 240x180 (4:3)
+      // if (ui::wrap_imgui::ImageButton ("Convert LNM", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_CONVERT_FPLN_TO_MISSION_24X18 ()].gTexture, convert_btn_size_vec2))
+      if (ui::wrap_imgui::ImageButton ("Convert LNM", data_manager::mapCachedPluginTextures[mxconst::get_BITMAP_BTN_CONVERT_FPLN_TO_MISSION_15X15 ()].gTexture, btn_size_vec2))
+      {
+        if (this->set_layer)
+          this->set_layer (missionx::uiLayer_enum::option_conv_fpln_to_mission);
+      }
+      this->mx_add_tooltip (missionx::color::color_vec4_white, "Convert a LittleNavMap flight plan (.lnmpln) into a mission file.");
+      // bottom title
+      ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "%s", "Convert a LittleNavMap\nflight plan into a mission.");
+
+    } // end Convert LNM
     ImGui::EndTable ();
   } // end table
   mxUiReleaseLastFont ();

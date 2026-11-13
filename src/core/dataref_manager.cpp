@@ -150,7 +150,7 @@ missionx::structs::def_strct_plane_base_info missionx::dataref_manager::strct_pl
   { 
     dataref_manager::strct_plane_base_info.plane_max_gross_weight_f_and_p_kg = dataref_manager::get_acf_m_max_currentMaxPlaneAllowedWeightK(); // max total payload allowed
     dataref_manager::strct_plane_base_info.plane_empty_weight_kg             = XPLMGetDataf(missionx::drefConst.dref_acf_m_empty_weight); // current plane empty weight
-    dataref_manager::strct_plane_base_info.plane_max_fuel_weight_kg          = XPLMGetDataf(missionx::drefConst.dref_rw_acf_m_fuel_tot_lbs) * lbs2kg; // max allowed fuel. converted from lbs to kg
+    dataref_manager::strct_plane_base_info.plane_max_fuel_weight_kg          = XPLMGetDataf(missionx::drefConst.dref_rw_acf_m_fuel_tot_kg); // max allowed fuel (kg). v26.10.2 removed "* lbs2kg", the dataref values are kg
     dataref_manager::strct_plane_base_info.plane_max_speed_vno               = XPLMGetDataf(missionx::drefConst.dref_acf_vno_f); // max allowed cruise speed
 
     dataref_manager::strct_plane_base_info.plane_current_total_weight_kg = XPLMGetDataf(missionx::drefConst.dref_m_total_f); // current total weight: fuel+payload
@@ -170,7 +170,7 @@ float dataref_manager::CalculateEstimatedFuelTimeHours()
     XPLMDataRef clutchRef = XPLMFindDataRef("sim/aircraft/artstability/acf_has_clutch");
     XPLMDataRef fuelWeightRef = XPLMFindDataRef("sim/flightmodel/weight/m_fuel");
 
-    const auto totalFuelKg = XPLMGetDataf(missionx::drefConst.dref_rw_acf_m_fuel_tot_lbs) * lbs2kg;
+    const auto totalFuelKg = XPLMGetDataf(missionx::drefConst.dref_rw_acf_m_fuel_tot_kg); // v26.10.2 removed "* lbs2kg", the dataref values are kg
 
     Log::logMsg(fmt::format("[{}] FFFF plane max fuel: {:.2f} FFFF\n", __func__, totalFuelKg));
 
@@ -278,7 +278,7 @@ missionx::dataref_manager::flc()
 void
 missionx::dataref_manager::set_xplane_dataref_value (const std::string full_name, const double inValue)
 {
-  static XPLMDataRef dataRefId; 
+  static XPLMDataRef dataRefId;
   dataRefId = XPLMFindDataRef(full_name.c_str());
 
   if (dataRefId) // if exists
@@ -516,8 +516,5 @@ missionx::dataref_manager::storeCameraPoint()
 }
 
 // ---------------------------------------
-
-
-
 // ---------------------------------------
 // ---------------------------------------

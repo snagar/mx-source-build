@@ -48,6 +48,8 @@ public:
   std::function<void(const std::string&)> add_ui_advance_settings_random_date_time_weather_and_weight_button; // v26.08.1
   // execAction (mx_window_actions actionCommand)
   std::function<void(missionx::mx_window_actions)> execAction;
+  // v26.10.2 change the briefer layer (the "Convert LNM" option opens the conversion layer)
+  std::function<void(missionx::uiLayer_enum)> set_layer;
   // void  add_message_text ();
   std::function<void()> add_message_text;
   // display message when airport database is not available

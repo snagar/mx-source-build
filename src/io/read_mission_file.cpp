@@ -513,28 +513,6 @@ missionx::read_mission_file::readObjectiveAndTaskElements(ITCXMLNode& xParent)
 
   } // end if there are <objectives> element
 
-  //if (!data_manager::mapObjectives.empty())
-  //{
-  //  Log::logMsg(fmt::format("Loaded: {:.<20}\n{:=<40}", mxconst::get_ELEMENT_OBJECTIVES(), ""));
-  //  Log::logMsg("Valid Objectives:\n");
-  //  for (auto& [name, obj] : missionx::data_manager::mapObjectives)
-  //  {
-  //    Log::logMsg(fmt::format("{:.<20}", name.c_str()) );
-  //  }
-  //
-  //  if (!listOfObjectivesWithErrors.empty())
-  //  {
-  //    Log::logMsg("Invalid Objectives:\n");
-  //    for (auto& obj : listOfObjectivesWithErrors)
-  //    {
-  //      Log::logMsg("Name:" + obj.getName() + "\n");
-  //      for (auto& txt : obj.vecErrors)
-  //      {
-  //        Log::logMsg(fmt::format("{:>5}", txt));
-  //      }
-  //    }
-  //  }
-  //}
 
 } // readObjectiveAndTaskElements
 
@@ -2073,6 +2051,27 @@ missionx::read_mission_file::loadSavePoint()
   return initOK;
 }
 // load savepoint
+
+// -----------------------------------
+
+std::string
+missionx::read_mission_file::read_savepoint_plane_acf_file_cai(const std::string& in_savepoint_file_path)
+{
+  if (in_savepoint_file_path.empty() || !mxUtils::check_file_exists(in_savepoint_file_path))
+    return "";
+
+  std::string   err_msg;
+  IXMLDomParser iDom;
+  const ITCXMLNode xSaveNode = iDom.openFileHelper(in_savepoint_file_path.c_str(), mxconst::get_ELEMENT_SAVE().c_str(), &err_msg);
+  if (!err_msg.empty())
+  {
+    Log::logMsg(fmt::format("[{}] Could not read savepoint file: {}. {}", __func__, in_savepoint_file_path, err_msg));
+    return "";
+  }
+
+  const ITCXMLNode xGlobalSettings = xSaveNode.getChildNode(mxconst::get_GLOBAL_SETTINGS().c_str());
+  return Utils::readAttrib(xGlobalSettings, mxconst::get_SAVEPOINT_PLANE_ACF_FILE(), "");
+}
 
 // -----------------------------------
 // -----------------------------------

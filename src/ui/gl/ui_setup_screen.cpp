@@ -24,9 +24,18 @@ ui_setup_screen::add_ui_ignore_stats_checkbox()
                              "The end \"stats\" screen still reads the database file.\n"
                              "Not saved: resets when the plugin reloads.");
   ImGui::SameLine ();
+  // v26.10.2 not during a mission: the writer, the leg rows and the in-flight stats tab expect the same setting from start to end
+  const bool flag_mission_is_active = (missionx::data_manager::missionState > missionx::mx_mission_state_enum::pre_mission_running && missionx::data_manager::missionState < missionx::mx_mission_state_enum::mission_aborted );
+  ImGui::BeginDisabled (flag_mission_is_active);
   ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_aqua);
   ImGui::Checkbox ("Ignore stats - do not write flight stats to the database", &missionx::GatherStats::flag_ignore_stats_setup);
   ImGui::PopStyleColor ();
+  ImGui::EndDisabled ();
+  if (flag_mission_is_active)
+  {
+    ImGui::SameLine ();
+    ImGui::TextColored (missionx::color::color_vec4_grey, "%s", "(can't be changed during a mission)");
+  }
 }
 
 // -------------------------------------------

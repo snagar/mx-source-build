@@ -25,102 +25,6 @@ missionx::mutex missionx::Utils::s_CalcDistMutex; // v3.305.2
 // -------------------------------------------
 // -------------------------------------------
 
-TimerFunc::TimerFunc() {
-  m_startTimepoint = std::chrono::high_resolution_clock::now();
-  seq              = ++Utils::seqTimerFunc;
-}
-
-// -------------------------------------------
-
-TimerFunc::TimerFunc (const std::string &inFilename, const std::string &inSourceFuncName, const bool inThread)
-{
-  init(inFilename, inSourceFuncName, inThread);
-}
-
-// -------------------------------------------
-
-TimerFunc::TimerFunc (const std::string &inFilename, const std::string &inSourceFuncName, const std::string& info, const bool inThread)
-{
-  init(inFilename, inSourceFuncName, inThread);
-
-  char buf_filename[TimerFunc::FILENAME_WIDTH_CHAR];
-  char buf_funcName[TimerFunc::FUNCNAME_WIDTH_CHAR];
-  char buff_seq[11];
-
-  std::snprintf(buf_filename, sizeof(buf_filename), "%-*.*s", static_cast<int32_t> (TimerFunc::FILENAME_WIDTH_CHAR) - 1, static_cast<int32_t> (TimerFunc::FILENAME_WIDTH_CHAR) - 1, this->sourceFileName.c_str());
-  std::snprintf(buf_funcName, sizeof(buf_funcName), "%-*.*s", static_cast<int32_t> (TimerFunc::FUNCNAME_WIDTH_CHAR) - 1, static_cast<int32_t> (TimerFunc::FUNCNAME_WIDTH_CHAR) - 1, this->sourceFuncName.c_str());
-  std::snprintf(buff_seq, sizeof(buff_seq) - static_cast<size_t> (1), "%dop2", this->seq);
-
-  const std::string info_buff = std::string(buf_filename) + "\t:" + buf_funcName + "(" + buff_seq + ")\t: \t\t\t" + info;
-
-  Log::logMsg(info_buff + "(" + buff_seq + ")");
-}
-
-// -------------------------------------------
-
-void
-TimerFunc::init(const std::string& inFilename, const std::string &inSourceFuncName, const bool inThread)
-{
-  m_startTimepoint     = std::chrono::high_resolution_clock::now();
-
-  this->isThread       = inThread;
-  this->sourceFuncName = inSourceFuncName;
-
-
-  const std::filesystem::path path(inFilename);
-  this->sourceFileName = path.filename().string();
-
-  seq = ++Utils::seqTimerFunc;
-}
-// -------------------------------------------
-
-// std::optional<structs::MissionPayloads> extract_llm_payloads(std::string_view response_text)
-// {
-//
-// }
-
-// -------------------------------------------
-
-TimerFunc::~TimerFunc()
-{
-  stop();
-}
-
-// -------------------------------------------
-
-void
-TimerFunc::stop() const
-{
-  // const auto endTimePoint  = std::chrono::high_resolution_clock::now();
-  // auto       durationMicro = std::chrono::duration_cast<std::chrono::microseconds> (endTimePoint - m_startTimepoint).count ();
-  // const auto durationMilli = durationMicro * 0.001;
-  // const auto durationSec   = durationMilli * 0.001;
-
-
-  // // https://en.cppreference.com/w/cpp/io/c/fprintf
-  // char buf_filename[TimerFunc::FILENAME_WIDTH_CHAR];
-  // char buf_funcName[TimerFunc::FUNCNAME_WIDTH_CHAR];
-  // char buf_duration_mcs[23];
-  // char buff_seq[11];
-  //
-  // #ifndef RELEASE
-  // auto sizeDebug = sizeof(buf_duration_mcs);
-  // #endif
-  //
-  // std::snprintf(buf_filename, sizeof(buf_filename), "%-*.*s", static_cast<int32_t> (TimerFunc::FILENAME_WIDTH_CHAR) - 1, static_cast<int32_t> (TimerFunc::FILENAME_WIDTH_CHAR) - 1, this->sourceFileName.c_str());
-  // std::snprintf(buf_funcName, sizeof(buf_funcName), "%-*.*s", static_cast<int32_t> (TimerFunc::FUNCNAME_WIDTH_CHAR) - 1, static_cast<int32_t> (TimerFunc::FUNCNAME_WIDTH_CHAR) - 1, this->sourceFuncName.c_str());
-  // std::snprintf(buff_seq, sizeof(buff_seq) - static_cast<size_t> (1), "%loop2", this->seq);
-  //
-  // #if defined LIN
-  // std::snprintf(buf_duration_mcs, sizeof(char) * sizeof(buf_duration_mcs) - static_cast<size_t> (1), "%*ld", 10, durationMicro);
-  // #else
-  // std::snprintf(buf_duration_mcs, sizeof(buf_duration_mcs) - (size_t)1, "%*lld", 10, durationMicro);
-  // #endif // !IBM
-  //
-  //
-  // const std::string duration_s = std::string(buf_filename) + "\t:" + buf_funcName + "(" + buff_seq + ")\t: " + buf_duration_mcs + "mcs, " + mxUtils::formatNumber<double>(durationMilli, 4) + "ms, " + mxUtils::formatNumber<double>(durationSec, 4) + "sec";
-  // Log::logMsg(duration_s, isThread);
-}
 
 } // missionx namespace
 
@@ -606,33 +510,6 @@ missionx::Utils::extractUnitsFromString(const std::string& inNumWithUnits, std::
 
   return success;
 }
-
-// -------------------------------------------
-
-// std::string Utils::wrap_text(const std::string& text, const size_t& max_width)
-// {
-//   std::istringstream words(text);
-//   std::ostringstream wrapped;
-//   std::string word;
-//   std::size_t line_length = 0;
-//
-//   while (words >> word) {
-//     if (line_length + word.length() + 1 > max_width) {
-//       wrapped << '\n';
-//       line_length = 0;
-//     }
-//
-//     if (line_length > 0) {
-//       wrapped << ' ';
-//       line_length++;
-//     }
-//
-//     wrapped << word;
-//     line_length += word.length();
-//   }
-//
-//   return wrapped.str();
-// }
 
 // -------------------------------------------
 
@@ -1873,37 +1750,6 @@ missionx::Utils::xml_copy_specific_attributes_using_white_list (const IXMLNode &
 
 // -------------------------------------------
 
-// void
-// missionx::Utils::xml_clear_node_attributes_excluding_list ( IXMLNode &sNode, const std::string &inExcludeList_s, const bool flag_includeClearData )
-// {
-//   const auto vecExcludeList = mxUtils::split_v2 ( inExcludeList_s, ",", false );
-//
-//   if (!sNode.isEmpty())
-//   {
-//     const int nAttribs = sNode.nAttribute ();
-//     for (int i1 = 0; i1 < nAttribs; ++i1)
-//     {
-//       const IXMLAttr attrib = sNode.getAttribute ( i1 );
-//       if ( mxUtils::isStringExistsInVec ( vecExcludeList, attrib.sName ) )
-//         continue;
-//
-//       sNode.updateAttribute ( "", attrib.sName, i1 );
-//     }
-//
-//     if ( flag_includeClearData )
-//     {
-//       const int nClear = sNode.nClear ();
-//       for ( int i1 = 0; i1 < nClear; ++i1 )
-//       {
-//         IXMLClear c = sNode.getClear ( i1 );
-//         sNode.addClear ( c.sValue, c.sOpenTag, c.sCloseTag );
-//       }
-//     } // end handle clear node
-//   }
-// }
-
-// -------------------------------------------
-
 IXMLNode
 Utils::xml_clear_node_attributes_excluding_list (IXMLNode &sNode, const std::vector<std::string> &inExcludeList, const bool flag_includeClearData, const bool flag_remove_attribute)
 {
@@ -2663,24 +2509,6 @@ missionx::Utils::xml_get_or_create_node_ptr(IXMLNode& pNode, const std::string &
 
 // -------------------------------------------
 
-// IXMLNode
-// missionx::Utils::xml_get_or_create_node(IXMLNode pNode, const std::string &tagChildNodeName_s, const bool& in_flag_return_copy)
-// {
-//   assert(!pNode.isEmpty()); // crash if node is empty
-//
-//   IXMLNode node = pNode.getChildNode(tagChildNodeName_s.c_str());
-//   if (node.isEmpty())
-//     node = pNode.addChild(tagChildNodeName_s.c_str());
-//
-//   assert(!node.isEmpty()); // crash if node is empty
-//
-//   if (in_flag_return_copy)
-//     return node.deepCopy();
-//
-//   return node; // pointer
-// }
-
-
 IXMLNode
 missionx::Utils::xml_get_or_create_node(IXMLNode pNode, const std::string &tagChildNodeName_s, const bool& in_flag_return_copy, const bool& in_flag_drill, const std::string& in_expected_in_tag)
 {
@@ -3139,6 +2967,28 @@ missionx::Utils::getWinCoords(int& left, int& top, int& right, int& bottom)
   XPLMGetScreenBoundsGlobal(&left, &top, &right, &bottom);
 }
 
+// -------------------------------------
+// v26.10.2 a landing less than STATS_BOUNCE_WINDOW_SEC after the previous landing is a bounce of it
+bool
+missionx::Utils::is_landing_a_bounce_cai(const double in_previous_landing_clock_sec, const double in_landing_clock_sec)
+{
+  return in_previous_landing_clock_sec >= 0.0 && (in_landing_clock_sec - in_previous_landing_clock_sec) <= static_cast<double>(mxconst::STATS_BOUNCE_WINDOW_SEC);
+}
+
+// -------------------------------------
+// v26.10.2 A position in the frame of a runway: "along" = meters from the runway end in the runway direction (negative = before the end),
+//          "lateral" = meters from the center line (negative = left of it, looking down the runway).
+std::pair<double, double>
+missionx::Utils::get_position_on_runway_m_cai(const double in_end_lat, const double in_end_lon, const double in_runway_heading_deg, const double in_lat, const double in_lon)
+{
+  const double distance_m = mxUtils::mxCalcDistanceBetween2Points(in_end_lat, in_end_lon, in_lat, in_lon, missionx::mx_units_of_measure::meter);
+  if (distance_m <= 0.0)
+    return { 0.0, 0.0 };
+
+  const double angle_rad = (mxUtils::mxCalcBearingBetween2Points(in_end_lat, in_end_lon, in_lat, in_lon) - in_runway_heading_deg) * missionx::PI / 180.0;
+  return { distance_m * std::cos(angle_rad), distance_m * std::sin(angle_rad) };
+}
+
 // -------------------------------------------
 // https://stackoverflow.com/questions/2419562/convert-seconds-to-days-minutes-and-seconds
 std::string
@@ -3156,7 +3006,8 @@ missionx::Utils::format_number_as_hours(const double& inSeconds)
   n %= 60;
   const long long seconds = n;
 
-  const std::string format_s = ((day > 0) ? mxUtils::formatNumber<long long> (day) + " " : "") + mxUtils::formatNumber<long long> (hour) + ":" + mxUtils::formatNumber<long long> (minutes) + ":" + mxUtils::formatNumber<long long> (seconds);
+  // v26.10.2 minutes and seconds with 2 digits: "0:12:06" (was "0:12:6")
+  const std::string format_s = ((day > 0) ? fmt::format ("{} ", day) : "") + fmt::format ("{}:{:02}:{:02}", hour, minutes, seconds);
 
   return format_s;
 }
@@ -4280,7 +4131,8 @@ missionx::Utils::prepare_static_XSD()
       extra_bounce = points for each bounce after the first. Points are always taken off (negative), whatever the sign written here -->
       <td_bounce_penalty small="0|2|-5" medium="0|4|-10" large="0|999|-20" extra_bounce="-3" />
       <!-- grade by landing score (0-100). "Call the Doctor" when td_fpm > doctor_fpm or td_gear_load > doctor_gear_load, whatever the score -->
-      <landing_grade butter="90" smooth="75" acceptable="55" firm="35" doctor_fpm="600" doctor_gear_load="1.5" />
+      <!-- v26.10.2 "Impact" when td_fpm or the bounce re-contact fpm > impact_fpm, or td_gear_load > impact_gear_load. "Crash" when X-Plane reported a crash at the landing -->
+      <landing_grade butter="90" smooth="75" acceptable="55" firm="35" doctor_fpm="600" doctor_gear_load="1.5" impact_fpm="1200" impact_gear_load="3.0" />
     </scoring>
 
 </MAPPING>

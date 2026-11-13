@@ -18,6 +18,7 @@ mx_img_window::mx_img_window(const int left, const int top, const int right, con
 {
   // prepare ImPlot context
   mImPlotContext = ImPlot::CreateContext();
+  mImPlot3DContext = ImPlot3D::CreateContext(); // v26.10.2 flight path 3D plot
 }
 
 
@@ -27,6 +28,9 @@ mx_img_window::~mx_img_window()
 {
   if (mImPlotContext) {
     ImPlot::DestroyContext(mImPlotContext);
+  }
+  if (mImPlot3DContext) { // v26.10.2
+    ImPlot3D::DestroyContext(mImPlot3DContext);
   }
 }
 

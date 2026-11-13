@@ -87,6 +87,47 @@ missionx::system_actions::copy_file(std::string inSourceFilePath, std::string in
 
 
 
+// v26.10.2 Which X-Plane ("sim/") datarefs are stored in a savepoint, and when they are applied back.
+//          Categories are matched from the start of the dataref name.
+//          Not saved: sim/flightmodel/position (the plane is placed with XPLMPlaceUserAtLocation()), sim/flightmodel/forces (computed every frame),
+//                     sim/weather (stored in <saved_weather>), sim/aircraft/weight and sim/aircraft/gear (.acf design values), most of sim/time.
+missionx::system_actions::mx_savepoint_dref_scope
+missionx::system_actions::get_savepoint_dataref_scope_cai(const std::string& in_dataref_key)
+{
+  static const std::vector<std::string> vecAnyPlaneCategories = { { "sim/cockpit/radios" },
+                                                                  { "sim/cockpit/autopilot" },
+                                                                  { "sim/operation/failures" },
+                                                                  { "sim/flightmodel/failures" } };
+
+  // only these "sim/time" datarefs, the others are running timers and time acceleration
+  static const std::vector<std::string> vecAnyPlaneExactDatarefs = { { "sim/time/zulu_time_sec" },
+                                                                     { "sim/time/local_date_days" },
+                                                                     { "sim/time/use_system_time" } };
+
+  static const std::vector<std::string> vecSamePlaneOnlyCategories = { { "sim/aircraft/controls" },
+                                                                       { "sim/aircraft/specialcontrols" },
+                                                                       { "sim/flightmodel/weight" },
+                                                                       { "sim/flightmodel/controls" },
+                                                                       { "sim/flightmodel/misc" },
+                                                                       { "sim/flightmodel2/controls" },
+                                                                       { "sim/flightmodel2/wing/" },
+                                                                       { "sim/cockpit/engine" },
+                                                                       { "sim/cockpit/switches" },
+                                                                       { "sim/cockpit/weapons" } };
+
+  const auto lmbda_key_starts_with = [&in_dataref_key](const std::string& in_category) { return in_dataref_key.starts_with(in_category); };
+
+  if (mxUtils::isStringExistsInVec(vecAnyPlaneExactDatarefs, in_dataref_key) || std::ranges::any_of(vecAnyPlaneCategories, lmbda_key_starts_with))
+    return mx_savepoint_dref_scope::any_plane;
+
+  if (std::ranges::any_of(vecSamePlaneOnlyCategories, lmbda_key_starts_with))
+    return mx_savepoint_dref_scope::same_plane_only;
+
+  return mx_savepoint_dref_scope::not_saved;
+}
+
+// -----------------------------------
+
 bool
 missionx::system_actions::save_datarefs_with_savepoint(std::string inFileAndPath, std::string inTargetFileAndPath, std::string& outError)
 {
@@ -122,29 +163,7 @@ missionx::system_actions::save_datarefs_with_savepoint(std::string inFileAndPath
     bool                           writeActionOK = true;
     const std::vector<std::string> vecValidTypes = { { "int" }, { "float" }, { "double" }, { "int[" }, { "float[" } };
 
-    const std::vector<std::string> vecValidCategoriesPath = { { "sim/aircraft/controls" },
-                                                              { "sim/aircraft/gear" },
-                                                              { "sim/aircraft/weight" },
-                                                              { "sim/aircraft/specialcontrols" },
-                                                              { "sim/cockpit/autopilot" },
-                                                              { "sim/cockpit/engine" },
-                                                              { "sim/cockpit/radios" },
-                                                              { "sim/cockpit/switches" },
-                                                              { "sim/cockpit/weapons" },
-                                                              { "sim/flightmodel/controls" },
-                                                              { "sim/flightmodel/cyclic" },
-                                                              { "sim/flightmodel/failures" },
-                                                              { "sim/flightmodel/forces" },
-                                                              { "sim/flightmodel/misc" },
-                                                              { "sim/flightmodel/position" },
-                                                              { "sim/flightmodel/transmissions" },
-                                                              { "sim/flightmodel/weight" },
-                                                              { "sim/operation/failures" },
-                                                              { "sim/time" },
-                                                              { "sim/weather" },
-                                                              { "sim/flightmodel2/controls" },
-                                                              { "sim/flightmodel2/wing/" } }; // end vector initialization
-    // { "sim/flightmodel/engine" } // DO NOT USE ENGINE
+    // v26.10.2 the list of saved categories moved to get_savepoint_dataref_scope_cai()
 
     std::string line = "";
     while (writeActionOK)
@@ -186,11 +205,8 @@ missionx::system_actions::save_datarefs_with_savepoint(std::string inFileAndPath
         line = vecDrefLineSplit.at(0);
         // bool foundKey = false;
 
-        // simple Lambda to better represent the code "for (auto s : vecValidCategoriesPath)"
-        const auto lmbda_partial_string_found = [&](const std::string& inCategoryString) { return line.find(inCategoryString) != std::string::npos; }; // if inCategoryString is partialy found in "line" then should be valid
-        const bool foundKey                   = any_of(begin(vecValidCategoriesPath), end(vecValidCategoriesPath), lmbda_partial_string_found);
-
-        if (!foundKey)
+        // v26.10.2 save only categories we restore, and only writable datarefs
+        if (get_savepoint_dataref_scope_cai(line) == mx_savepoint_dref_scope::not_saved)
           continue;
 
         // skip if line is not in Filtered categories
@@ -208,6 +224,9 @@ missionx::system_actions::save_datarefs_with_savepoint(std::string inFileAndPath
 
         std::string type     = vecDrefLineSplit.at(1);
         std::string writable = vecDrefLineSplit.at(2);
+
+        if (writable != "y") // v26.10.2 read only datarefs can't be restored
+          continue;
 
         isValid = dref.initDataRefInfo();
         if (isValid)
@@ -550,7 +569,7 @@ system_actions::purge_cache_files (const fs::path &directory_path, const bool is
 // -----------------------------------
 
 bool
-missionx::system_actions::read_saved_mission_dataref_file(const std::string& inFileAndPath, std::string& outError, const bool bIsCustomDataref)
+missionx::system_actions::read_saved_mission_dataref_file(const std::string& inFileAndPath, std::string& outError, const bool bIsCustomDataref, const bool in_flag_same_plane)
 {
   // 1. open saved file
   // 2. read each line
@@ -563,6 +582,7 @@ missionx::system_actions::read_saved_mission_dataref_file(const std::string& inF
   std::string key;
   key.clear();
   std::string drefValue; // holds only the value of the key stored in file
+  int         skipped_datarefs_counter = 0; // v26.10.2
 
   #ifndef RELEASE
   if (bIsCustomDataref) // v3.303.9.1
@@ -625,6 +645,17 @@ missionx::system_actions::read_saved_mission_dataref_file(const std::string& inF
     // store locally the split values
     key = vecDrefLineSplit.at(system_actions::MX_LOAD_KEY_POS_IN_VEC);
 
+    // v26.10.2 filter "sim/" datarefs. Older savepoint files may still hold categories we no longer restore (position, forces, weather...).
+    if (!bIsCustomDataref)
+    {
+      const auto scope = get_savepoint_dataref_scope_cai(key);
+      if (scope == mx_savepoint_dref_scope::not_saved || (scope == mx_savepoint_dref_scope::same_plane_only && !in_flag_same_plane))
+      {
+        ++skipped_datarefs_counter;
+        continue;
+      }
+    }
+
     drefValue = vecDrefLineSplit.at(system_actions::MX_LOAD_VALUE_POS_IN_VEC); // holds value
 
     // clear values
@@ -658,6 +689,9 @@ missionx::system_actions::read_saved_mission_dataref_file(const std::string& inF
     }
 
   } // loop until eof
+
+  if (!bIsCustomDataref) // v26.10.2
+    Log::logMsg(fmt::format("[{}] Skipped {} saved datarefs. Same plane: {}", __func__, skipped_datarefs_counter, in_flag_same_plane));
 
   return true;
 } // read_saved_mission_dataref_file

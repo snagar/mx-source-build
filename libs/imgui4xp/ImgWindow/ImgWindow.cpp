@@ -42,7 +42,11 @@
 #include <XPLMPlugin.h>
 
 #include "imgui_internal.h"
-
+#include <sys/stat.h>
+#ifndef S_ISREG
+#define S_ISREG(m) (((m) & _S_IFMT) == _S_IFREG)
+#endif
+#include <map>
 #if defined(__APPLE__) || defined(__MACH__)
 #include <ApplicationServices/ApplicationServices.h>
 #elif defined(_WIN32)
@@ -197,6 +201,8 @@ static XPLMDataRef gFrameRatePeriodRef  = nullptr;
 std::shared_ptr<ImgFontAtlas> ImgWindow::sFontAtlas;
 ImgWindow* ImgWindow::s_CurrentBuildingWindow = nullptr;
 int ImgWindow::sBlankoutUntilCycle = 0;
+int ImgWindow::sTopMenuBarMargin = ImgWindow::kDefaultTopMenuBarMargin;
+int ImgWindow::sSystemTitleBarHeight = ImgWindow::kDefaultSystemTitleBarHeight;
 
 // Tracks textures pending destruction and the cycle they were queued
 static std::vector<std::pair<ImTextureID, int>> s_TexturesPendingDestruction;
@@ -365,6 +371,7 @@ ImgWindow::ImgWindow(
     mFirstRender(true),
     mFontAtlas(sFontAtlas),
     bHandleWndResize(xplm_WindowDecorationSelfDecoratedResizable == decoration),
+    mDecoration(decoration),
     mPreferredLayer(layer),
     bUseImgCursors(cursors)
 {
@@ -420,9 +427,11 @@ ImgWindow::ImgWindow(
     }
 
 #ifndef IMGUI_V192_REFACTOR
+#if !defined(IMGUI_VERSION_NUM) || (IMGUI_VERSION_NUM < 18000)
 #ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
     // we render ourselves, we don't use the DrawListsFunc
     io.RenderDrawListsFn = nullptr;
+#endif
 #endif
 #endif /* IMGUI_V192_REFACTOR */
 
@@ -461,32 +470,54 @@ ImgWindow::ImgWindow(
     if (mFontAtlas) {
         mFontTexture = (ImTextureID)(intptr_t)io.Fonts->TexID;
     } else {
-        if (!iFontAtlas || iFontAtlas->TexID == nullptr) {
+        if (!iFontAtlas || iFontAtlas->TexID == (ImTextureID)0) {
             // fallback binding if an atlas wasn't explicitly set.
-            unsigned char *pixels;
-            int width, height;
-            io.Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
+#if defined(IMGWINDOW_USE_PANEL_GRAPHICS)
+            if (ImgPanelGraphics::IsAvailable()) {
+                unsigned char *pixels = nullptr;
+                int width = 0, height = 0;
+                io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+                if (pixels && width > 0 && height > 0) {
+                    std::vector<unsigned char> lin_pixels(pixels, pixels + (width * height * 4));
+                    // Force RGB to pure white (255) so the texture acts strictly as a pure opacity mask,
+                    // preventing black edge bleeding, and preserve linear alpha coverage without crushing:
+                    for (int i = 0; i < width * height; i++) {
+                        unsigned char* p = &lin_pixels[i * 4];
+                        p[0] = 255;
+                        p[1] = 255;
+                        p[2] = 255;
+                    }
+                    mFontTexture = (ImTextureID)(intptr_t)ImgPanelGraphics::CreateTexture(lin_pixels.data(), width, height);
+                    io.Fonts->SetTexID(mFontTexture);
+                }
+            } else
+#endif
+            {
+                unsigned char *pixels;
+                int width, height;
+                io.Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
 
-            // slightly stupid dance around the texture number due to XPLM not using GLint here.
-            int texNum = 0;
-            XPLMGenerateTextureNumbers(&texNum, 1);
-            mFontTexture = (ImTextureID)(intptr_t)texNum;
+                // slightly stupid dance around the texture number due to XPLM not using GLint here.
+                int texNum = 0;
+                XPLMGenerateTextureNumbers(&texNum, 1);
+                mFontTexture = (ImTextureID)(intptr_t)texNum;
 
-            // upload texture.
-            XPLMBindTexture2d((int)(intptr_t)mFontTexture, 0);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-            glTexImage2D(GL_TEXTURE_2D,
-                         0,
-                         GL_ALPHA,
-                         width,
-                         height,
-                         0,
-                         GL_ALPHA,
-                         GL_UNSIGNED_BYTE,
-                         pixels);
-            io.Fonts->SetTexID((void *)(mFontTexture));
+                // upload texture.
+                XPLMBindTexture2d((int)(intptr_t)mFontTexture, 0);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+                glTexImage2D(GL_TEXTURE_2D,
+                             0,
+                             GL_ALPHA,
+                             width,
+                             height,
+                             0,
+                             GL_ALPHA,
+                             GL_UNSIGNED_BYTE,
+                             pixels);
+                io.Fonts->SetTexID(mFontTexture);
+            }
         }
     }
 #else
@@ -560,6 +591,9 @@ ImgWindow::ImgWindow(
         mWindowID = XPLMCreateWindowEx(&windowParams);
     }
 
+    mBaselineWidth = right - left;
+    mBaselineHeight = top - bottom;
+
 #if defined(XPLM301)
     // Initialize VR window geometry with the window's initial aspect ratio:
     int winW = right - left;
@@ -604,12 +638,13 @@ ImgWindow::~ImgWindow()
 }
 
 WindowGeometry
-WindowGeometry::Centered(int width, int height)
+WindowGeometry::Centered(int width, int height, XPLMWindowDecoration decoration)
 {
     int sLeft = 0, sTop = 0, sRight = 0, sBottom = 0;
     XPLMGetScreenBoundsGlobal(&sLeft, &sTop, &sRight, &sBottom);
     int sWidth  = sRight - sLeft;
-    int sHeight = sTop - sBottom;
+    int effective_sTop = sTop - ImgWindow::GetTopMargin(decoration);
+    int sHeight = effective_sTop - sBottom;
 
     int l = sLeft + (sWidth - width) / 2;
     int b = sBottom + (sHeight - height) / 2;
@@ -621,7 +656,8 @@ WindowGeometry::Sanitize(
     int l, int t, int r, int b,
     int defaultW, int defaultH,
     int minVisibleMargin,
-    WindowSanitizeMode mode)
+    WindowSanitizeMode mode,
+    XPLMWindowDecoration decoration)
 {
     if (mode == WindowSanitizeMode::None) {
         return WindowGeometry(l, t, r, b);
@@ -639,32 +675,33 @@ WindowGeometry::Sanitize(
     int w = r - l;
     int h = t - b;
     if (w <= 0 || h <= 0) {
-        return Centered(defaultW > 0 ? defaultW : 640, defaultH > 0 ? defaultH : 480);
+        return Centered(defaultW > 0 ? defaultW : 640, defaultH > 0 ? defaultH : 480, decoration);
     }
 
     int sLeft = 0, sTop = 0, sRight = 0, sBottom = 0;
     XPLMGetScreenBoundsGlobal(&sLeft, &sTop, &sRight, &sBottom);
+    const int effective_sTop = sTop - ImgWindow::GetTopMargin(decoration);
 
     int interLeft   = (std::max)(l, sLeft);
     int interRight  = (std::min)(r, sRight);
     int interBottom = (std::max)(b, sBottom);
-    int interTop    = (std::min)(t, sTop);
+    int interTop    = (std::min)(t, effective_sTop);
 
     int interW = interRight - interLeft;
     int interH = interTop - interBottom;
 
     if (interW <= 0 || interH <= 0) {
-        return Centered(w > 0 ? w : defaultW, h > 0 ? h : defaultH);
+        return Centered(w > 0 ? w : defaultW, h > 0 ? h : defaultH, decoration);
     }
 
     if (mode == WindowSanitizeMode::SnapToCenter) {
         if (interW < w || interH < h) {
-            return Centered(w, h);
+            return Centered(w, h, decoration);
         }
         return WindowGeometry(l, t, r, b);
     }
 
-    if (interW >= minVisibleMargin && interH >= minVisibleMargin && t <= sTop) {
+    if (interW >= minVisibleMargin && interH >= minVisibleMargin && t <= effective_sTop) {
         return WindowGeometry(l, t, r, b);
     }
 
@@ -681,12 +718,12 @@ WindowGeometry::Sanitize(
         newB = sBottom + minVisibleMargin - h;
         newT = sBottom + minVisibleMargin;
     }
-    if (newB > sTop - minVisibleMargin) {
-        newB = sTop - minVisibleMargin;
+    if (newB > effective_sTop - minVisibleMargin) {
+        newB = effective_sTop - minVisibleMargin;
         newT = newB + h;
     }
-    if (newT > sTop) {
-        newT = sTop;
+    if (newT > effective_sTop) {
+        newT = effective_sTop;
         newB = newT - h;
     }
 
@@ -714,6 +751,329 @@ ImgWindow::SetWindowResizingLimits (int minW, int minH, int maxW, int maxH)
     maxWidth  = maxW;
     maxHeight = maxH;
     XPLMSetWindowResizingLimits(mWindowID, minW, minH, maxW, maxH);
+}
+
+void
+ImgWindow::ConvertSizeForScale (int cur_w, int cur_h, float from_scale, float to_scale, int& out_w, int& out_h,
+                                int chrome_w, int chrome_h)
+{
+    if (from_scale <= 0.001f || to_scale <= 0.001f) {
+        out_w = cur_w;
+        out_h = cur_h;
+        return;
+    }
+    float ratio = to_scale / from_scale;
+    int scalable_w = (std::max)(0, cur_w - chrome_w);
+    int scalable_h = (std::max)(0, cur_h - chrome_h);
+    out_w = chrome_w + (int)std::round((float)scalable_w * ratio);
+    out_h = chrome_h + (int)std::round((float)scalable_h * ratio);
+}
+
+bool
+ImgWindow::IsSimulatorFullScreen()
+{
+#if defined(XPLM300)
+    int fullScreenMonitors = 0;
+    XPLMGetAllMonitorBoundsGlobal([](int /*inMonitorIndex*/, int /*inLeftBx*/, int /*inTopBx*/, int /*inRightBx*/, int /*inBottomBx*/, void* inRefcon) {
+        if (inRefcon) (*static_cast<int*>(inRefcon))++;
+    }, &fullScreenMonitors);
+    return fullScreenMonitors > 0;
+#else
+    return true;
+#endif
+}
+
+void
+ImgWindow::ClampGeometryToScreen(
+    int& in_out_l, int& in_out_t, int& in_out_r, int& in_out_b,
+    int min_w, int min_h, int max_w, int max_h,
+    int top_margin)
+{
+    int sLeft = 0, sTop = 0, sRight = 0, sBottom = 0;
+    XPLMGetScreenBoundsGlobal(&sLeft, &sTop, &sRight, &sBottom);
+
+    const int topMargin = (top_margin >= 0) ? top_margin : GetTopMargin(xplm_WindowDecorationRoundRectangle);
+    const int effective_sTop = sTop - topMargin;
+
+    int req_w = std::abs(in_out_r - in_out_l);
+    int req_h = std::abs(in_out_t - in_out_b);
+
+    int avail_w = sRight - sLeft;
+    int avail_h = effective_sTop - sBottom;
+
+    if (avail_w > 0 && req_w > avail_w) req_w = avail_w;
+    if (avail_h > 0 && req_h > avail_h) req_h = avail_h;
+
+    if (min_w > 0 && req_w < min_w) req_w = (std::min)(min_w, avail_w);
+    if (max_w > 0 && req_w > max_w) req_w = max_w;
+    if (min_h > 0 && req_h < min_h) req_h = (std::min)(min_h, avail_h);
+    if (max_h > 0 && req_h > max_h) req_h = max_h;
+
+    int new_l = in_out_l;
+    int new_t = in_out_t;
+
+    // 1. Clamp top bound below system menu bar
+    if (new_t > effective_sTop) {
+        new_t = effective_sTop;
+    }
+    int new_b = new_t - req_h;
+
+    // 2. If bottom overflows below screen, push window up
+    if (new_b < sBottom) {
+        int overflow = sBottom - new_b;
+        new_t = (std::min)(new_t + overflow, effective_sTop);
+        new_b = new_t - req_h;
+        if (new_b < sBottom) {
+            new_b = sBottom;
+            req_h = new_t - new_b;
+        }
+    }
+
+    // 3. Clamp left bound
+    if (new_l < sLeft) {
+        new_l = sLeft;
+    }
+    int new_r = new_l + req_w;
+
+    // 4. If right overflows past screen right, push window left
+    if (new_r > sRight) {
+        int overflow = new_r - sRight;
+        new_l = (std::max)(new_l - overflow, sLeft);
+        new_r = new_l + req_w;
+        if (new_r > sRight) {
+            new_r = sRight;
+            req_w = new_r - new_l;
+        }
+    }
+
+    in_out_l = new_l;
+    in_out_t = new_t;
+    in_out_r = new_r;
+    in_out_b = new_b;
+}
+
+namespace {
+struct OSMonitorRect {
+    int l = 0, t = 0, r = 0, b = 0;
+    int minX() const { return (std::min)(l, r); }
+    int maxX() const { return (std::max)(l, r); }
+    int minY() const { return (std::min)(t, b); }
+    int maxY() const { return (std::max)(t, b); }
+};
+
+struct FindBestOSMonitorCtx {
+    int winMinX, winMinY, winMaxX, winMaxY;
+    long long bestOverlap = -1;
+    long long bestDistSq = 0;
+    long long bestArea = -1;
+    OSMonitorRect bestMon{};
+    bool found = false;
+};
+} // namespace
+
+bool
+ImgWindow::ApplyBoxelSizeToPoppedOutOS (int target_boxel_w, int target_boxel_h)
+{
+    if (!mWindowID || !IsPoppedOut())
+        return false;
+
+    int bl = 0, bt = 0, br = 0, bb = 0;
+    GetWindowGeometry(bl, bt, br, bb);
+    const int bx_w = br - bl;
+    const int bx_h = bt - bb;
+
+    int ol = 0, ot = 0, or_ = 0, ob = 0;
+    GetWindowGeometryOS(ol, ot, or_, ob);
+    const int os_w = std::abs(or_ - ol);
+    const int os_h = std::abs(ot - ob);
+    if (bx_w <= 0 || bx_h <= 0 || os_w <= 0 || os_h <= 0)
+        return false;
+
+    const double px_per_bx_x = static_cast<double>(os_w) / static_cast<double>(bx_w);
+    const double px_per_bx_y = static_cast<double>(os_h) / static_cast<double>(bx_h);
+
+    const int clamped_bx_w = ImClamp(target_boxel_w, minWidth, maxWidth);
+    const int clamped_bx_h = ImClamp(target_boxel_h, minHeight, maxHeight);
+
+    int new_os_w = (std::max)(1, static_cast<int>(std::round(static_cast<double>(clamped_bx_w) * px_per_bx_x)));
+    int new_os_h = (std::max)(1, static_cast<int>(std::round(static_cast<double>(clamped_bx_h) * px_per_bx_y)));
+
+    const bool y_down = (ob >= ot);
+
+    const int winMinX = (std::min)(ol, or_);
+    const int winMaxX = (std::max)(ol, or_);
+    const int winMinY = (std::min)(ot, ob);
+    const int winMaxY = (std::max)(ot, ob);
+
+    int new_l = winMinX;
+    int new_t = ot;
+
+#if defined(XPLM300)
+    FindBestOSMonitorCtx ctx{winMinX, winMinY, winMaxX, winMaxY};
+    XPLMGetAllMonitorBoundsOS([](int /*idx*/, int inL, int inT, int inR, int inB, void* refcon) {
+        auto* c = static_cast<FindBestOSMonitorCtx*>(refcon);
+        OSMonitorRect mon{inL, inT, inR, inB};
+        const int ix0 = (std::max)(c->winMinX, mon.minX());
+        const int iy0 = (std::max)(c->winMinY, mon.minY());
+        const int ix1 = (std::min)(c->winMaxX, mon.maxX());
+        const int iy1 = (std::min)(c->winMaxY, mon.maxY());
+        const long long overlap = (ix1 > ix0 && iy1 > iy0)
+            ? static_cast<long long>(ix1 - ix0) * static_cast<long long>(iy1 - iy0)
+            : 0;
+        const int cx = (c->winMinX + c->winMaxX) / 2;
+        const int cy = (c->winMinY + c->winMaxY) / 2;
+        const long long dx = (cx < mon.minX()) ? (mon.minX() - cx) : ((cx > mon.maxX()) ? (cx - mon.maxX()) : 0);
+        const long long dy = (cy < mon.minY()) ? (mon.minY() - cy) : ((cy > mon.maxY()) ? (cy - mon.maxY()) : 0);
+        const long long distSq = dx * dx + dy * dy;
+        const long long area = static_cast<long long>(mon.maxX() - mon.minX())
+                             * static_cast<long long>(mon.maxY() - mon.minY());
+        if (!c->found ||
+            overlap > c->bestOverlap ||
+            (overlap == c->bestOverlap && distSq < c->bestDistSq) ||
+            (overlap == c->bestOverlap && distSq == c->bestDistSq && area > c->bestArea)) {
+            c->found = true;
+            c->bestOverlap = overlap;
+            c->bestDistSq = distSq;
+            c->bestArea = area;
+            c->bestMon = mon;
+        }
+    }, &ctx);
+
+    if (ctx.found) {
+        const int monMinX = ctx.bestMon.minX();
+        const int monMaxX = ctx.bestMon.maxX();
+        const int monMinY = ctx.bestMon.minY();
+        const int monMaxY = ctx.bestMon.maxY();
+        const int avail_w = monMaxX - monMinX;
+        const int avail_h = monMaxY - monMinY;
+        if (avail_w > 0 && new_os_w > avail_w) new_os_w = avail_w;
+        if (avail_h > 0 && new_os_h > avail_h) new_os_h = avail_h;
+
+        if (new_l < monMinX) new_l = monMinX;
+        if (new_l + new_os_w > monMaxX) new_l = (std::max)(monMinX, monMaxX - new_os_w);
+
+        if (y_down) {
+            if (new_t < monMinY) new_t = monMinY;
+            if (new_t + new_os_h > monMaxY) new_t = (std::max)(monMinY, monMaxY - new_os_h);
+        } else {
+            if (new_t > monMaxY) new_t = monMaxY;
+            if (new_t - new_os_h < monMinY) new_t = (std::min)(monMaxY, monMinY + new_os_h);
+        }
+    }
+#endif
+
+    const int new_r = new_l + new_os_w;
+    const int new_b = y_down ? (new_t + new_os_h) : (new_t - new_os_h);
+    SetWindowGeometryOS(new_l, new_t, new_r, new_b);
+    return true;
+}
+
+bool
+ImgWindow::ScaleWindowGeometry (float from_scale, float to_scale, bool avoidMenuBarConflict)
+{
+    if (from_scale <= 0.001f || to_scale <= 0.001f || !mWindowID)
+        return false;
+
+    float ratio = to_scale / from_scale;
+    if (std::abs(ratio - 1.0f) < 0.0001f)
+        return true;
+
+    if (IsInVR()) {
+        int cur_w = 0, cur_h = 0;
+        GetWindowGeometryVR(cur_w, cur_h);
+        if (cur_w <= 0 || cur_h <= 0) return false;
+
+        int scalable_w = (std::max)(0, cur_w - mChromeWidth);
+        int scalable_h = (std::max)(0, cur_h - mChromeHeight);
+
+        int new_w = mChromeWidth  + (int)std::round((float)scalable_w * ratio);
+        int new_h = mChromeHeight + (int)std::round((float)scalable_h * ratio);
+
+        new_w = ImClamp(new_w, minWidth, maxWidth);
+        new_h = ImClamp(new_h, minHeight, maxHeight);
+
+        SetWindowGeometryVR(new_w, new_h);
+        return true;
+    }
+
+    if (IsPoppedOut()) {
+        int l = 0, t = 0, r = 0, b = 0;
+        GetWindowGeometry(l, t, r, b);
+        const int bx_w = r - l;
+        const int bx_h = t - b;
+        if (bx_w <= 0 || bx_h <= 0) return false;
+
+        const int scalable_w = (std::max)(0, bx_w - mChromeWidth);
+        const int scalable_h = (std::max)(0, bx_h - mChromeHeight);
+        const int target_bx_w = mChromeWidth  + static_cast<int>(std::round(static_cast<float>(scalable_w) * ratio));
+        const int target_bx_h = mChromeHeight + static_cast<int>(std::round(static_cast<float>(scalable_h) * ratio));
+        return ApplyBoxelSizeToPoppedOutOS(target_bx_w, target_bx_h);
+    }
+
+    // Standard in-simulator 2D window:
+    int l = 0, t = 0, r = 0, b = 0;
+    GetWindowGeometry(l, t, r, b);
+    int cur_w = r - l;
+    int cur_h = t - b;
+    if (cur_w <= 0 || cur_h <= 0) return false;
+
+    int scalable_w = (std::max)(0, cur_w - mChromeWidth);
+    int scalable_h = (std::max)(0, cur_h - mChromeHeight);
+
+    int new_w = mChromeWidth  + (int)std::round((float)scalable_w * ratio);
+    int new_h = mChromeHeight + (int)std::round((float)scalable_h * ratio);
+
+    int new_l = l;
+    int new_t = t;
+    int new_r = new_l + new_w;
+    int new_b = new_t - new_h;
+
+    int top_margin = avoidMenuBarConflict ? GetEffectiveTopMargin() : 0;
+    ClampGeometryToScreen(new_l, new_t, new_r, new_b, minWidth, minHeight, maxWidth, maxHeight, top_margin);
+
+    SetWindowGeometry(new_l, new_t, new_r, new_b);
+    return true;
+}
+
+bool
+ImgWindow::ResizeToScale (float target_scale, float baseline_scale, bool avoidMenuBarConflict)
+{
+    if (target_scale <= 0.001f || baseline_scale <= 0.001f || !mWindowID)
+        return false;
+
+    if (mBaselineWidth > 0 && mBaselineHeight > 0) {
+        float effective_scale = target_scale / baseline_scale;
+        int scalable_base_w = (std::max)(0, mBaselineWidth - mChromeWidth);
+        int scalable_base_h = (std::max)(0, mBaselineHeight - mChromeHeight);
+        int target_w = mChromeWidth  + (int)std::round((float)scalable_base_w * effective_scale);
+        int target_h = mChromeHeight + (int)std::round((float)scalable_base_h * effective_scale);
+
+        if (IsInVR()) {
+            target_w = ImClamp(target_w, minWidth, maxWidth);
+            target_h = ImClamp(target_h, minHeight, maxHeight);
+            SetWindowGeometryVR(target_w, target_h);
+            return true;
+        }
+
+        if (IsPoppedOut()) {
+            return ApplyBoxelSizeToPoppedOutOS(target_w, target_h);
+        }
+
+        int l = 0, t = 0, r = 0, b = 0;
+        GetWindowGeometry(l, t, r, b);
+        int new_l = l;
+        int new_t = t;
+        int new_r = new_l + target_w;
+        int new_b = new_t - target_h;
+
+        int top_margin = avoidMenuBarConflict ? GetEffectiveTopMargin() : 0;
+        ClampGeometryToScreen(new_l, new_t, new_r, new_b, minWidth, minHeight, maxWidth, maxHeight, top_margin);
+
+        SetWindowGeometry(new_l, new_t, new_r, new_b);
+        return true;
+    }
+
+    return ScaleWindowGeometry(baseline_scale, target_scale, avoidMenuBarConflict);
 }
 
 void
@@ -831,7 +1191,7 @@ ImgWindow::RenderImGui(ImDrawData *draw_data)
                         continue; 
                     }
                     if (!draw_calls.empty()) {
-                        ImgPanelGraphics::DrawCalls(&mesh, draw_calls.size(), draw_calls.data());
+                        ImgPanelGraphics::DrawCalls(&mesh, static_cast<int>(draw_calls.size()), draw_calls.data());
                         draw_calls.clear();
                     }
                     pcmd->UserCallback(cmd_list, pcmd);
@@ -860,7 +1220,7 @@ ImgWindow::RenderImGui(ImDrawData *draw_data)
             }
             
             if (!draw_calls.empty()) {
-                ImgPanelGraphics::DrawCalls(&mesh, draw_calls.size(), draw_calls.data());
+                ImgPanelGraphics::DrawCalls(&mesh, static_cast<int>(draw_calls.size()), draw_calls.data());
             }
         }
         
@@ -1012,8 +1372,9 @@ ImgWindow::updateImgui()
         XPLMGetMouseLocation(&mouseX, &mouseY);
 #endif
 
-        const bool isMouseInside = (mouseX >= mLeft && mouseX <= mRight &&
-                                    mouseY >= mBottom && mouseY <= mTop);
+        const bool isWindowInFront = IsWindowInFront();
+        const bool isMouseInside = isWindowInFront && (mouseX >= mLeft && mouseX <= mRight &&
+                                                       mouseY >= mBottom && mouseY <= mTop);
 
         const bool isInsideContent = isMouseInside &&
             !(IsInsideSim() && bHandleWndResize &&
@@ -1076,6 +1437,10 @@ ImgWindow::updateImgui()
     // (So we catch such things here and rebuild what's needed instantly before ImGui tries to draw.)
     if (mFontAtlas && mFontAtlas->getAtlas()) {
         CheckAndRebuildAtlas(mFontAtlas->getAtlas(), mFontTexture);
+    }
+#else
+    if (io.Fonts && io.Fonts->TexID != (ImTextureID)0) {
+        mFontTexture = (ImTextureID)(intptr_t)io.Fonts->TexID;
     }
 #endif /* IMGUI_V192_REFACTOR */
 
@@ -1603,6 +1968,7 @@ ImgWindow::SetVisible(bool inIsVisible)
         }
     } else {
         // Invalidate mouse cursor and position when hiding window
+        ImGuiContext* prevContext = ImGui::GetCurrentContext();
         ImGui::SetCurrentContext(mImGuiContext);
         ImGuiIO& io = ImGui::GetIO();
         if (bUseImgCursors) {
@@ -1612,6 +1978,9 @@ ImgWindow::SetVisible(bool inIsVisible)
         io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
 #endif
         io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
+        if (prevContext && prevContext != mImGuiContext) {
+            ImGui::SetCurrentContext(prevContext);
+        }
     }
     XPLMSetWindowIsVisible(mWindowID, inIsVisible);
 }
@@ -1752,7 +2121,58 @@ void ImgWindow::DeleteTexture(ImTextureID textureID) {
     s_TexturesPendingDestruction.push_back({textureID, XPLMGetCycleNumber()});
 }
 
+struct NamedTextureEntry {
+    ImTextureID textureID = (ImTextureID)0;
+    ImVec2 size = ImVec2(0.0f, 0.0f);
+    ImVec2 uv0 = ImVec2(0.0f, 0.0f);
+    ImVec2 uv1 = ImVec2(1.0f, 1.0f);
+    ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+    ImVec4 border_col = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+    bool owned = false;
+};
+
+static std::map<std::string, NamedTextureEntry>& GetNamedTextures() {
+    static std::map<std::string, NamedTextureEntry> s_NamedTextures;
+    return s_NamedTextures;
+}
+
+static ImgWindow::MemoryImageDecodeFn s_MemoryImageDecodeFn = nullptr;
+static ImgWindow::MemoryImageFreeFn   s_MemoryImageFreeFn   = nullptr;
+
+static std::vector<ImgWindow::ShutdownHandlerFn>& GetShutdownHandlers() {
+    static std::vector<ImgWindow::ShutdownHandlerFn> s_ShutdownHandlers;
+    return s_ShutdownHandlers;
+}
+
+void ImgWindow::SetMemoryImageDecoder(MemoryImageDecodeFn decodeFn, MemoryImageFreeFn freeFn)
+{
+    s_MemoryImageDecodeFn = decodeFn;
+    s_MemoryImageFreeFn   = freeFn;
+}
+
+void ImgWindow::AddShutdownHandler(ShutdownHandlerFn fn)
+{
+    auto& handlers = GetShutdownHandlers();
+    if (fn && std::find(handlers.begin(), handlers.end(), fn) == handlers.end()) {
+        handlers.push_back(fn);
+    }
+}
+
 void ImgWindow::Shutdown() {
+    // 0. Invoke registered subsystem shutdown handlers
+    for (auto fn : GetShutdownHandlers()) {
+        if (fn) fn();
+    }
+
+    // 1. Clean up registered named textures (owned textures only)
+    auto& namedTextures = GetNamedTextures();
+    for (auto& pair : namedTextures) {
+        if (pair.second.owned && pair.second.textureID) {
+            ImgWindow::DeleteTexture(pair.second.textureID);
+        }
+    }
+    namedTextures.clear();
+
     for (const auto& item : s_TexturesPendingDestruction) {
 #ifdef IMGWINDOW_USE_PANEL_GRAPHICS
         if (ImgPanelGraphics::IsAvailable()) {
@@ -1766,6 +2186,151 @@ void ImgWindow::Shutdown() {
     }
     s_TexturesPendingDestruction.clear();
 }
+
+ImTextureID ImgWindow::RegisterNamedTexture(const std::string& name, const unsigned char* rgba_pixels, int width, int height)
+{
+    if (name.empty() || !rgba_pixels || width <= 0 || height <= 0) return (ImTextureID)0;
+
+    UnregisterNamedTexture(name);
+
+    ImTextureID texID = ImgWindow::CreateTexture(rgba_pixels, width, height);
+    if (!texID) return (ImTextureID)0;
+
+    NamedTextureEntry entry;
+    entry.textureID = texID;
+    entry.size = ImVec2(static_cast<float>(width), static_cast<float>(height));
+    entry.owned = true;
+    GetNamedTextures()[name] = entry;
+
+    return texID;
+}
+
+ImTextureID ImgWindow::RegisterNamedTexture(const std::string& name, ImTextureID textureID, ImVec2 size,
+                                            ImVec2 uv0, ImVec2 uv1, ImVec4 tint_col, ImVec4 border_col)
+{
+    if (name.empty() || !textureID) return (ImTextureID)0;
+
+    UnregisterNamedTexture(name);
+
+    NamedTextureEntry entry;
+    entry.textureID = textureID;
+    entry.size = size;
+    entry.uv0 = uv0;
+    entry.uv1 = uv1;
+    entry.tint_col = tint_col;
+    entry.border_col = border_col;
+    entry.owned = false;
+    GetNamedTextures()[name] = entry;
+
+    return textureID;
+}
+
+void ImgWindow::UnregisterNamedTexture(const std::string& name)
+{
+    auto& map = GetNamedTextures();
+    auto it = map.find(name);
+    if (it != map.end()) {
+        if (it->second.owned && it->second.textureID) {
+            ImgWindow::DeleteTexture(it->second.textureID);
+        }
+        map.erase(it);
+    }
+}
+
+ImTextureID ImgWindow::RegisterMemoryImage(const std::string& name, const void* data, size_t lengthBytes, int* outWidth, int* outHeight)
+{
+    if (outWidth) *outWidth = 0;
+    if (outHeight) *outHeight = 0;
+    if (name.empty() || !data || lengthBytes == 0) return (ImTextureID)0;
+
+    if (!s_MemoryImageDecodeFn) {
+        return (ImTextureID)0;
+    }
+
+    int w = 0, h = 0;
+    unsigned char* pixels = s_MemoryImageDecodeFn(data, lengthBytes, &w, &h);
+    if (!pixels || w <= 0 || h <= 0) return (ImTextureID)0;
+
+    ImTextureID texID = RegisterNamedTexture(name, pixels, w, h);
+    if (s_MemoryImageFreeFn) {
+        s_MemoryImageFreeFn(pixels);
+    }
+
+    if (outWidth) *outWidth = w;
+    if (outHeight) *outHeight = h;
+    return texID;
+}
+
+ImTextureID ImgWindow::GetNamedTexture(const std::string& name, ImVec2* outSize)
+{
+    return GetNamedTexture(name, outSize, nullptr, nullptr, nullptr, nullptr);
+}
+
+ImTextureID ImgWindow::GetNamedTexture(const std::string& name, ImVec2* outSize, ImVec2* outUv0, ImVec2* outUv1,
+                                       ImVec4* outTintCol, ImVec4* outBorderCol)
+{
+    if (outSize) *outSize = ImVec2(0.0f, 0.0f);
+    if (outUv0) *outUv0 = ImVec2(0.0f, 0.0f);
+    if (outUv1) *outUv1 = ImVec2(1.0f, 1.0f);
+    if (outTintCol) *outTintCol = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+    if (outBorderCol) *outBorderCol = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+    if (name.empty()) return (ImTextureID)0;
+
+    auto& map = GetNamedTextures();
+    auto it = map.find(name);
+    if (it != map.end()) {
+        if (outSize) *outSize = it->second.size;
+        if (outUv0) *outUv0 = it->second.uv0;
+        if (outUv1) *outUv1 = it->second.uv1;
+        if (outTintCol) *outTintCol = it->second.tint_col;
+        if (outBorderCol) *outBorderCol = it->second.border_col;
+        return it->second.textureID;
+    }
+
+    return (ImTextureID)0;
+}
+
+void ImGui::ImageNamed(const char* name, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col)
+{
+    if (!name || !*name) return;
+    ImVec2 nativeSize;
+    ImVec2 storedUv0(0.0f, 0.0f), storedUv1(1.0f, 1.0f);
+    ImTextureID tex = ImgWindow::GetNamedTexture(name, &nativeSize, &storedUv0, &storedUv1, nullptr, nullptr);
+    if (!tex && Detail::GetNamedTextureResolver()) {
+        tex = Detail::GetNamedTextureResolver()(name, &nativeSize);
+    }
+    if (!tex) return;
+
+    ImVec2 renderSize = size;
+    if (renderSize.x <= 0.0f && renderSize.y <= 0.0f) {
+        renderSize = nativeSize;
+    } else if (renderSize.x <= 0.0f && nativeSize.y > 0.0f) {
+        renderSize.x = std::round(renderSize.y * (nativeSize.x / nativeSize.y));
+    } else if (renderSize.y <= 0.0f && nativeSize.x > 0.0f) {
+        renderSize.y = std::round(renderSize.x * (nativeSize.y / nativeSize.x));
+    }
+
+    ImVec2 effUv0 = (uv0.x == 0.0f && uv0.y == 0.0f && uv1.x == 1.0f && uv1.y == 1.0f) ? storedUv0 : uv0;
+    ImVec2 effUv1 = (uv0.x == 0.0f && uv0.y == 0.0f && uv1.x == 1.0f && uv1.y == 1.0f) ? storedUv1 : uv1;
+
+#if defined(IMGUI_VERSION_NUM) && (IMGUI_VERSION_NUM >= 19190)
+    if (border_col.w > 0.0f) {
+        const float border_size = ImGui::GetStyle().ImageBorderSize;
+        ImGui::PushStyleVar(ImGuiStyleVar_ImageBorderSize, border_size > 1.0f ? border_size : 1.0f);
+        ImGui::PushStyleColor(ImGuiCol_Border, border_col);
+        ImGui::ImageWithBg(tex, renderSize, effUv0, effUv1, ImVec4(0, 0, 0, 0), tint_col);
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar();
+    } else {
+        ImGui::PushStyleVar(ImGuiStyleVar_ImageBorderSize, 0.0f);
+        ImGui::ImageWithBg(tex, renderSize, effUv0, effUv1, ImVec4(0, 0, 0, 0), tint_col);
+        ImGui::PopStyleVar();
+    }
+#else
+    ImGui::Image(tex, renderSize, effUv0, effUv1, tint_col, border_col);
+#endif
+}
+
 
 bool
 ImgWindow::ClearActiveInputTextIfClickedOutside()
@@ -1787,7 +2352,11 @@ ImgWindow::ClearActiveInputTextIfClickedOutside()
                 const ImRect& relRect = activeWindow->NavRectRel[layer];
                 if (!relRect.IsInverted())
                 {
+#if defined(IMGUI_VERSION_NUM) && IMGUI_VERSION_NUM >= 18900
                     ImRect absRect = ImGui::WindowRectRelToAbs(activeWindow, relRect);
+#else
+                    ImRect absRect(relRect.Min.x + activeWindow->Pos.x, relRect.Min.y + activeWindow->Pos.y, relRect.Max.x + activeWindow->Pos.x, relRect.Max.y + activeWindow->Pos.y);
+#endif
                     absRect.ClipWith(activeWindow->ClipRect);
                     if (!absRect.Contains(io.MousePos))
                     {

@@ -132,81 +132,6 @@ public:
 
   // ---------------------------------------
 
-  // Returns a list of points on the convex hull in counter-clockwise order.
-  // Note: the last point in the returned list is the same as the first one.
-  // static std::vector<missionx::Point> convex_hull(std::vector<missionx::Point> P)
-//  static void convex_hull(std::vector<missionx::Point>& P)
-//  {
-//    size_t n = P.size(), k = 0;
-//    if (n == 1)
-//      return;
-
-//    std::vector<missionx::Point> H(2 * n);
-
-//    // Sort points lexicographically
-//    std::sort(P.begin(), P.end());
-
-//    // Build lower hull
-//    for (size_t i = 0; i < n; ++i)
-//    {
-//      while (k >= (size_t)2 && Points::ccw(H[k - (size_t)2], H[k - 1], P[i]) <= 0.0)
-//        k--;
-//      H[k++] = P[i];
-//    }
-
-//    // Build upper hull
-//    for (size_t i = n - 2, t = k + 1; i >= 0; i--)
-//    {
-//      // while (k >= t && Points::cross(H[k - 2], H[k - 1], P[i]) <= 0) k--;
-//      while (k >= t && Points::ccw(H[k - (size_t)2], H[k - (size_t)1], P[i]) <= 0.0)
-//        k--;
-//      H[k++] = P[i];
-//    }
-
-//    H.resize(k - (size_t)1);
-
-//    P = H;
-//    // return H;
-//  }
-
-
-  //static void convex_hull(std::vector<missionx::Point>& P)
-  //{
-  //  int n = (int)P.size(), k = 0;
-  //  if (n == 1)
-  //    return;
-
-  //  std::vector<missionx::Point> H(2 * n);
-
-  //  // Sort points lexicographically
-  //  std::sort(P.begin(), P.end());
-
-  //  // Build lower hull
-  //  for (int i = 0; i < n; ++i)
-  //  {
-  //    while (k >= 2 && Points::ccw(H[k - 2], H[k - 1], P[i]) <= 0.0)
-  //      k--;
-  //    H[k++] = P[i];
-  //  }
-
-  //  // Build upper hull
-  //  for (int i = n - 2, t = k + 1; i >= 0; i--)
-  //  {
-  //    // while (k >= t && Points::cross(H[k - 2], H[k - 1], P[i]) <= 0) k--;
-  //    while (k >= t && Points::ccw(H[k - 2], H[k - 1], P[i]) <= 0.0)
-  //      k--;
-  //    H[k++] = P[i];
-  //  }
-
-  //  H.resize(k - (int)1);
-
-  //  P = H;
-  //  // return H;
-  //}
-
-
-  /* ********************************** */
-
   bool isPointInPolyArea(Point& point)
   {
 
@@ -351,26 +276,6 @@ public:
       p.saveCheckpoint(points);
   }
 
-
-  // ---------------------------------------
-  // readChildPointElements allow you to read multiple point child elements under parent element.
-  //static void readChildPointElements(ITCXMLNode& inParentPointNode, std::deque<missionx::Point>& outDeqPoints, int inLimit, std::string& outErr)
-  //{
-  //  int nChilds = inParentPointNode.nChildNode(mxconst::get_ELEMENT_POINT().c_str());
-  //  inLimit     = (inLimit <= 0) ? nChilds : inLimit; // if limit is 0 then we fetch all points
-
-  //  for (int i1 = 0; i1 < nChilds && i1 < inLimit; ++i1)
-  //  {
-  //    Point      p;
-  //    ITCXMLNode xPoint = inParentPointNode.getChildNode(mxconst::get_ELEMENT_POINT().c_str(), i1);
-  //    if (!xPoint.isEmpty())
-  //    {
-  //      p.loadPointElement(xPoint);
-  //      if (outErr.empty())
-  //        outDeqPoints.push_back(p);
-  //    }
-  //  }
-  //}
   // ---------------------------------------
 
   bool isPointInRadiusArea(Point& trigPoint, float inRadius_nm, Point& objectPoint)

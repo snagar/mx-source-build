@@ -1,5 +1,6 @@
 #include "MxUtils.h"
 
+#include <cstring>
 #include <filesystem>
 
 #ifdef IBM
@@ -1049,43 +1050,15 @@ missionx::mxUtils::mxIsPointInPolyArea(const std::vector<missionx::mxVec2d> inPo
 double
 missionx::mxUtils::mxCalcDistanceBetween2Points(const double gFromLat, const double gFromLong, const double gTargetLat, const double gTargetLong, const missionx::mx_units_of_measure inReturnInUnits, const double planet_great_circle_in_meters)
 {
-  //double angle, pLatRad, pLongRad, pTargetLatRad, pTargetLongRad;
-
-  ////// convert lat/long to Radiance
-  ////pLatRad  = missionx::PI / 180 * gFromLat;
-  ////pLongRad = missionx::PI / 180 * gFromLong;
-  ////pTargetLatRad  = missionx::PI / 180 * gTargetLat;
-  ////pTargetLongRad = missionx::PI / 180 * gTargetLong;
-
-  //pLatRad  = gFromLat * missionx::DegToRad;
-  //pLongRad = gFromLong * missionx::DegToRad;
-  //pTargetLatRad  = gTargetLat  * missionx::DegToRad;
-  //pTargetLongRad = gTargetLong * missionx::DegToRad;
-
   const double teta1 = missionx::DegToRad*(gFromLat);
   const double teta2 = missionx::DegToRad*(gFromLong);
   const double teta3 = missionx::DegToRad*(gTargetLat);
   const double teta4 = missionx::DegToRad*(gTargetLong);
 
   // circumference in miles at equator, if you want km, use km value here
-  // double circ = EQUATER_LEN_NM; // v3.0.303.7 deprecated
-  //double lon = (pLongRad - pTargetLongRad);
-
-  // simple absolute function
-  //if (lon == 0.00) // v3.0.303.7 fix edge case where lon value is 0.0
-  //  lon = 0.0000001;
-  //else if (lon < 0.0)
-  //  lon = -1 * (lon);
-
-  //if (lon > missionx::PI)
-  //{
-  //  lon = missionx::PI2 - lon;
-  //}
-
-  //angle = acos(sin(pTargetLatRad) * sin(pLatRad) + cos(pTargetLatRad) * cos(pLatRad) * cos(lon));
-
-  //const double retValue_d = planet_great_circle_in_meters * angle / (missionx::PI2);
-  const double retValue_d = round(planet_great_circle_in_meters * acos(cos(teta1) * cos(teta3) * cos(teta2 - teta4) + (sin(teta1) * sin(teta3))));
+  // v26.10.2 clamp to [-1, 1]: for two (almost) identical positions, rounding can give a value just above 1.0 and acos() returns NaN
+  const double cos_angle  = std::clamp(cos(teta1) * cos(teta3) * cos(teta2 - teta4) + (sin(teta1) * sin(teta3)), -1.0, 1.0);
+  const double retValue_d = round(planet_great_circle_in_meters * acos(cos_angle));
 
   switch (inReturnInUnits)
   {
@@ -1113,13 +1086,10 @@ missionx::mxUtils::mxCalcDistanceBetween2Points(const double gFromLat, const dou
       break;
   }
 
-
   return retValue_d; // distance in meters
 }
 
-
 // ----------------------------------------------
-
 
 std::string
 missionx::mxUtils::mx_translateDrefTypeToString(const XPLMDataTypeID &inType)

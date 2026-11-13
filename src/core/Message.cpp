@@ -835,31 +835,6 @@ missionx::Message::get_and_filter_next_line(std::string& outAction, bool& outIsA
 
     outIsActionLine_b = lmbda_get_is_action_line_b();
 
-    // outIsActionLine_b = std::any_of(begin(mxconst::get_vecStoryActions()),
-    //                                 end(mxconst::get_vecStoryActions()),
-    //                                 [&](std::string inAction)
-    //                                 {
-    //                                   outAction = inAction;
-    //
-    //                                   if (bStartsWithPunctuation)
-    //                                   {
-    //                                     // find first position where there is a character and not a white space
-    //                                     std::string sClearedLine = mxUtils::trim(trimmedLine.substr(1));
-    //                                     #ifndef RELEASE
-    //                                     bool bResult = (line.find(inAction) == 0);
-    //                                     #endif
-    //
-    //                                     return (sClearedLine.find(inAction) == 0);
-    //                                   }
-    //
-    //                                   #ifndef RELEASE
-    //                                   bool bResult = (line.find(inAction) == 0);
-    //                                   #endif
-    //
-    //                                   return (line.find(inAction) == 0);
-    //
-    //                                 });
-
     // if valid action, pop out
     this->dqMsgLines.pop_front();
     ++outLineCounter;

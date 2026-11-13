@@ -422,9 +422,9 @@ public:
 
   std::string getHeading_s() { return Utils::formatNumber<float>(this->heading, 2); }
 
-  std::string getID() { return {this->ID}; }
+  std::string getID() const { return {this->ID}; }
 
-  std::string getNavAidName() { return {this->name}; }
+  std::string getNavAidName() const { return {this->name}; }
 
   std::string getName() { return {this->name}; }
 

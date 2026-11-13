@@ -10,6 +10,7 @@
 #include "../../../libs/imgui4xp/ImgWindow/ImgWindow.h"
 #include "mx_colors.hpp"
 #include "../../../libs/imgui4xp/imgui/implot/implot.h" // v3.0.255.1
+#include "../../../libs/imgui4xp/imgui/implot3d/implot3d.h" // v26.10.2 flight path 3D plot
 #include "../MxUICore.hpp" // v3.303.14 holds Font related data
 #include "../../core/xx_mission_constants.hpp" // v3.303.14 holds Font related data
 
@@ -21,6 +22,7 @@ class mx_img_window : public ImgWindow {
 private:
   static int     iFontQueue;
   ImPlotContext* mImPlotContext = {nullptr};
+  ImPlot3DContext* mImPlot3DContext = {nullptr}; // v26.10.2
 public:
   // Inherits all constructors from ImgWindow automatically
   // using ImgWindow::ImgWindow;
@@ -73,31 +75,6 @@ public:
   static void mxEndUiDisableState(bool in_true_exp_to_disable);   // v24.02.6 true means not disable
 
   static bool mxUiButtonTooltip(const char* label, const char* tip = nullptr, ImVec4 colFg = ImVec4(1.0f, 1.0f, 1.0f, 1.0f), ImVec4 colBg = ImVec4(1.0f, 1.0f, 1.0f, 1.0f), const ImVec2& size = ImVec2(0, 0));
-
-  // Using "Weak pointer" instead to the Briefer window.
-  // void destroy_textures(std::ranges::input_range auto& inout_textures_map)
-  // {
-  //   for (auto& [file_path, texture_info] : inout_textures_map)
-  //   {
-  //     if (texture_info.gTexture)
-  //     {
-  //
-  //       #ifdef IMGWINDOW_USE_PANEL_GRAPHICS
-  //       if (ImgPanelGraphics::IsAvailable())
-  //         ImgPanelGraphics::DestroyTexture(&texture_info.gTexture);
-  //       else
-  //         #endif
-  //         // OpenGL
-  //       {
-  //         glDeleteTextures(1, reinterpret_cast<const GLuint *> (&texture_info.gTexture));
-  //       }
-  //     }
-  //
-  //     #ifndef RELEASE
-  //     Log::logMsg(fmt::format("[{}] Deleted texture: {}.", __func__, file_path));
-  //     #endif
-  //   }
-  // }
 
   // v26.09.3
   // Creates a texture handle compatible with this window's active backend (Panel Graphics or OpenGL) 

@@ -11,9 +11,20 @@
 //#include "../data_manager.h"
 #include "../../io/dbase.h"
 #include "base_thread.hpp"
+#include <atomic> // v26.10.2
 
 namespace missionx
 {
+
+// v26.10.2 the in-flight stats copy (tmp_stats.db), made by the writer thread right after one of its commits
+enum class mx_stats_copy_state : uint8_t
+{
+  idle = 0,  // no copy asked
+  requested, // the main thread asked for a copy. The next writer thread makes it
+  copying,   // the writer thread is making it
+  ready,     // the copy file is ready to read
+  failed     // the copy failed: get_copy_error_cai()
+};
 
 class GatherStats : public base_thread
 {
@@ -130,7 +141,14 @@ private:
 
   //void clearQueueContainer(); // v3.303.8.3 deprecated - not in use
   bool thread_should_write_info {false};                 // a flag that assist in preventing the thread to start in certain circumstances.
-  bool exec_gather_thread(strct_thread_state* xxthread_state); //, Plane::mx_struct_stats_gather inStats); // each statement will finish with reset()
+  bool exec_gather_thread(strct_thread_state* inout_thread_state_ptr, bool in_flag_allow_copy); //, Plane::mx_struct_stats_gather inStats); // each statement will finish with reset(). v26.10.2 in_flag_allow_copy: true only on the writer thread (the in-flight stats copy never runs on the main thread)
+
+  // v26.10.2 the in-flight stats copy. copy_file_path and copy_error are written before copy_state changes, and read after it changed
+  std::atomic<missionx::mx_stats_copy_state> copy_state{ missionx::mx_stats_copy_state::idle };
+  std::atomic<bool>                          flag_abort_copy{ false }; // set by abort_copy_cai(): the writer drops the copy (or does not start it)
+  std::string                                copy_file_path;
+  std::string                                copy_error;
+  void make_copy_cai(); // writer thread, after its commit: "VACUUM INTO" copy_file_path
 
   /*******
    * line_seq & step_seq will allow us to group each step to its own set.
@@ -147,6 +165,7 @@ private:
   ///// Injecting Queue Container /////
   std::queue<mx_struct_stats_gather> qInjectPlaneStats;
   void clear_queue(); // v26.10.1 empty qInjectPlaneStats under the mutex
+  void create_meta_tables_cai() const; // v26.10.2 flight_info and plane_meta tables ("if not exists")
 
 public:
   GatherStats();
@@ -167,6 +186,15 @@ public:
   // v26.10.1 stats database lifecycle
   void wait_for_writer();                    // join the running writer thread (no abort, its rows are written)
   void detach_db(bool in_flush_pending_rows); // stop writing and forget the connection. true: write the queued rows first
+  void flush_pending_rows_cai();                  // v26.10.2 wait for the writer, then write the queued rows on this thread (main thread). The connection stays attached
+  int  get_last_line_id_cai() const { return line_seq; } // v26.10.2 last stats.line_id written. Read it only when no writer runs (after wait_for_writer() or flush_pending_rows_cai())
+
+  // v26.10.2 the in-flight stats copy (main thread). The writer thread makes the copy right after its next commit, so the live file is never read while it is written.
+  bool                         request_copy_cai(const std::string &in_file_path); // false: a copy is already asked or being made
+  missionx::mx_stats_copy_state get_copy_state_cai() const { return copy_state.load(); }
+  std::string                  get_copy_error_cai() const { return (copy_state.load() == missionx::mx_stats_copy_state::failed) ? copy_error : std::string(); }
+  void                         reset_copy_cai(); // back to "idle". Call it only when no writer runs, or when the state is "ready" or "failed"
+  void                         abort_copy_cai(); // the mission is not running: drop the copy. Safe while the writer runs (a running copy is interrupted)
 
   void initTotalRunningTimeInSec();
   void gather_stats_data(); // v3.0.255.1
@@ -186,6 +214,7 @@ public:
   void init_seq_from_checkpoint_stats(); // v3.303.8.3
 
   mx_struct_stats_gather get_stats_object() {return stats; }
+  void set_cumulative_distance_nm_cai(const float in_distance_nm) { stats.fCumulativeDistance_nm = in_distance_nm; } // v26.10.2 checkpoint load: continue the distance from the saved leg row
 
   // Inject stats into Queue
   void addInjectedPlaneStat(mx_struct_stats_gather &inStat);

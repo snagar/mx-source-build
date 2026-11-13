@@ -179,6 +179,8 @@ set(BASE_SRC src/core/coordinate/NavAidInfo.hpp
     src/ui/gl/ui_external_dbflightplan_screen.h
     src/ui/gl/ui_setup_screen.cpp
     src/ui/gl/ui_setup_screen.h
+    src/ui/gl/ui_stats_screen.cpp
+
 )
 
 set(LOGURU_SRC

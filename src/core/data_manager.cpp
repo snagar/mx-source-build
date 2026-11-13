@@ -1,4 +1,5 @@
- #include "../io/ListDir.h"
+ #include <optional>
+#include "../io/ListDir.h"
 #include "xx_mission_constants.hpp"
 
 
@@ -9,7 +10,11 @@
 
 #include "data_manager.h"
 
+#include <algorithm> // v26.10.2
 #include <array>
+#include <cctype>    // v26.10.2
+#include <ctime>     // v26.10.2
+#include <string_view> // v26.10.2
 #include <cstdio>
 // #include <forward_list> // v3.305.3
 #include <fstream>
@@ -195,7 +200,7 @@ dbase data_manager::db_xp_airports; // v3.0.241.10
 dbase data_manager::db_cache;       // v3.0.255.3
 dbase data_manager::db_stats;       // v3.0.255.1
 
-mx_mission_stats_strct data_manager::mission_stats_from_query;
+missionx::mx_stats_view_data data_manager::last_flight_stats_view; // v26.10.2 was: mx_mission_stats_strct mission_stats_from_query
 
 uiLayer_enum data_manager::generate_from_layer;
 
@@ -209,6 +214,9 @@ std::vector<mx_external_fpln_strct>     data_manager::tableExternalFPLN_simbrief
 std::vector<mx_external_fpln_strct>     data_manager::tableExternalFPLN_vec;
 std::map<int, mx_external_fpln_strct *> data_manager::indexPointer_forExternalFPLN_tableVector;
 std::vector<std::future<void>>              data_manager::mFetchFutures; //  holds async pointers
+bool                                        data_manager::flag_is_stats_request_is_active{ false }; // v26.10.2
+int                                         data_manager::in_flight_stats_reset_seq{ 0 };          // v26.10.2
+std::future<void>                           data_manager::futStatsRoute; // v26.10.2 route job (stats_meta_build_route_thread_cai)
 IXMLNode                                    data_manager::jsonConvertedNode_xml;
 
 // ILS Query Filtering
@@ -1141,6 +1149,10 @@ data_manager::gatherFlightLegStartStats()
   strct_currentLegStats4UIDisplay.fStartingFuel                            = dataref_manager::getDataRefValue<float>("sim/flightmodel/weight/m_fuel_total");
   strct_currentLegStats4UIDisplay.fStartingPayload                         = dataref_manager::getDataRefValue<float>("sim/flightmodel/weight/m_fixed");
   strct_currentLegStats4UIDisplay.fCumulativeDistanceFlew_beforeCurrentLeg = gather_stats.get_stats_object().fCumulativeDistance_nm;
+  strct_currentLegStats4UIDisplay.iStartLineId                             = gather_stats.get_last_line_id_cai(); // v26.10.2
+
+  // v26.10.2 the leg row is added now (status "running"). A crash or an abort before the leg ends still shows which leg it was
+  stats_meta_begin_leg_cai(strct_currentLegStats4UIDisplay);
 }
 
 // -------------------------------------
@@ -1152,6 +1164,10 @@ data_manager::gatherFlightLegEndStatsAndStoreInVector()
   strct_currentLegStats4UIDisplay.fEndFuel      = dataref_manager::getDataRefValue<float>("sim/flightmodel/weight/m_fuel_total");
   strct_currentLegStats4UIDisplay.fEndPayload   = dataref_manager::getDataRefValue<float>("sim/flightmodel/weight/m_fixed");
   strct_currentLegStats4UIDisplay.fDistanceFlew = gather_stats.get_stats_object().fCumulativeDistance_nm - strct_currentLegStats4UIDisplay.fCumulativeDistanceFlew_beforeCurrentLeg;
+  strct_currentLegStats4UIDisplay.sStatus       = mxconst::get_LEG_STATUS_COMPLETED(); // v26.10.2
+
+  // v26.10.2 close the leg row in the stats database (history and the stats screen read the legs from there)
+  stats_meta_update_leg_cai(strct_currentLegStats4UIDisplay, mxconst::get_LEG_STATUS_COMPLETED());
 
   // insert at the beginning of the vector
   vecPreviousLegStats4UIDisplay.insert(vecPreviousLegStats4UIDisplay.begin(), strct_currentLegStats4UIDisplay);
@@ -1257,7 +1273,7 @@ data_manager::readPluginTextures()
 {
   std::string                 errorMsg;
   const std::string                 bitmapPath      = mx_folders_properties.getAttribStringValue (mxconst::get_PROP_MISSIONX_BITMAP_PATH(), "", errStr);
-  const std::array<std::string, 37> textureName_arr = { mxconst::get_BITMAP_LOAD_MISSION(),
+  const std::array<std::string, 38> textureName_arr = { mxconst::get_BITMAP_LOAD_MISSION(),
                                                   mxconst::get_BITMAP_INVENTORY_MXPAD(),
                                                   mxconst::get_BITMAP_MAP_MXPAD(),
                                                   mxconst::get_BITMAP_AUTO_HIDE_EYE_FOCUS(),
@@ -1278,7 +1294,8 @@ data_manager::readPluginTextures()
                                                   mxconst::get_BITMAP_BTN_NAV_24x18(),
                                                   mxconst::get_BITMAP_FMOD_LOGO(),
                                                   mxconst::get_BITMAP_BTN_WARN_SMALL_32x28(),
-                                                  mxconst::get_BITMAP_BTN_CONVERT_FPLN_TO_MISSION_24X18(),
+                                                  mxconst::get_BITMAP_BTN_CONVERT_FPLN_TO_MISSION_15X15(), // v26.10.2 square image for the "Generate" screen
+                                                  mxconst::get_BITMAP_BTN_STATS_24X18(), // v26.10.2
 
                                                   mxconst::get_BITMAP_BTN_NAVINFO(),
                                                   mxconst::get_BITMAP_BTN_SIMBRIEF_BIG(),
@@ -2592,7 +2609,7 @@ data_manager::stopMission()
   mapFailureTimers.clear();                // v3.0.253.7
   lowestFailTimerName_s.clear(); // v3.0.253.7
 
-  close_stats_db(false); // v26.10.1 was: db_close_database(db_stats). Stops the writer thread first.
+  close_stats_db(true); // v26.10.2 flush=true: a stopped mission keeps its last rows, and its outcome is written. v26.10.1 was: db_close_database(db_stats). Stops the writer thread first.
 
   mapInterpolDatarefs.clear(); // v3.303.13
 
@@ -3449,7 +3466,7 @@ void data_manager::set_plane_fuel()
 
   // 1. Fetch total aircraft fuel capacity (kg) to calculate each tank's physical max capacity.
   // Dataref: "sim/aircraft/weight/acf_m_fuel_tot"
-  const float total_aircraft_fuel_capacity = missionx::dataref_manager::getDataRefValue<float>(dataref_const::dref_rw_acf_m_fuel_tot_lbs) * lbs2kg;
+  const float total_aircraft_fuel_capacity = missionx::dataref_manager::getDataRefValue<float>(dataref_const::dref_rw_acf_m_fuel_tot_kg); // v26.10.2 removed "* lbs2kg", the dataref values are kg
 
   distribute_weight(tank_ratios, fuel_tanks, mission_block_fuel, total_aircraft_fuel_capacity, true);
 
@@ -4380,12 +4397,149 @@ data_manager::drawCueInfoOn2DMap(const float* inMapBoundsLeftTopRightBottom, con
 
 // -------------------------------------
 
+bool
+data_manager::is_gps_point_a_target_cai(IXMLNode in_point)
+{
+  // An explicit flag always wins.
+  if (in_point.isAttributeSet(mxconst::get_ATTRIB_IS_TARGET_POINT_B().c_str()))
+    return Utils::readBoolAttrib(in_point, mxconst::get_ATTRIB_IS_TARGET_POINT_B(), true);
+
+  // A "point of interest" is something you can navigate to, but it is not a target.
+  if (in_point.isAttributeSet(mxconst::get_ATTRIB_POI_TAG().c_str()))
+    return false;
+
+  // A point that was saved as a VOR/NDB/Fix (LittleNavMap conversion for example) is a route waypoint, not a target.
+  const int nav_type_i = Utils::readNodeNumericAttrib<int>(in_point, mxconst::get_ATTRIB_NAV_TYPE(), xplm_Nav_Unknown);
+  if (nav_type_i == xplm_Nav_VOR || nav_type_i == xplm_Nav_NDB || nav_type_i == xplm_Nav_Fix)
+    return false;
+
+  // Any other coordinate is treated as a target (Random Engine targets, skewed positions, hand made coordinates).
+  return true;
+}
+
+// -------------------------------------
+
+missionx::NavAidInfo
+data_manager::get_fms_entry_for_gps_point_cai(IXMLNode in_point, const bool in_is_route_edge, const bool in_restore_as_saved)
+{
+  const auto        point_lat_f  = Utils::readNodeNumericAttrib<float>(in_point, mxconst::get_ATTRIB_LAT(), 0.0f);
+  const auto        point_lon_f  = Utils::readNodeNumericAttrib<float>(in_point, mxconst::get_ATTRIB_LONG(), 0.0f);
+  const auto        point_elev_ft_f = Utils::readNodeNumericAttrib<float>(in_point, mxconst::get_ATTRIB_ELEV_FT(), 0.0f);
+  const std::string point_icao_s = Utils::readAttrib(in_point, mxconst::get_ELEMENT_ICAO(), "");
+  const int         point_nav_type_i = Utils::readNodeNumericAttrib<int>(in_point, mxconst::get_ATTRIB_NAV_TYPE(), xplm_Nav_Unknown);
+
+  // The fallback: the point coordinate as is.
+  missionx::NavAidInfo lat_lon_entry(point_lat_f, point_lon_f, point_elev_ft_f * missionx::feet2meter);
+  lat_lon_entry.navRef  = XPLM_NAV_NOT_FOUND;
+  lat_lon_entry.navType = xplm_Nav_LatLon;
+
+  if (point_lat_f == 0.0f && point_lon_f == 0.0f)
+    return lat_lon_entry;
+
+  // Search the navaid closest to the point, optionally by ID, and accept it only if it is within in_max_distance_nm.
+  const auto lmbda_find_navaid_near_point = [&](const std::string& in_navaid_id, const XPLMNavType in_nav_types, const double in_max_distance_nm) -> std::optional<missionx::NavAidInfo>
+  {
+    float search_lat_f = point_lat_f;
+    float search_lon_f = point_lon_f;
+    const XPLMNavRef nav_ref = XPLMFindNavAid(nullptr, (in_navaid_id.empty()) ? nullptr : in_navaid_id.c_str(), &search_lat_f, &search_lon_f, nullptr, in_nav_types);
+    if (nav_ref == XPLM_NAV_NOT_FOUND)
+      return std::nullopt;
+
+    missionx::NavAidInfo found_navaid;
+    found_navaid.navRef = nav_ref;
+    XPLMGetNavAidInfo(nav_ref, &found_navaid.navType, &found_navaid.lat, &found_navaid.lon, &found_navaid.height_mt, &found_navaid.freq, &found_navaid.heading, found_navaid.ID, found_navaid.name, nullptr);
+
+    if (const double distance_nm = mxUtils::mxCalcDistanceBetween2Points(found_navaid.lat, found_navaid.lon, point_lat_f, point_lon_f);
+        distance_nm > in_max_distance_nm)
+      return std::nullopt;
+
+    return found_navaid;
+  };
+
+  // Saved mission (<fms> from a checkpoint): restore the entry exactly as it was saved.
+  if (in_restore_as_saved)
+  {
+    if (point_nav_type_i > xplm_Nav_Unknown && point_nav_type_i != xplm_Nav_LatLon && !point_icao_s.empty())
+    {
+      if (const auto saved_navaid = lmbda_find_navaid_near_point(point_icao_s, point_nav_type_i, mxconst::GPS_NAVAID_MATCH_RADIUS_NM))
+        return *saved_navaid;
+    }
+    return lat_lon_entry;
+  }
+
+  // New mission, rule 1: any coordinate inside an airport is replaced by the airport ICAO.
+  //                      A skewed position is never replaced, it was moved away from the target on purpose.
+  if (const bool is_skewed_position = Utils::readBoolAttrib(in_point, mxconst::get_ATTRIB_IS_SKEWED_POSITION_B(), false);
+      !is_skewed_position)
+  {
+    // Step 1: is the coordinate inside an airport boundary (or on one of its runways) ? Plugin airports database.
+    const auto lmbda_find_airport_by_boundary = [&]() -> std::optional<missionx::NavAidInfo>
+    {
+      std::lock_guard<std::mutex> lock(s_thread_sync_mutex); // db_xp_airports and its statements are shared with background jobs
+      if (!init_xp_airport_db())
+        return std::nullopt;
+
+      auto boundary_airport = get_plane_airport_or_nearest_icao(true, point_lat_f, point_lon_f, false); // true = database only, false = not a thread
+      if (!boundary_airport.flag_fetched_from_db || boundary_airport.navRef == XPLM_NAV_NOT_FOUND)
+        return std::nullopt;
+
+      XPLMGetNavAidInfo(boundary_airport.navRef, &boundary_airport.navType, &boundary_airport.lat, &boundary_airport.lon, &boundary_airport.height_mt, &boundary_airport.freq, &boundary_airport.heading, boundary_airport.ID, boundary_airport.name, nullptr);
+      return boundary_airport;
+    };
+
+    if (const auto boundary_airport = lmbda_find_airport_by_boundary())
+    {
+      Log::logMsg(fmt::format("[{}] ({:.5f}, {:.5f}) is inside the boundary of {}.", __func__, point_lat_f, point_lon_f, boundary_airport->getID()));
+      return *boundary_airport;
+    }
+
+    // Step 2: no boundary match, search the airport nearest to the coordinate, up to GPS_AIRPORT_MATCH_RADIUS_NM (~1.2nm).
+    if (!point_icao_s.empty())
+    {
+      if (const auto airport = lmbda_find_navaid_near_point(point_icao_s, xplm_Nav_Airport, mxconst::GPS_AIRPORT_MATCH_RADIUS_NM))
+        return *airport;
+    }
+    if (const auto nearest_airport = lmbda_find_navaid_near_point("", xplm_Nav_Airport, mxconst::GPS_AIRPORT_MATCH_RADIUS_NM))
+      return *nearest_airport;
+  }
+
+  // New mission, rule 2: an in-between waypoint that sits on a VOR/NDB/Fix is replaced by the navaid, but only if it is not a target.
+  if (!in_is_route_edge && !is_gps_point_a_target_cai(in_point))
+  {
+    constexpr XPLMNavType route_navaid_types = xplm_Nav_VOR | xplm_Nav_NDB | xplm_Nav_Fix;
+    if (!point_icao_s.empty())
+    {
+      const XPLMNavType search_types = (point_nav_type_i > xplm_Nav_Unknown && point_nav_type_i != xplm_Nav_LatLon) ? point_nav_type_i : route_navaid_types;
+      if (const auto named_navaid = lmbda_find_navaid_near_point(point_icao_s, search_types, mxconst::GPS_NAVAID_MATCH_RADIUS_NM))
+        return *named_navaid;
+    }
+    if (const auto nearest_navaid = lmbda_find_navaid_near_point("", route_navaid_types, mxconst::GPS_NAVAID_MATCH_RADIUS_NM))
+      return *nearest_navaid;
+  }
+
+  return lat_lon_entry;
+}
+
+// -------------------------------------
+
+void
+data_manager::set_fms_entry_cai(const int in_entry_index, const missionx::NavAidInfo& in_entry)
+{
+  const int altitude_ft_i = static_cast<int>(in_entry.height_mt * missionx::meter2feet); // FMS altitudes are in feet
+
+  if (in_entry.navRef != XPLM_NAV_NOT_FOUND)
+    XPLMSetFMSEntryInfo(in_entry_index, in_entry.navRef, altitude_ft_i);
+  else
+    XPLMSetFMSEntryLatLon(in_entry_index, in_entry.lat, in_entry.lon, altitude_ft_i);
+}
+
+// -------------------------------------
+
 std::map<int, missionx::NavAidInfo>
 data_manager::setGPS()
 {
   const bool        bUseGPS         = (xmlLoadedFMS.isEmpty ()) ? true : false; // v25.04.2 decide if to use GPS or FMS, we will use the bool value to decide if to read the auto_load option or not.
   const IXMLNode    xFMS_ptr        = (bUseGPS) ? xmlGPS : xmlLoadedFMS; // pick the FMS element or GPS dependent on availability in the mission/checkpoint file.
-  const std::string mission_state_s = Utils::readAttrib (mx_global_settings.node, mxconst::get_PROP_MISSION_STATE (), ""); // empty value means new mission and not loaded checkpoint
   std::map<int, missionx::NavAidInfo> map_fms_entries; // v25.05.1
 
   if (xFMS_ptr.isEmpty())
@@ -4397,98 +4551,22 @@ data_manager::setGPS()
     const bool bAutoLoad    = Utils::readBoolAttrib (data_manager::xmlGPS, mxconst::get_PROP_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B (), mxconst::DEFAULT_AUTO_LOAD_ROUTE_TO_GPS_OR_FMS_B);
     const bool bGenerateGPS = Utils::readBoolAttrib (data_manager::xmlGPS, mxconst::get_PROP_GENERATE_GPS_WAYPOINTS (), false);
     if ( !(bGenerateGPS && bAutoLoad) )
+    {
+      Log::logMsg(fmt::format("[{}] GPS was not loaded. generate_gps_waypoints: {}, auto_load_route_to_gps_or_fms_b: {}", __func__, bGenerateGPS, bAutoLoad));
       return map_fms_entries; // exit the code in this function.
+    }
   }
 
-  // v3.0.303.2
-  const auto nodeLocationAdjust_ptr = xMainNode.getChildNodeByPath ((mxconst::get_ELEMENT_BRIEFER () + "/" + mxconst::get_ELEMENT_LOCATION_ADJUST ()).c_str ());
   // clear GPS
   clearFMSEntries(); // v3.0.253.7
 
-  const int nChilds = xFMS_ptr.nChildNode(mxconst::get_ELEMENT_POINT().c_str());
-
-  int valid_entries_counter = 0;
-
-  constexpr int min = 0;
-  const int max = (nChilds-1 > min) ? (nChilds-1) : min + 1;
-
-  for (int i1 = 0; i1 < nChilds; ++i1)
+  // v26.10.2 the <gps> element is resolved with the "new mission" rules (ICAO replacement). A saved <fms> element is restored as is.
+  map_fms_entries = parse_gps_node();
+  for (const auto& [entry_index, fms_entry] : map_fms_entries)
   {
-    NavAidInfo navInfo;
-    IXMLNode cNode_ptr = xFMS_ptr.getChildNode(mxconst::get_ELEMENT_POINT().c_str(), i1); // .deepCopy(); // v3.0.219.7 copy of GPS point
-
-    auto              lat_f              = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LAT (), 0.0f);
-    auto              lon_f              = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LONG (), 0.0f);
-    const auto        elev_ft_f          = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_ELEV_FT (), 0.0f); // v3.0.241.3
-
-    navInfo.navRef    = Utils::readNodeNumericAttrib<int> (cNode_ptr, mxconst::get_ATTRIB_NAVREF (), XPLM_NAV_NOT_FOUND); // v25.05.1
-    navInfo.lat       = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LAT (), 0.0f);
-    navInfo.lon       = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LONG (), 0.0f);
-    navInfo.height_mt = (Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_ELEV_FT (), 0.0f) * missionx::feet2meter);
-    navInfo.setID (Utils::readAttrib (cNode_ptr, mxconst::get_ELEMENT_ICAO (), ""));
-    navInfo.navType = Utils::readNodeNumericAttrib<int> (cNode_ptr, mxconst::get_ATTRIB_NAV_TYPE (), xplm_Nav_Unknown);
-
-    // v25.05.1 decide which navtype to search
-    XPLMNavType nav_type = xplm_Nav_Airport; // xplm_Nav_Airport|xplm_Nav_Fix|xplm_Nav_VOR|xplm_Nav_NDB
-    if ( mxUtils::mx_between <int>(i1, min, max, missionx::enums::mx_between_types::gt_min_less_max))
-      nav_type = xplm_Nav_Airport|xplm_Nav_Fix|xplm_Nav_VOR|xplm_Nav_NDB;
-
-
-    // v3.0.221.7 - add ICAO if available
-    bool flag_icao_is_valid = false; // will hold the icao string if it is valid one.
-    if (navInfo.navRef == XPLM_NAV_NOT_FOUND)
-    {
-      if (navInfo.getID ().empty () && lat_f * lon_f != 0.0)
-      {
-        navInfo.navRef = XPLMFindNavAid(nullptr, nullptr, &lat_f, &lon_f, nullptr, nav_type);
-      }
-      else if (!navInfo.getID ().empty () && lat_f * lon_f != 0.0)
-      {
-        if (navInfo.navType > xplm_Nav_Unknown)
-          navInfo.navRef = XPLMFindNavAid(nullptr, navInfo.getID ().data(), &lat_f, &lon_f, nullptr, navInfo.navType); // find ref based on point nav_type. We can add assert on navRef_fromNode_i
-        else
-          navInfo.navRef = XPLMFindNavAid(nullptr, navInfo.getID ().data(), &lat_f, &lon_f, nullptr, nav_type);
-      }
-    }
-
-    if (navInfo.navRef != XPLM_NAV_NOT_FOUND)
-    {
-      flag_icao_is_valid = true;
-      XPLMGetNavAidInfo (navInfo.navRef, &navInfo.navType, &navInfo.lat, &navInfo.lon, &navInfo.height_mt, &navInfo.freq, &navInfo.heading, navInfo.ID, navInfo.name, nullptr);
-      const auto distance = mxUtils::mxCalcDistanceBetween2Points (navInfo.lat, navInfo.lon, lat_f, lon_f);
-      if (distance < 1.2)
-      {
-        XPLMSetFMSEntryInfo(valid_entries_counter, navInfo.navRef, static_cast<int> ( navInfo.height_mt ) );
-        Utils::addElementToMap (map_fms_entries, valid_entries_counter, navInfo);
-        ++valid_entries_counter;
-      }
-
-    }
-
-    const auto navaid_elev_in_feet_f = (flag_icao_is_valid)?  navInfo.get_elev_ft()
-                                                         :  elev_ft_f;
-
-
-    // v3.0.241.2 adding RealityXP ".gpf" flight plan format
-    if (flag_icao_is_valid)
-    {
-      const double distance = mxUtils::mxCalcDistanceBetween2Points(navInfo.lat, navInfo.lon, lat_f, lon_f);
-
-      // skip lat/lon in FMS only if this is not a loaded mission and distance to entry is to close.
-      if (((i1 == 0 && distance < 1.2 ) || (i1 > 0 && distance < 0.2) ) && mission_state_s.empty () )
-      {
-        continue;
-      }
-    }
-
-    // v25.05.1 Adding lat/lon/height in meters
-    const missionx::NavAidInfo nav (lat_f, lon_f, (navaid_elev_in_feet_f * feet2meter) );
-    Utils::addElementToMap (map_fms_entries, valid_entries_counter, nav);
-
-    XPLMSetFMSEntryLatLon(valid_entries_counter, lat_f, lon_f, navaid_elev_in_feet_f); // v3.0.241.3
-
-    ++valid_entries_counter;
-  } // end loop over all child <point>s
+    set_fms_entry_cai(entry_index, fms_entry);
+    Log::logMsg(fmt::format("[{}] FMS entry {}: {} ({:.5f}, {:.5f})", __func__, entry_index, (fms_entry.navRef != XPLM_NAV_NOT_FOUND) ? fms_entry.getID() : std::string("lat/lon"), fms_entry.lat, fms_entry.lon));
+  }
 
   // Decide on which FMS entry to point
   const int entries = XPLMCountFMSEntries ();
@@ -4511,88 +4589,26 @@ data_manager::setGPS()
 
 std::map<int, missionx::NavAidInfo> data_manager::parse_gps_node()
 {
-  const bool        bUseGPS         = (xmlLoadedFMS.isEmpty ()) ? true : false; // v25.04.2 decide if to use GPS or FMS, we will use the bool value to decide if to read the auto_load option or not.
-  const IXMLNode    xFMS_ptr        = (bUseGPS) ? xmlGPS : xmlLoadedFMS; // pick the FMS element or GPS dependent on availability in the mission/checkpoint file.
-  const std::string mission_state_s = Utils::readAttrib (mx_global_settings.node, mxconst::get_PROP_MISSION_STATE (), ""); // empty value means new mission and not loaded checkpoint
+  // v26.10.2 read only: builds the FMS entries list from <gps> (new mission rules) or from the saved <fms> (restore as is).
+  //          It does NOT write into the X-Plane FMS, setGPS() does that. Also used to write the external flight plan file.
+  const bool     bUseGPS = (xmlLoadedFMS.isEmpty ()) ? true : false;
+  const IXMLNode xFMS_ptr = (bUseGPS) ? xmlGPS : xmlLoadedFMS;
   std::map<int, missionx::NavAidInfo> map_fms_entries; // v25.05.1
 
   if (xFMS_ptr.isEmpty())
     return map_fms_entries;
 
+  const int  nChilds              = xFMS_ptr.nChildNode(mxconst::get_ELEMENT_POINT().c_str());
+  const bool flag_restore_as_saved = !bUseGPS;
 
-  const auto nodeLocationAdjust_ptr = xMainNode.getChildNodeByPath ((mxconst::get_ELEMENT_BRIEFER () + "/" + mxconst::get_ELEMENT_LOCATION_ADJUST ()).c_str ());
-  const int nChilds = xFMS_ptr.nChildNode(mxconst::get_ELEMENT_POINT().c_str());
-
-  // These parameters represent the first and last waypoints. They must represent an airport and not a Nav/Vor/Fix/NDB
-  constexpr int first_waypoint = 0;
-  const int last_waypoint = (nChilds-1 > first_waypoint) ? (nChilds-1) : first_waypoint + 1;
-
- int valid_entries_counter = 0;
- for (int i1 = 0; i1 < nChilds; ++i1)
+  int valid_entries_counter = 0;
+  for (int i1 = 0; i1 < nChilds; ++i1)
   {
-    NavAidInfo navInfo;
-    IXMLNode cNode_ptr = xFMS_ptr.getChildNode(mxconst::get_ELEMENT_POINT().c_str(), i1); // .deepCopy(); // v3.0.219.7 copy of GPS point
+    const IXMLNode cNode_ptr        = xFMS_ptr.getChildNode(mxconst::get_ELEMENT_POINT().c_str(), i1);
+    const bool     is_route_edge    = (i1 == 0 || i1 == nChilds - 1); // first and last waypoints must be an airport or a coordinate, never a VOR/NDB/Fix
+    const auto     fms_entry        = get_fms_entry_for_gps_point_cai(cNode_ptr, is_route_edge, flag_restore_as_saved);
 
-    auto              lat_f              = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LAT (), 0.0f);
-    auto              lon_f              = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LONG (), 0.0f);
-    const auto        elev_ft_f          = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_ELEV_FT (), 0.0f); // v3.0.241.3
-
-    navInfo.navRef    = Utils::readNodeNumericAttrib<int> (cNode_ptr, mxconst::get_ATTRIB_NAVREF (), XPLM_NAV_NOT_FOUND); // v25.05.1
-    navInfo.lat       = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LAT (), 0.0f);
-    navInfo.lon       = Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_LONG (), 0.0f);
-    navInfo.height_mt = (Utils::readNodeNumericAttrib<float> (cNode_ptr, mxconst::get_ATTRIB_ELEV_FT (), 0.0f) * missionx::feet2meter);
-    navInfo.setID (Utils::readAttrib (cNode_ptr, mxconst::get_ELEMENT_ICAO (), ""));
-    navInfo.navType = Utils::readNodeNumericAttrib<int> (cNode_ptr, mxconst::get_ATTRIB_NAV_TYPE (), xplm_Nav_Unknown);
-
-    // v25.05.1 decide which navtype to search
-    XPLMNavType nav_type = xplm_Nav_Airport; // xplm_Nav_Airport|xplm_Nav_Fix|xplm_Nav_VOR|xplm_Nav_NDB
-    if ( mxUtils::mx_between <int>(i1, first_waypoint, last_waypoint, missionx::enums::mx_between_types::gt_min_less_max))
-      nav_type = xplm_Nav_Airport|xplm_Nav_Fix|xplm_Nav_VOR|xplm_Nav_NDB;
-
-    bool flag_icao_is_valid = false; // will hold the icao string if it is valid one.
-    if (navInfo.navRef == XPLM_NAV_NOT_FOUND)
-    {
-      if (navInfo.getID ().empty () && lat_f * lon_f != 0.0)
-      {
-        navInfo.navRef = XPLMFindNavAid(nullptr, nullptr, &lat_f, &lon_f, nullptr, nav_type);
-      }
-      else if (!navInfo.getID ().empty () && lat_f * lon_f != 0.0)
-      {
-        if (navInfo.navType > xplm_Nav_Unknown)
-          navInfo.navRef = XPLMFindNavAid(nullptr, navInfo.getID ().data(), &lat_f, &lon_f, nullptr, navInfo.navType); // find ref based on point nav_type. We can add assert on navRef_fromNode_i
-        else
-          navInfo.navRef = XPLMFindNavAid(nullptr, navInfo.getID ().data(), &lat_f, &lon_f, nullptr, nav_type);
-      }
-    }
-
-    if (navInfo.navRef != XPLM_NAV_NOT_FOUND)
-    {
-      flag_icao_is_valid = true;
-      XPLMGetNavAidInfo (navInfo.navRef, &navInfo.navType, &navInfo.lat, &navInfo.lon, &navInfo.height_mt, &navInfo.freq, &navInfo.heading, navInfo.ID, navInfo.name, nullptr);
-      Utils::addElementToMap (map_fms_entries, valid_entries_counter, navInfo);
-      ++valid_entries_counter;
-    }
-
-
-    // v3.0.241.3 decide elevation based on icao info
-    const auto lmbda_get_elevation = [&]()
-    {
-      if (flag_icao_is_valid)
-        return static_cast<int> ( navInfo.height_mt );
-
-      return static_cast<int> ( elev_ft_f * feet2meter );
-    };
-
-    const auto elev_mt_i = lmbda_get_elevation();
-
-
-    // v3.0.241.2 adding RealityXP ".gpf" flight plan format
-    // v25.05.1
-    missionx::NavAidInfo nav (lat_f, lon_f, static_cast<float>(elev_mt_i) );
-    Utils::addElementToMap (map_fms_entries, valid_entries_counter, nav);
-
-    XPLMSetFMSEntryLatLon(valid_entries_counter, lat_f, lon_f, elev_mt_i); // v3.0.241.3
-
+    Utils::addElementToMap (map_fms_entries, valid_entries_counter, fms_entry);
     ++valid_entries_counter;
   } // end loop over all child <point>s
 
@@ -5488,6 +5504,8 @@ bool
 data_manager::init_stats_db()
 {
   const std::string path_to_stats_db_s = get_stats_db_path(); // v26.10.1
+  stats_meta_wait_for_route_cai(); // v26.10.2 the previous flight's route job writes to the same file
+  reset_in_flight_stats_request_cai(); // v26.10.2 a new flight (or a checkpoint load): no in-flight stats request, no old copy. No writer runs yet
   if (db_connect(db_stats, path_to_stats_db_s))
   {
     Log::logMsg(fmt::format("[{}] Connected to: {}", __func__, path_to_stats_db_s) );
@@ -5500,16 +5518,1088 @@ data_manager::init_stats_db()
 // -------------------------------------
 
 void
-data_manager::close_stats_db(const bool in_flush_pending_rows)
+data_manager::close_stats_db(const bool in_flush_pending_rows, const bool in_finalize_flight)
 {
   // v26.10.1 the writer thread uses db_stats. Stop it (and optionally write its last rows) before closing.
   gather_stats.detach_db(in_flush_pending_rows);
+  reset_in_flight_stats_request_cai(); // v26.10.2 the writer is stopped: drop the in-flight stats request and its copy
 
   if (db_stats.db && db_stats.db_is_open_and_ready)
   {
+    // v26.10.2 the writer is detached, the connection is still open: write the flight outcome.
+    //          Only the first close of a flight writes it (flight_info.outcome is still "running"), later closes change nothing.
+    std::string outcome_written;
+    if (in_finalize_flight)
+      outcome_written = stats_meta_end_flight_cai();
+
     db_stats.close_database();
     Log::logMsg(fmt::format("[{}] Stats database closed.", __func__));
 
+    // v26.10.2 build the route on its own thread and connection. Not for "interrupted": X-Plane or the plugin is stopping.
+    if (!outcome_written.empty() && outcome_written != mxconst::get_FLIGHT_OUTCOME_INTERRUPTED())
+    {
+      stats_meta_wait_for_route_cai(); // a previous job, if any
+      futStatsRoute = std::async(std::launch::async, data_manager::stats_meta_build_route_thread_cai, get_stats_db_path(), outcome_written, stats_history_get_max_files_cai()); // v26.10.2 the setup option is read here, on the main thread
+    }
+
+  }
+}
+
+// -------------------------------------
+// v26.10.2 In-flight stats copy file: next to the live stats file. Not in the history folder, so the stats screen list never shows it.
+std::string
+data_manager::get_in_flight_stats_db_path_cai()
+{
+  return (std::filesystem::path(get_stats_db_path()).parent_path() / mxconst::get_STATS_IN_FLIGHT_FILE_NAME()).string();
+}
+
+// -------------------------------------
+// v26.10.2 No in-flight stats request: mission start, end, stop and checkpoint load (init_stats_db() / close_stats_db()).
+//          Called when no writer thread runs, so the copy state can go back to idle. The UI drops its data when the sequence changes.
+//          The copy file is deleted. If the stats tab still reads it (Windows keeps it open), the next copy deletes it before it is written.
+void
+data_manager::reset_in_flight_stats_request_cai()
+{
+  flag_is_stats_request_is_active = false;
+  ++in_flight_stats_reset_seq;
+  gather_stats.reset_copy_cai();
+
+  std::error_code ec;
+  std::filesystem::remove(get_in_flight_stats_db_path_cai(), ec);
+}
+
+// -------------------------------------
+// v26.10.2 flcPRE action "prepare_in_flight_stats" (the "stats" tab was clicked, flag_is_stats_request_is_active is already true).
+//          A checkpoint save/load or a mission stop waits in the action queues: postpone to the next flight loop, so the copy
+//          and the checkpoint (which waits for the writer) do not run together. The sim paused: no writer runs, the request waits.
+//          Only while the mission runs: any other state drops the request.
+void
+data_manager::handle_in_flight_stats_request_cai()
+{
+  if (!flag_is_stats_request_is_active)
+    return; // reset since the click (the mission ended or a checkpoint was loaded)
+
+  const auto lmbda_is_checkpoint_action_waiting = []() -> bool
+  {
+    const auto lmbda_is_checkpoint_action = [](const missionx::mx_flc_pre_command in_command)
+    {
+      return in_command == missionx::mx_flc_pre_command::create_savepoint || in_command == missionx::mx_flc_pre_command::create_savepoint_and_quit ||
+             in_command == missionx::mx_flc_pre_command::load_savepoint || in_command == missionx::mx_flc_pre_command::stop_mission ||
+             in_command == missionx::mx_flc_pre_command::abort_mission;
+    };
+    return std::ranges::any_of(queFlcActions, lmbda_is_checkpoint_action) || std::ranges::any_of(postFlcActions, lmbda_is_checkpoint_action);
+  };
+
+  // only while the mission runs. Any other state drops the request (abort_in_flight_stats_request_if_not_running_cai() does the same every flight loop)
+  if (missionState != missionx::mx_mission_state_enum::mission_is_running || GatherStats::flag_ignore_stats_setup || gather_stats.get_db_ptr() == nullptr)
+  {
+    Log::logMsg(fmt::format("[{}] No in-flight stats: the mission is not running or the stats are not written.", __func__));
+    abort_in_flight_stats_request_cai();
+    return;
+  }
+
+  // not yet: a checkpoint save/load or a mission stop waits in the action queues
+  if (lmbda_is_checkpoint_action_waiting())
+  {
+    postFlcActions.push_back(missionx::mx_flc_pre_command::prepare_in_flight_stats);
+    return;
+  }
+
+  if (gather_stats.request_copy_cai(get_in_flight_stats_db_path_cai()))
+    Log::logMsg(fmt::format("[{}] In-flight stats copy requested: '{}'.", __func__, get_in_flight_stats_db_path_cai()));
+}
+
+// -------------------------------------
+// v26.10.2 Drop the in-flight stats request. Safe while the writer runs: a copy in progress is interrupted and deleted by the writer.
+//          The UI drops its request state when the sequence changes. The copy file itself is deleted by reset_in_flight_stats_request_cai().
+void
+data_manager::abort_in_flight_stats_request_cai()
+{
+  flag_is_stats_request_is_active = false;
+  ++in_flight_stats_reset_seq;
+  gather_stats.abort_copy_cai();
+}
+
+// -------------------------------------
+// v26.10.2 Every flight loop (Mission::flc(), paused or not): the in-flight stats copy is only for a running mission.
+//          Any other state (stopped, ended, loading a checkpoint...) aborts a request and a copy in progress.
+void
+data_manager::abort_in_flight_stats_request_if_not_running_cai()
+{
+  if (missionState == missionx::mx_mission_state_enum::mission_is_running)
+    return;
+
+  // "copying" without an active request = already aborted, the writer is finishing it (do not interrupt it again every flight loop)
+  const auto copy_state = gather_stats.get_copy_state_cai();
+  if (flag_is_stats_request_is_active || (copy_state != missionx::mx_stats_copy_state::idle && copy_state != missionx::mx_stats_copy_state::copying))
+  {
+    Log::logMsg(fmt::format("[{}] The mission is not running: the in-flight stats request is dropped.", __func__));
+    abort_in_flight_stats_request_cai();
+  }
+}
+
+// -------------------------------------
+// v26.10.2 User plane .acf file name, and its path relative to the X-Plane folder (the record stays valid if X-Plane is moved).
+//          If the path is not under the X-Plane folder, the full path is returned. Main thread only.
+static void
+stats_meta_get_user_acf_cai(std::string& out_acf_file, std::string& out_acf_relative_path)
+{
+  char acf_file[512]{};
+  char acf_path[2048]{};
+  XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, acf_file, acf_path);
+
+  char sys_path[2048]{};
+  XPLMGetSystemPath(sys_path);
+
+  out_acf_file          = acf_file;
+  out_acf_relative_path = acf_path;
+
+  const std::string sys_path_s = sys_path;
+  if (!sys_path_s.empty() && out_acf_relative_path.starts_with(sys_path_s))
+    out_acf_relative_path = out_acf_relative_path.substr(sys_path_s.length());
+}
+
+// -------------------------------------
+// v26.10.2 Write the flight_info row and the first plane_meta row (line_id 0) into the stats database.
+//          Main thread only (reads datarefs). Called from Mission::START_MISSION() after gather_stats.setDb(), before any stats writer thread runs.
+//          New mission: setDb() created empty tables, both rows are added.
+//          Checkpoint : the tables came back with the saved stats DB and already have their rows. flight_info is kept.
+//                       A plane_meta row is added only if the current plane is not the last plane in the table.
+//                       A checkpoint saved before v26.10.2 has empty tables, so the rows are added now.
+//          Call it after gather_stats.init_seq_from_checkpoint_stats(), so a checkpoint plane row gets the right line_id.
+void
+data_manager::stats_meta_begin_flight_cai()
+{
+  if (GatherStats::flag_ignore_stats_setup)
+    return;
+
+  if (db_stats.db == nullptr || !db_stats.db_is_open_and_ready)
+  {
+    Log::logMsgErr(fmt::format("[{}] Stats database is not open. Flight metadata was not written.", __func__));
+    return;
+  }
+
+  // ----- flight_info -----
+  std::string mission_title = Utils::readAttrib(xMainNode, mxconst::get_ATTRIB_TITLE(), "");
+  if (mission_title.empty())
+    mission_title = Utils::readAttrib(xMainNode, mxconst::get_ATTRIB_NAME(), "");
+
+  // The scoring rules this flight is scored with. Stored so the stats screen can be rebuilt later with the same rules.
+  const std::string scoring_xml = Utils::xml_get_node_content_as_text(get_scoring_with_landing_defaults());
+
+  // "OR IGNORE": id is always 1, so an existing row (checkpoint) is kept.
+  const std::string sql_flight_info = fmt::format(R"(INSERT OR IGNORE INTO {} (id, flight_id, schema_version, plugin_version, xp_version, mission_key, mission_title, outcome, scoring_xml)
+VALUES (1, STRFTIME('%Y%m%d_%H%M%S', 'now', 'localtime'), ?1, ?2, ?3, ?4, ?5, ?6, ?7))",
+                                                  mxconst::get_DB_TABLE_FLIGHT_INFO());
+
+  sqlite3_stmt* stmt = nullptr;
+  if (sqlite3_prepare_v2(db_stats.db, sql_flight_info.c_str(), -1, &stmt, nullptr) == SQLITE_OK)
+  {
+    sqlite3_bind_int (stmt, 1, mxconst::STATS_SCHEMA_VERSION);
+    sqlite3_bind_text(stmt, 2, missionx::FULL_VERSION.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int (stmt, 3, XPLMGetDatai(drefConst.dref_xplane_version_i));
+    sqlite3_bind_text(stmt, 4, selectedMissionKey.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 5, mission_title.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 6, mxconst::get_FLIGHT_OUTCOME_RUNNING().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 7, scoring_xml.c_str(), -1, SQLITE_TRANSIENT);
+
+    if (sqlite3_step(stmt) == SQLITE_DONE)
+    {
+      if (sqlite3_changes(db_stats.db) > 0)
+        Log::logMsg(fmt::format("[{}] {} row added. Mission: '{}' ({})", __func__, mxconst::get_DB_TABLE_FLIGHT_INFO(), mission_title, selectedMissionKey));
+      else
+        Log::logMsg(fmt::format("[{}] {} row already exists (checkpoint), kept.", __func__, mxconst::get_DB_TABLE_FLIGHT_INFO()));
+    }
+    else
+      Log::logMsgErr(fmt::format("[{}] Failed to write {}: {}", __func__, mxconst::get_DB_TABLE_FLIGHT_INFO(), sqlite3_errmsg(db_stats.db)));
+  }
+  else
+    Log::logMsgErr(fmt::format("[{}] Failed to prepare {} insert: {}", __func__, mxconst::get_DB_TABLE_FLIGHT_INFO(), sqlite3_errmsg(db_stats.db)));
+
+  sqlite3_finalize(stmt); // no-op on nullptr
+
+  // ----- plane_meta: only when the table is empty (new mission, or a checkpoint from before v26.10.2) -----
+  int plane_rows = -1;
+  stmt           = nullptr;
+  if (sqlite3_prepare_v2(db_stats.db, fmt::format("SELECT count(*) FROM {}", mxconst::get_DB_TABLE_PLANE_META()).c_str(), -1, &stmt, nullptr) == SQLITE_OK && sqlite3_step(stmt) == SQLITE_ROW)
+    plane_rows = sqlite3_column_int(stmt, 0);
+  else
+    Log::logMsgErr(fmt::format("[{}] Failed to count {} rows: {}", __func__, mxconst::get_DB_TABLE_PLANE_META(), sqlite3_errmsg(db_stats.db)));
+
+  sqlite3_finalize(stmt);
+
+  if (plane_rows == 0)
+    stats_meta_insert_plane_cai(0);
+  else if (plane_rows > 0) // checkpoint
+    stats_meta_plane_loaded_cai();
+}
+
+// -------------------------------------
+// v26.10.2 Add a plane_meta row for the current user plane.
+//          in_line_id: last stats row written before this plane was loaded (0 = mission start).
+//          Main thread only (reads datarefs). The stats writer thread must not run (it uses the same connection).
+bool
+data_manager::stats_meta_insert_plane_cai(const int in_line_id)
+{
+  if (GatherStats::flag_ignore_stats_setup)
+    return false;
+
+  if (db_stats.db == nullptr || !db_stats.db_is_open_and_ready)
+  {
+    Log::logMsgErr(fmt::format("[{}] Stats database is not open. Plane metadata was not written.", __func__));
+    return false;
+  }
+
+  // read a string (byte array) dataref. Empty when the dataref does not exist.
+  const auto read_dref_text = [](const char* in_dref_name) -> std::string {
+    const XPLMDataRef dref = XPLMFindDataRef(in_dref_name);
+    if (dref == nullptr)
+      return {};
+
+    char buf[512]{}; // longest one is acf_author (byte[500])
+    XPLMGetDatab(dref, buf, 0, static_cast<int>(sizeof(buf)) - 1); // the last char stays '\0'
+    return mxUtils::trim(std::string(buf));
+  };
+
+  // read an int dataref. -1 when the dataref does not exist (X-Plane 11 has no "sim/aircraft2/metadata" datarefs).
+  const auto read_dref_int = [](const char* in_dref_name) -> int {
+    const XPLMDataRef dref = XPLMFindDataRef(in_dref_name);
+    return (dref == nullptr) ? -1 : XPLMGetDatai(dref);
+  };
+
+  // plane file, and its path relative to the X-Plane folder
+  std::string acf_file;
+  std::string acf_path_s;
+  stats_meta_get_user_acf_cai(acf_file, acf_path_s);
+
+  // X-Plane 12 categories, a plane can have more than one. Empty in X-Plane 11.
+  static const std::vector<std::pair<const char*, const char*>> vecCategories = { { "sim/aircraft2/metadata/is_helicopter", "helicopter" },
+                                                                                  { "sim/aircraft2/metadata/is_vtol", "vtol" },
+                                                                                  { "sim/aircraft2/metadata/is_glider", "glider" },
+                                                                                  { "sim/aircraft2/metadata/is_seaplane", "seaplane" },
+                                                                                  { "sim/aircraft2/metadata/is_airliner", "airliner" },
+                                                                                  { "sim/aircraft2/metadata/is_cargo", "cargo" },
+                                                                                  { "sim/aircraft2/metadata/is_military", "military" },
+                                                                                  { "sim/aircraft2/metadata/is_general_aviation", "general_aviation" },
+                                                                                  { "sim/aircraft2/metadata/is_ultralight", "ultralight" },
+                                                                                  { "sim/aircraft2/metadata/is_experimental", "experimental" },
+                                                                                  { "sim/aircraft2/metadata/is_sci_fi", "sci_fi" } };
+  std::string category;
+  for (const auto& [dref_name, label] : vecCategories)
+  {
+    if (read_dref_int(dref_name) == 1)
+      category += (category.empty() ? "" : ",") + std::string(label);
+  }
+
+  int is_helicopter = read_dref_int("sim/aircraft2/metadata/is_helicopter");
+  if (is_helicopter < 0) // X-Plane 11: same test as dataref_manager::CalculateEstimatedFuelTimeHours()
+    is_helicopter = (read_dref_int("sim/aircraft/artstability/acf_has_clutch") > 0) ? 1 : 0;
+
+  const std::string acf_icao   = read_dref_text("sim/aircraft/view/acf_ICAO");
+  const std::string acf_desc   = read_dref_text("sim/aircraft/view/acf_descrip");
+  const std::string acf_author = read_dref_text("sim/aircraft/view/acf_author");
+
+  const float empty_kg    = XPLMGetDataf(drefConst.dref_acf_m_empty_weight);
+  const float max_kg      = XPLMGetDataf(drefConst.dref_acf_m_max_weight);
+  const float max_fuel_kg = XPLMGetDataf(drefConst.dref_rw_acf_m_fuel_tot_kg); // the dataref values are kg
+  const float vno_kias    = XPLMGetDataf(drefConst.dref_acf_vno_f);
+  const int   num_engines = read_dref_int("sim/aircraft/engine/acf_num_engines");
+
+  const std::string sql = fmt::format(R"(INSERT INTO {} (line_id, acf_file, acf_path, acf_icao, acf_desc, acf_author, category, is_helicopter, empty_kg, max_kg, max_fuel_kg, vno_kias, num_engines)
+VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13))",
+                                      mxconst::get_DB_TABLE_PLANE_META());
+
+  bool          result = false;
+  sqlite3_stmt* stmt   = nullptr;
+  if (sqlite3_prepare_v2(db_stats.db, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK)
+  {
+    sqlite3_bind_int   (stmt, 1, in_line_id);
+    sqlite3_bind_text  (stmt, 2, acf_file.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text  (stmt, 3, acf_path_s.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text  (stmt, 4, acf_icao.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text  (stmt, 5, acf_desc.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text  (stmt, 6, acf_author.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text  (stmt, 7, category.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int   (stmt, 8, is_helicopter);
+    sqlite3_bind_double(stmt, 9, empty_kg);
+    sqlite3_bind_double(stmt, 10, max_kg);
+    sqlite3_bind_double(stmt, 11, max_fuel_kg);
+    sqlite3_bind_double(stmt, 12, vno_kias);
+    sqlite3_bind_int   (stmt, 13, num_engines);
+
+    result = (sqlite3_step(stmt) == SQLITE_DONE);
+    if (result)
+      Log::logMsg(fmt::format("[{}] {} row added. line_id: {}, plane: {} ({}), category: '{}', helicopter: {}", __func__, mxconst::get_DB_TABLE_PLANE_META(), in_line_id, acf_file, acf_icao, category, is_helicopter));
+    else
+      Log::logMsgErr(fmt::format("[{}] Failed to write {}: {}", __func__, mxconst::get_DB_TABLE_PLANE_META(), sqlite3_errmsg(db_stats.db)));
+  }
+  else
+    Log::logMsgErr(fmt::format("[{}] Failed to prepare {} insert: {}", __func__, mxconst::get_DB_TABLE_PLANE_META(), sqlite3_errmsg(db_stats.db)));
+
+  sqlite3_finalize(stmt);
+  return result;
+}
+
+// -------------------------------------
+// v26.10.2 The user plane was (re)loaded during the flight, or a checkpoint was loaded.
+//          Adds a plane_meta row only when the plane differs from the last row in the table: X-Plane also sends XPLM_MSG_PLANE_LOADED
+//          when the same plane is reloaded, and for AI planes.
+//          The queued stats rows are written first, so the new row's line_id is the last row sampled with the previous plane.
+//          Main thread only.
+void
+data_manager::stats_meta_plane_loaded_cai()
+{
+  if (GatherStats::flag_ignore_stats_setup)
+    return;
+
+  if (gather_stats.get_db_ptr() == nullptr || db_stats.db == nullptr || !db_stats.db_is_open_and_ready) // no mission stats are written
+    return;
+
+  std::string acf_file;
+  std::string acf_path;
+  stats_meta_get_user_acf_cai(acf_file, acf_path);
+
+  // last plane in the table
+  std::string   last_acf_file;
+  std::string   last_acf_path;
+  sqlite3_stmt* stmt = nullptr;
+  if (sqlite3_prepare_v2(db_stats.db, fmt::format("SELECT IFNULL(acf_file, ''), IFNULL(acf_path, '') FROM {} ORDER BY rowid DESC LIMIT 1", mxconst::get_DB_TABLE_PLANE_META()).c_str(), -1, &stmt, nullptr) == SQLITE_OK)
+  {
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+      last_acf_file = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+      last_acf_path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+    }
+  }
+  else
+    Log::logMsgErr(fmt::format("[{}] Failed to read the last {} row: {}", __func__, mxconst::get_DB_TABLE_PLANE_META(), sqlite3_errmsg(db_stats.db)));
+
+  sqlite3_finalize(stmt);
+
+  if (acf_file == last_acf_file && acf_path == last_acf_path)
+    return; // same plane
+
+  gather_stats.flush_pending_rows_cai(); // after this, get_last_line_id_cai() is the last row of the previous plane
+  stats_meta_insert_plane_cai(gather_stats.get_last_line_id_cai());
+}
+
+// -------------------------------------
+// v26.10.2 A flight leg starts: add its leg_stats row with status "running" and the start values (fuel, payload, distance so far).
+//          A row that is still "running" belongs to a leg that never ended (example: a script moved to another leg): it is marked "skipped".
+//          The queued stats rows are written first: the writer thread uses the same connection, and after the flush
+//          get_last_line_id_cai() is the last row before this leg (inout_started_leg.iStartLineId).
+//          Sets inout_started_leg.iLegSeq, used later by stats_meta_update_leg_cai(). Main thread only.
+bool
+data_manager::stats_meta_begin_leg_cai(missionx::mx_enrout_stats_strct &inout_started_leg)
+{
+  if (GatherStats::flag_ignore_stats_setup)
+    return false;
+
+  if (gather_stats.get_db_ptr() == nullptr || db_stats.db == nullptr || !db_stats.db_is_open_and_ready) // no mission stats are written
+  {
+    Log::logMsgErr(fmt::format("[{}] Stats database is not open. Leg '{}' has no {} row.", __func__, inout_started_leg.sLegName, mxconst::get_DB_TABLE_LEG_STATS()));
+    return false;
+  }
+
+  gather_stats.flush_pending_rows_cai();
+  inout_started_leg.iStartLineId = gather_stats.get_last_line_id_cai();
+  inout_started_leg.sStatus      = mxconst::get_FLIGHT_OUTCOME_RUNNING();
+
+  // ---- a previous leg that never ended ----
+  const std::string sql_skip = fmt::format("UPDATE {} SET status = ?1, end_line_id = ?2, end_time = STRFTIME('%Y-%m-%d %H:%M:%f', 'now') WHERE status = ?3", mxconst::get_DB_TABLE_LEG_STATS());
+  sqlite3_stmt*     stmt     = nullptr;
+  if (sqlite3_prepare_v2(db_stats.db, sql_skip.c_str(), -1, &stmt, nullptr) == SQLITE_OK)
+  {
+    sqlite3_bind_text(stmt, 1, mxconst::get_LEG_STATUS_SKIPPED().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int (stmt, 2, inout_started_leg.iStartLineId);
+    sqlite3_bind_text(stmt, 3, mxconst::get_FLIGHT_OUTCOME_RUNNING().c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(stmt) == SQLITE_DONE && sqlite3_changes(db_stats.db) > 0)
+      Log::logMsg(fmt::format("[{}] {} leg row(s) did not end, marked '{}'.", __func__, sqlite3_changes(db_stats.db), mxconst::get_LEG_STATUS_SKIPPED()));
+  }
+  sqlite3_finalize(stmt);
+  stmt = nullptr;
+
+  // ---- the new leg ----
+  const std::string sql = fmt::format("INSERT INTO {} (leg_name, status, start_line_id, distance_before_nm, start_fuel_kg, start_payload_kg) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                                      mxconst::get_DB_TABLE_LEG_STATS());
+
+  bool result = false;
+  if (sqlite3_prepare_v2(db_stats.db, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK)
+  {
+    sqlite3_bind_text  (stmt, 1, inout_started_leg.sLegName.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text  (stmt, 2, inout_started_leg.sStatus.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int   (stmt, 3, inout_started_leg.iStartLineId);
+    sqlite3_bind_double(stmt, 4, inout_started_leg.fCumulativeDistanceFlew_beforeCurrentLeg);
+    sqlite3_bind_double(stmt, 5, inout_started_leg.fStartingFuel);
+    sqlite3_bind_double(stmt, 6, inout_started_leg.fStartingPayload);
+
+    result = (sqlite3_step(stmt) == SQLITE_DONE);
+    if (result)
+    {
+      inout_started_leg.iLegSeq = static_cast<int>(sqlite3_last_insert_rowid(db_stats.db));
+      Log::logMsg(fmt::format("[{}] {} row {} added. leg: '{}', start line_id: {}, start fuel: {:.1f} kg, distance so far: {:.2f} nm", __func__, mxconst::get_DB_TABLE_LEG_STATS(), inout_started_leg.iLegSeq,
+                              inout_started_leg.sLegName, inout_started_leg.iStartLineId, inout_started_leg.fStartingFuel, inout_started_leg.fCumulativeDistanceFlew_beforeCurrentLeg));
+    }
+    else
+      Log::logMsgErr(fmt::format("[{}] Failed to write {}: {}", __func__, mxconst::get_DB_TABLE_LEG_STATS(), sqlite3_errmsg(db_stats.db)));
+  }
+  else
+    Log::logMsgErr(fmt::format("[{}] Failed to prepare {} insert: {}", __func__, mxconst::get_DB_TABLE_LEG_STATS(), sqlite3_errmsg(db_stats.db)));
+
+  sqlite3_finalize(stmt);
+  return result;
+}
+
+// -------------------------------------
+// v26.10.2 Write the end values of a running leg: last stats line_id, distance, fuel and payload (read from the sim now), and in_status.
+//          in_status: "completed" (leg end), "running" (checkpoint progress), or the flight outcome (the flight ended during the leg).
+//          Only a row that is still "running" is changed, so a completed leg keeps its values.
+//          Works after the writer was stopped (flight end): the queued rows are then already written. Main thread only.
+bool
+data_manager::stats_meta_update_leg_cai(missionx::mx_enrout_stats_strct &inout_leg, const std::string &in_status)
+{
+  if (GatherStats::flag_ignore_stats_setup)
+    return false;
+
+  if (inout_leg.iLegSeq <= 0) // the leg has no row: the stats database was not open when it started
+    return false;
+
+  if (db_stats.db == nullptr || !db_stats.db_is_open_and_ready)
+  {
+    Log::logMsgErr(fmt::format("[{}] Stats database is not open. Leg '{}' was not updated.", __func__, inout_leg.sLegName));
+    return false;
+  }
+
+  if (gather_stats.get_db_ptr() != nullptr) // the writer still runs: write its queue first
+    gather_stats.flush_pending_rows_cai();
+
+  inout_leg.iEndLineId    = gather_stats.get_last_line_id_cai();
+  inout_leg.fEndFuel      = dataref_manager::getDataRefValue<float>("sim/flightmodel/weight/m_fuel_total");
+  inout_leg.fEndPayload   = dataref_manager::getDataRefValue<float>("sim/flightmodel/weight/m_fixed");
+  inout_leg.fDistanceFlew = gather_stats.get_stats_object().fCumulativeDistance_nm - inout_leg.fCumulativeDistanceFlew_beforeCurrentLeg;
+
+  const std::string sql = fmt::format(R"(UPDATE {} SET status = ?1, end_line_id = ?2, end_time = STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+ distance_nm = ?3, end_fuel_kg = ?4, end_payload_kg = ?5
+ WHERE leg_seq = ?6 AND status = ?7)",
+                                      mxconst::get_DB_TABLE_LEG_STATS());
+
+  bool          result = false;
+  sqlite3_stmt* stmt   = nullptr;
+  if (sqlite3_prepare_v2(db_stats.db, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK)
+  {
+    sqlite3_bind_text  (stmt, 1, in_status.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int   (stmt, 2, inout_leg.iEndLineId);
+    sqlite3_bind_double(stmt, 3, inout_leg.fDistanceFlew);
+    sqlite3_bind_double(stmt, 4, inout_leg.fEndFuel);
+    sqlite3_bind_double(stmt, 5, inout_leg.fEndPayload);
+    sqlite3_bind_int   (stmt, 6, inout_leg.iLegSeq);
+    sqlite3_bind_text  (stmt, 7, mxconst::get_FLIGHT_OUTCOME_RUNNING().c_str(), -1, SQLITE_TRANSIENT);
+
+    result = (sqlite3_step(stmt) == SQLITE_DONE && sqlite3_changes(db_stats.db) > 0);
+    if (result)
+    {
+      inout_leg.sStatus = in_status;
+      Log::logMsg(fmt::format("[{}] {} row {} '{}': status '{}', line_id: {} - {}, distance: {:.2f} nm, fuel: {:.1f} -> {:.1f} kg", __func__, mxconst::get_DB_TABLE_LEG_STATS(), inout_leg.iLegSeq, inout_leg.sLegName,
+                              in_status, inout_leg.iStartLineId, inout_leg.iEndLineId, inout_leg.fDistanceFlew, inout_leg.fStartingFuel, inout_leg.fEndFuel));
+    }
+    else if (sqlite3_errcode(db_stats.db) != SQLITE_OK && sqlite3_errcode(db_stats.db) != SQLITE_DONE)
+      Log::logMsgErr(fmt::format("[{}] Failed to update {}: {}", __func__, mxconst::get_DB_TABLE_LEG_STATS(), sqlite3_errmsg(db_stats.db)));
+    // else: the row is not "running" any more (already completed). Nothing to do
+  }
+  else
+    Log::logMsgErr(fmt::format("[{}] Failed to prepare {} update: {}", __func__, mxconst::get_DB_TABLE_LEG_STATS(), sqlite3_errmsg(db_stats.db)));
+
+  sqlite3_finalize(stmt);
+  return result;
+}
+
+// -------------------------------------
+// v26.10.2 Checkpoint save: the stats file is copied as it is on disk.
+//          Write the queued stats rows, and the current leg progress (distance, fuel, payload, still "running"),
+//          so a checkpoint load can continue the leg. Main thread only.
+void
+data_manager::stats_meta_save_leg_progress_cai()
+{
+  if (GatherStats::flag_ignore_stats_setup || gather_stats.get_db_ptr() == nullptr)
+    return;
+
+  if (strct_currentLegStats4UIDisplay.iLegSeq > 0)
+    stats_meta_update_leg_cai(strct_currentLegStats4UIDisplay, mxconst::get_FLIGHT_OUTCOME_RUNNING()); // flushes the queue too
+  else
+    gather_stats.flush_pending_rows_cai();
+}
+
+// -------------------------------------
+// v26.10.2 Checkpoint load: the saved stats database came back with the legs flown before it.
+//          - The ended legs rebuild vecPreviousLegStats4UIDisplay, newest first (same order as gatherFlightLegEndStatsAndStoreInVector()),
+//            so the in-mission stats panel and the end screen show them.
+//          - The "running" leg is the leg the checkpoint was saved in. A loaded leg does not start again (gatherFlightLegStartStats() is not called),
+//            so strct_currentLegStats4UIDisplay is restored from that row, and the flight distance continues from its saved progress.
+//          Main thread only. Call after the stats database was opened.
+void
+data_manager::stats_meta_load_legs_into_memory_cai()
+{
+  vecPreviousLegStats4UIDisplay.clear();
+
+  if (db_stats.db == nullptr || !db_stats.db_is_open_and_ready)
+    return;
+
+  const std::string sql = fmt::format("SELECT IFNULL(leg_name, ''), IFNULL(start_line_id, 0), IFNULL(end_line_id, 0), IFNULL(distance_before_nm, 0.0), IFNULL(distance_nm, 0.0), "
+                                      "IFNULL(start_fuel_kg, 0.0), IFNULL(end_fuel_kg, 0.0), IFNULL(start_payload_kg, 0.0), IFNULL(end_payload_kg, 0.0), leg_seq, IFNULL(status, '') "
+                                      "FROM {} ORDER BY leg_seq DESC",
+                                      mxconst::get_DB_TABLE_LEG_STATS());
+
+  sqlite3_stmt* stmt = nullptr;
+  if (sqlite3_prepare_v2(db_stats.db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
+  {
+    // a checkpoint from an older build: the table is missing or has other columns
+    Log::logMsgErr(fmt::format("[{}] Failed to read {}: {}", __func__, mxconst::get_DB_TABLE_LEG_STATS(), sqlite3_errmsg(db_stats.db)));
+    sqlite3_finalize(stmt);
+    return;
+  }
+
+  bool flag_found_running_leg = false;
+  while (sqlite3_step(stmt) == SQLITE_ROW)
+  {
+    missionx::mx_enrout_stats_strct leg;
+    leg.init();
+    leg.sLegName                                 = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+    leg.iStartLineId                             = sqlite3_column_int(stmt, 1);
+    leg.iEndLineId                               = sqlite3_column_int(stmt, 2);
+    leg.fCumulativeDistanceFlew_beforeCurrentLeg = static_cast<float>(sqlite3_column_double(stmt, 3));
+    leg.fDistanceFlew                            = static_cast<float>(sqlite3_column_double(stmt, 4));
+    leg.fStartingFuel                            = static_cast<float>(sqlite3_column_double(stmt, 5));
+    leg.fEndFuel                                 = static_cast<float>(sqlite3_column_double(stmt, 6));
+    leg.fStartingPayload                         = static_cast<float>(sqlite3_column_double(stmt, 7));
+    leg.fEndPayload                              = static_cast<float>(sqlite3_column_double(stmt, 8));
+    leg.iLegSeq                                  = sqlite3_column_int(stmt, 9);
+    leg.sStatus                                  = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 10));
+
+    if (leg.sStatus == mxconst::get_FLIGHT_OUTCOME_RUNNING() && !flag_found_running_leg) // the newest running row: the current leg
+    {
+      flag_found_running_leg          = true;
+      strct_currentLegStats4UIDisplay = leg;
+
+      const float distance_so_far_nm = leg.fCumulativeDistanceFlew_beforeCurrentLeg + leg.fDistanceFlew;
+      gather_stats.set_cumulative_distance_nm_cai(distance_so_far_nm);
+
+      Log::logMsg(fmt::format("[{}] Current leg restored: '{}' (row {}), start fuel: {:.1f} kg, distance so far: {:.2f} nm", __func__, leg.sLegName, leg.iLegSeq, leg.fStartingFuel, distance_so_far_nm));
+      continue;
+    }
+
+    vecPreviousLegStats4UIDisplay.emplace_back(leg);
+  }
+  sqlite3_finalize(stmt);
+
+  Log::logMsg(fmt::format("[{}] {} ended leg(s) restored from the checkpoint stats.", __func__, vecPreviousLegStats4UIDisplay.size()));
+}
+
+// -------------------------------------
+// v26.10.2 The flight ended: write os_end_time, outcome, outcome_reason, crashed and crash_source into flight_info.
+//          Called from close_stats_db() after the writer was detached (the last rows are written), before the connection closes.
+//          The outcome comes from the mission state at that moment:
+//            success / failure / aborted : the end screen (ACTION_SHOW_END_SUMMARY_LAYER).
+//            stopped                     : the user stopped the mission (Mission::stopMission() sets mission_stopped before data_manager::clear()).
+//            interrupted                 : the mission was still running (plugin stop, X-Plane exit).
+//          Only a row with outcome "running" is updated, so the first close of the flight wins.
+//          Crash: a "crash" stats row (XPLM_MSG_PLANE_CRASHED), else the has_crashed dataref (crash message missed or crashes are not reported).
+//          Main thread only (reads a dataref).
+std::string
+data_manager::stats_meta_end_flight_cai()
+{
+  if (GatherStats::flag_ignore_stats_setup)
+    return {};
+
+  if (db_stats.db == nullptr || !db_stats.db_is_open_and_ready)
+    return {};
+
+  std::string outcome_written; // returned: empty when nothing was updated
+
+  std::string outcome;
+  switch (missionState)
+  {
+    case mx_mission_state_enum::mission_completed_success:
+      outcome = mxconst::get_FLIGHT_OUTCOME_SUCCESS();
+      break;
+    case mx_mission_state_enum::mission_completed_failure:
+      outcome = mxconst::get_FLIGHT_OUTCOME_FAILURE();
+      break;
+    case mx_mission_state_enum::mission_aborted:
+      outcome = mxconst::get_FLIGHT_OUTCOME_ABORTED();
+      break;
+    case mx_mission_state_enum::mission_is_running:
+      outcome = mxconst::get_FLIGHT_OUTCOME_INTERRUPTED();
+      break;
+    default: // mission_stopped and any other state
+      outcome = mxconst::get_FLIGHT_OUTCOME_STOPPED();
+      break;
+  }
+
+  // v26.10.2 a leg that did not end (crash, abort, stop) gets the flight outcome as its status. A completed leg is not changed.
+  //          "interrupted" (X-Plane or the plugin stopped): the leg stays "running", the checkpoint can continue it.
+  if (outcome != mxconst::get_FLIGHT_OUTCOME_INTERRUPTED())
+    stats_meta_update_leg_cai(strct_currentLegStats4UIDisplay, outcome);
+
+  // the reason is only meaningful for failure and abort. Success keeps it empty (the property can hold an older value).
+  std::string outcome_reason;
+  if (outcome == mxconst::get_FLIGHT_OUTCOME_FAILURE() || outcome == mxconst::get_FLIGHT_OUTCOME_ABORTED())
+    outcome_reason = Utils::readAttrib(mx_global_settings.node, mxconst::get_PROP_MISSION_ABORT_REASON(), "");
+
+  // crash state from the sim. -1: dataref not found
+  const XPLMDataRef dref_has_crashed = XPLMFindDataRef("sim/flightmodel2/misc/has_crashed");
+  const int         has_crashed      = (dref_has_crashed == nullptr) ? -1 : XPLMGetDatai(dref_has_crashed);
+
+  // ?1 outcome, ?2 reason, ?3 "crash" activity, ?4 sim_message, ?5 has_crashed, ?6 dataref, ?7 "running"
+  const std::string sql = fmt::format(R"(UPDATE {0}
+   SET os_end_time    = STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+       outcome        = ?1,
+       outcome_reason = NULLIF(?2, ''),
+       crash_source   = CASE WHEN EXISTS (SELECT 1 FROM stats WHERE activity = ?3) THEN ?4
+                             WHEN ?5 = 1 THEN ?6
+                             ELSE NULL END,
+       crashed        = CASE WHEN EXISTS (SELECT 1 FROM stats WHERE activity = ?3) OR ?5 = 1 THEN 1 ELSE 0 END
+ WHERE id = 1
+   AND outcome = ?7)",
+                                      mxconst::get_DB_TABLE_FLIGHT_INFO());
+
+  sqlite3_stmt* stmt = nullptr;
+  if (sqlite3_prepare_v2(db_stats.db, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK)
+  {
+    sqlite3_bind_text(stmt, 1, outcome.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, outcome_reason.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, mxconst::get_STATS_CRASH().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 4, mxconst::get_CRASH_SOURCE_SIM_MESSAGE().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int (stmt, 5, has_crashed);
+    sqlite3_bind_text(stmt, 6, mxconst::get_CRASH_SOURCE_DATAREF().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 7, mxconst::get_FLIGHT_OUTCOME_RUNNING().c_str(), -1, SQLITE_TRANSIENT);
+
+    if (sqlite3_step(stmt) == SQLITE_DONE)
+    {
+      if (sqlite3_changes(db_stats.db) > 0)
+      {
+        outcome_written = outcome;
+        Log::logMsg(fmt::format("[{}] {} outcome: '{}', reason: '{}', has_crashed dataref: {}", __func__, mxconst::get_DB_TABLE_FLIGHT_INFO(), outcome, outcome_reason, has_crashed));
+      }
+      else
+        Log::logMsg(fmt::format("[{}] {} outcome was already written, kept.", __func__, mxconst::get_DB_TABLE_FLIGHT_INFO()));
+    }
+    else
+      Log::logMsgErr(fmt::format("[{}] Failed to update {}: {}", __func__, mxconst::get_DB_TABLE_FLIGHT_INFO(), sqlite3_errmsg(db_stats.db)));
+  }
+  else
+    Log::logMsgErr(fmt::format("[{}] Failed to prepare {} update: {}", __func__, mxconst::get_DB_TABLE_FLIGHT_INFO(), sqlite3_errmsg(db_stats.db)));
+
+  sqlite3_finalize(stmt);
+  return outcome_written;
+}
+
+// -------------------------------------
+// v26.10.2 Build flight_info.route_s from the stats rows, example: "YBTL > YBTL(x3) > nav(-18.752/146.580) > YPAM".
+//          Points: the first stats row (mission running), then every landing that is not a bounce (STATS_BOUNCE_WINDOW_SEC).
+//          Each point is the airport whose boundary contains it (plugin airports database, same lookup as the stats screen landing table),
+//          else "nav(lat/lon)" with 3 decimals. Landings at the same place in a row are collapsed into "NAME(xN)", the start point is never collapsed.
+//          Runs with std::async (started by close_stats_db()), with its own connection to the stats file.
+//          Holds s_thread_sync_mutex: db_xp_airports and its statements are shared with the stats fetch and other jobs.
+//          v26.10.2 After the route, the flight is saved into the history folder when it reached the end screen (success, failure, aborted).
+void
+data_manager::stats_meta_build_route_thread_cai(const std::string in_stats_db_path, const std::string in_outcome, const int in_history_max_files)
+{
+  std::lock_guard<std::mutex> lock(s_thread_sync_mutex);
+
+  missionx::dbase local_db; // closed by the destructor
+  if (!db_connect(local_db, in_stats_db_path))
+  {
+    Log::logMsgErr(fmt::format("[{}] Could not open the stats database, no route was built: {}", __func__, local_db.last_err));
+    return;
+  }
+
+  // the first row, and every landing that is not a bounce
+  const std::string sql_points = fmt::format(R"(WITH pts AS (
+  SELECT line_id, lat, lon, activity, local_date_days * 86400.0 + local_time_sec AS t,
+         max(CASE WHEN activity = '{0}' THEN local_date_days * 86400.0 + local_time_sec END) OVER (ORDER BY line_id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prev_landing_t
+  FROM stats
+  WHERE activity = '{0}'
+     OR line_id = (SELECT min(line_id) FROM stats)
+)
+SELECT line_id, lat, lon
+FROM pts
+WHERE IFNULL(activity, '') <> '{0}'
+   OR IFNULL(t - prev_landing_t, 999999.0) > {1}
+ORDER BY line_id)",
+                                             mxconst::get_STATS_LANDING(),
+                                             mxconst::STATS_BOUNCE_WINDOW_SEC);
+
+  std::vector<std::string> vecNames;
+  sqlite3_stmt*            stmt = nullptr;
+  if (sqlite3_prepare_v2(local_db.db, sql_points.c_str(), -1, &stmt, nullptr) == SQLITE_OK)
+  {
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+      const double lat = sqlite3_column_double(stmt, 1);
+      const double lon = sqlite3_column_double(stmt, 2);
+
+      std::string name;
+      if (lat * lon != 0.0) // get_plane_airport_or_nearest_icao() uses the plane position when lat * lon is 0
+      {
+        if (const auto navaid = get_plane_airport_or_nearest_icao(false, lat, lon, true); !navaid.getID().empty())
+          name = navaid.getID();
+      }
+
+      if (name.empty())
+        name = fmt::format("nav({:.3f}/{:.3f})", lat, lon);
+
+      vecNames.emplace_back(name);
+    }
+  }
+  else
+    Log::logMsgErr(fmt::format("[{}] Failed to prepare the route query: {}", __func__, sqlite3_errmsg(local_db.db)));
+
+  sqlite3_finalize(stmt);
+
+  if (vecNames.empty())
+    Log::logMsg(fmt::format("[{}] No stats rows, no route.", __func__));
+  else
+  {
+  // The start point is kept as is. Landings with the same name in a row are collapsed: "YBTL > YBTL > YBTL > YBTL" = "YBTL > YBTL(x3)" (pattern practice)
+  std::string route_s = vecNames.front();
+  for (size_t i = 1; i < vecNames.size();)
+  {
+    size_t count = 1;
+    while (i + count < vecNames.size() && vecNames[i + count] == vecNames[i])
+      ++count;
+
+    if (!route_s.empty())
+      route_s += " > ";
+
+    route_s += (count > 1) ? fmt::format("{}(x{})", vecNames[i], count) : vecNames[i];
+    i += count;
+  }
+
+  stmt = nullptr;
+  if (sqlite3_prepare_v2(local_db.db, fmt::format("UPDATE {} SET route_s = ?1 WHERE id = 1", mxconst::get_DB_TABLE_FLIGHT_INFO()).c_str(), -1, &stmt, nullptr) == SQLITE_OK)
+  {
+    sqlite3_bind_text(stmt, 1, route_s.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(stmt) == SQLITE_DONE)
+      Log::logMsg(fmt::format("[{}] Route: {}", __func__, route_s));
+    else
+      Log::logMsgErr(fmt::format("[{}] Failed to write the route: {}", __func__, sqlite3_errmsg(local_db.db)));
+  }
+  else
+    Log::logMsgErr(fmt::format("[{}] Failed to prepare the route update: {}", __func__, sqlite3_errmsg(local_db.db)));
+
+  sqlite3_finalize(stmt);
+  } // end route
+
+  // v26.10.2 history copy: only flights that reached the end screen
+  const bool reached_end_screen = (in_outcome == mxconst::get_FLIGHT_OUTCOME_SUCCESS() || in_outcome == mxconst::get_FLIGHT_OUTCOME_FAILURE() || in_outcome == mxconst::get_FLIGHT_OUTCOME_ABORTED());
+  if (reached_end_screen && in_history_max_files > 0)
+    stats_history_save_cai(local_db, in_stats_db_path, in_history_max_files);
+  else if (reached_end_screen)
+    Log::logMsg(fmt::format("[{}] History is off ({} = 0), the flight was not saved.", __func__, mxconst::get_OPT_STATS_HISTORY_MAX_FILES()));
+}
+
+// -------------------------------------
+// v26.10.2 The setup option, limited to 0..STATS_HISTORY_MAX_FILES_LIMIT. 0 = history off. Main thread (reads the setup node).
+int
+data_manager::stats_history_get_max_files_cai()
+{
+  const int value = system_actions::pluginSetupOptions.getNodeText_type_1_5<int>(mxconst::get_OPT_STATS_HISTORY_MAX_FILES(), mxconst::STATS_HISTORY_DEFAULT_FILES);
+  return std::clamp(value, 0, mxconst::STATS_HISTORY_MAX_FILES_LIMIT);
+}
+
+// -------------------------------------
+// v26.10.2 Save the flight into {stats db folder}/history/{stats file name}-{yyyymmdd_hhmmss}.db (OS local time).
+//          Once per flight: flight_info.archived goes from 0 to 1 first. If it is already 1, nothing is saved
+//          (it is 0 again only after a new mission start, or after a checkpoint load: the checkpoint copy was saved mid-flight).
+//          "VACUUM INTO" writes a new, compact database file with all tables, views and indexes. The live file is not changed (except "archived").
+//          Runs in the route job (own connection, s_thread_sync_mutex is held).
+bool
+data_manager::stats_history_save_cai(missionx::dbase &in_live_db, const std::string &in_stats_db_path, const int in_history_max_files)
+{
+  namespace fs = std::filesystem;
+
+  const auto lmbda_exec = [&](const std::string &in_sql) -> bool {
+    char *err_msg = nullptr;
+    const int rc  = sqlite3_exec(in_live_db.db, in_sql.c_str(), nullptr, nullptr, &err_msg);
+    if (rc != SQLITE_OK)
+    {
+      Log::logMsgErr(fmt::format("[stats_history_save_cai] SQL failed: {}. SQL: {}", (err_msg != nullptr) ? err_msg : "unknown error", in_sql));
+      sqlite3_free(err_msg);
+      return false;
+    }
+    return true;
+  };
+
+  // ---- 1. once per flight ----
+  if (!lmbda_exec(fmt::format("UPDATE {} SET archived = 1 WHERE id = 1 AND archived = 0", mxconst::get_DB_TABLE_FLIGHT_INFO())))
+    return false;
+
+  if (sqlite3_changes(in_live_db.db) == 0)
+  {
+    Log::logMsg(fmt::format("[{}] This flight is already in the history (or has no {} row). Not saved again.", __func__, mxconst::get_DB_TABLE_FLIGHT_INFO()));
+    return false;
+  }
+
+  // on any failure below: the flight was not saved, set "archived" back
+  const auto lmbda_undo_archived = [&]() { lmbda_exec(fmt::format("UPDATE {} SET archived = 0 WHERE id = 1", mxconst::get_DB_TABLE_FLIGHT_INFO())); };
+
+  // ---- 2. folder ----
+  const fs::path  live_path(in_stats_db_path);
+  const fs::path  history_folder = live_path.parent_path() / mxconst::get_STATS_HISTORY_FOLDER_NAME();
+  std::error_code ec;
+  fs::create_directories(history_folder, ec);
+  if (ec)
+  {
+    Log::logMsgErr(fmt::format("[{}] Could not create the history folder '{}': {}", __func__, history_folder.string(), ec.message()));
+    lmbda_undo_archived();
+    return false;
+  }
+
+  // ---- 3. file name: {stats file name}-{yyyymmdd_hhmmss}.db, local OS time. "_2", "_3"... if the name exists ----
+  const std::string file_prefix = live_path.filename().string() + "-";
+
+  const std::time_t now = std::time(nullptr);
+  std::tm           tm_buf{};
+  #if defined(_WIN32)
+  localtime_s(&tm_buf, &now);
+  #else
+  localtime_r(&now, &tm_buf);
+  #endif
+  char timestamp[32]{};
+  std::strftime(timestamp, sizeof(timestamp), "%Y%m%d_%H%M%S", &tm_buf);
+
+  fs::path history_file = history_folder / fmt::format("{}{}.db", file_prefix, timestamp);
+  for (int n = 2; fs::exists(history_file, ec) && n < 100; ++n)
+    history_file = history_folder / fmt::format("{}{}_{}.db", file_prefix, timestamp, n);
+
+  // ---- 4. copy ----
+  if (!lmbda_exec("VACUUM INTO " + mxUtils::sql_quote(history_file.string())))
+  {
+    fs::remove(history_file, ec); // a partial file, if any
+    lmbda_undo_archived();
+    return false;
+  }
+
+  Log::logMsg(fmt::format("[{}] Flight saved: {}", __func__, history_file.string()));
+
+  // ---- 5. keep the newest N ----
+  stats_history_prune_cai(history_folder.string(), file_prefix, in_history_max_files);
+  return true;
+}
+
+// -------------------------------------
+// v26.10.2 Keep the newest in_history_max_files history files, delete the older ones.
+//          Only files named exactly "{prefix}yyyymmdd_hhmmss.db" or "{prefix}yyyymmdd_hhmmss_N.db" are counted.
+//          Other files (example: a renamed copy "{prefix}06.01-bounce-crash.db") are never counted or deleted.
+//          The names sort by time, so the sort is by name.
+void
+data_manager::stats_history_prune_cai(const std::string &in_history_folder, const std::string &in_file_prefix, const int in_history_max_files)
+{
+  namespace fs = std::filesystem;
+
+  std::vector<std::string> vecNames;
+  std::error_code          ec;
+  for (const auto &entry : fs::directory_iterator(in_history_folder, ec))
+  {
+    if (entry.is_regular_file(ec) && stats_history_is_history_file_name_cai(entry.path().filename().string(), in_file_prefix)) // v26.10.2 shared with the stats screen list
+      vecNames.emplace_back(entry.path().filename().string());
+  }
+  if (ec)
+  {
+    Log::logMsgErr(fmt::format("[{}] Could not read the history folder '{}': {}", __func__, in_history_folder, ec.message()));
+    return;
+  }
+
+  if (static_cast<int>(vecNames.size()) <= in_history_max_files)
+    return;
+
+  // "_N" sorts after the plain name of the same second, so a descending sort keeps it first (newer)
+  std::ranges::sort(vecNames, std::greater<>());
+  for (size_t i = static_cast<size_t>(in_history_max_files); i < vecNames.size(); ++i)
+  {
+    const fs::path file = fs::path(in_history_folder) / vecNames[i];
+    if (fs::remove(file, ec))
+      Log::logMsg(fmt::format("[{}] Removed old history file: {}", __func__, vecNames[i]));
+    else
+      Log::logMsgErr(fmt::format("[{}] Could not remove '{}': {}", __func__, file.string(), ec.message()));
+  }
+}
+
+// -------------------------------------
+// v26.10.2 The history folder: {folder of the live stats file}/history
+std::string
+data_manager::get_stats_history_folder_cai()
+{
+  const std::filesystem::path live_path(get_stats_db_path());
+  return (live_path.parent_path() / mxconst::get_STATS_HISTORY_FOLDER_NAME()).string();
+}
+
+// -------------------------------------
+// v26.10.2 History file names start with the live file name and a dash: "stats_xp.sqlite.db-"
+std::string
+data_manager::get_stats_history_file_prefix_cai()
+{
+  return std::filesystem::path(get_stats_db_path()).filename().string() + "-";
+}
+
+// -------------------------------------
+// v26.10.2 A history file name is exactly "{prefix}yyyymmdd_hhmmss.db" or "{prefix}yyyymmdd_hhmmss_N.db".
+//          Used by the cleanup (stats_history_prune_cai) and by the stats screen list, so both see the same files.
+//          A renamed copy ("{prefix}06.01-bounce-crash.db") is not a history file.
+bool
+data_manager::stats_history_is_history_file_name_cai(const std::string &in_file_name, const std::string &in_file_prefix)
+{
+  constexpr std::string_view ext = ".db";
+  if (!in_file_name.starts_with(in_file_prefix) || !in_file_name.ends_with(ext))
+    return false;
+
+  const std::string_view middle(in_file_name.data() + in_file_prefix.size(), in_file_name.size() - in_file_prefix.size() - ext.size());
+  // yyyymmdd_hhmmss = 15 chars, then optional "_N"
+  if (middle.size() < 15)
+    return false;
+  for (size_t i = 0; i < 15; ++i)
+  {
+    const bool ok = (i == 8) ? (middle[i] == '_') : (std::isdigit(static_cast<unsigned char>(middle[i])) != 0);
+    if (!ok)
+      return false;
+  }
+  if (middle.size() == 15)
+    return true;
+  if (middle[15] != '_' || middle.size() == 16)
+    return false;
+  return std::all_of(middle.begin() + 16, middle.end(), [](const char c) { return std::isdigit(static_cast<unsigned char>(c)) != 0; });
+}
+
+// -------------------------------------
+// v26.10.2 The stats screen list: one row for each history file, newest first.
+//          Each file is opened read-only for a few small queries: flight_info, the first plane, the landings and the time flew.
+//          A file that can not be read is still listed (is_readable = false), so the user sees it.
+//          Background thread (std::async): no XPLM calls. Does not use the airports database, so s_thread_sync_mutex is not needed.
+void
+data_manager::fetch_stats_history_list_cai(std::vector<missionx::mx_stats_history_row>* out_vecRows, mxFetchState_enum* outState, std::string* outStatusMessage)
+{
+  namespace fs = std::filesystem;
+
+  out_vecRows->clear();
+  outStatusMessage->clear();
+
+  const std::string history_folder = get_stats_history_folder_cai();
+  const std::string file_prefix    = get_stats_history_file_prefix_cai();
+
+  // ---- the file names, newest first (the names sort by time) ----
+  std::vector<std::string> vecFileNames;
+  std::error_code          ec;
+  if (fs::exists(history_folder, ec))
+  {
+    for (const auto &entry : fs::directory_iterator(history_folder, ec))
+    {
+      if (entry.is_regular_file(ec) && stats_history_is_history_file_name_cai(entry.path().filename().string(), file_prefix))
+        vecFileNames.emplace_back(entry.path().filename().string());
+    }
+  }
+  if (ec)
+  {
+    (*outStatusMessage) = fmt::format("Could not read the history folder: {}", ec.message());
+    Log::logMsgErr(fmt::format("[{}] Could not read '{}': {}", __func__, history_folder, ec.message()));
+    (*outState) = mxFetchState_enum::fetch_ended;
+    return;
+  }
+  std::ranges::sort(vecFileNames, std::greater<>());
+
+  // text column, "" for NULL
+  const auto lmbda_column_text = [](sqlite3_stmt* in_stmt, const int in_column) -> std::string {
+    const auto* text = sqlite3_column_text(in_stmt, in_column);
+    return (text == nullptr) ? std::string() : std::string(reinterpret_cast<const char*>(text));
+  };
+
+  // run a query and call in_lmbda_read_row for each row. False when the query fails (example: a missing table in an older file)
+  const auto lmbda_query = [](sqlite3* in_db, const std::string &in_sql, const std::function<void(sqlite3_stmt*)> &in_lmbda_read_row) -> bool {
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(in_db, in_sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
+    {
+      sqlite3_finalize(stmt);
+      return false;
+    }
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+      in_lmbda_read_row(stmt);
+    sqlite3_finalize(stmt);
+    return true;
+  };
+
+  for (const auto &file_name : vecFileNames)
+  {
+    missionx::mx_stats_history_row row;
+    row.file_name = file_name;
+    row.file_path = (fs::path(history_folder) / file_name).string();
+
+    // "yyyymmdd_hhmmss" from the file name (OS local time when the flight was saved) -> "yyyy-mm-dd hh:mm"
+    const std::string stamp = file_name.substr(file_prefix.size(), 15);
+    row.saved_local_time_s  = fmt::format("{}-{}-{} {}:{}", stamp.substr(0, 4), stamp.substr(4, 2), stamp.substr(6, 2), stamp.substr(9, 2), stamp.substr(11, 2));
+
+    sqlite3* db = nullptr;
+    if (sqlite3_open_v2(row.file_path.c_str(), &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK)
+    {
+      row.error_s = (db != nullptr) ? sqlite3_errmsg(db) : "could not open the file";
+      sqlite3_close(db);
+      out_vecRows->emplace_back(row);
+      continue;
+    }
+    sqlite3_busy_timeout(db, 500); // the newest file may still be written by the history save
+
+    lmbda_query(db, "PRAGMA user_version", [&](sqlite3_stmt* stmt) { row.schema_version = sqlite3_column_int(stmt, 0); });
+
+    const bool has_flight_info = lmbda_query(db, fmt::format("SELECT mission_title, route_s, outcome, IFNULL(crashed, 0) FROM {} WHERE id = 1", mxconst::get_DB_TABLE_FLIGHT_INFO()), [&](sqlite3_stmt* stmt) {
+      row.mission_title = lmbda_column_text(stmt, 0);
+      row.route_s       = lmbda_column_text(stmt, 1);
+      row.outcome       = lmbda_column_text(stmt, 2);
+      row.crashed       = (sqlite3_column_int(stmt, 3) != 0);
+    });
+
+    // the first plane flown, and how many planes
+    lmbda_query(db, fmt::format("SELECT IFNULL(NULLIF(acf_desc, ''), acf_file), acf_icao, (SELECT COUNT(*) FROM {0}) FROM {0} ORDER BY line_id, rowid LIMIT 1", mxconst::get_DB_TABLE_PLANE_META()), [&](sqlite3_stmt* stmt) {
+      row.plane_s      = lmbda_column_text(stmt, 0);
+      row.plane_icao_s = lmbda_column_text(stmt, 1);
+      row.planes_count = sqlite3_column_int(stmt, 2);
+    });
+
+    const bool has_stats = lmbda_query(db, fmt::format("SELECT COUNT(*) FROM stats WHERE activity = '{}'", mxconst::get_STATS_LANDING()), [&](sqlite3_stmt* stmt) { row.landings_count = sqlite3_column_int(stmt, 0); });
+
+    // same time flew rule as the end screen: the sum of the time between rows, without gaps (pause, time change)
+    lmbda_query(db,
+                fmt::format("SELECT IFNULL(SUM(dt), 0.0) FROM (SELECT (local_date_days * 86400.0 + local_time_sec) - LAG(local_date_days * 86400.0 + local_time_sec) OVER (ORDER BY line_id) AS dt FROM stats) v1 WHERE dt > 0.0 AND dt <= {}",
+                            mxconst::STATS_MAX_TIME_GAP_SEC),
+                [&](sqlite3_stmt* stmt) { row.time_flew_sec = sqlite3_column_double(stmt, 0); });
+
+    sqlite3_close(db);
+
+    row.is_readable = has_stats;
+    if (!has_stats)
+      row.error_s = "no stats table";
+    else if (!has_flight_info)
+      row.route_s = "(older file, no flight info)";
+
+    out_vecRows->emplace_back(row);
+  }
+
+  Log::logMsg(fmt::format("[{}] {} history file(s) in '{}'.", __func__, out_vecRows->size(), history_folder));
+  (*outState) = mxFetchState_enum::fetch_ended;
+}
+
+// -------------------------------------
+// v26.10.2 Wait until the route job finished (if one runs). Main thread.
+void
+data_manager::stats_meta_wait_for_route_cai()
+{
+  if (!futStatsRoute.valid())
+    return;
+
+  try
+  {
+    futStatsRoute.get(); // waits, and makes the future empty
+  }
+  catch (const std::exception& e)
+  {
+    Log::logMsgErr(fmt::format("[{}] The route job failed: {}", __func__, e.what()));
   }
 }
 
@@ -5533,6 +6623,7 @@ data_manager::db_connect(dbase& db, const std::string& inPathToDbFile)
 void
 data_manager::db_close_all_databases()
 {
+  stats_meta_wait_for_route_cai(); // v26.10.2 it uses db_xp_airports and the stats file
   db_xp_airports.close_database();
   close_stats_db(false); // v26.10.1 was: db_stats.close_database(). Stops the writer thread first.
   db_cache.close_database(); // v3.0.255.3
@@ -6171,8 +7262,20 @@ where icao_id = {}
 // -------------------------------------
 
 
+// -------------------------------------
+// v26.10.2 End screen: read the live stats file into last_flight_stats_view.
 void
 data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string* outStatusMessage)
+{
+  fetch_mission_stats_cai(get_stats_db_path(), &last_flight_stats_view, outState, outStatusMessage);
+}
+
+// -------------------------------------
+// v26.10.2 Read one stats file into out_view_data: the stats rows, the summary, the landings and the metadata rows.
+//          Opens its own read-only connection. Holds s_thread_sync_mutex (the landing list uses the airports database).
+//          Background thread: no XPLM calls, and the mission globals are not changed.
+void
+data_manager::fetch_mission_stats_cai(const std::string in_stats_db_path, missionx::mx_stats_view_data* out_view_data, mxFetchState_enum* outState, std::string* outStatusMessage)
 {
 
   outStatusMessage->clear();
@@ -6180,14 +7283,25 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
 
   // v26.10.1 own read-only connection. stats_db is closed when the end screen is shown.
   //          The dbase destructor closes it when the function returns.
+  //          v26.10.2 any stats file: the live one (end screen) or a history copy (stats screen).
+  out_view_data->reset();
+  out_view_data->stats_db_path = in_stats_db_path;
+  missionx::mx_mission_stats_strct& out_stats = out_view_data->stats; // short name for the many lines below
+
   missionx::dbase local_stats_db_ro;
-  local_stats_db_ro.set_db_path_and_file(get_stats_db_path());
+  local_stats_db_ro.set_db_path_and_file(in_stats_db_path);
   if (!local_stats_db_ro.open_database_read_only())
   {
     (*outStatusMessage) = "Could not open the stats database.\n" + local_stats_db_ro.last_err;
+    Log::logMsgErr(fmt::format("[{}] Could not open '{}': {}", __func__, in_stats_db_path, local_stats_db_ro.last_err));
     (*outState)         = mxFetchState_enum::fetch_ended;
     return;
   }
+
+  // v26.10.2 flight_info, plane_meta and leg_stats, then the scoring the flight was graded with
+  fetch_stats_meta_rows_cai(local_stats_db_ro, *out_view_data);
+  IXMLNode xScoring = get_scoring_for_stats_view_cai(out_view_data->flight_info);
+  out_view_data->flag_scoring_missing = xScoring.isEmpty();
 
   const std::string query_stats = "select elev, flap_ratio * 100 as flap_ratio, local_date_days, local_time_sec, case when airspeed < 0.0 then 0.0 else airspeed end as airspeed , groundspeed, faxil_gear, roll, IFNULL(activity,'') from stats order by line_id";
 
@@ -6200,11 +7314,13 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
       assert(local_stats_db_ro.mapStatements[stmt_uq_name] != nullptr && fmt::format("[{}] Failed to create stmt: {}", __func__, stmt_uq_name).data());
 
       int seq = 0;
-      mission_stats_from_query.reset();
 
       std::map<int, missionx::mx_row_stats_strct> map_stats_rows;
       std::map<int, missionx::mx_row_stats_strct> map_activity_stats_rows;
       std::vector <std::string> vec_activity_pacing = {"takeoff", "landing"};
+
+      double elapsed_sec        = 0.0; // v26.10.2 flight clock for the graphs
+      double prev_row_clock_sec = 0.0; // v26.10.2
 
       while (sqlite3_step(local_stats_db_ro.mapStatements[stmt_uq_name]) == SQLITE_ROW)
       {
@@ -6212,49 +7328,62 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
 
         int i = 0;
         row.Seq_d = static_cast<double> ( seq );
-        mission_stats_from_query.vecSeq_d.emplace_back( row.Seq_d ); // 0 column line_id (seq) we will use internal numbering so we always start from ZERO
+        out_stats.vecSeq_d.emplace_back( row.Seq_d ); // 0 column line_id (seq) we will use internal numbering so we always start from ZERO
 
         const auto elev_mt = static_cast<double> ( sqlite3_column_int ( local_stats_db_ro.mapStatements[stmt_uq_name], i ) );
         i++; // column 1 elevation in meters
         const auto elev_ft = elev_mt * meter2feet;
         row.Elev_mt_d = elev_mt;
         row.Elev_ft_d = elev_ft;
-        mission_stats_from_query.vecElev_mt_d.emplace_back(row.Elev_mt_d); // 1 column Elevation meters
-        mission_stats_from_query.vecElev_ft_d.emplace_back(row.Elev_ft_d); // store elevation as feet
+        out_stats.vecElev_mt_d.emplace_back(row.Elev_mt_d); // 1 column Elevation meters
+        out_stats.vecElev_ft_d.emplace_back(row.Elev_ft_d); // store elevation as feet
         // Min Max
-        mxUtils::eval_min_max<double>(elev_ft, mission_stats_from_query.min_elev_ft, mission_stats_from_query.max_elev_ft);
+        mxUtils::eval_min_max<double>(elev_ft, out_stats.min_elev_ft, out_stats.max_elev_ft);
 
         if (seq == 0)
-          mission_stats_from_query.min_elev_ft = mission_stats_from_query.max_elev_ft = elev_ft;
+          out_stats.min_elev_ft = out_stats.max_elev_ft = elev_ft;
 
         row.Flaps_d = static_cast<double> ( sqlite3_column_int ( local_stats_db_ro.mapStatements[stmt_uq_name], i ) );
-        mission_stats_from_query.vecFlaps_d.emplace_back( row.Flaps_d );
+        out_stats.vecFlaps_d.emplace_back( row.Flaps_d );
         i++; // 2 column flaps
         row.DayInYear_d = static_cast<double> ( sqlite3_column_int ( local_stats_db_ro.mapStatements[stmt_uq_name], i ) );
-        mission_stats_from_query.vecDayInYear_d.emplace_back( row.DayInYear_d );
+        out_stats.vecDayInYear_d.emplace_back( row.DayInYear_d );
         i++; // 3 column day in year
         row.LocalTime_sec_d = static_cast<double> ( sqlite3_column_int ( local_stats_db_ro.mapStatements[stmt_uq_name], i ) );
-        mission_stats_from_query.vecLocalTime_sec_d.emplace_back(row.LocalTime_sec_d);
+        out_stats.vecLocalTime_sec_d.emplace_back(row.LocalTime_sec_d);
+
+        // v26.10.2 flight clock (minutes) for the graphs: add the time between rows, without gaps (pause, time change). Same rule as "time flew".
+        //          The precise time (double): rows written in the same second still get their own time.
+        const double row_clock_sec = row.DayInYear_d * 86400.0 + sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name], i);
+        if (seq > 0)
+        {
+          const double dt_sec = row_clock_sec - prev_row_clock_sec;
+          if (dt_sec > 0.0 && dt_sec <= mxconst::STATS_MAX_TIME_GAP_SEC)
+            elapsed_sec += dt_sec;
+        }
+        prev_row_clock_sec = row_clock_sec;
+        out_stats.vecElapsedMin_d.emplace_back(elapsed_sec / 60.0);
+
         i++; // 4 column local time in seconds
 
         const auto air_speed = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name], i);
         i++; // 5 column Air speed
         row.AirSpeed_d = air_speed;
-        mission_stats_from_query.vecAirSpeed_d.emplace_back(row.AirSpeed_d);
+        out_stats.vecAirSpeed_d.emplace_back(row.AirSpeed_d);
         // Min Max
-        mxUtils::eval_min_max<double>(air_speed, mission_stats_from_query.min_airspeed, mission_stats_from_query.max_airspeed);
+        mxUtils::eval_min_max<double>(air_speed, out_stats.min_airspeed, out_stats.max_airspeed);
 
         row.GroundSpeed_d = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name], i);
-        mission_stats_from_query.vecGroundSpeed_d.emplace_back(row.GroundSpeed_d);
+        out_stats.vecGroundSpeed_d.emplace_back(row.GroundSpeed_d);
         i++; // 6 column ground speed
         row.Faxil_d = static_cast<double> ( sqlite3_column_int ( local_stats_db_ro.mapStatements[stmt_uq_name], i ) );
-        mission_stats_from_query.vecFaxil_d.emplace_back(row.Faxil_d);
+        out_stats.vecFaxil_d.emplace_back(row.Faxil_d);
         i++; // 7 column Faxil
         row.Roll_d = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name], i);
-        mission_stats_from_query.vecRoll_d.emplace_back(row.Roll_d);
+        out_stats.vecRoll_d.emplace_back(row.Roll_d);
         i++; // 8 column roll
         row.Activity_s = std::string(reinterpret_cast<const char*>(sqlite3_column_text(local_stats_db_ro.mapStatements[stmt_uq_name], i)));
-        mission_stats_from_query.vecActivity_s.emplace_back(row.Activity_s);
+        out_stats.vecActivity_s.emplace_back(row.Activity_s);
         i++; // 9. column Activity: takeoff / landing
 
         seq++;
@@ -6264,11 +7393,25 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
       //          (16-bit ImDrawIdx when IMGWINDOW_USE_PANEL_GRAPHICS is defined) no matter how long the flight was.
       constexpr size_t PLOT_BUCKETS = 1000;
       // Decimate for elevation
-      mxUtils::decimate_min_max(mission_stats_from_query.vecSeq_d, mission_stats_from_query.vecElev_ft_d,  PLOT_BUCKETS,
-                                mission_stats_from_query.vecPlotElevSeq_d, mission_stats_from_query.vecPlotElev_ft_d);
+      mxUtils::decimate_min_max(out_stats.vecSeq_d, out_stats.vecElev_ft_d,  PLOT_BUCKETS,
+                                out_stats.vecPlotElevSeq_d, out_stats.vecPlotElev_ft_d);
       // Decimate for speed
-      mxUtils::decimate_min_max(mission_stats_from_query.vecSeq_d, mission_stats_from_query.vecAirSpeed_d, PLOT_BUCKETS,
-                                mission_stats_from_query.vecPlotAirSeq_d,  mission_stats_from_query.vecPlotAirSpeed_d);
+      mxUtils::decimate_min_max(out_stats.vecSeq_d, out_stats.vecAirSpeed_d, PLOT_BUCKETS,
+                                out_stats.vecPlotAirSeq_d,  out_stats.vecPlotAirSpeed_d);
+
+      // v26.10.2 the minute of each plotted point. The decimation keeps the row number (seq = index of vecElapsedMin_d)
+      const auto lmbda_seq_to_minutes = [&](const std::vector<double> &in_vecSeq, std::vector<double> &out_vecMinutes) {
+        out_vecMinutes.clear();
+        out_vecMinutes.reserve(in_vecSeq.size());
+        for (const double seq_d : in_vecSeq)
+        {
+          const auto row_index = static_cast<size_t>(seq_d);
+          out_vecMinutes.emplace_back((row_index < out_stats.vecElapsedMin_d.size()) ? out_stats.vecElapsedMin_d[row_index] : 0.0);
+        }
+      };
+      lmbda_seq_to_minutes(out_stats.vecPlotElevSeq_d, out_stats.vecPlotElevMin_d);
+      lmbda_seq_to_minutes(out_stats.vecPlotAirSeq_d, out_stats.vecPlotAirMin_d);
+      out_stats.total_elapsed_min = (out_stats.vecElapsedMin_d.empty()) ? 0.0 : out_stats.vecElapsedMin_d.back();
 
       if (seq == 0)
         (*outStatusMessage) = "!!! No Stats Rows Found !!!"; // success message
@@ -6282,8 +7425,10 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
     }
 
     // query time based on stats
-    // Sum the time we flew for each day in a year, in most cases we fly during same day hours but for longer flights it might take during evening of one day and the few hours from the other day.
-    const std::string query_time_fly = "select sum ( active_time_in_sec_in_aday ) as total_mission_time_sec from ( select MAX(local_time_sec) - MIN(local_time_sec) as active_time_in_sec_in_aday from stats group by local_date_days) v1";
+    // v26.10.2 Sum the sim time between consecutive rows. A gap that is negative or longer than STATS_MAX_TIME_GAP_SEC is skipped:
+    //          a time-of-day change, or a pause. Rows are written about every second (20 per second in approach mode), so a real gap is small.
+    //          Day changes are handled by local_date_days * 86400. Was: max - min of local_time_sec per day, which counted a time change as flight time.
+    const std::string query_time_fly = fmt::format("select ifnull(sum(dt), 0.0) as total_mission_time_sec from ( select (local_date_days * 86400.0 + local_time_sec) - lag(local_date_days * 86400.0 + local_time_sec) over (order by line_id) as dt from stats ) v1 where dt > 0.0 and dt <= {}", mxconst::STATS_MAX_TIME_GAP_SEC);
     if (const std::string stmt_uq_name2 = "query_time_flew"; local_stats_db_ro.prepareNewStatement(stmt_uq_name2, query_time_fly))
     {
       assert(local_stats_db_ro.mapStatements[stmt_uq_name2] != nullptr && fmt::format("[{}] Failed to create stmt2: {}", __func__, stmt_uq_name2).data());
@@ -6294,8 +7439,8 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
         const double active_time_in_sec_in_aday_d = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name2], 0);
         cumulative_time_flew += active_time_in_sec_in_aday_d;
       }
-      mission_stats_from_query.time_flew_sec_d    = cumulative_time_flew;
-      mission_stats_from_query.time_flew_format_s = Utils::format_number_as_hours(cumulative_time_flew);
+      out_stats.time_flew_sec_d    = cumulative_time_flew;
+      out_stats.time_flew_format_s = Utils::format_number_as_hours(cumulative_time_flew);
 
     } // end if "query_time_fly" is valid
 
@@ -6319,47 +7464,45 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
       if (local_stats_db_ro.step(local_stats_db_ro.mapStatements[stmt_uq_name3]) == SQLITE_ROW) // fetch 1 row
       {
         int iCol                                        = 0;
-        mission_stats_from_query.minPitch = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
+        out_stats.minPitch = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.maxPitch = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
+        out_stats.maxPitch = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.minRoll = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
+        out_stats.minRoll = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.maxRoll = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
+        out_stats.maxRoll = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.minGforce = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
+        out_stats.minGforce = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.maxGforce = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
+        out_stats.maxGforce = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.minFaxilG = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
+        out_stats.minFaxilG = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.maxFaxilG = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
+        out_stats.maxFaxilG = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.minAirspeed = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
+        out_stats.minAirspeed = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.maxAirspeed = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
+        out_stats.maxAirspeed = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.minGroundSpeed = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
+        out_stats.minGroundSpeed = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
-        mission_stats_from_query.maxGroundspeed = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
+        out_stats.maxGroundspeed = sqlite3_column_double(local_stats_db_ro.mapStatements[stmt_uq_name3], iCol);
         iCol++;
       }
 
       // v3.303.9.1 use default scoring if there is none in the mission file
-      if (mx_global_settings.xScoring_ptr.isEmpty())
-        mx_global_settings.xScoring_ptr = Utils::xml_get_node_from_XSD_map_as_a_copy(mxconst::get_ELEMENT_SCORING());
-
-      if (!mx_global_settings.xScoring_ptr.isEmpty())
+      // v26.10.2 xScoring comes from get_scoring_for_stats_view_cai() (defaults included). The thread no longer writes the mission scoring global.
+      if (!xScoring.isEmpty())
       {
         // pitch
-        const auto vecPitchScoring          = Utils::xml_extract_scoring_subElements ( mx_global_settings.xScoring_ptr, mxconst::get_ELEMENT_PITCH() );
-        mission_stats_from_query.pitchScore = Utils::getScoreAfterAnalyzeMinMax ( vecPitchScoring, mission_stats_from_query.minPitch, mission_stats_from_query.maxPitch );
+        const auto vecPitchScoring          = Utils::xml_extract_scoring_subElements ( xScoring, mxconst::get_ELEMENT_PITCH() );
+        out_stats.pitchScore = Utils::getScoreAfterAnalyzeMinMax ( vecPitchScoring, out_stats.minPitch, out_stats.maxPitch );
         // roll
-        const auto vecRollScoring          = Utils::xml_extract_scoring_subElements ( mx_global_settings.xScoring_ptr, mxconst::get_ELEMENT_ROLL() );
-        mission_stats_from_query.rollScore = Utils::getScoreAfterAnalyzeMinMax ( vecRollScoring, mission_stats_from_query.minRoll, mission_stats_from_query.maxRoll );
+        const auto vecRollScoring          = Utils::xml_extract_scoring_subElements ( xScoring, mxconst::get_ELEMENT_ROLL() );
+        out_stats.rollScore = Utils::getScoreAfterAnalyzeMinMax ( vecRollScoring, out_stats.minRoll, out_stats.maxRoll );
         // gForce
-        const auto vecGForceScoring          = Utils::xml_extract_scoring_subElements ( mx_global_settings.xScoring_ptr, mxconst::get_ELEMENT_GFORCE() );
-        mission_stats_from_query.gForceScore = Utils::getScoreAfterAnalyzeMinMax ( vecGForceScoring, mission_stats_from_query.minGforce, mission_stats_from_query.maxGforce );
+        const auto vecGForceScoring          = Utils::xml_extract_scoring_subElements ( xScoring, mxconst::get_ELEMENT_GFORCE() );
+        out_stats.gForceScore = Utils::getScoreAfterAnalyzeMinMax ( vecGForceScoring, out_stats.minGforce, out_stats.maxGforce );
       }
     } // end if "query_min_max_stats" is valid
   }
@@ -6371,14 +7514,13 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
 
 
   ///// v3.0.308.4.3
-  mission_stats_from_query.vecLandingStatsResults = get_landing_stats_as_vec(local_stats_db_ro); // v26.10.1 will get landing information + center line score
+  out_stats.vecLandingStatsResults = get_landing_stats_as_vec(local_stats_db_ro, xScoring); // v26.10.1 will get landing information + center line score
 
   // v26.10.1 landing analysis: height steps, touchdown summary, score, grade and notes
-  mission_stats_from_query.mapLandingAnalysis = fetch_landing_analysis(local_stats_db_ro);
-  if (!mission_stats_from_query.mapLandingAnalysis.empty())
+  out_stats.mapLandingAnalysis = fetch_landing_analysis(local_stats_db_ro, out_stats.vecLandingStatsResults); // v26.10.2 the landing rows carry the runway of each touchdown
+  if (!out_stats.mapLandingAnalysis.empty())
   {
-    IXMLNode xScoring = get_scoring_with_landing_defaults();
-    for (auto &[td_line_id, landing] : mission_stats_from_query.mapLandingAnalysis)
+    for (auto &[td_line_id, landing] : out_stats.mapLandingAnalysis)
     {
       score_landing_analysis(landing, xScoring);
       build_landing_findings(landing);
@@ -6386,12 +7528,16 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
 
     // #ifndef RELEASE
     // v26.10.1 debug: print the landing analysis to missionx.log
-    for (const auto &[td_line_id, landing] : mission_stats_from_query.mapLandingAnalysis)
+    for (const auto &[td_line_id, landing] : out_stats.mapLandingAnalysis)
     {
       Log::logMsg(fmt::format("\n[{}] Landing line_id: {}, grade: {}, score: {:.1f}, weight: {:.0f}kg, td_fpm: {:.0f}, gear_load: {:.2f} (G {:.2f} - {:.2f}, peak {:.2f}), glide: {:.2f} ({:.0f} fpm), td_bank: {:.1f}, td_pitch: {:.1f}",
                               __func__, td_line_id, landing.grade_s, landing.landing_score, landing.td_weight_kg, landing.td_fpm,
                               landing.td_gear_load, landing.td_g_avg, landing.pre_td_g, landing.td_g_peak,
                               landing.final_max_glide_ratio, landing.final_max_sink_fpm, landing.td_bank, landing.td_pitch));
+      if (landing.has_runway_data) // v26.10.2
+        Log::logMsg(fmt::format("[{}] Landing line_id: {}, runway {}: touchdown {:.0f} m past the threshold, {:.1f} m from the center line, {:.0f} m left. Overrun: {} ({:.0f} kt, {:.0f} m), excursion: {} ({:.0f} kt, {:.0f} m)",
+                                __func__, td_line_id, landing.landing_runway_s, landing.td_from_threshold_m, landing.td_lateral_m, landing.runway_left_m,
+                                landing.is_overrun, landing.overrun_gs_kt, landing.overrun_max_m, landing.is_excursion, landing.excursion_gs_kt, landing.excursion_max_m));
 
       for (const auto &row : landing.vecSteps)
         Log::logMsg(fmt::format("  {:>6} {} agl:{:6.1f}ft ias:{:5.1f} gs:{:5.1f} vs:{:6.0f} pitch:{:5.1f} bank:{:5.1f} g:{:4.2f} flaps:{:4.2f} {:5.1f}s {:6.0f}m",
@@ -6411,12 +7557,454 @@ data_manager::fetch_last_mission_stats(mxFetchState_enum* outState, std::string*
   (*outState) = mxFetchState_enum::fetch_ended; // once we change the state, the UI can show/hide the relevant layers/widgets
 }
 
+// -------------------------------------
+// v26.10.2 Read the metadata rows of a stats file into out_view_data.
+//          flight_info (one row), plane_meta (the planes flown) and leg_stats (the finished legs, newest first).
+//          A file written before v26.10.2 has no metadata tables, and a schema 1 file has no leg_stats: those parts stay empty.
+void
+data_manager::fetch_stats_meta_rows_cai(missionx::dbase &in_stats_db, missionx::mx_stats_view_data &out_view_data)
+{
+  // text column, "" for NULL
+  const auto lmbda_column_text = [](sqlite3_stmt* in_stmt, const int in_column) -> std::string {
+    const auto* text = sqlite3_column_text(in_stmt, in_column);
+    return (text == nullptr) ? std::string() : std::string(reinterpret_cast<const char*>(text));
+  };
+
+  // prepare a query. Returns nullptr when the table is missing (an older file). This is logged, it is not an error
+  const auto lmbda_prepare = [&](const std::string &in_sql, const std::string &in_table_name) -> sqlite3_stmt* {
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(in_stats_db.db, in_sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
+    {
+      Log::logMsg(fmt::format("[{}] No '{}' data in '{}': {}", __func__, in_table_name, out_view_data.stats_db_path, sqlite3_errmsg(in_stats_db.db)));
+      sqlite3_finalize(stmt);
+      return nullptr;
+    }
+    return stmt;
+  };
+
+  // ---- schema version ----
+  if (sqlite3_stmt* stmt = lmbda_prepare("PRAGMA user_version", "user_version"); stmt != nullptr)
+  {
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+      out_view_data.flight_info.schema_version = sqlite3_column_int(stmt, 0);
+    sqlite3_finalize(stmt);
+  }
+
+  // ---- flight_info ----
+  const std::string sql_flight_info = fmt::format("SELECT flight_id, plugin_version, mission_key, mission_title, os_start_time, os_end_time, outcome, outcome_reason, "
+                                                  "IFNULL(crashed, 0), crash_source, route_s, scoring_xml FROM {} WHERE id = 1",
+                                                  mxconst::get_DB_TABLE_FLIGHT_INFO());
+  if (sqlite3_stmt* stmt = lmbda_prepare(sql_flight_info, mxconst::get_DB_TABLE_FLIGHT_INFO()); stmt != nullptr)
+  {
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+      auto &info          = out_view_data.flight_info;
+      info.has_row        = true;
+      info.flight_id      = lmbda_column_text(stmt, 0);
+      info.plugin_version = lmbda_column_text(stmt, 1);
+      info.mission_key    = lmbda_column_text(stmt, 2);
+      info.mission_title  = lmbda_column_text(stmt, 3);
+      info.os_start_time  = lmbda_column_text(stmt, 4);
+      info.os_end_time    = lmbda_column_text(stmt, 5);
+      info.outcome        = lmbda_column_text(stmt, 6);
+      info.outcome_reason = lmbda_column_text(stmt, 7);
+      info.crashed        = (sqlite3_column_int(stmt, 8) != 0);
+      info.crash_source   = lmbda_column_text(stmt, 9);
+      info.route_s        = lmbda_column_text(stmt, 10);
+      info.scoring_xml    = lmbda_column_text(stmt, 11);
+    }
+    sqlite3_finalize(stmt);
+  }
+
+  // ---- plane_meta ----
+  const std::string sql_planes = fmt::format("SELECT IFNULL(line_id, 0), acf_file, acf_icao, acf_desc, category, IFNULL(is_helicopter, 0), "
+                                             "IFNULL(empty_kg, 0.0), IFNULL(max_kg, 0.0), IFNULL(max_fuel_kg, 0.0) FROM {} ORDER BY line_id, rowid",
+                                             mxconst::get_DB_TABLE_PLANE_META());
+  if (sqlite3_stmt* stmt = lmbda_prepare(sql_planes, mxconst::get_DB_TABLE_PLANE_META()); stmt != nullptr)
+  {
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+      missionx::mx_stats_plane_info plane;
+      plane.line_id       = sqlite3_column_int(stmt, 0);
+      plane.acf_file      = lmbda_column_text(stmt, 1);
+      plane.acf_icao      = lmbda_column_text(stmt, 2);
+      plane.acf_desc      = lmbda_column_text(stmt, 3);
+      plane.category      = lmbda_column_text(stmt, 4);
+      plane.is_helicopter = (sqlite3_column_int(stmt, 5) == 1);
+      plane.empty_kg      = static_cast<float>(sqlite3_column_double(stmt, 6));
+      plane.max_kg        = static_cast<float>(sqlite3_column_double(stmt, 7));
+      plane.max_fuel_kg   = static_cast<float>(sqlite3_column_double(stmt, 8));
+      out_view_data.vecPlanes.emplace_back(plane);
+    }
+    sqlite3_finalize(stmt);
+  }
+
+  // ---- leg_stats (newest first) ----
+  const std::string sql_legs = fmt::format("SELECT IFNULL(leg_name, ''), IFNULL(start_line_id, 0), IFNULL(end_line_id, 0), IFNULL(distance_before_nm, 0.0), IFNULL(distance_nm, 0.0), "
+                                           "IFNULL(start_fuel_kg, 0.0), IFNULL(end_fuel_kg, 0.0), IFNULL(start_payload_kg, 0.0), IFNULL(end_payload_kg, 0.0), leg_seq, IFNULL(status, '') "
+                                           "FROM {} ORDER BY leg_seq DESC",
+                                           mxconst::get_DB_TABLE_LEG_STATS());
+  if (sqlite3_stmt* stmt = lmbda_prepare(sql_legs, mxconst::get_DB_TABLE_LEG_STATS()); stmt != nullptr)
+  {
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+      missionx::mx_enrout_stats_strct leg;
+      leg.init();
+      leg.sLegName                                 = lmbda_column_text(stmt, 0);
+      leg.iStartLineId                             = sqlite3_column_int(stmt, 1);
+      leg.iEndLineId                               = sqlite3_column_int(stmt, 2);
+      leg.fCumulativeDistanceFlew_beforeCurrentLeg = static_cast<float>(sqlite3_column_double(stmt, 3));
+      leg.fDistanceFlew                            = static_cast<float>(sqlite3_column_double(stmt, 4));
+      leg.fStartingFuel                            = static_cast<float>(sqlite3_column_double(stmt, 5));
+      leg.fEndFuel                                 = static_cast<float>(sqlite3_column_double(stmt, 6));
+      leg.fStartingPayload                         = static_cast<float>(sqlite3_column_double(stmt, 7));
+      leg.fEndPayload                              = static_cast<float>(sqlite3_column_double(stmt, 8));
+      leg.iLegSeq                                  = sqlite3_column_int(stmt, 9);
+      leg.sStatus                                  = lmbda_column_text(stmt, 10);
+      out_view_data.vecLegs.emplace_back(leg);
+    }
+    sqlite3_finalize(stmt);
+  }
+
+  Log::logMsg(fmt::format("[{}] '{}': schema {}, flight_info: {}, outcome: '{}', planes: {}, legs: {}", __func__, out_view_data.stats_db_path, out_view_data.flight_info.schema_version,
+                          (out_view_data.flight_info.has_row ? "yes" : "no"), out_view_data.flight_info.outcome, out_view_data.vecPlanes.size(), out_view_data.vecLegs.size()));
+}
+
+// -------------------------------------
+// v26.10.2 The waypoint list of the flight path plots: Departure, one entry per leg (leg_stats), Full flight.
+//          Main thread, reads only the view data that fetch_mission_stats_cai() filled.
+std::vector<missionx::mx_path_section>
+data_manager::build_flight_path_sections_cai(const missionx::mx_stats_view_data& in_view_data)
+{
+  std::vector<missionx::mx_path_section> vecSections;
+
+  // the airport of a takeoff or landing row (landing table), "" when unknown
+  const auto lmbda_icao_of_activity_in_range = [&in_view_data](const std::string& in_activity, const int in_from_line_id, const int in_to_line_id, const bool in_pick_last) -> std::string {
+    std::string icao_found;
+    for (const auto& landing_row : in_view_data.stats.vecLandingStatsResults)
+    {
+      const bool is_in_range = landing_row.line_id >= in_from_line_id && (in_to_line_id <= 0 || landing_row.line_id <= in_to_line_id);
+      if (!is_in_range || landing_row.activity_s != in_activity || landing_row.icao.empty() || landing_row.icao == "N/A")
+        continue;
+
+      icao_found = landing_row.icao;
+      if (!in_pick_last)
+        break;
+    }
+    return icao_found;
+  };
+
+  // leg_stats rows are newest first, the list is in the order flown
+  std::vector<missionx::mx_enrout_stats_strct> vecLegsInFlightOrder(in_view_data.vecLegs.rbegin(), in_view_data.vecLegs.rend());
+
+  // Departure
+  {
+    missionx::mx_path_section departure;
+    departure.type          = missionx::mx_path_section::type_enum::departure;
+    departure.start_line_id = (vecLegsInFlightOrder.empty()) ? 0 : vecLegsInFlightOrder.front().iStartLineId;
+    departure.end_line_id   = (vecLegsInFlightOrder.empty()) ? 0 : vecLegsInFlightOrder.front().iEndLineId;
+    const std::string icao  = lmbda_icao_of_activity_in_range("takeoff", 0, 0, false);
+    departure.label         = (icao.empty()) ? std::string("Departure") : fmt::format("Departure - {}", icao);
+    vecSections.emplace_back(departure);
+  }
+
+  // one entry per leg
+  for (const auto& leg : vecLegsInFlightOrder)
+  {
+    missionx::mx_path_section leg_section;
+    leg_section.type          = missionx::mx_path_section::type_enum::leg;
+    leg_section.leg_seq       = leg.iLegSeq;
+    leg_section.leg_status    = leg.sStatus;
+    leg_section.start_line_id = leg.iStartLineId;
+    leg_section.end_line_id   = leg.iEndLineId; // 0 for a running leg or a crash: up to the last row
+
+    const std::string icao  = lmbda_icao_of_activity_in_range("landing", leg.iStartLineId, leg.iEndLineId, true);
+    const std::string where = (icao.empty()) ? leg.sLegName : icao;
+    leg_section.label       = fmt::format("Leg {} - {}{}", leg.iLegSeq, where, (leg_section.is_skipped_cai()) ? " (skipped)" : "");
+    vecSections.emplace_back(leg_section);
+  }
+
+  // Full flight
+  {
+    missionx::mx_path_section full_flight;
+    full_flight.type  = missionx::mx_path_section::type_enum::full_flight;
+    full_flight.label = "Full flight";
+    vecSections.emplace_back(full_flight);
+  }
+
+  return vecSections;
+}
+
+// -------------------------------------
+// FLIGHT_PATH_WINDOW_BEGIN (the standalone test extracts the code between the markers)
+// v26.10.2 Pick the rows of one (section, range), thin them to STATS_PATH_MAX_POINTS and convert them to plot units.
+//          No database and no XPLM calls: rows of one section, ordered by line_id.
+//          Arrival (leg):  anchor = the last "landing" row. "up to N nm" = N nm of flown path before it, then the rollout.
+//          Departure:      anchor = the first "takeoff" row. "up to N nm" = the takeoff roll, then N nm of flown path after it.
+//          Distances are along the flown path. A reposition (a jump longer than STATS_PATH_REPOSITION_NM) adds no distance and starts a new segment.
+missionx::mx_flight_path_data
+data_manager::compute_flight_path_window_cai(const std::vector<missionx::mx_flight_path_row>& in_rows, const missionx::mx_path_section& in_section, const missionx::mx_path_range_enum in_range)
+{
+  missionx::mx_flight_path_data path;
+  path.rows_read = static_cast<int>(in_rows.size());
+
+  const size_t rows_count = in_rows.size();
+  if (rows_count == 0)
+    return path;
+
+  // along-path distance (nm) from the first row, and where the repositions are
+  std::vector<double> vecCumulative_nm(rows_count, 0.0);
+  std::vector<bool>   vecJumpBefore(rows_count, false);
+  for (size_t i = 1; i < rows_count; ++i)
+  {
+    const double step_nm = mxUtils::mxCalcDistanceBetween2Points(in_rows[i - 1].lat, in_rows[i - 1].lon, in_rows[i].lat, in_rows[i].lon);
+    vecJumpBefore[i]     = step_nm > mxconst::STATS_PATH_REPOSITION_NM;
+    vecCumulative_nm[i]  = vecCumulative_nm[i - 1] + ((vecJumpBefore[i]) ? 0.0 : step_nm);
+  }
+
+  const bool is_departure = in_section.type == missionx::mx_path_section::type_enum::departure;
+  const bool is_leg       = in_section.type == missionx::mx_path_section::type_enum::leg;
+
+  // anchor: first takeoff (departure) or the last touchdown (leg)
+  int    anchor                 = -1;
+  double last_landing_clock_sec = -1.0;
+  for (size_t i = 0; i < rows_count; ++i)
+  {
+    if (is_departure && in_rows[i].activity == "takeoff")
+    {
+      anchor = static_cast<int>(i);
+      break;
+    }
+    if (is_leg && in_rows[i].activity == "landing")
+    {
+      // keep the last touchdown, but not a bounce: a landing less than STATS_BOUNCE_WINDOW_SEC after the previous one belongs to it
+      const bool is_bounce = anchor >= 0 && Utils::is_landing_a_bounce_cai (last_landing_clock_sec, in_rows[i].clock_sec);
+      last_landing_clock_sec = in_rows[i].clock_sec;
+      if (!is_bounce)
+        anchor = static_cast<int>(i);
+    }
+  }
+
+  const double range_nm = (in_range == missionx::mx_path_range_enum::up_to_5nm) ? 5.0 : 20.0; // v26.10.2 was 2 nm: too short, only the end of the final
+  const bool   is_whole = in_section.type == missionx::mx_path_section::type_enum::full_flight || (in_range == missionx::mx_path_range_enum::whole_leg && !is_departure);
+
+  size_t first = 0;
+  size_t last  = rows_count - 1;
+  size_t ref   = (anchor >= 0) ? static_cast<size_t>(anchor) : 0; // the point distances are measured from
+
+  if (is_whole)
+  {
+    path.shown_nm    = vecCumulative_nm[last] - vecCumulative_nm[first];
+    path.range_label = (in_section.type == missionx::mx_path_section::type_enum::full_flight) ? fmt::format("full flight ({:.1f} nm)", path.shown_nm) : fmt::format("whole leg ({:.1f} nm)", path.shown_nm);
+  }
+  else if (is_departure)
+  {
+    // the takeoff roll: back from the takeoff, at most STATS_PATH_TAKEOFF_ROLL_NM, stop where the plane stood still
+    first = ref;
+    while (first > 0 && (vecCumulative_nm[ref] - vecCumulative_nm[first - 1]) <= mxconst::STATS_PATH_TAKEOFF_ROLL_NM && !vecJumpBefore[first])
+    {
+      --first;
+      if (in_rows[first].groundspeed_ms < mxconst::STATS_PATH_STOPPED_GS_MS)
+        break;
+    }
+    // range_nm after the takeoff
+    last = ref;
+    while (last + 1 < rows_count && (vecCumulative_nm[last + 1] - vecCumulative_nm[ref]) <= range_nm)
+      ++last;
+
+    path.shown_nm           = vecCumulative_nm[last] - vecCumulative_nm[ref];
+    path.flag_range_clipped = (last == rows_count - 1) && path.shown_nm < range_nm;
+  }
+  else // arrival
+  {
+    if (anchor < 0)
+      ref = rows_count - 1; // no landing in the leg (hover, overfly): count back from the leg end
+
+    first = ref;
+    while (first > 0 && (vecCumulative_nm[ref] - vecCumulative_nm[first - 1]) <= range_nm)
+      --first;
+
+    // after the landing: the rollout, until the plane slowed down (or the leg ended)
+    last = ref;
+    if (anchor >= 0)
+    {
+      while (last + 1 < rows_count && in_rows[last].groundspeed_ms >= mxconst::STATS_PATH_ROLLOUT_END_GS_MS)
+        ++last;
+    }
+
+    path.shown_nm           = vecCumulative_nm[ref] - vecCumulative_nm[first];
+    path.flag_range_clipped = (first == 0) && path.shown_nm < range_nm;
+  }
+
+  if (!is_whole)
+  {
+    const std::string section_word = (is_departure) ? "section" : "leg";
+    path.range_label = (path.flag_range_clipped) ? fmt::format("up to {:.0f} nm ({} is {:.1f} nm)", range_nm, section_word, path.shown_nm) : fmt::format("up to {:.0f} nm", range_nm);
+  }
+
+  // thin: keep the highest and lowest AGL of each bucket (bounces and the flare stay visible), and the anchor
+  std::vector<double> vecRowIndex, vecAgl;
+  vecRowIndex.reserve(last - first + 1);
+  vecAgl.reserve(last - first + 1);
+  for (size_t i = first; i <= last; ++i)
+  {
+    vecRowIndex.emplace_back(static_cast<double>(i));
+    vecAgl.emplace_back(in_rows[i].agl_mt);
+  }
+
+  std::vector<double> vecKeptIndex, vecKeptAgl;
+  const size_t        buckets = static_cast<size_t>(mxconst::STATS_PATH_MAX_POINTS / 2 - 1); // decimate_min_max keeps up to 2 points per bucket + the first and last
+  mxUtils::decimate_min_max(vecRowIndex, vecAgl, buckets, vecKeptIndex, vecKeptAgl);
+
+  std::vector<size_t> vecKept;
+  vecKept.reserve(vecKeptIndex.size() + 2);
+  for (const double index_d : vecKeptIndex)
+    vecKept.emplace_back(static_cast<size_t>(index_d));
+  if (vecKept.empty() || vecKept.back() != last)
+    vecKept.emplace_back(last);
+  if (anchor >= 0 && static_cast<size_t>(anchor) >= first && static_cast<size_t>(anchor) <= last && !std::ranges::binary_search(vecKept, static_cast<size_t>(anchor)))
+    vecKept.insert(std::ranges::upper_bound(vecKept, static_cast<size_t>(anchor)), static_cast<size_t>(anchor));
+
+  // flight clock of the window (minutes), same gap rule as "Time Flew"
+  std::vector<double> vecWindowMinutes(last - first + 1, 0.0);
+  for (size_t i = first + 1; i <= last; ++i)
+  {
+    const double dt_sec                = in_rows[i].clock_sec - in_rows[i - 1].clock_sec;
+    const double add_sec               = (dt_sec > 0.0 && dt_sec <= mxconst::STATS_MAX_TIME_GAP_SEC) ? dt_sec : 0.0;
+    vecWindowMinutes[i - first] = vecWindowMinutes[i - 1 - first] + add_sec / 60.0;
+  }
+
+  // plot units: feet east/north of the origin (anchor, else the first point of the window)
+  const size_t origin    = (anchor >= 0 && static_cast<size_t>(anchor) >= first && static_cast<size_t>(anchor) <= last) ? static_cast<size_t>(anchor) : first;
+  const double origin_nm = vecCumulative_nm[(anchor >= 0) ? ref : origin];
+
+  path.origin_lat    = in_rows[origin].lat;
+  path.origin_lon    = in_rows[origin].lon;
+  path.origin_alt_ft = in_rows[origin].elev_mt * missionx::meter2feet;
+
+  size_t previous_kept = first;
+  for (const size_t i : vecKept)
+  {
+    const double distance_ft = mxUtils::mxCalcDistanceBetween2Points(in_rows[origin].lat, in_rows[origin].lon, in_rows[i].lat, in_rows[i].lon, missionx::mx_units_of_measure::ft);
+    const double bearing_rad = mxUtils::mxCalcBearingBetween2Points(in_rows[origin].lat, in_rows[origin].lon, in_rows[i].lat, in_rows[i].lon) * missionx::PI / 180.0;
+
+    // a reposition between the previous kept point and this one starts a new segment
+    bool has_jump = path.vecEast_ft.empty();
+    for (size_t raw = previous_kept + 1; raw <= i && !has_jump; ++raw)
+      has_jump = vecJumpBefore[raw];
+    if (has_jump)
+      path.vecSegmentStart.emplace_back(path.vecEast_ft.size());
+
+    if (anchor >= 0 && i == static_cast<size_t>(anchor))
+    {
+      path.anchor_index   = static_cast<int>(path.vecEast_ft.size());
+      path.anchor_line_id = in_rows[i].line_id;
+    }
+
+    path.vecEast_ft.emplace_back(distance_ft * std::sin(bearing_rad));
+    path.vecNorth_ft.emplace_back(distance_ft * std::cos(bearing_rad));
+    path.vecAlt_ft.emplace_back(in_rows[i].elev_mt * missionx::meter2feet);
+    path.vecAgl_ft.emplace_back(in_rows[i].agl_mt * missionx::meter2feet);
+    path.vecAirspeed_kt.emplace_back(in_rows[i].airspeed_kt);
+    path.vecDist_nm.emplace_back(vecCumulative_nm[i] - origin_nm);
+    path.vecMinutes.emplace_back(vecWindowMinutes[i - first]);
+
+    previous_kept = i;
+  }
+
+  return path;
+}
+// FLIGHT_PATH_WINDOW_END
+
+// -------------------------------------
+// v26.10.2 Background thread (std::async): read the rows of one section from a stats file and build its plot data.
+//          Own read-only connection, no XPLM calls, no shared state: each (section, range) request owns its out_path, so requests never overwrite each other.
+void
+data_manager::fetch_flight_path_section_cai(const std::string in_stats_db_path, const missionx::mx_path_section in_section, const missionx::mx_path_range_enum in_range, missionx::mx_flight_path_data* out_path, mxFetchState_enum* out_state,
+                                        std::string* out_status_message)
+{
+  out_status_message->clear();
+  *out_path = missionx::mx_flight_path_data();
+
+  missionx::dbase local_stats_db_ro;
+  local_stats_db_ro.set_db_path_and_file(in_stats_db_path);
+  if (!local_stats_db_ro.open_database_read_only())
+  {
+    (*out_status_message) = "Could not open the stats database.\n" + local_stats_db_ro.last_err;
+    Log::logMsgErr(fmt::format("[{}] Could not open '{}': {}", __func__, in_stats_db_path, local_stats_db_ro.last_err));
+    (*out_state) = mxFetchState_enum::fetch_ended;
+    return;
+  }
+
+  // the rows of the section. end_line_id 0 = up to the last row
+  std::string where_clause = fmt::format("where line_id >= {}", in_section.start_line_id);
+  if (in_section.end_line_id > 0)
+    where_clause += fmt::format(" and line_id <= {}", in_section.end_line_id);
+
+  const std::string query_path = fmt::format("select line_id, lat, lon, elev, agl, case when airspeed < 0.0 then 0.0 else airspeed end, groundspeed, local_date_days * 86400.0 + local_time_sec, IFNULL(activity, '') "
+                                             "from stats {} order by line_id",
+                                             where_clause);
+
+  std::vector<missionx::mx_flight_path_row> vecRows;
+  if (const std::string stmt_uq_name = "fetch_flight_path_section_cai"; local_stats_db_ro.prepareNewStatement(stmt_uq_name, query_path))
+  {
+    sqlite3_stmt* stmt = local_stats_db_ro.mapStatements[stmt_uq_name];
+    while (stmt != nullptr && sqlite3_step(stmt) == SQLITE_ROW)
+    {
+      missionx::mx_flight_path_row row;
+      row.line_id        = sqlite3_column_int(stmt, 0);
+      row.lat            = sqlite3_column_double(stmt, 1);
+      row.lon            = sqlite3_column_double(stmt, 2);
+      row.elev_mt        = sqlite3_column_double(stmt, 3);
+      row.agl_mt         = sqlite3_column_double(stmt, 4);
+      row.airspeed_kt    = sqlite3_column_double(stmt, 5);
+      row.groundspeed_ms = sqlite3_column_double(stmt, 6);
+      row.clock_sec      = sqlite3_column_double(stmt, 7);
+      row.activity       = std::string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 8)));
+      vecRows.emplace_back(row);
+    }
+  }
+  else
+  {
+    (*out_status_message) = "Failed to prepare the flight path statement. Notify developer !!!";
+    (*out_state)          = mxFetchState_enum::fetch_ended;
+    return;
+  }
+
+  *out_path = compute_flight_path_window_cai(vecRows, in_section, in_range);
+
+  (*out_status_message) = (out_path->empty_cai()) ? std::string("No flight path rows found.") : fmt::format("{} points from {} rows.", out_path->vecEast_ft.size(), out_path->rows_read);
+  Log::logMsg(fmt::format("[{}] '{}' {}: {}", __func__, in_section.label, out_path->range_label, *out_status_message));
+  (*out_state) = mxFetchState_enum::fetch_ended;
+}
+
+// -------------------------------------
+// v26.10.2 The <scoring> to grade a stats file with.
+//          flight_info.scoring_xml: the mission scoring with the landing defaults, stored when the flight started. A history flight is graded the way it was flown.
+//          A file without it (written before v26.10.2): get_scoring_with_landing_defaults(), the current mission scoring or the defaults.
+IXMLNode
+data_manager::get_scoring_for_stats_view_cai(const missionx::mx_stats_flight_info &in_flight_info)
+{
+  if (!in_flight_info.scoring_xml.empty())
+  {
+    IXMLResults   parse_result;
+    IXMLDomParser xml_parser;
+    auto          xScoring = xml_parser.parseString(in_flight_info.scoring_xml.c_str(), mxconst::get_ELEMENT_SCORING().c_str(), &parse_result);
+    if (parse_result.errorCode == IXMLError_None && !xScoring.isEmpty())
+      return xScoring.deepCopy();
+
+    Log::logMsgErr(fmt::format("[{}] Could not read the stored <scoring> (error code: {}). Using the default scoring.", __func__, static_cast<int>(parse_result.errorCode)));
+  }
+
+  return get_scoring_with_landing_defaults();
+}
+
 
 // -------------------------------------
 
 
 std::vector<mx_stats_data>
-data_manager::get_landing_stats_as_vec(missionx::dbase &in_stats_db)
+data_manager::get_landing_stats_as_vec(missionx::dbase &in_stats_db, IXMLNode in_xScoring)
 {
   std::vector<mx_stats_data> vecActivity; // store stmt01 data
 
@@ -6450,7 +8038,7 @@ order by line_id
 
   const std::string unique_name_s01 = "fetch_activity_stats";
 
-  const auto vecCenterLineScores = Utils::xml_extract_scoring_subElements(mx_global_settings.xScoring_ptr, mxconst::get_ELEMENT_CENTER_LINE());
+  const auto vecCenterLineScores = Utils::xml_extract_scoring_subElements(in_xScoring, mxconst::get_ELEMENT_CENTER_LINE()); // v26.10.2 was: the mission scoring global
 
 
   // Q1: gather activity data from stats db
@@ -6503,8 +8091,27 @@ order by line_id
     } // end Q1 - gather landing data
 
     mx_stats_data *bounce_data_pointer = nullptr;
+    double         last_landing_clock_sec = -1.0; // v26.10.2 time of the last "landing" row (days * 86400 + sec)
     for (auto& [seq, data] : map_landing_data)
     {
+      // v26.10.2 A long bounce can write a second "landing" row without a "takeoff" row between them (the plane was not airborne long enough for a takeoff).
+      //          Same rule as the <stats_sqls> landing queries: a landing less than STATS_BOUNCE_WINDOW_SEC after the previous landing is a bounce of it.
+      if (mxconst::get_STATS_LANDING() == data.activity_s)
+      {
+        const double landing_clock_sec = data.local_date_days * 86400.0 + data.local_time_sec;
+        const bool   is_bounce         = Utils::is_landing_a_bounce_cai (last_landing_clock_sec, landing_clock_sec);
+        last_landing_clock_sec         = landing_clock_sec;
+
+        if (is_bounce && !vecActivity.empty () && mxconst::get_STATS_LANDING() == vecActivity.back ().activity_s)
+        {
+          auto &touchdown                        = vecActivity.back ();
+          touchdown.did_landing_contained_bounce = true;
+          touchdown.score_centerLine             = 0.0;
+          touchdown.bounce += 1;
+          Log::logMsg (fmt::format ("[{}] Landing row {} is a bounce of the landing at row {}.", __func__, data.line_id, touchdown.line_id));
+          continue;
+        }
+      }
 
       // BOUNCE DETECTION
       if ( b_found_bounce || mxconst::get_STATS_TAKEOFF() == data.activity_s )
@@ -6567,9 +8174,13 @@ order by line_id
         // -- Neads plane position.
         // -- We added a special case where there are no boundary, we will only use ICAO.
         // -- This should be ok because even in duplicate ICAO cases, the query won't retrieve runways that the plane is not inside their boundary
+        // v26.10.2 also both runway ends, the displaced thresholds and the width: the landing runway check (data_manager::analyse_landing_on_runway_cai())
         std::string stmt03 = R"(select xp_rw.rw_no_1 || '-' || xp_rw.rw_no_2 as runway
 , mx_get_shortest_distance_to_rw_vector ( {}, {}, xp_rw.rw_no_1_lat, xp_rw.rw_no_1_lon, xp_rw.rw_no_2_lat, xp_rw.rw_no_2_lon) as distance_from_center
 , mx_is_plane_in_rw_area( {}, {}, xp_rw.rw_no_1_lat, xp_rw.rw_no_1_lon, xp_rw.rw_no_2_lat, xp_rw.rw_no_2_lon, xp_rw.rw_width) as is_plane_on_rw
+, xp_rw.rw_no_1, xp_rw.rw_no_1_lat, xp_rw.rw_no_1_lon, IFNULL(xp_rw.rw_no_1_disp_hold, 0.0) as rw_no_1_disp_hold
+, xp_rw.rw_no_2, xp_rw.rw_no_2_lat, xp_rw.rw_no_2_lon, IFNULL(xp_rw.rw_no_2_disp_hold, 0.0) as rw_no_2_disp_hold
+, xp_rw.rw_width
 from xp_rw
 where is_plane_on_rw = 1
 )";
@@ -6609,6 +8220,20 @@ where is_plane_on_rw = 1
 
             data.score_centerLine = Utils::getScoreAfterAnalyzeMinMax(vecCenterLineScores, data.distance_from_center_of_rw_d, data.distance_from_center_of_rw_d);
 
+            // v26.10.2 both runway ends (columns read by their alias name)
+            sqlite3_stmt *stmt03_ptr = db_xp_airports.mapStatements[unique_name_s03];
+            const auto    columns03  = dbase::get_column_indexes(stmt03_ptr);
+            data.runway.end_1_name        = dbase::read_column_text(stmt03_ptr, columns03, "rw_no_1");
+            data.runway.end_1_lat         = dbase::read_column_double(stmt03_ptr, columns03, "rw_no_1_lat");
+            data.runway.end_1_lon         = dbase::read_column_double(stmt03_ptr, columns03, "rw_no_1_lon");
+            data.runway.end_1_displaced_m = dbase::read_column_double(stmt03_ptr, columns03, "rw_no_1_disp_hold");
+            data.runway.end_2_name        = dbase::read_column_text(stmt03_ptr, columns03, "rw_no_2");
+            data.runway.end_2_lat         = dbase::read_column_double(stmt03_ptr, columns03, "rw_no_2_lat");
+            data.runway.end_2_lon         = dbase::read_column_double(stmt03_ptr, columns03, "rw_no_2_lon");
+            data.runway.end_2_displaced_m = dbase::read_column_double(stmt03_ptr, columns03, "rw_no_2_disp_hold");
+            data.runway.width_m           = dbase::read_column_double(stmt03_ptr, columns03, "rw_width");
+            data.runway.is_valid          = (data.runway.width_m > 0.0) && (data.runway.end_1_lat != data.runway.end_2_lat || data.runway.end_1_lon != data.runway.end_2_lon);
+
           } // end Q3 step
 
         } // END Q3
@@ -6628,14 +8253,30 @@ where is_plane_on_rw = 1
 // -------------------------------------
 // v26.10.1 Height steps and touchdown summary of every landing in the stats database.
 //          Runs in the fetch thread on the read-only connection. Queries come from sql.xml <stats_sqls>.
+// v26.10.2 in_vecLandingStats: the rows of get_landing_stats_as_vec(), for the runway of each touchdown (runway check, step 5)
 std::map<int, missionx::mx_landing_analysis>
-data_manager::fetch_landing_analysis(missionx::dbase &in_stats_db)
+data_manager::fetch_landing_analysis(missionx::dbase &in_stats_db, const std::vector<missionx::mx_stats_data> &in_vecLandingStats)
 {
   std::map<int, missionx::mx_landing_analysis> mapResult; // key: td_line_id
 
   // Read the queries into a local map. We are in the fetch thread, so we do not write into the shared data_manager::mapQueries.
   std::map<std::string, std::string> mapStatsQueries;
   Utils::read_external_sql_query_file(mapStatsQueries, mxconst::get_SQLITE_STATS_SQLS());
+
+  // v26.10.2 the bounce window is one value for the queries and for the route (flight_info.route_s). The crash window is used by "landing_crash".
+  const std::string bounce_window_s = fmt::format("{:.1f}", mxconst::STATS_BOUNCE_WINDOW_SEC);
+  const std::string crash_window_s  = fmt::format("{:.1f}", mxconst::STATS_CRASH_AFTER_LANDING_SEC);
+  const std::string bounce_min_sec_s    = fmt::format("{:.2f}", mxconst::STATS_BOUNCE_MIN_SEC);    // v26.10.2
+  const std::string bounce_min_agl_ft_s = fmt::format("{:.2f}", mxconst::STATS_BOUNCE_MIN_AGL_FT); // v26.10.2
+  const std::string rollout_max_sec_s   = fmt::format("{:.1f}", mxconst::STATS_RUNWAY_ROLLOUT_MAX_SEC); // v26.10.2
+  for (auto &query : mapStatsQueries | std::views::values)
+  {
+    query = mxUtils::replaceAll(query, "{bounce_window_sec}", bounce_window_s);
+    query = mxUtils::replaceAll(query, "{crash_window_sec}", crash_window_s);
+    query = mxUtils::replaceAll(query, "{bounce_min_sec}", bounce_min_sec_s);
+    query = mxUtils::replaceAll(query, "{bounce_min_agl_ft}", bounce_min_agl_ft_s);
+    query = mxUtils::replaceAll(query, "{rollout_max_sec}", rollout_max_sec_s);
+  }
 
   const std::string stmt_steps_name   = "landing_height_steps";
   const std::string stmt_summary_name = "landing_touchdown_summary";
@@ -6722,6 +8363,8 @@ data_manager::fetch_landing_analysis(missionx::dbase &in_stats_db)
       landing.has_final_glide       = !dbase::is_column_null(stmt, columns, "final_max_glide_ratio");
       landing.final_max_glide_ratio = dbase::read_column_double(stmt, columns, "final_max_glide_ratio");
       landing.final_max_bank        = dbase::read_column_double(stmt, columns, "final_max_bank");
+      landing.final_steep_sink_fpm   = dbase::read_column_double(stmt, columns, "final_steep_sink_fpm");   // v26.10.2 0 when an older sql.xml has no such column
+      landing.final_steep_normal_fpm = dbase::read_column_double(stmt, columns, "final_steep_normal_fpm"); // v26.10.2
     }
   }
   else
@@ -6759,8 +8402,167 @@ data_manager::fetch_landing_analysis(missionx::dbase &in_stats_db)
     Log::logMsgErr(fmt::format("[{}] Failed to prepare \"{}\": {}", __func__, stmt_bounce_name, in_stats_db.last_err));
   }
 
+  // ---- 4. crash at the landing (v26.10.2, optional query) ----
+  const std::string stmt_crash_name = "landing_crash";
+  if (!mapStatsQueries.contains(stmt_crash_name))
+  {
+    Log::logMsgWarn(fmt::format("[{}] sql.xml <{}> has no \"{}\" query. Crashes are not matched to landings.", __func__, mxconst::get_SQLITE_STATS_SQLS(), stmt_crash_name));
+  }
+  else if (in_stats_db.prepareNewStatement(stmt_crash_name, mapStatsQueries[stmt_crash_name]))
+  {
+    sqlite3_stmt *stmt    = in_stats_db.mapStatements[stmt_crash_name];
+    const auto    columns = dbase::get_column_indexes(stmt); // columns are read by their alias name
+
+    while (in_stats_db.step(stmt) == SQLITE_ROW)
+    {
+      const int td_line_id = dbase::read_column_int(stmt, columns, "td_line_id");
+      if (!mapResult.contains(td_line_id))
+        continue; // no steps/summary for this touchdown
+
+      mapResult[td_line_id].is_crash = (dbase::read_column_int(stmt, columns, "crash_rows", 0) > 0);
+    }
+  }
+  else
+  {
+    Log::logMsgErr(fmt::format("[{}] Failed to prepare \"{}\": {}", __func__, stmt_crash_name, in_stats_db.last_err));
+  }
+
+  // ---- 5. position on the runway: touchdown distance, overrun, excursion (v26.10.2, optional query) ----
+  const std::string stmt_rollout_name = "landing_rollout";
+  if (!mapStatsQueries.contains(stmt_rollout_name))
+  {
+    Log::logMsgWarn(fmt::format("[{}] sql.xml <{}> has no \"{}\" query. The runway position of the landings is not analysed.", __func__, mxconst::get_SQLITE_STATS_SQLS(), stmt_rollout_name));
+  }
+  else if (in_stats_db.prepareNewStatement(stmt_rollout_name, mapStatsQueries[stmt_rollout_name]))
+  {
+    std::map<int, std::vector<missionx::mx_rollout_row>> mapRolloutRows; // key: td_line_id
+
+    sqlite3_stmt *stmt    = in_stats_db.mapStatements[stmt_rollout_name];
+    const auto    columns = dbase::get_column_indexes(stmt); // columns are read by their alias name
+    while (in_stats_db.step(stmt) == SQLITE_ROW)
+    {
+      missionx::mx_rollout_row row;
+      row.line_id      = dbase::read_column_int(stmt, columns, "line_id");
+      row.lat          = dbase::read_column_double(stmt, columns, "lat");
+      row.lon          = dbase::read_column_double(stmt, columns, "lon");
+      row.gs_kt        = dbase::read_column_double(stmt, columns, "gs_kt");
+      row.heading_true = dbase::read_column_double(stmt, columns, "heading_true");
+      row.is_on_ground = (dbase::read_column_int(stmt, columns, "onground_any", 0) != 0);
+
+      mapRolloutRows[dbase::read_column_int(stmt, columns, "td_line_id")].emplace_back(row);
+    }
+
+    for (const auto &landing_row : in_vecLandingStats)
+    {
+      if (!landing_row.runway.is_valid || !mapResult.contains(landing_row.line_id) || !mapRolloutRows.contains(landing_row.line_id))
+        continue; // not on a known runway, or no analysis for this touchdown
+
+      analyse_landing_on_runway_cai(landing_row.runway, mapRolloutRows[landing_row.line_id], mapResult[landing_row.line_id]);
+    }
+  }
+  else
+  {
+    Log::logMsgErr(fmt::format("[{}] Failed to prepare \"{}\": {}", __func__, stmt_rollout_name, in_stats_db.last_err));
+  }
+
   return mapResult;
 }
+
+// RUNWAY_CHECK_BEGIN (the standalone test extracts the code between the markers)
+// v26.10.2 Position of one landing on its runway. No database and no XPLM calls.
+//          in_rows: the stats rows from the touchdown on (sql.xml: landing_rollout), ordered by line_id. The first row is the touchdown.
+//          The runway end the plane landed from is the one whose direction is closest to the plane heading at touchdown.
+//          Only rows with a wheel on the ground count (a bounce or a touch-and-go is not an overrun).
+//          Overrun:   passed the far end by more than STATS_RUNWAY_END_MARGIN_M before slowing below STATS_RUNWAY_ROLLOUT_END_KT.
+//          Excursion: the plane center more than STATS_RUNWAY_SIDE_MARGIN_M past the side edge, between both ends, above STATS_RUNWAY_SIDE_EXIT_MIN_KT.
+//          The check ends when the rollout ends (no overrun), when the plane turns off the side of the runway slower than STATS_RUNWAY_SIDE_EXIT_MIN_KT,
+//          or when it stops (STATS_PATH_STOPPED_GS_MS). After an overrun it goes on until the plane stops: overrun_max_m is how far past the end it got.
+//          Taxiing on a taxiway after the landing is not part of it (KPDX: 25 kt on the parallel taxiway was flagged as an excursion).
+void
+data_manager::analyse_landing_on_runway_cai(const missionx::mx_runway_geometry &in_runway, const std::vector<missionx::mx_rollout_row> &in_rows, missionx::mx_landing_analysis &inout_landing)
+{
+  if (!in_runway.is_valid || in_rows.empty())
+    return;
+
+  const double length_m = mxUtils::mxCalcDistanceBetween2Points(in_runway.end_1_lat, in_runway.end_1_lon, in_runway.end_2_lat, in_runway.end_2_lon, missionx::mx_units_of_measure::meter);
+  if (length_m <= 0.0)
+    return;
+
+  // the end the plane landed from
+  const auto  &td_row          = in_rows.front();
+  const double heading_1_to_2  = mxUtils::mxCalcBearingBetween2Points(in_runway.end_1_lat, in_runway.end_1_lon, in_runway.end_2_lat, in_runway.end_2_lon);
+  double       heading_diff    = std::fmod(std::fabs(td_row.heading_true - heading_1_to_2), 360.0);
+  heading_diff                 = (heading_diff > 180.0) ? 360.0 - heading_diff : heading_diff;
+  const bool   flag_from_end_1 = (heading_diff <= 90.0);
+
+  const double end_lat        = (flag_from_end_1) ? in_runway.end_1_lat : in_runway.end_2_lat;
+  const double end_lon        = (flag_from_end_1) ? in_runway.end_1_lon : in_runway.end_2_lon;
+  const double runway_heading = (flag_from_end_1) ? heading_1_to_2 : std::fmod(heading_1_to_2 + 180.0, 360.0);
+  const double displaced_m    = std::clamp((flag_from_end_1) ? in_runway.end_1_displaced_m : in_runway.end_2_displaced_m, 0.0, length_m);
+  const double half_width_m   = in_runway.width_m * 0.5;
+
+  const auto lmbda_position_on_runway = [&](const missionx::mx_rollout_row &in_row) { return Utils::get_position_on_runway_m_cai(end_lat, end_lon, runway_heading, in_row.lat, in_row.lon); };
+
+  // ---- touchdown ----
+  const auto [td_along_m, td_lateral_m] = lmbda_position_on_runway(td_row);
+
+  inout_landing.has_runway_data     = true;
+  inout_landing.landing_runway_s    = (flag_from_end_1) ? in_runway.end_1_name : in_runway.end_2_name;
+  inout_landing.runway_length_m     = length_m;
+  inout_landing.runway_width_m      = in_runway.width_m;
+  inout_landing.landing_distance_m  = length_m - displaced_m;
+  inout_landing.td_from_threshold_m = td_along_m - displaced_m;
+  inout_landing.td_lateral_m        = td_lateral_m;
+  inout_landing.runway_left_m       = length_m - td_along_m;
+
+  // ---- rollout ----
+  bool flag_in_rollout = true; // until the groundspeed drops below STATS_RUNWAY_ROLLOUT_END_KT
+  for (const auto &row : in_rows)
+  {
+    if (!row.is_on_ground)
+      continue;
+
+    if (flag_in_rollout && row.gs_kt < mxconst::STATS_RUNWAY_ROLLOUT_END_KT)
+      flag_in_rollout = false;
+
+    if (!flag_in_rollout && !inout_landing.is_overrun)
+      break; // a normal rollout ended: nothing more to check
+
+    const auto [along_m, lateral_m] = lmbda_position_on_runway(row);
+
+    // past the far end
+    const double past_end_m = along_m - length_m;
+    if (flag_in_rollout && !inout_landing.is_overrun && past_end_m > mxconst::STATS_RUNWAY_END_MARGIN_M)
+    {
+      inout_landing.is_overrun    = true;
+      inout_landing.overrun_gs_kt = row.gs_kt;
+    }
+    if (inout_landing.is_overrun)
+      inout_landing.overrun_max_m = std::max(inout_landing.overrun_max_m, past_end_m);
+
+    // past the side edge, between both ends
+    const double past_edge_m = std::fabs(lateral_m) - half_width_m;
+    if (along_m >= 0.0 && along_m <= length_m && past_edge_m > mxconst::STATS_RUNWAY_SIDE_MARGIN_M)
+    {
+      if (row.gs_kt < mxconst::STATS_RUNWAY_SIDE_EXIT_MIN_KT)
+        break; // turned off the runway (a taxiway): the landing is over
+
+      if (!inout_landing.is_excursion)
+        inout_landing.excursion_gs_kt = row.gs_kt;
+
+      inout_landing.is_excursion    = true;
+      inout_landing.excursion_max_m = std::max(inout_landing.excursion_max_m, past_edge_m);
+    }
+
+    if (row.gs_kt * missionx::OneNmh2meterInSecond < mxconst::STATS_PATH_STOPPED_GS_MS)
+    {
+      inout_landing.has_stopped = true;
+      break; // stopped: the taxi after it is not part of the landing
+    }
+  }
+}
+// RUNWAY_CHECK_END
+
 
 // -------------------------------------
 // v26.10.1 Copy of the mission <scoring>. Every landing element the mission does not define is copied from the default <scoring> (Utils XSD map).
@@ -6800,6 +8602,11 @@ data_manager::get_scoring_with_landing_defaults()
 //   bounce penalty = <td_bounce_penalty> points for the highest bounce, plus "extra_bounce" for each bounce after the first.
 //   final score = max(0, base score + bounce penalty). The grade comes from the final score.
 //   "Call the Doctor" when the touchdown fpm or gear load, or the re-contact fpm after a bounce, is above the <landing_grade> limits, whatever the score.
+//   v26.10.2 "Impact" when the same values are above the impact limits: replaces the grade, the score is kept.
+//            "Crash" when X-Plane reported a crash during the landing or its rollout (is_crash, set by fetch_landing_analysis()):
+//            the landing is not graded (scores are 0, the UI shows "not graded"). The impact/doctor flags are still set for the notes.
+//   v26.10.2 "Runway overrun" / "Runway excursion" (analyse_landing_on_runway_cai()): the landing score is 0. The base score is kept for the UI.
+//            Order: Crash, Impact, Runway overrun, Runway excursion, Call the Doctor, then the score grades.
 void
 data_manager::score_landing_analysis(missionx::mx_landing_analysis &inout_landing, IXMLNode in_xScoring)
 {
@@ -6835,7 +8642,8 @@ data_manager::score_landing_analysis(missionx::mx_landing_analysis &inout_landin
     inout_landing.base_score     = 0.0f;
     inout_landing.bounce_penalty = 0.0f;
     inout_landing.landing_score  = 0.0f;
-    inout_landing.grade_s        = "N/A";
+    inout_landing.grade_s        = (inout_landing.is_crash) ? "Crash" : (inout_landing.is_overrun) ? "Runway overrun" : (inout_landing.is_excursion) ? "Runway excursion" : "N/A"; // v26.10.2
+    inout_landing.is_doctor      = inout_landing.is_crash;                     // v26.10.2 UI color
     return;
   }
 
@@ -6878,7 +8686,29 @@ data_manager::score_landing_analysis(missionx::mx_landing_analysis &inout_landin
   inout_landing.is_doctor           = (is_hard_fpm || is_hard_gear_load || is_hard_recontact);
   inout_landing.is_doctor_recontact = (is_hard_recontact && !is_hard_fpm && !is_hard_gear_load); // only the re-contact was too hard
 
-  if (inout_landing.is_doctor)
+  // v26.10.2 impact: the same measures, higher limits. The sink rate is the main signal: at 20 rows per second the G spike can fall between two samples.
+  const float impact_fpm       = Utils::readNodeNumericAttrib<float>(xGrade, mxconst::get_ATTRIB_GRADE_IMPACT_FPM(), 1200.0f);
+  const float impact_gear_load = Utils::readNodeNumericAttrib<float>(xGrade, mxconst::get_ATTRIB_GRADE_IMPACT_GEAR_LOAD(), 3.0f);
+
+  const bool is_impact_fpm       = inout_landing.has_summary && (inout_landing.td_fpm > impact_fpm);
+  const bool is_impact_gear_load = inout_landing.has_gear_load && (inout_landing.td_gear_load > impact_gear_load);
+  const bool is_impact_recontact = inout_landing.has_bounce_data && (inout_landing.bounce_count > 0) && (inout_landing.worst_recontact_fpm > impact_fpm);
+
+  inout_landing.is_impact           = (is_impact_fpm || is_impact_gear_load || is_impact_recontact);
+  inout_landing.is_impact_recontact = (is_impact_recontact && !is_impact_fpm && !is_impact_gear_load); // only the re-contact was an impact
+
+  if (inout_landing.is_crash || inout_landing.is_impact)
+    inout_landing.is_doctor = true; // v26.10.2 the UI colors the grade and the TD row by is_doctor
+
+  if (inout_landing.is_crash)
+    inout_landing.grade_s = "Crash";
+  else if (inout_landing.is_impact)
+    inout_landing.grade_s = "Impact";
+  else if (inout_landing.is_overrun) // v26.10.2
+    inout_landing.grade_s = "Runway overrun";
+  else if (inout_landing.is_excursion) // v26.10.2
+    inout_landing.grade_s = "Runway excursion";
+  else if (inout_landing.is_doctor)
     inout_landing.grade_s = "Call the Doctor";
   else if (inout_landing.landing_score >= butter_min)
     inout_landing.grade_s = "Butter";
@@ -6890,6 +8720,18 @@ data_manager::score_landing_analysis(missionx::mx_landing_analysis &inout_landin
     inout_landing.grade_s = "Firm";
   else
     inout_landing.grade_s = "Hard";
+
+  // v26.10.2 a crashed landing is not graded
+  if (inout_landing.is_crash)
+  {
+    inout_landing.base_score     = 0.0f;
+    inout_landing.bounce_penalty = 0.0f;
+    inout_landing.landing_score  = 0.0f;
+  }
+  else if (inout_landing.is_overrun || inout_landing.is_excursion) // v26.10.2 off the runway: score 0, the base score stays for the UI
+  {
+    inout_landing.landing_score = 0.0f;
+  }
 }
 
 
@@ -6902,7 +8744,7 @@ data_manager::build_landing_findings(missionx::mx_landing_analysis &inout_landin
   constexpr double NO_FLARE_TD_RATIO       = 0.6;   // touchdown sink still above 60% of the 50ft sink = little or no flare
   constexpr double NO_FLARE_MIN_TD_FPM     = 300.0; // ...only when the touchdown was firmer than this
   constexpr double LONG_FLOAT_SEC          = 7.0;   // time from 50ft to touchdown
-  constexpr double STEEP_FINAL_GLIDE_RATIO = 1.7;   // max sink above 1.7x the sink of a 3 degree path, between 300ft and 50ft
+  constexpr double STEEP_FINAL_GLIDE_RATIO = 1.7;   // max sink above 1.7x the sink of a normal (3 degree) approach at the same groundspeed, between 300ft and 50ft
   constexpr double FINAL_BANK_LIMIT_DEG    = 10.0;  // between 300ft and touchdown
   constexpr double TD_BANK_LIMIT_DEG       = 5.0;   // at touchdown
 
@@ -6916,7 +8758,23 @@ data_manager::build_landing_findings(missionx::mx_landing_analysis &inout_landin
       step_flare = &row;
   }
 
-  if (inout_landing.is_doctor_recontact) // v26.10.1 the first touchdown was fine, the re-contact after the bounce was not
+  if (inout_landing.is_crash) // v26.10.2
+  {
+    inout_landing.vecFindings.emplace_back(fmt::format("X-Plane reported a crash during the landing or the rollout (up to {:.0f} sec after touchdown). The landing is not graded.", mxconst::STATS_CRASH_AFTER_LANDING_SEC));
+  }
+
+  if (inout_landing.is_impact_recontact) // v26.10.2 the first touchdown was below the impact limits, the re-contact after the bounce was not
+  {
+    inout_landing.vecFindings.emplace_back(fmt::format("Impact: re-contact after a bounce at {:.0f} fpm.", inout_landing.worst_recontact_fpm));
+  }
+  else if (inout_landing.is_impact) // v26.10.2
+  {
+    if (inout_landing.has_gear_load)
+      inout_landing.vecFindings.emplace_back(fmt::format("Impact: {:.0f} fpm at touchdown, extra gear load {:.2f}x the plane weight.", inout_landing.td_fpm, inout_landing.td_gear_load));
+    else
+      inout_landing.vecFindings.emplace_back(fmt::format("Impact: {:.0f} fpm at touchdown.", inout_landing.td_fpm));
+  }
+  else if (inout_landing.is_doctor_recontact) // v26.10.1 the first touchdown was fine, the re-contact after the bounce was not
   {
     inout_landing.vecFindings.emplace_back(fmt::format("Hard re-contact after a bounce: {:.0f} fpm. Call the Doctor.", inout_landing.worst_recontact_fpm));
   }
@@ -6928,10 +8786,33 @@ data_manager::build_landing_findings(missionx::mx_landing_analysis &inout_landin
       inout_landing.vecFindings.emplace_back(fmt::format("Hard landing: {:.0f} fpm at touchdown. Call the Doctor.", inout_landing.td_fpm));
   }
 
+  // v26.10.2 off the runway
+  if (inout_landing.is_overrun)
+  {
+    const std::string stop_s = (inout_landing.has_stopped) ? fmt::format("stopped {:.0f} m past it", inout_landing.overrun_max_m) : fmt::format("went at least {:.0f} m past it", inout_landing.overrun_max_m);
+    inout_landing.vecFindings.emplace_back(fmt::format("Runway overrun: passed the end of runway {} at {:.0f} kt and {}. Landing score 0.", inout_landing.landing_runway_s, inout_landing.overrun_gs_kt, stop_s));
+  }
+  if (inout_landing.is_excursion)
+    inout_landing.vecFindings.emplace_back(fmt::format("Runway excursion: left the side of runway {} at {:.0f} kt, up to {:.0f} m past the edge. Landing score 0.", inout_landing.landing_runway_s, inout_landing.excursion_gs_kt, inout_landing.excursion_max_m));
+
+  // v26.10.2 where on the runway it touched down
+  if (inout_landing.has_runway_data && inout_landing.landing_distance_m > 0.0)
+  {
+    if (inout_landing.td_from_threshold_m < 0.0)
+      inout_landing.vecFindings.emplace_back(fmt::format("Touched down {:.0f} m before the displaced threshold of runway {}: that part is for rolling, not for landing.", -inout_landing.td_from_threshold_m, inout_landing.landing_runway_s));
+    else if (inout_landing.td_from_threshold_m > inout_landing.landing_distance_m * mxconst::STATS_RUNWAY_LONG_LANDING_RATIO)
+      inout_landing.vecFindings.emplace_back(fmt::format("Long landing: touched down {:.0f} m past the threshold, {:.0f}% into the {:.0f} m landing distance. {:.0f} m of runway were left.",
+                                                         inout_landing.td_from_threshold_m, (inout_landing.td_from_threshold_m / inout_landing.landing_distance_m) * 100.0, inout_landing.landing_distance_m, inout_landing.runway_left_m));
+  }
+
   if (inout_landing.bounce_count > 0) // v26.10.1
-    inout_landing.vecFindings.emplace_back(fmt::format("Bounced {}x: up to {:.1f} ft and {:.1f} sec in the air, re-contact at {:.0f} fpm ({:.0f} points).",
-                                                       inout_landing.bounce_count, inout_landing.max_bounce_agl_ft, inout_landing.max_bounce_sec,
-                                                       inout_landing.worst_recontact_fpm, inout_landing.bounce_penalty));
+  {
+    const std::string bounce_s = fmt::format("Bounced {} {}: up to {:.1f} ft and {:.1f} sec in the air, re-contact at {:.0f} fpm", inout_landing.bounce_count, (inout_landing.bounce_count == 1) ? "time" : "times", inout_landing.max_bounce_agl_ft, inout_landing.max_bounce_sec, inout_landing.worst_recontact_fpm);
+    if (inout_landing.is_crash) // v26.10.2 not graded: no penalty to show
+      inout_landing.vecFindings.emplace_back(bounce_s + ".");
+    else
+      inout_landing.vecFindings.emplace_back(fmt::format("{} ({:.0f} points).", bounce_s, inout_landing.bounce_penalty));
+  }
 
   if (step_flare != nullptr && inout_landing.has_summary)
   {
@@ -6943,8 +8824,14 @@ data_manager::build_landing_findings(missionx::mx_landing_analysis &inout_landin
       inout_landing.vecFindings.emplace_back(fmt::format("Long float: {:.1f} sec and {:.0f} m from 50 ft to touchdown.", step_flare->sec_to_td, step_flare->dist_to_td_mt));
   }
 
+  // v26.10.2 "normal" = the sink of a 3 degree approach at the groundspeed of the steepest moment (older sql.xml: the ratio only)
   if (inout_landing.has_final_glide && inout_landing.final_max_glide_ratio > STEEP_FINAL_GLIDE_RATIO)
-    inout_landing.vecFindings.emplace_back(fmt::format("Steep final: sink rate up to {:.0f} fpm between 300 ft and 50 ft, about {:.1f}x a 3 deg glide path at your groundspeed.", inout_landing.final_max_sink_fpm, inout_landing.final_max_glide_ratio));
+  {
+    if (inout_landing.final_steep_normal_fpm > 0.0)
+      inout_landing.vecFindings.emplace_back(fmt::format("Steep final: sinking {:.0f} fpm between 300 ft and 50 ft. At that groundspeed a normal approach sinks about {:.0f} fpm.", inout_landing.final_steep_sink_fpm, inout_landing.final_steep_normal_fpm));
+    else
+      inout_landing.vecFindings.emplace_back(fmt::format("Steep final: sinking up to {:.0f} fpm between 300 ft and 50 ft, {:.1f} times the sink of a normal approach at your groundspeed.", inout_landing.final_max_sink_fpm, inout_landing.final_max_glide_ratio));
+  }
 
   if (inout_landing.final_max_bank > FINAL_BANK_LIMIT_DEG)
     inout_landing.vecFindings.emplace_back(fmt::format("Bank up to {:.0f} deg below 300 ft.", inout_landing.final_max_bank));
@@ -7918,197 +9805,6 @@ data_manager::get_curl_request_respond(missionx::structs::curl_request_data& in_
 
 // -------------------------------------
 
-// missionx::structs::strct_curl_result
-// data_manager::get_curl_request_respond2 (missionx::structs::curl_request_data &in_request_data, const int &in_call_id)
-// {
-//   //std::lock_guard<std::mutex> lock (mt_request_get_curl_request_respond_mutex); // v26.04.3 Special lock to solve racing issue in "osm_get_navaid_from_overpass()"
-//   std::string curl = ""; // shadow the shared "data_manager::curl" pointer, so we won't be able to use it in this function.
-//
-//   const auto lmbda_extract_host = [] (const std::string& url)->std::string
-//   {
-// // #ifdef MX_ENABLE_HTTP_REQUESTS
-//     CURLU* url_handle = curl_url();
-//     if (!url_handle)
-//       return {};
-//
-//     if (curl_url_set(url_handle, CURLUPART_URL, url.c_str(), 0) != CURLUE_OK)
-//     {
-//       curl_url_cleanup(url_handle);
-//       return {};
-//     }
-//
-//     char* host = nullptr;
-//     if (curl_url_get(url_handle, CURLUPART_HOST, &host, 0) != CURLUE_OK)
-//     {
-//       curl_url_cleanup(url_handle);
-//       return {};
-//     }
-//
-//     std::string result(host);
-//
-//     curl_free(host);
-//     curl_url_cleanup(url_handle);
-// // #else
-// //       std::string result(url); // don't do anything, just return the input url as a fallback if curl is disabled.
-// // #endif
-//
-//     return result;
-//   };
-//
-//
-//   missionx::structs::strct_curl_result st_result;
-//
-//   const std::string base_url = in_request_data.url_s.substr(0, in_request_data.url_s.find('?'));
-//   const std::string q        = (in_request_data.url_s.find('?') != std::string::npos) ? in_request_data.url_s.substr(in_request_data.url_s.find('?') + 1) : "";
-//
-//   //// Fetch information
-//   std::string err;
-//
-//     long httpStatus = 0;
-//
-// // #ifdef MX_ENABLE_HTTP_REQUESTS
-//
-//     // v26.04.3
-//     if (auto curl_func = curl_easy_init())
-//     {
-//       struct curl_slist* p_headers = nullptr;
-//
-//       for (int v_loop01 = 0; v_loop01 < in_request_data.how_many_tries && (CURLE_OK != st_result.res_curl); ++v_loop01)
-//       {
-//         st_result.reset();
-//
-//         // sleep before calling overpass
-//         std::this_thread::sleep_for (std::chrono::seconds(2)); // v25.06.1 not overwhelm the overpass server
-//
-//         Log::logMsg(fmt::format("[{}] Call ID: {}\t url: \"{}\"", __func__, data_manager::curl_call_counter_i, in_request_data.url_s));
-//
-//         char errBuff[CURL_ERROR_SIZE] = "\0"; // v3.305.3
-//
-//         curl_easy_setopt(curl_func, CURLOPT_URL, in_request_data.url_s.c_str());
-//
-//         // https://curl.haxx.se/docs/sslcerts.html
-//         if (std::filesystem::exists (data_manager::ca_path) && std::filesystem::is_regular_file(ca_path)) // v26.01.1
-//           curl_easy_setopt(curl_func, CURLOPT_CAINFO, data_manager::ca_path.string().c_str());
-//
-//         curl_easy_setopt(curl_func, CURLOPT_USERAGENT, APP_NAME);
-//         curl_easy_setopt(curl_func, CURLOPT_CONNECTTIMEOUT, in_request_data.connection_timeout); // Timeout for server responds to our request
-//         curl_easy_setopt(curl_func, CURLOPT_TIMEOUT, in_request_data.timeout); // Time in seconds before session will be terminated and abort the request.
-//
-//         // set authorization key if present // v26.08.2
-//         if (!in_request_data.login_pass.empty())
-//         {
-//           curl_easy_setopt(curl_func, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-//           curl_easy_setopt(curl_func, CURLOPT_USERPWD, in_request_data.login_pass.c_str());
-//         }
-//
-//         // ignore SSL - important for Windows
-//         curl_easy_setopt(curl_func, CURLOPT_FOLLOWLOCATION, in_request_data.follow_location);
-//         curl_easy_setopt(curl_func, CURLOPT_SSL_VERIFYPEER, in_request_data.ssl_verify_peer); // v26.01.1 fallback if SSL fails
-//         curl_easy_setopt(curl_func, CURLOPT_SSL_VERIFYHOST, in_request_data.ssl_verify_host); // v26.01.1 fallback if SSL fails
-//         curl_easy_setopt(curl_func, CURLOPT_NOPROGRESS, 0L);
-//
-//         curl_easy_setopt(curl_func, CURLOPT_ERRORBUFFER, errBuff);
-//
-//         curl_easy_setopt(curl_func, CURLOPT_WRITEFUNCTION, my_write); // <==== THIS IS WHERE WE HANDLE THE RESPONSE DATA
-//         curl_easy_setopt(curl_func, CURLOPT_WRITEDATA, &st_result.response_text);
-//         curl_easy_setopt(curl_func, CURLOPT_VERBOSE, 1L);
-//
-//         // v25.12.1
-//         if (!in_request_data.post_request_field_s.empty())
-//         {
-//           // curl_easy_setopt (curl_func, CURLOPT_POST, 1L);
-//           curl_easy_setopt (curl_func, CURLOPT_POSTFIELDS, in_request_data.post_request_field_s.c_str());
-//         }
-//
-//         // v26.08.1
-//         if (!in_request_data.headers.empty())
-//         {
-//           std::ranges::for_each(in_request_data.headers, [&p_headers](const std::string &header)
-//           {p_headers = curl_slist_append(p_headers, header.c_str());}
-//           );
-//           // headers = curl_slist_append(headers, in_request_data.headers.c_str());
-//           curl_easy_setopt(curl_func, CURLOPT_HTTPHEADER, p_headers);
-//         }
-//
-//         // https://curl.haxx.se/docs/sslcerts.html
-//         st_result.res_curl = curl_easy_perform(curl_func); // execute the REQUEST
-//
-//         if (CURLE_OK != st_result.res_curl)
-//         {
-//           Log::logMsg(fmt::format("[{}] Call ID: {}, CURL error code: {} {}\n", __func__, in_call_id, Utils::formatNumber<int>(st_result.res_curl), (in_request_data.how_many_tries > (v_loop01 + 1)) ? "Will retry..." : "No more retries.") );
-//           // user progress message in the error line
-//           if (in_request_data.how_many_tries > (v_loop01 + 1))
-//             data_manager::strct_ui_share_data.error_message_line3 = fmt::format("Failed to fetch data from {}. Will try again.", base_url);
-//         }
-//
-//         st_result.request_err = std::string(errBuff); // v3.305.3
-//         curl_easy_getinfo(curl_func, CURLINFO_RESPONSE_CODE, &st_result.http_status);
-//
-//         httpStatus = st_result.http_status;
-//         // if we have abnormal response code we will have to abort the loop. Example: site is not responding.
-//         if (mxUtils::mx_between( st_result.res_curl, CURLE_OK, CURLE_COULDNT_CONNECT, enums::mx_between_types::gt_min_eqles_max) )
-//         {
-//           #ifndef RELEASE
-//           Log::logMsg(fmt::format("[{}] Call ID: {}, Will force exit CURL loop, based on respond code: {}\n", __func__, in_call_id, static_cast<int>(st_result.res_curl) ) );
-//           #endif
-//           break;
-//         }
-//
-//       } // end loop over curl calls
-//
-//       // add error insight based on error code.
-//       if (httpStatus != 200 || !st_result.request_err.empty())
-//       {
-//         const std::string host_only_s = lmbda_extract_host(base_url);
-//         st_result.request_err         = fmt::format("Call ID: {}, CURL HTTP status: {} : {} : ({})", in_call_id, httpStatus, st_result.request_err, host_only_s);
-//
-//         switch (httpStatus)
-//         {
-//           case 504: // "504 Gateway Time-out"
-//             st_result.request_err.append( fmt::format(": Overpass Gateway Time-out.") );
-//             break;
-//           case 429: // "429 Too many requests"
-//             st_result.request_err.append( fmt::format(": Too many requests.") );
-//             break;
-//           default:
-//             break;
-//         }
-//
-//         // v35.12.1 added warning to the missionx.log file
-//         if (mxUtils::find_text (st_result.response_text, "Error", false) != std::string::npos)
-//         {
-//           Log::logMsg (fmt::format ("[{}]Call ID: {}, There might be an issue with the retrieved data from: {}.\n Query Text: {} \nResponse text: {}\n<-- end response --\n Will try another url", __func__, in_call_id, in_request_data.url_s, in_request_data.post_request_field_s, st_result.response_text));
-//           Log::logMsg(fmt::format("[{}]Call ID: {}, \tCurl error: \n\t{}\n", __func__, in_call_id, curl_easy_strerror(st_result.res_curl)));
-//         }
-//
-//         #ifndef RELEASE
-//         Log::logMsg(st_result.request_err); // debug
-//         #endif
-//       }
-//       else
-//       {
-//         st_result.request_err.clear();
-//       }
-//
-//       curl_easy_cleanup (curl_func);
-//
-//       // Free the header list after curl_easy_perform
-//       curl_slist_free_all(p_headers);
-//     } // end curl_func - handling cURL  // end CURL call
-// // #else
-// //     st_result.reset();
-// //     st_result.res_curl    = -1;
-// //     st_result.request_err = "CURL is disabled in this build. Please enable CURL to use this feature.";
-// // #endif // !DISABLE_CURL
-//
-//
-//   data_manager::strct_ui_share_data.error_message_line3 = st_result.request_err; // v3.0.255.4 error_message_line3 will get the error. This will clear the last error message error_message_line3 had.
-//
-//   return st_result;
-// }
-
-// -------------------------------------
-
 NavAidInfo
 data_manager::get_plane_airport_or_nearest_icao(const bool& inOnlySearchInDatabase, const double& inLat, const double& inLon, const bool inIsThread)
 {
@@ -8205,6 +9901,45 @@ where is_plane_in_boundary = 1
     } // end if the prepare statement succeeded.
 
   } // end airport search using SQLite boundary query
+
+  // v26.10.2 Not inside an airport boundary: is the point on a runway? Some airports have a boundary that does not cover the whole runway
+  //          (example: 05S, touchdowns at the west end were outside it). Same runway test as the landing table (mx_is_plane_in_rw_area).
+  if (!flagFoundPlaneInAirportArea && db_xp_airports.db_is_open_and_ready)
+  {
+    std::string query_rw = R"(
+select xa.icao, xa.ap_name, xa.ap_lat, xa.ap_lon, xa.ap_elev, xa.icao_id
+from xp_rw, xp_airports xa
+where xa.icao_id = xp_rw.icao_id
+and xp_rw.rw_no_1_lat between {1} - 0.1 and {1} + 0.1
+and xp_rw.rw_no_1_lon between {2} - 0.15 and {2} + 0.15
+and mx_is_plane_in_rw_area( {1}, {2}, xp_rw.rw_no_1_lat, xp_rw.rw_no_1_lon, xp_rw.rw_no_2_lat, xp_rw.rw_no_2_lon, xp_rw.rw_width ) = 1
+limit 1
+)";
+    std::map<int, std::string> mapArgsRw = { { 1, planePosition.getLat_s() }, { 2, planePosition.getLon_s() } };
+    query_rw                             = mxUtils::format(query_rw, mapArgsRw);
+
+    if (const std::string stmt_rw_name = "fetch_airport_where_plane_is_on_its_runway";
+        db_xp_airports.prepareNewStatement(stmt_rw_name, query_rw))
+    {
+      sqlite3_stmt* stmt_rw = db_xp_airports.mapStatements[stmt_rw_name];
+      if (stmt_rw != nullptr && sqlite3_step(stmt_rw) == SQLITE_ROW)
+      {
+        navAid.setID(std::string(reinterpret_cast<const char*>(sqlite3_column_text(stmt_rw, 0))));
+        navAid.setName(std::string(reinterpret_cast<const char*>(sqlite3_column_text(stmt_rw, 1))));
+        navAid.lat       = static_cast<float>(sqlite3_column_double(stmt_rw, 2));
+        navAid.lon       = static_cast<float>(sqlite3_column_double(stmt_rw, 3));
+        navAid.height_mt = static_cast<float>(sqlite3_column_double(stmt_rw, 4));
+        navAid.icao_id   = sqlite3_column_int(stmt_rw, 5);
+
+        navAid.flag_fetched_from_db = true;
+        flagFoundPlaneInAirportArea = true;
+
+        #ifndef RELEASE
+        Log::logMsg(fmt::format("[{}] {}/{} is outside the airport boundaries, but on a runway of {}.", __func__, planePosition.getLat_s(), planePosition.getLon_s(), navAid.getID()));
+        #endif
+      }
+    }
+  } // end runway search
 
   // v25.06.1 if we did not find lat/lon in the database
   if (navAid.lat * navAid.lon == 0.0)
@@ -9722,20 +11457,6 @@ data_manager::find_and_read_template_file (const std::string &inFileName)
 }
 
 // -------------------------------------
-//
-// void
-// missionx::data_manager::set_acf(const missionx::structs::def_strct_acf_info& in_acf_info)
-// {
-//   const auto temp_acf_info = missionx::data_manager::active_acf_info;
-//
-//   // assign the new acf_info
-//   missionx::data_manager::active_acf_info = in_acf_info;
-//
-//   // store the prev acf based on the prev active plane
-//   missionx::data_manager::active_acf_info.prev_acf = temp_acf_info.active_acf;
-// }
-
-// -------------------------------------
 
 structs::def_strct_acf_info data_manager::get_current_acf(){ return data_manager::active_acf_info; }
 
@@ -9744,6 +11465,10 @@ structs::def_strct_acf_info data_manager::get_current_acf(){ return data_manager
 void data_manager::trigger_acf_change()
 {
   missionx::data_manager::acf_refresh_info();
+
+  // v26.10.2 record the plane change in the stats database (plane_meta)
+  if (data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
+    data_manager::stats_meta_plane_loaded_cai();
 
   if (!data_manager::active_acf_info.active_acf.empty()
       && !data_manager::active_acf_info.active_acf_path.empty()
@@ -9778,15 +11503,7 @@ data_manager::acf_refresh_info()
 
 void data_manager::acf_gather_cargo_info()
 {
-  // const missionx::structs::def_strct_acf_info acf_info = data_manager::acf_refresh_info();
-
-  // #ifndef RELEASE
-  // Log::logMsg (fmt::format ("Gathering ACF: {} Information.", acf_info.active_acf));
-  // #endif
-  // // store acf info
-  // data_manager::set_acf (acf_info);
-
-  missionx::Inventory::gather_acf_cargo_data (data_manager::mapInventories[mxconst::get_ELEMENT_PLANE ()], true);
+    missionx::Inventory::gather_acf_cargo_data (data_manager::mapInventories[mxconst::get_ELEMENT_PLANE ()], true);
   data_manager::dref_acf_station_max_kgs_f_arr.setAndInitializeKey ("sim/aircraft/weight/acf_m_station_max");
   missionx::dataref_param::set_dataref_values_into_xplane (data_manager::dref_m_stations_kgs_f_arr); // force original weight on the new plane
 
@@ -9870,7 +11587,6 @@ std::string missionx::data_manager::gen_get_next_overpass_url(const std::string 
       return "";
     }; // end lambda
 
-    //url = (data_manager::vecOverpassUrls.size() > last_index) ? data_manager::vecOverpassUrls.at(last_index) : "";
     url = lmbda_get_next_url();
 
     ++last_index;
@@ -10047,15 +11763,6 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
       if (!used_cached_file)
       {
         // Call OVERPASS using cURL and make sure we do not have ABORT request.
-        // Randomize the URL calls so not all threads will use same overpass url.
-        // std::vector<std::string> vec_active_urls;
-        // for ( const auto &[key, v_bool] : data_manager::strct_ui_share_data.map_ui_user_picks_overpass_urls)
-        // {
-        //   if (v_bool)
-        //     vec_active_urls.emplace_back( ((static_cast<size_t>(key) < data_manager::vecOverpassUrls.size())? data_manager::vecOverpassUrls[key] : mxconst::get_DEFAULT_OVERPASS_URL() ) );
-        // }
-        // const auto  vec_shuffled_index_of_selected_urls = Utils::getShuffledIndexVector_byType<size_t>(vec_active_urls.size());
-        // for (const auto& index_shuffle : vec_shuffled_index_of_selected_urls)
         for (size_t loop1 = 0; loop1 < data_manager::strct_ui_share_data.map_ui_user_picks_overpass_urls.size() && !found_valid_count_node; ++loop1)
         {
           // check [abort]
@@ -10066,7 +11773,6 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
             return;
           }
 
-          // overpass_url = (index_shuffle < vec_active_urls.size()) ? vec_active_urls.at(index_shuffle) : mxconst::get_DEFAULT_OVERPASS_URL();
           overpass_url = data_manager::gen_get_next_overpass_url(data_manager::last_successfull_url_s);
           // v26.08.1
           missionx::structs::curl_request_data curl_conn_data = {.url_s = overpass_url, .post_request_field_s = fullQuery, .headers = {mxconst::OVERPASS_POST_HEADER} };
@@ -10159,202 +11865,6 @@ data_manager::fetch_overpass_info_analyze_thread (missionx::base_thread::strct_t
   q->end_time = std::chrono::steady_clock::now ();
 }
 
-// void
-// data_manager::fetch_overpass_info_analyze_thread2 (missionx::base_thread::strct_thread_state *inoutThreadState, missionx::structs::strct_osm_query *q, const std::map<missionx::enums::mx_osm_region_enum, missionx::structs::BBox> &in_map_bbox)
-// {
-//   if (inoutThreadState == nullptr)
-//     return; // abort function execution
-//
-//   assert (inoutThreadState != nullptr && fmt::format ("[{}] Thread state is not initialized correctly.", __func__).c_str ());
-//
-//   inoutThreadState->flagIsActive       = true;
-//
-//   if (q == nullptr)
-//     return;
-//
-//   q->start_time = std::chrono::steady_clock::now ();
-//
-//   // check [abort]
-//   if (inoutThreadState->flagAbortThread)
-//   {
-//     q->xml_target_nd_node     = IXMLNode::emptyIXMLNode;
-//     q->xml_target_way_element = IXMLNode::emptyIXMLNode;
-//     return;
-//   }
-//
-//   for (const auto &[loc, bbox] : in_map_bbox)
-//   {
-//     std::string filledQuery = q->q_text;
-//     q->q_bbox               = bbox.get_bbox ();
-//     q->q_short_bbox_fmt     = bbox.get_bbox_short ();
-//
-//     if (const size_t pos = filledQuery.find (q->BBOX_STR);
-//       pos != std::string::npos)
-//     {
-//       bool found_valid_count_node = false;
-//       int  iTry                   = 0;
-//
-//       filledQuery = mxUtils::replaceAll (filledQuery, q->BBOX_STR, q->q_bbox);
-//       filledQuery = mxUtils::replaceAll (filledQuery, q->ALL_BBOX_STR, q->q_all_bbox);
-//
-//       q->osm_queries[mxUtils::get_mx_osm_region_trans (loc)] = filledQuery;
-//
-//       std::string fullQuery = fmt::format ("data={}", curl_easy_escape (nullptr, filledQuery.c_str (), 0));
-//
-//       q->sanitized_id   = mxUtils::sanitize_text (q->id, " ,'\"\t\n");
-//       q->sanitized_bbox = mxUtils::sanitize_text (q->q_short_bbox_fmt, " ,'\"\t\n");
-//       // Write to cached output folder
-//       const std::string filename = fmt::format ("{}/cached_{}_{}.xml", q->cache_folder, q->sanitized_id, q->sanitized_bbox);
-//       structs::strct_curl_result strct_result;
-//
-//       bool useCache = false;
-//
-//       try
-//       {
-//         if (std::filesystem::exists (filename))
-//         {
-//           if (std::ifstream inFile (filename);
-//             inFile.is_open ())
-//           {
-//             strct_result.response_text.assign ((std::istreambuf_iterator<char> (inFile)), std::istreambuf_iterator<char> ());
-//             inFile.close ();
-//             // Check cached result has valid "count" node data
-//             IXMLDomParser xmlParser;
-//             auto          root = xmlParser.parseString (strct_result.response_text.c_str ()).deepCopy ();
-//
-//             IXMLNode nodeCount = Utils::xml_get_node_from_node_tree_IXMLNode (root, "count", true);
-//             if (nodeCount.isEmpty ())
-//             {
-//               useCache = false;
-//               try
-//               {
-//                 std::filesystem::remove (filename);
-//               }
-//               catch (const std::exception &ex)
-//               {
-//                 Log::logMsg (fmt::format ("[Exception during cache file removal]\n\t{}\n", ex.what ()));
-//                 Log::logMsg (fmt::format ("[Cache filename]\n\t{}\n", filename));
-//               }
-//             }
-//             else
-//             {
-//               useCache = true;
-//               Log::logMsg (fmt::format ("Using cache {}\n", filename));
-//             }
-//
-//           }
-//         }
-//       }
-//       catch (const std::exception &ex)
-//       {
-//         Log::logMsg (fmt::format ("[Exception during cache creation]\n\t{}\n", ex.what ()));
-//       }
-//
-//       // check [abort]
-//       if (inoutThreadState->flagAbortThread)
-//       {
-//         q->xml_target_nd_node     = IXMLNode::emptyIXMLNode;
-//         q->xml_target_way_element = IXMLNode::emptyIXMLNode;
-//         return;
-//       }
-//
-//       std::string overpass_url;
-//
-//       if (!useCache)
-//       {
-//         // Call OVERPASS using cURL and make sure we do not have ABORT request.
-//         // Randomize the URL calls so not all threads will use same overpass url.
-//         const auto  vec_shuffled_index_of_overpass_urls = Utils::getShuffledIndexVector_byType<size_t>(data_manager::vecOverpassUrls.size());
-//         for (const auto& index_shuffle : vec_shuffled_index_of_overpass_urls)
-//         {
-//
-//           // check [abort]
-//           if (inoutThreadState->flagAbortThread)
-//           {
-//             q->xml_target_nd_node     = IXMLNode::emptyIXMLNode;
-//             q->xml_target_way_element = IXMLNode::emptyIXMLNode;
-//             return;
-//           }
-//
-//           overpass_url = (index_shuffle < data_manager::vecOverpassUrls.size()) ? data_manager::vecOverpassUrls.at(index_shuffle) : mxconst::get_DEFAULT_OVERPASS_URL();
-//           strct_result = get_curl_request_respond(overpass_url, fullQuery, 2);
-//
-//           Log::logMsg(fmt::format("[{}] URL: {}", __func__, overpass_url));
-//
-//           if (CURLE_OK == strct_result.res_curl)
-//           {
-//             found_valid_count_node = true;
-//             Log::logMsg(fmt::format("[{}] Query ID: [{}] BBOX: {}\n", __func__, q->id, q->q_bbox));
-//             std::this_thread::sleep_for(std::chrono::seconds(2)); // wait for 2 seconds before sending a new request
-//           }
-//           else
-//           {
-//             // res != CURLE_OK
-//             Log::logMsg(fmt::format("[{}]\tCurl error: \n\t{}\n", __func__, curl_easy_strerror(strct_result.res_curl)));
-//             std::this_thread::sleep_for(std::chrono::seconds(5)); // Sleep longer
-//           }
-//
-//         } // End CURL call loop, over shuffled overpass url vectors
-//
-//       } // end if "not to use cache"
-//
-//       // -------------
-//       // check [abort]
-//       // -------------
-//       if (inoutThreadState->flagAbortThread)
-//       {
-//         q->xml_target_nd_node     = IXMLNode::emptyIXMLNode;
-//         q->xml_target_way_element = IXMLNode::emptyIXMLNode;
-//         return;
-//       }
-//
-//
-//       // -------------
-//       // Handle response data
-//       // -------------
-//       if ( found_valid_count_node + useCache )
-//       {
-//         IXMLDomParser xmlParser;
-//         auto          xml_count_node      = xmlParser.parseString (strct_result.response_text.c_str ()).deepCopy ();
-//         IXMLNode      nodeCount = Utils::xml_get_node_from_node_tree_IXMLNode (xml_count_node, "count", true);
-//         if (!nodeCount.isEmpty ())
-//         {
-//           nodeCount.updateName ("tags");
-//           nodeCount.updateAttribute (q->sanitized_id.c_str (), "id", "id");
-//           nodeCount.updateAttribute (mxUtils::get_mx_osm_region_trans (loc).c_str (), "region", "region");
-//           nodeCount.updateAttribute (q->q_bbox.c_str (), "bbox", "bbox");
-//           nodeCount.updateAttribute (q->sanitized_bbox.c_str (), "cached_bbox", "cached_bbox");
-//
-//           q->total_way_count = 0;
-//           auto tag_node      = Utils::xml_get_node_from_node_tree_by_attrib_name_and_value_IXMLNode (nodeCount, "tag", "k", "ways", false, false);
-//           q->total_way_count = mxUtils::stringToNumber<int> (Utils::xml_get_attribute_value (tag_node, "v", "0"));
-//
-//           if (!q->xml_q_tags_header_node.isEmpty () && (q->total_way_count > 0))
-//           {
-//             q->xml_q_tags_header_node.addChild (nodeCount);
-//
-//             // write to cache file
-//             if (std::ofstream outFile (filename);
-//               outFile.is_open ())
-//             {
-//               outFile << strct_result.response_text;
-//               outFile.close ();
-//             }
-//           }
-//         }
-//         else
-//         {
-//           Log::logMsg (fmt::format ("Overpass Url: {}", overpass_url));
-//           Log::logMsg (fmt::format ("\tRegion: {}, has no <count>.\n Query:\n{}\nNode Element:\n\t{}\n", mxUtils::get_mx_osm_region_trans (loc), filledQuery, Utils::xml_get_node_content_as_text (nodeCount, "> Empty Node")));
-//           Log::logMsg (fmt::format ("\tResponse: {}\n", strct_result.response_text.c_str ()));
-//         }
-//       }
-//     }
-//   }
-//
-//   q->end_time = std::chrono::steady_clock::now ();
-// }
-//
 
  // -------------------------------------
 
@@ -10850,9 +12360,6 @@ mx_return missionx::data_manager::find_vector_between_two_osm_nodes(missionx::st
             q->xml_next_node_to_find_vector = xml_next_nd_node.deepCopy(); // store just in case we will need it
             q->target_node_estimate_vector  = lmbda_calc_vector(q->xml_target_nd_node, q->xml_next_node_to_find_vector);
             result.reset();
-            // v26.10.1
-            // if (data_manager::last_successfull_url_s != overpass_url_s)
-            //   data_manager::last_successfull_url_s = overpass_url_s;
 
             return (result = true);
           }
@@ -10869,21 +12376,6 @@ mx_return missionx::data_manager::find_vector_between_two_osm_nodes(missionx::st
 }
 
 // -------------------------------------
-
-
-void
-data_manager::fetch_ways_and_target_node_from_overpass_thread2 (missionx::base_thread::strct_thread_state *inoutThreadState, std::string *outStatusMessage, missionx::structs::strct_osm_query *q)
-{
-  // https://wiki.openstreetmap.org/wiki/Overpass_API
-
-  // if (q == nullptr)
-  //   return;
-
-}
-
-
-// -------------------------------------
-
 
 missionx::mx_return missionx::data_manager::gen_request_from_the_llm_server(missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::curl_request_data &in_curl_request_data, const std::string& user_prompt, const std::string& system_prompt)
 {
@@ -10902,16 +12394,6 @@ missionx::mx_return missionx::data_manager::gen_request_from_the_llm_server(miss
   #ifndef RELEASE
     Log::logMsg(fmt::format("[{}] mission outline: {}", __func__, user_prompt));
   #endif
-
-  // const std::string system_prompt = "You will provide only the text for the flight description."
-  //                                   "Make sure to check the provided mission_description. It will hint which type of plane and mission the user requested to generate."
-  //                                   "Generate a realistic mission description based on the user's outline. "
-  //                                   "Return the description in a simple text format (ascii), and no more than 150 words."
-  //                                   "You must not use \" in the text description."
-  //                                   "You must not provide prefix answers like: Okay, here’s a flight simulator mission brief based on your request"
-  //                                   "If you want to estimate flight time, you must check the waypoints provided. Their should be waypoint coordinates. Evaluate based on their data."
-  //                                   "If no waypoint coordinates are present, provide a vague timeline, if any."
-  //                                   ;
 
   // Build the payload structure natively from "the "system_prompt" and "user_prompt"
   nlohmann::json payload = {

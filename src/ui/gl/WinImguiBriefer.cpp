@@ -3,10 +3,12 @@
 #include <windows.h>
 #endif
 #include <algorithm>
+#include <cmath>
 
 #include "WinImguiBriefer.h"
 #include "../../core/QueueMessageManager.h"
 #include "../../io/ListDir.h"
+#include "../../io/read_mission_file.h" // v26.10.2 read_savepoint_plane_acf_file_cai()
 #include "../../random/RandomEngine.h"
 
 #include "../../io/OptimizeAptDat.h"
@@ -44,6 +46,7 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
   // Create pointers to the ui m_ui_conv_screen
   // -------------------------------------------
   m_ui_conv_screen = std::make_unique<ui_conv_screen>(left, top, right, bot, decoration, layer, this->myWinNum);
+  m_ui_stats_screen = std::make_unique<ui_stats_screen>(left, top, right, bot, decoration, layer, this->myWinNum); // v26.10.2
 
   // 2. "Hook up" the child's callback to the parent's function
   // We use a lambda and capture 'this' to reach add_message
@@ -496,6 +499,10 @@ WinImguiBriefer::WinImguiBriefer (const int left, const int top, const int right
         this->add_ui_advance_settings_random_date_time_weather_and_weight_button(inTEXT_TYPE);
     };
 
+    m_ui_dynamic_mission_screen->set_layer = [this](const missionx::uiLayer_enum in_layer) // v26.10.2 "Convert LNM" option opens the conversion layer
+    {
+      this->setLayer (in_layer);
+    };
     m_ui_dynamic_mission_screen->execAction = [this](const missionx::mx_window_actions in_action)
     {
       this->execAction(in_action);
@@ -2562,6 +2569,12 @@ WinImguiBriefer::buildInterface ()
       this->m_ui_conv_screen->draw_conv_main_fpln_to_mission_window ();
     }
     break;
+    case missionx::uiLayer_enum::option_stats_layer: // v26.10.2
+    {
+      if (m_ui_stats_screen)
+        missionx::ui_stats_screen::draw_stats_layer ();
+    }
+    break;
     case missionx::uiLayer_enum::option_external_fpln_layer:
     {
       this->draw_external_fpln_screen ();
@@ -3458,6 +3471,31 @@ WinImguiBriefer::add_ui_pick_subcategories (const std::vector<const char *> &vec
 // -------------------------------------------
 
 void
+WinImguiBriefer::check_savepoint_plane_cai ()
+{
+  auto &plane_check = this->strct_savepoint_plane_check;
+  plane_check       = {};
+
+  if (!mxUtils::isElementExists (data_manager::mapBrieferMissionList, this->strct_pick_layer.last_picked_key))
+    return;
+
+  std::string err;
+  const std::string savepoint_file_path = missionx::data_manager::mx_folders_properties.getAttribStringValue (mxconst::get_FLD_MISSIONX_SAVE_PATH (), "", err) + std::string (XPLMGetDirectorySeparator ())
+                                          + std::string (data_manager::mapBrieferMissionList[this->strct_pick_layer.last_picked_key].missionName) + mxconst::get_MX_FILE_SAVE_EXTENSION ();
+
+  plane_check.saved_acf_file   = missionx::read_mission_file::read_savepoint_plane_acf_file_cai (savepoint_file_path);
+  missionx::data_manager::acf_refresh_info (); // the cached plane info is reset by data_manager::stopMission(), refresh it before use
+  plane_check.current_acf_file = missionx::data_manager::get_current_acf ().active_acf;
+
+  // Compare only the .acf file name, ignore letter case. An older savepoint (no stored plane) is not flagged as different.
+  plane_check.flag_plane_differs = !plane_check.saved_acf_file.empty () && !mxUtils::compare (plane_check.saved_acf_file, plane_check.current_acf_file, false);
+
+  Log::logMsg (fmt::format ("[{}] Savepoint plane: '{}', current plane: '{}', differs: {}", __func__, (plane_check.saved_acf_file.empty ()) ? "unknown" : plane_check.saved_acf_file, plane_check.current_acf_file, plane_check.flag_plane_differs));
+}
+
+// -------------------------------------
+
+void
 WinImguiBriefer::add_ui_auto_load_checkbox (const missionx::mx_window_actions &inActionToExecute)
 {
   ImGui::Spacing ();
@@ -3993,6 +4031,34 @@ WinImguiBriefer::draw_top_toolbar ()
         this->setLayer (missionx::uiLayer_enum::option_setup_layer);
       }
       this->mx_add_tooltip (missionx::color::color_vec4_white, "Setup Screen");
+
+      // v26.10.2 the conversion screen is opened from the "Generate" screen: a button back to it
+      if (WinImguiBriefer::currentLayer == missionx::uiLayer_enum::option_conv_fpln_to_mission)
+      {
+        ImGui::SameLine (0.0f, 10.0f);
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+        if (mx_img_window::ButtonTooltip (mxUtils::from_u8string (ICON_FA_REPLY).append ("##BackToGenerateScreen").c_str (), "Back", IM_COL32 (255, 255, 0, 255), IM_COL32 (0, 0, 0, 255), ImVec2 (32.0f, 32.0f)))
+          this->setLayer (missionx::uiLayer_enum::option_user_generates_a_mission_layer);
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
+        this->mx_add_tooltip (missionx::color::color_vec4_white, "Back to the \"Generate\" screen");
+      }
+
+      // v26.10.2 "Full Control" and "Some Control" (inside the "Generate" screen): a button back to the three options
+      if (WinImguiBriefer::currentLayer == missionx::uiLayer_enum::option_user_generates_a_mission_layer &&
+          missionx::strct_user_create_layer.child_screen != mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_user_creation_home)
+      {
+        ImGui::SameLine (0.0f, 10.0f);
+        missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
+        if (mx_img_window::ButtonTooltip (mxUtils::from_u8string (ICON_FA_REPLY).append ("##BackToGenerateOptions").c_str (), "Back", IM_COL32 (255, 255, 0, 255), IM_COL32 (0, 0, 0, 255), ImVec2 (32.0f, 32.0f)))
+        {
+          // same reset as the HOME button does for this screen
+          missionx::strct_user_create_layer.child_screen   = mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_user_creation_home;
+          missionx::strct_user_create_layer.act_phase_enum = mx_act_phase_enum::phase_pick;
+          missionx::strct_user_create_layer.user_semi_act_picked.reset ();
+        }
+        missionx::WinImguiBriefer::mxUiReleaseLastFont ();
+        this->mx_add_tooltip (missionx::color::color_vec4_white, "Back to the \"Generate\" options");
+      }
     }
     else if ((WinImguiBriefer::currentLayer == missionx::uiLayer_enum::option_setup_layer && WinImguiBriefer::currentLayer != this->prevBrieferLayer) || missionx::strct_ils_layer.flagNavigatedFromOtherLayer)
     {
@@ -4052,6 +4118,16 @@ WinImguiBriefer::draw_top_toolbar ()
       case missionx::uiLayer_enum::option_external_fpln_layer:
       {
         ImGui::Text ("Search Flight Plans");;
+      }
+      break;
+      case missionx::uiLayer_enum::option_stats_layer: // v26.10.2
+      {
+        ImGui::Text ("Flight Stats");
+      }
+      break;
+      case missionx::uiLayer_enum::option_conv_fpln_to_mission: // v26.10.2
+      {
+        ImGui::Text ("Convert a LittleNavMap Flight Plan");
       }
       break;
       default:
@@ -4772,6 +4848,13 @@ WinImguiBriefer::draw_home_layer ()
   ImGui::Separator ();
   #endif
 
+  // v26.10.2 the screens that can be opened while a mission is running.
+  //          "Generate" only shows its "Convert LNM" option then (the conversion screen was always available during a mission).
+  const auto lmbda_is_allowed_during_mission = [](const missionx::uiLayer_enum in_layer) -> bool {
+    return (in_layer == missionx::uiLayer_enum::flight_leg_info || in_layer == missionx::uiLayer_enum::option_setup_layer || in_layer == missionx::uiLayer_enum::option_stats_layer ||
+            in_layer == missionx::uiLayer_enum::option_ils_layer || in_layer == missionx::uiLayer_enum::option_user_generates_a_mission_layer);
+  };
+
   ImGui::Columns (columns, "draw_home_layer_columns", false);
   {
     int numButtons  = 0; // which number we draw in current row. Every time we overflow window we will need to reset this number.
@@ -4791,7 +4874,7 @@ WinImguiBriefer::draw_home_layer ()
 
       else if (missionx::data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running)
       {
-        if (btn.layer != missionx::uiLayer_enum::flight_leg_info && btn.layer != missionx::uiLayer_enum::option_setup_layer && btn.layer != missionx::uiLayer_enum::option_conv_fpln_to_mission && btn.layer != missionx::uiLayer_enum::option_ils_layer)
+        if (!lmbda_is_allowed_during_mission (btn.layer)) // v26.10.2
           disabled = true;
       }
 
@@ -4825,7 +4908,7 @@ WinImguiBriefer::draw_home_layer ()
         {
           this->set_bottom_message_line1 ("Current button is not supported.");
         }
-        else if (missionx::data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running && (btn.layer != missionx::uiLayer_enum::flight_leg_info && btn.layer != missionx::uiLayer_enum::option_setup_layer && btn.layer != missionx::uiLayer_enum::option_conv_fpln_to_mission && btn.layer != missionx::uiLayer_enum::option_ils_layer))
+        else if (missionx::data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running && !lmbda_is_allowed_during_mission (btn.layer)) // v26.10.2
         {
           this->set_bottom_message_line1 ("Mission is running. Can't open this screen !!!");
         }
@@ -4841,7 +4924,12 @@ WinImguiBriefer::draw_home_layer ()
           }
 
           // handle special actions per layer
-          if (btn.layer == missionx::uiLayer_enum::option_user_generates_a_mission_layer)
+          if (btn.layer == missionx::uiLayer_enum::option_user_generates_a_mission_layer && missionx::data_manager::missionState >= missionx::mx_mission_state_enum::mission_is_running)
+          {
+            // v26.10.2 a mission is running: open the "Generate" home screen, where only "Convert LNM" is enabled. No data checks
+            missionx::strct_user_create_layer.child_screen = mx_user_create_mission_layer::mx_dynamic_fpln_screen::ext_user_creation_home;
+          }
+          else if (btn.layer == missionx::uiLayer_enum::option_user_generates_a_mission_layer)
           {
             // v3.303.8 initialize current clock when pressing the
             if (missionx::strct_user_create_layer.flag_first_time)
@@ -4855,6 +4943,10 @@ WinImguiBriefer::draw_home_layer ()
             missionx::strct_user_create_layer.layer_state               = missionx::mx_layer_state_enum::not_initialized;
             this->set_bottom_message_line1 ("Please wait while validating presence of the data...", 3);
             missionx::data_manager::queFlcActions.push_back (missionx::mx_flc_pre_command::imgui_check_validity_of_db_file);
+          }
+          else if (btn.layer == missionx::uiLayer_enum::option_stats_layer) // v26.10.2 back to the list, read the saved flights again
+          {
+            missionx::ui_stats_screen::on_layer_opened ();
           }
           else if (btn.layer == missionx::uiLayer_enum::option_generate_mission_from_a_template_layer)
           {
@@ -5466,7 +5558,7 @@ WinImguiBriefer::draw_flight_leg_info ()
   float y_shorten = 0.0f;
   if (this->strct_flight_leg_info.internal_child_layer == missionx::uiLayer_enum::flight_leg_info_map2d)
     y_shorten = 50.0f; //
-  else if ((this->strct_flight_leg_info.internal_child_layer == missionx::uiLayer_enum::flight_leg_info_end_summary) + (this->strct_flight_leg_info.flagDebugTabIsOpen) + (this->strct_flight_leg_info.flagFlightPlanningTabIsOpen))
+  else if ((this->strct_flight_leg_info.internal_child_layer == missionx::uiLayer_enum::flight_leg_info_end_summary) + (this->strct_flight_leg_info.flagDebugTabIsOpen) + (this->strct_flight_leg_info.flagFlightPlanningTabIsOpen) + (this->strct_flight_leg_info.flagStatsTabIsOpen)) // v26.10.2 flagStatsTabIsOpen
     y_shorten = 100.0f; //
   else if (this->strct_flight_leg_info.internal_child_layer == missionx::uiLayer_enum::flight_leg_info_inventory)
     y_shorten = 120.0f; //
@@ -5606,6 +5698,8 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
     if (!strct_flight_leg_info.flag_force_select_description_tab)
       strct_flight_leg_info.desc_flags = itemTab_bar_flags;
 
+    this->strct_flight_leg_info.flagStatsTabIsOpen = false; // v26.10.2 set again by the "stats" tab when it is drawn and selected
+
     if (!bDisableTabs)
     {
       // Display description tab for 2D mode
@@ -5623,7 +5717,7 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
 
         ImGui::EndTabItem ();
       }
-      else if (this->IsInVR () && ImGui::BeginTabItem ("Flight Leg", nullptr, itemTab_bar_flags)) // display the VR description
+      else if (this->IsInVR () && ImGui::BeginTabItem ("Flight Leg", nullptr, strct_flight_leg_info.desc_flags)) // display the VR description. v26.10.2 desc_flags: selected at mission start, like "Description" in 2D
       {
         strct_flight_leg_info.flag_force_select_description_tab = false; // Consume
         ImGui::PushID ("##SplitFlightLegInfo01");
@@ -5721,15 +5815,7 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
 
       // add the other shared tabs
 
-      if (ImGui::BeginTabItem ("stats"))
-      {
-        // int i = 1; // pick the child_w[1] width value
-        ImGui::BeginGroup ();
-        this->add_ui_stats_child ();
-        ImGui::EndGroup ();
-
-        ImGui::EndTabItem ();
-      }
+      // v26.10.2 tab order: Description, story message history (when there are messages), info, stats, debug, Flight Planning/Notes
       if (!missionx::data_manager::listOfMessageStoryMessages.empty () && ImGui::BeginTabItem ("story message history")) // v3.305.2
       {
 
@@ -5750,6 +5836,20 @@ WinImguiBriefer::child_draw_2D_and_VR_flight_leg_info_mxpad_and_choices_with_tab
         ImGui::BeginChild ("child_draw_info_text", ImVec2 (0.0f, ImGui::GetWindowHeight () - imvec2_flight_info_top_area_size.y - this->fTopToolbarPadding_f - this->fBottomToolbarPadding_f - fTitleHeight), ImGuiChildFlags_Borders);
         this->add_info_to_flight_leg ();
         ImGui::EndChild ();
+        ImGui::EndGroup ();
+
+        ImGui::EndTabItem ();
+      }
+
+      // v26.10.2 a click on the "stats" tab asks for the in-flight stats (hiding the window does not)
+      const bool flag_stats_tab_is_selected = ImGui::BeginTabItem ("stats");
+      missionx::ui_stats_screen::on_stats_tab_drawn_cai (flag_stats_tab_is_selected);
+      this->strct_flight_leg_info.flagStatsTabIsOpen = flag_stats_tab_is_selected; // v26.10.2 the top area is shorter while it is open (like debug and notes)
+      if (flag_stats_tab_is_selected)
+      {
+        // int i = 1; // pick the child_w[1] width value
+        ImGui::BeginGroup ();
+        this->add_ui_stats_child ();
         ImGui::EndGroup ();
 
         ImGui::EndTabItem ();
@@ -6855,128 +6955,18 @@ WinImguiBriefer::child_flight_leg_info_draw_end_summary ()
     }
     else if (this->strct_flight_leg_info.fetch_state == missionx::mxFetchState_enum::fetch_ended)
     {
-      missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_DEFAULT_PLUS_1 ()); // v3.303.14
+      // v26.10.2 the stats drawing moved to ui_stats_screen, shared with the stats screen (history flights)
+      ui_stats_screen::mx_stats_draw_options draw_options;
+      draw_options.id_suffix              = "end_screen";
+      draw_options.column_width           = fWinWidth;
+      draw_options.fallback_max_weight_kg = this->strct_flight_leg_info.acf_m_max; // the live value, when the plane is not in plane_meta
 
-      ImGui::BeginGroup ();
-      ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "Time Flew: ");
-      ImGui::SameLine ();
-      ImGui::TextColored (missionx::color::color_vec4_white, "%s", data_manager::mission_stats_from_query.time_flew_format_s.c_str ());
+      // the legs come from the leg_stats table. Empty (an older file, or the table was not written): the legs in memory
+      const auto &view_data                   = data_manager::last_flight_stats_view;
+      draw_options.fallback_legs              = (view_data.vecLegs.empty ()) ? &data_manager::vecPreviousLegStats4UIDisplay : nullptr;
+      draw_options.path_view                  = &missionx::strct_end_screen_path_view; // v26.10.2 flight path plots (rebuilt when a new flight is shown)
 
-      // 3.303.8.3 show min/max stats
-      const auto fThird  = fWinWidth * 0.333f;
-      const auto f2Third = fWinWidth * 0.666f;
-
-      if (missionx::data_manager::mx_global_settings.xScoring_ptr.isEmpty ())
-        ImGui::TextColored (missionx::color::color_vec4_orangered, "!!! No Scoring information is available !!!");
-
-      ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "Min Pitch: %.2f", data_manager::mission_stats_from_query.minPitch);
-      ImGui::SameLine (fThird, 0.0f);
-      ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "Max Pitch: %.2f", data_manager::mission_stats_from_query.maxPitch);
-      ImGui::SameLine (f2Third, 0.0f);
-      ImGui::TextColored (missionx::color::color_vec4_beige, "Score: %.2f", data_manager::mission_stats_from_query.pitchScore);
-
-      ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "Min Roll: %.2f", data_manager::mission_stats_from_query.minRoll);
-      ImGui::SameLine (fThird, 0.0f);
-      ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "Max Roll: %.2f", data_manager::mission_stats_from_query.maxRoll);
-      ImGui::SameLine (f2Third, 0.0f);
-      ImGui::TextColored (missionx::color::color_vec4_beige, "Score: %.2f", data_manager::mission_stats_from_query.rollScore);
-
-      ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "Min G: %.2f", data_manager::mission_stats_from_query.minGforce);
-      ImGui::SameLine (fThird, 0.0f);
-      ImGui::TextColored (missionx::color::color_vec4_yellowgreen, "Max G: %.2f", data_manager::mission_stats_from_query.maxGforce);
-      ImGui::SameLine (f2Third, 0.0f);
-      ImGui::TextColored (missionx::color::color_vec4_beige, "Score: %.2f", data_manager::mission_stats_from_query.gForceScore);
-
-      ImGui::TextColored (missionx::color::color_vec4_beige, "Total Flight Score: %.2f", data_manager::mission_stats_from_query.pitchScore + data_manager::mission_stats_from_query.rollScore + data_manager::mission_stats_from_query.gForceScore);
-
-      // min/max
-
-      ImGui::Separator ();
-      for (auto &land : missionx::data_manager::mission_stats_from_query.vecLandingStatsResults)
-      {
-        const bool flag_bounced_row = missionx::WinImguiBriefer::mxStartUiDisableState (land.bounce == 1 && !land.did_landing_contained_bounce);
-        {
-          ImGui::Text ("%s", fmt::format("{}", (flag_bounced_row)? fmt::format ("\t{:>10}", "[" + land.activity_s + "]") : "Landed in: " ).c_str());
-          ImGui::SameLine ();
-          ImGui::TextColored (missionx::color::color_vec4_green, "%s", land.icao.c_str ());
-
-          ImGui::SameLine ();
-          ImGui::Text ("%s", ", Runway: ");
-          ImGui::SameLine ();
-          ImGui::TextColored (missionx::color::color_vec4_lightblue, "%s", land.runway_s.c_str ());
-
-          ImGui::SameLine ();
-          ImGui::Text ("%s", ", Accuracy from center: ");
-          ImGui::SameLine ();
-          ImGui::TextColored (missionx::color::color_vec4_beige, "%s", mxUtils::formatNumber<double> (land.distance_from_center_of_rw_d, 2).c_str ());
-
-          // skip score for bounced data
-          if (!flag_bounced_row)
-          {
-            ImGui::SameLine ();
-            ImGui::Text ("%s", " => Score: ");
-            ImGui::SameLine ();
-            ImGui::TextColored (missionx::color::color_vec4_white, "%s", mxUtils::formatNumber<double> (land.score_centerLine, 4).c_str ());
-
-            if (land.did_landing_contained_bounce)
-            {
-              ImGui::SameLine ();
-              // ImGui::TextColored (missionx::color::color_vec4_orange, "%s", fmt::format("(bounced: {} time{})", land.bounce, (land.bounce == 1)? "" : "s").c_str ());
-              ImGui::TextColored (missionx::color::color_vec4_orange, "%s", "(bounced)");
-            }
-          } // end if to display score + bounce info
-        } // end enabled/disabled block
-        missionx::WinImguiBriefer::mxEndUiDisableState (flag_bounced_row);
-      }
-      ImGui::Separator ();
-
-      ImGui::EndGroup ();
-
-      missionx::WinImguiBriefer::mxUiReleaseLastFont (); // v3.303.14
-
-      ////// Draw per waypoint stats
-      this->add_ui_stats_child (true); // v3.303.14
-
-      ////// v26.10.1 Landing analysis table, before the graph
-      missionx::WinImguiBriefer::add_ui_landing_analysis (this->strct_flight_leg_info.acf_m_max);
-
-      ////// Draw stats graph using ImPlot
-      ImGui::BeginGroup ();
-      ImGui::BeginChild ("child_statistics", sizeChild, ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar); // draw on the all the remaining window area
-
-      if (ImPlot::BeginPlot ("Mission Stats", ImVec2 (-1, 0))) //, ImPlotFlags_YAxis2) )
-      {
-
-        ImPlot::SetupAxes ("Elapsed Time", "Elev. ft");
-        ImPlot::SetupAxesLimits (0.0, static_cast<double> (data_manager::mission_stats_from_query.vecSeq_d.size ()), ((data_manager::mission_stats_from_query.min_elev_ft > 0.0) ? 0.0 : data_manager::mission_stats_from_query.min_elev_ft), (data_manager::mission_stats_from_query.max_elev_ft > data_manager::mission_stats_from_query.max_airspeed) ? data_manager::mission_stats_from_query.max_elev_ft + 100.0 : 1000.0);
-
-
-        ImPlot::SetupAxis (ImAxis_X1, "Timelapse", ImPlotAxisFlags_AuxDefault | ImPlotAxisFlags_Lock);
-        ImPlot::SetupAxisLimits (ImAxis_X1, 0.0, static_cast<int> (missionx::data_manager::mission_stats_from_query.vecSeq_d.size ()));
-
-        ImPlot::SetupAxis (ImAxis_Y1, "Elevation", ImPlotAxisFlags_AuxDefault | ImPlotAxisFlags_Lock);
-        ImPlot::SetupAxisLimits (ImAxis_Y1, 0.0, static_cast<int> (missionx::data_manager::mission_stats_from_query.max_elev_ft + 1000.0));
-
-        ImPlot::SetupAxis (ImAxis_Y2, "Airspeed", ImPlotAxisFlags_AuxDefault | ImPlotAxisFlags_Lock);
-        ImPlot::SetupAxisLimits (ImAxis_Y2, 0.0, static_cast<int> (missionx::data_manager::mission_stats_from_query.max_airspeed + 100.0));
-
-        // ImPlot::SetAxes (ImAxis_X1, ImAxis_Y1);
-        // ImPlot::PlotLine ("Elevation ft", missionx::data_manager::mission_stats_from_query.vecSeq_d.data (), missionx::data_manager::mission_stats_from_query.vecElev_ft_d.data (), static_cast<int> (missionx::data_manager::mission_stats_from_query.vecSeq_d.size ()));
-        //
-        // ImPlot::SetAxes (ImAxis_X1, ImAxis_Y2);
-        // ImPlot::PlotLine ("Air Speed", missionx::data_manager::mission_stats_from_query.vecSeq_d.data (), missionx::data_manager::mission_stats_from_query.vecAirSpeed_d.data (), static_cast<int> (missionx::data_manager::mission_stats_from_query.vecSeq_d.size ()));
-        const auto& st = missionx::data_manager::mission_stats_from_query; // v26.10.1 decimated plot series
-
-        ImPlot::SetAxes (ImAxis_X1, ImAxis_Y1);
-        ImPlot::PlotLine ("Elevation ft", st.vecPlotElevSeq_d.data (), st.vecPlotElev_ft_d.data (), static_cast<int> (st.vecPlotElevSeq_d.size ()));
-
-        ImPlot::SetAxes (ImAxis_X1, ImAxis_Y2);
-        ImPlot::PlotLine ("Air Speed", st.vecPlotAirSeq_d.data (), st.vecPlotAirSpeed_d.data (), static_cast<int> (st.vecPlotAirSeq_d.size ()));
-        ImPlot::EndPlot ();
-      }
-
-      ImGui::EndChild ();
-      ImGui::EndGroup ();
+      ui_stats_screen::draw_flight_stats (view_data, draw_options);
     }
   }
   else // display image
@@ -7186,7 +7176,10 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
         missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
 
         if (ImGui::Button ("Load Savepoint"))
+        {
+          this->check_savepoint_plane_cai (); // v26.10.2
           ImGui::OpenPopup (popupReminder); // v3.303.12_r3 make it a popup
+        }
 
         missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
@@ -7196,7 +7189,8 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
         //// Randomize Date and Time popup
         ImVec2 center (ImGui::GetIO ().DisplaySize.x * 0.5f, ImGui::GetIO ().DisplaySize.y * 0.5f);
         ImGui::SetNextWindowPos (center, ImGuiCond_Appearing, ImVec2 (0.5f, 0.5f));
-        ImGui::SetNextWindowSize (ImVec2 (450.0f, 140.0f));
+        // v26.10.2 a plane line is always shown: 3 lines when the plane differs, 1 line otherwise
+        ImGui::SetNextWindowSize (ImVec2 (450.0f, (this->strct_savepoint_plane_check.flag_plane_differs) ? 200.0f : 170.0f));
         ImGui::PushStyleColor (ImGuiCol_ChildBg, missionx::color::color_vec4_black);
 
         // Start reminder popup
@@ -7209,6 +7203,27 @@ WinImguiBriefer::draw_load_existing_mission_screen ()
 
           ImGui::TextWrapped ("1. Remember to load and start the plane prior to loading the save point \n\t(if that was the state when you took it).\n2. It is best to load a save point that was taken on the ground.\n3. You might need to disable the servo (auto pilot) if Yoke/Stick do not auto center.");
           ImGui::Separator ();
+
+          // v26.10.2 plane check. Blinks when the plane is not the one the savepoint was created with.
+          if (this->strct_savepoint_plane_check.flag_plane_differs)
+          {
+            const bool  flag_blink_on = std::fmod (ImGui::GetTime (), 1.0) < 0.6;
+            const auto &blink_color   = (flag_blink_on) ? missionx::color::color_vec4_yellow : missionx::color::color_vec4_orange;
+            ImGui::PushStyleColor (ImGuiCol_Text, blink_color);
+            ImGui::TextWrapped ("%s", fmt::format ("Plane is not the same !!!\nSaved with: {}\nCurrent plane: {}", this->strct_savepoint_plane_check.saved_acf_file, this->strct_savepoint_plane_check.current_acf_file).c_str ());
+            ImGui::PopStyleColor ();
+            ImGui::Separator ();
+          }
+          else if (this->strct_savepoint_plane_check.saved_acf_file.empty ())
+          {
+            ImGui::TextColored (missionx::color::color_vec4_grey, "Saved plane is unknown (older savepoint).");
+            ImGui::Separator ();
+          }
+          else
+          {
+            ImGui::TextColored (missionx::color::color_vec4_greenyellow, "%s", fmt::format ("Same plane as the savepoint: {}", this->strct_savepoint_plane_check.saved_acf_file).c_str ());
+            ImGui::Separator ();
+          }
 
           missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TITLE_REG ());
           if (ImGui::Button ("Continue Loading the Savepoint"))
@@ -7389,8 +7404,11 @@ WinImguiBriefer::add_landing_rate_ui (const missionx::mx_enrout_stats_strct &inS
 // -----------------------------------------------
 
 void
-WinImguiBriefer::add_ui_stats_child (const bool isEmbedded)
+WinImguiBriefer::add_ui_stats_child (const bool isEmbedded, const std::vector<missionx::mx_enrout_stats_strct> *in_vec_finished_legs)
 {
+  // v26.10.2 the finished legs to list: from the caller (the end screen reads them from the stats database), else the running mission legs
+  const auto &vecFinishedLegs = (in_vec_finished_legs == nullptr) ? data_manager::vecPreviousLegStats4UIDisplay : *in_vec_finished_legs;
+
   const auto      strctCurrentStats = missionx::data_manager::gather_stats.get_stats_object ();
   const auto      fuel_usage_kg     = missionx::dataref_manager::getDataRefValue<float> ("sim/cockpit2/fuel/fuel_totalizer_sum_kg");
 
@@ -7398,8 +7416,8 @@ WinImguiBriefer::add_ui_stats_child (const bool isEmbedded)
 
   if (!isEmbedded)
   {
-    constexpr float fTitleHeight      = 30.0f;
-    ImGui::BeginChild ("stats_flight_legs", ImVec2 (0.0f, ImGui::GetWindowHeight () - imvec2_flight_info_top_area_size.y - this->fTopToolbarPadding_f - this->fBottomToolbarPadding_f - fTitleHeight), ImGuiChildFlags_Borders);
+    // v26.10.2 the same size as the "debug" and "Flight Planning/Notes" tabs: the rest of the window
+    ImGui::BeginChild ("stats_flight_legs", ImVec2 (0.0f, ImGui::GetContentRegionAvail ().y - this->PAD_BETWEEN_CHILD_REGIONS), ImGuiChildFlags_Borders);
   }
 
   if (data_manager::missionState == missionx::mx_mission_state_enum::mission_is_running)
@@ -7409,36 +7427,19 @@ WinImguiBriefer::add_ui_stats_child (const bool isEmbedded)
     ImGui::TextWrapped ("Overall Distance flew: %10.2f nm\tFuel Consumed: %5.2f", strctCurrentStats.fCumulativeDistance_nm, fuel_usage_kg);
     ImGui::TextWrapped ("Current Leg flew: %5.2f nm\tStarting Fuel: %5.2f\tPayload: %6.2f", (strctCurrentStats.fCumulativeDistance_nm - data_manager::strct_currentLegStats4UIDisplay.fCumulativeDistanceFlew_beforeCurrentLeg), data_manager::strct_currentLegStats4UIDisplay.fStartingFuel, data_manager::strct_currentLegStats4UIDisplay.fStartingPayload);
 
-    // if (data_manager::strct_currentLegStats4UIDisplay.fTouchDown_landing_rate_vh_ind_fpm != 0.0f)
-    // {
-    //   // const auto pctTdWeight_f = data_manager::strct_currentLegStats4UIDisplay.fTouchDownWeight / data_manager::strct_currentLegStats4UIDisplay.fTouchDown_acf_m_max;
-    //   //ImGui::TextColored (missionx::color::color_vec4_white, "Touch Down Weight: %6.2f\tPlane Max Weight: %3.2f\tScore: %3.0f points.", data_manager::strct_currentLegStats4UIDisplay.fTouchDownWeight, data_manager::strct_currentLegStats4UIDisplay.fTouchDown_acf_m_max, pctTdWeight_f * 100.0f);
-    //   ImGui::TextColored (missionx::color::color_vec4_white, "Touch Down Weight: %6.2f\tPlane Max Weight: %3.2f", data_manager::strct_currentLegStats4UIDisplay.fTouchDownWeight, data_manager::strct_currentLegStats4UIDisplay.fTouchDown_acf_m_max); // v25.09.2 removed weight scoring
-    //   add_landing_rate_ui (data_manager::strct_currentLegStats4UIDisplay);
-    // }
-
     missionx::WinImguiBriefer::mxUiReleaseLastFont ();
     /// display the previous leg stats
     ImGui::NewLine ();
     ImGui::Separator ();
-  }
 
-  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
-  for (const auto &stats : data_manager::vecPreviousLegStats4UIDisplay)
+    // v26.10.2 the stats so far (summary, legs with the current one, landings, flight path), from the in-flight stats copy.
+    //          The lines above are live (every flight loop), the part below is updated when the "stats" tab is clicked.
+    ui_stats_screen::draw_in_flight_stats_cai ();
+  }
+  else
   {
-    // const auto pctTdWeight_f = stats.fTouchDownWeight / stats.fTouchDown_acf_m_max;
-    ImGui::TextColored (missionx::color::color_vec4_beige, "Waypoint Name: %s", stats.sLegName.c_str ());
-    ImGui::TextColored (missionx::color::color_vec4_white, "Overall Distance flew: %10.2f nm\tLeg Flew: %5.2f", stats.fCumulativeDistanceFlew_beforeCurrentLeg + stats.fDistanceFlew, stats.fDistanceFlew);
-    ImGui::TextColored (missionx::color::color_vec4_grey, "Start Fuel: %5.2f\tEnd Fuel: %5.2f\tFuel Consumed: %5.2f", stats.fStartingFuel, stats.fEndFuel, stats.fStartingFuel - stats.fEndFuel);
-    ImGui::TextColored (missionx::color::color_vec4_white, "Start Payload: %6.2f\tEnd Payload: %6.2f", stats.fStartingPayload, stats.fEndPayload);
-    // ImGui::TextColored (missionx::color::color_vec4_white, "Touch Down Weight: %6.2f\tPlane Max Weight: %3.0f", stats.fTouchDownWeight, stats.fTouchDown_acf_m_max); // v25.09.2 removed weight scoring
-    // ImGui::TextColored (missionx::color::color_vec4_white, "Touch Down Weight: %6.2f\tPlane Max Weight: %3.0f", stats.fTouchDownWeight, this->strct_flight_leg_info.acf_m_max); // v25.09.2 removed weight scoring
-
-    // add_landing_rate_ui (stats);
-
-    ImGui::Separator ();
+    ui_stats_screen::draw_legs (vecFinishedLegs); // v26.10.2 moved to ui_stats_screen (shared with the stats screen)
   }
-  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
 
   if (!isEmbedded)
     ImGui::EndChild ();
@@ -7447,166 +7448,6 @@ WinImguiBriefer::add_ui_stats_child (const bool isEmbedded)
 }
 
 
-// -------------------------------------------
-// v26.10.1 Landing analysis for each landing: grade line, touchdown summary, height-step table and the notes (yellow).
-//          Display only. The data is prepared by the stats fetch thread (data_manager::fetch_landing_analysis()).
-void
-WinImguiBriefer::add_ui_landing_analysis (float in_acf_m_max_kg)
-{
-  const auto &mapLandings = missionx::data_manager::mission_stats_from_query.mapLandingAnalysis;
-  if (mapLandings.empty ())
-    return;
-
-  // cell color limits (display only). Same limits as the notes in data_manager::build_landing_findings()
-  constexpr double STEEP_GLIDE_RATIO    = 1.7;  // V/S above 1.7x the sink of a 3 degree path (steps at 50ft and above)
-  constexpr double FINAL_BANK_LIMIT_DEG = 10.0; // bank above it, before touchdown
-  constexpr double TD_BANK_LIMIT_DEG    = 5.0;  // bank above it, at touchdown
-  constexpr int    TABLE_COLUMNS        = 11;
-
-  const auto lmbda_grade_color = [](const missionx::mx_landing_analysis &in_landing) -> ImVec4
-  {
-    if (in_landing.is_doctor)
-      return missionx::color::color_vec4_red;
-    if (in_landing.grade_s == "Butter")
-      return missionx::color::color_vec4_green;
-    if (in_landing.grade_s == "Smooth")
-      return missionx::color::color_vec4_greenyellow;
-    if (in_landing.grade_s == "Acceptable")
-      return missionx::color::color_vec4_yellow;
-    if (in_landing.grade_s == "Firm")
-      return missionx::color::color_vec4_orange;
-    if (in_landing.grade_s == "Hard")
-      return missionx::color::color_vec4_orangered;
-
-    return missionx::color::color_vec4_white; // N/A
-  };
-
-  const auto lmbda_cell = [](const ImVec4 &in_color, const std::string &in_text)
-  {
-    ImGui::TableNextColumn ();
-    ImGui::TextColored (in_color, "%s", in_text.c_str ());
-  };
-
-  missionx::WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_TEXT_REG ());
-
-  for (const auto &[td_line_id, landing] : mapLandings)
-  {
-    ImGui::PushID (td_line_id); // unique table id per landing
-
-    // ---- grade line: "Landing at KDEN, runway 7-25: Butter (score 90/100)" ----
-    std::string landed_at_s;
-    for (const auto &land : missionx::data_manager::mission_stats_from_query.vecLandingStatsResults)
-    {
-      if (land.line_id == td_line_id)
-        landed_at_s = fmt::format (" at {}, runway {}", land.icao, land.runway_s);
-    }
-
-    ImGui::TextColored (missionx::color::color_vec4_beige, "Landing%s:", landed_at_s.c_str ());
-    ImGui::SameLine ();
-    ImGui::TextColored (lmbda_grade_color (landing), "%s", landing.grade_s.c_str ());
-    ImGui::SameLine ();
-    if (landing.bounce_penalty < 0.0f) // v26.10.1 "(score 90  -5 bounce  = 85/100)", the penalty in red
-    {
-      ImGui::TextColored (missionx::color::color_vec4_white, "(base %.0f", landing.base_score);
-      ImGui::SameLine ();
-      ImGui::TextColored (missionx::color::color_vec4_red, "%.0f bounce", landing.bounce_penalty); // the value is negative, so it shows "-5"
-      ImGui::SameLine ();
-    }
-    ImGui::TextColored (missionx::color::color_vec4_white, "(score %.0f/100)", landing.landing_score);
-
-    // ---- touchdown summary line ----
-    if (landing.has_summary)
-    {
-      std::string summary_s = fmt::format ("Touchdown: {:.0f} fpm", landing.td_fpm);
-      if (landing.has_gear_load)
-        summary_s += fmt::format (", gear load {:.2f} (G {:.2f} avg, {:.2f} peak)", landing.td_gear_load, landing.td_g_avg, landing.td_g_peak);
-      if (landing.has_final_glide)
-        summary_s += fmt::format (", final {:.1f}x a 3 deg path", landing.final_max_glide_ratio);
-      if (landing.bounce_count > 0) // v26.10.1
-        summary_s += fmt::format (", bounced {}x (max {:.1f} ft)", landing.bounce_count, landing.max_bounce_agl_ft);
-      if (in_acf_m_max_kg > 0.0f)
-        summary_s += fmt::format (", weight {:.0f} kg of {:.0f} kg max ({:.0f}%)", landing.td_weight_kg, in_acf_m_max_kg, (landing.td_weight_kg / in_acf_m_max_kg) * 100.0 );
-      else
-        summary_s += fmt::format (", weight {:.0f} kg", landing.td_weight_kg);
-
-      ImGui::PushStyleColor(ImGuiCol_Text, missionx::color::color_vec4_yellowgreen);
-      ImGui::TextWrapped("%s", summary_s.c_str());
-      ImGui::PopStyleColor();
-    }
-
-    // ---- height-step table ----
-    constexpr ImGuiTableFlags table_flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings;
-    if (!landing.vecSteps.empty () && ImGui::BeginTable ("landing_steps_table", TABLE_COLUMNS, table_flags))
-    {
-      ImGui::TableSetupColumn ("Step");
-      ImGui::TableSetupColumn ("AGL ft");
-      ImGui::TableSetupColumn ("IAS kt");
-      ImGui::TableSetupColumn ("GS kt");
-      ImGui::TableSetupColumn ("V/S fpm");
-      ImGui::TableSetupColumn ("Pitch");
-      ImGui::TableSetupColumn ("Bank");
-      ImGui::TableSetupColumn ("G");
-      ImGui::TableSetupColumn ("Flaps %");
-      ImGui::TableSetupColumn ("Time to TD(s)");
-      ImGui::TableSetupColumn ("Distance to TD(m)");
-      ImGui::TableHeadersRow ();
-
-      for (const auto &row : landing.vecSteps)
-      {
-        ImGui::TableNextRow ();
-        const bool is_td_row = (row.step_agl_ft <= 0.0); // the "TD" row has step height 0
-
-        lmbda_cell (missionx::color::color_vec4_aqua, row.step_label);
-
-        // no own sample at this height (1 Hz data). The step below shows the same stats row
-        if (row.same_row_as_next)
-        {
-          for (int col = 1; col < TABLE_COLUMNS; ++col)
-            lmbda_cell (missionx::color::color_vec4_grey, "-");
-          continue;
-        }
-
-        // V/S: orangered at touchdown when "Call the Doctor". Orange when steeper than STEEP_GLIDE_RATIO x a 3 degree path (50ft and above)
-        ImVec4 vs_color = missionx::color::color_vec4_white;
-        if (is_td_row && landing.is_doctor)
-          vs_color = missionx::color::color_vec4_orangered;
-        else if (!is_td_row && row.step_agl_ft >= 50.0 && row.gs_kt > 20.0 && std::abs (row.vs_fpm) > row.gs_kt * 5.3 * STEEP_GLIDE_RATIO)
-          vs_color = missionx::color::color_vec4_orange;
-
-        // bank: orange above the limit (lower limit at touchdown)
-        const double bank_limit = (is_td_row) ? TD_BANK_LIMIT_DEG : FINAL_BANK_LIMIT_DEG;
-        const ImVec4 bank_color = (std::abs (row.roll) > bank_limit) ? missionx::color::color_vec4_orange : missionx::color::color_vec4_white;
-
-        // pitch: orange for a nose low touchdown
-        const ImVec4 pitch_color = (is_td_row && row.pitch < 0.0) ? missionx::color::color_vec4_orange : missionx::color::color_vec4_white;
-
-        lmbda_cell (missionx::color::color_vec4_white, fmt::format ("{:.0f}", row.agl_ft));
-        lmbda_cell (missionx::color::color_vec4_white, fmt::format ("{:.0f}", row.ias_kt));
-        lmbda_cell (missionx::color::color_vec4_white, fmt::format ("{:.0f}", row.gs_kt));
-        lmbda_cell (vs_color, fmt::format ("{:.0f}", row.vs_fpm));
-        lmbda_cell (pitch_color, fmt::format ("{:.1f}", row.pitch));
-        lmbda_cell (bank_color, fmt::format ("{:.1f}", row.roll));
-        lmbda_cell (missionx::color::color_vec4_white, fmt::format ("{:.2f}", row.g));
-        lmbda_cell (missionx::color::color_vec4_white, fmt::format ("{:.0f}", row.flap_ratio * 100.0));
-        lmbda_cell (missionx::color::color_vec4_white, fmt::format ("{:.1f}", row.sec_to_td));
-        lmbda_cell (missionx::color::color_vec4_white, fmt::format ("{:.0f}", row.dist_to_td_mt));
-      }
-
-      ImGui::EndTable ();
-    }
-
-    // ---- notes (yellow, wrapped) ----
-    ImGui::PushStyleColor (ImGuiCol_Text, missionx::color::color_vec4_yellow);
-    for (const auto &note : landing.vecFindings)
-      ImGui::TextWrapped ("- %s", note.c_str ());
-    ImGui::PopStyleColor ();
-
-    ImGui::Separator ();
-    ImGui::PopID ();
-  }
-
-  missionx::WinImguiBriefer::mxUiReleaseLastFont ();
-}
 
 // -----------------------------------------------
 
@@ -7716,10 +7557,11 @@ WinImguiBriefer::draw_about_layer ()
 
       WinImguiBriefer::mxUiSetFont (mxconst::get_TEXT_TYPE_MSG_BOTTOM ());
       ImGui::Separator ();
+      ImGui::TextUnformatted ("Uses ImgWindow v" IMGWINDOW_VERSION " library. Public (Sources). \"slgoldberg/ImgWindow\" repository in Github." );
       ImGui::TextUnformatted ("Uses the IMGUI library v" IMGUI_VERSION ", Copyright (c) 2014-2026 Omar Cornut.");
       ImGui::TextUnformatted ("Uses the ImPlot library v" IMPLOT_VERSION ", MIT License - Copyright (c) 2020 Evan Pezent.");
+      ImGui::TextUnformatted ("Uses the ImPlot 3D library v" IMPLOT3D_VERSION ", MIT License - 2024-2026 Breno Cunha Queiroz");
       ImGui::TextUnformatted (fmt::format("Uses Loguru logging library for C++, by Emil Ernerfeldt, v{}.{}.{}, Unlicense license (2026).", LOGURU_VERSION_MAJOR, LOGURU_VERSION_MINOR, LOGURU_VERSION_PATCH).c_str() );
-      ImGui::TextUnformatted ("Uses ImgWindow v" IMGWINDOW_VERSION " library. Public (Sources). \"slgoldberg/ImgWindow\" repository in Github." );
       ImGui::TextUnformatted ("Uses the CURL v" LIBCURL_VERSION ". Transfer library, Copyright (c) 1996 - 2026, " LIBCURL_COPYRIGHT ".");
       ImGui::TextUnformatted ("Uses the IXMLParser library, Copyright (c) 2013, Frank Vanden Berghen - All rights reserved (AFPL License).");
       ImGui::TextUnformatted ( fmt::format("Uses the Freetype2 library v{}.{}.{}, Copyright 1996-2023, by David Turner, Robert Wilhelm, and Werner Lemberg (Freetype License).", std::to_string(FREETYPE_MAJOR), std::to_string(FREETYPE_MINOR), std::to_string(FREETYPE_PATCH)).c_str());
@@ -8471,7 +8313,7 @@ WinImguiBriefer::execAction (const mx_window_actions actionCommand)
     {
       if (this->strct_flight_leg_info.fetch_state == missionx::mxFetchState_enum::fetch_not_started)
       {
-        missionx::data_manager::mission_stats_from_query.reset ();
+        missionx::data_manager::last_flight_stats_view.reset (); // v26.10.2 was: mission_stats_from_query
 
         this->strct_flight_leg_info.asyncFetchMsg_s.clear ();
         this->strct_flight_leg_info.fetch_state = missionx::mxFetchState_enum::fetch_in_process;

@@ -978,6 +978,12 @@ static T get_random_number_by_type (const T inMin, const T inMax)
   // -------------------------------------------
   static std::string format_number_as_hours(const double& inSeconds);
 
+  // v26.10.2 One rule for "bounce": a landing less than STATS_BOUNCE_WINDOW_SEC after the previous landing belongs to it.
+  //          Used by the landing list and the flight path anchor (data_manager). The <stats_sqls> queries get the same constant as {bounce_window_sec}.
+  //          Clock = local_date_days * 86400 + local_time_sec. in_previous_landing_clock_sec < 0: no previous landing.
+  static bool is_landing_a_bounce_cai(const double in_previous_landing_clock_sec, const double in_landing_clock_sec);
+  static std::pair<double, double> get_position_on_runway_m_cai(const double in_end_lat, const double in_end_lon, const double in_runway_heading_deg, const double in_lat, const double in_lon); // v26.10.2 (along, lateral) in meters from a runway end. lateral < 0 = left of the center line
+
   // -------------------------------------------
   static std::string getNavType_Translation(XPLMNavType inType);
   // -------------------------------------------
@@ -1207,35 +1213,6 @@ static T get_random_number_by_type (const T inMin, const T inMax)
   // -------------------------------------------
 
 
-};
-
-
-
-class TimerFunc
-{
-public:
-  TimerFunc(); 
-
-  TimerFunc (const std::string &inFilename, const std::string &inSourceFuncName, bool inThread);
-  
-
-  TimerFunc (const std::string &inFilename, const std::string &inSourceFuncName, const std::string& info, bool inThread);
-
-
-  ~TimerFunc();
-
-private:
-  void stop() const;
-  void init(const std::string& inFilename, const std::string &inSourceFuncName, bool inThread);
-
-  bool isThread{ false };
-  int  seq{};
-  constexpr static const int FILENAME_WIDTH_CHAR{ 16 };
-  constexpr static const int FUNCNAME_WIDTH_CHAR{ 51 };
-
-  std::chrono::time_point<std::chrono::high_resolution_clock> m_startTimepoint;
-  std::string                                        sourceFuncName;
-  std::string                                        sourceFileName;
 };
 
 

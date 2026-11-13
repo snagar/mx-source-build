@@ -361,6 +361,7 @@ enum class mx_flc_pre_command
   post_mission_load_change_to_running,      // 50 //  v3.0.223.5
   post_position_plane,                      // can be called after position plane
   post_story_message_cache_cleanup,         // v3.305.1
+  prepare_in_flight_stats,                           // v26.10.2 the "stats" tab was clicked: ask the writer thread for the in-flight stats copy (postponed while a checkpoint action waits)
   restart_all_plugins,                      // v3.0.253.1
   save_notes_info,                          // v24.03.1
   save_user_setup_options,                  // v3.0.255.4.2 save user setup preference
@@ -1171,6 +1172,11 @@ public:
   // v26.09.3 The function will prepare all Navaid information that is inside the <GPS> or <FMS> nodes.
   // It won't touch the plane GPS/FMS. What to do with the data should be decided later on by the mission preferences.
   static std::map<int, missionx::NavAidInfo> parse_gps_node();
+  // v26.10.2 decide how one <point> should look in the FMS: an airport/navaid entry or a lat/lon entry.
+  //          in_is_route_edge: first or last point of the route. in_restore_as_saved: the point comes from a saved <fms> element.
+  static missionx::NavAidInfo get_fms_entry_for_gps_point_cai(IXMLNode in_point, const bool in_is_route_edge, const bool in_restore_as_saved);
+  static bool is_gps_point_a_target_cai(IXMLNode in_point); // v26.10.2
+  static void set_fms_entry_cai(const int in_entry_index, const missionx::NavAidInfo& in_entry); // v26.10.2 XPLMSetFMSEntryInfo or XPLMSetFMSEntryLatLon, altitude in feet
   // Add entry to GPS/FMS.
   // -1 = add to the end. This is the default behavior
   static void addLatLonEntryToGPS(Point& inPoint, const int& inEntry = -1); // v3.0.241.10 b3
@@ -1281,7 +1287,34 @@ public:
   static bool            delete_db_file(const std::string & inPathAndFile); // v3.303.8.3
   static bool            init_stats_db(); // v3.0.255.1
   static std::string     get_stats_db_path(); // v26.10.1 one place for the stats file path
-  static void            close_stats_db(bool in_flush_pending_rows); // v26.10.1 stop the writer, then close db_stats
+  static void            close_stats_db(bool in_flush_pending_rows, bool in_finalize_flight = true); // v26.10.1 stop the writer, then close db_stats. v26.10.2 in_finalize_flight: write the flight outcome first
+
+  // v26.10.2 In-flight stats: the "stats" tab reads a copy of the live stats file (tmp_stats.db), made by the writer thread.
+  static bool            flag_is_stats_request_is_active; // a request runs (copy + read). No new request until it ends. Main thread only
+  static int             in_flight_stats_reset_seq;       // +1 on every reset (mission start, end, stop, checkpoint load): the UI drops what it had
+  static std::string     get_in_flight_stats_db_path_cai(); // next to the live stats file: {stats folder}/tmp_stats.db
+  static void            reset_in_flight_stats_request_cai(); // no request, the copy state back to idle, the copy file deleted. Call it when no writer runs
+  static void            handle_in_flight_stats_request_cai(); // flcPRE "prepare_in_flight_stats": ask the writer for the copy, or postpone it to the next flight loop
+  static void            abort_in_flight_stats_request_cai(); // no request: flag false, the copy dropped. Safe while the writer runs (mission start, stop)
+  static void            abort_in_flight_stats_request_if_not_running_cai(); // every flight loop: any state other than "mission is running" drops the request
+  static void            stats_meta_begin_flight_cai(); // v26.10.2 flight_info row + first plane_meta row. Main thread, after gather_stats.setDb() and init_seq_from_checkpoint_stats()
+  static bool            stats_meta_insert_plane_cai(int in_line_id); // v26.10.2 add a plane_meta row for the current user plane. Main thread, no writer thread may run
+  static void            stats_meta_plane_loaded_cai(); // v26.10.2 add a plane_meta row if the user plane is not the last one in the table. Main thread
+  static bool            stats_meta_begin_leg_cai(missionx::mx_enrout_stats_strct &inout_started_leg); // v26.10.2 add the leg_stats row of a leg that starts (status "running"), sets iStartLineId and iLegSeq. Main thread
+  static bool            stats_meta_update_leg_cai(missionx::mx_enrout_stats_strct &inout_leg, const std::string &in_status); // v26.10.2 write the end values of a running leg (sim values now) and its status. Main thread
+  static void            stats_meta_save_leg_progress_cai(); // v26.10.2 checkpoint save: write the queued stats rows and the current leg progress into the stats file before it is copied. Main thread
+  static void            stats_meta_load_legs_into_memory_cai(); // v26.10.2 checkpoint load: rebuild vecPreviousLegStats4UIDisplay and the current leg from the leg_stats table. Main thread
+  static std::string     stats_meta_end_flight_cai(); // v26.10.2 write the outcome, end time and crash state into flight_info. Main thread, writer detached. Returns the outcome written, empty if none
+  static void            stats_meta_build_route_thread_cai(std::string in_stats_db_path, std::string in_outcome, int in_history_max_files); // v26.10.2 build flight_info.route_s, then save the history copy (end screen outcomes). Runs with std::async, own connection
+  static bool            stats_history_save_cai(missionx::dbase &in_live_db, const std::string &in_stats_db_path, int in_history_max_files); // v26.10.2 copy the stats db into {db}/history (VACUUM INTO), once per flight. Called by the route job
+  static void            stats_history_prune_cai(const std::string &in_history_folder, const std::string &in_file_prefix, int in_history_max_files); // v26.10.2 keep the newest N history files
+  static std::string     get_stats_history_folder_cai(); // v26.10.2 {folder of the live stats file}/history
+  static std::string     get_stats_history_file_prefix_cai(); // v26.10.2 "stats_xp.sqlite.db-"
+  static bool            stats_history_is_history_file_name_cai(const std::string &in_file_name, const std::string &in_file_prefix); // v26.10.2 "{prefix}yyyymmdd_hhmmss[_N].db". Shared by the cleanup and the stats screen list
+  static void            fetch_stats_history_list_cai(std::vector<missionx::mx_stats_history_row>* out_vecRows, missionx::mxFetchState_enum* outState, std::string* outStatusMessage); // v26.10.2 the stats screen list, newest first. Background thread
+  static int             stats_history_get_max_files_cai(); // v26.10.2 OPT_STATS_HISTORY_MAX_FILES, limited to 0..STATS_HISTORY_MAX_FILES_LIMIT. Main thread
+  static void            stats_meta_wait_for_route_cai(); // v26.10.2 wait for a running route job. Call before the stats file is opened, replaced or closed for good
+  static std::future<void> futStatsRoute; // v26.10.2 route job started by close_stats_db()
 
   static bool            db_connect(missionx::dbase& db, const std::string& inPathToDbFile);
   static void            db_close_all_databases();
@@ -1322,15 +1355,23 @@ public:
 
   static std::vector<missionx::mx_ils_airport_row_strct>    table_ILS_rows_vec;
   static std::map<int, missionx::mx_ils_airport_row_strct*> indexPointer_for_ILS_rows_tableVector;                                                          // index pointer to the vector table_ILS_rows_vec
-  static void                                               fetch_last_mission_stats(missionx::mxFetchState_enum* outState, std::string* outStatusMessage); // the query is a constant one on same table "stats"
-  static missionx::mx_mission_stats_strct                   mission_stats_from_query;
+  static void                                               fetch_last_mission_stats(missionx::mxFetchState_enum* outState, std::string* outStatusMessage); // the query is a constant one on same table "stats". v26.10.2 fetch_mission_stats_cai() for the live stats file, into last_flight_stats_view
+  // v26.10.2 flight path plots (2D/3D): the waypoint list, the rows of one (section, range) and its background fetch
+  static std::vector<missionx::mx_path_section> build_flight_path_sections_cai(const missionx::mx_stats_view_data& in_view_data);
+  static missionx::mx_flight_path_data          compute_flight_path_window_cai(const std::vector<missionx::mx_flight_path_row>& in_rows, const missionx::mx_path_section& in_section, missionx::mx_path_range_enum in_range);
+  static void fetch_flight_path_section_cai(std::string in_stats_db_path, missionx::mx_path_section in_section, missionx::mx_path_range_enum in_range, missionx::mx_flight_path_data* out_path, missionx::mxFetchState_enum* out_state, std::string* out_status_message);
+  static void                                               fetch_mission_stats_cai(std::string in_stats_db_path, missionx::mx_stats_view_data* out_view_data, missionx::mxFetchState_enum* outState, std::string* outStatusMessage); // v26.10.2 read one stats database file (live or history). Background thread
+  static void                                               fetch_stats_meta_rows_cai(missionx::dbase &in_stats_db, missionx::mx_stats_view_data &out_view_data); // v26.10.2 flight_info, plane_meta and leg_stats rows. Missing tables (older files) are skipped
+  static IXMLNode                                           get_scoring_for_stats_view_cai(const missionx::mx_stats_flight_info &in_flight_info); // v26.10.2 the <scoring> stored with the flight, else the mission scoring with landing defaults
+  static missionx::mx_stats_view_data                       last_flight_stats_view; // v26.10.2 end screen stats (the live stats file). Was: mx_mission_stats_strct mission_stats_from_query
   // static std::vector<missionx::mx_stats_data>               get_landing_stats_as_vec(); // v3.303.8.3
-  static std::vector<missionx::mx_stats_data>               get_landing_stats_as_vec(missionx::dbase &in_stats_db); // v3.303.8.3 // v26.10.1 connection passed in
+  static std::vector<missionx::mx_stats_data>               get_landing_stats_as_vec(missionx::dbase &in_stats_db, IXMLNode in_xScoring); // v3.303.8.3 // v26.10.1 connection passed in. v26.10.2 scoring passed in (center line score)
   static missionx::GatherStats                              gather_stats;               // v3.0.255.1
-  static std::map<int, missionx::mx_landing_analysis>       fetch_landing_analysis(missionx::dbase &in_stats_db); // v26.10.1 height steps + touchdown summary per landing (key: landing line_id). Queries from sql.xml <stats_sqls>
+  static std::map<int, missionx::mx_landing_analysis>       fetch_landing_analysis(missionx::dbase &in_stats_db, const std::vector<missionx::mx_stats_data> &in_vecLandingStats); // v26.10.1 height steps + touchdown summary per landing (key: landing line_id). Queries from sql.xml <stats_sqls>
   static IXMLNode                                           get_scoring_with_landing_defaults(); // v26.10.1 copy of the mission <scoring>, missing landing elements are copied from the default <scoring>
   static void                                               score_landing_analysis(missionx::mx_landing_analysis &inout_landing, IXMLNode in_xScoring); // v26.10.1 landing score (0-100) and grade
   static void                                               build_landing_findings(missionx::mx_landing_analysis &inout_landing); // v26.10.1 notes displayed under the landing table
+  static void                                               analyse_landing_on_runway_cai(const missionx::mx_runway_geometry &in_runway, const std::vector<missionx::mx_rollout_row> &in_rows, missionx::mx_landing_analysis &inout_landing); // v26.10.2 touchdown distance, runway left, overrun, excursion
 
   static void reset_runway_search_filter();
 
@@ -1613,7 +1654,6 @@ public:
   static void fetch_ways_and_target_node_from_overpass_thread (missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query *q);
   static mx_return find_vector_between_two_osm_nodes(missionx::structs::strct_osm_query* q, int& in_nd_node_ref_index);
 
-  static void                                                      fetch_ways_and_target_node_from_overpass_thread2(missionx::base_thread::strct_thread_state* inoutThreadState, std::string* outStatusMessage, missionx::structs::strct_osm_query* q);
   static missionx::mx_return                                       gen_request_from_the_llm_server(missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::curl_request_data& in_curl_request_data, const std::string& user_prompt, const std::string& system_prompt);
   static missionx::mx_return                                       gen_request_mission_leg_from_llm(missionx::base_thread::strct_thread_state* inoutThreadState, missionx::structs::curl_request_data& in_curl_request_data, const std::string& mission_outline);
   static missionx::structs::curl_request_data                      get_llm_user_setup_info_to_use_with_curl(); // v26.09.1

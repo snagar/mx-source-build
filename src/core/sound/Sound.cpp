@@ -182,29 +182,6 @@ missionx::MxSound::prepareStreamSoundFile(missionx::mx_message_state_enum& inMsg
   return result;
 }
 
-
-//// new function - return specific channel sound file state
-//FMOD_OPENSTATE
-//missionx::MxSound::getOpenSoundFileState(FMOD::Sound* inSound)
-//{
-//  if (inSound == nullptr)
-//    return FMOD_OPENSTATE_ERROR;
-//
-//  FMOD_OPENSTATE state;
-//  bool           state1, state2;
-//  state1 = state2 = false;
-//
-//  result = inSound->getOpenState(&state, 0, &state1, &state2);
-//  if (result != FMOD_OK)
-//  {
-//    checkResult(result);
-//    return FMOD_OPENSTATE_ERROR;
-//  }
-//
-//  return state;
-//}
-
-
 // -----------------------------------
 
 FMOD_OPENSTATE
@@ -781,41 +758,5 @@ missionx::MxSound::release()
 
 } // release
 
-
-// -------------------------
-
-
-//void
-//missionx::MxSound::testMp3()
-//{
-//  //  Log::logMsg("Create stream to MP3 file");
-//  //#ifdef IBM
-//  ////    result = fmodSystem->createStream("C:\\Fun\\hapil.mp3", FMOD_SOFTWARE | FMOD_LOOP_NORMAL | FMOD_NONBLOCKING, 0, &music);
-//  //  result = fmodSystem->createStream("C:\\Fun\\hapil.mp3", FMOD_DEFAULT, 0, &music);
-//  //#else
-//  //  std::string fullPathName = soundFilePath + "test.mp3";
-//  //  Log::logMsg( fullPathName );
-//  //#ifdef MAC
-//  //  char tmpPath[1024];
-//  //  if (  Utils::ConvertPath ( fullPathName.c_str(), tmpPath, 1000 ) == 0 )
-//  //  {
-//  //    fullPathName = tmpPath;
-//  //  }
-//  //  Log::logMsg( fullPathName );
-//  //
-//  //#endif
-//  //  result = fmodSystem->createStream( fullPathName.c_str() , FMOD_SOFTWARE, 0, &music);
-//  //#endif
-//  //  FmodErrorCheck(result);
-//  //
-//  //  Log::logMsg("Play MP3 file");
-//  //  result = fmodSystem->playSound(music, 0, false, &musicChannel);
-//  //  FmodErrorCheck(result);
-//  //  if ( result == FMOD_OK )
-//  //    musicChannel->setVolume( 0.3f );
-//}
-
-
-// -------------------------
 // -------------------------
 // -------------------------
