@@ -4372,12 +4372,12 @@ FMT_NODISCARD FMT_INLINE auto format(format_string<T...> fmt, T&&... args)
   return vformat(fmt.str, vargs<T...>{{args...}});
 }
 
-// v25.03.1 missionx, saar. Added mx_format
-template <typename... T>
-FMT_NODISCARD FMT_INLINE auto mx_format(const std::string &fmt, T&&... args)
-    -> std::string {
-  return vformat(fmt.data(), vargs<T...>{{args...}});
-}
+// v26.10.2 DEPRECATED moved to the mxUtils class // v25.03.1 missionx, saar. Added mx_format
+// template <typename... T>
+// FMT_NODISCARD FMT_INLINE auto mx_format(const std::string &fmt, T&&... args)
+//     -> std::string {
+//   return vformat(fmt.data(), vargs<T...>{{args...}});
+// }
 
 /**
  * Converts `value` to `std::string` using the default format for type `T`.

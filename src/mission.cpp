@@ -1435,7 +1435,9 @@ missionx::Mission::flc()
   data_manager::shared_clock_time.xp_min   = dataref_manager::getLocalMinutes();
   data_manager::shared_clock_time.xp_sec   = dataref_manager::getLocalTimeSec();
   // data_manager::shared_clock_time.os_time  = fmt::format("{:%H:%M}", fmt::localtime(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())));
-  data_manager::shared_clock_time.os_time = std::format("{:%H:%M}", std::chrono::current_zone()->to_local(std::chrono::system_clock::now()));
+  // v26.10.2 fmt::localtime() is deprecated in the latest fmt, and std::chrono::current_zone() is not in Apple's libc++ (Xcode 16: the macOS build fails).
+  //          Timer::get_current_time_and_date() reads the local OS time on all platforms (localtime_s on Windows).
+  data_manager::shared_clock_time.os_time = missionx::Timer::get_current_time_and_date("%H:%M");
 
 
   // display Visual Cues only if we are in Designer mode and Cue option is enabled
@@ -4406,11 +4408,11 @@ missionx::Mission::flcPRE()
 
       case missionx::mx_flc_pre_command::gather_acf_cargo_data:
       {
-        if (missionx::data_manager::flag_gather_acf_info_thread_is_running == true) 
+        if (missionx::data_manager::flag_gather_acf_info_thread_is_running == true)
         {
           missionx::data_manager::iGatherAcfTryCounter = 0;
           // v3.303.9.1 save ACF custom datarefs
-          
+
           // v26.09.2 get current acf base info
           data_manager::acf_refresh_info();
           auto acf_info = data_manager::get_current_acf();
@@ -5074,7 +5076,7 @@ missionx::Mission::flcPRE()
         #endif
       }
       break;
-      case missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_nav_info_mainThread: 
+      case missionx::mx_flc_pre_command::get_nearest_nav_aid_to_custom_nav_info_mainThread:
       {
         // v26.09.1 Use this when you have a navAidInfo and want to find the nearest navaid, based on "icao", "lat/lon" and custom "navaidinfo.navytpe"
         #ifndef RELEASE
@@ -5533,7 +5535,7 @@ missionx::Mission::flcPRE()
       }
       break;
       case missionx::mx_flc_pre_command::inv_read_async_inv_image_files:
-      {       
+      {
         // Original Code
         BitmapReader::destroy_textures(data_manager::xp_mapInvImages); // v26.09.3
 
@@ -5544,7 +5546,7 @@ missionx::Mission::flcPRE()
       }
       break;
       case missionx::mx_flc_pre_command::inv_post_async_inv_image_binding:
-      {      
+      {
        // read 3 textute images at a time
         int loop_counter = 0;
         for (auto& [file, textureFile] : missionx::data_manager::xp_mapInvImages)
