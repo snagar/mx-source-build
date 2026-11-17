@@ -19,6 +19,13 @@
 #ifndef IMGUI_MARKDOWN_EXT_H
 #define IMGUI_MARKDOWN_EXT_H
 
+#if defined(_MSC_VER) || defined(__GNUC__) || defined(__clang__)
+#pragma push_macro("min")
+#pragma push_macro("max")
+#undef min
+#undef max
+#endif
+
 #include "imgui.h"
 #if defined(__has_include)
     #if __has_include("imgui_internal.h")
@@ -134,7 +141,7 @@ namespace ImGui {
         bool is_underline = false;
     };
 
-    inline MarkdownTagStyle ParseMarkdownTagStyle(const std::string& inner_text, const std::string& param, bool is_capsule_tag = false) {
+    inline MarkdownTagStyle ParseMarkdownTagStyle(const std::string& inner_text, const std::string& param, bool is_capsule_tag = false, bool strip_inner_markdown = true) {
         MarkdownTagStyle style;
         style.clean_text = inner_text;
 
@@ -293,55 +300,57 @@ namespace ImGui {
         // 3. Locate non-whitespace core to check for markdown bold/italic/code syntax
         // (**text**, __text__, *text*, _text_, `text`) WITHOUT discarding intentional
         // leading/trailing padding spaces (e.g., "<pill> " ICON_FA_RETWEET " </pill>"):
-        size_t start_idx = 0;
-        while (start_idx < style.clean_text.length() && style.clean_text[start_idx] == ' ') ++start_idx;
-        size_t end_idx = style.clean_text.length();
-        while (end_idx > start_idx && style.clean_text[end_idx - 1] == ' ') --end_idx;
+        if (strip_inner_markdown) {
+            size_t start_idx = 0;
+            while (start_idx < style.clean_text.length() && style.clean_text[start_idx] == ' ') ++start_idx;
+            size_t end_idx = style.clean_text.length();
+            while (end_idx > start_idx && style.clean_text[end_idx - 1] == ' ') --end_idx;
 
-        std::string lead_spaces = style.clean_text.substr(0, start_idx);
-        std::string core = style.clean_text.substr(start_idx, end_idx - start_idx);
-        std::string trail_spaces = style.clean_text.substr(end_idx);
+            std::string lead_spaces = style.clean_text.substr(0, start_idx);
+            std::string core = style.clean_text.substr(start_idx, end_idx - start_idx);
+            std::string trail_spaces = style.clean_text.substr(end_idx);
 
-        if ((core.length() >= 6 && core.rfind("***", 0) == 0 && core.compare(core.length() - 3, 3, "***") == 0) ||
-            (core.length() >= 6 && core.rfind("___", 0) == 0 && core.compare(core.length() - 3, 3, "___") == 0))
-        {
-            style.is_bold = true;
-            style.is_italic = true;
-            core = core.substr(3, core.length() - 6);
+            if ((core.length() >= 6 && core.rfind("***", 0) == 0 && core.compare(core.length() - 3, 3, "***") == 0) ||
+                (core.length() >= 6 && core.rfind("___", 0) == 0 && core.compare(core.length() - 3, 3, "___") == 0))
+            {
+                style.is_bold = true;
+                style.is_italic = true;
+                core = core.substr(3, core.length() - 6);
+            }
+            else if ((core.length() >= 4 && core.rfind("**", 0) == 0 && core.compare(core.length() - 2, 2, "**") == 0) ||
+                (core.length() >= 4 && core.rfind("__", 0) == 0 && core.compare(core.length() - 2, 2, "__") == 0))
+            {
+                style.is_bold = true;
+                core = core.substr(2, core.length() - 4);
+            }
+            else if ((core.length() >= 2 && core.front() == '*' && core.back() == '*') ||
+                     (core.length() >= 2 && core.front() == '_' && core.back() == '_'))
+            {
+                style.is_italic = true;
+                core = core.substr(1, core.length() - 2);
+            }
+            else if (core.length() >= 2 && core.front() == '`' && core.back() == '`')
+            {
+                style.is_mono = true;
+                core = core.substr(1, core.length() - 2);
+            }
+            else if (core.length() >= 4 && core.rfind("~~", 0) == 0 && core.compare(core.length() - 2, 2, "~~") == 0)
+            {
+                style.is_strike = true;
+                core = core.substr(2, core.length() - 4);
+            }
+            else if (core.length() >= 4 && core.rfind("$$", 0) == 0 && core.compare(core.length() - 2, 2, "$$") == 0)
+            {
+                style.is_strike = true;
+                core = core.substr(2, core.length() - 4);
+            }
+            else if (core.length() >= 4 && core.rfind("++", 0) == 0 && core.compare(core.length() - 2, 2, "++") == 0)
+            {
+                style.is_underline = true;
+                core = core.substr(2, core.length() - 4);
+            }
+            style.clean_text = lead_spaces + core + trail_spaces;
         }
-        else if ((core.length() >= 4 && core.rfind("**", 0) == 0 && core.compare(core.length() - 2, 2, "**") == 0) ||
-            (core.length() >= 4 && core.rfind("__", 0) == 0 && core.compare(core.length() - 2, 2, "__") == 0))
-        {
-            style.is_bold = true;
-            core = core.substr(2, core.length() - 4);
-        }
-        else if ((core.length() >= 2 && core.front() == '*' && core.back() == '*') ||
-                 (core.length() >= 2 && core.front() == '_' && core.back() == '_'))
-        {
-            style.is_italic = true;
-            core = core.substr(1, core.length() - 2);
-        }
-        else if (core.length() >= 2 && core.front() == '`' && core.back() == '`')
-        {
-            style.is_mono = true;
-            core = core.substr(1, core.length() - 2);
-        }
-        else if (core.length() >= 4 && core.rfind("~~", 0) == 0 && core.compare(core.length() - 2, 2, "~~") == 0)
-        {
-            style.is_strike = true;
-            core = core.substr(2, core.length() - 4);
-        }
-        else if (core.length() >= 4 && core.rfind("$$", 0) == 0 && core.compare(core.length() - 2, 2, "$$") == 0)
-        {
-            style.is_strike = true;
-            core = core.substr(2, core.length() - 4);
-        }
-        else if (core.length() >= 4 && core.rfind("++", 0) == 0 && core.compare(core.length() - 2, 2, "++") == 0)
-        {
-            style.is_underline = true;
-            core = core.substr(2, core.length() - 4);
-        }
-        style.clean_text = lead_spaces + core + trail_spaces;
 
         return style;
     }
@@ -534,8 +543,9 @@ namespace ImGui {
             }
 
             // 1. Backtick handling:
-            //    - If single-glyph backtick rescue (e.g. `↺`, `▲`, `▼`, `^`, `v`):
-            //      convert to `<icon ... />` (stripping backticks so the user gets their intended icon).
+            //    - If single-glyph or bracketed single-glyph backtick rescue
+            //      (e.g. `↺`, `[↺]`, `▲`, `▼`, `^`, `[^]`, `v`, `[v]`):
+            //      convert to `<icon ... />` (preserving `[` / `]` if bracketed).
             //    - Otherwise (inline code span like `:plane:`, `<icon ... />`, `#[^](ICON)`):
             //      PRESERVE VERBATIM! Do NOT expand shortcodes or macros inside code spans.
             if (text[i] == '`') {
@@ -563,13 +573,21 @@ namespace ImGui {
                     if (close_pos != std::string::npos) {
                         if (backtick_count == 1) {
                             std::string inner(text + i + 1, close_pos - (i + 1));
-                            std::string norm = NormalizeIconName(inner.c_str());
+                            bool has_brackets = (inner.length() >= 3 && inner.front() == '[' && inner.back() == ']');
+                            std::string query = has_brackets ? inner.substr(1, inner.length() - 2) : inner;
+                            if (has_brackets) {
+                                while (!query.empty() && (query.front() == ' ' || query.front() == '\t')) query.erase(query.begin());
+                                while (!query.empty() && (query.back() == ' ' || query.back() == '\t')) query.pop_back();
+                            }
+                            std::string norm = NormalizeIconName(query.c_str());
                             if (IsVectorIcon(norm.c_str())) {
-                                bool is_raw_glyph = (inner.length() >= 3 && (unsigned char)inner[0] == 0xE2);
-                                if (is_raw_glyph || inner == "^" || inner == "v") {
+                                bool is_raw_glyph = (query.length() == 3 && (unsigned char)query[0] == 0xE2);
+                                if (is_raw_glyph || query == "^" || query == "v") {
+                                    if (has_brackets) out.push_back('[');
                                     out.append("<icon ");
                                     out.append(norm);
                                     out.append(" />");
+                                    if (has_brackets) out.push_back(']');
                                     any_replaced = true;
                                     i = close_pos + 1;
                                     continue;
@@ -844,8 +862,20 @@ namespace ImGui {
                         }
                         std::string inner(text + tag_close + 1, close_pos - (tag_close + 1));
                         std::string params = (name_end < tag_close) ? std::string(text + name_end, tag_close - name_end) : "";
-                        MarkdownTagStyle style = ParseMarkdownTagStyle(inner, params);
+                        bool is_literal_code_tag = (tag_name == "mono" || tag_name == "code");
+                        MarkdownTagStyle style = ParseMarkdownTagStyle(inner, params, false, !is_literal_code_tag);
+                        if (is_literal_code_tag) style.is_mono = true;
                         ImFont* tf = cur_font ? cur_font : base_font;
+                        if (style.is_mono) {
+                            ImFont* mono = (config && config->monoFont) ? config->monoFont : nullptr;
+#if defined(CONTRIB_HAS_TYPOGRAPHY) || defined(IMGUI_FONT_ROLES_H)
+                            if (!mono) {
+                                if (style.is_bold) mono = ImGui::GetFont(ImFontRole::MonospaceMedium);
+                                if (!mono) mono = ImGui::GetFont(ImFontRole::Monospace);
+                            }
+#endif
+                            if (mono) tf = mono;
+                        }
 #if defined(CONTRIB_HAS_TYPOGRAPHY) || defined(IMGUI_FONT_ROLES_H)
                         if (tag_name == "small") tf = ImGui::GetFont(ImFontRole::Small);
                         else if (tag_name == "tiny") tf = ImGui::GetFont(ImFontRole::Tiny);
@@ -854,7 +884,15 @@ namespace ImGui {
                         else if (tag_name == "regular" || tag_name == "prop" || tag_name == "sans") tf = ImGui::GetFont(ImFontRole::Regular);
 #endif
                         if (!tf) tf = ImGui::GetFont();
-                        ImVec2 inner_sz = tf->CalcTextSizeA(font_size, FLT_MAX, 0.0f, style.clean_text.c_str(), style.clean_text.c_str() + style.clean_text.size());
+                        float tf_size = font_size;
+                        if (tf != base_font) {
+#if defined(IMGUI_VERSION_NUM) && (IMGUI_VERSION_NUM >= 19200)
+                            if (tf->LegacySize > 0.0f) tf_size = tf->LegacySize;
+#else
+                            if (tf->FontSize > 0.0f) tf_size = tf->FontSize;
+#endif
+                        }
+                        ImVec2 inner_sz = tf->CalcTextSizeA(tf_size, FLT_MAX, 0.0f, style.clean_text.c_str(), style.clean_text.c_str() + style.clean_text.size());
                         float icon_w = 0.0f;
                         float gap_x = 0.0f;
                         if (!style.icon_name.empty()) {
@@ -1404,7 +1442,7 @@ namespace ImGui {
                 const MarkdownConfig* config = GetActiveMarkdownConfig() ? GetActiveMarkdownConfig() : GetDefaultMarkdownConfig();
                 PushMarkdownTagFont(config, style);
 
-                float rendered_w = MeasureMarkdownLineWidth(style.clean_text.c_str(), style.clean_text.length(), config);
+                float rendered_w = ImGui::CalcTextSize(style.clean_text.c_str(), style.clean_text.c_str() + style.clean_text.size(), false).x;
                 float font_size = ImGui::GetFontSize();
                 ImVec2 text_size(rendered_w, font_size);
                 float scale = (font_size > 0.0f) ? (font_size / 14.0f) : 1.0f;
@@ -1433,7 +1471,7 @@ namespace ImGui {
                 auto style = ParseMarkdownTagStyle(inner_text, param, true);
                 const MarkdownConfig* config = GetActiveMarkdownConfig() ? GetActiveMarkdownConfig() : GetDefaultMarkdownConfig();
                 PushMarkdownTagFont(config, style);
-                float rendered_w = MeasureMarkdownLineWidth(style.clean_text.c_str(), style.clean_text.length(), config);
+                float rendered_w = ImGui::CalcTextSize(style.clean_text.c_str(), nullptr, true).x;
                 float font_size = ImGui::GetFontSize();
                 ImVec2 text_size(rendered_w, font_size);
                 float scale = (font_size > 0.0f) ? (font_size / 14.0f) : 1.0f;
@@ -1449,7 +1487,8 @@ namespace ImGui {
             // Built-in Tag 5: <mono>, <code>
             // Renders monospace code span with subtle rounded background pill
             auto monoCodeHandler = [](const std::string& inner_text, const std::string& param) {
-                auto style = ParseMarkdownTagStyle(inner_text, param, true);
+                auto style = ParseMarkdownTagStyle(inner_text, param, true, false);
+                style.is_mono = true;
                 const MarkdownConfig* config = GetActiveMarkdownConfig() ? GetActiveMarkdownConfig() : GetDefaultMarkdownConfig();
 
                 ImFont* mono_font = (config && config->monoFont) ? config->monoFont : nullptr;
@@ -1466,7 +1505,7 @@ namespace ImGui {
                     ParseMarkdownColor(bg_str, bg_col);
                 }
 
-                float rendered_w = MeasureMarkdownLineWidth(style.clean_text.c_str(), style.clean_text.length(), config);
+                float rendered_w = ImGui::CalcTextSize(style.clean_text.c_str(), style.clean_text.c_str() + style.clean_text.size(), false).x;
                 float font_size = ImGui::GetFontSize();
                 ImVec2 text_size(rendered_w, font_size);
                 float scale = (font_size > 0.0f) ? (font_size / 14.0f) : 1.0f;
@@ -3221,6 +3260,11 @@ namespace ImGui {
 #endif
 
 } // namespace ImGui
+
+#if defined(_MSC_VER) || defined(__GNUC__) || defined(__clang__)
+#pragma pop_macro("max")
+#pragma pop_macro("min")
+#endif
 
 #endif // IMGUI_MARKDOWN_EXT_H
 

@@ -37,10 +37,17 @@
 
 // Version format: MmmPP (Major, 2-digit Minor, 2-digit Patch)
 // e.g., v2.0.0 becomes 20000. v1.12.3 becomes 11203.
-#define IMGWINDOW_VERSION       "2.4.0"
-#define IMGWINDOW_VERSION_NUM   20400
+#define IMGWINDOW_VERSION       "2.4.1"
+#define IMGWINDOW_VERSION_NUM   20401
 
 #include "SystemGL.h"
+
+#if defined(_MSC_VER) || defined(__GNUC__) || defined(__clang__)
+#pragma push_macro("min")
+#pragma push_macro("max")
+#undef min
+#undef max
+#endif
 
 #include <climits>
 #include <string>
@@ -699,6 +706,8 @@ private:
 
     void translateToImguiSpace(int inX, int inY, float &outX, float &outY);
 
+    bool IsInSelfResizeBorder(int globalX, int globalY) const;
+
     float mModelView[16], mProjection[16];
     int mViewport[4];
 
@@ -784,7 +793,8 @@ protected:
         
         DragTy () { clear(); }
         void clear () { wnd = left = top = right = bottom = false; }
-        operator bool() const { return wnd || left || top || right || bottom; }
+        bool isResize () const { return left || top || right || bottom; }
+        operator bool() const { return wnd || isResize(); }
     } dragWhat;
 };
 
@@ -814,5 +824,10 @@ namespace ImGui {
     IMGUI_API void ImageNamed(const char* name, const ImVec2& size = ImVec2(0.0f, 0.0f), const ImVec2& uv0 = ImVec2(0.0f, 0.0f), const ImVec2& uv1 = ImVec2(1.0f, 1.0f), const ImVec4& tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f), const ImVec4& border_col = ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 #endif
 }
+
+#if defined(_MSC_VER) || defined(__GNUC__) || defined(__clang__)
+#pragma pop_macro("max")
+#pragma pop_macro("min")
+#endif
  
 #endif // #ifndef IMGWINDOW_H

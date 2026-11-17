@@ -71,7 +71,7 @@ jobs:
           echo -e "\nGlobal Variable value for 'global-subversion-text' is: ${{ steps.strings.outputs.global-subversion-text }} "
 
   build-lin:
-#    if: ( 1 == 2 )
+    #    if: ( 1 == 2 )
     runs-on: ubuntu-24.04
     needs: [pre-build]
     strategy: # Set fail-fast too false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
@@ -79,8 +79,8 @@ jobs:
       matrix:
         os: [ubuntu-24.04]
         build_type: [ Debug, Release ]
-#        build_type: [ Debug ]
-#        build_type: [ Release ]
+        #        build_type: [ Debug ]
+        #        build_type: [ Release ]
         c_compiler: [gcc]
         #gcc_version: [11]
         include:
@@ -133,25 +133,38 @@ jobs:
       - name: Extract XPSDK
         shell: bash
         run: |
-          printf "Extract XPSDK"
+          printf "Extract XPSDK\n"
           cd libs
+          
+          printf "Remove old xpsdk folder if it exists\n"
+          rm -rf xpsdk
+          
           printf "Command: unzip -o XPSDK.zip\n"
           printf "Current folder: %s\n" "$(pwd)"
           unzip -o XPSDK.zip
+          
           printf "List folders:\n"
           ls -l
           
-          printf "Remove the old folder and rename the new xpsdk-master" to "xpsdk"
-          rm -rf xpsdk
-          mv xpsdk-master xpsdk
+          if [ ! -d "xpsdk" ]; then
+            if [ -d "SDK" ]; then
+              mv SDK xpsdk
+            elif [ -d "sdk" ]; then
+              mv sdk xpsdk
+            elif [ -d "xpsdk-master" ]; then
+              mv xpsdk-master xpsdk
+            else 
+              printf "XPSDK folder might not be correct\n"
+            fi
+          fi
           
-          printf "List folders after renaming:\n"
+          printf "List folders after checking/renaming:\n"
           ls -l
           printf "List xpsdk files recursively:\n"
           ls -lR xpsdk
       
       
-      
+
       #      - name: Debug: Stop workflow early
       #        run: |
       #          echo "Stopping here..."
@@ -208,7 +221,7 @@ jobs:
   
 
   build-osx:
-#    if: ( 1 == 2 )
+    #    if: ( 1 == 2 )
     runs-on: macos-15-intel
     needs: [pre-build]
     strategy:
@@ -223,7 +236,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set MacOS reusable strings
         # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
-        
+
         id: strings
         shell: bash
         run: |
@@ -261,17 +274,30 @@ jobs:
         run: |
           printf "Extract XPSDK \n"
           cd libs
+
+          printf "Remove old xpsdk folder if it exists\n"
+          rm -rf xpsdk
+
           printf "Command: ditto -x -k XPSDK.zip .\n"
           printf "Current folder: %s\n" "$(pwd)"
           ditto -V -x -k XPSDK.zip .
+          
           printf "List folders:\n"
-          ls -la
+          ls -la          
           
-          printf "Remove the old folder and rename the new xpsdk-master" to "xpsdk"
-          rm -rf xpsdk
-          mv xpsdk-master xpsdk
+          if [ ! -d "xpsdk" ]; then
+            if [ -d "SDK" ]; then
+              mv SDK xpsdk
+            elif [ -d "sdk" ]; then
+              mv sdk xpsdk
+            elif [ -d "xpsdk-master" ]; then
+              mv xpsdk-master xpsdk
+            else 
+              printf "XPSDK folder might not be correct\n"
+            fi
+          fi
           
-          printf "List folders after renaming:\n"
+          printf "List folders after checking/renaming:\n"
           ls -l
           printf "List xpsdk files recursively:\n"
           ls -lR xpsdk
@@ -286,7 +312,7 @@ jobs:
 
       - name: Configure CMake
         # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-        
+
         # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
         run: >
           cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S ${{ github.workspace }}
@@ -339,7 +365,7 @@ jobs:
   
 
   build-win:
-#    if: ( 1 == 2 )
+    #    if: ( 1 == 2 )
     #    runs-on: windows-latest
     runs-on: windows-2022
     needs: [pre-build]
@@ -349,7 +375,7 @@ jobs:
         #os: [windows-latest]
         os: [windows-2022]
         build_type: [ Debug, Release ]
-#        build_type: [Debug]
+        #        build_type: [Debug]
         c_compiler: [cl]
         cpp_compiler: [cl]
     steps:
@@ -380,19 +406,32 @@ jobs:
         run: |
           "Extracting XPSDK"
           cd libs
+          
+          Write-Host "Remove xpsdk folder if it exists."
+          Remove-Item -Recurse -Force "xpsdk" -ErrorAction SilentlyContinue
+          
           Write-Host "Command: Expand-Archive XPSDK.zip -DestinationPath . -Force"
           "Current folder: $(Get-Location)"
-          Remove-Item -Recurse -Force "xpsdk\Libraries\Mac" -ErrorAction SilentlyContinue
           Expand-Archive XPSDK.zip -DestinationPath . -Force -ErrorAction SilentlyContinue
           
           Write-Host " "
           Write-Host "List folders:"
           Get-ChildItem -Directory -Name
           
-          Remove-Item -Recurse -Force "xpsdk" -ErrorAction SilentlyContinue
-          Rename-Item -Path "xpsdk-master" -NewName "xpsdk"
+          if (-not (Test-Path "xpsdk" -PathType Container)) {
+              if (Test-Path "SDK" -PathType Container) {
+                  Rename-Item -Path "SDK" -NewName "xpsdk"
+              } elseif (Test-Path "sdk" -PathType Container) {
+                  Rename-Item -Path "sdk" -NewName "xpsdk"
+              } elseif (Test-Path "xpsdk-master" -PathType Container) {
+                  Rename-Item -Path "xpsdk-master" -NewName "xpsdk"          
+              }
+                else {
+                  Write-Host "XPSDK folder might not be correct."
+              }
+          }
           
-          Write-Host "List folders after renaming xpsdk:"
+          Write-Host "List folders after checking/renaming xpsdk:"
           Get-ChildItem -Directory -Name
           
           Write-Host " "
@@ -634,4 +673,3 @@ jobs:
             ${{ github.workspace }}/notes.md
             ${{ github.workspace }}/${{ steps.strings.outputs.plugin-name }}*7z*
           prerelease: ${{ contains(github.ref_name, '-beta') || startsWith(github.ref_name, 'b') }}
-        

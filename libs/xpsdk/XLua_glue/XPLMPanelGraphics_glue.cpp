@@ -1677,11 +1677,14 @@ void RegEnum_XPLMTouchZone(lua_State* L)
 	lua_setglobal(L, "XPLMTouchZone");
 }
 
+extern "C++" {
+template <int kSlot>
 static void cb_XPLMTouchEvent_f(int identifier, XPLMMouseStatus status, int x, int y, int dx, int dy, int button, void* ref)
 {
+	static_assert(kSlot < kMaxCallbackSlots, "notify_cb_t has too few callback slots");
 	notify_cb_t const* ref_cb = static_cast<notify_cb_t*>(ref);
 
-	lua_State* L = setup_lua_callback(ref_cb, "XPLMTouchEvent_f");
+	lua_State* L = setup_lua_callback(ref_cb, kSlot);
 	if (L)
 	{
 
@@ -1690,6 +1693,7 @@ static void cb_XPLMTouchEvent_f(int identifier, XPLMMouseStatus status, int x, i
 		}
 	}
 }
+} // extern "C++"
 /*
  * XPLMTouchZoneSpec_t
  * 
@@ -1820,10 +1824,13 @@ int XLuaAvionicsSetTouchEventHandler(lua_State* L)
 	}
 
 	std::shared_ptr<notify_cb_t> cb_capture_0 = capture_lua_value(L, 3);
-	xlua_persist_userref(L, cb_capture_0);
-	wrap_next_lua_func(cb_capture_0, 2, true, "XPLMTouchEvent_f");
+	bool const cb_capture_0_has_0 = wrap_next_lua_func(cb_capture_0, 2, true, 0, "XPLMTouchEvent_f");
+	if (cb_capture_0->is_empty())
+		cb_capture_0.reset();
+	else
+		xlua_persist_userref(L, cb_capture_0);
 
-	XPLMAvionicsSetTouchEventHandler(avionic, (cb_capture_0 ? cb_XPLMTouchEvent_f : nullptr), cb_capture_0.get());
+	XPLMAvionicsSetTouchEventHandler(avionic, (cb_capture_0_has_0 ? &cb_XPLMTouchEvent_f<0> : nullptr), cb_capture_0.get());
 
 	return 0;
 }
@@ -1837,10 +1844,13 @@ int XLuaWindowSetTouchEventHandler(lua_State* L)
 	}
 
 	std::shared_ptr<notify_cb_t> cb_capture_0 = capture_lua_value(L, 3);
-	xlua_persist_userref(L, cb_capture_0);
-	wrap_next_lua_func(cb_capture_0, 2, true, "XPLMTouchEvent_f");
+	bool const cb_capture_0_has_0 = wrap_next_lua_func(cb_capture_0, 2, true, 0, "XPLMTouchEvent_f");
+	if (cb_capture_0->is_empty())
+		cb_capture_0.reset();
+	else
+		xlua_persist_userref(L, cb_capture_0);
 
-	XPLMWindowSetTouchEventHandler(window, (cb_capture_0 ? cb_XPLMTouchEvent_f : nullptr), cb_capture_0.get());
+	XPLMWindowSetTouchEventHandler(window, (cb_capture_0_has_0 ? &cb_XPLMTouchEvent_f<0> : nullptr), cb_capture_0.get());
 
 	return 0;
 }
@@ -2109,6 +2119,7 @@ XPLMSVTCustomData_t XPLMSVTCustomData_t_from_table(lua_State* L, int stackpos)
 	XPLMSVTCustomData_t out = {};
 
 	luaL_checktype(L, stackpos, LUA_TTABLE);
+	out.structSize = sizeof(out);
 
 	lua_getfield(L, stackpos, "pitchDeg");
 	if (!lua_isnil(L, -1))
@@ -2220,6 +2231,7 @@ void XPLMSVTCustomData_t_to_table(lua_State* L, XPLMSVTCustomData_t const& src)
 int MakeXPLMSVTCustomData_t(lua_State* L)
 {
 	XPLMSVTCustomData_t out = {};
+	out.structSize = sizeof(XPLMSVTCustomData_t);
 	XPLMSVTCustomData_t_to_table(L, out);
 	return 1;
 }
@@ -2257,18 +2269,20 @@ void RegEnum_XPLMMapLayers(lua_State* L)
 	lua_pushinteger(L, 1);
 	lua_setfield(L, -2, "xplm_Map_Nexrad");
 	lua_pushinteger(L, 2);
-	lua_setfield(L, -2, "xplm_Map_IR");
+	lua_setfield(L, -2, "xplm_Map_clouds");
 	lua_pushinteger(L, 4);
-	lua_setfield(L, -2, "xplm_Map_Topo");
+	lua_setfield(L, -2, "xplm_Map_color_IR");
 	lua_pushinteger(L, 8);
-	lua_setfield(L, -2, "xplm_Map_Terrain");
+	lua_setfield(L, -2, "xplm_Map_Topo");
 	lua_pushinteger(L, 16);
-	lua_setfield(L, -2, "xplm_Map_Water");
+	lua_setfield(L, -2, "xplm_Map_Terrain");
 	lua_pushinteger(L, 32);
-	lua_setfield(L, -2, "xplm_Map_EGPWS");
+	lua_setfield(L, -2, "xplm_Map_Water");
 	lua_pushinteger(L, 64);
-	lua_setfield(L, -2, "xplm_Map_raw_elev");
+	lua_setfield(L, -2, "xplm_Map_EGPWS");
 	lua_pushinteger(L, 128);
+	lua_setfield(L, -2, "xplm_Map_raw_elev");
+	lua_pushinteger(L, 256);
 	lua_setfield(L, -2, "xplm_Map_safe_taxi");
 	lua_setglobal(L, "XPLMMapLayers");
 }
