@@ -7410,7 +7410,9 @@ WinImguiBriefer::add_ui_stats_child (const bool isEmbedded, const std::vector<mi
   const auto &vecFinishedLegs = (in_vec_finished_legs == nullptr) ? data_manager::vecPreviousLegStats4UIDisplay : *in_vec_finished_legs;
 
   const auto      strctCurrentStats = missionx::data_manager::gather_stats.get_stats_object ();
-  const auto      fuel_usage_kg     = missionx::dataref_manager::getDataRefValue<float> ("sim/cockpit2/fuel/fuel_totalizer_sum_kg");
+  // v26.10.2 from the legs and m_fuel_total, not the totalizer (sim/cockpit2/fuel/fuel_totalizer_sum_kg stays 0 in some aircraft, like the Aerobask Falcon 8X)
+  // const auto      fuel_usage_kg     = missionx::dataref_manager::getDataRefValue<float> ("sim/cockpit2/fuel/fuel_totalizer_sum_kg");
+  const auto      fuel_usage_kg     = missionx::data_manager::get_mission_fuel_consumed_kg_cai ();
 
   ImGui::BeginGroup ();
 

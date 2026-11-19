@@ -1294,6 +1294,7 @@ public:
   static int             in_flight_stats_reset_seq;       // +1 on every reset (mission start, end, stop, checkpoint load): the UI drops what it had
   static std::string     get_in_flight_stats_db_path_cai(); // next to the live stats file: {stats folder}/tmp_stats.db
   static void            reset_in_flight_stats_request_cai(); // no request, the copy state back to idle, the copy file deleted. Call it when no writer runs
+  static float           get_mission_fuel_consumed_kg_cai(); // v26.10.2 fuel used so far (kg): the ended legs + the current leg, from m_fuel_total (not the totalizer). Checkpoint safe
   static void            handle_in_flight_stats_request_cai(); // flcPRE "prepare_in_flight_stats": ask the writer for the copy, or postpone it to the next flight loop
   static void            abort_in_flight_stats_request_cai(); // no request: flag false, the copy dropped. Safe while the writer runs (mission start, stop)
   static void            abort_in_flight_stats_request_if_not_running_cai(); // every flight loop: any state other than "mission is running" drops the request

@@ -1174,6 +1174,33 @@ data_manager::gatherFlightLegEndStatsAndStoreInVector()
 }
 
 // -------------------------------------
+// v26.10.2 Fuel used in the mission so far (kg), from the tank mass "sim/flightmodel/weight/m_fuel_total".
+//          The totalizer (sim/cockpit2/fuel/fuel_totalizer_sum_kg) is not used: aircraft with their own systems plugin
+//          (Aerobask Falcon 8X) keep it at 0 while the fuel burns.
+//          = the ended legs (start - end fuel) + the current leg (start fuel - fuel now). The legs come back from leg_stats
+//          on a checkpoint load (stats_meta_load_legs_into_memory_cai()), so the value survives savepoints.
+//          Each leg counts at least 0: a refuel only hides the fuel used in that leg.
+//          A leg with no end fuel (0) is not counted. The current leg counts only until it ends (it is in vecPreviousLegStats4UIDisplay then).
+float
+data_manager::get_mission_fuel_consumed_kg_cai()
+{
+  double fuel_used_kg = 0.0;
+
+  for (const auto &leg : vecPreviousLegStats4UIDisplay)
+  {
+    if (leg.fEndFuel > 0.0f)
+      fuel_used_kg += std::max(0.0f, leg.fStartingFuel - leg.fEndFuel);
+  }
+
+  const bool flag_current_leg_is_running = (missionState == missionx::mx_mission_state_enum::mission_is_running) && (strct_currentLegStats4UIDisplay.fStartingFuel > 0.0f) &&
+                                           (strct_currentLegStats4UIDisplay.sStatus != mxconst::get_LEG_STATUS_COMPLETED());
+  if (flag_current_leg_is_running)
+    fuel_used_kg += std::max(0.0f, strct_currentLegStats4UIDisplay.fStartingFuel - dataref_manager::getDataRefValue<float>("sim/flightmodel/weight/m_fuel_total"));
+
+  return static_cast<float>(fuel_used_kg);
+}
+
+// -------------------------------------
 
 std::string
 data_manager::get_fail_timer_title_formated_for_imgui(const std::string& in_default_title, const std::string& prefix_to_formated_string)
@@ -12421,7 +12448,9 @@ missionx::mx_return missionx::data_manager::gen_request_from_the_llm_server(miss
   // in_curl_request_data.headers = "Content-Type: application/json";
   in_curl_request_data.connection_timeout = 20L;
   // in_curl_request_data.timeout = 60L; // deprecated, we get the value from the setup screen.
-  in_curl_request_data.headers = {mxconst::OVERPASS_POST_HEADER};
+  // v26.10.2 keep the headers from get_llm_user_setup_info_to_use_with_curl(): "Content-Type: application/json" and "Authorization: Bearer".
+  //          The Overpass form header made LLM servers answer HTTP 415 ("POST requests must use 'application/json'", LM Studio) and dropped the auth key.
+  // in_curl_request_data.headers = {mxconst::OVERPASS_POST_HEADER};
 
   #ifndef RELEASE
   Log::logMsg(fmt::format("[{}] {}", __func__, json_payload));
@@ -12491,7 +12520,9 @@ missionx::data_manager::gen_request_mission_leg_from_llm (missionx::base_thread:
   // in_curl_request_data.headers = "Content-Type: application/json";
   in_curl_request_data.connection_timeout = 20L;
   in_curl_request_data.how_many_tries     = 1; // we force only one try
-  in_curl_request_data.headers = {mxconst::OVERPASS_POST_HEADER};
+  // v26.10.2 keep the headers from get_llm_user_setup_info_to_use_with_curl(): "Content-Type: application/json" and "Authorization: Bearer".
+  //          The Overpass form header made LLM servers answer HTTP 415 ("POST requests must use 'application/json'", LM Studio) and dropped the auth key.
+  // in_curl_request_data.headers = {mxconst::OVERPASS_POST_HEADER};
 
 #ifndef RELEASE
   Log::logMsg(fmt::format("[{}] {}", __func__, json_payload));

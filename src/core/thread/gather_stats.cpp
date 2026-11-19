@@ -375,6 +375,9 @@ GatherStats::init_seq_from_checkpoint_stats()
         //line_seq = sqlite3_column_int(data_manager::db_stats.mapStatements[unique_name_s], iCol); // we init the line sequence to "last saved value" in the sqlite database        
         line_seq = sqlite3_column_int(this->db->mapStatements[unique_name_s], iCol); // we init the line sequence to "last saved value" in the sqlite database        
       }
+      // v26.10.2 reset the statement: a stepped SELECT stays "in progress" on the connection, and then "VACUUM INTO" (in-flight stats copy) fails
+      //          with "cannot VACUUM - SQL statements in progress" after a checkpoint load
+      this->db->clear_and_reset(this->db->mapStatements[unique_name_s]);
     }
   
   }
@@ -671,6 +674,18 @@ GatherStats::make_copy_cai()
   }
 
   const auto start_time = std::chrono::steady_clock::now();
+
+  // v26.10.2 "VACUUM INTO" fails while any statement of this connection is still stepping ("SQL statements in progress").
+  //          The writer owns the connection now, so a busy statement is one that was stepped and never reset: reset it and log it.
+  for (sqlite3_stmt *stmt = sqlite3_next_stmt(this->db->db, nullptr); stmt != nullptr; stmt = sqlite3_next_stmt(this->db->db, stmt))
+  {
+    if (sqlite3_stmt_busy(stmt))
+    {
+      const char *sql_text = sqlite3_sql(stmt);
+      Log::logMsgWarn(fmt::format("[{}] Statement was not reset, resetting it before the copy: {}", __func__, (sql_text != nullptr) ? sql_text : "(unknown)"));
+      sqlite3_reset(stmt);
+    }
+  }
 
   std::error_code ec;
   std::filesystem::remove(this->copy_file_path, ec); // no file is not an error
