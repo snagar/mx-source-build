@@ -24,8 +24,10 @@ cmake_minimum_required(VERSION 3.20)
 # git pull {working branch}
 #
 
+# the minimum osx deployment should help support older MAC based intel machines.
+set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version" FORCE)
 
-project(missionx LANGUAGES C CXX VERSION 26.09 DESCRIPTION "Mission-X X-Plane plugin v26.x")
+project(missionx LANGUAGES C CXX VERSION 26.10 DESCRIPTION "Mission-X X-Plane plugin v26.x")
 # Limit allowed build configurations for single-config generators (like MSVC)
 if(MSVC)
   set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Limited configurations" FORCE)
